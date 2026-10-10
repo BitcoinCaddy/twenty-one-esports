@@ -74,9 +74,9 @@ function blockliPages(User $player): array
 }
 
 const BLOCKLI_BOXES = [
-    'games' => ['games card' => '[data-test="play-game-blockli"]', 'games menu (desktop hub)' => '#game-hub li.hub-card[data-name*="blockli"]'],
+    'games' => ['games card' => '[data-test="play-game-blockli"]', 'games menu (desktop hub)' => '#game-hub [data-test="hub-game-blockli"]'],
     'home' => ['home tile' => '[data-test="game-tile"][data-game="blockli"]', 'home phone row' => '[data-test="browser-games-list"] a[data-game="blockli"]'],
-    'lobby' => ['lobby title' => '[data-test="lobby-title"]', 'context bar' => '[data-test="context-bar"][data-game="blockli"]'],
+    'lobby' => ['lobby title' => '[data-test="lobby-title"]', 'game bar' => '[data-test="game-subnav"][data-game="blockli"]'],
     'board' => ['board page head' => '[data-test="board-game"]'],
     'rules' => ['rules section' => 'section#blockli, #blockli', 'rules games table' => 'table [data-game-cover="blockli"] < tr'],
 ];
@@ -133,7 +133,7 @@ test('with credit_url set the credit links there, except inside a card that alre
     $games = HTMLDocument::createFromString($pages['games'], LIBXML_NOERROR);
 
     expect($lobby->querySelector('[data-test="lobby-title"] a[data-game-credit="blockli"]')?->getAttribute('href'))->toBe('https://example.org/dercaddy')
-        ->and($games->querySelector('#game-hub li.hub-card[data-name*="blockli"] [data-game-credit="blockli"]')?->tagName)->toBe('SPAN');
+        ->and($games->querySelector('#game-hub [data-test="hub-game-blockli"] [data-game-credit="blockli"]')?->tagName)->toBe('SPAN');
 });
 
 test('the lobby and the board page answer a Livewire roundtrip', function () {

@@ -654,72 +654,77 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     $active = $this->activeGame;
 @endphp
 
+{{-- The lobby template T1 (x-game.page, GameLobby.dc.html "Brettspiel-Lobby (Blockli)"): the chess lobby's slots in the chess lobby's places. --}}
 <div class="flex grow flex-col" data-server-now="{{ now()->getTimestampMs() }}" @if ($this->waiting) data-check-at="{{ $this->checkAt }}" @endif
      x-data="boardLobby(@js(['userId' => $user?->id, 'lookingKey' => $slug.'/'.$this->lobbyMode, 'looking' => $user?->looking_to_play === $slug.'/'.$this->lobbyMode, 'fallback' => $this::FALLBACK_SECONDS]))"
      data-test="board-lobby" data-game="{{ $slug }}">
-    <div class="chat-rail-host flex flex-col gap-6 px-4 pb-8 lg:gap-8 lg:px-12 lg:pb-10">
-        {{-- The title below lg, with the rating and the rules; from lg the header's context bar names the page and links the rules. --}}
-        <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 lg:hidden" data-test="lobby-title">
-            <div class="min-w-0">
-                <h1 class="m-0 font-display text-2xl leading-tight font-bold">{{ $name }}</h1>
-                <x-game-credit :game="$slug" />
-            </div>
-            <span class="flex items-baseline gap-3 text-[13px]">
-                @auth<x-rating :rating="Ratings::headline($user->id, $slug, $this->lobbyMode)" :label="$this->lobbyMode === 'blitz' ? __('Blitz') : __('Correspondence')" class="text-ink-2" data-test="lobby-rating" />@endauth
-                <a href="{{ route('rules') }}#{{ $slug }}" class="inline-flex min-h-11 items-center text-ink underline decoration-edge underline-offset-4 hover:decoration-btc" data-test="lobby-rules">{{ __('Rules') }}</a>
-            </span>
-        </div>
-        <h1 class="sr-only max-lg:hidden">{{ $name }}</h1>
+    @php
+        $next = $this->nextTournament;
+        $seats = $next !== null && $next->capacity > 0 ? $next->signups()->count() : null;
+        $modeName = $this->lobbyMode === 'blitz' ? __('Blitz 5+3') : __('Correspondence');
+        $season = \App\Support\SeasonChain\Seasons::live();
+    @endphp
+    <x-game.page :game="$slug" :mode="$modeName"
+                 :lede="__(':mode, 1 move a day. :season', ['mode' => $modeName, 'season' => $season === null ? __('Rated from Block 0.') : __('Season :season is live', ['season' => $season])])"
+                 :stat="$seats !== null ? $seats.'/'.$next->capacity : $this->correspondence['running']"
+                 :stat-label="$seats !== null ? __('in :tournament', ['tournament' => \App\Support\Engagement\HomeBoard::shortName($next)]) : trans_choice('game running|games running', $this->correspondence['running'])">
+        <x-slot:primary>
+            @if (app(\App\Games\GameRegistry::class)->mode($slug, 'blitz') !== null)
+                <button type="button" class="rv-b" x-on:click="const row = document.querySelector('[data-test=play-blitz]'); row?.getAttribute('aria-expanded') === 'true' || row?.click()" data-test="game-primary">{{ __('Play') }}</button>
+            @else
+                <a href="{{ route('board.correspondence', $slug) }}" @navigate(route('board.correspondence', $slug)) class="rv-b" data-test="game-primary">{{ __('Play correspondence') }}</a>
+            @endif
+        </x-slot:primary>
 
-        @if ($error || $this->incoming->isNotEmpty())
-            <div class="flex flex-col gap-2 empty:hidden">
-                @if ($error)
-                    <p role="alert" class="m-0 rounded-lg bg-loss-tint px-4 py-3 text-[13px] text-loss" data-test="lobby-error">{{ $error }}</p>
-                @endif
-
-                {{-- Invites received: they expire in minutes, so they come before everything else. --}}
-                @foreach ($this->incoming as $invite)
-                    <div wire:key="invite-{{ $invite->id }}" class="flex flex-col gap-3 rounded-lg bg-card p-3 shadow-ring-btc lg:flex-row lg:items-center lg:px-4" data-test="incoming-invite">
-                        <span class="flex min-w-0 grow items-center gap-3">
-                            <x-player-link :user="$invite->inviter" class="shrink-0"><x-avatar :user="$invite->inviter" :size="40" class="rounded-md" /></x-player-link>
-                            <span class="flex min-w-0 flex-col gap-0.5">
-                                <b class="truncate text-[15px]">{{ __(':name invites you', ['name' => $invite->inviter->displayName()]) }}</b>
-                                <span class="text-xs text-ink-2">{{ $invite->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __('Blitz 5+3 · Casual · colours drawn at random') }}</span>
-                            </span>
+        <x-slot:top>
+            @if ($error)
+                <p role="alert" class="m-0 rounded-[4px] bg-loss-tint px-4 py-3 text-[13px] text-loss" data-test="lobby-error">{{ $error }}</p>
+            @endif
+            {{-- Invites received: they expire in minutes, so they come before everything else. --}}
+            @foreach ($this->incoming as $invite)
+                <div wire:key="invite-{{ $invite->id }}" class="flex flex-col gap-3 rounded-[4px] bg-card p-3 shadow-ring-btc lg:flex-row lg:items-center lg:px-4" data-test="incoming-invite">
+                    <span class="flex min-w-0 grow items-center gap-3">
+                        <x-player-link :user="$invite->inviter" class="shrink-0"><x-avatar :user="$invite->inviter" :size="40" class="rounded-[4px]" /></x-player-link>
+                        <span class="flex min-w-0 flex-col gap-0.5">
+                            <b class="truncate text-[15px]">{{ __(':name invites you', ['name' => $invite->inviter->displayName()]) }}</b>
+                            <span class="text-xs text-ink-2">{{ $invite->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __('Blitz 5+3 · Casual · colours drawn at random') }}</span>
                         </span>
-                        <span class="grid grid-cols-2 gap-2 lg:flex">
-                            <x-button variant="quiet" wire:click="declineInvite({{ $invite->id }})" data-test="decline-invite">{{ __('Decline') }}</x-button>
-                            <x-button icon="shield-check" wire:click="acceptInvite({{ $invite->id }})" data-test="accept-invite">{{ __('Accept') }}</x-button>
-                        </span>
-                    </div>
-                @endforeach
-            </div>
-        @endif
+                    </span>
+                    <span class="grid grid-cols-2 gap-2 lg:flex">
+                        <x-button variant="quiet" wire:click="declineInvite({{ $invite->id }})" data-test="decline-invite">{{ __('Decline') }}</x-button>
+                        <x-button icon="shield-check" wire:click="acceptInvite({{ $invite->id }})" data-test="accept-invite">{{ __('Accept') }}</x-button>
+                    </span>
+                </div>
+            @endforeach
+        </x-slot:top>
 
         @include('pages.board.partials.lobby-play', ['user' => $user, 'entry' => $entry, 'outgoing' => $outgoing, 'name' => $name])
 
-        {{-- The global chat of this board game (P1 of plan brettspiel-chat-und-follows), as chess's: right under the way to play, from xl the side column. --}}
-        <div class="chat-rail"><livewire:game-channel :game="$slug" :wire:key="'game-channel-'.$slug" /></div>
+        @include('pages.board.partials.lobby-games', ['user' => $user, 'active' => $active, 'name' => $name])
+        @include('pages.board.partials.lobby-live', ['user' => $user, 'active' => $active, 'name' => $name])
+        @include('pages.chess.partials.lobby-ladder', ['ladderGame' => $slug, 'ladderMode' => $this->lobbyMode])
 
-        {{-- The next tournament of this board game open for sign-up, then its casual cups, as on every game page. --}}
-        @if ($this->nextTournament)
-            <x-tournaments.poster :tournament="$this->nextTournament" heading-id="lobby-next-h" />
-        @else
-            <x-tournaments.next-empty :game="$slug" heading-id="lobby-next-h" />
-        @endif
-        <x-tournaments.cup-mentions :game="$slug" titled />
+        <x-slot:next>
+            {{-- The next tournament of this board game open for sign-up, then its casual cups, as on every game page. --}}
+            @if ($next)
+                <x-tournaments.poster :tournament="$next" heading-id="lobby-next-h" />
+            @else
+                <x-tournaments.next-empty :game="$slug" heading-id="lobby-next-h" />
+            @endif
+            <x-tournaments.cup-mentions :game="$slug" titled />
+        </x-slot:next>
 
-        {{-- The player's own business and the live lobby. Below lg in reading order: your games, live, ladder. From xl to 2xl, beside the chat column, 5 | 7 with the ladder under both. --}}
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
-            @include('pages.board.partials.lobby-games', ['user' => $user, 'active' => $active, 'name' => $name])
-            @include('pages.board.partials.lobby-live', ['user' => $user, 'active' => $active, 'name' => $name])
-            @include('pages.chess.partials.lobby-ladder', ['ladderGame' => $slug, 'ladderMode' => $this->lobbyMode])
-        </div>
+        <x-slot:secondary>
+            <x-game.secondary>
+                {{-- Plan brettspiel-chat-und-follows, P2: who of the player's Nostr follows plays here, to invite or challenge, as in chess. --}}
+                <livewire:follows-here context="board" :subject="$slug" :wire:key="'follows-here-'.$slug" />
+                <x-weekly-events :events="app(App\Support\Engagement\WeeklySlots::class)->upcoming(4)" heading-id="lobby-weekly-h" />
+            </x-game.secondary>
+        </x-slot:secondary>
 
-        {{-- Plan brettspiel-chat-und-follows, P2: who of the player's Nostr follows plays here, to invite or challenge, as in chess --}}
-        <livewire:follows-here context="board" :subject="$slug" :wire:key="'follows-here-'.$slug" />
-
-        {{-- Weekly events (P10): the next dates of the recurring slots, all games. --}}
-        <x-weekly-events :events="app(App\Support\Engagement\WeeklySlots::class)->upcoming(4)" heading-id="lobby-weekly-h" class="rounded-lg bg-card px-4 py-5 lg:px-6" />
-    </div>
+        <x-slot:chat>
+            {{-- The global chat of this board game (P1 of plan brettspiel-chat-und-follows): the right column, sticky (rule R6). --}}
+            <livewire:game-channel :game="$slug" :wire:key="'game-channel-'.$slug" />
+        </x-slot:chat>
+    </x-game.page>
 </div>

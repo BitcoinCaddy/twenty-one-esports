@@ -49,19 +49,19 @@
 @endphp
 
 <x-layouts::app :title="__('Strongest players')" section="strongest">
-    <div class="flex grow flex-col gap-4 px-4 pb-8 lg:gap-6 lg:px-12" data-test="strongest">
-        <header class="flex max-w-[68ch] flex-col gap-3">
-            <h1 class="m-0 font-display text-[26px] leading-[1.15] font-bold lg:text-[34px]">{{ __('Strongest players') }}</h1>
-            <p class="m-0 text-[15px] leading-normal text-ink-2">{{ __('One rating across every game: each player’s place on every ladder of the season, weighted by their rated results there.') }}</p>
+    {{-- The ladder template T5 (x-ladder.page, LadderStrongest.dc.html), the one ladder without a game: no game bar, the whole width. --}}
+    <x-ladder.page :title="__('Strongest players')" data-test="strongest">
+        <header class="-mt-3 flex max-w-[68ch] flex-col gap-3">
+            <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('One rating across every game: each player’s place on every ladder of the season, weighted by their rated results there.') }}</p>
             @if ($live !== null)
                 <p class="m-0 flex flex-wrap items-center gap-2 text-xs" data-test="strongest-season">
-                    <span class="inline-flex h-8 items-center gap-2 rounded-md bg-card px-3 shadow-ring"><b>{{ BadgeCopy::season($live->slug) }}</b><span class="text-ink-2">{{ __('since :date', ['date' => $live->genesis_at->locale(app()->getLocale())->translatedFormat(app()->getLocale() === 'de' ? 'j. M' : 'M j')]) }}</span></span>
+                    <span class="rv-tag"><b>{{ BadgeCopy::season($live->slug) }}</b><span class="text-ink-2">{{ __('since :date', ['date' => $live->genesis_at->locale(app()->getLocale())->translatedFormat(app()->getLocale() === 'de' ? 'j. M' : 'M j')]) }}</span></span>
                 </p>
             @endif
         </header>
 
         @if ($rows === [])
-            <section class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-8 lg:py-7" data-test="strongest-empty" data-state="{{ $state }}">
+            <section class="gp-panel flex flex-col gap-4 px-4 py-5 lg:px-6 lg:py-6" data-test="strongest-empty" data-state="{{ $state }}">
                 @if ($state === 'live')
                     <x-empty-state :heading="__('Nobody has :n rated results yet', ['n' => $minimum])"
                                    :text="$top['waiting'] > 0
@@ -81,8 +81,8 @@
                 @endif
             </section>
         @else
-            <section aria-labelledby="strongest-h" class="flex flex-col rounded-lg bg-card px-2 py-4 lg:px-6 lg:py-5">
-                <h2 id="strongest-h" class="m-0 px-2 pb-3 text-[15px] font-bold lg:px-0">{{ trans_choice(':count ranked player|:count ranked players', $top['ranked']) }}</h2>
+            <section aria-labelledby="strongest-h" class="gp-panel flex flex-col px-2 py-4 lg:px-6 lg:py-5">
+                <h2 id="strongest-h" class="gp-h px-2 pb-3 lg:px-0">{{ trans_choice(':count ranked player|:count ranked players', $top['ranked']) }}</h2>
                 <div class="{{ $grid }} h-8 border-b border-hairline px-2 text-xs font-bold text-ink-2">
                     <span>#</span>
                     <span>{{ __('Player') }}</span>
@@ -133,13 +133,13 @@
             </section>
         @endif
 
-        <nav aria-labelledby="strongest-ladders-h" class="flex flex-col gap-3" data-test="strongest-ladders">
-            <h2 id="strongest-ladders-h" class="m-0 text-[15px] font-bold">{{ __('The ladders behind it') }}</h2>
+        <nav aria-labelledby="strongest-ladders-h" class="gp-panel flex flex-col gap-3 p-4" data-test="strongest-ladders">
+            <h2 id="strongest-ladders-h" class="gp-h">{{ __('The ladders behind it') }}</h2>
             <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
                 @foreach ($ladders as $ladder)
-                    <li>
-                        <a href="{{ $ladder['href'] }}" class="inline-flex min-h-11 items-center gap-2.5 rounded-md bg-card py-1.5 pr-3.5 pl-1.5 text-[13px] text-ink shadow-ring hover:text-ink">
-                            <x-game-cover :game="$ladder['game']" size="thumb" class="w-12 rounded-xs" />{{ $ladder['name'] }}
+                    <li class="max-w-full">
+                        <a href="{{ $ladder['href'] }}" class="gm-chip h-11 max-w-full gap-2.5 pl-1.5 text-ink hover:text-ink">
+                            <x-game-cover :game="$ladder['game']" size="thumb" class="w-12 shrink-0 rounded-xs" /><span class="min-w-0 truncate">{{ $ladder['name'] }}</span>
                         </a>
                     </li>
                 @endforeach
@@ -149,5 +149,5 @@
                 <a href="{{ route('protocol') }}#verify" class="inline-flex min-h-11 items-center">{{ __('Check it yourself') }}</a>
             </p>
         </nav>
-    </div>
+    </x-ladder.page>
 </x-layouts::app>

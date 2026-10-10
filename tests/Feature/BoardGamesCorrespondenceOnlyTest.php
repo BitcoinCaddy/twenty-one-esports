@@ -118,14 +118,14 @@ test('an old blitz ladder address leads to the correspondence ladder; chess keep
     $this->get(route('ladder.show', [Blockli::SLUG, 'rapid']))->assertNotFound();
 });
 
-test('Blockli stands right after TMNF in every list, then nine men\'s morris and checkers (user, 2026-10-07)', function () {
+test('Blockli stands among the browser games, after Blockfill and before nine men\'s morris and checkers; TMNF closes the own-copy games (revamp, user 2026-10-10)', function () {
     tmnfOn();
     $slugs = array_keys(app(GameRegistry::class)->all());
-    $tmnf = array_search(TrackmaniaNationsForever::SLUG, $slugs, true);
+    $blockli = array_search(Blockli::SLUG, $slugs, true);
 
-    expect($tmnf)->not->toBeFalse()
-        ->and($slugs[$tmnf + 1] ?? null)->toBe(Blockli::SLUG)
-        ->and(array_slice($slugs, -3))->toBe([Blockli::SLUG, NineMensMorris::SLUG, Checkers::SLUG]);
+    expect($blockli)->not->toBeFalse()
+        ->and(array_slice($slugs, $blockli, 3))->toBe([Blockli::SLUG, NineMensMorris::SLUG, Checkers::SLUG])
+        ->and(end($slugs))->toBe(TrackmaniaNationsForever::SLUG);
 });
 
 /**

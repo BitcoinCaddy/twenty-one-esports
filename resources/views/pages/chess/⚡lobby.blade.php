@@ -412,6 +412,13 @@ new #[Layout('layouts::app', ['section' => 'chess', 'realtime' => true, 'scripts
         return ChessGame::query()->live()->where('status', ChessGameStatus::Active)->with(['white', 'black'])->latest('id')->limit(3)->get();
     }
 
+    /** The daily games running league-wide: the hero's number (GameLobby.dc.html "18 Fernpartien laufen"). */
+    #[Computed]
+    public function dailyRunning(): int
+    {
+        return ChessGame::query()->daily()->where('status', ChessGameStatus::Active)->count();
+    }
+
     /** Every running live game, not only the three boards shown. */
     #[Computed]
     public function liveCount(): int
@@ -628,73 +635,72 @@ new #[Layout('layouts::app', ['section' => 'chess', 'realtime' => true, 'scripts
     $active = $this->activeGame;
 @endphp
 
+{{-- The lobby template T1 (x-game.page, GameLobby.dc.html "Schach-Lobby"): game bar, hero, Spielarten, your games, live, ladder, next tournament | secondary slot; the chat in the right column. --}}
 <div class="flex grow flex-col" x-data="chessLobby(@js(['userId' => $user?->id, 'poll' => max(30, (int) config('esports.chess.lobby_poll_seconds')), 'liveMode' => ChessModes::DEFAULT]))" data-server-now="{{ (int) now()->getTimestampMs() }}" data-looking="{{ $user?->looking_to_play === 'chess/blitz' ? 'true' : 'false' }}">
-    <div class="chat-rail-host flex flex-col gap-6 px-4 pb-8 lg:gap-8 lg:px-12 lg:pb-10">
-        {{-- An open cup match comes first (CupMatchNow; user, 2026-10-03): above the title, and the casual lock says why a search is refused. --}}
-        @auth
-            <livewire:cup-match variant="banner" frame="block" wire:key="cup-banner-lobby" />
-        @endauth
+    <x-game.page game="chess" :mode="ChessModes::short(ChessModes::DEFAULT)"
+                 :lede="__(':modes. :season', ['modes' => implode(', ', [ChessModes::short('rapid'), ChessModes::label('blitz'), __('Daily chess')]), 'season' => \App\Support\SeasonChain\Seasons::live() === null ? __('Rated from Block 0, casual until then.') : __('Season :season is live', ['season' => \App\Support\SeasonChain\Seasons::live()])])"
+                 :stat="$this->dailyRunning" :stat-label="trans_choice('daily game running|daily games running', $this->dailyRunning)" :stat-live="$this->dailyRunning > 0">
+        <x-slot:primary>
+            <button type="button" class="rv-b" x-on:click="const row = document.querySelector('[data-test=play-rapid]'); row?.getAttribute('aria-expanded') === 'true' || row?.click(); row?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })" data-test="game-primary">{{ __('Play') }}</button>
+        </x-slot:primary>
 
-        {{-- The title below lg; from lg the header's chess bar names the page. --}}
-        <div class="flex items-baseline justify-between gap-3 lg:hidden" data-test="lobby-title">
-            <h1 class="m-0 font-display text-2xl leading-tight font-bold">{{ __('Chess') }}</h1>
-            @auth<x-rating :rating="\App\Support\Rating\Ratings::headline($user->id, 'chess', ChessModes::DEFAULT)" :label="ChessModes::short(ChessModes::DEFAULT)" class="text-[13px] text-ink-2" />@endauth
-        </div>
-        <h1 class="sr-only max-lg:hidden">{{ __('Chess') }}</h1>
-
-        @if ($error || $notice || $this->incoming->isNotEmpty())
-            <div class="flex flex-col gap-2 empty:hidden">
-                @if ($error)
-                    <p role="alert" class="m-0 rounded-lg bg-loss-tint px-4 py-3 text-[13px] text-loss">{{ $error }}</p>
-                @endif
-
-                @if ($notice)
-                    <p role="status" class="m-0 rounded-lg bg-card px-4 py-3 text-[13px] leading-normal text-ink-2 shadow-ring" data-test="lobby-notice">{{ $notice }}</p>
-                @endif
-
-                {{-- Live invites received (rapid or blitz): they expire in minutes, so they come before everything else. --}}
-                @foreach ($this->incoming as $invite)
-                    <div wire:key="invite-{{ $invite->id }}" class="flex flex-col gap-3 rounded-lg bg-card p-3 shadow-ring-btc lg:flex-row lg:items-center lg:px-4" data-test="incoming-invite">
-                        <span class="flex min-w-0 grow items-center gap-3">
-                            <x-player-link :user="$invite->inviter" class="shrink-0"><x-avatar :user="$invite->inviter" :size="40" class="rounded-md" /></x-player-link>
-                            <span class="flex min-w-0 flex-col gap-0.5">
-                                <b class="text-[15px] wrap-anywhere">{{ __(':name invites you', ['name' => $invite->inviter->displayName()]) }}</b>
-                                <span class="text-xs text-ink-2" data-test="incoming-invite-mode">{{ __(':mode · Casual · colours drawn at random', ['mode' => ChessModes::label($invite->mode)]) }}</span>
-                            </span>
+        <x-slot:top>
+            {{-- An open cup match comes first (CupMatchNow; user, 2026-10-03): above everything, and the casual lock says why a search is refused. --}}
+            @auth
+                <livewire:cup-match variant="banner" frame="block" wire:key="cup-banner-lobby" />
+            @endauth
+            @if ($error)
+                <p role="alert" class="m-0 rounded-[4px] bg-loss-tint px-4 py-3 text-[13px] text-loss">{{ $error }}</p>
+            @endif
+            @if ($notice)
+                <p role="status" class="m-0 rounded-[4px] bg-card px-4 py-3 text-[13px] leading-normal text-ink-2 shadow-ring" data-test="lobby-notice">{{ $notice }}</p>
+            @endif
+            {{-- Live invites received (rapid or blitz): they expire in minutes, so they come before everything else. --}}
+            @foreach ($this->incoming as $invite)
+                <div wire:key="invite-{{ $invite->id }}" class="flex flex-col gap-3 rounded-[4px] bg-card p-3 shadow-ring-btc lg:flex-row lg:items-center lg:px-4" data-test="incoming-invite">
+                    <span class="flex min-w-0 grow items-center gap-3">
+                        <x-player-link :user="$invite->inviter" class="shrink-0"><x-avatar :user="$invite->inviter" :size="40" class="rounded-[4px]" /></x-player-link>
+                        <span class="flex min-w-0 flex-col gap-0.5">
+                            <b class="text-[15px] wrap-anywhere">{{ __(':name invites you', ['name' => $invite->inviter->displayName()]) }}</b>
+                            <span class="text-xs text-ink-2" data-test="incoming-invite-mode">{{ __(':mode · Casual · colours drawn at random', ['mode' => ChessModes::label($invite->mode)]) }}</span>
                         </span>
-                        <span class="grid grid-cols-2 gap-2 lg:flex">
-                            <x-button variant="quiet" wire:click="declineInvite({{ $invite->id }})" data-test="decline-invite">{{ __('Decline') }}</x-button>
-                            <x-button icon="shield-check" wire:click="acceptInvite({{ $invite->id }})" data-test="accept-invite">{{ __('Accept') }}</x-button>
-                        </span>
-                    </div>
-                @endforeach
-            </div>
-        @endif
+                    </span>
+                    <span class="grid grid-cols-2 gap-2 lg:flex">
+                        <x-button variant="quiet" wire:click="declineInvite({{ $invite->id }})" data-test="decline-invite">{{ __('Decline') }}</x-button>
+                        <x-button icon="shield-check" wire:click="acceptInvite({{ $invite->id }})" data-test="accept-invite">{{ __('Accept') }}</x-button>
+                    </span>
+                </div>
+            @endforeach
+        </x-slot:top>
 
         @include('pages.chess.partials.lobby-play', ['user' => $user, 'entry' => $entry, 'outgoing' => $outgoing])
 
-        {{-- The global chat of chess (P21), right under the way to play (2026-10-03); from xl the side column (.chat-rail). --}}
-        <div class="chat-rail"><livewire:game-channel game="chess" wire:key="game-channel-chess" /></div>
+        @include('pages.chess.partials.lobby-games', ['user' => $user, 'active' => $active])
+        @include('pages.chess.partials.lobby-live', ['user' => $user, 'active' => $active])
+        @include('pages.chess.partials.lobby-ladder', ['ladderMode' => $this->ladderMode, 'ladderModes' => ChessModes::all()])
 
-        {{-- The next chess tournament open for sign-up, as on every game page (user, 2026-09-28). --}}
-        @if ($this->nextTournament)
-            <x-tournaments.poster :tournament="$this->nextTournament" heading-id="lobby-next-h" />
-        @else
-            <x-tournaments.next-empty game="chess" heading-id="lobby-next-h" />
-        @endif
-        <x-tournaments.cup-mentions game="chess" titled />
+        <x-slot:next>
+            {{-- The next chess tournament open for sign-up, as on every game page (user, 2026-09-28). --}}
+            @if ($this->nextTournament)
+                <x-tournaments.poster :tournament="$this->nextTournament" heading-id="lobby-next-h" />
+            @else
+                <x-tournaments.next-empty game="chess" heading-id="lobby-next-h" />
+            @endif
+            <x-tournaments.cup-mentions game="chess" titled />
+        </x-slot:next>
 
-        {{-- The player's own business and the live lobby. Below lg in reading order: your games, live, ladder. From xl to 2xl, beside the chat column, 5 | 7 with the ladder under both. --}}
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
-            @include('pages.chess.partials.lobby-games', ['user' => $user, 'active' => $active])
-            @include('pages.chess.partials.lobby-live', ['user' => $user, 'active' => $active])
-            @include('pages.chess.partials.lobby-ladder', ['ladderMode' => $this->ladderMode, 'ladderModes' => ChessModes::all()])
-        </div>
+        <x-slot:secondary>
+            <x-game.secondary>
+                {{-- P47: who of the player's Nostr follows plays here, to challenge; an invite DM for the others. --}}
+                <livewire:follows-here context="chess" />
+                {{-- Weekly events (P10): the next dates of the recurring slots, all games. --}}
+                <x-weekly-events :events="app(App\Support\Engagement\WeeklySlots::class)->upcoming(4)" heading-id="lobby-weekly-h" />
+            </x-game.secondary>
+        </x-slot:secondary>
 
-        {{-- P47: who of the player's Nostr follows plays here, to challenge; an invite DM for the others --}}
-        <livewire:follows-here context="chess" />
-
-        {{-- Weekly events (P10): the next dates of the recurring slots, all games. --}}
-        <x-weekly-events :events="app(App\Support\Engagement\WeeklySlots::class)->upcoming(4)" heading-id="lobby-weekly-h" class="rounded-lg bg-card px-4 py-5 lg:px-6" />
-    </div>
+        <x-slot:chat>
+            {{-- The global chat of chess (P21): the right column, sticky (rule R6). --}}
+            <livewire:game-channel game="chess" wire:key="game-channel-chess" />
+        </x-slot:chat>
+    </x-game.page>
 </div>

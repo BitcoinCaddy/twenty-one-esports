@@ -43,77 +43,65 @@
 <section aria-labelledby="play-h" class="flex flex-col gap-2 lg:gap-3" data-test="play"
          x-data="{ stage: @js($busy ? 'blitz' : null), help: false, rated: false }"
          x-init="if (stage === null && location.hash === '#blitz') stage = 'blitz'">
-    <h2 id="play-h" class="sr-only">{{ __('Ways to play') }}</h2>
-
-    <ul role="list" @class(['m-0 grid list-none grid-cols-2 gap-2 p-0 lg:gap-3', 'lg:grid-cols-4' => $tiles === 4, 'lg:grid-cols-3' => $tiles === 3, 'lg:grid-cols-2' => $tiles === 2]) data-test="play-grid">
-        @if ($hasBlitz)
-        <li>
-            <x-chess.lobby-tile :label="__('Blitz')" variant="primary" data-test="play-blitz"
-                                x-on:click="stage = stage === 'blitz' ? null : 'blitz'" x-bind:aria-expanded="(stage === 'blitz').toString()"
-                                aria-expanded="{{ $busy ? 'true' : 'false' }}" aria-controls="{{ $entry ? 'lobby-searching' : ($outgoing ? 'lobby-waiting' : 'lobby-blitz') }}">
-                <x-slot:glyph><span class="font-display text-lg leading-none font-bold tracking-tight lg:text-[1.75rem]">5+3</span></x-slot:glyph>
-                <x-slot:meta>
-                    @if ($entry)
-                        <span class="{{ $tag }} bg-btc text-on-btc" data-test="play-blitz-state">{{ __('You are searching') }}</span>
-                    @else
-                        <b class="text-ink" data-test="play-blitz-searching">{{ $searching }}</b> {{ __('searching') }}
-                    @endif
-                </x-slot:meta>
-            </x-chess.lobby-tile>
-        </li>
-        @endif
-        @if ($hasCorrespondence)
-            {{-- Without blitz the one orange tile, across both columns below lg so the row of three keeps no hole. --}}
-            <li @class(['max-lg:col-span-2' => ! $hasBlitz])>
-                <x-chess.lobby-tile :label="$correspondenceLabel" icon="calendar" :href="route('board.correspondence', $slug)" data-test="play-correspondence" :variant="$hasBlitz ? 'default' : 'primary'"
-                                    :count="$waitingThere" :count-label="trans_choice(':count challenge to answer|:count challenges to answer', $correspondence['challenges']).', '.trans_choice('your move in :count game|your move in :count games', $correspondence['yourMove'])">
-                    <x-slot:meta>
-                        @if ($correspondence['yourMove'] > 0)
-                            {{ __('Your move') }}
-                        @elseif ($correspondence['challenges'] > 0)
-                            {{ trans_choice(':count challenge to answer|:count challenges to answer', $correspondence['challenges']) }}
-                        @elseif ($correspondence['running'] > 0)
-                            {{ trans_choice(':count game running|:count games running', $correspondence['running']) }}
-                        @else
-                            {{ __('1 move a day') }}
-                        @endif
-                    </x-slot:meta>
-                </x-chess.lobby-tile>
+    {{-- "Spielarten" (template T1, GameLobby.dc.html "Brettspiel-Lobby"): one row per way to play, as in chess. --}}
+    <div class="gp-panel gp-modes">
+        <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
+        <ul role="list" class="m-0 flex list-none flex-col p-0" data-test="play-grid">
+            @if ($hasBlitz)
+                <li>
+                    <x-chess.lobby-tile :label="__('Blitz 5+3')" :action="__('Seek')" variant="primary" data-test="play-blitz"
+                                        x-on:click="stage = stage === 'blitz' ? null : 'blitz'" x-bind:aria-expanded="(stage === 'blitz').toString()"
+                                        aria-expanded="{{ $busy ? 'true' : 'false' }}" aria-controls="{{ $entry ? 'lobby-searching' : ($outgoing ? 'lobby-waiting' : 'lobby-blitz') }}">
+                        <x-slot:meta>
+                            @if ($entry)
+                                <span class="{{ $tag }} bg-btc text-on-btc" data-test="play-blitz-state">{{ __('You are searching') }}</span>
+                            @else
+                                <span class="rv-live h-5 font-normal"><i></i><b data-test="play-blitz-searching">{{ $searching }}</b> {{ __('searching') }}</span>
+                            @endif
+                        </x-slot:meta>
+                    </x-chess.lobby-tile>
+                </li>
+            @endif
+            @if ($hasCorrespondence)
+                <li>
+                    <x-chess.lobby-tile :label="__('Correspondence')" :action="__('Play correspondence')" :href="route('board.correspondence', $slug)" data-test="play-correspondence" :variant="$hasBlitz ? 'default' : 'primary'"
+                                        :count="$waitingThere" :count-label="trans_choice(':count challenge to answer|:count challenges to answer', $correspondence['challenges']).', '.trans_choice('your move in :count game|your move in :count games', $correspondence['yourMove'])">
+                        <x-slot:detail>{{ __('1 move a day') }}</x-slot:detail>
+                        <x-slot:meta>
+                            @if ($correspondence['yourMove'] > 0)
+                                {{ __('Your move') }}
+                            @elseif ($correspondence['challenges'] > 0)
+                                {{ trans_choice(':count challenge to answer|:count challenges to answer', $correspondence['challenges']) }}
+                            @elseif ($correspondence['running'] > 0)
+                                {{ trans_choice(':count game running|:count games running', $correspondence['running']) }}
+                            @else
+                                {{ __('casual') }}
+                            @endif
+                        </x-slot:meta>
+                    </x-chess.lobby-tile>
+                </li>
+            @endif
+            <li>
+                @auth
+                    {{-- A live game with someone online now: the invite buttons are in the online list. --}}
+                    <x-chess.lobby-tile :label="__('Challenge a player')" :action="__('Challenge')" data-test="play-challenge" aria-controls="online-now"
+                                        x-on:click="document.getElementById('online-now').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); (document.querySelector('#online-now [data-test=invite], #online-now [data-test=challenge]') ?? document.getElementById('online-h')).focus({ preventScroll: true })">
+                        <x-slot:detail>{{ __('Name or link') }}</x-slot:detail>
+                        <x-slot:meta><b class="text-ink" x-text="connection === 'connected' ? others.length : '–'" data-test="play-online-count">–</b> {{ __('online') }}</x-slot:meta>
+                    </x-chess.lobby-tile>
+                @else
+                    <x-chess.lobby-tile :label="__('Challenge a player')" :action="__('Log in')" :href="route('login')" data-test="play-challenge">
+                        <x-slot:detail>{{ __('Log in to play') }}</x-slot:detail>
+                    </x-chess.lobby-tile>
+                @endauth
             </li>
-        @endif
-        <li>
-            @auth
-                {{-- A live game with someone online now: the invite buttons are in the online list. --}}
-                <x-chess.lobby-tile :label="__('Challenge a player')" icon="send" data-test="play-challenge" aria-controls="online-now"
-                                    x-on:click="document.getElementById('online-now').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); (document.querySelector('#online-now [data-test=invite], #online-now [data-test=challenge]') ?? document.getElementById('online-h')).focus({ preventScroll: true })">
-                    <x-slot:meta><b class="text-ink" x-text="connection === 'connected' ? others.length : '–'" data-test="play-online-count">–</b> {{ __('online') }}</x-slot:meta>
-                </x-chess.lobby-tile>
-            @else
-                <x-chess.lobby-tile :label="__('Challenge a player')" icon="send" :href="route('login')" data-test="play-challenge">
-                    <x-slot:meta>{{ __('Log in to play') }}</x-slot:meta>
-                </x-chess.lobby-tile>
-            @endauth
-        </li>
-        <li>
-            <x-chess.lobby-tile :label="__('Tournaments')" icon="trophy" :href="$next ? route('tournaments.show', $next) : route('tournaments.index')" data-test="play-tournaments">
-                <x-slot:meta>
-                    @if ($next)
-                        <span class="sr-only">{{ __('Sign-up') }} </span>{{ __('until :when', ['when' => $next->signup_closes_at->copy()->timezone($zone)->locale(app()->getLocale())->isoFormat('ddd HH:mm')]) }}
-                    @else
-                        {{ __('None open') }}
-                    @endif
-                </x-slot:meta>
-                @if ($next)
-                    <x-slot:detail>{{ $next->name }}</x-slot:detail>
-                @endif
-            </x-chess.lobby-tile>
-        </li>
-    </ul>
+        </ul>
+    </div>
 
     @if ($entry)
         {{-- Finding an opponent: the chess lobby's card, with this board game's queue. --}}
         @php($queueRange = app(BoardQueue::class)->range($entry))
-        <div id="lobby-searching" role="status" aria-live="polite" class="flex flex-col items-center gap-4 rounded-lg bg-card p-4 shadow-ring-btc" data-test="lobby-searching" data-rated="{{ $entry->rated ? 'true' : 'false' }}">
+        <div id="lobby-searching" role="status" aria-live="polite" class="flex flex-col items-center gap-4 rounded-[4px] bg-card p-4 shadow-ring-btc" data-test="lobby-searching" data-rated="{{ $entry->rated ? 'true' : 'false' }}">
             <div class="cube mt-4 flex size-[124px] flex-col items-center justify-between bg-[linear-gradient(180deg,#2A1F0E,#17120A)] px-2 py-2.5 text-center" aria-hidden="true">
                 <span class="text-[13px] font-bold">~{{ $entry->rating }} Elo</span>
                 <span class="text-[11px] text-btc-hi">{{ $entry->rating - $queueRange }} – {{ $entry->rating + $queueRange }}</span>
@@ -146,7 +134,7 @@
         </div>
     @elseif ($outgoing)
         {{-- Waiting for the invited player's answer. --}}
-        <div id="lobby-waiting" class="flex flex-col gap-3.5 rounded-lg bg-card p-5 shadow-ring-btc" data-test="lobby-invited">
+        <div id="lobby-waiting" class="flex flex-col gap-3.5 rounded-[4px] bg-card p-5 shadow-ring-btc" data-test="lobby-invited">
             <span class="flex items-center gap-3"><span aria-hidden="true" class="block size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-btc motion-reduce:animate-none"></span><b class="min-w-0 text-base wrap-anywhere" data-test="waiting-name">{{ __('Waiting for :name', ['name' => $outgoing->invitee->displayName()]) }}</b></span>
             <p class="m-0 text-[13px] text-ink-2">{{ $outgoing->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __('Blitz 5+3 · Casual · colours drawn at random') }}</p>
             <span class="flex gap-2.5">
@@ -157,7 +145,7 @@
         {{-- Quick play: kind, range, one call to action; the explanations behind "?". --}}
         <div id="lobby-blitz" role="region" aria-label="{{ __('Blitz 5+3') }}" x-show="stage === 'blitz'" x-cloak
              x-transition:enter="transition duration-200 ease-out motion-reduce:transition-none" x-transition:enter-start="opacity-0 -translate-y-1"
-             class="flex flex-col gap-2 rounded-lg bg-card p-2 shadow-ring-btc lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:p-3" data-test="find-opponent">
+             class="flex flex-col gap-2 rounded-[4px] bg-card p-2 shadow-ring-btc lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:p-3" data-test="find-opponent">
             <div class="flex gap-2 lg:contents">
                 <div role="radiogroup" aria-label="{{ __('Game kind') }}" class="grid min-w-0 grow grid-cols-2 gap-1 rounded-md bg-ground p-1 shadow-ring lg:w-80 lg:grow-0" data-test="game-kind" data-rated-open="{{ $ratedRefusal === null ? 'true' : 'false' }}">
                     <button type="button" role="radio" aria-checked="true" x-bind:aria-checked="rated ? 'false' : 'true'" x-on:click="rated = false" aria-describedby="kind-why" data-test="kind-casual"

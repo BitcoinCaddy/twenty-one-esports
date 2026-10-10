@@ -247,20 +247,21 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
     };
     $grid = 'grid grid-cols-[28px_minmax(0,1fr)_56px] gap-3 '.$cols;
     $modeCount = count($this->modes);
+    // The head of the ladder template (T5): the game and mode as its tag, the first row as its leader.
+    // A soft hyphen: "Correspondence" is wider than a phone's tag, and Chrome on Linux has no hyphenation of its own.
+    $ladderTag = $gameName.' '.str_replace('Correspondence', "Correspon\u{00AD}dence", $modeName);
+    $first = $rows->first();
+    $leader = $first !== null && ! $clansView ? [
+        'name' => $players ? ($first['row']->user?->displayName() ?? __('Deleted account')) : ($first['row']->lineup?->clan?->name ?? __('Deleted lineup')),
+        'value' => $first['summary']['rating'],
+    ] : null;
 @endphp
 
-<div class="flex grow flex-col gap-4 px-4 pb-8 lg:gap-6 lg:px-12" data-test="ladder">
-    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div class="flex min-w-0 items-center gap-4">
-            <a href="{{ \App\Support\GameNames::page($game) }}" class="shrink-0" aria-label="{{ $gameName }}"><x-game-cover :game="$game" size="thumb" class="w-24 rounded-md shadow-ring lg:w-32" data-test="ladder-game-cover" /></a>
-            <div class="flex min-w-0 flex-col gap-2">
-                <h1 class="m-0 flex flex-wrap items-baseline gap-x-3 font-display text-[26px] font-bold lg:text-[34px]">
-                    {{-- A soft hyphen: "Correspondence" (the board games' only ladder since 2026-10-07) is wider than a phone's
-                         title at 26 px (measured at 390: 274 px in a 246 px box), and Chrome on Linux has no hyphenation of its own. --}}
-                    {{ $gameName }} {{ str_replace('Correspondence', "Correspon\u{00AD}dence", $modeName) }}
-                    <span class="font-sans text-xs font-normal text-ink-2">{{ __('Ladder') }}</span>
-                </h1>
-                @if ($context !== null)
+{{-- The ladder template T5 (x-ladder.page, LadderPage.dc.html): game bar, "Ladder" with the game and mode, the leader, the ladders as chips, the standings left and the strongest players right. --}}
+<x-ladder.page :game="$game" :title="__('Ladder')" :tag="$ladderTag" :leader="$leader" data-test="ladder"
+               :chips="\App\Support\Navigation\LadderChips::items($game.'/'.$mode)" :chips-label="__('Ladders')">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        @if ($context !== null)
                     {{-- The season this rated ladder belongs to, and the chain it mines into. --}}
                     <p class="m-0 flex flex-wrap items-center gap-2 text-xs" data-test="ladder-season">
                         <span class="inline-flex h-8 items-center gap-2 rounded-md bg-ground px-3 shadow-ring"><b>{{ \App\Support\Badges\BadgeCopy::season($context['slug']) }}</b><span class="text-ink-2">{{ __('since :date', ['date' => $context['since']->locale(app()->getLocale())->translatedFormat(app()->getLocale() === 'de' ? 'j. M' : 'M j')]) }}</span></span>
@@ -269,17 +270,6 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
                         </a>
                     </p>
                 @endif
-            </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-            <nav aria-label="{{ __('Mode') }}" class="flex overflow-hidden rounded-md border border-edge">
-                @foreach ($this->modes as [$slug, $label])
-                    <a href="{{ route('ladder.show', [$game, $slug]) }}{{ $pool === '' ? '' : '?pool='.$pool }}" wire:key="m-{{ $slug }}"
-                       @if ($slug === $mode) aria-current="page" @endif
-                       @class([$tab, 'border-l border-edge' => ! $loop->first, 'bg-btc font-bold text-on-btc hover:text-on-btc' => $slug === $mode, 'bg-ground text-ink-2 hover:text-ink' => $slug !== $mode])>{{ $label }}</a>
-                @endforeach
-            </nav>
             @unless ($this->casualOnly)
                 <div role="group" aria-label="{{ __('Ladder') }}" class="flex overflow-hidden rounded-md border border-edge">
                     @foreach (['rated' => __('Rated'), 'casual' => __('Casual')] as $key => $label)
@@ -288,7 +278,6 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
                     @endforeach
                 </div>
             @endunless
-        </div>
     </div>
 
     {{-- Casual on screen because the rated ladder has no row yet: say why, and link it. --}}
@@ -306,7 +295,7 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
     @endif
 
     @if ($rated && $this->season === null)
-        <section class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-8 lg:py-7" data-test="ladder-preseason">
+        <section class="flex flex-col gap-4 rounded-[4px] bg-card px-4 py-5 lg:px-8 lg:py-7" data-test="ladder-preseason">
             <x-empty-state :heading="__('Pre-Season starts at Block 0')"
                            :text="$players
                                ? __('The ladder fills with the first rated game after Block 0. Every player starts at :elo Elo. Until then every game is casual and counts for the casual ladder only.', ['elo' => \App\Support\Rating\RatingSettings::inForce()['rating']['start']])
@@ -318,7 +307,7 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
     @else
         @if ($totals['entries'] > 0)
             {{-- The ladder at a glance: three numbers, and who takes the wins. --}}
-            <section aria-label="{{ __('Overview') }}" class="grid grid-cols-1 gap-6 rounded-lg bg-card px-4 py-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-12 lg:px-6" data-test="ladder-overview">
+            <section aria-label="{{ __('Overview') }}" class="grid grid-cols-1 gap-6 rounded-[4px] bg-card px-4 py-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-12 lg:px-6" data-test="ladder-overview">
                 <dl class="m-0 grid grid-cols-3 content-start gap-3">
                     @foreach ([
                         [$series ? __('Series played') : __('Games'), $totals['games'], 'ladder-stat-games'],
@@ -365,7 +354,7 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
             </section>
         @endif
 
-        <section aria-labelledby="ladder-h" class="flex flex-col rounded-lg bg-card px-2 py-4 lg:px-6 lg:py-5">
+        <section aria-labelledby="ladder-h" class="flex flex-col rounded-[4px] bg-card px-2 py-4 lg:px-6 lg:py-5">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-2 pb-3 lg:px-0">
                 <h2 id="ladder-h" class="m-0 text-[15px] font-bold">{{ $rated ? __('Rated ladder') : __('Casual ladder') }}</h2>
                 <div role="group" aria-label="{{ __('Ladder view') }}" class="flex overflow-hidden rounded-md border border-edge">
@@ -530,4 +519,15 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
             <a href="{{ route('protocol') }}#verify" class="inline-flex min-h-11 items-center" data-test="ladder-proof-link">{{ __('Check it yourself') }}</a>
         </x-proof>
     @endif
-</div>
+
+    <x-slot:aside>
+        {{-- The cross-game list (P40): every rated ladder feeds it (LadderPage.dc.html "Die stärksten Spieler"). --}}
+        <section class="gp-panel flex flex-col gap-3 p-4" aria-labelledby="ladder-strongest-h" data-test="ladder-strongest-panel">
+            <h2 id="ladder-strongest-h" class="gp-h">{{ __('Strongest players') }}</h2>
+            <a href="{{ route('ladder.strongest') }}" @navigate(route('ladder.strongest')) class="flex flex-col gap-1 rounded-[4px] border border-dashed border-line p-4 text-ink hover:text-ink" data-test="ladder-strongest-link-aside">
+                <b class="text-[14px]">{{ \App\Support\SeasonChain\Seasons::live() === null ? __('The list opens at Block 0') : __('Strongest players across all games') }}</b>
+                <span class="rv-m">{{ __('Global Rating across all games') }}</span>
+            </a>
+        </section>
+    </x-slot:aside>
+</x-ladder.page>

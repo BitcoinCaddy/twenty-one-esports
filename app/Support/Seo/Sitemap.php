@@ -103,12 +103,17 @@ final class Sitemap
      */
     private function fixedPages(): array
     {
-        $urls = [route('home'), route('clans.index'), route('matches.index'), route('chess.lobby'), route('games.rocket-league'), route('mining'), route('tournaments.index'), route('play')];
+        $urls = [route('home'), route('clans.index'), route('matches.index'), route('mining'), route('tournaments.index'), route('play')];
 
         $registry = app(GameRegistry::class);
 
-        // Every game's pages in the registry's display order (user 2026-10-03: Nine Men's Morris and Checkers last).
+        // Every game's pages in the registry's display order (rule R19: the browser games first, then the own-copy
+        // games); the chess lobby and Rocket League's page stand at their game's place, no longer among the fixed pages.
         foreach ($registry->all() as $game) {
+            if ($game->kind() === GameKind::Chess) {
+                $urls[] = route('chess.lobby');
+            }
+
             if ($registry->isSeries($game->slug())) {
                 $urls[] = GameNames::page($game->slug());
             }

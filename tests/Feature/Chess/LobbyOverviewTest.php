@@ -44,7 +44,8 @@ dataset('functions', [
     'challenge tile' => ['play-challenge'],
     'invite tile' => ['play-invite'],
     'invite module' => ['invite-module'],
-    'tournaments tile' => ['play-tournaments'],
+    // Tournaments: the game bar's tab and the next tournament under the ladder (template T1, GameLobby.dc.html).
+    'tournaments tab' => ['ctx-tournaments'],
     'team match tile' => ['play-team'],
     'your games' => ['lobby-daily'],
     'live boards' => ['now-playing'],
@@ -89,14 +90,12 @@ test('tiles are actions: rapid, blitz and the invite open their panel in place, 
 
     // Rapid 10+5 first and the one orange tile (user, 2026-10-05), blitz second; both open the quick-play panel in their mode.
     expect(strpos($html, 'data-test="play-rapid"'))->toBeLessThan(strpos($html, 'data-test="play-blitz"'))
-        ->and(tileOf($html, 'play-rapid'))->toStartWith('<button')->toContain('aria-controls="lobby-quick"')->toContain('bg-btc-chip')->toContain('10+5')
-        ->and(tileOf($html, 'play-blitz'))->toStartWith('<button')->toContain('aria-controls="lobby-quick"')->toContain('aria-expanded="false"')->not->toContain('bg-btc-chip')
+        ->and(tileOf($html, 'play-rapid'))->toStartWith('<button')->toContain('aria-controls="lobby-quick"')->toContain('rv-b is-sm')->toContain('10+5')
+        ->and(tileOf($html, 'play-blitz'))->toStartWith('<button')->toContain('aria-controls="lobby-quick"')->toContain('aria-expanded="false"')->not->toContain('rv-b is-sm')
         ->and(tileOf($html, 'play-invite'))->toStartWith('<button')->toContain('aria-controls="lobby-invite"')
         ->and(tileOf($html, 'play-daily'))->toStartWith('<a')->toContain('href="'.route('chess.challenge').'"')
-        ->and(tileOf($html, 'play-tournaments'))->toStartWith('<a')->toContain('href="'.route('tournaments.index').'"')
         // Team match (plan "Schach Rapid und Clan", P6): a real entry; without a clan it leads to the clans, below 48rem as a slim link.
         ->and(tileOf($html, 'play-team'))->toStartWith('<a')->toContain('href="'.route('clans.index').'"')->not->toContain(__('Soon'))
-        ->and($html)->toContain('href="'.route('clans.index').'" class="flex min-h-11')
         // The panels exist once, closed until their tile opens them.
         ->and(substr_count($html, 'id="lobby-quick"'))->toBe(1)
         ->and(substr_count($html, 'id="lobby-invite"'))->toBe(1)
@@ -150,17 +149,18 @@ test('without anything to count the tiles say so honestly', function () {
         ->and($html)->toContain(__('No live game right now.'))
         ->and($html)->toContain('data-test="lobby-daily-empty"')
         ->and($html)->toContain('data-test="lobby-ladder-empty"')
-        ->and(tileOf($html, 'play-tournaments'))->toContain(__('None open'));
+        ->and($html)->toContain('data-test="next-tournament');
 });
 
-test('the tournaments tile names the next chess tournament open for sign-up and leads to it', function () {
+test('the next tournament under the ladder names the next chess tournament open for sign-up and leads to it', function () {
     Tournament::factory()->rocketLeague()->signup()->create(['signup_closes_at' => now()->addDay()]);
     $later = Tournament::factory()->signup()->create(['name' => 'Later Blitz', 'signup_closes_at' => now()->addDays(5)]);
     $next = Tournament::factory()->signup()->create(['name' => 'Friday Blitz Kempten', 'signup_closes_at' => now()->addDays(2)]);
 
-    $tile = tileOf($this->get(route('chess.lobby'))->assertOk()->getContent(), 'play-tournaments');
+    $html = $this->get(route('chess.lobby'))->assertOk()->getContent();
+    $foot = substr($html, strpos($html, 'class="gp-foot"'));
 
-    expect($tile)->toContain('href="'.route('tournaments.show', $next).'"')
+    expect($foot)->toContain(route('tournaments.show', $next))
         ->toContain('Friday Blitz Kempten')
         ->not->toContain($later->name)
         ->not->toContain('RL Sunday');

@@ -523,6 +523,24 @@ final class HomeBoard
         return $this->cupGroups;
     }
 
+    /**
+     * The games menu's data line (GamesMenu.dc.html): the tile line without the parts that need a query (cups,
+     * today's best, league weeks), because the menu is in the header of every page.
+     */
+    public static function menuLine(string $slug, GameKind $kind): string
+    {
+        $modes = array_keys(app(GameRegistry::class)->find($slug)?->modes() ?? []);
+        $ordered = array_values(array_unique([...array_intersect(['blitz', 'rapid', 'correspondence'], $modes), ...$modes]));
+
+        return match (true) {
+            $slug === Hyperbitcoinization::SLUG => __('Correspondence :hours h, season ladder', ['hours' => (int) config('esports.hyper.correspondence_hours')]),
+            $slug === ProofOfPong::SLUG => __('First to :points, bot or live 1v1', ['points' => (int) config('esports.pong.points_to_win')]),
+            $slug === Blockfill::SLUG => BlockfillRules::blocks(app(BlockfillWeeks::class)->difficultyAt()),
+            $slug === 'chess' => implode(', ', [GameNames::mode('chess', 'blitz'), __('Rapid chess'), GameNames::mode('chess', 'correspondence')]),
+            default => implode(', ', array_map(fn (string $mode): string => GameNames::mode($slug, $mode), $kind === GameKind::Series ? $modes : $ordered)),
+        };
+    }
+
     /** One real data line per game tile. */
     private function meta(string $slug, GameKind $kind): string
     {

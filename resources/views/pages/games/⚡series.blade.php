@@ -379,81 +379,94 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
     $prizes = $this->prizes;
 @endphp
 
-<div class="chat-rail-host @container flex grow flex-col xl:[--chat-rail-own:0px] xl:[--chat-rail-top:2rem]" data-test="game-page" data-game="{{ $slug }}" style="--game: {{ $colour }}">
-    {{-- An open cup match comes first, whatever its game (CupMatchNow; user, 2026-10-03). --}}
-    @auth
-        <livewire:cup-match variant="banner" frame="block px-4 pt-4 lg:px-12" wire:key="cup-banner-game" />
-    @endauth
+{{--
+    An own-copy game's page through the one lobby template T1 (x-game.page; GameSeries.dc.html; rules R5, R6, R7):
+    game bar, hero with what happens right now, "Spielarten" (casual 1v1, clan series, tournaments & prizes), the
+    viewer's next step, the next tournament, matches, the casual 1v1, the ladder, clans; the chat in the right column,
+    invite and follows in the secondary slot.
+--}}
+<x-game.page :game="$slug" data-test="game-page">
+    <x-slot:primary>
+        <a href="{{ $ctaHref }}" class="rv-b" data-test="game-cta" data-action="{{ $ctaAction }}">{{ $ctaAction === 'challenge' ? __('Challenge') : $ctaLabel }}</a>
+    </x-slot:primary>
 
-    {{-- The viewer's open rooms and tournaments of this game first (2026-10-02). --}}
-    @auth
-        <livewire:upcoming-events :game="$slug" frame="px-4 pt-4 lg:px-12" wire:key="upcoming-game" />
-    @endauth
-
-    {{--
-        The hero. Below sm the cover sits small beside the name, so the action, the pulse and the invite
-        under them stay above the phone's tab bar (InvitePlacementTest). From sm the cover spans the rows
-        beside name, pitch, action and pulse; its bottom edge is the game's own colour, the page's one accent
-        beside the league orange.
-    --}}
-    <header class="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 pt-6 pb-5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-x-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-x-10 lg:gap-y-4 lg:px-12 lg:pt-8 lg:pb-8" data-test="game-hero">
-        <x-game-cover :game="$slug" size="header" loading="eager" class="w-full rounded-lg border-b-[3px] border-(--game) sm:row-span-4 sm:self-start" />
-        <div class="flex min-w-0 flex-col gap-2 sm:self-end">
-            <h1 class="m-0 font-display text-2xl leading-[1.1] font-bold break-words sm:text-[34px] lg:text-5xl">{{ $gameName }}</h1>
-            <p class="m-0 flex flex-wrap gap-1.5 text-xs font-bold text-ink-2" aria-label="{{ __('Modes: :modes · best of :bo', ['modes' => implode(', ', array_keys($modes)), 'bo' => implode(' / ', $bestOf)]) }}" data-test="game-modes">
-                @foreach (array_keys($modes) as $modeName)
-                    <span class="inline-flex h-7 items-center rounded-tag bg-raised px-2.5" aria-hidden="true">{{ $modeName }}</span>
-                @endforeach
-                <span class="inline-flex h-7 items-center rounded-tag bg-raised px-2.5" aria-hidden="true">BO{{ implode('/', $bestOf) }}</span>
-            </p>
-        </div>
-        <p class="col-span-2 m-0 max-w-[60ch] text-[15px] text-pretty leading-normal text-ink-2 sm:col-span-1 sm:col-start-2" data-test="game-pitch">{{ $pitch }}</p>
-        <div class="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:col-start-2" data-test="game-actions">
-            <x-button :href="$ctaHref" icon="play" data-test="game-cta" data-action="{{ $ctaAction }}" class="max-sm:grow">{{ $ctaLabel }}</x-button>
-            @if ($user !== null && $ctaAction !== 'challenge')
-                <x-button variant="secondary" :href="route('challenges.create', ['game' => $slug])" data-test="game-page-challenge">{{ __('Challenge a clan') }}</x-button>
-            @endif
-        </div>
-        <x-games.pulse :items="$pulseItems" :label="__('Right now in :game', ['game' => $gameName])" class="col-span-2 -mx-2 sm:col-span-1 sm:col-start-2 lg:-mx-3" />
-    </header>
-
-    {{-- The tabs and the four start tiles, Tournaments & prizes first (START_LAYOUT games, plan "RL-Startseite"). --}}
-    @if ($prizes !== null)
-        <div class="flex flex-col gap-4 px-4 pb-6 lg:px-12 lg:pb-8" data-test="game-start">
-            <x-games.start-tiles :game="$slug" :paid-sats="$prizes['paid']" :champion="isset($prizes['podium'][0]) ? implode(', ', $prizes['podium'][0]['names']) : null"
-                                 :next="$this->nextTournament" :searching="$pulse['searching']" :play-href="$casualOn ? '#casual' : route('challenges.create', ['game' => $slug])"
-                                 :ladder="$ladder" :latest="collect($cards)->firstWhere('state', 'final')['match'] ?? null" />
-        </div>
-    @endif
-
-    {{--
-        The body. Below lg one column in DOM order: invite, your next step, then the main parts, then clans and
-        the Elo arithmetic. From lg two columns: the main parts span every row on the left (8 of 12); the right
-        column stacks invite, next step and the rest. The last row is 1fr, so a tall main column grows only it
-        and never opens a gap under the invite.
-    --}}
-    <div class="flex grow flex-col gap-6 px-4 pb-8 lg:grid lg:grid-cols-12 lg:grid-rows-[auto_auto_auto_1fr] lg:items-start lg:gap-x-6 lg:gap-y-5 lg:px-12 lg:pb-10">
-        {{-- Invite a friend: the join link of the player's clan (series are played by clan lineups). --}}
-        {{-- Beside the chat column (xl) a page narrower than 56rem has no room for a third column: invite, next step and clans take the full width (user, 2026-10-07: squeezed widths; the side column was 243 px at 1280). --}}
-        {{--
-            With it, the global chat of the game (P21; 2026-10-03 "weiter oben"): right under the head and the
-            invite (which keeps its first-viewport place on phones, InvitePlacementTest), in the right column from
-            lg, and from xl the page's side column (.chat-rail).
-        --}}
-        <div class="flex min-w-0 flex-col gap-4 lg:col-span-4 lg:col-start-9 lg:row-start-1 xl:@max-4xl:col-span-12 xl:@max-4xl:col-start-1 xl:@max-4xl:row-start-auto">
-            <livewire:invite-link :game="$slug" place="game" />
-            @if (\App\Support\GameChat\GameChannels::has($slug))
-                <div class="chat-rail"><livewire:game-channel :game="$slug" :wire:key="'game-channel-'.$slug" /></div>
-            @endif
-        </div>
-
-        {{-- A player's next step on this game; a guest has the league's "New here?" steps in the header and "Log in to play" above. --}}
+    <x-slot:top>
+        {{-- An open cup match comes first, whatever its game (CupMatchNow; user, 2026-10-03). --}}
         @auth
-        <x-games.next-step :game="$slug" :steps="$this->steps" :standing="$this->standing" :play-href="$casualOn ? '#casual' : route('challenges.create', ['game' => $slug])"
-                           class="lg:col-span-4 lg:col-start-9 lg:row-start-2 xl:@max-4xl:col-span-12 xl:@max-4xl:col-start-1 xl:@max-4xl:row-start-auto" />
+            <livewire:cup-match variant="banner" frame="block" wire:key="cup-banner-game" />
+            {{-- The viewer's open rooms and tournaments of this game first (2026-10-02). --}}
+            <livewire:upcoming-events :game="$slug" frame="" wire:key="upcoming-game" />
         @endauth
+    </x-slot:top>
 
-        <div class="flex min-w-0 flex-col gap-8 lg:col-span-8 lg:col-start-1 lg:row-span-4 lg:row-start-1 xl:@max-4xl:col-span-12 xl:@max-4xl:row-span-1">
+    <x-slot:hero>
+        <section class="gp-hero" data-test="game-hero">
+            <x-game-cover :game="$slug" size="card" class="gp-hero-cover" loading="eager" />
+            <div class="flex min-w-0 flex-col gap-3">
+                <div>
+                    <h1 class="gp-title" data-test="lobby-title">{{ $gameName }}</h1>
+                    <p class="gp-lede" data-test="game-pitch">{{ $casual ? __('Own copy. Casual 1v1 and clan series; you report the result yourselves, the other side confirms.') : __('Own copy. Clan series; you report the result yourselves, the other side confirms.') }}</p>
+                </div>
+                {{-- What happens right now, each count a way to the part of the page that shows it (GameSeries.dc.html: label over number). --}}
+                <ul role="list" aria-label="{{ __('Right now in :game', ['game' => $gameName]) }}" class="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0" data-test="game-pulse">
+                    @foreach ($pulseItems as [$key, $count, $text, $href, $live])
+                        <li>
+                            <a href="{{ $href }}" class="flex flex-col text-ink hover:text-ink" data-test="game-pulse-{{ $key }}" data-count="{{ $count }}">
+                                <span class="rv-m">{{ $text }}</span>
+                                <b @class(['font-display text-xl leading-tight tabular-nums', 'text-ink-3' => $count === 0])>{{ $count }}</b>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="gp-stat" data-test="game-stat">
+                @php
+                    $heroCount = $casual ? $pulse['searching'] : $pulse['live'];
+                @endphp
+                <b class="flex items-center gap-2">@if ($heroCount > 0)<span class="size-2 rounded-full bg-live" aria-hidden="true"></span>@endif{{ $heroCount }}</b>
+                <span>{{ $casual ? __('searching 1v1') : __('live now') }}</span>
+            </div>
+        </section>
+    </x-slot:hero>
+
+    {{-- "Spielarten" (GameSeries.dc.html): one row per way to play, the one that gets a player into a game soonest first. --}}
+    <section class="gp-panel gp-modes" aria-labelledby="play-h" data-test="play">
+        <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
+        <ul role="list" class="m-0 flex list-none flex-col p-0">
+            @if ($casual)
+                <li>
+                    <x-chess.lobby-tile :label="__('Casual 1v1')" :action="__('Find opponent')" variant="primary" :href="$user === null ? route('login') : '#casual'" data-test="play-casual">
+                        <x-slot:detail>{{ __('No clan, moves your casual Elo. The lobby over the encrypted chat') }}</x-slot:detail>
+                        <x-slot:meta><span class="rv-live h-5 font-normal"><i></i>{{ trans_choice(':count searching now|:count searching now', $pulse['searching']) }}</span></x-slot:meta>
+                    </x-chess.lobby-tile>
+                </li>
+            @endif
+            <li>
+                <x-chess.lobby-tile :label="__('Clan series')" :action="__('Challenge a clan')" :variant="$casual ? 'default' : 'primary'" :href="$user === null ? route('login') : route('challenges.create', ['game' => $slug])" data-test="game-page-challenge">
+                    <x-slot:detail>{{ __('Best of :list, with a clan lineup', ['list' => implode(' / ', $bestOf)]) }}</x-slot:detail>
+                    <x-slot:meta>{{ \App\Support\Series\Ladders::season() === null ? __('casual') : __('rated') }}</x-slot:meta>
+                </x-chess.lobby-tile>
+            </li>
+            <li>
+                <x-chess.lobby-tile :label="__('Tournaments & prizes')" :action="__('View')" :href="route('tournaments.index', ['game' => $slug])" data-test="play-tournaments">
+                    <x-slot:detail>
+                        @if ($prizes !== null && $prizes['paid'] > 0)
+                            {{-- The prizes paid so far and the last champion: real numbers, the old start tile's (plan "RL-Startseite"). --}}
+                            <b class="text-btc" data-test="start-tile-paid">{{ __(':sats sats won', ['sats' => \App\Support\Cards\ShareCard::sats($prizes['paid'])]) }}</b>@if (isset($prizes['podium'][0])), <span data-test="start-tile-champion">{{ __('Champion: :name', ['name' => implode(', ', $prizes['podium'][0]['names'])]) }}</span>@endif
+                        @else
+                            {{ __('Casual cups EU and US, sats tournaments') }}
+                        @endif
+                    </x-slot:detail>
+                </x-chess.lobby-tile>
+            </li>
+        </ul>
+    </section>
+
+    {{-- A player's next step on this game; a guest has "Log in to play" in the game bar. --}}
+    @auth
+        <x-games.next-step :game="$slug" :steps="$this->steps" :standing="$this->standing" :play-href="$casualOn ? '#casual' : route('challenges.create', ['game' => $slug])" />
+    @endauth
+
             {{--
                 The game's next tournament open for sign-up, near the top (user, 2026-09-28: every game page lacked a
                 view of it; TournamentReachTest). At the head of the main column its poster is at most 8 of 12 wide,
@@ -496,7 +509,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
                 </div>
 
                 @if ($cards === [])
-                    <p class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-card px-4 py-3 text-[13px] leading-normal text-ink-2 shadow-ring" data-test="game-matches-empty">
+                    <p class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[4px] bg-card px-4 py-3 text-[13px] leading-normal text-ink-2 shadow-ring" data-test="game-matches-empty">
                         <span>{{ __('No :game series yet.', ['game' => $gameName]) }}</span>
                         @if ($casual)<a href="#casual" class="inline-flex min-h-11 items-center">{{ __('Find a 1v1 opponent') }}</a>@endif
                         @auth<a href="{{ route('challenges.create', ['game' => $slug]) }}" class="inline-flex min-h-11 items-center">{{ __('Challenge a clan') }}</a>@endauth
@@ -527,9 +540,9 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
                     <a href="{{ route('ladder.show', [$slug, $ladder['mode'] ?? array_key_first($modes)]) }}" class="inline-flex min-h-11 items-center text-[13px]" data-test="game-ladder-link">{{ __('Full ladder') }}</a>
                 </span>
                 @if ($ladder === null)
-                    <p class="m-0 rounded-lg bg-card px-4 py-3 text-[13px] leading-normal text-ink-2 shadow-ring" data-test="game-ladder-empty">{{ __('No results yet: the ladder fills with the first finished series.') }}</p>
+                    <p class="m-0 rounded-[4px] bg-card px-4 py-3 text-[13px] leading-normal text-ink-2 shadow-ring" data-test="game-ladder-empty">{{ __('No results yet: the ladder fills with the first finished series.') }}</p>
                 @else
-                    <ol class="m-0 grid list-none grid-cols-1 rounded-lg bg-card px-4 py-1 sm:grid-cols-5 sm:gap-3 sm:bg-transparent sm:px-0 sm:py-0">
+                    <ol class="m-0 grid list-none grid-cols-1 rounded-[4px] bg-card px-4 py-1 sm:grid-cols-5 sm:gap-3 sm:bg-transparent sm:px-0 sm:py-0">
                         @foreach ($ladder['rows'] as $row)
                             @php
                                 $isPlayer = $row->user_id !== null;
@@ -554,13 +567,10 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
                 @endif
             </section>
 
-            {{-- P47: who of the player's Nostr follows plays here, with a 1v1 where the game has one --}}
-            <livewire:follows-here context="series" :subject="$slug" :wire:key="'follows-here-'.$slug" />
-        </div>
 
-        <div class="flex min-w-0 flex-col gap-4 lg:col-span-4 lg:col-start-9 lg:row-start-3 xl:@max-4xl:col-span-12 xl:@max-4xl:col-start-1 xl:@max-4xl:row-start-auto">
+        <div class="flex min-w-0 flex-col gap-4">
             {{-- The clans of this game and the clan Hashrate (P26) --}}
-            <section id="game-clans" aria-labelledby="gc-h" class="flex scroll-mt-24 flex-col gap-4 rounded-lg bg-card px-4 py-4 lg:px-5" data-test="game-clans">
+            <section id="game-clans" aria-labelledby="gc-h" class="flex scroll-mt-24 flex-col gap-4 rounded-[4px] bg-card px-4 py-4 lg:px-5" data-test="game-clans">
                 <span class="flex flex-wrap items-center justify-between gap-x-3">
                     <h2 id="gc-h" class="m-0 text-[15px] font-bold">{{ __('Clans') }}@if ($clans->isNotEmpty()) <span class="font-normal text-ink-2">{{ $clans->count() }}</span>@endif</h2>
                     <a href="{{ route('clans.index') }}" class="inline-flex min-h-11 items-center text-[13px]">{{ __('All clans') }}</a>
@@ -612,7 +622,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
             {{-- The league's lobby defaults of this game (LobbyRules, P9), behind a disclosure like the one below. --}}
             @php($lobbyRules = \App\Support\Series\LobbyRules::items($slug))
             @if ($lobbyRules !== [])
-                <details id="game-lobby-rules" class="group rounded-lg bg-card" data-test="game-lobby-rules">
+                <details id="game-lobby-rules" class="group rounded-[4px] bg-card" data-test="game-lobby-rules">
                     <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-2 lg:px-5 [&::-webkit-details-marker]:hidden">
                         <h2 class="m-0 text-[15px] font-bold">{{ __('League lobby rules') }}</h2>
                         <x-icon name="chevron-down" :size="16" class="shrink-0 text-ink-2 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
@@ -631,7 +641,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
             {{-- Its tournaments and cups as one lobby match (P10, Lobbies), behind a disclosure like the one above. --}}
             @php($lobbyFormat = \App\Support\Tournaments\Lobbies::rules($slug))
             @if ($lobbyFormat !== [])
-                <details id="game-lobby-tournaments" class="group rounded-lg bg-card" data-test="game-lobby-tournaments">
+                <details id="game-lobby-tournaments" class="group rounded-[4px] bg-card" data-test="game-lobby-tournaments">
                     <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-2 lg:px-5 [&::-webkit-details-marker]:hidden">
                         <h2 class="m-0 text-[15px] font-bold">{{ __('Tournaments: one lobby match') }}</h2>
                         <x-icon name="chevron-down" :size="16" class="shrink-0 text-ink-2 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
@@ -648,7 +658,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
             @endif
 
             {{-- What a series is worth: the Elo arithmetic, behind a disclosure (P56: explanations never open by default). --}}
-            <details id="game-worth" class="group rounded-lg bg-card" data-test="game-worth">
+            <details id="game-worth" class="group rounded-[4px] bg-card" data-test="game-worth">
                 <summary class="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-2 lg:px-5 [&::-webkit-details-marker]:hidden">
                     <h2 id="gw-h" class="m-0 text-[15px] font-bold">{{ __('What a series is worth') }}</h2>
                     <x-icon name="chevron-down" :size="16" class="shrink-0 text-ink-2 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
@@ -668,5 +678,20 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
                 </div>
             </details>
         </div>
-    </div>
-</div>
+
+    <x-slot:secondary>
+        <x-game.secondary :label="__('Invite, follows')">
+            {{-- Invite a friend: the join link of the player's clan (series are played by clan lineups). --}}
+            <livewire:invite-link :game="$slug" place="game" />
+            {{-- P47: who of the player's Nostr follows plays here, with a 1v1 where the game has one. --}}
+            <livewire:follows-here context="series" :subject="$slug" :wire:key="'follows-here-'.$slug" />
+        </x-game.secondary>
+    </x-slot:secondary>
+
+    @if (\App\Support\GameChat\GameChannels::has($slug))
+        <x-slot:chat>
+            {{-- The global chat of the game (P21): the right column, sticky (rule R6). --}}
+            <livewire:game-channel :game="$slug" :wire:key="'game-channel-'.$slug" />
+        </x-slot:chat>
+    @endif
+</x-game.page>

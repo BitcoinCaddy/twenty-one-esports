@@ -523,9 +523,9 @@ test('the board hero, every row the viewer may watch and the player page lead to
     ['lastWeek' => $lastWeek, 'ada' => $ada] = replayShelves();
     $week40 = Tournament::query()->where('slug', 'blockfill-2026-09-28')->sole();
 
-    // the hero of scores/blockfill and of an ended week's board
+    // the game bar's Replays tab on scores/blockfill (template T1) and the hero of an ended week's board
     $this->get(route('scores.show', 'blockfill'))->assertOk()
-        ->assertSee('data-test="hero-replays"', false)
+        ->assertSee('data-test="ctx-replays"', false)
         ->assertSee('href="'.route('stacker.replays').'"', false);
     $board = $this->get(route('tournaments.scores', $week40))->assertOk()
         ->assertSee('href="'.e(route('stacker.replays', ['week' => $week40->slug])).'"', false)

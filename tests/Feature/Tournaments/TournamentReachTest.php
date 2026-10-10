@@ -58,7 +58,8 @@ test('every game page shows its own next tournament near the top: name, start wi
     'rocket league' => ['/games/rocket-league', 'rocket-league', '3v3', 'data-test="game-matches"'],
     'ea sports fc 26' => ['/games/ea-sports-fc-26', 'ea-sports-fc-26', '1v1', 'data-test="game-matches"'],
     'ea sports fc 27' => ['/games/ea-sports-fc-27', 'ea-sports-fc-27', '1v1', 'data-test="game-matches"'],
-    'chess' => ['/chess', 'chess', 'blitz', 'data-test="lobby-daily"'],
+    // The lobby template T1 (GameLobby.dc.html) puts the next tournament at the foot of the main column, before the secondary slot.
+    'chess' => ['/chess', 'chess', 'blitz', 'data-test="game-secondary"'],
 ]);
 
 test('a game page without an open tournament says so and leads on; only admins and organizers get "Create a tournament"', function () {

@@ -329,7 +329,9 @@ test('the lobby counts down to the bots taking the free seats, every second, and
     expect((int) $seconds[1])->toBe(300)
         ->and($html)->toContain('setInterval(', 'Bots fill the free seats in 5:00.')
         ->and($html)->not->toContain('@js(')
-        ->and(substr_count($html, 'grid grid-cols-3 gap-2 min-[480px]:grid-cols-4 sm:grid-cols-7'))->toBe(2);
+        // The lobby's faction grid, and the quick match's in the right column of the lobby template (T1, HyperIndex.dc.html).
+        ->and(substr_count($html, 'grid grid-cols-3 gap-2 min-[480px]:grid-cols-4 sm:grid-cols-7'))->toBe(1)
+        ->and(substr_count($html, 'grid grid-cols-4 gap-2'))->toBe(1);
 });
 
 test('the strip and /matches ask the same number of queries for one and four finished clan matches', function () {

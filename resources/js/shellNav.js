@@ -117,8 +117,9 @@ export function shellHeader() {
             this.hub = true;
             window.dispatchEvent(new CustomEvent('nav-sheet', { detail: 'hub' }));
             this.focusTicket++;
-            // The filter takes the focus on desktop only: on a phone it would open the keyboard over the grid.
-            this.$nextTick(() => (window.matchMedia(DESKTOP).matches ? this.$refs.hubFilter : this.$root.querySelector('#game-hub'))?.focus({ preventScroll: true }));
+            // The filter takes the focus on desktop only: on a phone it would open the keyboard over the grid. Below 13
+            // games the menu has no filter (GamesMenu.dc.html), and the panel itself takes the focus.
+            this.$nextTick(() => ((window.matchMedia(DESKTOP).matches && this.$refs.hubFilter) || this.$root.querySelector('#game-hub'))?.focus({ preventScroll: true }));
         },
 
         closeHub(returnFocus = true) {

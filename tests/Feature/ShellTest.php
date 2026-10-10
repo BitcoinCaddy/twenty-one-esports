@@ -128,8 +128,12 @@ test('the games menu and the account menus link every chess page, so none is fou
     expect($html)->toContain('data-test="games-menu"')
         ->toContain('href="'.route('me.correspondence').'"')
         ->toContain('href="'.route('settings.chess').'"')
-        ->toContain('href="'.route('chess.challenge').'"')
-        // The rapid ladder first (plan "Schach Rapid und Clan", P3); blitz and daily by the ladder page's switch.
-        ->toContain('href="'.route('ladder.show', ['chess', 'rapid']).'"')
+        ->toContain('data-test="games-menu-chess"')
         ->toContain('data-test="mobile-chess-settings"');
+
+    // The games menu leads to the chess lobby (GamesMenu.dc.html); its game bar and ways to play link the rest (template T1):
+    // daily challenges, and the rapid ladder first (plan "Schach Rapid und Clan", P3).
+    $lobby = $this->get(route('chess.lobby'))->assertOk()->getContent();
+    expect($lobby)->toContain('href="'.route('chess.challenge').'"')
+        ->toContain('href="'.route('ladder.show', ['chess', 'rapid']).'"');
 });

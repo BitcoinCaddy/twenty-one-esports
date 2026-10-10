@@ -525,9 +525,9 @@ test('Hyperbitcoinization and Proof of Pong have their own channels, open and pu
         ->and(collect($events)->where('kind', 41)->map(fn (array $event): string => $event['tags'][0][1])->values()->all())->toContain($hyper, $pong);
 
     // On their pages the chat follows the hero with the way to play, as on every game page (a bar below xl, the side column from xl).
-    $this->get('/hyperbitcoinization')->assertOk()->assertSeeInOrder(['id="hyper-h"', 'data-test="hyper-lobby"', 'class="chat-rail"', 'data-test="game-chat" data-game="hyperbitcoinization" data-channel="'.$hyper.'"'], false);
+    $this->get('/hyperbitcoinization')->assertOk()->assertSeeInOrder(['data-test="lobby-title"', 'data-test="hyper-lobby"', 'data-test="game-rail"', 'data-test="game-chat" data-game="hyperbitcoinization" data-channel="'.$hyper.'"'], false);
     // Since P9 both ways to play (the live 1v1, the bot) are in the play section ahead of the chat.
-    $this->get('/proof-of-pong')->assertOk()->assertSeeInOrder(['id="pong-h"', 'data-test="pong-lobby"', 'data-test="pong-play-bot"', 'class="chat-rail"', 'data-test="game-chat" data-game="proof-of-pong" data-channel="'.$pong.'"'], false);
+    $this->get('/proof-of-pong')->assertOk()->assertSeeInOrder(['data-test="lobby-title"', 'data-test="pong-play-bot"', 'data-test="pong-lobby"', 'data-test="game-rail"', 'data-test="game-chat" data-game="proof-of-pong" data-channel="'.$pong.'"'], false);
 });
 
 test('every game in the registry has its chat on its page, every switch on', function () {
