@@ -24,11 +24,14 @@ use Carbon\CarbonInterface;
  *
  * Only where league clocks run against the players on one day
  * ({@see applies()}): an online players-mode tournament of a minute game.
- * Not a casual cup (its round windows span days in each region's own zone,
- * its times are agreed by the players), daily correspondence (a move takes
- * days), a score leaderboard or a league week (a window of days), a
- * tournament on site or in director mode (the directors run the clock by
- * hand).
+ * A casual cup too (user, 2026-10-10: "Auch Casual Cups"), on its region's
+ * own clock (CasualCups::timezoneOf(), the window's `zone`): no round opens
+ * and nothing is decided in its pause, a round window that would close in
+ * the night keeps its remaining time from `resume` ({@see outOfPause()}),
+ * and its series' casual clocks stop like any other. Not daily
+ * correspondence (a move takes days), a score leaderboard or a league week
+ * (a window of days), a tournament on site or in director mode (the
+ * directors run the clock by hand).
  *
  * A series pins the window at its pairing (TournamentDeadlines::forSeries(),
  * `deadlines.night_pause`), as it pins its other deadlines; the start of new
@@ -46,7 +49,7 @@ final class NightPause
     {
         $profile = $tournament->profile();
 
-        return ! $tournament->on_site && ! $tournament->isCasualCup() && ! $tournament->isDirectorMode() && ! $tournament->isLeagueWeek()
+        return ! $tournament->on_site && ! $tournament->isDirectorMode() && ! $tournament->isLeagueWeek()
             && ! $profile->isDaily() && ! $profile->isScore();
     }
 
@@ -79,7 +82,7 @@ final class NightPause
      * The window a tournament plays under now; null when it has none (off,
      * or a tournament it does not apply to).
      *
-     * @return array{until: string, resume: string}|null
+     * @return array{until: string, resume: string, zone?: string}|null
      */
     public static function windowOf(Tournament $tournament): ?array
     {
@@ -89,14 +92,15 @@ final class NightPause
 
         $defaults = self::defaults();
 
-        return self::window($tournament->night_pause_until ?? $defaults['until'], $tournament->night_pause_resume ?? $defaults['resume']);
+        return self::window($tournament->night_pause_until ?? $defaults['until'], $tournament->night_pause_resume ?? $defaults['resume'],
+            $tournament->isCasualCup() ? CasualCups::timezoneOf($tournament) : null);
     }
 
     /**
      * What a new series pins (`deadlines.night_pause`): the window, or false
      * for none.
      *
-     * @return array{until: string, resume: string}|false
+     * @return array{until: string, resume: string, zone?: string}|false
      */
     public static function pin(Tournament $tournament): array|false
     {
@@ -106,15 +110,31 @@ final class NightPause
     /**
      * A window from two typed times; null for an invalid or empty one.
      *
-     * @return array{until: string, resume: string}|null
+     * @return array{until: string, resume: string, zone?: string}|null
      */
-    public static function window(string $until, string $resume): ?array
+    public static function window(string $until, string $resume, ?string $zone = null): ?array
     {
         if (preg_match(self::TIME_PATTERN, $until) !== 1 || preg_match(self::TIME_PATTERN, $resume) !== 1 || $until === $resume) {
             return null;
         }
 
-        return ['until' => $until, 'resume' => $resume];
+        // The league's zone stays implicit, so a pinned window reads as before; another zone (a US cup) is named.
+        return $zone === null || $zone === LeagueTime::zone() ? ['until' => $until, 'resume' => $resume] : ['until' => $until, 'resume' => $resume, 'zone' => $zone];
+    }
+
+    /**
+     * A moment a deadline lands on, moved out of the pause: inside one it
+     * keeps the time it had left at the pause start and gets it from the
+     * end. A casual cup's round window (days long) uses this instead of a
+     * full freeze, so only the last night counts.
+     *
+     * @param  array{until: string, resume: string, zone?: string}|null  $window
+     */
+    public static function outOfPause(?array $window, CarbonImmutable $at): CarbonImmutable
+    {
+        $current = self::current($window, $at);
+
+        return $current === null ? $at : $current[1]->addSeconds($at->getTimestamp() - $current[0]->getTimestamp());
     }
 
     /**
@@ -141,7 +161,7 @@ final class NightPause
     /**
      * The pause of a window under way at `$at`, start inclusive, end exclusive.
      *
-     * @param  array{until: string, resume: string}|null  $window
+     * @param  array{until: string, resume: string, zone?: string}|null  $window
      * @return array{0: CarbonImmutable, 1: CarbonImmutable}|null
      */
     public static function current(?array $window, CarbonInterface $at): ?array
@@ -150,7 +170,7 @@ final class NightPause
             return null;
         }
 
-        $day = CarbonImmutable::instance($at)->setTimezone(LeagueTime::zone())->startOfDay();
+        $day = CarbonImmutable::instance($at)->setTimezone($window['zone'] ?? LeagueTime::zone())->startOfDay();
 
         foreach ([$day->subDay(), $day] as $start) {
             [$from, $to] = self::interval($window, $start);
@@ -166,7 +186,7 @@ final class NightPause
     /**
      * The first pause of a window that starts strictly after `$at`.
      *
-     * @param  array{until: string, resume: string}|null  $window
+     * @param  array{until: string, resume: string, zone?: string}|null  $window
      * @return array{0: CarbonImmutable, 1: CarbonImmutable}|null
      */
     public static function next(?array $window, CarbonInterface $at): ?array
@@ -175,7 +195,7 @@ final class NightPause
             return null;
         }
 
-        $day = CarbonImmutable::instance($at)->setTimezone(LeagueTime::zone())->startOfDay();
+        $day = CarbonImmutable::instance($at)->setTimezone($window['zone'] ?? LeagueTime::zone())->startOfDay();
 
         for ($offset = -1; $offset <= 2; $offset++) {
             [$from, $to] = self::interval($window, $day->addDays($offset));
@@ -194,7 +214,7 @@ final class NightPause
      * reaches a pause start with nothing left stays there. Without a window
      * it is plain addition. Keeps the class and zone of `$from`.
      *
-     * @param  array{until: string, resume: string}|null  $window
+     * @param  array{until: string, resume: string, zone?: string}|null  $window
      */
     public static function addSeconds(?array $window, CarbonInterface $from, int $seconds): CarbonInterface
     {
@@ -231,12 +251,12 @@ final class NightPause
     /**
      * The pause that starts on a local day.
      *
-     * @param  array{until: string, resume: string}  $window
+     * @param  array{until: string, resume: string, zone?: string}  $window
      * @return array{0: CarbonImmutable, 1: CarbonImmutable}
      */
     private static function interval(array $window, CarbonImmutable $day): array
     {
-        $zone = LeagueTime::zone();
+        $zone = $window['zone'] ?? LeagueTime::zone();
         $date = $day->format('Y-m-d');
         $from = CarbonImmutable::parse($date.' '.$window['until'], $zone);
         $to = CarbonImmutable::parse(($window['until'] < $window['resume'] ? $date : $day->addDay()->format('Y-m-d')).' '.$window['resume'], $zone);

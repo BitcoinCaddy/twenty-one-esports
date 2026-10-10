@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\Notifications\Notice;
 use App\Support\Notifications\Notifier;
 use App\Support\Series\SeriesPresenter;
+use App\Support\Settings\LeagueSettings;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Throwable;
@@ -32,7 +33,12 @@ use Throwable;
  *   chose, opt-out and digest included): when the pause starts, and
  *   `resume_reminder_minutes` before it ends. Each once per player, pause
  *   and kind: the row in `tournament_reminders` (subject `night:<id>`, the
- *   pause start or end as `due_at`) is written before the message.
+ *   pause start or end as `due_at`) is written before the message. The
+ *   restart reminder goes out at once even for a player who chose the daily
+ *   digest (user, 2026-10-10: "Termin-Erinnerung sofort"); DMs off stay off.
+ *   A casual cup's player hears it only when it matters that night: a match
+ *   under way, or a round window that ends before the next pause (a window
+ *   of days would otherwise send two messages a night).
  */
 final class NightPauseNotices
 {
@@ -86,7 +92,7 @@ final class NightPauseNotices
     {
         return array_values(TournamentMatch::query()->where('tournament_id', $tournament->id)->where('status', 'ready')->where('bracket', '!=', 'bye')
             ->whereNull('result')->whereNull('held')->whereNull('lobby')
-            ->with(['slots.participant', 'seriesMatch.latestReport'])->orderBy('id')->get()
+            ->with(['round', 'slots.participant', 'seriesMatch.latestReport', 'chessGame', 'boardGame'])->orderBy('id')->get()
             ->filter(fn (TournamentMatch $match): bool => count($match->slots) === 2 && $match->slots->every(fn ($slot): bool => $slot->participant !== null))
             ->all());
     }
@@ -151,6 +157,10 @@ final class NightPauseNotices
         $sent = 0;
 
         foreach (self::openMatches($tournament) as $match) {
+            if (! self::mattersTonight($tournament, $match, $state['resumes'])) {
+                continue;
+            }
+
             foreach ($match->slots as $slot) {
                 foreach ($slot->participant?->memberIds() ?? [] as $userId) {
                     $inserted = TournamentReminder::query()->insertOrIgnore([
@@ -200,7 +210,24 @@ final class NightPauseNotices
                 __('Your match against :name goes on at :resume.', ['name' => $info['opponent'], 'resume' => $time($state['resumes'])], $locale).$due,
                 $info['url'], null, __('Open match', [], $locale));
 
-        $this->notifier->send($player, NotificationKind::TournamentNews, $notice);
+        $this->notifier->send($player, NotificationKind::TournamentNews, $notice, immediate: $kind === 'night_resume');
+    }
+
+    /**
+     * Every open match of a tournament on one day; a casual cup's only with
+     * a game or series under way, or a round window that ends before the
+     * pause after `$resumes`.
+     */
+    private static function mattersTonight(Tournament $tournament, TournamentMatch $match, CarbonImmutable $resumes): bool
+    {
+        if (! $tournament->isCasualCup() || CasualCups::isUnderWay($match)) {
+            return true;
+        }
+
+        $endsAt = $match->round->window_ends_at;
+        $next = NightPause::next(NightPause::windowOf($tournament), $resumes);
+
+        return $endsAt !== null && ($next === null || $endsAt->getTimestamp() <= $next[0]->getTimestamp());
     }
 
     /**
@@ -219,12 +246,23 @@ final class NightPauseNotices
         $series = $series !== null && ! $match->isReplaced($series->id) && $series->status->isRunning() ? $series : null;
 
         if ($series !== null) {
-            $next = $series->nextDeadline();
+            $next = $series->isCasualPairing() ? $series->casualNextDeadline() : $series->nextDeadline();
 
             return ['match' => $match, 'opponent' => $opponent, 'url' => route('matches.room', $series), 'due' => $next['at'] ?? null, 'due_kind' => $next === null ? null : 'deadline'];
         }
 
-        return ['match' => $match, 'opponent' => $opponent, 'url' => route('tournaments.show', $tournament), 'due' => self::checkInBy($tournament, $resumes), 'due_kind' => 'checkin'];
+        // A casual cup's match starts at its agreed time (or the auto slot), not at the restart.
+        $due = $tournament->isCasualCup() ? self::cupCheckInBy($tournament, $match) : self::checkInBy($tournament, $resumes);
+
+        return ['match' => $match, 'opponent' => $opponent, 'url' => route('tournaments.show', $tournament), 'due' => $due, 'due_kind' => $due === null ? null : 'checkin'];
+    }
+
+    /** A cup series match's check-in close for its agreed time; null without one. */
+    private static function cupCheckInBy(Tournament $tournament, TournamentMatch $match): ?CarbonInterface
+    {
+        $agreed = $tournament->profile()->isSeries() ? CupSchedules::agreedAt($match) : null;
+
+        return $agreed === null ? null : NightPause::addSeconds(NightPause::windowOf($tournament), $agreed, (int) LeagueSettings::get('esports.casual.checkin_after_minutes') * 60);
     }
 
     /**

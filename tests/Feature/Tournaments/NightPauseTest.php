@@ -6,13 +6,16 @@ use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
 use App\Jobs\PublishNostrEvent;
 use App\Jobs\SendNostrDm;
+use App\Models\NotificationDigestItem;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Models\TournamentParticipant;
 use App\Models\TournamentSignup;
 use App\Models\User;
 use App\Support\Dock\UpcomingEvents;
+use App\Support\Series\SeriesRuleViolation;
 use App\Support\Series\SeriesService;
+use App\Support\Tournaments\CupSchedules;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
 use App\Support\Tournaments\Lobbies;
@@ -130,7 +133,9 @@ test('it applies to online players-mode tournaments of a minute game, and an org
         ->and(NightPause::windowOf(Tournament::factory()->make(['on_site' => true, 'stations' => 4])))->toBeNull()
         ->and(NightPause::windowOf(Tournament::factory()->make(['results_mode' => TournamentResultsMode::Director])))->toBeNull()
         ->and(NightPause::windowOf(Tournament::factory()->make(['mode' => 'correspondence', 'options' => FormatOptions::defaults(GameProfile::for('chess', 'correspondence'))->toArray()])))->toBeNull()
-        ->and(NightPause::windowOf(Tournament::factory()->make(['cup_series' => 'chess-eu'])))->toBeNull();
+        // A casual cup too, on its region's clock (user, 2026-10-10: "Auch Casual Cups").
+        ->and(NightPause::windowOf(Tournament::factory()->make(['cup_series' => 'chess-eu'])))->toBe(['until' => '00:00', 'resume' => '18:00'])
+        ->and(NightPause::windowOf(Tournament::factory()->make(['cup_series' => 'chess-us'])))->toBe(['until' => '00:00', 'resume' => '18:00', 'zone' => 'America/New_York']);
 
     config(['esports.tournaments.night_pause.enabled' => false]);
     expect(NightPause::windowOf($online))->toBeNull()
@@ -281,4 +286,73 @@ test('the organizer switches the night pause off or sets its times in the edit p
     $editor = app(TournamentEditor::class);
     expect(fn () => $editor->update($tournament, $tournament->creator, ['night_pause_until' => '25:00']))->toThrow(TournamentRuleViolation::class)
         ->and(fn () => $editor->update($tournament, $tournament->creator, ['night_pause_resume' => '00:00']))->toThrow(TournamentRuleViolation::class);
+});
+
+/* ---------- Casual cups (user, 2026-10-10: "Auch Casual Cups") ----------------------------------------------- */
+
+test('a cup opens no round in its pause; at 18:00 it opens, and a window that would close at night keeps its rest from the next restart', function () {
+    config(['esports.casual_cups.window_hours' => 12]);
+    $this->travelTo(berlin('2026-10-11 00:30'));
+    $cup = runningCup(4);
+
+    expect(cupTick()['cups']['rounds'])->toBe(0)
+        ->and(openCupMatches($cup))->toHaveCount(0);
+
+    // 18:00 + 12 h = 06:00, six hours into the next pause: it ends six hours after that pause, at 24:00.
+    $this->travelTo(berlin('2026-10-11 18:00'));
+    expect(cupTick()['cups']['rounds'])->toBe(1)
+        ->and(openCupMatches($cup)->first()->round->window_ends_at->getTimestamp())->toBe(berlin('2026-10-13 00:00')->getTimestamp());
+});
+
+test('a cup series\' casual clocks stop in the pause, and no time in the pause can be proposed', function () {
+    $series = new SeriesMatch([
+        'origin' => SeriesMatch::ORIGIN_CUP, 'status' => SeriesStatus::Accepted, 'start_at' => berlin('2026-10-10 23:30')->utc(),
+        'ready_at_challenger' => berlin('2026-10-10 23:30')->utc(), 'ready_at_challenged' => berlin('2026-10-10 23:30')->utc(),
+        'casual' => ['report_minutes' => 60, 'night_pause' => ['until' => '00:00', 'resume' => '18:00']],
+    ]);
+    $plain = new SeriesMatch([
+        'origin' => SeriesMatch::ORIGIN_CUP, 'status' => SeriesStatus::Accepted, 'start_at' => berlin('2026-10-10 23:30')->utc(),
+        'ready_at_challenger' => berlin('2026-10-10 23:30')->utc(), 'ready_at_challenged' => berlin('2026-10-10 23:30')->utc(),
+        'casual' => ['report_minutes' => 60, 'night_pause' => false],
+    ]);
+
+    expect($series->casualReportDueAt()->getTimestamp())->toBe(berlin('2026-10-11 18:30')->getTimestamp())
+        ->and($plain->casualReportDueAt()->getTimestamp())->toBe(berlin('2026-10-11 00:30')->getTimestamp());
+
+    $this->travelTo(berlin('2026-10-11 19:00'));
+    $cup = runningCup(2, TournamentFormat::DoubleElimination, ['grandFinal' => 'single'], 'rocket-league', '1v1');
+    cupTick();
+    $match = openCupMatches($cup)->first();
+    $player = User::query()->findOrFail($match->slots[0]->participant->user_id);
+
+    expect(fn () => app(CupSchedules::class)->propose($match, $player, [berlin('2026-10-12 01:00')->getTimestamp()]))
+        ->toThrow(SeriesRuleViolation::class, 'No suggested time may lie in the night pause.');
+    app(CupSchedules::class)->propose($match, $player, [berlin('2026-10-11 21:00')->getTimestamp()]);
+});
+
+/* ---------- "Termin-Erinnerung sofort" ---------------------------------------------------------------------- */
+
+test('the restart reminder skips the daily digest; the pause start follows it; DMs off get neither', function () {
+    Queue::fake([SendNostrDm::class, PublishNostrEvent::class]);
+    config(['esports.notifications.nsec' => bin2hex(random_bytes(32))]);
+    $this->travelTo(berlin('2026-10-10 23:40'));
+    $tournament = nightDuel();
+    [$digest, $off] = User::query()->whereIn('id', $tournament->participants()->pluck('user_id'))->orderBy('id')->get()->all();
+    $digest->forceFill(['chess_settings' => ['digest' => ['tournament_news' => true]]])->save();
+    $off->forceFill(['chess_settings' => ['dm' => false]])->save();
+
+    $this->travelTo(berlin('2026-10-11 00:01'));
+    app(TournamentScheduler::class)->tick();
+
+    expect(Queue::pushed(SendNostrDm::class))->toHaveCount(0)
+        ->and(NotificationDigestItem::query()->where('user_id', $digest->id)->count())->toBe(1);
+
+    $this->travelTo(berlin('2026-10-11 17:30'));
+    app(TournamentScheduler::class)->tick();
+    $sent = Queue::pushed(SendNostrDm::class);
+
+    expect($sent)->toHaveCount(1)
+        ->and($sent->first()->user->is($digest))->toBeTrue()
+        ->and($sent->first()->text)->toContain('goes on in 30 minutes')
+        ->and(NotificationDigestItem::query()->where('user_id', $digest->id)->count())->toBe(1);
 });

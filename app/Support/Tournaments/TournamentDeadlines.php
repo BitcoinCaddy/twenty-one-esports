@@ -126,7 +126,7 @@ final class TournamentDeadlines
      *
      * The night pause window is pinned with them (`night_pause`, NightPause::pin(); false = none).
      *
-     * @return array{noshow_minutes: int, report_hours?: int, report_minutes?: int, response_minutes: int, checkin_minutes?: int, night_pause: array{until: string, resume: string}|false}
+     * @return array{noshow_minutes: int, report_hours?: int, report_minutes?: int, response_minutes: int, checkin_minutes?: int, night_pause: array{until: string, resume: string, zone?: string}|false}
      */
     public static function forSeries(Tournament $tournament, int $bestOf): array
     {

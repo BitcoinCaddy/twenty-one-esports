@@ -624,6 +624,7 @@ final class TournamentMatchMaker
             ?? throw new TournamentRuleViolation('no_players', "Tournament match {$match->id} has no player with an account left.");
         $start = CasualCups::seriesStartsAt($match);
         $pinned = CasualMatches::pinned();
+        $night = NightPause::pin($tournament);
         $now = now();
 
         $series = SeriesMatch::query()->create([
@@ -645,8 +646,9 @@ final class TournamentMatchMaker
             'respond_by' => $now,
             'start_at' => $start,
             'answered_at' => $now,
-            'ready_by' => $start->addMinutes($pinned['checkin_after_minutes'] ?? 10),
-            'casual' => [...$pinned, 'scheduled_at' => $start->getTimestamp()],
+            // The night pause (NightPause): the check-in close, like every casual clock of the cup's series, stops in it.
+            'ready_by' => NightPause::addSeconds($night === false ? null : $night, $start, (int) ($pinned['checkin_after_minutes'] ?? 10) * 60),
+            'casual' => [...$pinned, 'scheduled_at' => $start->getTimestamp(), 'night_pause' => $night],
             'origin' => SeriesMatch::ORIGIN_CUP,
             'host_side' => SeriesMatch::SIDES[random_int(0, 1)],
             'sides' => ['challenger' => $a->memberIds(), 'challenged' => $b->memberIds()],

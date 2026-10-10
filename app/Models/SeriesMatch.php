@@ -80,7 +80,7 @@ use Illuminate\Support\Facades\DB;
  * @property int|null $tournament_match_id the tournament match this series plays (P8b)
  * @property int $tournament_attempt 1, or the replay number after an admin voided the series before (P18)
  * @property array{challenger?: list<int>, challenged?: list<int>}|null $sides a roster side's players (mix team, RL 1v1 player): no lineup
- * @property array{noshow_minutes: int, report_hours?: int, report_minutes?: int, response_minutes: int, checkin_minutes?: int, pauses?: list<array{0: int, 1: int}>, night_pause?: array{until: string, resume: string}|false}|null $deadlines a players-mode tournament's deadlines, pinned at the pairing (P18; `report_minutes` on the round clock; `pauses`: the tournament's pauses while the series ran, unix seconds from and to, {@see pausedAfter()}; `night_pause`: the tournament's night pause window, false for none, {@see self::nightPause()}); null = none run by the league
+ * @property array{noshow_minutes: int, report_hours?: int, report_minutes?: int, response_minutes: int, checkin_minutes?: int, pauses?: list<array{0: int, 1: int}>, night_pause?: array{until: string, resume: string, zone?: string}|false}|null $deadlines a players-mode tournament's deadlines, pinned at the pairing (P18; `report_minutes` on the round clock; `pauses`: the tournament's pauses while the series ran, unix seconds from and to, {@see pausedAfter()}; `night_pause`: the tournament's night pause window, false for none, {@see self::nightPause()}); null = none run by the league
  * @property Carbon|null $overdue_at when the league moved it to the admin queue: nobody reported by the report deadline (P18)
  * @property string|null $origin a casual 1v1 without a clan (P23): `queue` or `invite`; null for every other series
  * @property string|null $host_side the side that opens the game lobby (casual 1v1), drawn at the pairing
@@ -96,7 +96,7 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $checkin_opened_at a scheduled casual 1v1: "check-in is open" went out
  * @property int|null $boards a chess team match (NIP rev. 9.22): 2 or 3 boards; null for every series
  * @property Carbon|null $lineup_locked_at a chess team match: when the league froze both board orders
- * @property array{ready_seconds?: int, lobby_minutes?: int, join_minutes?: int, contest_minutes?: int, report_minutes?: int, confirm_minutes?: int, checkin_before_minutes?: int, checkin_after_minutes?: int, scheduled_at?: int, queue?: array<string, array{platform: string, crossplay: bool}>}|null $casual the casual deadlines pinned at the pairing (a scheduled match: at the accept, with its agreed start), and each side's queue choice
+ * @property array{ready_seconds?: int, lobby_minutes?: int, join_minutes?: int, contest_minutes?: int, report_minutes?: int, confirm_minutes?: int, checkin_before_minutes?: int, checkin_after_minutes?: int, scheduled_at?: int, night_pause?: array{until: string, resume: string, zone?: string}|false, queue?: array<string, array{platform: string, crossplay: bool}>}|null $casual the casual deadlines pinned at the pairing (a scheduled match: at the accept, with its agreed start), and each side's queue choice
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Lineup|null $challengerLineup
@@ -467,7 +467,7 @@ class SeriesMatch extends Model
      * A series paired before the night pause existed has none pinned and
      * follows its tournament's current setting.
      *
-     * @return array{until: string, resume: string}|null
+     * @return array{until: string, resume: string, zone?: string}|null
      */
     public function nightPause(): ?array
     {
@@ -476,7 +476,7 @@ class SeriesMatch extends Model
         if (array_key_exists('night_pause', $deadlines)) {
             $window = $deadlines['night_pause'];
 
-            return is_array($window) ? NightPause::window($window['until'], $window['resume']) : null;
+            return is_array($window) ? NightPause::window($window['until'], $window['resume'], $window['zone'] ?? null) : null;
         }
 
         if ($this->deadlines === null || $this->tournament_match_id === null) {
@@ -665,7 +665,9 @@ class SeriesMatch extends Model
      */
     public function casualLobbyDueAt(): ?CarbonInterface
     {
-        return ($this->host_swapped_at ?? $this->start_at)?->copy()->addMinutes($this->casualSetting('lobby_minutes'));
+        $since = $this->host_swapped_at ?? $this->start_at;
+
+        return $since === null ? null : $this->casualClock($since, 'lobby_minutes');
     }
 
     /**
@@ -693,13 +695,13 @@ class SeriesMatch extends Model
     /** The guest joins by then; afterwards the host may claim a no-show. */
     public function casualJoinDueAt(): ?CarbonInterface
     {
-        return $this->lobby_shared_at?->copy()->addMinutes($this->casualSetting('join_minutes'));
+        return $this->lobby_shared_at === null ? null : $this->casualClock($this->lobby_shared_at, 'join_minutes');
     }
 
     /** The accused side contests a no-show claim by then, else it is a forfeit. */
     public function casualContestDueAt(): ?CarbonInterface
     {
-        return $this->noshow_reported_at?->copy()->addMinutes($this->casualSetting('contest_minutes'));
+        return $this->noshow_reported_at === null ? null : $this->casualClock($this->noshow_reported_at, 'contest_minutes');
     }
 
     /** Nobody reported by then: the match is void. Null for a scheduled match before both checked in. */
@@ -709,7 +711,20 @@ class SeriesMatch extends Model
             return null;
         }
 
-        return $this->start_at?->copy()->addMinutes($this->casualSetting('report_minutes'));
+        return $this->start_at === null ? null : $this->casualClock($this->start_at, 'report_minutes');
+    }
+
+    /**
+     * A casual deadline: `$key` minutes from `$since`. A casual cup's series
+     * (origin `cup`) runs on the cup's night pause, pinned at its pairing
+     * (`casual.night_pause`, NightPause): the time inside it does not count.
+     */
+    public function casualClock(CarbonInterface $since, string $key): CarbonInterface
+    {
+        $window = $this->origin === self::ORIGIN_CUP ? ($this->casual['night_pause'] ?? false) : false;
+        $window = is_array($window) ? NightPause::window($window['until'], $window['resume'], $window['zone'] ?? null) : null;
+
+        return NightPause::addSeconds($window, $since, $this->casualSetting($key) * 60);
     }
 
     /** The open report is confirmed by the league then; null without one. */
@@ -719,7 +734,7 @@ class SeriesMatch extends Model
 
         return $this->status !== SeriesStatus::Reported || $report === null || $report->status !== ReportStatus::Open || $report->created_at === null
             ? null
-            : $report->created_at->copy()->addMinutes($this->casualSetting('confirm_minutes'));
+            : $this->casualClock($report->created_at, 'confirm_minutes');
     }
 
     /**

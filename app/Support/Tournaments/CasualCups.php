@@ -610,6 +610,11 @@ final class CasualCups
 
         foreach (Tournament::query()->whereNotNull('cup_open_series')->where('status', TournamentStatus::Running)->whereNull('paused_at')->get() as $cup) {
             $this->isolated(function () use ($cup, &$done): void {
+                // In its night pause (NightPause) no round opens and nothing is decided; both catch up at the restart.
+                if (NightPause::activeFor($cup) !== null) {
+                    return;
+                }
+
                 $done['rounds'] += $this->openRounds($cup);
                 $done['decided'] += $this->decideOverdue($cup);
             });
@@ -1201,7 +1206,10 @@ final class CasualCups
             if ($evening) {
                 $minutes = self::planOf($locked)['round_minutes'] + max(0, (int) config('esports.casual_cups.evening.grace_minutes', 15));
 
-                return TournamentRound::query()->whereKey($round->id)->whereNull('window_ends_at')->update(['window_ends_at' => now()->addMinutes($minutes)]) === 1;
+                // The night pause stops a live round's clock (NightPause).
+                $endsAt = NightPause::addSeconds(NightPause::windowOf($locked), CarbonImmutable::now(), $minutes * 60);
+
+                return TournamentRound::query()->whereKey($round->id)->whereNull('window_ends_at')->update(['window_ends_at' => $endsAt]) === 1;
             }
 
             $first = ! TournamentRound::query()->whereHas('stage', fn ($query) => $query->where('tournament_id', $locked->id))->whereNotNull('window_ends_at')->exists();
@@ -1213,9 +1221,12 @@ final class CasualCups
             $cap = $locked->starts_at->toImmutable()->addDays(self::maxDays());
             $players = $locked->participants()->count();
             // A lobby cup's one round (P10) lasts the lobby: set-up, the time limit, then the players' report.
+            // The night pause (NightPause): a lobby's clock stops in it; a window of days only keeps from the restart what
+            // it had left when it would close at night (user, 2026-10-10: a cup goes on the next day at 18:00).
+            $night = NightPause::windowOf($locked);
             $endsAt = Lobbies::isLobby($locked)
-                ? CarbonImmutable::now()->addMinutes(Lobbies::plannedMinutes($locked->game) + max(0, (int) (Lobbies::config($locked->game)['report_minutes'] ?? 60)))
-                : CarbonImmutable::now()->addHours(self::windowHours($players))->min($cap);
+                ? NightPause::addSeconds($night, CarbonImmutable::now(), (Lobbies::plannedMinutes($locked->game) + max(0, (int) (Lobbies::config($locked->game)['report_minutes'] ?? 60))) * 60)->toImmutable()
+                : NightPause::outOfPause($night, CarbonImmutable::now()->addHours(self::windowHours($players))->min($cap));
 
             if (TournamentRound::query()->whereKey($round->id)->whereNull('window_ends_at')->update(['window_ends_at' => $endsAt]) !== 1) {
                 return false;

@@ -17,6 +17,7 @@ use App\Support\Series\CasualInvites;
 use App\Support\Series\CasualMatches;
 use App\Support\Tournaments\CasualCupNotices;
 use App\Support\Tournaments\CupMatchNow;
+use App\Support\Tournaments\NightPause;
 use App\Support\Tournaments\TournamentMatchMaker;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -132,6 +133,7 @@ final class ChessInvites
         $mine = array_search($user->id, $ids, true);
 
         $open = $tournament->isCasualCup() && $tournament->profile()->isChess() && $tournament->status === TournamentStatus::Running && ! $tournament->isPaused()
+            && NightPause::activeFor($tournament) === null
             && $match->status === 'ready' && $match->result === null && $match->held === null
             // Only a match nobody started: a replay or restart follows its game at once.
             && $match->round->window_ends_at?->isFuture() === true && $match->chessGame === null;

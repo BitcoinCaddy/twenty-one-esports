@@ -8133,5 +8133,6 @@
     "check in by :time": "Check-in bis :time",
     "next deadline :time": "nächste Frist :time",
     "Night pause: your match against :name goes on at :time": "Nachtpause: dein Match gegen :name geht um :time weiter",
-    "Night pause at :time: a match under way may be finished": "Nachtpause um :time: laufende Matches dürfen fertig gespielt werden"
+    "Night pause at :time: a match under way may be finished": "Nachtpause um :time: laufende Matches dürfen fertig gespielt werden",
+    "No suggested time may lie in the night pause.": "Kein vorgeschlagener Termin darf in der Nachtpause liegen."
 }

@@ -514,21 +514,19 @@ abstract class TournamentFormatChooser extends Component
     /**
      * Whether the night pause can apply to the tournament as chosen
      * (NightPause::applies()): online, a minute game, players mode, not a
-     * score leaderboard; never a casual cup.
+     * score leaderboard. A casual cup has it too, on its region's clock.
      */
     public function nightPauseApplies(): bool
     {
         $profile = $this->profile();
-        $tournament = property_exists($this, 'tournament') ? $this->tournament : null;
 
-        return $this->stationLimit() === null && ! $profile->isDaily() && ! $profile->isScore() && $this->resultsMode === 'players'
-            && ! ($tournament instanceof Tournament && $tournament->isCasualCup());
+        return $this->stationLimit() === null && ! $profile->isDaily() && ! $profile->isScore() && $this->resultsMode === 'players';
     }
 
     /**
      * The night pause times as they apply, typed or the league's ("24:00" typed = "00:00").
      *
-     * @return array{until: string, resume: string}
+     * @return array{until: string, resume: string, zone?: string}
      */
     public function nightPauseTimes(): array
     {
