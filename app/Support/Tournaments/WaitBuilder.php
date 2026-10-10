@@ -23,6 +23,8 @@ final class WaitBuilder
 
     private bool $paused = false;
 
+    private ?CarbonImmutable $resumesAt = null;
+
     public function __construct(Tournament $tournament, private TournamentMatch $match)
     {
         $this->url = route('tournaments.show', $tournament);
@@ -45,6 +47,14 @@ final class WaitBuilder
     public function paused(bool $paused): self
     {
         $this->paused = $paused;
+
+        return $this;
+    }
+
+    /** In the tournament's night pause until then (NightPause): the deadlines stand, as in a pause. */
+    public function nightPauseUntil(?CarbonImmutable $resumesAt): self
+    {
+        $this->resumesAt = $resumesAt;
 
         return $this;
     }
@@ -110,11 +120,12 @@ final class WaitBuilder
             $action,
             $params,
             $needsAdmin,
-            $this->paused && $decidesAt !== null,
+            ($this->paused || $this->resumesAt !== null) && $decidesAt !== null,
             $remindable && $action !== null && $this->users !== [],
             $this->subject,
             $this->url,
             $timeAt,
+            $this->resumesAt,
         );
     }
 }

@@ -871,6 +871,7 @@ new #[Title('Match room')] #[Layout('layouts::app', ['section' => 'matches', 'sc
 
         {{-- The status sits in the versus' last row, the deadline right under it: one place (it was three: a chip in the header, a box above the lobby, the meta line). --}}
 
+        <x-tournament-night-pause :series="$m" />
         @if ($wait?->decidesAt !== null)
             <p class="m-0 flex flex-col gap-1 rounded-md bg-card px-4 py-3 text-[13px] leading-normal shadow-[inset_0_0_0_1px_#F7931A]" role="status" data-test="room-auto-decision">
                 <x-tournaments.auto-decision :wait="$wait" class="text-ink" />

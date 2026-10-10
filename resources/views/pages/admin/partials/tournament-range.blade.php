@@ -37,6 +37,13 @@
             'planned' => Estimator::format($range->planned, $rangeProfile), 'typical' => Estimator::format($range->typical, $rangeProfile), 'latest' => Estimator::format($range->latest, $rangeProfile),
         ]) }}</span>
         @foreach ($expected['warnings'] as $warning)
+            {{-- Past midnight with the night pause on (NightPause) is no fault: it says when play goes on instead of warning. --}}
+            @if ($warning === 'after-midnight' && $this->nightPauseApplies() && $this->nightPauseOn())
+                <span class="flex gap-2 text-xs leading-normal text-ink-2" role="status" data-test="duration-night-pause"><x-icon name="clock" :size="14" class="mt-0.5 shrink-0" />{{ __('The expected end is after :until: the night pause holds the tournament then, it goes on the next day at :resume (:zone).', [
+                    'until' => \App\Support\Tournaments\NightPause::untilLabel($this->nightPauseTimes()['until']), 'resume' => $this->nightPauseTimes()['resume'], 'zone' => (string) config('esports.preseason.display_timezone'),
+                ]) }}</span>
+                @continue
+            @endif
             <span class="flex gap-2 text-xs leading-normal text-loss" role="status" data-test="duration-warning-{{ $warning }}"><x-icon name="warn" :size="14" class="mt-0.5 shrink-0" />{{ $warning === 'after-midnight'
                 ? __('The expected end is after midnight (:zone).', ['zone' => (string) config('esports.preseason.display_timezone')])
                 : __('If every deadline runs out this takes more than 10 hours. Fewer players, shorter series or fewer rounds help.') }}</span>

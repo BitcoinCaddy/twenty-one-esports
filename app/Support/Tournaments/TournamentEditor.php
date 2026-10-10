@@ -74,8 +74,8 @@ final class TournamentEditor
      */
     public const CUP_EDITABLE = ['description', 'director_ids', ...self::DEADLINES];
 
-    /** The tournament's own deadlines (P18); null = the league default. */
-    public const DEADLINES = ['checkin_minutes', 'noshow_minutes', 'report_hours', 'response_minutes'];
+    /** The tournament's own deadlines (P18) and its night pause (NightPause); null = the league default. */
+    public const DEADLINES = ['checkin_minutes', 'noshow_minutes', 'report_hours', 'response_minutes', 'night_pause', 'night_pause_until', 'night_pause_resume'];
 
     /** The moderation log's note on a deadline edit while the tournament runs. */
     public const DEADLINES_AHEAD = 'Deadline changes apply to matches paired from now on; running matches keep theirs.';
@@ -86,7 +86,7 @@ final class TournamentEditor
     public function __construct(private TournamentPublisher $publisher, private TournamentModeration $moderation) {}
 
     /**
-     * @param  array{name?: string, description?: string|null, checkin_minutes?: int|null, noshow_minutes?: int|null, report_hours?: int|null, response_minutes?: int|null, starts_at?: CarbonImmutable, signup_closes_at?: CarbonImmutable, capacity?: int, results_mode?: TournamentResultsMode, director_ids?: list<int>, game?: string, mode?: string, format?: TournamentFormat, options?: array<string, mixed>, time_window?: int, on_site?: bool, stations?: int|null, times?: array<string, float>|null}  $changes
+     * @param  array{name?: string, description?: string|null, checkin_minutes?: int|null, noshow_minutes?: int|null, report_hours?: int|null, response_minutes?: int|null, night_pause?: bool|null, night_pause_until?: string|null, night_pause_resume?: string|null, starts_at?: CarbonImmutable, signup_closes_at?: CarbonImmutable, capacity?: int, results_mode?: TournamentResultsMode, director_ids?: list<int>, game?: string, mode?: string, format?: TournamentFormat, options?: array<string, mixed>, time_window?: int, on_site?: bool, stations?: int|null, times?: array<string, float>|null}  $changes
      * @return list<string> the fields that changed
      *
      * @throws TournamentRuleViolation
@@ -280,6 +280,22 @@ final class TournamentEditor
             if (isset($diff[$field]) && $value !== null && ($value < $min || $value > $max)) {
                 throw new TournamentRuleViolation('deadline_bounds', __('Keep each deadline within its range, or leave it empty for the league default.'));
             }
+        }
+
+        foreach (['night_pause_until', 'night_pause_resume'] as $field) {
+            $value = $changes[$field] ?? null;
+
+            if (isset($diff[$field]) && $value !== null && preg_match(NightPause::TIME_PATTERN, (string) $value) !== 1) {
+                throw new TournamentRuleViolation('night_pause', __('Give the night pause times as HH:MM, or leave them empty for the league default.'));
+            }
+        }
+
+        $defaults = NightPause::defaults();
+        $until = (array_key_exists('night_pause_until', $changes) ? $changes['night_pause_until'] : $tournament->night_pause_until) ?? $defaults['until'];
+        $resume = (array_key_exists('night_pause_resume', $changes) ? $changes['night_pause_resume'] : $tournament->night_pause_resume) ?? $defaults['resume'];
+
+        if ((isset($diff['night_pause_until']) || isset($diff['night_pause_resume'])) && $until === $resume) {
+            throw new TournamentRuleViolation('night_pause', __('The night pause needs different start and end times.'));
         }
 
         if (isset($diff['capacity']) && ((int) $changes['capacity'] < 2 || (int) $changes['capacity'] > 64)) {

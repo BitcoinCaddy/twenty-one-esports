@@ -63,3 +63,43 @@
     </div>
 </section>
 @endif
+
+@if ($this->nightPauseApplies())
+    @php
+        // The night pause (NightPause): the league's default as the placeholder, the organizer's switch and times win.
+        $nightDefaults = \App\Support\Tournaments\NightPause::defaults();
+        $nightOn = $this->nightPauseOn();
+        $nightTimes = $this->nightPauseTimes();
+    @endphp
+    <section aria-labelledby="night-pause-h" class="flex flex-col gap-3 rounded-lg bg-card p-4 lg:px-6 lg:py-5" data-test="tournament-night-pause">
+        <div class="flex items-start gap-4">
+            <span class="flex min-w-0 grow flex-col gap-1">
+                <h2 id="night-pause-h" class="m-0 text-[15px] font-bold">{{ __('Night pause') }}</h2>
+                <span class="max-w-[80ch] text-xs leading-normal text-ink-2">{{ __('From :until to :resume (Berlin) no new match starts and no deadline runs. A match under way may be played to its end; its deadlines stop and go on at :resume.', [
+                    'until' => \App\Support\Tournaments\NightPause::untilLabel($nightTimes['until']), 'resume' => $nightTimes['resume'],
+                ]) }}</span>
+                <span class="text-xs text-ink-3">{{ __('League default: :state, :until to :resume.', [
+                    'state' => $nightDefaults['enabled'] ? __('on') : __('off'), 'until' => \App\Support\Tournaments\NightPause::untilLabel($nightDefaults['until']), 'resume' => $nightDefaults['resume'],
+                ]) }}</span>
+            </span>
+            <span class="pt-1.5 text-xs whitespace-nowrap {{ $nightOn ? 'text-ink' : 'text-ink-3' }}" data-test="night-pause-state">{{ $nightOn ? __('on') : __('play through') }}</span>
+            <button type="button" role="switch" aria-checked="{{ $nightOn ? 'true' : 'false' }}" aria-label="{{ __('Night pause') }}" wire:click="toggleNightPause" data-test="night-pause-switch"
+                    @class(['relative h-8 w-[50px] shrink-0 cursor-pointer rounded-full transition-colors', 'bg-btc' => $nightOn, 'bg-ground shadow-[inset_0_0_0_1px_#63636A]' => ! $nightOn])>
+                <span @class(['absolute top-1 size-6 rounded-full transition-all', 'left-[22px] bg-ground' => $nightOn, 'left-1 bg-edge' => ! $nightOn])></span>
+            </button>
+        </div>
+        @if ($nightOn)
+            <div class="grid grid-cols-2 gap-3 sm:max-w-md lg:gap-4">
+                @foreach ([['nightPauseUntil', __('Pause from'), \App\Support\Tournaments\NightPause::untilLabel($nightDefaults['until'])], ['nightPauseResume', __('Go on at'), $nightDefaults['resume']]] as [$property, $label, $placeholder])
+                    <label class="flex min-w-0 flex-col gap-1.5 text-xs text-ink-2" wire:key="night-{{ $property }}">
+                        {{ $label }}
+                        <input type="text" inputmode="numeric" maxlength="5" autocomplete="off" wire:model.blur="{{ $property }}" placeholder="{{ $placeholder }}"
+                               data-test="night-pause-{{ $property === 'nightPauseUntil' ? 'until' : 'resume' }}" class="{{ $deadlineField }} tabular-nums">
+                        <span class="text-ink-3">{{ __('HH:MM, Berlin; empty: :default.', ['default' => $placeholder]) }}</span>
+                        @error($property)<span class="text-loss" role="alert">{{ $message }}</span>@enderror
+                    </label>
+                @endforeach
+            </div>
+        @endif
+    </section>
+@endif

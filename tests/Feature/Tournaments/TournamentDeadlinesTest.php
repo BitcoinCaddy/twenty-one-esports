@@ -272,7 +272,7 @@ test('a stale copy of an overdue series is moved to the queue once', function ()
 test("a tournament's own deadlines beat the config", function () {
     [, $series, $a] = deadlineDuel(['noshow_minutes' => 10, 'report_hours' => 1, 'response_minutes' => 5]);
 
-    expect($series->deadlines)->toBe(['noshow_minutes' => 10, 'report_hours' => 1, 'response_minutes' => 5])
+    expect($series->deadlines)->toBe(['noshow_minutes' => 10, 'report_hours' => 1, 'response_minutes' => 5, 'night_pause' => false])
         ->and($series->noshowMinutes())->toBe(10)
         ->and($series->reportDueAt()->equalTo($series->start_at->copy()->addHour()))->toBeTrue();
 
@@ -310,7 +310,7 @@ test('an edit after the start leaves running series untouched, reaches the next 
 
     expect($changed)->toEqualCanonicalizing(['response_minutes', 'report_hours'])
         ->and($tournament->refresh()->response_minutes)->toBe(5)
-        ->and($series->refresh()->deadlines)->toBe(['noshow_minutes' => 15, 'report_hours' => 2, 'response_minutes' => 30])
+        ->and($series->refresh()->deadlines)->toBe(['noshow_minutes' => 15, 'report_hours' => 2, 'response_minutes' => 30, 'night_pause' => false])
         ->and($entry->action)->toBe('edited')
         ->and($entry->reason)->toBe(TournamentEditor::DEADLINES_AHEAD)
         ->and($entry->details)->toBe(['response_minutes' => [null, 5], 'report_hours' => [null, 1]]);
@@ -324,7 +324,7 @@ test('an edit after the start leaves running series untouched, reaches the next 
     app(SeriesService::class)->decide($series, deadlineAdmin(), ['type' => 'void'], 'The lobby crashed.');
     $replay = SeriesMatch::query()->where('tournament_match_id', $series->tournament_match_id)->where('id', '!=', $series->id)->sole();
 
-    expect($replay->deadlines)->toBe(['noshow_minutes' => 15, 'report_hours' => 1, 'response_minutes' => 5]);
+    expect($replay->deadlines)->toBe(['noshow_minutes' => 15, 'report_hours' => 1, 'response_minutes' => 5, 'night_pause' => false]);
 });
 
 test('deadlines outside their range are refused', function () {

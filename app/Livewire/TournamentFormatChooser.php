@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
+use App\Models\Tournament;
 use App\Models\User;
 use App\Support\LeagueTime;
 use App\Support\Tournaments\DurationRange;
@@ -11,6 +12,7 @@ use App\Support\Tournaments\Estimator;
 use App\Support\Tournaments\Evaluation;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
+use App\Support\Tournaments\NightPause;
 use App\Support\Tournaments\TournamentDeadlines;
 use App\Support\Tournaments\TournamentGames;
 use Carbon\CarbonImmutable;
@@ -80,6 +82,16 @@ abstract class TournamentFormatChooser extends Component
 
     public string $responseMinutes = '';
 
+    /**
+     * The night pause (NightPause): null = the league's switch, else the
+     * organizer's; its times as typed, '' = the league's ("24:00" = midnight).
+     */
+    public ?bool $nightPause = null;
+
+    public string $nightPauseUntil = '';
+
+    public string $nightPauseResume = '';
+
     /** Form property => tournament column of each deadline. */
     public const DEADLINE_FIELDS = [
         'checkinMinutes' => 'checkin_minutes',
@@ -139,7 +151,7 @@ abstract class TournamentFormatChooser extends Component
             return null;
         }
 
-        $typed = array_filter($this->chosenDeadlines(), fn (?int $value, string $column): bool => $value !== null
+        $typed = array_filter($this->chosenDeadlines(), fn (mixed $value, string $column): bool => is_int($value) && isset(TournamentDeadlines::BOUNDS[$column])
             && $value >= TournamentDeadlines::BOUNDS[$column][0] && $value <= TournamentDeadlines::BOUNDS[$column][1], ARRAY_FILTER_USE_BOTH);
 
         return (new Estimator)->range($this->format, $row->structure, $this->profile(), $this->evaluation->options, $this->stationLimit(),
@@ -463,7 +475,8 @@ abstract class TournamentFormatChooser extends Component
     }
 
     /**
-     * The rules of the deadline fields: empty, or a whole number in range.
+     * The rules of the deadline fields: empty, or a whole number in range;
+     * the night pause times empty or "HH:MM" ("24:00" for midnight), not equal.
      *
      * @return array<string, list<string>>
      */
@@ -476,23 +489,84 @@ abstract class TournamentFormatChooser extends Component
             $rules[$property] = ['nullable', 'integer', "between:{$min},{$max}"];
         }
 
+        $time = 'regex:/^(([01]\\d|2[0-3]):[0-5]\\d|24:00)$/';
+        $rules['nightPauseUntil'] = ['nullable', $time];
+        $rules['nightPauseResume'] = ['nullable', $time];
+
+        if ($this->nightPauseTimes()['until'] === $this->nightPauseTimes()['resume']) {
+            $rules['nightPauseResume'][] = 'different:nightPauseUntil';
+        }
+
         return $rules;
+    }
+
+    /** Whether the night pause is on as chosen (the league's switch until the organizer flips it). */
+    public function nightPauseOn(): bool
+    {
+        return $this->nightPause ?? NightPause::defaults()['enabled'];
+    }
+
+    public function toggleNightPause(): void
+    {
+        $this->nightPause = ! $this->nightPauseOn();
+    }
+
+    /**
+     * Whether the night pause can apply to the tournament as chosen
+     * (NightPause::applies()): online, a minute game, players mode, not a
+     * score leaderboard; never a casual cup.
+     */
+    public function nightPauseApplies(): bool
+    {
+        $profile = $this->profile();
+        $tournament = property_exists($this, 'tournament') ? $this->tournament : null;
+
+        return $this->stationLimit() === null && ! $profile->isDaily() && ! $profile->isScore() && $this->resultsMode === 'players'
+            && ! ($tournament instanceof Tournament && $tournament->isCasualCup());
+    }
+
+    /**
+     * The night pause times as they apply, typed or the league's ("24:00" typed = "00:00").
+     *
+     * @return array{until: string, resume: string}
+     */
+    public function nightPauseTimes(): array
+    {
+        $defaults = NightPause::defaults();
+        $typed = fn (string $value): ?string => ($value = trim($value)) === '' ? null : ($value === '24:00' ? '00:00' : $value);
+
+        return ['until' => $typed($this->nightPauseUntil) ?? $defaults['until'], 'resume' => $typed($this->nightPauseResume) ?? $defaults['resume']];
+    }
+
+    /** The edit page fills the night pause from the stored tournament. */
+    protected function fillNightPause(Tournament $tournament): void
+    {
+        $this->nightPause = $tournament->night_pause;
+        $this->nightPauseUntil = $tournament->night_pause_until === null ? '' : NightPause::untilLabel($tournament->night_pause_until);
+        $this->nightPauseResume = $tournament->night_pause_resume ?? '';
     }
 
     /**
      * The deadlines to store, by column; null = the league default.
      *
-     * @return array{checkin_minutes: int|null, noshow_minutes: int|null, report_hours: int|null, response_minutes: int|null}
+     * The night pause: null where it equals the league default, so a
+     * tournament keeps following the league.
+     *
+     * @return array{checkin_minutes: int|null, noshow_minutes: int|null, report_hours: int|null, response_minutes: int|null, night_pause: bool|null, night_pause_until: string|null, night_pause_resume: string|null}
      */
     protected function chosenDeadlines(): array
     {
         $value = fn (string $typed): ?int => trim($typed) === '' ? null : (int) $typed;
+        $time = fn (string $typed): ?string => ($typed = trim($typed)) === '' ? null : ($typed === '24:00' ? '00:00' : $typed);
 
         return [
             'checkin_minutes' => $value($this->checkinMinutes),
             'noshow_minutes' => $value($this->noshowMinutes),
             'report_hours' => $value($this->reportHours),
             'response_minutes' => $value($this->responseMinutes),
+            'night_pause' => $this->nightPause === null || $this->nightPause === NightPause::defaults()['enabled'] ? null : $this->nightPause,
+            'night_pause_until' => $time($this->nightPauseUntil),
+            'night_pause_resume' => $time($this->nightPauseResume),
         ];
     }
 

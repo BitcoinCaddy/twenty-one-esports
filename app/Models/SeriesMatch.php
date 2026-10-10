@@ -9,6 +9,7 @@ use App\Games\GameMode;
 use App\Games\GameRegistry;
 use App\Support\Navigation\ShellNavigation;
 use App\Support\Settings\LeagueSettings;
+use App\Support\Tournaments\NightPause;
 use Carbon\CarbonInterface;
 use Database\Factories\SeriesMatchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -79,7 +80,7 @@ use Illuminate\Support\Facades\DB;
  * @property int|null $tournament_match_id the tournament match this series plays (P8b)
  * @property int $tournament_attempt 1, or the replay number after an admin voided the series before (P18)
  * @property array{challenger?: list<int>, challenged?: list<int>}|null $sides a roster side's players (mix team, RL 1v1 player): no lineup
- * @property array{noshow_minutes: int, report_hours?: int, report_minutes?: int, response_minutes: int, checkin_minutes?: int, pauses?: list<array{0: int, 1: int}>}|null $deadlines a players-mode tournament's deadlines, pinned at the pairing (P18; `report_minutes` on the round clock; `pauses`: the tournament's pauses while the series ran, unix seconds from and to, {@see pausedAfter()}); null = none run by the league
+ * @property array{noshow_minutes: int, report_hours?: int, report_minutes?: int, response_minutes: int, checkin_minutes?: int, pauses?: list<array{0: int, 1: int}>, night_pause?: array{until: string, resume: string}|false}|null $deadlines a players-mode tournament's deadlines, pinned at the pairing (P18; `report_minutes` on the round clock; `pauses`: the tournament's pauses while the series ran, unix seconds from and to, {@see pausedAfter()}; `night_pause`: the tournament's night pause window, false for none, {@see self::nightPause()}); null = none run by the league
  * @property Carbon|null $overdue_at when the league moved it to the admin queue: nobody reported by the report deadline (P18)
  * @property string|null $origin a casual 1v1 without a clan (P23): `queue` or `invite`; null for every other series
  * @property string|null $host_side the side that opens the game lobby (casual 1v1), drawn at the pairing
@@ -390,7 +391,7 @@ class SeriesMatch extends Model
     /** From when a side may report a no-show: `noshow_minutes` after the start, pauses not counted; null before a start. */
     public function noshowReportableAt(): ?CarbonInterface
     {
-        return $this->start_at?->copy()->addMinutes($this->noshowMinutes())->addSeconds($this->pausedAfter($this->start_at));
+        return $this->start_at === null ? null : $this->runClock($this->start_at, $this->noshowMinutes() * 60);
     }
 
     /** A tournament series' lobby check-in: a side still not in then while the other is counts as a no-show (SeriesService::autoNoShow()). */
@@ -399,7 +400,19 @@ class SeriesMatch extends Model
         // Pinned at the pairing (TournamentDeadlines::forSeries()): a series without it has no check-in rule.
         $minutes = $this->tournament_match_id === null ? null : ($this->deadlines['checkin_minutes'] ?? null);
 
-        return $minutes === null ? null : $this->start_at?->copy()->addMinutes((int) $minutes)->addSeconds($this->pausedAfter($this->start_at));
+        return $minutes === null || $this->start_at === null ? null : $this->runClock($this->start_at, (int) $minutes * 60);
+    }
+
+    /**
+     * Nobody checked in by the check-in time plus the response time: the
+     * double no-show (TournamentRunner::decideNobodyCheckedIn()). The response
+     * time runs on the same clock, so a night pause in between does not count.
+     */
+    public function doubleNoshowAt(): ?CarbonInterface
+    {
+        $at = $this->autoNoshowAt();
+
+        return $at === null ? null : NightPause::addSeconds($this->nightPause(), $at, (int) $this->responseMinutes() * 60);
     }
 
     /** When a series nobody reported joins the admin queue; null without league deadlines. Round clock: minutes after the start. */
@@ -409,18 +422,18 @@ class SeriesMatch extends Model
             return null;
         }
 
-        $due = isset($this->deadlines['report_minutes'])
-            ? $this->start_at->copy()->addMinutes((int) $this->deadlines['report_minutes'])
-            : $this->start_at->copy()->addHours((int) ($this->deadlines['report_hours'] ?? config('esports.tournaments.report_hours', 2)));
+        $minutes = isset($this->deadlines['report_minutes'])
+            ? (int) $this->deadlines['report_minutes']
+            : (int) ($this->deadlines['report_hours'] ?? config('esports.tournaments.report_hours', 2)) * 60;
 
-        return $due->addSeconds($this->pausedAfter($this->start_at));
+        return $this->runClock($this->start_at, $minutes * 60);
     }
 
     /** When a reported no-show the other side did not answer becomes a forfeit; null without one. */
     public function noshowForfeitAt(): ?CarbonInterface
     {
         return $this->deadlines === null || $this->noshow_reported_at === null ? null
-            : $this->noshow_reported_at->copy()->addMinutes((int) $this->responseMinutes())->addSeconds($this->pausedAfter($this->noshow_reported_at));
+            : $this->runClock($this->noshow_reported_at, (int) $this->responseMinutes() * 60);
     }
 
     /**
@@ -439,6 +452,42 @@ class SeriesMatch extends Model
         return $seconds;
     }
 
+    /**
+     * `$seconds` of league clock from `$since`: the night pause does not
+     * count (NightPause, the window pinned at the pairing), nor does an
+     * organizer's pause after `$since` ({@see pausedAfter()}).
+     */
+    public function runClock(CarbonInterface $since, int $seconds): CarbonInterface
+    {
+        return NightPause::addSeconds($this->nightPause(), $since, $seconds)->addSeconds($this->pausedAfter($since));
+    }
+
+    /**
+     * The night pause window this series runs under, pinned at the pairing.
+     * A series paired before the night pause existed has none pinned and
+     * follows its tournament's current setting.
+     *
+     * @return array{until: string, resume: string}|null
+     */
+    public function nightPause(): ?array
+    {
+        $deadlines = (array) $this->deadlines;
+
+        if (array_key_exists('night_pause', $deadlines)) {
+            $window = $deadlines['night_pause'];
+
+            return is_array($window) ? NightPause::window($window['until'], $window['resume']) : null;
+        }
+
+        if ($this->deadlines === null || $this->tournament_match_id === null) {
+            return null;
+        }
+
+        $tournament = Tournament::query()->whereKey(TournamentMatch::query()->whereKey($this->tournament_match_id)->select('tournament_id'))->first();
+
+        return $tournament === null ? null : NightPause::windowOf($tournament);
+    }
+
     /** When the open report is confirmed by the league; null without one. */
     public function responseDueAt(): ?CarbonInterface
     {
@@ -446,7 +495,7 @@ class SeriesMatch extends Model
 
         return $this->deadlines === null || $this->status !== SeriesStatus::Reported || $report === null || $report->status !== ReportStatus::Open || $report->created_at === null
             ? null
-            : $report->created_at->copy()->addMinutes((int) $this->responseMinutes())->addSeconds($this->pausedAfter($report->created_at));
+            : $this->runClock($report->created_at, (int) $this->responseMinutes() * 60);
     }
 
     /**

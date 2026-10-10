@@ -141,6 +141,8 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         foreach (self::DEADLINE_FIELDS as $property => $column) {
             $this->{$property} = $tournament->{$column} === null ? '' : (string) $tournament->{$column};
         }
+
+        $this->fillNightPause($tournament);
     }
 
     /**
@@ -445,6 +447,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         'stations' => __('Stations'), 'times' => __('Planning times'), 'ladder' => __('Ladder'),
         'checkin_minutes' => __('Chess and board games: first move within (minutes)'), 'noshow_minutes' => __('Series: no-show report after (minutes)'),
         'report_hours' => __('Series: result due (hours after the start)'), 'response_minutes' => __('Series: answer within (minutes)'),
+        'night_pause' => __('Night pause'), 'night_pause_until' => __('Night pause from'), 'night_pause_resume' => __('Night pause until'),
         'result' => __('Result'), 'elo' => __('Elo'), 'voided' => __('Voided and paired again'), 'held' => __('On hold'), 'forfeited' => __('Lost by forfeit'),
         'pot_sats' => __('Sats in the league wallet'),
     ];
