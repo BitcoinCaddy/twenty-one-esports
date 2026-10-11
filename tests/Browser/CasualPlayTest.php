@@ -213,23 +213,23 @@ test('two players find an opponent on the Rocket League page, both get the ready
 
         $steps = $wide->evaluate('() => ({
             path: location.pathname,
-            current: document.querySelector("[data-test=casual-timeline] [aria-current=step]")?.dataset.test,
-            done: [...document.querySelectorAll("[data-test=casual-timeline] li")].map((li) => li.dataset.done),
+            current: document.querySelector("[data-test=casual-steps]")?.dataset.current,
+            done: [...document.querySelectorAll("[data-test=room-stepper] li")].map((li) => li.dataset.state === "done" ? "1" : "0"),
             kind: document.querySelector("[data-test=casual-deadline]")?.dataset.kind ?? document.body.innerText.slice(0, 600),
         })');
         $roomGeometry = [casualPlayGeometry($wide, '[data-test=casual-steps]'), casualPlayGeometry($narrow, '[data-test=casual-steps]')];
-        // Every visible label of the timeline fits its stop (the rail between the stops overhangs on purpose).
-        $timeline = $narrow->evaluate('() => [...document.querySelectorAll("[data-test=casual-timeline] li")].map((li) => [...li.children].filter((el) => el.checkVisibility() && getComputedStyle(el).position !== "absolute").every((el) => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height <= 20))');
-        $current = $narrow->evaluate('() => document.querySelector("[data-test=casual-current-step]")?.innerText');
+        // Every visible step label of the stepper fits its tab (P5: four steps, one line each).
+        $timeline = $wide->evaluate('() => [...document.querySelectorAll("[data-test=room-stepper] li")].map((li) => li.scrollWidth <= li.clientWidth + 1 && li.getBoundingClientRect().height <= 51)');
+        $current = $narrow->evaluate('() => document.querySelector("[data-test=room-step-line]")?.innerText');
         casualPlayShot($wide, 'casual-room-1440');
         casualPlayShot($narrow, 'casual-room-375');
         casualPlayShot($narrow, 'casual-room-steps-375', '[data-test=casual-steps]');
 
-        expect($steps)->toBe(['path' => $room, 'current' => 'casual-step-lobby', 'done' => ['1', '0', '0', '0', '0'], 'kind' => 'lobby'])
+        expect($steps)->toBe(['path' => $room, 'current' => 'lobby', 'done' => ['1', '0', '0', '0'], 'kind' => 'lobby'])
             ->and($roomGeometry[0])->toMatchArray(['overflow' => 0, 'inWindow' => true, 'small' => [], 'outside' => [], 'clipped' => []])
             ->and($roomGeometry[1])->toMatchArray(['overflow' => 0, 'inWindow' => true, 'small' => [], 'outside' => [], 'clipped' => []])
-            ->and($timeline)->toBe([true, true, true, true, true])
-            ->and($current)->toBe('Step 2 of 5: Lobby shared')
+            ->and($timeline)->toBe([true, true, true, true])
+            ->and($current)->toBe('Step 2 of 4: Lobby')
             // No sticky score bar on the phone before both are in: the steps carry the one action.
             ->and($narrow->evaluate('() => document.querySelector("[data-page-bar]")'))->toBeNull()
             ->and($match->refresh()->start_at)->not->toBeNull();
@@ -366,7 +366,7 @@ test('a scheduled 1v1 in its check-in window: step 1 "Checked in", the check-in 
 
         $narrow = casualPlayGeometry($page, '[data-test=casual-steps]');
         $state = $page->evaluate('() => ({
-            step: document.querySelector("[data-test=casual-current-step]").innerText,
+            step: document.querySelector("[data-test=room-step-line]").innerText,
             kind: document.querySelector("[data-test=casual-deadline]").dataset.kind,
             button: Math.round(document.querySelector("[data-test=casual-checkin]").getBoundingClientRect().height),
         })');
@@ -378,7 +378,7 @@ test('a scheduled 1v1 in its check-in window: step 1 "Checked in", the check-in 
         $page->locator('[data-test=casual-checkin]')->click();
         BrowserWait::until($page, '() => document.querySelector("[data-test=casual-checkin]") === null && document.querySelector("[data-test=casual-steps]").innerText.includes("1 of 2 checked in")', 10_000);
 
-        expect($state)->toBe(['step' => 'Step 1 of 5: Checked in', 'kind' => 'checkin', 'button' => 56])
+        expect($state)->toBe(['step' => 'Step 1 of 4: Present', 'kind' => 'checkin', 'button' => 56])
             ->and($narrow)->toMatchArray(['overflow' => 0, 'inWindow' => true, 'small' => [], 'outside' => [], 'clipped' => []])
             ->and($wide)->toMatchArray(['overflow' => 0, 'inWindow' => true, 'small' => [], 'outside' => [], 'clipped' => []])
             ->and($match->refresh()->readyAt(casualSideOf($match, $anna)))->not->toBeNull()

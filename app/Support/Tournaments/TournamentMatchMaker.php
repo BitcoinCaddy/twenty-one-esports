@@ -627,8 +627,10 @@ final class TournamentMatchMaker
         $night = NightPause::pin($tournament);
         $now = now();
 
+        $number = MatchNumber::query()->create(['user_id' => $numberOwner, 'used_at' => $now])->id;
+
         $series = SeriesMatch::query()->create([
-            'number' => MatchNumber::query()->create(['user_id' => $numberOwner, 'used_at' => $now])->id,
+            'number' => $number,
             'game' => $tournament->game,
             'mode' => $tournament->mode,
             'best_of' => $this->bestOf($tournament, $match, $mode === null ? [1, 3] : $mode->bestOf),
@@ -654,6 +656,8 @@ final class TournamentMatchMaker
             'sides' => ['challenger' => $a->memberIds(), 'challenged' => $b->memberIds()],
             'tournament_match_id' => $match->id,
             'tournament_attempt' => 1,
+            // The league's lobby, the higher seed hosting it (P5, user 2026-10-10); a game without one keeps the drawn host.
+            ...LeagueLobby::forSeries($tournament->game, $number, $a, $b),
         ]);
 
         app(CasualMatches::class)->announce($series);
@@ -693,8 +697,10 @@ final class TournamentMatchMaker
             }
         }
 
+        $number = MatchNumber::query()->create(['user_id' => $numberOwner, 'used_at' => $now])->id;
+
         $series = SeriesMatch::query()->create([
-            'number' => MatchNumber::query()->create(['user_id' => $numberOwner, 'used_at' => $now])->id,
+            'number' => $number,
             'game' => $tournament->game,
             'mode' => $tournament->mode,
             'best_of' => $bestOf,
@@ -725,6 +731,8 @@ final class TournamentMatchMaker
             'sides' => $sides === [] ? null : $sides,
             // The league runs the deadlines where the players report; pinned now, so a later edit reaches only later pairings (P18).
             'deadlines' => $tournament->isDirectorMode() ? null : TournamentDeadlines::forSeries($tournament, $bestOf),
+            // The league's lobby for every tournament match (P5, user 2026-10-10), so the directors can always watch.
+            ...LeagueLobby::forSeries($tournament->game, $number, $a, $b),
         ]);
 
         if ($league !== null && $pin !== null) {

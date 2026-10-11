@@ -60,6 +60,51 @@ export function isChannelMessage(event, channel) {
     return event?.kind === KIND_MESSAGE && typeof event.content === 'string' && event.content.trim() !== '' && inChannel(event, channel);
 }
 
+/**
+ * A file another client posted into the channel as its message (seen 2026-10-10 in the Proof of Pong channel,
+ * event 8acc0f9d…): `{"__w":3,"type":"room-file","file":{"url","sha256","key","iv","mime","name","size"}}`. It is
+ * drawn as an attachment, never as its raw JSON. Only a plain https file counts: one with a `key` or an `iv` is
+ * encrypted for its room and unreadable here, so it is left out (`hidden`), as is anything malformed.
+ *
+ * @returns {{url: string, name: string, mime: string, size: number|null, kind: 'image'|'video'|'audio'|'file'} | 'hidden' | null}
+ *          the attachment, `'hidden'` for a file message that is not shown, null for ordinary text
+ */
+export function parseRoomFile(content) {
+    const text = typeof content === 'string' ? content.trim() : '';
+    if (!text.startsWith('{') || !text.includes('room-file')) return null;
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch {
+        return null;
+    }
+    if (data?.type !== 'room-file') return null;
+    const file = data.file;
+    if (typeof file !== 'object' || file === null || (file.key ?? '') !== '' || (file.iv ?? '') !== '') return 'hidden';
+    let url;
+    try {
+        url = new URL(String(file.url ?? ''));
+    } catch {
+        return 'hidden';
+    }
+    if (url.protocol !== 'https:') return 'hidden';
+    const mime = typeof file.mime === 'string' && /^[a-z]+\/[\w.+-]+$/i.test(file.mime) ? file.mime.toLowerCase() : '';
+    const major = mime.split('/')[0];
+    const name = typeof file.name === 'string' && file.name.trim() !== '' && !CONTROL.test(file.name) ? file.name.trim().slice(0, 80) : url.pathname.split('/').pop().slice(0, 24);
+    const size = Number.isFinite(file.size) && file.size >= 0 ? Math.floor(file.size) : null;
+
+    return { url: url.href, name, mime, size, kind: ['image', 'video', 'audio'].includes(major) ? major : 'file' };
+}
+
+/** "344 KB": a file size in the largest whole unit, one decimal from MB on. */
+export function fileSize(bytes) {
+    if (!Number.isFinite(bytes)) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 /** The kind-42 template: the channel as root (NIP-28), then the emoji tags the text needs. No `t` tags. */
 export function messageTemplate(content, { channel, relayHint = '', custom = [], now = Date.now() }) {
     const text = String(content).trim();

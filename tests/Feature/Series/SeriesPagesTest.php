@@ -60,10 +60,11 @@ test('a running series pins the captain\'s lobby above the score with copy butto
     $html = Livewire::actingAs($other)->test('pages::matches.room', ['match' => $match])->html();
 
     expect($html)->toContain('data-test="room-lobby-pin"')->toContain('data-test="room-lobby-copy-name"')->toContain('data-test="room-lobby-copy-password"')
-        // Under the versus, first thing after who-vs-who (user, 2026-10-04), and again in the lobby section beside the chat.
+        // Under the versus, first thing after who-vs-who (user, 2026-10-04); the password in plain text, never hidden (user, 2026-10-10).
+        ->and($html)->toContain('data-test="room-lobby-password">pw-pinned-room<')->not->toContain('••••')
         ->and(strpos($html, 'data-test="room-lobby-pin"'))->toBeGreaterThan(strpos($html, 'data-test="series-score"'))
-        ->and($html)->toContain('data-test="lobby-name"')
-        ->and(strpos($html, 'data-test="lobby-name"'))->toBeGreaterThan(strpos($html, 'data-test="series-score"'));
+        ->and($html)->toContain('data-test="room-lobby-name"')
+        ->and(strpos($html, 'data-test="room-lobby-name"'))->toBeGreaterThan(strpos($html, 'data-test="series-score"'));
 
     $done = seriesIn('confirmed');
     expect(Livewire::actingAs(seriesCaptain($done))->test('pages::matches.room', ['match' => $done])->html())->not->toContain('data-test="room-lobby-pin"');
@@ -140,7 +141,7 @@ test('the room tick answers without a render until something changed, and loads 
     $this->travel(3)->minutes();
     $room->call('sync')->assertOk();
     expect($room->effects)->toHaveKey('html')
-        ->and($room->html())->toContain(__('Score to submit'));
+        ->and($room->html())->toContain(__('Match running'));
 
     $room->call('sync')->assertOk();
     expect($room->effects)->not->toHaveKey('html');

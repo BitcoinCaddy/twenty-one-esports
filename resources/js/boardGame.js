@@ -259,7 +259,8 @@ registerAlpine(() => {
             if (shown(sheet) && fixed(sheet)) edge = Math.min(edge, sheet.getBoundingClientRect().top);
             if (shown(dock) && fixed(dock)) edge = Math.min(edge, dock.getBoundingClientRect().top);
             const drawn = board.getBoundingClientRect();
-            const under = Math.max(drawn.bottom, ...[...column.children].filter((el) => shown(el) && !fixed(el)).map((el) => el.getBoundingClientRect().bottom)) - drawn.bottom;
+            // On a phone the game's actions under the board (abort, draw, resign) may follow below the first screen: the board keeps its size.
+            const under = Math.max(drawn.bottom, ...[...column.children].filter((el) => shown(el) && !fixed(el) && !(phone && el.hasAttribute('data-fit-skip'))).map((el) => el.getBoundingClientRect().bottom)) - drawn.bottom;
             // The first screen: the board's place on the page, whatever was scrolled.
             const room = edge - (drawn.top + scrollY) - under - (phone ? 8 : 16);
             const width = Math.round(room * (drawn.width / drawn.height));

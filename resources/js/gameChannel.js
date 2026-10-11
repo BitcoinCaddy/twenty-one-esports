@@ -28,7 +28,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { npubEncode } from 'nostr-tools/nip19';
-import { KIND_HIDE, KIND_MESSAGE, KIND_MUTE, KIND_POLL, KIND_VOTE, addVote, isChannelMessage, isClosed, messageTemplate, moderation, parsePoll, parseVote, pollBlocker, pollTemplate, tally, timeLeft, voteTemplate } from './channelChat.js';
+import { KIND_HIDE, KIND_MESSAGE, KIND_MUTE, KIND_POLL, KIND_VOTE, addVote, fileSize, isChannelMessage, isClosed, messageTemplate, moderation, parsePoll, parseRoomFile, parseVote, pollBlocker, pollTemplate, tally, timeLeft, voteTemplate } from './channelChat.js';
 import { knownCustomEmojis, loadUserCustomEmojis, pushRecentEmoji } from './emoji.js';
 import { emojiPicker, emojiPopover } from './emojiPicker.js';
 import { ensureSigner } from './nostrSign.js';
@@ -270,7 +270,10 @@ export function gameChannel(config) {
             }
 
             if (!isChannelMessage(event, config.channel)) return;
-            this.show({ type: 'message', id: event.id, pubkey: event.pubkey, created_at: event.created_at, tokens: tokenize(event.content, event.tags) });
+            // A file another client posted (`room-file` JSON): an attachment, never its raw JSON; an unreadable one not at all.
+            const file = parseRoomFile(event.content);
+            if (file === 'hidden') return;
+            this.show({ type: 'message', id: event.id, pubkey: event.pubkey, created_at: event.created_at, tokens: file ? [] : tokenize(event.content, event.tags), file: file ? { ...file, sizeLabel: fileSize(file.size) } : null });
         },
 
         /**

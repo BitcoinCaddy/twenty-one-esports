@@ -59,7 +59,7 @@ const BLOCKLI_FOLD = <<<'JS'
     return {
         tabbar: parseFloat(getComputedStyle(document.body).paddingBottom) || 0, height: innerHeight, width: innerWidth, sheet: sheet ? sheet.top : innerHeight,
         board: box('[data-test=board]'), chatPanel: box('[data-test=chat-panel]'), chatInput: box('#chatin'), moves: box('[data-test=moves]'), side: Math.round(Math.max(...[...document.querySelector('[data-test=board-game] .grid > div:nth-child(2)').children].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().bottom))), dock: box('[data-test=block-input]'), modeMove: box('[data-test=mode-move]'), modeBlock: box('[data-test=mode-block]'),
-        rotate: box('[data-test=rotate-block]'), confirm: box('[data-test=set-block]'), top: box('[data-test=player-top]'), bottomCard: box('[data-test=player-bottom]'),
+        rotate: box('[data-test=rotate-block]'), confirm: box('[data-test=set-block]'), top: box('[data-test=player-top]') ?? box('[data-test=side-card-top]'), bottomCard: box('[data-test=player-bottom]') ?? box('[data-test=side-card-bottom]'),
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         // The narrowest field on the drawn board: the step between two neighbouring squares' points (a1, b1, ...).
         field: (() => { const g = Alpine.$data(document.querySelector('[data-test=board-game]')); const xs = [...new Set(g.layout.points.filter((p) => /^[a-z]\d+$/.test(p.id)).map((p) => p.x))].sort((a, b) => a - b); const s = document.querySelector('[data-test=board]').getBoundingClientRect().width / g.layout.width; return Math.round(Math.min(...xs.slice(1).map((x, i) => x - xs[i])) * s); })(), main: box('main'), header: box('header'), title: box('[data-test=board-game] > div:first-child'), status: box('[data-test=status-line]'), conn: box('[data-test=connection]'), hint: box('[data-test=block-hint]'), lobby: box('[data-test=board-lobby-link]'),
@@ -213,7 +213,8 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
         // below that it stands under both columns, 400 px tall.
         ->and($m['side'])->toBeLessThanOrEqual($m['bottomCard']['bottom'] + 1, 'side column ends with the board')
         ->and($width >= 1400 ? $m['chatPanel']['bottom'] : $m['chatPanel']['top'])->toBe($width >= 1400 ? $m['bottomCard']['bottom'] : $m['chatPanel']['top'])
-        ->and($width >= 1400 ? $m['chatPanel']['top'] < $m['board']['top'] : $m['chatPanel']['top'] > $m['bottomCard']['bottom'])->toBeTrue('chat beside the board from 1400, under it below')
+        // P5 (T2): the board now heads its column, level with the chat; the player cards moved to the middle column.
+        ->and($width >= 1400 ? $m['chatPanel']['top'] <= $m['board']['top'] : $m['chatPanel']['top'] > $m['bottomCard']['bottom'])->toBeTrue('chat beside the board from 1400, under it below')
         ->and($m['chatPanel']['h'])->toBeGreaterThanOrEqual(400, 'the chat keeps room for messages')
         ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($height, 'Confirm inside the first screen')
         ->and($m['modeBlock']['bottom'])->toBeLessThanOrEqual($height)

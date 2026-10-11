@@ -418,7 +418,7 @@ test('a scheduled match: step 1 is "Checked in", the clock counts to the opening
     [$match, $anna, $bert] = casualPlayScheduled(before: 30);
 
     Livewire::actingAs($anna)->test('pages::matches.room', ['match' => $match])
-        ->assertSee('Checked in')->assertSee('0 of 2 checked in')
+        ->assertSee('Present')->assertSee('0 of 2 checked in')
         ->assertSee('data-kind="checkin"', false)
         ->assertSee('The check-in opens at')
         ->assertSee('casualClock('.$match->checkInOpensAt()->getTimestamp().', '.now()->getTimestampMs().')', false)
@@ -437,7 +437,7 @@ test('a scheduled match: step 1 is "Checked in", the clock counts to the opening
 
     Livewire::actingAs($bert)->test('pages::matches.room', ['match' => $match])->call('casualCheckIn')
         ->assertSee('data-kind="lobby"', false)
-        ->assertSee('data-test="casual-step-ready" data-done="1"', false);
+        ->assertSee('data-test="room-step-present" data-state="done"', false);
 });
 
 test('the dock counts a scheduled match down to its check-in, then asks the player to check in now until they are in', function () {

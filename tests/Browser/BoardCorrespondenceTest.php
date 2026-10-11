@@ -155,11 +155,11 @@ test('a correspondence game of nine men\'s morris and of checkers starts from a 
         $deadline = (string) $challenged->evaluate('() => document.querySelector("[data-test=deadline]").innerText');
         $status = (string) $challenged->evaluate('() => document.querySelector("[data-test=status-line]").innerText');
 
-        // Both player bars at their 48 px: the clock on one line, the name and colour not cut short.
-        $bars = $challenged->evaluate('() => ["top", "bottom"].map((side) => { const bar = document.querySelector("[data-test=player-" + side + "]"); const label = bar.querySelector("span"); const clock = bar.querySelector("[role=timer]"); return { bar: Math.round(bar.getBoundingClientRect().height), lines: Math.round(clock.getBoundingClientRect().height / parseFloat(getComputedStyle(clock).lineHeight)), cut: label.scrollWidth > label.clientWidth }; })');
+        // Both player bars (phone: above the board, 48 px; desktop: the middle column cards, P5 T2): the clock on one line, the name and colour not cut short.
+        $bars = $challenged->evaluate('() => ["top", "bottom"].map((side) => { const phone = document.querySelector("[data-test=player-" + side + "]"); const bar = phone.checkVisibility() ? phone : document.querySelector("[data-test=side-card-" + side + "]"); const label = bar.querySelector("b") ?? bar.querySelector("span"); const clock = bar.querySelector("[role=timer]"); const h = Math.round(bar.getBoundingClientRect().height); return { bar: h >= 44 && h <= 48, lines: Math.round(clock.getBoundingClientRect().height / parseFloat(getComputedStyle(clock).lineHeight)), cut: label.scrollWidth > label.clientWidth }; })');
         $measured["{$slug}-bars"] = $bars;
 
-        expect($bars)->toBe([['bar' => 48, 'lines' => 1, 'cut' => false], ['bar' => 48, 'lines' => 1, 'cut' => false]])
+        expect($bars)->toBe([['bar' => true, 'lines' => 1, 'cut' => false], ['bar' => true, 'lines' => 1, 'cut' => false]])
             ->and($clock)->toMatch('/^2[34] h \d\d$/')
             ->and($deadline)->not->toBe('')
             ->and($status)->toContain($locale === 'de' ? 'Fernpartie' : 'Correspondence');

@@ -62,7 +62,7 @@ test('a lobby card sent before the check-in: the chat knows the flow does not ru
     expect($hostRoom->html())->toContain('data-test="lobby-pin"')->toContain('data-test="lobby-pin-confirm"')->toContain('Still valid')
         ->toContain('data-test="lobby-pin-replace"')->toContain('data-test="lobby-pin-close"')->toContain('data-test="casual-share"')
         ->toContain('aria-current="step"')
-        ->and($hostRoom->html())->toMatch('/data-test="casual-step-lobby"[^>]*aria-current="step"/');
+        ->and($hostRoom->html())->toMatch('/data-test="room-step-lobby"[^>]*aria-current="step"/')->toContain('data-test="casual-steps" data-current="lobby"');
 
     // The guest's pin waits for that confirmation; it has no host actions.
     $guestHtml = Livewire::actingAs($guest)->test('pages::matches.room', ['match' => $match])->html();
@@ -74,7 +74,7 @@ test('a lobby card sent before the check-in: the chat knows the flow does not ru
     $hostHtml = Livewire::actingAs($host)->test('pages::matches.room', ['match' => $match])->html();
 
     expect($match->refresh()->lobby_shared_at)->not->toBeNull()
-        ->and($hostHtml)->toMatch('/data-test="casual-step-joined"[^>]*aria-current="step"/')
+        ->and($hostHtml)->toContain('data-test="casual-steps" data-current="joined"')->toMatch('/data-test="room-step-lobby"[^>]*aria-current="step"/')
         ->not->toContain('data-test="lobby-pin-confirm"')->toContain('data-test="lobby-pin-replace"')
         ->and($match->lobby_name)->toBeNull()
         ->and($match->lobby_password)->toBeNull();

@@ -172,9 +172,20 @@ new class extends Component
                                                 <span x-show="markOf(row.item.pubkey) === 'outside'" class="min-w-0 shrink truncate text-[11px] text-ink-3" data-test="game-chat-outside" x-text="t.notPlayer"></span>
                                                 <time class="ml-auto shrink-0 text-[11px] text-ink-3 tabular-nums" :datetime="new Date(row.item.created_at * 1000).toISOString()" x-text="time(row.item.created_at)"></time>
                                             </span>
-                                            <p class="m-0 text-sm leading-normal break-words text-ink" data-test="game-chat-text">
+                                            <p x-show="! row.item.file" class="m-0 text-sm leading-normal break-words text-ink" data-test="game-chat-text">
                                                 <template x-for="(token, i) in row.item.tokens" :key="i">@include('pages.live.chat-token')</template>
                                             </p>
+                                            {{-- A file another client posted (gameChannel.js parseRoomFile): its name, kind and size, a link to it; never the raw JSON, never inline media from a foreign host. --}}
+                                            <template x-if="row.item.file">
+                                                <a :href="row.item.file.url" target="_blank" rel="noopener noreferrer nofollow" referrerpolicy="no-referrer" data-test="game-chat-file" :data-kind="row.item.file.kind"
+                                                   class="mt-0.5 flex min-h-11 max-w-full items-center gap-2.5 self-start rounded-[4px] border border-line bg-well px-3 py-1.5 text-ink hover:border-edge hover:text-ink">
+                                                    <x-icon name="link" :size="16" class="shrink-0 text-btc-hi" />
+                                                    <span class="flex min-w-0 flex-col">
+                                                        <b class="truncate text-[13px]" x-text="row.item.file.name"></b>
+                                                        <span class="text-[11px] text-ink-3" x-text="[t.fileKinds[row.item.file.kind], row.item.file.sizeLabel].filter(Boolean).join(', ')"></span>
+                                                    </span>
+                                                </a>
+                                            </template>
                                             <span x-show="menuFor === row.item.id" x-cloak class="flex flex-wrap gap-2 pt-1.5 pb-1">
                                                 <button type="button" x-on:click="setMuted(row.item.pubkey, ! isMuted(row.item.pubkey))" data-test="game-chat-mute"
                                                         class="btn-w inline-flex h-8 cursor-pointer items-center gap-2 rounded-control border border-line bg-well px-2.5 text-xs text-ink">

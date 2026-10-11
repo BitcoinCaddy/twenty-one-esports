@@ -31,6 +31,8 @@
     $isAoe = $m->game === 'age-of-empires-2';
     // Rocket League and Age of Empires II share a lobby (name and password), EA FC an EA ID.
     $sharesLobby = $isRl || $isAoe;
+    // A tournament match carries the league's lobby (LeagueLobby, P5): no card travels through the chat.
+    $leagueLobby = \App\Support\Tournaments\LeagueLobby::isLeagueMade($m);
     $lobbyDue = $m->casualLobbyDueAt();
     $joinDue = $m->casualJoinDueAt();
     $readyCount = ($m->ready_at_challenger ? 1 : 0) + ($m->ready_at_challenged ? 1 : 0);
@@ -47,7 +49,7 @@
         default => null,
     };
     $claimAgainstMe = $running && $m->noshow_reported_at !== null && $m->noshow_side !== null && $m->noshow_side !== $mySide && ($m->casualContestDueAt()?->isFuture() ?? false);
-    $canSwap = $running && $iHost && $m->lobby_shared_at === null && $m->host_swapped_at === null && $m->noshow_reported_at === null && ($lobbyDue?->isFuture() ?? false);
+    $canSwap = $running && $iHost && ! \App\Support\Tournaments\LeagueLobby::isLeagueMade($m) && $m->lobby_shared_at === null && $m->host_swapped_at === null && $m->noshow_reported_at === null && ($lobbyDue?->isFuture() ?? false);
     $at = fn ($time) => $time === null ? '' : \App\Support\Series\SeriesPresenter::time($time, $viewer, 'H:i');
     $reported = $report !== null && $report->status !== ReportStatus::Superseded;
     $casualSteps = [
@@ -82,48 +84,59 @@
 @endphp
 
 {{-- [overflow-wrap:anywhere]: a 40-character name without a space in the clock line ran 49 px out of the page at 390 (2026-10-04). --}}
-<section aria-labelledby="casual-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 pt-3 pb-4 [overflow-wrap:anywhere] lg:gap-4 lg:px-6 lg:py-5" data-test="casual-steps">
-    {{-- Below sm the running step takes the heading's line (the heading stays for screen readers): the pin under it stays in the first screen at 375 under the versus. --}}
-    <span class="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="casual-h" @class(['m-0 text-[15px] font-bold', 'max-sm:sr-only' => $currentKey !== null])>{{ __('Match steps') }}</h2>
-        @if ($currentKey !== null)
-            @php($currentIndex = array_search($currentKey, array_column($casualSteps, 0), true))
-            <p class="m-0 min-w-0 text-xs font-bold text-btc-hi sm:hidden" data-test="casual-current-step">{{ __('Step :n of :total: :label', ['n' => $currentIndex + 1, 'total' => count($casualSteps), 'label' => $casualSteps[$currentIndex][1]]) }}</p>
-        @endif
-        <span class="text-xs text-ink-2" data-test="casual-role">{{ $mySide === null ? '' : ($iHost ? __('you host') : __('you join')) }}</span>
-    </span>
-
-    {{-- The timeline: a rail with one stop per step, the running one in orange. Below sm the line "Step n of 5" above says the same in words. --}}
-    <ol class="m-0 grid list-none grid-cols-5 p-0 max-sm:hidden" data-test="casual-timeline">
-        @foreach ($casualSteps as $index => [$key, $label, $done, $detail])
-            @php($current = $key === $currentKey)
-            @php($nextDone = $casualSteps[$index + 1][2] ?? false)
-            <li @class(['relative flex min-w-0 flex-col items-center gap-1.5 px-0.5 text-center', 'after:absolute after:top-[7px] after:left-1/2 after:h-0.5 after:w-full' => $index < 4, 'after:bg-win' => $index < 4 && $nextDone, 'after:bg-line' => $index < 4 && ! $nextDone])
-                data-test="casual-step-{{ $key }}" data-done="{{ $done ? '1' : '0' }}" @if ($current) aria-current="step" @endif>
-                <span @class(['relative z-10 flex size-4 items-center justify-center rounded-full border-2', 'border-win bg-win text-on-btc' => $done, 'border-btc bg-btc ring-4 ring-btc-press' => $current, 'border-edge bg-card' => ! $done && ! $current])>
-                    @if ($done)<x-icon name="check" :size="10" />@endif
-                </span>
-                {{-- Below sm five labels do not fit (German "Beigetreten"): the running step is named in the heading row instead. --}}
-                <b @class(['max-w-full text-xs leading-tight break-words max-sm:sr-only', 'text-win' => $done, 'text-btc-hi' => $current, 'text-ink-2' => ! $done && ! $current])>{{ $label }}</b>
-                <span class="max-w-full text-[11px] leading-snug break-words text-ink-3 max-sm:sr-only">{{ $detail }}</span>
-            </li>
-        @endforeach
-    </ol>
+{{--
+    The four steps sit above as the room's stepper (partials/room-stepper); this is the step that runs: the lobby
+    card pinned first (boards MatchRoom-2c, TournamentMatchRoom), then one card with the clock line and the one
+    action of this player.
+--}}
+<section aria-labelledby="casual-h" class="flex flex-col gap-4 [overflow-wrap:anywhere]" data-test="casual-steps" data-current="{{ $currentKey ?? 'done' }}">
+    <h2 id="casual-h" class="sr-only">{{ __('Match steps') }}</h2>
 
     @php($lobbyPin = $sharesLobby && $mySide !== null && $m->status === SeriesStatus::Accepted && $m->start_at !== null)
-    {{-- The pinned lobby card, right under the step it belongs to: before the clock, so it and its action stay above the fold at 375. --}}
-    @if ($lobbyPin && $running)
+    @if ($leagueLobby && $m->status->isRunning())
+        {{-- A tournament match's league lobby (LeagueLobby): there from the start, the host is the higher seed. --}}
+        @include('pages.matches.partials.room-lobby', ['leagueActions' => true])
+    @elseif ($lobbyPin && $running)
+        {{-- The pinned lobby card from the chat, first: it and its action stay above the fold at 375. --}}
         @include('pages.matches.partials.casual-lobby-pin')
     @endif
 
-    @if ($deadlineText !== null)
-        {{-- The clock of the running step. --}}
-        <div class="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 rounded-md bg-well px-4 py-3" data-test="casual-deadline" data-kind="{{ $deadline['kind'] }}">
-            <span class="flex min-w-0 items-center gap-2 text-[13px] leading-normal"><x-icon name="clock" :size="16" class="shrink-0 text-btc-hi" /><span class="min-w-0">{{ $deadlineText }}</span></span>
-            <b class="font-display text-[32px] leading-none font-bold text-btc-hi tabular-nums" role="timer" x-data="casualClock({{ ($deadline['kind'] === 'checkin' && $checkInOpens?->isFuture() ? $checkInOpens : $deadline['at'])->getTimestamp() }}, {{ now()->getTimestampMs() }})" x-text="left" data-test="casual-clock"></b>
+    <div class="rv-card flex flex-col gap-3 px-4 py-4 lg:px-6 lg:py-5" data-test="casual-step-card">
+    <span class="flex flex-wrap items-baseline justify-between gap-2">
+        <b class="rv-h3">{{ match ($currentKey) {
+            'ready' => $scheduled ? __('Check in') : __('Ready'),
+            'lobby', 'joined' => __('Lobby'),
+            'report' => __('Result'),
+            'confirm' => __('Check the result'),
+            default => __('Match steps'),
+        } }}</b>
+        <span class="rv-m text-[13px]" data-test="casual-role">{{ $mySide === null ? '' : ($iHost ? __('you host') : __('you join')) }}</span>
+    </span>
+
+    @if ($m->awaitsCheckIn() || $m->awaitsReady())
+        {{-- Who is in (board 1b: both sides with their state, "1 of 2 checked in"). --}}
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-2" data-test="casual-presence">
+            @foreach (\App\Models\SeriesMatch::SIDES as $presenceSide)
+                @php($presenceIn = $m->readyAt($presenceSide) !== null)
+                <span class="flex min-w-0 items-center gap-2">
+                    <span class="rv-av size-8 text-xs" aria-hidden="true">{{ mb_strtoupper(mb_substr($m->sideName($presenceSide), 0, 1)) }}</span>
+                    <span class="flex min-w-0 flex-col">
+                        <b class="text-[13px]">{{ $m->sideName($presenceSide) }}</b>
+                        <span @class(['inline-flex items-center gap-1 text-[13px]', 'text-win' => $presenceIn, 'text-ink-3' => ! $presenceIn])>@if ($presenceIn)<x-icon name="check" :size="12" />{{ $scheduled ? __('checked in') : __('ready') }}@else{{ $scheduled ? __('not checked in yet') : __('not ready yet') }}@endif</span>
+                    </span>
+                </span>
+            @endforeach
+            <span class="rv-m text-[13px]">{{ $scheduled ? __(':n of 2 checked in', ['n' => $readyCount]) : __(':n of 2 ready', ['n' => $readyCount]) }}</span>
         </div>
     @endif
 
+    @if ($deadlineText !== null)
+        {{-- The clock line of the running step: who acts by when; the big clock sits in the head. --}}
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-[4px] bg-well px-4 py-3" data-test="casual-deadline" data-kind="{{ $deadline['kind'] }}">
+            <span class="flex min-w-0 items-center gap-2 text-[13px] leading-normal"><x-icon name="clock" :size="16" class="shrink-0 text-btc-hi" /><span class="min-w-0">{{ $deadlineText }}</span></span>
+            <b class="font-display text-xl leading-none font-bold text-btc-hi tabular-nums" role="timer" x-data="casualClock({{ ($deadline['kind'] === 'checkin' && $checkInOpens?->isFuture() ? $checkInOpens : $deadline['at'])->getTimestamp() }}, {{ now()->getTimestampMs() }})" x-text="left" data-test="casual-clock"></b>
+        </div>
+    @endif
     {{-- What this player does now: one primary action. --}}
     <div class="flex flex-col gap-3 text-[13px] leading-normal text-ink-2" data-test="casual-now">
         @if ($m->awaitsReady())
@@ -208,11 +221,12 @@
     </div>
 
     {{-- Before the check-in the check-in is the action; a card sent that early waits under it. --}}
-    @if ($lobbyPin && ! $running)
+    @if ($lobbyPin && ! $running && ! $leagueLobby)
         @include('pages.matches.partials.casual-lobby-pin')
     @endif
 
     @unless ($m->status->hasResult())
         @include('pages.matches.partials.lobby-rules')
     @endunless
+    </div>
 </section>
