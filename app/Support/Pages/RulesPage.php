@@ -530,8 +530,9 @@ final class RulesPage
             'game' => Blockli::SLUG,
             'lead' => __('A race on 9 × 9: bring your pawn to the far side first, and block the other pawn\'s way.'),
             'facts' => [
-                // Correspondence only (user, 2026-10-07: fast modes are for chess).
-                [__('Time control'), __('1 move a day')],
+                // Blitz and rapid as chess has them, and one move a day (user, 2026-10-11).
+                [__('Time control'), implode(', ', [__('Blitz 5+3'), __('Rapid 10+5'), __('1 move a day')])],
+                [__('First move'), self::seconds((int) config('esports.board_games.first_move_seconds'))],
             ],
             'items' => [
                 __('White starts on e1 and wins on rank 9, Black starts on e9 and wins on rank 1. White moves first.'),
@@ -539,7 +540,10 @@ final class RulesPage
                 __('The pawn steps one square up, down, left or right, never through a block. Facing the other pawn, it jumps straight over it; with a block or the edge behind that pawn, it steps beside it instead.'),
                 __('A block is two squares long and lies in the groove between squares. It may not overlap or cross another block, and it may not cut either pawn off from its goal.'),
                 __('Tap a marked square to move. For a block tap a groove, or Set a block: it shows where it lands. Tap it again or press Confirm; Rotate turns it.'),
-                __('A draw by agreement, by the same position with the same side to move for the third time, or after :moves moves of each side without a new block. These draw rules are the league\'s, the published rules have none.', ['moves' => intdiv(BlockliRules::QUIET_PLY_LIMIT, 2)]),
+                // 21 times, not three: a pawn cannot pass, so moving to and fro to wait is play (DerCaddy, 2026-10-09).
+                __('A draw by agreement, when the same position with the same side to move has stood there :times times (the board warns one time before), or after :moves moves of each side without a new block. These draw rules are the league\'s, the published rules have none.', ['times' => BlockliRules::REPETITIONS, 'moves' => intdiv(BlockliRules::QUIET_PLY_LIMIT, 2)]),
+                // The race standing (BlockliRules::standing()), with the decimal mark of the page's language.
+                __('Beside the board the race is counted: each side has the steps its pawn still needs to its goal, minus :rate for every block it has left; the lower count leads.', ['rate' => app()->getLocale() === 'de' ? str_replace('.', ',', (string) BlockliRules::BLOCK_STEPS) : (string) BlockliRules::BLOCK_STEPS]),
                 __('Squares are named as in chess, a1 in White\'s bottom left corner. A pawn move reads e2, a block e3h or e3v after the square left below its middle.'),
                 self::correspondence(),
             ],
@@ -806,6 +810,7 @@ final class RulesPage
                 __('Mixed teams and seeds are drawn from the hash of a Bitcoin block mined after sign-up closed, once it has :count confirmations. Anyone can check the draw.', ['count' => (int) config('esports.bitcoin.confirmations')]),
                 __('A side that misses its first move or does not show up loses the match by forfeit. Both missing: the higher seed advances in a knockout, both lose in Swiss and round robin.'),
                 __('A drawn knockout chess game is replayed with the colours swapped, at most :count times; then the higher seed advances.', ['count' => (int) $t['drawn_replays']]),
+                __('A Blockli pairing plays two games with the colours swapped; at 1:1 a third game decides. If that one is drawn too, the tournament page says what follows: the race standing of its final position, or replays as for chess.'),
                 __('A report or a no-show claim the other side does not answer in time is decided by the league.'),
                 __('Players get reminders :list minutes before the league decides a waiting match.', ['list' => implode(', ', (array) $t['reminders'])]),
                 __('In a tournament run by its directors, the directors enter every result; players report nothing.'),

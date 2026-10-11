@@ -68,7 +68,7 @@ final class PageCard
     public const PAGES = ['home', 'login', 'clans', 'matches', 'games', 'chess', 'tournaments', 'play', 'rules', 'protocol', 'mining', 'live', 'strongest'];
 
     /** Bump when a layout changes: every card gets a new file and URL. */
-    private const LAYOUT = 1;
+    private const LAYOUT = 2;
 
     /** The text sizes of the cards; nothing is drawn smaller than MIN. */
     private const MIN = 28;
@@ -1295,7 +1295,7 @@ final class PageCard
         }
 
         $live = (bool) ($f['live'] ?? ! $f['daily']);
-        $line = $live ? __('Blitz 5+3 live against Bitcoiners. The server checks every move.') : __('One move a day, a reminder before your deadline. The server checks every move.');
+        $line = $live ? __(':clocks live against Bitcoiners. The server checks every move.', ['clocks' => implode(', ', array_map(fn (string $clock): string => __($clock), explode(', ', (string) ($f['clocks'] ?? 'Blitz 5+3'))))]) : __('One move a day, a reminder before your deadline. The server checks every move.');
         $this->c->paragraph($line, 'mono', self::MIN, self::M, $after + 16, 500, 3, Canvas::INK_2, 1.3);
         $running = (int) $f['running'];
         $this->figures([
@@ -1790,11 +1790,10 @@ final class PageCard
         $y = 536;
         $tile = 52;
         $this->c->picture(public_path('icon-512.png'), self::M, $y, $tile, 10);
-        $baseline = $y + 37;
-        $this->c->text('TWENTY ONE', 'display', self::MIN, self::M + $tile + 20, $baseline, Canvas::INK);
-        $this->c->text('esports', 'mono', self::MIN, self::M + $tile + 20 + $this->c->width('TWENTY ONE', 'display', self::MIN) + 14, $baseline, Canvas::INK_2);
+        // The share-card frame (revamp P8, ShareCards.dc.html): the 21 tile and the host beside it, bottom left.
+        $baseline = $y + 35;
         $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
-        $this->c->textRight($host, 'mono', self::MIN, self::RIGHT, $baseline, Canvas::INK_2);
+        $this->c->text($host, 'mono', self::MIN, self::M + $tile + 20, $baseline, Canvas::INK_2);
     }
 
     /** A crown in orange, the winner's mark. */

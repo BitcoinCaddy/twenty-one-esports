@@ -131,6 +131,10 @@ new #[Title('Blockfill runs')] #[Layout('layouts::app', ['section' => 'admin'])]
 }; ?>
 
 <x-admin.page active="blockfill" :title="__('Blockfill review')" :lead="__('Only suspicious runs that would land in their week\'s top 10 wait here: the league replayed them to the claimed time, but they still look like a program. Every other run counts on its own, a run with hints outside the top 10 too. Watch the replay, then approve the run so it counts, or reject it. A held run counts nowhere until you approve it.')" data-test="admin-blockfill">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('waiting') }}</span><span class="rv-num text-base {{ $this->total > 0 ? 'text-btc-hi' : 'text-ink' }}">{{ $this->total }}</span></span><span class="flex items-baseline gap-2"><span class="rv-m">{{ __('decided') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->decided->count() }}</span></span>
+    </x-slot:readout>
+
     <x-admin.panel :title="__('Held for a check')" :meta="trans_choice(':count run|:count runs', $this->total)" data-test="blockfill-held">
         @if ($flash !== '')
             <p class="m-0 text-[13px] text-win" role="status" data-test="blockfill-flash">{{ $flash }}</p>

@@ -4,6 +4,7 @@
 @import './match.css';
 @import './revamp-games.css';
 @import './revamp-league.css';
+@import './revamp-admin.css';
 
 @source '../views';
 @source '../../app/Support';

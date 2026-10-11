@@ -160,11 +160,15 @@ new #[Title('Fair play')] #[Layout('layouts::app', ['section' => 'admin'])] clas
 }; ?>
 
 @php
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
+    $input = 'rv-in';
     $grouped = $this->links->groupBy('main_pubkey');
 @endphp
 
 <x-admin.page active="fair-play" :title="__('Fair play')" :lead="__('Linked accounts of one player, and players locked after false result reports')" :notice="$notice" notice-test="fair-play-notice" data-test="admin-fair-play">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('linked') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->links->count() }}</span></span>
+    </x-slot:readout>
+
     <x-admin.panel :title="__('Link accounts')" :meta="__('one player, several accounts')">
         <p class="m-0 max-w-[80ch] text-[13px] leading-normal text-ink-2">{{ __('Pick the main account and a second account of the same player. The second account then plays no rated matches and wins no prizes; its unpaid prizes are withheld for your review. Results between the two accounts are voided and their rated Elo is taken back. Unlinking brings rated play and prizes back, but voided results stay void.') }}</p>
         <form wire:submit="link" wire:confirm="{{ __('Link these accounts? Results between them are voided.') }}" class="flex flex-col gap-3" data-test="fair-play-link-form">

@@ -140,59 +140,59 @@ new #[Title('Weekly events')] #[Layout('layouts::app', ['section' => 'admin'])] 
 }; ?>
 
 @php
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-sm text-ink';
+    $input = 'rv-in';
     $days = [1 => __('Monday'), 2 => __('Tuesday'), 3 => __('Wednesday'), 4 => __('Thursday'), 5 => __('Friday'), 6 => __('Saturday'), 7 => __('Sunday')];
 @endphp
 
+{{-- AdminEvents.dc.html: "Termin anlegen" (six fields in one row, the button below), then "Termine". --}}
 <x-admin.page active="events" :title="__('Weekly events')" :lead="__('A weekly event repeats on its day and time in its time zone. The next week of dates is created automatically every hour; home and the chess lobby show the next ones.')" data-test="admin-events">
-    <form wire:submit="add" class="grid grid-cols-1 gap-3 rounded-lg bg-card px-4 py-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_minmax(0,1fr)_110px_minmax(0,1.4fr)_110px_auto] lg:items-end lg:px-6" data-test="slot-form">
-        <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Title') }}<input type="text" wire:model="title" maxlength="80" placeholder="{{ __('Blitz night') }}" class="{{ $input }}" data-test="slot-title"></label>
-        <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Game and mode') }}
-            <select wire:model="ladder" class="{{ $input }}" data-test="slot-ladder">
-                @foreach ($this->ladders as $value => $label)
-                    <option value="{{ $value }}">{{ $label }}</option>
-                @endforeach
-            </select>
-        </label>
-        <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Day') }}
-            <select wire:model="weekday" class="{{ $input }}" data-test="slot-weekday">
-                @foreach ($days as $value => $label)
-                    <option value="{{ $value }}">{{ $label }}</option>
-                @endforeach
-            </select>
-        </label>
-        <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Time') }}<input type="time" wire:model="time" class="{{ $input }}" data-test="slot-time"></label>
-        <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Time zone') }}<input type="text" wire:model="timezone" class="{{ $input }}" data-test="slot-timezone"></label>
-        <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Minutes') }}<input type="number" wire:model="duration" min="15" max="720" step="15" class="{{ $input }}" data-test="slot-duration"></label>
-        <button type="submit" class="btn-p h-11 cursor-pointer rounded-md bg-btc px-4 text-[13px] font-bold text-on-btc" data-test="slot-add">{{ __('Add event') }}</button>
-        @if ($errors->any())
-            <p class="m-0 text-[13px] text-loss sm:col-span-2 lg:col-span-7" data-test="slot-error">{{ $errors->first() }}</p>
-        @endif
-    </form>
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Weekly events') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->weeklySlots->count() }}</span></span>
+    </x-slot:readout>
 
-    <section aria-labelledby="slots-h" class="flex flex-col rounded-lg bg-card px-4 py-2 lg:px-6">
-        <h2 id="slots-h" class="m-0 py-3 text-[15px] font-bold">{{ __('Events') }}</h2>
-        @forelse ($this->weeklySlots as $slot)
-            @php($next = $this->nextEvents[$slot->id] ?? null)
-            <div wire:key="slot-{{ $slot->id }}" class="grid grid-cols-1 gap-2 border-t border-hairline py-3 text-[13px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4" data-test="slot-row">
-                <span class="flex min-w-0 flex-col gap-0.5">
-                    <b class="truncate">{{ $slot->title }}</b>
-                    <span class="text-xs text-ink-2">{{ $this->ladders[$slot->game.'/'.$slot->mode] ?? $slot->game.' · '.$slot->mode }} · {{ __(':day :time (:zone), :minutes min', ['day' => $days[$slot->weekday] ?? '?', 'time' => $slot->time, 'zone' => $slot->timezone, 'minutes' => $slot->duration_minutes]) }}</span>
-                </span>
-                <span class="text-xs text-ink-2">
-                    @if (! $slot->active)
-                        <span class="text-ink-3" data-test="slot-paused">{{ __('Paused') }}</span>
-                    @elseif ($next)
-                        {{ __('Next: :when', ['when' => CarbonImmutable::parse($next->starts_at)->setTimezone($slot->timezone)->locale(app()->getLocale())->isoFormat('ddd YYYY-MM-DD HH:mm')]) }}
-                    @endif
-                </span>
-                <span class="flex flex-wrap gap-2">
-                    <button type="button" wire:click="toggle({{ $slot->id }})" class="h-11 cursor-pointer rounded-md border border-edge bg-transparent px-3 text-xs text-ink" data-test="slot-toggle">{{ $slot->active ? __('Pause') : __('Resume') }}</button>
-                    <button type="button" wire:click="remove({{ $slot->id }})" wire:confirm="{{ __('Delete this weekly event and its dates?') }}" class="h-11 cursor-pointer rounded-md border border-[#5A2A2E] bg-transparent px-3 text-xs text-loss" data-test="slot-remove">{{ __('Delete') }}</button>
-                </span>
+    <x-admin.panel :title="__('Add event')" id="slot-form-h">
+        <form wire:submit="add" class="flex flex-col gap-3" data-test="slot-form">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:items-end">
+                <label class="min-w-0"><span class="rv-lb">{{ __('Title') }}</span><input type="text" wire:model="title" maxlength="80" placeholder="{{ __('Blitz night') }}" class="{{ $input }}" data-test="slot-title"></label>
+                <div class="min-w-0"><span class="rv-lb" id="slot-ladder-l">{{ __('Game and mode') }}</span>
+                    <x-ui.select-menu model="ladder" labelledby="slot-ladder-l" :value="$this->ladder" :options="$this->ladders" data-test="slot-ladder" /></div>
+                <div class="min-w-0"><span class="rv-lb" id="slot-weekday-l">{{ __('Day') }}</span>
+                    <x-ui.select-menu model="weekday" labelledby="slot-weekday-l" :value="$this->weekday" :options="$days" data-test="slot-weekday" /></div>
+                <label class="min-w-0"><span class="rv-lb">{{ __('Time') }}</span><input type="time" wire:model="time" class="{{ $input }}" data-test="slot-time"></label>
+                <label class="min-w-0"><span class="rv-lb">{{ __('Time zone') }}</span><input type="text" wire:model="timezone" class="{{ $input }}" data-test="slot-timezone"></label>
+                <label class="min-w-0"><span class="rv-lb">{{ __('Minutes') }}</span><input type="number" wire:model="duration" min="15" max="720" step="15" class="{{ $input }}" data-test="slot-duration"></label>
             </div>
-        @empty
-            <x-admin.empty :text="__('No weekly events yet. Add the first one above.')" class="border-t border-hairline py-4" />
-        @endforelse
-    </section>
+            @if ($errors->any())
+                <p class="m-0 text-[13px] text-loss" role="alert" data-test="slot-error">{{ $errors->first() }}</p>
+            @endif
+            <button type="submit" class="rv-b self-start" data-test="slot-add">{{ __('Add event') }}</button>
+        </form>
+    </x-admin.panel>
+
+    <x-admin.panel :title="__('Events')" id="slots-h">
+        <div class="rv-rows flex flex-col">
+            @forelse ($this->weeklySlots as $slot)
+                @php($next = $this->nextEvents[$slot->id] ?? null)
+                <div wire:key="slot-{{ $slot->id }}" class="grid grid-cols-1 gap-2 py-3 text-[13px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4" data-test="slot-row">
+                    <span class="flex min-w-0 flex-col gap-0.5">
+                        <b class="truncate">{{ $slot->title }}</b>
+                        <span class="rv-m">{{ $this->ladders[$slot->game.'/'.$slot->mode] ?? $slot->game.', '.$slot->mode }}, {{ __(':day :time (:zone), :minutes min', ['day' => $days[$slot->weekday] ?? '?', 'time' => $slot->time, 'zone' => $slot->timezone, 'minutes' => $slot->duration_minutes]) }}</span>
+                    </span>
+                    <span class="text-xs text-ink-2">
+                        @if (! $slot->active)
+                            <span class="rv-tag" data-test="slot-paused">{{ __('Paused') }}</span>
+                        @elseif ($next)
+                            {{ __('Next: :when', ['when' => CarbonImmutable::parse($next->starts_at)->setTimezone($slot->timezone)->locale(app()->getLocale())->isoFormat('ddd YYYY-MM-DD HH:mm')]) }}
+                        @endif
+                    </span>
+                    <span class="flex flex-wrap gap-2">
+                        <button type="button" wire:click="toggle({{ $slot->id }})" class="rv-b2 is-sm" data-test="slot-toggle">{{ $slot->active ? __('Pause') : __('Resume') }}</button>
+                        <button type="button" wire:click="remove({{ $slot->id }})" wire:confirm="{{ __('Delete this weekly event and its dates?') }}" class="rv-bd is-sm" data-test="slot-remove">{{ __('Delete') }}</button>
+                    </span>
+                </div>
+            @empty
+                <x-admin.empty :text="__('No weekly events yet. Add the first one above.')" />
+            @endforelse
+        </div>
+    </x-admin.panel>
 </x-admin.page>

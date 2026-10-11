@@ -133,7 +133,7 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
             $this->flash = __('The preset was saved. Its URL stays the same.');
         } else {
             $token = OverlayPreset::newToken();
-            $preset = OverlayPreset::query()->create($attributes + ['token_hash' => OverlayPreset::hashToken($token), 'created_by_id' => auth()->id()]);
+            $preset = OverlayPreset::query()->create($attributes + OverlayPreset::tokenAttributes($token) + ['created_by_id' => auth()->id()]);
             $this->revealedUrl = OverlayPreset::url($token);
             $this->revealedFor = $preset->id;
         }
@@ -212,7 +212,7 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
 }; ?>
 
 @php
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-sm text-ink';
+    $input = 'rv-in';
     $needsTournament = OverlayVariant::tryFrom($variant)?->needsTournament() ?? false;
     $takesTournament = OverlayVariant::tryFrom($variant)?->takesTournament() ?? false;
     $isBreak = $variant === OverlayVariant::Break->value;
@@ -220,115 +220,82 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
 @endphp
 
 <x-admin.page active="overlays" :title="__('OBS overlays')" :lead="__('A preset is one browser source in OBS: choose what it shows, copy its secret URL into OBS once, and it runs on its own. Anyone with the URL sees the overlay, so rotate it when it got out.')" data-test="admin-overlays">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Presets') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->presets->count() }}</span></span>
+    </x-slot:readout>
+
     @if ($revealedUrl !== '')
-        <section class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 shadow-[inset_0_0_0_1px_var(--color-btc)] lg:px-6" data-test="overlay-revealed"
+        <section class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-5 shadow-[inset_0_0_0_1px_var(--color-btc)] lg:px-6" data-test="overlay-revealed"
                  {{-- Created from the form further down: on a phone the URL would be out of view. --}}
                  x-init="$el.scrollIntoView({ block: 'start' })"
                  x-data="{ copied: false, hint: '', url: @js($revealedUrl), async copy() { try { await navigator.clipboard.writeText(this.url); this.copied = true; this.hint = ''; setTimeout(() => this.copied = false, 2500); } catch (e) { this.hint = @js(__('Copy did not work here. Select the link and copy it.')); } } }">
-            <h2 class="m-0 text-[15px] font-bold">{{ __('The URL of :name', ['name' => $revealedName ?? '']) }}</h2>
-            <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Copy it now: it is shown only this once. Nobody can read it again, not even an admin; if it is lost, rotate it for a new one.') }}</p>
+            <h2 class="rv-h3">{{ __('The URL of :name', ['name' => $revealedName ?? '']) }}</h2>
+            <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Paste it into OBS. It stays in the list below, ready to copy again.') }}</p>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <label class="sr-only" for="overlay-url">{{ __('Overlay URL') }}</label>
                 <input id="overlay-url" type="text" readonly value="{{ $revealedUrl }}" x-on:focus="$el.select()" class="{{ $input }} font-mono text-[13px]" data-test="overlay-url">
-                <button type="button" x-on:click="copy()" class="btn-p h-11 cursor-pointer rounded-md bg-btc px-4 text-[13px] font-bold text-on-btc" data-test="overlay-copy">
+                <button type="button" x-on:click="copy()" class="rv-b" data-test="overlay-copy">
                     <span x-show="! copied">{{ __('Copy URL') }}</span><span x-show="copied" x-cloak>{{ __('Copied') }}</span>
                 </button>
             </div>
             <p class="m-0 text-xs text-loss" x-show="hint !== ''" x-text="hint" x-cloak></p>
-            <div><button type="button" wire:click="dismiss" class="h-11 cursor-pointer rounded-md border border-edge bg-transparent px-3 text-xs text-ink" data-test="overlay-dismiss">{{ __('I copied it') }}</button></div>
+            <div><button type="button" wire:click="dismiss" class="rv-b2" data-test="overlay-dismiss">{{ __('Done') }}</button></div>
         </section>
     @endif
 
     <x-admin.flash :message="$flash" data-test="overlay-flash" />
 
+    {{-- AdminOverlays.dc.html: the new preset on the left, the OBS set-up beside it (360 px), the presets below. --}}
+    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
     <x-admin.panel :title="$editing === null ? __('New preset') : __('Edit preset')" data-test="overlay-form-panel">
-        <form wire:submit="save" class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-test="overlay-form">
-            <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2 lg:col-span-2">{{ __('Name') }}
-                <input type="text" wire:model="name" maxlength="80" placeholder="{{ __('Laptop stream') }}" class="{{ $input }}" data-test="overlay-name">
-            </label>
-            <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('What it shows') }}
-                <select wire:model.live="variant" class="{{ $input }}" data-test="overlay-variant">
-                    @foreach (OverlayVariant::cases() as $case)
-                        <option value="{{ $case->value }}">{{ $case->label() }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Language') }}
-                <select wire:model="locale" class="{{ $input }}" data-test="overlay-locale">
-                    <option value="de">Deutsch</option>
-                    <option value="en">English</option>
-                </select>
-            </label>
-            @if ($takesTournament)
-                <label @class(['flex min-w-0 flex-col gap-1 text-xs text-ink-2', 'sm:col-span-2 lg:col-span-4' => ! $isBreak, 'sm:col-span-2 lg:col-span-3' => $isBreak])>{{ __('Tournament') }}
-                    <select wire:model="tournament" class="{{ $input }}" data-test="overlay-tournament">
-                        <option value="">{{ $needsTournament ? __('Choose a tournament') : __('The next cup or tournament, automatically') }}</option>
-                        @foreach ($this->tournaments as $choice)
-                            <option value="{{ $choice->id }}">{{ $choice->name }} · {{ $choice->status->label() }} · {{ $choice->starts_at?->translatedFormat('j M Y, H:i') }}</option>
-                        @endforeach
-                    </select>
-                    @if ($this->tournaments->isEmpty())
-                        <span class="text-xs text-ink-3">{{ __('No tournament is open for sign-up or running right now.') }}</span>
-                    @endif
+        <form wire:submit="save" class="flex flex-col gap-4" data-test="overlay-form">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <label class="min-w-0"><span class="rv-lb">{{ __('Name') }}</span>
+                    <input type="text" wire:model="name" maxlength="80" placeholder="{{ __('Laptop stream') }}" class="{{ $input }}" data-test="overlay-name">
                 </label>
+                <div class="min-w-0"><span class="rv-lb" id="overlay-locale-l">{{ __('Language') }}</span>
+                    <x-ui.select-menu model="locale" labelledby="overlay-locale-l" :value="$this->locale" :options="['de' => 'Deutsch', 'en' => 'English']" data-test="overlay-locale" /></div>
+            </div>
+            <div class="min-w-0"><span class="rv-lb" id="overlay-variant-l">{{ __('What it shows') }}</span>
+                <x-ui.select-menu model="variant" live labelledby="overlay-variant-l" :value="$this->variant" :options="collect(OverlayVariant::cases())->mapWithKeys(fn ($case): array => [$case->value => $case->label()])->all()" data-test="overlay-variant" /></div>
+            @if ($takesTournament)
+                <div class="min-w-0"><span class="rv-lb" id="overlay-tournament-l">{{ __('Tournament') }}</span>
+                    <x-ui.select-menu model="tournament" labelledby="overlay-tournament-l" :value="$this->tournament" data-test="overlay-tournament"
+                                      :options="['' => $needsTournament ? __('Choose a tournament') : __('The next cup or tournament, automatically')] + $this->tournaments->mapWithKeys(fn ($choice): array => [$choice->id => $choice->name.', '.$choice->status->label().', '.$choice->starts_at?->translatedFormat('j M Y, H:i')])->all()" />
+                    @if ($this->tournaments->isEmpty())
+                        <span class="mt-1 block rv-m">{{ __('No tournament is open for sign-up or running right now.') }}</span>
+                    @endif
+                </div>
             @endif
             @if ($isBreak)
-                <label class="flex min-w-0 flex-col gap-1 text-xs text-ink-2">{{ __('Scene') }}
-                    <select wire:model="scene" class="{{ $input }}" data-test="overlay-scene">
-                        <option value="">{{ __('Follows the tournament') }}</option>
-                        <option value="soon">{{ __('Starting soon') }}</option>
-                        <option value="break">{{ __('Short break') }}</option>
-                        <option value="end">{{ __('Thanks for watching') }}</option>
-                    </select>
-                </label>
+                <div class="min-w-0" x-data="{ scene: $wire.$entangle('scene', false) }">
+                    <span class="rv-lb" id="overlay-scene-l">{{ __('Scene') }}</span>
+                    <div role="radiogroup" aria-labelledby="overlay-scene-l" class="flex flex-wrap gap-2" data-test="overlay-scene">
+                        @foreach (['' => __('Follows the tournament'), 'soon' => __('Starting soon'), 'break' => __('Short break'), 'end' => __('Thanks for watching')] as $value => $label)
+                            <button type="button" role="radio" class="rv-chip" aria-checked="{{ (string) $this->scene === (string) $value ? 'true' : 'false' }}" :aria-checked="String(scene ?? '') === @js((string) $value) ? 'true' : 'false'"
+                                    x-bind:aria-pressed="String(scene ?? '') === @js((string) $value) ? 'true' : 'false'" x-on:click="scene = @js($value)" data-test="overlay-scene-{{ $value === '' ? 'auto' : $value }}">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                </div>
             @endif
-            <fieldset class="m-0 flex flex-col gap-2 border-0 p-0 sm:col-span-2 lg:col-span-4">
-                <legend class="mb-1 text-xs text-ink-2">{{ __('Modules') }}</legend>
-                <div class="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-4">
+            <fieldset class="m-0 flex flex-col border-0 p-0">
+                <legend class="rv-lb">{{ __('Modules') }}</legend>
+                <div class="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
                     @foreach ($this->moduleLabels() as $module => $label)
-                        <label class="flex min-h-11 items-center gap-2 text-[13px] text-ink">
-                            <input type="checkbox" wire:model="modules.{{ $module }}" class="size-4 accent-[var(--color-btc)]" data-test="overlay-module-{{ $module }}">
-                            {{ $label }}
-                        </label>
+                        <x-ui.check :model="'modules.'.$module" :checked="(bool) ($this->modules[$module] ?? false)" data-test="overlay-module-{{ $module }}">{{ $label }}</x-ui.check>
                     @endforeach
                 </div>
             </fieldset>
-            <div class="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-4">
-                <button type="submit" class="btn-p h-11 cursor-pointer rounded-md bg-btc px-4 text-[13px] font-bold text-on-btc" data-test="overlay-save">{{ $editing === null ? __('Create preset') : __('Save preset') }}</button>
+            @if ($errors->any())
+                <p class="m-0 text-[13px] text-loss" role="alert" data-test="overlay-error">{{ $errors->first() }}</p>
+            @endif
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" class="rv-b" data-test="overlay-save">{{ $editing === null ? __('Create preset') : __('Save preset') }}</button>
                 @if ($editing !== null)
-                    <button type="button" wire:click="cancel" class="h-11 cursor-pointer rounded-md border border-edge bg-transparent px-3 text-xs text-ink" data-test="overlay-cancel">{{ __('Cancel') }}</button>
+                    <button type="button" wire:click="cancel" class="rv-b2" data-test="overlay-cancel">{{ __('Cancel') }}</button>
                 @endif
             </div>
-            @if ($errors->any())
-                <p class="m-0 text-[13px] text-loss sm:col-span-2 lg:col-span-4" data-test="overlay-error">{{ $errors->first() }}</p>
-            @endif
         </form>
-    </x-admin.panel>
-
-    <x-admin.panel :title="__('Presets')" :meta="trans_choice(':count preset|:count presets', $this->presets->count())" flush data-test="overlay-presets">
-        @forelse ($this->presets as $preset)
-            <div wire:key="overlay-{{ $preset->id }}" class="grid grid-cols-1 gap-2 border-t border-hairline py-3 text-[13px] first:border-t-0 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4" data-test="overlay-row">
-                <span class="flex min-w-0 flex-col gap-0.5">
-                    <b class="truncate">{{ $preset->name }}</b>
-                    <span class="text-xs text-ink-2">
-                        {{ $preset->variant->label() }} · {{ strtoupper($preset->locale) }}
-                        @if ($preset->variant->needsTournament())
-                            · {{ $preset->tournament?->name ?? __('Tournament no longer exists') }}
-                        @elseif ($preset->variant->takesTournament() && $preset->tournament !== null)
-                            · {{ $preset->tournament->name }}
-                        @endif
-                        · {{ $preset->rotated_at === null ? __('URL from :date', ['date' => $preset->created_at?->translatedFormat('j M Y')]) : __('URL rotated :date', ['date' => $preset->rotated_at->translatedFormat('j M Y')]) }}
-                    </span>
-                </span>
-                <span class="flex flex-wrap gap-2">
-                    <button type="button" wire:click="edit({{ $preset->id }})" class="h-11 cursor-pointer rounded-md border border-edge bg-transparent px-3 text-xs text-ink" data-test="overlay-edit">{{ __('Edit') }}</button>
-                    <button type="button" wire:click="rotate({{ $preset->id }})" wire:confirm="{{ __('Rotate the URL of :name? The old URL stops working at once; OBS needs the new one.', ['name' => $preset->name]) }}" class="h-11 cursor-pointer rounded-md border border-edge bg-transparent px-3 text-xs text-ink" data-test="overlay-rotate">{{ __('New URL') }}</button>
-                    <button type="button" wire:click="remove({{ $preset->id }})" wire:confirm="{{ __('Delete :name? Its URL stops working.', ['name' => $preset->name]) }}" class="h-11 cursor-pointer rounded-md border border-[#5A2A2E] bg-transparent px-3 text-xs text-loss" data-test="overlay-remove">{{ __('Delete') }}</button>
-                </span>
-            </div>
-        @empty
-            <x-admin.empty :text="__('No preset yet. Create the first one above.')" class="py-4" />
-        @endforelse
     </x-admin.panel>
 
     <x-admin.panel :title="__('Setting it up in OBS')" data-test="overlay-help">
@@ -341,4 +308,52 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
             <li>{{ __('Put the overlay above your game or camera; the centre stays free for the stream.') }}</li>
         </ol>
     </x-admin.panel>
+    </div>
+
+    <x-admin.panel :title="__('Presets')" :tag="trans_choice(':count preset|:count presets', $this->presets->count())" data-test="overlay-presets">
+        @forelse ($this->presets as $preset)
+            <div wire:key="overlay-{{ $preset->id }}" class="grid grid-cols-1 gap-2 border-t border-hairline py-3 text-[13px] first:border-t-0 lg:grid-cols-[160px_auto_minmax(0,1fr)_auto] lg:items-center lg:gap-3" data-test="overlay-row">
+                <b class="truncate">{{ $preset->name }}</b>
+                <span class="rv-tag w-fit">{{ $preset->variant->label() }}</span>
+                <span class="flex min-w-0 flex-col gap-0.5">
+                    @php
+                        $presetMeta = array_filter([
+                            strtoupper($preset->locale),
+                            $preset->variant->needsTournament() ? ($preset->tournament?->name ?? __('Tournament no longer exists')) : ($preset->variant->takesTournament() ? $preset->tournament?->name : null),
+                            $preset->rotated_at === null ? __('URL from :date', ['date' => $preset->created_at?->translatedFormat('j M Y')]) : __('URL rotated :date', ['date' => $preset->rotated_at->translatedFormat('j M Y')]),
+                        ]);
+                    @endphp
+                    <span class="rv-m">{{ implode(', ', $presetMeta) }}</span>
+                </span>
+                <span class="flex flex-wrap gap-2">
+                    <button type="button" wire:click="edit({{ $preset->id }})" class="rv-b2 is-sm" data-test="overlay-edit">{{ __('Edit') }}</button>
+                    <button type="button" wire:click="rotate({{ $preset->id }})" wire:confirm="{{ __('Rotate the URL of :name? The old URL stops working at once; OBS needs the new one.', ['name' => $preset->name]) }}" class="rv-b2 is-sm" data-test="overlay-rotate">{{ __('New URL') }}</button>
+                    <button type="button" wire:click="remove({{ $preset->id }})" wire:confirm="{{ __('Delete :name? Its URL stops working.', ['name' => $preset->name]) }}" class="rv-bd is-sm" data-test="overlay-remove">{{ __('Delete') }}</button>
+                </span>
+                {{--
+                    The preset's URL, always there to copy (user, 2026-10-11): selectable mono text that wraps, Copy (the
+                    clipboard call inside the click; refused, the text is selected instead, so Ctrl+C takes it) and Open.
+                    A preset made before tokens were kept says how to get one, without a dead copy button.
+                --}}
+                @php($presetUrl = $preset->storedUrl())
+                @if ($presetUrl !== null)
+                    <div class="flex flex-col gap-2 rounded border border-hairline bg-ground p-2 sm:flex-row sm:items-center lg:col-span-4" wire:key="overlay-url-{{ $preset->id }}-{{ $preset->rotated_at?->timestamp }}" data-test="overlay-row-url"
+                         x-data="{ copied: false, timer: null, copy() { navigator.clipboard.writeText(@js($presetUrl)).then(() => { this.copied = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.copied = false, 2000); }, () => { const range = document.createRange(); range.selectNodeContents(this.$refs.url); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); }); } }">
+                        <code x-ref="url" class="min-w-0 grow px-1 font-mono text-xs leading-normal break-all text-ink-2 select-all" data-test="overlay-row-url-text">{{ $presetUrl }}</code>
+                        <span class="flex shrink-0 gap-2">
+                            <button type="button" x-on:click="copy()" class="rv-b is-sm" data-test="overlay-row-copy">
+                                <span x-show="! copied">{{ __('Copy') }}</span><span x-show="copied" x-cloak role="status">{{ __('Copied') }}</span>
+                            </button>
+                            <a href="{{ $presetUrl }}" target="_blank" rel="noopener" class="rv-b2 is-sm" data-test="overlay-row-open">{{ __('Open the overlay') }}</a>
+                        </span>
+                    </div>
+                @else
+                    <p class="m-0 rounded border border-dashed border-dash px-3 py-2 text-xs leading-normal text-ink-2 lg:col-span-4" data-test="overlay-row-legacy">{{ __('URL created before the update: press “New URL” once and it stays visible here.') }}</p>
+                @endif
+            </div>
+        @empty
+            <x-admin.empty :text="__('No preset yet. Create the first one above.')" />
+        @endforelse
+    </x-admin.panel>
+
 </x-admin.page>

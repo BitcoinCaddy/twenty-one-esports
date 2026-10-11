@@ -10,6 +10,8 @@ use App\Models\TournamentSignup;
 use App\Models\User;
 use App\Support\Broadcast\OverlaySnapshot;
 use App\Support\Prizes\PrizePool;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -74,7 +76,7 @@ test('the overlay page is for admins only and listed in the admin nav', function
     Livewire::actingAs(User::factory()->create())->test('pages::admin.overlays')->assertForbidden();
 });
 
-test('creating a preset shows its URL once, stores only the hash, and the URL opens the overlay without a session', function () {
+test('creating a preset shows its URL, stores its hash and the token encrypted, and the URL opens the overlay without a session', function () {
     $admin = overlayAdmin();
 
     $page = Livewire::actingAs($admin)->test('pages::admin.overlays')
@@ -94,9 +96,9 @@ test('creating a preset shows its URL once, stores only the hash, and the URL op
         ->and($preset->variant)->toBe(OverlayVariant::LeagueLive)
         ->and($preset->moduleStates())->toMatchArray(['cam-frame' => true, 'ads' => false, 'ticker' => true]);
 
-    // Shown once: the next action clears it, and the list never prints it.
-    $page->call('dismiss')->assertSet('revealedUrl', '')->assertDontSee($token);
-    $this->actingAs($admin)->get(route('admin.overlays'))->assertOk()->assertDontSee($token)->assertSee('Laptop stream');
+    // Not only once any more (user, 2026-10-11): after the banner is gone the preset's row still shows the URL to copy.
+    $page->call('dismiss')->assertSet('revealedUrl', '')->assertSee($url)->assertSee('data-test="overlay-row-copy"', false);
+    $this->actingAs($admin)->get(route('admin.overlays'))->assertOk()->assertSee($url)->assertSee('Laptop stream');
 
     // A guest without any cookie opens it: no session, noindex, no referrer, nothing set.
     auth()->logout();
@@ -245,4 +247,53 @@ test('the overlay speaks its preset\'s language, whatever the request asks', fun
     $this->withHeader('Accept-Language', 'en')->get('/broadcast/'.$de)->assertOk()->assertSee('<html lang="de"', false)->assertSee('Mitspielen');
     $this->withHeader('Accept-Language', 'de')->get('/broadcast/'.$en)->assertOk()->assertSee('<html lang="en"', false)->assertSee('Join in');
     expect(app()->getLocale())->toBe(config('app.locale'));
+});
+
+test('the token is stored encrypted, decrypts to a URL that finds the preset, and never leaves in JSON or array output', function () {
+    $page = Livewire::actingAs(overlayAdmin())->test('pages::admin.overlays')->set('name', 'Stream PC')->call('save');
+    $token = overlayToken($page->get('revealedUrl'));
+    $preset = OverlayPreset::query()->sole();
+    $raw = (string) DB::table('overlay_presets')->where('id', $preset->id)->value('token');
+
+    expect($raw)->not->toBe('')->not->toContain($token)
+        ->and(Crypt::decryptString($raw))->toBe($token)
+        ->and($preset->token)->toBe($token)
+        ->and($preset->storedUrl())->toBe(OverlayPreset::url($token))
+        ->and(OverlayPreset::findByToken(overlayToken((string) $preset->storedUrl()))?->id)->toBe($preset->id)
+        ->and($preset->toArray())->not->toHaveKey('token')->not->toHaveKey('token_hash')
+        ->and($preset->toJson())->not->toContain($token);
+});
+
+test('rotating replaces the hash and the stored token together, and the row shows the new URL at once', function () {
+    $admin = overlayAdmin();
+    $page = Livewire::actingAs($admin)->test('pages::admin.overlays')->set('name', 'Cup night')->call('save');
+    $old = overlayToken($page->get('revealedUrl'));
+    $preset = OverlayPreset::query()->sole();
+
+    $page->call('rotate', $preset->id)->call('dismiss');
+    $preset->refresh();
+
+    expect($preset->token)->not->toBe($old)
+        ->and($preset->token_hash)->toBe(OverlayPreset::hashToken((string) $preset->token))
+        ->and(OverlayPreset::findByToken($old))->toBeNull();
+    $page->assertSee(OverlayPreset::url((string) $preset->token))->assertDontSee(OverlayPreset::url($old));
+    $this->get('/broadcast/'.$old)->assertNotFound();
+    $this->get('/broadcast/'.$preset->token)->assertOk();
+});
+
+test('a preset made before tokens were kept says to press New URL once, without a copy button', function () {
+    $legacy = OverlayPreset::factory()->create(['name' => 'Old laptop']);
+    expect($legacy->token)->toBeNull()->and($legacy->storedUrl())->toBeNull();
+
+    $this->actingAs(overlayAdmin())->get(route('admin.overlays'))->assertOk()
+        ->assertSee('data-test="overlay-row-legacy"', false)
+        ->assertSee('URL created before the update: press “New URL” once and it stays visible here.')
+        ->assertDontSee('data-test="overlay-row-copy"', false);
+
+    $this->actingAs(overlayAdmin('de'))->get(route('admin.overlays'))->assertOk()
+        ->assertSee('URL vor dem Update erstellt — einmal ‚Neue URL‘ drücken, dann bleibt sie hier sichtbar.');
+
+    // One rotation and the row has its URL.
+    Livewire::actingAs(overlayAdmin())->test('pages::admin.overlays')->call('rotate', $legacy->id)->call('dismiss')
+        ->assertSee(OverlayPreset::url((string) $legacy->refresh()->token))->assertDontSee('data-test="overlay-row-legacy"', false);
 });

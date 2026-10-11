@@ -15,7 +15,9 @@
  * when the channel (re)subscribes, for a push sent while it was away.
  *
  * `config`: userId, lookingKey (`<slug>/blitz`), looking (stored state),
- * fallback (seconds between asks without a websocket). Proof of Pong's lobby
+ * fallback (seconds between asks without a websocket), liveMode (the live
+ * mode the tiles opened: Blockli's blitz or rapid; "Online now" invites in
+ * it, as the chess lobby's `liveMode`). Proof of Pong's lobby
  * (components/⚡pong-lobby, plan "Proof of Pong", P2) uses it too, with its
  * own `events` ({ started, invite }) and `newTab`: its match opens in a tab of
  * its own where the browser lets a push open one, else in this one.
@@ -28,6 +30,7 @@ export default function boardLobby(config) {
         ticker: null,
         stops: [],
         looking: Boolean(config.looking),
+        liveMode: config.liveMode ?? null,
         savedLooking: Boolean(config.looking),
         savingLooking: false,
         lookingFailed: false,

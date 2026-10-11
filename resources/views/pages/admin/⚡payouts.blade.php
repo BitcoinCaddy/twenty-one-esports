@@ -213,7 +213,27 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
     $pending = $payouts->where('status', PayoutStatus::Pending);
 @endphp
 
+{{--
+    AdminPayouts.dc.html: the readout (nothing waiting, or how many wait, and the last prize paid), then the
+    chosen tournament as one featured card: its cover, name and pot as a display numeral, the closing state
+    on the right, the places as a table. Addresses are never shown, only whether one is checked; the one
+    exception is the button that approves a changed address (rule: no Lightning address on screens).
+--}}
+@php
+    $waitingAll = \App\Models\TournamentPayout::query()->whereIn('status', [PayoutStatus::Pending, PayoutStatus::Failed])->count();
+    $lastPaid = \App\Models\TournamentPayout::query()->where('status', PayoutStatus::Paid)->latest('updated_at')->value('amount_sats');
+@endphp
 <x-admin.page active="payouts" :title="__('Payouts')" :lead="__('Prize money per player, sent to the Lightning address in their Nostr profile. Every payment has a fixed key: a second click never pays twice.')" data-test="admin-payouts">
+    <x-slot:readout>
+        @if ($waitingAll === 0)
+            <span class="flex items-center gap-2"><span class="rv-dot" aria-hidden="true"></span><span class="text-xs text-ink-2">{{ __('No payout waiting') }}</span></span>
+        @else
+            <span class="flex items-center gap-2"><span class="rv-dot is-p" style="--c: var(--color-btc-hi)" aria-hidden="true"></span><span class="text-xs text-ink-2">{{ trans_choice(':count payout waiting|:count payouts waiting', $waitingAll) }}</span></span>
+        @endif
+        @if ($lastPaid !== null)
+            <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('last paid') }}</span><span class="rv-num text-base text-btc" data-test="readout-value">{{ $sats((int) $lastPaid) }} {{ __('Sats') }}</span></span>
+        @endif
+    </x-slot:readout>
     @unless ($leagueKey)
         <x-admin.flash tone="error" :message="__('The league key is not set up (ESPORTS_LEAGUE_NSEC), so no payout can be published.')" data-test="league-key-missing" />
     @endunless
@@ -225,37 +245,42 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
         </x-admin.empty>
     </x-admin.panel>
     @else
-        <label class="flex flex-col gap-1.5 text-xs text-ink-2 sm:max-w-[420px]">
-            {{ __('Tournament') }}
-            <select wire:model.live="tournamentId" class="h-11 rounded-md border border-line bg-well px-3 text-[13px] text-ink" data-test="payouts-tournament">
-                @foreach ($this->tournaments as $option)
-                    <option value="{{ $option->id }}">{{ $option->name }} · {{ $option->status->label() }}</option>
-                @endforeach
-            </select>
-        </label>
+        <div class="flex flex-col sm:max-w-[420px]">
+            <span class="rv-lb" id="payouts-tournament-l">{{ __('Tournament') }}</span>
+            <x-ui.select-menu model="tournamentId" live labelledby="payouts-tournament-l" :value="$this->tournamentId" data-test="payouts-tournament"
+                              :options="$this->tournaments->mapWithKeys(fn ($option): array => [$option->id => $option->name.', '.$option->status->label()])->all()" />
+        </div>
     @endif
 
     @if ($tournament)
-        <section aria-labelledby="t-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="payouts-tournament-panel"
+        <section aria-labelledby="t-h" class="rv-card rv-glow flex flex-col gap-4 p-4 lg:p-6" style="box-shadow: inset 4px 0 0 var(--color-btc), 0 0 0 1px var(--color-btc), 0 0 28px rgb(247 147 26 / 0.25)" data-test="payouts-tournament-panel"
                  @if ($this->watching || $this->payouts->contains(fn ($payout) => $payout->status === PayoutStatus::Paying)) wire:poll.3s @endif>
-            <div class="flex flex-col gap-1">
-                <h2 id="t-h" class="m-0 text-[15px] font-bold"><a href="{{ route('tournaments.show', $tournament) }}">{{ $tournament->name }}</a></h2>
-                <p class="m-0 text-[13px] text-ink-2" data-test="pot-wallet-state">
-                    @if ($tournament->hasOwnWallet())
-                        {{ $payingHere ? __('Approved before the league wallet took over: paid from the pot’s own wallet.') : __('The connection of this pot’s own wallet is missing, so nothing can be paid out.') }}
-                    @else
-                        {{ $payingHere ? __('Paid from the league wallet.') : __('The league wallet is not connected, so nothing can be paid out.') }}
-                        <span data-test="pot-ledger">{{ __('The pot as set: :pot sats, paid out by share. If the league wallet holds less, top it up.', ['pot' => $sats((int) $pool)]) }}</span>
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <x-game-cover :game="$tournament->game" size="thumb" class="w-24 shrink-0 rounded-xs" />
+                <div class="flex min-w-0 grow flex-col gap-1">
+                    <h2 id="t-h" class="m-0 flex items-center gap-2 text-[14px] font-bold"><x-icon name="trophy" :size="16" class="shrink-0 text-bolt" /><a href="{{ route('tournaments.show', $tournament) }}" class="min-w-0 [overflow-wrap:anywhere]">{{ $tournament->name }}</a></h2>
+                    @if ($pool !== null)
+                        <span class="rv-num text-[26px] text-btc" data-test="payouts-pot">{{ $sats((int) $pool) }} {{ __('Sats') }}</span>
                     @endif
-                </p>
-                <p class="m-0 text-[13px] text-ink-2">
-                    @if ($fixedMode)
-                        {{ __('Fixed prizes: :prizes sats', ['prizes' => implode(' / ', array_map($sats, $tournament->prizeFixed()))]) }}
-                    @else
-                        {{ __('Split: :split', ['split' => implode(' / ', $tournament->prizeSplit())]) }} · {{ __(':payable sats to split', ['payable' => $sats((int) $pool)]) }}
-                    @endif
-                    @if ($tournament->payouts_approved_at) · {{ __('checked :date', ['date' => $tournament->payouts_approved_at->format('Y-m-d H:i')]) }}@endif
-                </p>
+                    <p class="m-0 rv-m" data-test="pot-wallet-state">
+                        @if ($tournament->hasOwnWallet())
+                            {{ $payingHere ? __('Approved before the league wallet took over: paid from the pot’s own wallet.') : __('The connection of this pot’s own wallet is missing, so nothing can be paid out.') }}
+                        @else
+                            {{ $payingHere ? __('Paid from the league wallet.') : __('The league wallet is not connected, so nothing can be paid out.') }}
+                            <span data-test="pot-ledger">{{ __('The pot as set: :pot sats, paid out by share. If the league wallet holds less, top it up.', ['pot' => $sats((int) $pool)]) }}</span>
+                        @endif
+                    </p>
+                    <p class="m-0 rv-m">
+                        @if ($fixedMode)
+                            {{ __('Fixed prizes: :prizes sats', ['prizes' => implode(' / ', array_map($sats, $tournament->prizeFixed()))]) }}
+                        @else
+                            {{ __('Split: :split', ['split' => implode(' / ', $tournament->prizeSplit())]) }}, {{ __(':payable sats to split', ['payable' => $sats((int) $pool)]) }}
+                        @endif
+                    </p>
+                </div>
+                @if ($tournament->payouts_approved_at)
+                    <span class="rv-tag is-ok shrink-0 self-start sm:self-center"><x-icon name="check" :size="12" />{{ __('checked :date', ['date' => $tournament->payouts_approved_at->format('Y-m-d H:i')]) }}</span>
+                @endif
             </div>
 
             @error('payouts')<p class="m-0 text-[13px] text-loss" role="alert" data-test="payouts-error">{{ $message }}</p>@enderror
@@ -271,7 +296,7 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                     @if ($preview)
                         <ul class="m-0 flex list-none flex-col p-0 text-[13px]" data-test="payouts-preview">
                             @foreach ($preview['rows'] as $row)
-                                <li class="flex justify-between gap-3 border-t border-hairline py-1.5"><span>{{ $row['place'] }}. {{ $row['user']->displayName() }}</span><b>{{ $sats($row['amount']) }} {{ __('sats') }}</b></li>
+                                <li class="flex justify-between gap-3 border-t border-hairline py-2"><span><span class="rv-num text-btc">{{ $row['place'] }}.</span> {{ $row['user']->displayName() }}</span><b class="tabular-nums">{{ $sats($row['amount']) }} {{ __('sats') }}</b></li>
                             @endforeach
                             <li class="flex justify-between gap-3 border-t border-hairline py-1.5 text-ink-2"><span>{{ __('Remainder, stays in the pot') }}</span><span>{{ $sats($preview['remainder']) }} {{ __('sats') }}</span></li>
                         </ul>
@@ -285,40 +310,40 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                 </div>
 
                 <div class="relative overflow-x-auto" @if ($payouts->contains(fn ($p) => $p->status === PayoutStatus::Paying)) wire:poll.5s @endif>
-                    <table class="w-full min-w-[860px] border-collapse text-left text-[13px]">
-                        <thead class="text-xs text-ink-3">
+                    <table class="rv-tb min-w-[860px]">
+                        <thead>
                             <tr>
-                                <th class="py-2 pr-3 font-normal">{{ __('Place') }}</th>
-                                <th class="py-2 pr-3 font-normal">{{ __('Player') }}</th>
-                                <th class="py-2 pr-3 font-normal">{{ __('Lightning address') }}</th>
-                                <th class="py-2 pr-3 text-right font-normal">{{ __('Amount') }}</th>
-                                <th class="py-2 pr-3 font-normal">{{ __('Status') }}</th>
-                                <th class="py-2 pr-3 font-normal">{{ __('Key') }}</th>
-                                <th class="py-2 font-normal"><span class="sr-only">{{ __('Actions') }}</span></th>
+                                <th>{{ __('Place') }}</th>
+                                <th>{{ __('Player') }}</th>
+                                <th class="is-r">{{ __('Amount (sats)') }}</th>
+                                <th>{{ __('Status') }}</th>
+                                <th>{{ __('Lightning address') }}</th>
+                                <th>{{ __('Key') }}</th>
+                                <th class="is-r"><span class="sr-only">{{ __('Actions') }}</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($payouts as $payout)
-                                <tr class="border-t border-hairline align-top" wire:key="po-{{ $payout->id }}" data-test="admin-payout-row" data-status="{{ $payout->status->value }}">
-                                    <td class="py-2.5 pr-3">{{ $payout->place }}.</td>
-                                    <td class="py-2.5 pr-3">
+                                <tr class="align-top" wire:key="po-{{ $payout->id }}" data-test="admin-payout-row" data-status="{{ $payout->status->value }}">
+                                    <td><span class="rv-num text-base text-btc">{{ $payout->place }}.</span></td>
+                                    <td>
                                         <b class="[overflow-wrap:anywhere]">{{ $payout->name }}</b>
-                                        @if ($payout->participant && $payout->participant->name !== $payout->name)<span class="block text-xs text-ink-3">{{ $payout->participant->name }}</span>@endif
+                                        @if ($payout->participant && $payout->participant->name !== $payout->name)<span class="block rv-m">{{ $payout->participant->name }}</span>@endif
                                     </td>
-                                    <td class="py-2.5 pr-3 text-xs [overflow-wrap:anywhere]">{{ $payout->lud16 ?? '—' }}</td>
-                                    <td class="py-2.5 pr-3 text-right whitespace-nowrap">{{ $sats($payout->amount_sats) }} {{ __('sats') }}</td>
-                                    <td class="py-2.5 pr-3">
-                                        <span @class(['inline-flex h-6 items-center rounded-xs px-2 text-xs font-bold', 'bg-win-tint text-win' => $payout->status === PayoutStatus::Paid, 'bg-loss-tint text-loss' => $payout->status === PayoutStatus::Failed, 'bg-btc-chip text-btc-hi' => ! in_array($payout->status, [PayoutStatus::Paid, PayoutStatus::Failed], true)])>{{ $payout->status->label() }}</span>
+                                    <td class="is-r whitespace-nowrap font-bold tabular-nums">{{ $sats($payout->amount_sats) }}</td>
+                                    <td>
+                                        <span @class(['rv-tag', 'is-ok' => $payout->status === PayoutStatus::Paid, 'is-bad' => $payout->status === PayoutStatus::Failed, 'is-btc' => ! in_array($payout->status, [PayoutStatus::Paid, PayoutStatus::Failed], true)])>@if ($payout->status === PayoutStatus::Paid)<x-icon name="check" :size="12" />@endif{{ $payout->status->label() }}</span>
                                         @if ($payout->reasonText())<span class="mt-1 block max-w-[280px] text-xs text-ink-2" data-test="payout-reason">{{ $payout->reasonText() }}</span>@endif
-                                        @if ($payout->event)<span class="mt-1 block truncate font-mono text-[11px] text-proof" title="{{ $payout->event->event_id }}">2157 · {{ \Illuminate\Support\Str::limit($payout->event->event_id, 16, '…') }}</span>@endif
+                                        @if ($payout->event)<span class="mt-1 block truncate font-mono text-[11px] text-proof" title="{{ $payout->event->event_id }}">2157, {{ \Illuminate\Support\Str::limit($payout->event->event_id, 16, '…') }}</span>@endif
                                     </td>
-                                    <td class="py-2.5 pr-3 font-mono text-[11px] text-ink-3" title="{{ $payout->idempotency_key }}">{{ substr($payout->idempotency_key, 0, 10) }}…</td>
-                                    <td class="py-2.5 text-right whitespace-nowrap">
+                                    <td class="text-[13px] text-ink-2" data-test="payout-address-state">{{ $payout->lud16 !== null ? __('checked') : '–' }}</td>
+                                    <td class="font-mono text-[11px] text-ink-3" title="{{ $payout->idempotency_key }}">{{ substr($payout->idempotency_key, 0, 10) }}…</td>
+                                    <td class="is-r whitespace-nowrap">
                                         @if ($payout->status === PayoutStatus::Open && $payout->reason !== \App\Support\FairPlay\AccountLinks::WITHHELD && ($newAddress = \App\Support\Payouts\PayoutRunner::currentAddress($payout)) !== null)
                                             <x-button variant="quiet" wire:click="approveAddress({{ $payout->id }}, '{{ $newAddress }}')" wire:confirm="{{ __('Pay this prize to :address from now on?', ['address' => $newAddress]) }}" data-test="approve-address">{{ __('Approve :address', ['address' => $newAddress]) }}</x-button>
                                         @endif
                                         @if ($payout->status->isPayable())
-                                            <x-button variant="quiet" wire:click="pay({{ $payout->id }})" wire:confirm="{{ __('Send :sats sats to :address?', ['sats' => $sats($payout->amount_sats), 'address' => $payout->lud16 ?? $payout->name]) }}" x-on:click="navigator.vibrate?.(15)" wire:loading.attr="disabled" wire:target="pay({{ $payout->id }})" :disabled="! $payingHere" data-test="pay-one">
+                                            <x-button variant="quiet" wire:click="pay({{ $payout->id }})" wire:confirm="{{ __('Send :sats sats to :address?', ['sats' => $sats($payout->amount_sats), 'address' => $payout->name]) }}" x-on:click="navigator.vibrate?.(15)" wire:loading.attr="disabled" wire:target="pay({{ $payout->id }})" :disabled="! $payingHere" data-test="pay-one">
                                                 <span wire:loading.remove wire:target="pay({{ $payout->id }})">{{ $payout->status === PayoutStatus::Failed ? __('Retry') : __('Pay') }}</span>
                                                 <span wire:loading wire:target="pay({{ $payout->id }})">{{ __('Starting…') }}</span>
                                             </x-button>

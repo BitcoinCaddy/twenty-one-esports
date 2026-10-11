@@ -13,8 +13,8 @@
 @endphp
 
 @if ($roundTimes !== [])
-    <section aria-labelledby="round-times-h" class="flex flex-col gap-2 rounded-lg bg-card p-4 lg:px-6 lg:py-5" data-test="round-times">
-        <h2 id="round-times-h" class="m-0 text-[15px] font-bold">{{ __('Round times') }}</h2>
+    <section aria-labelledby="round-times-h" class="flex flex-col gap-2 rounded border border-hairline bg-card p-4 lg:px-6 lg:py-5" data-test="round-times">
+        <h2 id="round-times-h" class="rv-h3">{{ __('Round times') }}</h2>
         <ul class="m-0 flex list-none flex-col gap-1 p-0 text-[13px]">
             @foreach ($roundTimes as $round)
                 <li data-test="round-time">{{ ($twoStages ? __('Stage :stage', ['stage' => $round['stage']]).', ' : '').__('Round :number: :measured (estimate :estimate)', [

@@ -30,6 +30,7 @@ use App\Models\TournamentResultEntry;
 use App\Models\TournamentRound;
 use App\Models\TournamentStage;
 use App\Models\User;
+use App\Support\Board\RaceStanding;
 use App\Support\Chess\Broadcasts;
 use App\Support\Hyper\HyperCups;
 use App\Support\Rating\RatingService;
@@ -761,6 +762,17 @@ final class TournamentRunner
     }
 
     /**
+     * Whether a drawn deciding game of this game can go to the race standing (draw_decider `standing`): a two-leg
+     * board game whose rules count a race (RaceStanding, Blockli).
+     */
+    public static function canDecideByStanding(string $slug): bool
+    {
+        $game = app(GameRegistry::class)->find($slug);
+
+        return $game instanceof BoardGameDefinition && $game->playsTwoLegs() && $game->rules() instanceof RaceStanding;
+    }
+
+    /**
      * The finished board games of a match in the order they were played
      * (since the league last voided or superseded its games): the two legs,
      * then any deciding games.
@@ -820,6 +832,21 @@ final class TournamentRunner
         }
 
         if ($last->result === '1/2-1/2') {
+            // The tournament's rule (draw_decider `standing`, user 2026-10-11): the side ahead in the race standing of the
+            // final position wins; a level standing is replayed as before.
+            $standing = $match->tournament->decidesDrawByStanding() ? $this->raceStanding($last) : null;
+
+            if ($standing !== null && $standing['lead'] !== null) {
+                $whiteSlot = in_array((int) $last->white_id, $match->slots[0]->participant?->memberIds() ?? [], true) ? 0 : 1;
+                $winner = $standing['lead'] === 'w' ? $whiteSlot : 1 - $whiteSlot;
+                $margin = abs($standing['margin']);
+                $this->store($match, ['winner' => $winner, 'games_won' => $points, 'points' => [], 'forfeit' => false, 'decided' => 'standing',
+                    'standing' => ['margin' => $margin, 'legs' => $label($points)],
+                    'label' => self::standingLabel($label($points), $margin), 'by' => 'players']);
+
+                return;
+            }
+
             if ($deciders->where('result', '1/2-1/2')->count() > self::drawnReplays($match->tournament)) {
                 $this->store($match, $this->seedDecision($match, 'seed'));
             }
@@ -832,6 +859,28 @@ final class TournamentRunner
 
         $this->store($match, ['winner' => $winner, 'games_won' => $points, 'points' => [], 'forfeit' => false, 'decided' => 'decider',
             'label' => __(':legs, decider :decider', ['legs' => $label($points), 'decider' => self::chessLabel($winner)]), 'by' => 'players']);
+    }
+
+    /**
+     * The race standing of a board game's final position, if its rules count a race (Blockli); null for any other game.
+     *
+     * @return array{w: array{steps: int, blocks: int, score: float}, b: array{steps: int, blocks: int, score: float}, margin: float, lead: 'w'|'b'|null, rate: float}|null
+     */
+    private function raceStanding(BoardGame $game): ?array
+    {
+        $definition = $this->games->find($game->game);
+        $rules = $definition instanceof BoardGameDefinition ? $definition->rules() : null;
+
+        return $rules instanceof RaceStanding ? $rules->standing($rules->deserialize($game->position)) : null;
+    }
+
+    /** "1–1, decider drawn: race standing, ahead by 2.5 steps", in the viewer's language (TournamentView reads it anew). */
+    public static function standingLabel(string $legs, float $margin): string
+    {
+        $steps = rtrim(rtrim(number_format($margin, 1, '.', ''), '0'), '.');
+        $steps = app()->getLocale() === 'de' ? str_replace('.', ',', $steps) : $steps;
+
+        return __(':legs, decider drawn: race standing, ahead by :steps', ['legs' => $legs, 'steps' => trans_choice(':count step|:count steps', $margin == 1.0 ? 1 : 2, ['count' => $steps])]);
     }
 
     /** "1", "½", "1½": a score of whole and half points. */

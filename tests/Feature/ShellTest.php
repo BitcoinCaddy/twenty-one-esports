@@ -33,7 +33,7 @@ test('unknown pages answer 404 in the visitor locale', function () {
     $this->withSession(['locale' => 'de'])
         ->get('/this-page-does-not-exist')
         ->assertNotFound()
-        ->assertSee('Seite nicht gefunden');
+        ->assertSee('Diese Seite gibt es nicht');
 });
 
 test('the labelled Admin item is hidden for guests', function () {

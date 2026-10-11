@@ -1,4 +1,4 @@
-@props(['active' => null, 'groups' => null])
+@props(['active' => null, 'groups' => null, 'side' => false])
 
 {{--
     The admin map (P17, App\Support\Navigation\AdminNavigation): four groups,
@@ -25,7 +25,64 @@
     $activeItem = $activeGroup ? collect($activeGroup['items'])->firstWhere('key', $active) : null;
 @endphp
 
-@if ($groups !== [])
+@if ($groups !== [] && $side)
+    {{--
+        The sidebar of the admin frame (revamp P8, boards Admin*: canvas/gen/pages_more.py `admin()`): from 1024 px
+        a column of 240 px, every group a quiet label over its pages, rows of 36 px, the page on screen orange-edged,
+        a count waiting beside its page. Below 1024 px the same map behind one disclosure ("All admin pages") that
+        names the page on screen, every page a row of 44 px.
+    --}}
+    <nav aria-label="{{ __('Admin') }}" data-test="admin-nav" {{ $attributes->class('rv-admin-side relative z-20') }}>
+        <details class="group lg:hidden" data-test="admin-nav-menu"
+                 x-data x-on:click.outside="$el.open = false" x-on:keydown.escape="if ($el.open) { $el.open = false; $el.querySelector('summary').focus() }">
+            <summary class="flex h-12 cursor-pointer list-none items-center gap-2 px-4 text-[13px] [&::-webkit-details-marker]:hidden">
+                @if ($activeItem)
+                    <span class="hidden shrink-0 text-ink-3 sm:inline">{{ $activeGroup['label'] }}</span>
+                    <span class="hidden text-ink-3 sm:inline" aria-hidden="true">/</span>
+                    <b class="min-w-0 truncate text-ink">{{ $activeItem['label'] }}</b>
+                @else
+                    <span class="text-ink-3">{{ __('Admin') }}</span>
+                @endif
+                <span class="grow"></span>
+                <span class="shrink-0 text-xs whitespace-nowrap text-ink-2">{{ __('All admin pages') }}</span>
+                <x-icon name="chevron-down" :size="16" class="shrink-0 text-ink-2 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
+            </summary>
+            <div class="grid grid-cols-1 gap-x-8 gap-y-4 border-t border-hairline bg-tick px-4 pt-3 pb-4 sm:grid-cols-2">
+                @foreach ($groups as $group)
+                    <div class="flex flex-col">
+                        <span id="admin-menu-{{ $group['key'] }}" class="py-1 text-xs text-ink-3">{{ $group['label'] }}</span>
+                        <ul class="m-0 flex list-none flex-col p-0" aria-labelledby="admin-menu-{{ $group['key'] }}">
+                            @foreach ($group['items'] as $item)
+                                <li>
+                                    <a href="{{ $item['href'] }}" data-test="{{ $item['test'] }}-menu" @if ($active === $item['key']) aria-current="page" @endif
+                                       @class(['flex min-h-11 items-center gap-2 border-l-2 pl-3 text-[13px]', 'border-btc font-bold text-ink hover:text-ink' => $active === $item['key'], 'border-transparent text-ink-2 hover:text-ink' => $active !== $item['key']])>
+                                        {{ $item['label'] }}@if ($item['count'] > 0)<x-admin.count :count="$item['count']" />@endif
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
+            </div>
+        </details>
+
+        <div class="hidden flex-col lg:flex" data-test="admin-nav-side">
+            @foreach ($groups as $group)
+                <span id="admin-side-{{ $group['key'] }}" class="rv-admin-side-group">{{ $group['label'] }}</span>
+                <ul class="m-0 flex list-none flex-col p-0" aria-labelledby="admin-side-{{ $group['key'] }}">
+                    @foreach ($group['items'] as $item)
+                        <li>
+                            <a href="{{ $item['href'] }}" class="rv-admin-side-item" data-test="{{ $item['test'] }}" @if ($active === $item['key']) aria-current="page" @endif>
+                                <span class="min-w-0 grow truncate">{{ $item['label'] }}</span>
+                                @if ($item['count'] > 0)<x-admin.count :count="$item['count']" />@endif
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endforeach
+        </div>
+    </nav>
+@elseif ($groups !== [])
     <nav aria-label="{{ __('Admin') }}" data-test="admin-nav" {{ $attributes->class('relative z-20 border-b border-hairline') }}>
         {{-- Row 1: the groups, then the whole map. --}}
         <div class="flex items-start px-4 lg:px-12">

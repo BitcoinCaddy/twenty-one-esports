@@ -1,11 +1,23 @@
 <?php
 
 use App\Enums\BoardGameStatus;
+use App\Enums\TournamentFormat;
+use App\Enums\TournamentResultsMode;
+use App\Enums\TournamentStatus;
 use App\Models\Admin;
+use App\Models\BoardGame;
+use App\Models\Tournament;
+use App\Models\TournamentMatch;
+use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Board\BoardGameService;
+use App\Support\Tournaments\FormatOptions;
+use App\Support\Tournaments\GameProfile;
+use App\Support\Tournaments\TournamentBrackets;
+use App\Support\Tournaments\TournamentRunner;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Lottery;
 use Pest\Browser\Playwright\Page;
 use Pest\Browser\Support\ComputeUrl;
 use Tests\Support\BlockliOn;
@@ -226,7 +238,7 @@ test('two players play Blockli to a win with every way to set a block: groove ta
     'desktop 1440 (mouse)' => [1440, 900, false],
 ]);
 
-test('while a block is shown, the buttons are at least 44 px high and Confirm is the only filled one', function (int $width, int $height, bool $touch) {
+test('while a block is shown, Rotate, Confirm and Move the pawn stand in the pop-up, every button is at least 44 px high and Confirm is the only filled one; a mouse sets it by its click, without them', function (int $width, int $height, bool $touch) {
     [$anna, $bert] = User::factory()->count(2)->create();
     $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
     $white = blockliPage($anna, route('board.show', $game, false), $width, $height, $touch);
@@ -235,16 +247,137 @@ test('while a block is shown, the buttons are at least 44 px high and Confirm is
     $touch ? $white->locator('[data-test=mode-block]')->tap() : $white->locator('[data-test=mode-block]')->click();
     $touch ? blockliTap($white, true, 'c4/d5', -30) : blockliHover($white, 'c4/d5', -30);
     // Filled = the orange primary ground (bg-btc); the pressed toggle keeps a dark tint (bg-btc-press).
-    $buttons = $white->evaluate('() => [...document.querySelectorAll("[data-test=block-input] button")].filter((b) => b.checkVisibility()).map((b) => ({ test: b.dataset.test, h: Math.round(b.getBoundingClientRect().height), filled: b.classList.contains("bg-btc") }))');
+    // Rotate, Confirm and Move the pawn stand in the pop-up over the board (DerCaddy, 2026-10-09), so they come first;
+    // under the board only "Set a block" is left.
+    $buttons = $white->evaluate('() => [...document.querySelectorAll("[data-test=block-popup] button, [data-test=block-input] button")].filter((b) => b.checkVisibility()).map((b) => ({ test: b.dataset.test, h: Math.round(b.getBoundingClientRect().height), filled: b.classList.contains("bg-btc") }))');
 
-    expect(collect($buttons)->pluck('test')->all())->toBe(['mode-move', 'mode-block', 'rotate-block', 'set-block'])
+    expect(collect($buttons)->pluck('test')->all())->toBe($touch ? ['rotate-block', 'set-block', 'mode-move', 'mode-block'] : ['mode-block'])
         ->and(collect($buttons)->every(fn (array $b): bool => $b['h'] >= 44))->toBeTrue()
-        ->and(collect($buttons)->where('filled', true)->pluck('test')->all())->toBe(['set-block'])
+        ->and(collect($buttons)->where('filled', true)->pluck('test')->all())->toBe($touch ? ['set-block'] : [])
         ->and($white->evaluate('() => window.__errors'))->toBe([]);
 })->with([
     'phone 390 (touch)' => [390, 844, true],
     'desktop 1440 (mouse)' => [1440, 900, false],
 ]);
+
+/**
+ * The vertical extent [top, bottom] of the board, of its part in view (below the sticky header, above the tab bar: the
+ * root's scroll padding; above the bars fixed over the board on a phone: Blockli's bar, the chat sheet, the dock), the
+ * block pop-up (the stretch it stands in), its card (the buttons' box, or the hint), its buttons and the block shown,
+ * rounded; null where there is none.
+ */
+const BLOCKLI_POPUP_BOXES = <<<'JS'
+    () => {
+        const box = (selector) => {
+            const el = document.querySelector(selector);
+            if (!el || !el.checkVisibility()) return null;
+            const r = el.getBoundingClientRect();
+            return [Math.round(r.top), Math.round(r.bottom)];
+        };
+        const root = getComputedStyle(document.documentElement);
+        const board = document.querySelector('[data-test=board]').getBoundingClientRect();
+        let floor = innerHeight - (parseFloat(root.scrollPaddingBottom) || 0);
+        document.querySelectorAll('[data-page-bar], [data-live-floor]').forEach((el) => {
+            if (!el.checkVisibility() || getComputedStyle(el).position !== 'fixed') return;
+            const r = el.getBoundingClientRect();
+            if (r.height > 0 && r.left < board.right && r.right > board.left && r.top > board.top) floor = Math.min(floor, r.top);
+        });
+        const view = [Math.round(Math.max(board.top, parseFloat(root.scrollPaddingTop) || 0)), Math.round(Math.min(board.bottom, floor))];
+        const card = box('[data-test=block-popup] > div') ?? box('[data-test=block-popup] > p');
+        return { board: box('[data-test=board]'), view, popup: box('[data-test=block-popup]'), card, buttons: box('[data-test=set-block]'), block: box('[data-test=board] [data-preview]') };
+    }
+    JS;
+
+test('the block pop-up stands over the board, never over the block: a finger gets Rotate, Confirm and Move the pawn in the middle of the board on the other side of the block, a mouse the hint at the edge', function (int $width, int $height, bool $touch) {
+    [$anna, $bert] = User::factory()->count(2)->create();
+    $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
+    $white = blockliPage($anna, route('board.show', $game, false), $width, $height, $touch);
+    BrowserWait::until($white, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+
+    // "Set a block" (on a phone in the bar fixed above the chat sheet, from lg at the head of the side column): at the top
+    // of the page, the hint alone stands at the top of the part of the board in view.
+    $touch ? $white->locator('[data-test=mode-block]')->tap() : $white->locator('[data-test=mode-block]')->click();
+    $white->evaluate('() => window.scrollTo(0, 0)');
+    BrowserWait::until($white, '() => { const b = ('.BLOCKLI_POPUP_BOXES.')(); return b.popup !== null && Math.abs(b.popup[0] - b.view[0] - 8) <= 1; }', 5_000);
+    expect($white->evaluate(BLOCKLI_POPUP_BOXES)['buttons'])->toBeNull();
+
+    // A block on the 7th rank: the pop-up below it, a finger's buttons in the middle between the block and the bottom of the
+    // board in view (DerCaddy, 2026-10-09), a mouse's hint at that bottom.
+    $touch ? blockliTap($white, true, 'c7/d8', -30) : blockliHover($white, 'c7/d8', -30);
+    $boxes = $white->evaluate(BLOCKLI_POPUP_BOXES);
+    expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c7/d8', 'h', true])
+        ->and($boxes['buttons'] !== null)->toBe($touch)
+        ->and($boxes['card'][0])->toBeGreaterThan($boxes['block'][1])
+        ->and($boxes['card'][1])->toBeLessThanOrEqual($boxes['view'][1])
+        ->and($touch
+            ? abs(($boxes['card'][0] + $boxes['card'][1]) / 2 - ($boxes['block'][1] + 12 + $boxes['view'][1] - 8) / 2)
+            : abs($boxes['view'][1] - 8 - $boxes['card'][1]))->toBeLessThanOrEqual(3);
+
+    // A block on the 2nd rank, reached below the pop-up: it moves above the block.
+    $touch ? blockliTap($white, true, 'c1/d2', -30) : blockliHover($white, 'c1/d2', -30);
+    $boxes = $white->evaluate(BLOCKLI_POPUP_BOXES);
+    expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c1/d2', 'h', true])
+        ->and($boxes['card'][1])->toBeLessThan($boxes['block'][0])
+        ->and($boxes['card'][0])->toBeGreaterThanOrEqual($boxes['view'][0])
+        ->and($touch
+            ? abs(($boxes['card'][0] + $boxes['card'][1]) / 2 - ($boxes['view'][0] + 8 + $boxes['block'][0] - 12) / 2)
+            : abs($boxes['card'][0] - $boxes['view'][0] - 8))->toBeLessThanOrEqual(3);
+
+    // Confirm in the pop-up sets the block; a mouse clicks it.
+    $touch ? $white->locator('[data-test=set-block]')->tap() : blockliTap($white, false, 'c1/d2', -30);
+    BrowserWait::until($white, '() => Alpine.$data(document.querySelector("[data-test=board-game]")).state.ply === 1', 5_000);
+
+    expect($game->refresh()->moves()->pluck('notation')->all())->toBe(['c1h'])
+        ->and($white->evaluate('() => window.__errors'))->toBe([]);
+})->with([
+    'phone 390 (touch)' => [390, 844, true],
+    'desktop 1440 (mouse)' => [1440, 900, false],
+]);
+
+test('one time before the repetition draw the board warns over it and beside it, the 21st time draws; the race standing stands beside the board', function () {
+    [$anna, $bert] = User::factory()->count(2)->create();
+    $service = app(BoardGameService::class);
+    $game = $service->start('blockli', $anna, $bert);
+    $play = function (array $moves) use ($service, &$game): void {
+        foreach ($moves as $move) {
+            $game->refresh();
+            $game = $service->move($game, $game->player($game->turn), $move, $game->ply + 1);
+        }
+    };
+
+    // To and fro nineteen times: the start stands there for the 20th time, White to move.
+    foreach (range(1, 19) as $round) {
+        $play(['e1-e2', 'e9-e8', 'e2-e1', 'e8-e9']);
+    }
+
+    $white = blockliPage($anna, route('board.show', $game, false), 390, 844, true);
+    BrowserWait::until($white, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+
+    // Over the board for a few seconds, like a push message; beside the board for as long as the position stands.
+    expect($game->refresh()->ply)->toBe(76)
+        ->and($white->locator('[data-test=repetition-warning]')->innerText())->toBe('The same position 20 times. Once more and the game is drawn.')
+        ->and($white->locator('[data-test=repetition-note]')->innerText())->toBe('The same position 20 times. Once more and the game is drawn.')
+        ->and($white->locator('[data-test=standing]')->innerText())->toBe('Race: '.$anna->displayName().' needs 8 steps and has 10 blocks, '.$bert->displayName().' needs 8 steps and has 10 blocks. A block counts 1.5 steps: Both are level.');
+    shellShot($white, 'blockli-390-repetition-warning');
+
+    // The warning stands over the board and the pawn still moves.
+    blockliTap($white, true, 'e2');
+    BrowserWait::until($white, '() => Alpine.$data(document.querySelector("[data-test=board-game]")).state.ply === 77', 5_000);
+
+    $play(['e9-e8', 'e2-e1', 'e8-e9']);
+
+    expect($game->refresh()->status)->toBe(BoardGameStatus::Finished)
+        ->and($game->result)->toBe('1/2-1/2')
+        ->and($game->end_reason)->toBe('repetition');
+
+    $white->goto(ComputeUrl::from(route('board.show', $game, false)));
+    BrowserWait::until($white, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.state.status === "finished"', 10_000);
+
+    expect($white->evaluate('() => document.querySelector("[data-test=result]")?.innerText'))->toContain('The same position 21 times')
+        ->and($white->locator('[data-test=repetition-warning]')->isVisible())->toBeFalse()
+        ->and($white->locator('[data-test=repetition-note]')->isVisible())->toBeFalse()
+        ->and($white->evaluate('() => window.__errors'))->toBe([]);
+});
 
 /*
 | P6: the Blockli pages measured as an admin in German (and English for the
@@ -345,4 +478,138 @@ test('as an admin in German the board page, the lobby and the /play card squeeze
     }
 
     fwrite(STDERR, PHP_EOL.implode(PHP_EOL, $rows).PHP_EOL);
+});
+
+test('a drawn decider settled by the race standing says so with its margin in the bracket, at 390 and 1440', function () {
+    // User, 2026-10-11 (DerCaddy's proposal, PR #5): the score alone would read like a draw; the box names the standing.
+    Lottery::alwaysLose();
+    $tournament = Tournament::factory()->create([
+        'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::SingleElimination, 'name' => 'Blockli Race Cup',
+        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
+        'capacity' => 2, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running,
+        'slug' => 'blockli-standing-label', 'draw_decider' => Tournament::DRAW_DECIDER_STANDING,
+    ]);
+    foreach (['Anna Racer', 'Bert Racer'] as $index => $name) {
+        $user = User::factory()->create();
+        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => $name, 'rating' => 1500 - $index, 'members' => [$user->id]]);
+    }
+    app(TournamentBrackets::class)->generate($tournament, str_repeat('ef', 32));
+    app(TournamentRunner::class)->sync($tournament);
+    $service = app(BoardGameService::class);
+    $live = fn (): BoardGame => BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Active)->sole();
+    $match = fn (): TournamentMatch => TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', '!=', 'bye')->with('slots.participant')->sole();
+    foreach ([1, 0] as $loserSlot) {
+        $service->resign($live(), User::query()->findOrFail((int) $match()->slots[$loserSlot]->participant->memberIds()[0]));
+    }
+    $decider = BlockliOn::setUp($live(), 'e8 e3 10 10 w - 0');
+    $service->offerDraw($decider, $decider->white);
+    $service->acceptDraw($decider->refresh(), $decider->black);
+    expect($match()->result['decided'])->toBe('standing');
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $page = visit(route('tournaments.show', $tournament, false).'?lang=de')->page();
+        $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament, false).'?lang=de'));
+        BrowserWait::until($page, '() => !!document.querySelector("[data-test=match-decision]")', 10_000);
+        $m = $page->evaluate('() => { const el = document.querySelector("[data-test=match-decision]"); el.scrollIntoView(); const r = el.getBoundingClientRect(); const box = el.closest("[data-test=match-box]").getBoundingClientRect(); return { text: el.innerText.trim(), visible: el.checkVisibility(), inside: r.left >= box.left && r.right <= box.right + 0.5, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }');
+        fwrite(STDERR, PHP_EOL."[standing label {$width}] ".json_encode($m).PHP_EOL);
+
+        expect($m['text'])->toBe('1–1, Entscheidungspartie remis: Rennstand, 1 Schritt vorn')
+            ->and($m['visible'])->toBeTrue()
+            ->and($m['inside'])->toBeTrue()
+            ->and($m['overflow'])->toBeLessThanOrEqual(0)
+            ->and($page->evaluate('() => window.__errors'))->toBe([])
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    }
+    Lottery::determineResultNormally();
+});
+
+test('a Blockli rapid game plays live on a running 10+5 clock, from the lobby\'s Rapid tile to moves on both boards; clean console', function (int $width, int $height, bool $touch) {
+    // User, 2026-10-11: "Blockli braucht unbedingt einen Rapid Modus, wie Schach ihn auch hat" (and blitz beside it).
+    [$anna, $bert] = User::factory()->count(2)->create();
+
+    // The lobby: the Rapid tile opens the quick play in rapid.
+    $lobby = blockliPage($anna, route('board.lobby', 'blockli', false), $width, $height, $touch);
+    BrowserWait::until($lobby, '() => !!document.querySelector("[data-test=play-rapid]")', 10_000);
+    $touch ? $lobby->locator('[data-test=play-rapid]')->tap() : $lobby->locator('[data-test=play-rapid]')->click();
+    BrowserWait::until($lobby, '() => document.querySelector("[data-test=find-opponent]")?.checkVisibility() && document.querySelector("[data-test=find-opponent]").dataset.mode === "rapid"', 5_000);
+    $tiles = $lobby->evaluate('() => ["play-blitz", "play-rapid", "play-correspondence"].map((t) => { const r = document.querySelector("[data-test=" + t + "]").getBoundingClientRect(); return [t, Math.round(r.height), Math.round(r.right) <= innerWidth]; })');
+    $lobbyErrors = $lobby->evaluate('() => window.__errors');
+    $lobby->close();
+
+    $game = app(BoardGameService::class)->start('blockli', $anna, $bert, 'rapid');
+    $path = route('board.show', $game, false);
+    $white = blockliPage($game->white, $path, $width, $height, $touch);
+    $black = blockliPage($game->black, $path, $width, $height, $touch);
+    $pages = [$white, $black];
+    blockliCanMove($white);
+
+    $clock = '() => { const g = Alpine.$data(document.querySelector("[data-test=board-game]")); return [g.state.daily, g.clock("w"), g.clock("b")]; }';
+    [$daily, $whiteClock] = $white->evaluate($clock);
+    blockliTap($white, $touch, 'e2');
+    blockliPly($pages, 1);
+    blockliCanMove($black);
+    blockliTap($black, $touch, 'e8');
+    blockliPly($pages, 2);
+    $after = $white->evaluate($clock);
+    // White to move: its clock runs down on the page while it thinks.
+    $white->evaluate('() => new Promise((r) => setTimeout(r, 2500))');
+    $running = $white->evaluate('() => { const g = Alpine.$data(document.querySelector("[data-test=board-game]")); return [g.state.clock, g.clock("w")]; }');
+    fwrite(STDERR, PHP_EOL."[rapid {$width}] ".json_encode(['tiles' => $tiles, 'start' => $whiteClock, 'after' => $after, 'running' => $running]).PHP_EOL);
+
+    expect($daily)->toBeFalse()
+        ->and($whiteClock)->toMatch('/^(10:00|9:5\d)$/')
+        ->and($after[1])->toMatch('/^\d{1,2}:\d{2}$/')
+        ->and($running[1])->not->toBe($after[1], 'the clock of the side to move runs')
+        ->and($game->refresh()->moves()->pluck('notation')->all())->toBe(['e2', 'e8'])
+        ->and(collect($tiles)->every(fn (array $tile): bool => $tile[1] >= 44 && $tile[2]))->toBeTrue()
+        ->and($lobbyErrors)->toBe([]);
+
+    foreach ($pages as $page) {
+        expect($page->evaluate('() => window.__errors'))->toBe([])
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([])
+            ->and($page->evaluate('() => document.documentElement.scrollWidth - document.documentElement.clientWidth'))->toBeLessThanOrEqual(0);
+    }
+})->with([
+    'phone 390 (touch)' => [390, 844, true],
+    'desktop 1440 (mouse)' => [1440, 900, false],
+]);
+
+test('an organizer switches a running Blockli tournament to rapid in the editor; the tournament page says so; at 390 and 1440', function () {
+    $admin = User::factory()->create();
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+    $tournament = Tournament::factory()->create([
+        'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::SingleElimination, 'name' => 'Blockli Switch Cup',
+        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
+        'capacity' => 2, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running,
+        'slug' => 'blockli-switch', 'published_at' => now()->subDay(),
+    ]);
+    foreach (['Anna Switch', 'Bert Switch'] as $index => $name) {
+        $user = User::factory()->create();
+        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => $name, 'rating' => 1500 - $index, 'members' => [$user->id]]);
+    }
+    app(TournamentBrackets::class)->generate($tournament, str_repeat('34', 32));
+    app(TournamentRunner::class)->sync($tournament);
+
+    $page = blockliPage($admin, route('admin.tournaments.edit', $tournament, false).'?lang=de', 1440, 900, false);
+    BrowserWait::until($page, '() => !!document.querySelector("[data-test=mode-switch-rapid]")', 10_000);
+    $page->locator('[data-test=mode-switch-rapid]')->click();
+    BrowserWait::until($page, '() => !!document.querySelector("[data-test=mode-switch-notice]") && document.querySelector("[data-test=mode-switch-rapid]").getAttribute("aria-checked") === "true"', 10_000);
+    expect($tournament->refresh()->mode)->toBe('rapid')
+        ->and($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $show = blockliPage($admin, route('tournaments.show', $tournament, false).'?lang=de', $width, $height, false);
+        BrowserWait::until($show, '() => !!document.querySelector("[data-test=mode-switched]")', 10_000);
+        $m = $show->evaluate('() => { const el = document.querySelector("[data-test=mode-switched]"); el.scrollIntoView(); const r = el.getBoundingClientRect(); return { text: el.innerText, right: Math.round(r.right), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }');
+        fwrite(STDERR, PHP_EOL."[switch line {$width}] ".json_encode($m).PHP_EOL);
+
+        expect($m['text'])->toContain('von Fernpartie auf Rapid 10+5 umgestellt')
+            ->and($m['right'])->toBeLessThanOrEqual($width)
+            ->and($m['overflow'])->toBeLessThanOrEqual(0)
+            ->and($show->evaluate('() => window.__errors'))->toBe([])
+            ->and($show->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    }
 });

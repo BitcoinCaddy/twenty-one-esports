@@ -77,6 +77,7 @@ use Illuminate\Support\Carbon;
  * @property bool|null $night_pause the night pause on or off; null = the league default ({@see NightPause})
  * @property string|null $night_pause_until "HH:MM" (league zone) the night pause starts; null = the league default
  * @property string|null $night_pause_resume "HH:MM" (league zone) play goes on; null = the league default
+ * @property string|null $draw_decider a drawn two-leg decider: `standing` (the race standing decides) or `replay`; null = `replay`
  * @property int|null $prize_target_sats the organizer's goal for the pool (P9); shown, never paid from by itself
  * @property list<int>|null $prize_split percent per place, null = {@see self::DEFAULT_SPLIT}
  * @property Carbon|null $pool_opened_at the pot is open since then (set at publish)
@@ -115,7 +116,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable(['name', 'description', 'game', 'mode', 'format', 'options', 'capacity', 'starts_at', 'time_window', 'on_site', 'stations', 'times', 'results_mode', 'status', 'seed', 'created_by_id',
     'slug', 'signup_closes_at', 'published_at', 'event_id', 'draw_height', 'draw_hash', 'draw_event_id', 'draw_committed_at', 'ladder_address',
-    'checkin_minutes', 'noshow_minutes', 'report_hours', 'response_minutes', 'night_pause', 'night_pause_until', 'night_pause_resume',
+    'checkin_minutes', 'noshow_minutes', 'report_hours', 'response_minutes', 'night_pause', 'night_pause_until', 'night_pause_resume', 'draw_decider',
     'prize_target_sats', 'prize_split', 'pool_opened_at', 'pool_closed_at', 'payouts_approved_at', 'payouts_approved_by_id',
     'pot_source', 'pot_nwc_uri', 'pot_lud16', 'pot_balance_sats', 'pot_balance_at', 'pot_balance_error', 'paused_at',
     'prize_mode', 'prize_fixed', 'pot_can_receive',
@@ -474,6 +475,21 @@ class Tournament extends Model
     public function isPaused(): bool
     {
         return $this->paused_at !== null;
+    }
+
+    /** A drawn two-leg decider goes to the side ahead in the race standing (DerCaddy, PR #5; user, 2026-10-11). */
+    public const DRAW_DECIDER_STANDING = 'standing';
+
+    /** A drawn two-leg decider is replayed up to the league's limit, then the seed decides (every tournament before 2026-10-11). */
+    public const DRAW_DECIDER_REPLAY = 'replay';
+
+    /**
+     * Whether a drawn deciding game of a two-leg pairing goes to the race standing of its final position.
+     * Only a race game (App\Support\Board\RaceStanding, Blockli) can be settled so; the runner checks that too.
+     */
+    public function decidesDrawByStanding(): bool
+    {
+        return $this->draw_decider === self::DRAW_DECIDER_STANDING;
     }
 
     /**

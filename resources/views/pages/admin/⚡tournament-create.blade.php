@@ -132,6 +132,7 @@ new #[Title('New tournament')] #[Layout('layouts::app', ['section' => 'admin'])]
                     'status' => TournamentStatus::Draft,
                     'created_by_id' => auth()->id(),
                     ...$this->chosenDeadlines(),
+                    ...$this->chosenDrawDecider(),
                 ]);
 
                 if ($tournament->results_mode === TournamentResultsMode::Director) {
@@ -161,11 +162,11 @@ new #[Title('New tournament')] #[Layout('layouts::app', ['section' => 'admin'])]
 
 <x-admin.page active="tournaments" :title="__('New tournament')" :lead="__('Draft. Players see it once you publish.')" :crumbs="[[__('Tournaments'), route('admin.tournaments')]]" data-test="tournament-create">
 
-    <section aria-label="{{ __('Basics') }}" class="grid grid-cols-2 gap-3 rounded-lg bg-card p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] lg:gap-4 lg:px-6 lg:py-5">
+    <section aria-label="{{ __('Basics') }}" class="grid grid-cols-2 gap-3 rounded border border-hairline bg-card p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] lg:gap-4 lg:px-6 lg:py-5">
         <label class="col-span-2 flex flex-col gap-1.5 text-xs text-ink-2 lg:col-span-1">
             {{ __('Name') }}
             <input wire:model="name" maxlength="80" placeholder="{{ __('Blitz Night Munich') }}" data-test="tournament-name"
-                   class="h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink">
+                   class="rv-in">
             @error('name')<span class="text-loss" role="alert">{{ $message }}</span>@enderror
         </label>
         <x-berlin-datetime-input model="startsAt" :label="__('Starts')" :value="$startsAt" test="create-starts-at" class="col-span-2" />
@@ -190,7 +191,7 @@ new #[Title('New tournament')] #[Layout('layouts::app', ['section' => 'admin'])]
 
     @include('pages.admin.partials.prize-pot', ['potTournament' => null, 'potSave' => null])
 
-    <div class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5">
+    <div class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5">
         @island(name: 'summary')
             @php
                 $summaryRow = $this->evaluation->row($this->format);

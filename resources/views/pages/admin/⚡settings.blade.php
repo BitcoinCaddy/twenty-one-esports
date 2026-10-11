@@ -102,7 +102,7 @@ new #[Title('League settings')] #[Layout('layouts::app', ['section' => 'admin'])
 }; ?>
 
 @php
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink disabled:opacity-60';
+    $input = 'rv-in disabled:opacity-60';
     $definitions = LeagueSettings::definitions();
     $overrides = LeagueSettings::overrides();
     $viewer = auth()->user();
@@ -110,6 +110,10 @@ new #[Title('League settings')] #[Layout('layouts::app', ['section' => 'admin'])
 @endphp
 
 <x-admin.page active="settings" :title="__('League settings')" :lead="__('The operational values of the league. Each field shows its default from the configuration; a change applies from the next page load or job and is logged below. Chain rules and rating values are on the season page; keys and secrets stay on the server.')" :notice="$notice" notice-test="settings-notice" data-test="admin-settings">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Changes in the record') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->log->count() }}</span></span>
+    </x-slot:readout>
+
     <form wire:submit="save" class="flex flex-col gap-6" data-test="settings-form">
         @foreach (LeagueSettings::groups() as $group => $groupLabel)
             @continue(! $byGroup->has($group))
@@ -159,17 +163,15 @@ new #[Title('League settings')] #[Layout('layouts::app', ['section' => 'admin'])
                                 @endif
                             </label>
                             @if ($definition['type'] === 'weekday')
-                                <select id="setting-{{ $field }}" wire:model="form.{{ $field }}" class="{{ $input }}"@if ($shared !== null) aria-describedby="{{ $shared['id'] }}"@endif @disabled(! $mayChange)>
-                                    @foreach (LeagueSettings::WEEKDAYS as $weekday)
-                                        <option value="{{ $weekday }}">{{ __(ucfirst($weekday)) }}</option>
-                                    @endforeach
-                                </select>
+                                <x-ui.select-menu :model="'form.'.$field" :id="'setting-'.$field" :value="$this->form[$field] ?? null" :describedby="$shared['id'] ?? null" :disabled="! $mayChange"
+                                                  :options="collect(LeagueSettings::WEEKDAYS)->mapWithKeys(fn (string $weekday): array => [$weekday => __(ucfirst($weekday))])->all()" />
                             @elseif ($definition['type'] === 'toggle')
-                                <select id="setting-{{ $field }}" wire:model="form.{{ $field }}" class="{{ $input }}"@if ($shared !== null) aria-describedby="{{ $shared['id'] }}"@endif @disabled(! $mayChange)>
-                                    @foreach (LeagueSettings::TOGGLE as $state)
-                                        <option value="{{ $state }}">{{ LeagueSettings::display($state) }}</option>
-                                    @endforeach
-                                </select>
+                                {{-- An on/off value is the board's switch row (AdminSettings.dc.html `srow` + `sw`). --}}
+                                <span class="flex items-center gap-3">
+                                    <x-ui.switch :model="'form.'.$field" :id="'setting-'.$field" on-value="on" off-value="off" :checked="($this->form[$field] ?? null) === 'on'" :disabled="! $mayChange"
+                                                 :aria-describedby="$shared['id'] ?? null" />
+                                    <span class="text-[13px] text-ink-2" x-data x-text="$wire.form[@js($field)] === 'on' ? @js(LeagueSettings::display('on')) : @js(LeagueSettings::display('off'))">{{ LeagueSettings::display($this->form[$field] ?? 'off') }}</span>
+                                </span>
                             @elseif ($definition['type'] === 'time')
                                 <input id="setting-{{ $field }}" type="time" wire:model="form.{{ $field }}" class="{{ $input }}"@if ($shared !== null) aria-describedby="{{ $shared['id'] }}"@endif @disabled(! $mayChange)>
                             @else

@@ -126,19 +126,20 @@ new #[Title('Moderation')] #[Layout('layouts::app', ['section' => 'admin'])] cla
     }
 }; ?>
 
-@php($input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink')
+@php($input = 'rv-in')
 
 <x-admin.page active="moderation" :title="__('Moderation')" :lead="__('Keys muted for everyone or banned from the site. Only admins see the reasons and who did it.')" :notice="$notice ?: null" notice-test="moderation-notice" data-test="admin-moderation">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('active') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->active->count() }}</span></span>
+    </x-slot:readout>
+
     <x-admin.panel :title="__('Mute or ban a key')" :meta="__('also from the menu on any chat message')">
         <form wire:submit="add" class="flex flex-col gap-3" data-test="moderation-form">
             <x-player-picker id="moderation-key" wire:model="key" allow-npub :label="__('Player or npub')" :exclude="[(int) auth()->id()]" class="max-w-xl" />
             @error('key')<p class="m-0 text-[13px] text-loss" role="alert" data-test="moderation-key-error">{{ $message }}</p>@enderror
-            <fieldset class="m-0 flex flex-wrap gap-x-5 gap-y-2 border-0 p-0 text-[13px]">
-                <legend class="sr-only">{{ __('Action') }}</legend>
-                <label class="inline-flex min-h-11 cursor-pointer items-center gap-2"><input type="radio" wire:model="action" value="mute" data-test="moderation-action-mute"> {{ __('Mute for everyone') }}</label>
-                <label class="inline-flex min-h-11 cursor-pointer items-center gap-2"><input type="radio" wire:model="action" value="ban" data-test="moderation-action-ban"> {{ __('Ban from the site') }}</label>
-            </fieldset>
-            <label class="flex max-w-xl flex-col gap-1.5 text-xs text-ink-2">{{ __('Reason (only admins read it)') }}
+            <x-ui.options model="action" :current="$this->action" :label="__('Action')" test="moderation-action" class="max-w-xl sm:flex-row sm:[&>*]:flex-1"
+                          :options="[['mute', __('Mute for everyone')], ['ban', __('Ban from the site')]]" />
+            <label class="flex max-w-xl flex-col"><span class="rv-lb">{{ __('Reason (only admins read it)') }}</span>
                 <input type="text" wire:model="reason" maxlength="500" class="{{ $input }}" data-test="moderation-reason">
             </label>
             @error('reason')<p class="m-0 text-[13px] text-loss" role="alert" data-test="moderation-reason-error">{{ $message }}</p>@enderror
@@ -157,7 +158,7 @@ new #[Title('Moderation')] #[Layout('layouts::app', ['section' => 'admin'])] cla
                 <span class="flex min-w-0 flex-col gap-0.5 text-[13px]">
                     <span class="flex flex-wrap items-baseline gap-x-2">
                         <b class="[overflow-wrap:anywhere]">{{ $this->name($row->pubkey) }}</b>
-                        <span @class(['rounded-tag px-1.5 text-[11px] leading-5', 'bg-loss/15 text-loss' => $row->action === ModerationAction::Ban, 'bg-raised text-ink-2' => $row->action === ModerationAction::Mute])>{{ $row->action === ModerationAction::Ban ? __('Banned') : __('Muted site-wide') }}</span>
+                        <span @class(['rv-tag', 'is-bad' => $row->action === ModerationAction::Ban])>{{ $row->action === ModerationAction::Ban ? __('Banned') : __('Muted site-wide') }}</span>
                     </span>
                     <span class="text-xs break-words text-ink-2">{{ __(':admin on :time: :reason', ['admin' => $this->name($row->actor_pubkey), 'time' => LeagueTime::stamp($row->created_at ?? now()), 'reason' => $row->reason]) }}</span>
                 </span>
@@ -171,7 +172,7 @@ new #[Title('Moderation')] #[Layout('layouts::app', ['section' => 'admin'])] cla
     <x-admin.panel :title="__('Undone')" :meta="__('every step stays in the record')" flush data-test="moderation-history">
         @forelse ($this->history as $row)
             <div class="flex flex-col gap-0.5 border-t border-hairline py-2 text-[13px] first:border-t-0" wire:key="h-{{ $row->id }}" data-test="moderation-history-row">
-                <span class="[overflow-wrap:anywhere]"><b>{{ $this->name($row->pubkey) }}</b> · {{ $row->action === ModerationAction::Ban ? __('Banned') : __('Muted site-wide') }}</span>
+                <span class="[overflow-wrap:anywhere]"><b>{{ $this->name($row->pubkey) }}</b>, {{ $row->action === ModerationAction::Ban ? __('Banned') : __('Muted site-wide') }}</span>
                 <span class="text-xs break-words text-ink-2">{{ __(':admin on :time: :reason', ['admin' => $this->name($row->actor_pubkey), 'time' => LeagueTime::stamp($row->created_at ?? now()), 'reason' => $row->reason]) }}</span>
                 <span class="text-xs text-ink-2">{{ __('Undone by :admin on :time', ['admin' => $this->name((string) $row->lifted_by_pubkey), 'time' => LeagueTime::stamp($row->lifted_at ?? now())]) }}</span>
             </div>

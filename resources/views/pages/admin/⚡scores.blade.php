@@ -290,6 +290,10 @@ new #[Title('Score submissions')] #[Layout('layouts::app', ['section' => 'admin'
 }; ?>
 
 <x-admin.page active="scores" :title="__('Score submissions')" :lead="__('Values players submitted with a proof link. Open the proof, then approve it or reject it with a reason the player sees. A leaderboard is not ended on its own while a submission for it waits.')" data-test="admin-scores">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('waiting') }}</span><span class="rv-num text-base {{ $this->total > 0 ? 'text-btc-hi' : 'text-ink' }}">{{ $this->total }}</span></span><span class="flex items-baseline gap-2"><span class="rv-m">{{ __('unconfirmed accounts') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ count($this->accounts) }}</span></span>
+    </x-slot:readout>
+
     <x-admin.panel :title="__('Waiting')" :meta="trans_choice(':count submission|:count submissions', $this->total)" data-test="scores-pending">
         @if ($flash !== '')
             <p class="m-0 text-[13px] text-win" role="status" data-test="scores-flash">{{ $flash }}</p>
@@ -327,7 +331,7 @@ new #[Title('Score submissions')] #[Layout('layouts::app', ['section' => 'admin'
                             <form wire:submit="reject" class="flex flex-col gap-2 sm:flex-row sm:items-end" data-test="score-reject-form">
                                 <label class="flex min-w-0 grow flex-col gap-1.5 text-xs text-ink-2">
                                     {{ __('Reason (the player sees it)') }}
-                                    <input wire:model="reason" maxlength="500" autocomplete="off" class="h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink" data-test="score-reject-reason">
+                                    <input wire:model="reason" maxlength="500" autocomplete="off" class="rv-in" data-test="score-reject-reason">
                                 </label>
                                 <x-button type="submit" variant="secondary" data-test="score-reject-confirm">{{ __('Reject') }}</x-button>
                             </form>
@@ -339,7 +343,7 @@ new #[Title('Score submissions')] #[Layout('layouts::app', ['section' => 'admin'
     </x-admin.panel>
 
     @php
-        $field = 'h-11 w-full min-w-0 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
+        $field = 'rv-in';
         $claimerCard = fn (User $claimer): string => $claimer->displayName().' · '.$claimer->shortNpub();
     @endphp
 

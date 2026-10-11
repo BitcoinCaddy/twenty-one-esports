@@ -251,7 +251,7 @@ test('the game chips fold into "+N weitere" from sm up and keep the active chip 
 test('the tournament pages fit every width from 390 to 1920 without a squeeze', function () {
     [$admin, $featured, $finished] = tourRevampLeague();
     // A game played on the player's own copy: the "you need your own copy" box with its platform chips in the hero.
-    $ownCopy = openTournament(['name' => 'Halving Cup', 'capacity' => 24], rocketLeague: true);
+    $ownCopy = openTournament(['name' => 'Halving Cup', 'capacity' => 24, 'description' => "Premiere! The rules are here:\nhttps://esports.einundzwanzig.space/rules#blockli-and-everything-else"], rocketLeague: true);
     $seen = [];
 
     foreach ([390, 768, 1024, 1280, 1440, 1920] as $width) {

@@ -823,16 +823,16 @@ new #[Title('Seasons')] #[Layout('layouts::app', ['section' => 'admin'])] class 
     $genesisAt = $live ? CarbonImmutable::instance($season->genesis_at) : $chain['now'];
     $milestoneDate = fn (float|int $weeks): CarbonImmutable => $genesisAt->addSeconds((int) round($weeks * 604800));
     $games = array_keys($chain['in_force']->shares + $chain['in_force']->daily);
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
+    $input = 'rv-in';
     $draftChain = ChainDraft::current();
     $plannedBlock0 = ChainDraft::block0At($draftChain);
 @endphp
 
 <x-admin.page active="seasons" :title="__('Seasons')" :lead="__('Every season is its own chain. Tournament prize pools stay separate and pay out when their tournament ends.')" :notice="$notice" notice-test="season-notice" data-test="admin-season" data-state="{{ Seasons::state() }}">
     {{-- Chain status --}}
-    <section aria-labelledby="status-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="season-status">
+    <section aria-labelledby="status-h" class="flex flex-col gap-4 rounded border border-hairline bg-card p-4 lg:p-6" data-test="season-status">
         <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="status-h" class="m-0 text-[15px] font-bold">{{ __('Pre-Season chain') }}</h2>
+            <h2 id="status-h" class="rv-h3">{{ __('Pre-Season chain') }}</h2>
             <span @class(['inline-flex h-7 items-center rounded-sm px-2.5 text-xs font-bold', 'bg-win-tint text-win' => $live, 'bg-btc-chip text-btc-hi' => ! $live])>{{ $live ? __('live') : __('draft, not released') }}</span>
         </span>
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -1070,8 +1070,8 @@ new #[Title('Seasons')] #[Layout('layouts::app', ['section' => 'admin'])] class 
     @endunless
 
     {{-- Halving schedule --}}
-    <section aria-labelledby="schedule-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="season-schedule">
-        <h2 id="schedule-h" class="m-0 text-[15px] font-bold">{{ __('Halving schedule') }} <span class="font-normal text-ink-3">{{ __('rewards in sats per winning player') }}</span></h2>
+    <section aria-labelledby="schedule-h" class="flex flex-col gap-3 rounded border border-hairline bg-card p-4 lg:p-6" data-test="season-schedule">
+        <h2 id="schedule-h" class="rv-h3">{{ __('Halving schedule') }} <span class="font-normal text-ink-3">{{ __('rewards in sats per winning player') }}</span></h2>
         <div class="overflow-x-auto">
             <table class="w-full min-w-[640px] border-collapse text-left text-xs">
                 <thead class="text-ink-2">
@@ -1114,9 +1114,9 @@ new #[Title('Seasons')] #[Layout('layouts::app', ['section' => 'admin'])] class 
     </section>
 
     {{-- Estimator --}}
-    <section aria-labelledby="estimator-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="season-estimator">
+    <section aria-labelledby="estimator-h" class="flex flex-col gap-4 rounded border border-hairline bg-card p-4 lg:p-6" data-test="season-estimator">
         <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="estimator-h" class="m-0 text-[15px] font-bold">{{ __('Estimator') }} <span class="font-normal text-ink-3">{{ __('milestones = share of the supply mined') }}</span></h2>
+            <h2 id="estimator-h" class="rv-h3">{{ __('Estimator') }} <span class="font-normal text-ink-3">{{ __('milestones = share of the supply mined') }}</span></h2>
             <span class="text-xs text-ink-3">{{ $live ? __('forecast from the blocks of the last 4 weeks') : __('forecast from the finished wins of the last 4 weeks, casual included: nothing is rated before Block 0') }}</span>
         </span>
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-6">
@@ -1158,10 +1158,10 @@ new #[Title('Seasons')] #[Layout('layouts::app', ['section' => 'admin'])] class 
 
     @unless ($live)
         {{-- Release Block 0 --}}
-        <section aria-labelledby="release-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#3A2A12] lg:px-6"
+        <section aria-labelledby="release-h" class="flex flex-col gap-4 rounded border border-hairline bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#3A2A12] lg:px-6"
                  x-data="nostrAction({ pubkey: @js($viewer->pubkey), messages: @js(SignerMessages::labels()) })" data-test="release-block0">
             <span class="flex flex-col gap-1">
-                <h2 id="release-h" class="m-0 text-[15px] font-bold">{{ __('Release Block 0') }}</h2>
+                <h2 id="release-h" class="rv-h3">{{ __('Release Block 0') }}</h2>
                 <span class="text-xs text-ink-2">{{ __('Any one board member on the public admin list can release it. Rated play and mining start with it; nothing can be undone.') }}</span>
             </span>
             <ol class="m-0 grid list-none grid-cols-1 gap-4 p-0 lg:grid-cols-3">
@@ -1200,9 +1200,9 @@ new #[Title('Seasons')] #[Layout('layouts::app', ['section' => 'admin'])] class 
         </section>
     @else
         {{-- Rule changes during the season (2158) --}}
-        <section aria-labelledby="change-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="season-change">
+        <section aria-labelledby="change-h" class="flex flex-col gap-4 rounded border border-hairline bg-card p-4 lg:p-6" data-test="season-change">
             <span class="flex flex-col gap-1">
-                <h2 id="change-h" class="m-0 text-[15px] font-bold">{{ __('Change the chain rules') }}</h2>
+                <h2 id="change-h" class="rv-h3">{{ __('Change the chain rules') }}</h2>
                 <span class="text-xs text-ink-2">{{ __('A change counts only for blocks saved after it, never back. Supply, subsidy, eras and the season end stay as released.') }}</span>
             </span>
             <form wire:submit="saveChange" class="flex flex-col gap-4">
@@ -1251,8 +1251,8 @@ new #[Title('Seasons')] #[Layout('layouts::app', ['section' => 'admin'])] class 
             </form>
         </section>
 
-        <section aria-labelledby="log-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="season-log">
-            <h2 id="log-h" class="m-0 text-[15px] font-bold">{{ __('Change log') }} <span class="font-normal text-ink-3">{{ __('public, also on the mining page') }}</span></h2>
+        <section aria-labelledby="log-h" class="flex flex-col gap-3 rounded border border-hairline bg-card p-4 lg:p-6" data-test="season-log">
+            <h2 id="log-h" class="rv-h3">{{ __('Change log') }} <span class="font-normal text-ink-3">{{ __('public, also on the mining page') }}</span></h2>
             @forelse ($chain['changes'] as $change)
                 <div class="flex flex-col gap-1 border-b border-hairline py-2.5 text-[13px] last:border-0">
                     <span class="flex flex-wrap gap-x-3"><b>{{ $date($change->effective_at) }}</b><span class="text-ink-2">{{ __('by :name', ['name' => $change->changedBy?->displayName() ?? substr($change->changed_by_pubkey, 0, 8)]) }}</span></span>

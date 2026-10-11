@@ -663,6 +663,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             array_splice($chips, 2, 0, [['lock', __('Sign-up closes'), $at($tournament->signup_closes_at), 'closes']]);
         }
 
+        // A two-leg race game (Blockli): how a 1:1 and a drawn third game are settled (draw_decider, user 2026-10-11).
+        if (\App\Support\Tournaments\TournamentRunner::canDecideByStanding($tournament->game)) {
+            array_splice($chips, 1, 0, [['award', __('Pairings'), $tournament->decidesDrawByStanding()
+                ? __('two games with the colours swapped; at 1:1 a third game decides, and if it is drawn the race standing of its final position decides (a block counts :rate steps); a level standing is replayed', ['rate' => app()->getLocale() === 'de' ? str_replace('.', ',', (string) \App\Support\Board\BlockliRules::BLOCK_STEPS) : (string) \App\Support\Board\BlockliRules::BLOCK_STEPS])
+                : trans_choice('two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through', \App\Support\Tournaments\TournamentRunner::drawnReplays($tournament)), 'pairings']]);
+        }
+
         $proof = array_values(array_filter([
             $tournament->naddr() ? ['naddr', $tournament->naddr()] : null,
             $tournament->event ? [__('Calendar event'), $tournament->event->event_id] : null,
@@ -1328,7 +1335,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
 
         {{-- The rules of this tournament: the steps, the facts, the questions and the proof (rule: explanations live here, not in the views above). --}}
         @unless ($blockfillWeek)
-            <section id="rules" aria-labelledby="how-h" class="grid scroll-mt-24 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+            <section id="rules" aria-labelledby="how-h" class="grid scroll-mt-24 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
                 <div class="flex flex-col gap-4">
                     <h2 id="how-h" class="rv-h3">{{ __('How it works') }}</h2>
                     <ol class="m-0 flex list-none flex-col gap-4 p-0" data-test="how-it-works">
@@ -1367,11 +1374,18 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             </div>
                         @endforeach
                     </dl>
+                    @if (($modeSwitched = app(\App\Support\Tournaments\TournamentModeSwitch::class)->lastSwitch($tournament)) !== null)
+                        {{-- The time control was switched after publishing (Blockli, user 2026-10-11): one line, what and when. --}}
+                        <p class="m-0 rounded-[4px] border border-btc-ring bg-feature px-3.5 py-2.5 text-[13px] leading-normal text-ink" data-test="mode-switched">{{ __('Switched from :from to :to on :date. Games already under way finish as they started.', [
+                            'from' => \App\Support\GameNames::mode($tournament->game, $modeSwitched['from']), 'to' => \App\Support\GameNames::mode($tournament->game, $modeSwitched['to']),
+                            'date' => $at($modeSwitched['at']),
+                        ]) }}</p>
+                    @endif
                     @if ($tournament->isDirectorMode())
                         <p class="m-0 text-xs leading-normal text-ink-2" data-test="director-notice">{{ __('Results are entered by the tournament directors.') }}</p>
                     @endif
                     @if (filled($tournament->description))
-                        <p class="m-0 max-w-[65ch] text-[13px] leading-relaxed whitespace-pre-line text-ink-2" data-test="tournament-description">{{ $tournament->description }}</p>
+                        <p class="m-0 max-w-[65ch] text-[13px] leading-relaxed whitespace-pre-line text-ink-2 [overflow-wrap:anywhere]" data-test="tournament-description">{{ $tournament->description }}</p>
                     @endif
                     @if ($published && $status !== TournamentStatus::Cancelled && ! $week)
                         @include('pages.tournaments.partials.share', ['tournament' => $tournament, 'text' => $shareText, 'label' => $cta === 'open' || $cta === 'entered' ? __('Bring your friends') : __('Share this tournament')])

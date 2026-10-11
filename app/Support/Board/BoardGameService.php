@@ -100,8 +100,8 @@ final class BoardGameService
      * A rated game comes with the trust gate the league pinned at the pairing
      * (RatedBoard, P6); without one the game is casual.
      *
-     * Without a mode the game plays its lobby mode (BoardGame::lobbyMode():
-     * correspondence for the board games since 2026-10-07).
+     * Without a mode the game plays correspondence where it has it, else its
+     * lobby mode (BoardGame::lobbyMode()).
      *
      * @throws BoardRuleViolation for a game that is no switched-on board game,
      *                            a mode without a clock, or a player already in a live game
@@ -113,7 +113,8 @@ final class BoardGameService
         }
 
         $definition = $this->definition($slug);
-        $mode ??= $definition->lobbyMode();
+        // Without a mode: correspondence where the game has it (Blockli since its blitz and rapid, 2026-10-11), else its live mode.
+        $mode ??= $definition->mode(BoardGame::CORRESPONDENCE) !== null ? BoardGame::CORRESPONDENCE : $definition->lobbyMode();
         [$initialMs, $incrementMs] = $this->timeControl($definition, $mode);
         $daily = $mode === BoardGame::CORRESPONDENCE;
         $rules = $definition->rules();
@@ -472,8 +473,9 @@ final class BoardGameService
     /**
      * Everything a board needs to show this game right now: the pieces and
      * the legal moves with the points to click for each (the board knows no
-     * rules of its own). The full move list is included for page loads and
-     * reconnects; pushes leave it out and carry `lastMove` instead.
+     * rules of its own), and for a race (RaceStanding) who would be ahead.
+     * The full move list is included for page loads and reconnects; pushes
+     * leave it out and carry `lastMove` instead.
      *
      * @return array<string, mixed>
      */
@@ -505,6 +507,8 @@ final class BoardGameService
             'firstMoveDeadline' => $game->isActive() && ! $game->clocksRunning() && ! $game->isCorrespondence() ? $game->deadline_ms : null,
             'drawOffer' => $game->draw_offer,
             'pieces' => $rules === null ? [] : $rules->view($position)['pieces'],
+            // Who would be ahead in a race (Blockli): steps to the goal and blocks left a side (DerCaddy, 2026-10-09).
+            'standing' => $rules instanceof RaceStanding ? $rules->standing($position) : null,
             'legal' => array_map(fn (string $move): array => ['move' => $move, 'path' => $rules?->path($move) ?? []], $legal),
             'lastMove' => $last === null ? null : $this->moveState($last, $rules),
         ];
@@ -520,7 +524,7 @@ final class BoardGameService
      * The board's fixed drawing (lines, cells, clickable points) of this
      * game, for the page; pushes carry only the pieces.
      *
-     * @return array{width: int, height: int, lines: list<array{0: int, 1: int, 2: int, 3: int}>, cells: list<array{x: int, y: int, size: int}>, points: list<array{id: string, x: int, y: int}>}|null
+     * @return array{width: int, height: int, lines: list<array{0: int, 1: int, 2: int, 3: int}>, cells: list<array{x: int, y: int, size: int}>, points: list<array{id: string, x: int, y: int}>, input?: 'blocks', repetitions?: int}|null
      */
     public function layout(BoardGame $game): ?array
     {

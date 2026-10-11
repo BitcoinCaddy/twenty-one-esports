@@ -180,12 +180,12 @@ test('the board games run no casual cup (correspondence only, user 2026-10-07), 
         ->and(GameProfile::for('blockli', 'correspondence')->unit)->toBe('day');
 });
 
-test('the Blockli lobby has no queue, and an invite to a player looking to play starts a correspondence game', function () {
+test('the Blockli lobby queues blitz and rapid (user, 2026-10-11), and an invite without a mode still starts a correspondence game', function () {
     [$a, $c] = User::factory()->count(2)->create();
 
     Livewire\Livewire::actingAs($a)->test('pages::board.lobby', ['board' => 'blockli'])
-        ->assertDontSeeHtml('data-test="play-blitz"')
-        ->call('findOpponent')->assertDontSeeHtml('data-test="lobby-searching"');
+        ->assertSeeHtml('data-test="play-blitz"')->assertSeeHtml('data-test="play-rapid"')
+        ->call('findOpponent', false, 'rapid')->assertSeeHtml('data-test="lobby-searching"')->call('cancelSearch');
 
     expect(BoardGame::query()->count())->toBe(0);
 

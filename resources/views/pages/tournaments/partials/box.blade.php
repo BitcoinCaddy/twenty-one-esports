@@ -60,6 +60,10 @@
             @endif
         </span>
     @endforeach
+    @if ($box['decision'] ?? null)
+        {{-- A drawn decider settled by the race standing (Blockli), with the margin: the score alone would read ½–½. --}}
+        <span class="border-t border-hairline px-3 py-1.5 text-[11px] leading-snug text-ink-2" data-test="match-decision">{{ $box['decision'] }}</span>
+    @endif
     @if ($box['director'])
         <div class="px-3 pb-2">@include('pages.tournaments.partials.marker', ['marker' => $box['director']])</div>
     @endif
