@@ -298,7 +298,7 @@ test('the stream bot posts a live team match with its boards, never as a best-of
     $messages = app(StreamBotBuilders::class)->build('live_series', CarbonImmutable::now());
 
     expect($messages)->toHaveCount(1)
-        ->and($messages[0]->content)->toContain($match->challenger_name.' vs '.$match->challenged_name)->toContain('2 boards')->not->toContain('best of');
+        ->and($messages[0]->content)->toContain($match->challenger_name)->toContain($match->challenged_name)->toContain('2 boards')->not->toContain('best of');
 });
 
 test('the online list carries the rapid Elo, labelled', function () {

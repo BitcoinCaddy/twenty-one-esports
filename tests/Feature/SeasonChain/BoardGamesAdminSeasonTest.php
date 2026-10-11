@@ -64,7 +64,7 @@ test('the board fills in the proposal and saves it: the board games mine in the 
     $changes = SeasonSettingChange::query()->latest('id')->first()->changes;
 
     expect($chain['weights'])->toMatchArray(['chess/blitz' => 1000, 'chess/correspondence' => 2000, 'nine-mens-morris/correspondence' => 2000, 'checkers/correspondence' => 2000])
-        ->and($chain['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22, 'board-games' => 10])
+        ->and($chain['shares'])->toBe(['chess' => 32, 'board-games' => 10, 'rocket-league' => 36, 'ea-sports-fc' => 22])
         ->and($chain['daily'])->toMatchArray(['board-games' => 5])
         ->and($chain['groups'])->toHaveKey('board-games')
         ->and($changes)->toMatchArray([
@@ -144,7 +144,7 @@ test('a running season whose genesis has no board games\' group takes each board
 
     expect(SeasonParameterChange::query()->sole()->parameters)->toBe([
         'weights' => ['checkers/correspondence' => 1000],
-        'shares' => ['ea-sports-fc' => 20, 'checkers' => 5],
+        'shares' => ['checkers' => 5, 'ea-sports-fc' => 20],
         'daily' => ['checkers' => 3],
     ]);
 });

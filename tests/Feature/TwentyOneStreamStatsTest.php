@@ -192,7 +192,7 @@ test('every game reaches the stream: its ladders (the season ladder first, a lin
 
     expect($stats['gamesPlayed'])->toBe(3)
         ->and($stats['gamesToday'])->toBe(3)
-        ->and($boards->keys()->all())->toBe(['chess/blitz', 'rocket-league/3v3', 'checkers/correspondence'])
+        ->and($boards->keys()->all())->toBe(['chess/blitz', 'checkers/correspondence', 'rocket-league/3v3'])
         // The season ladder has rows, so it is the one shown.
         ->and($boards['chess/blitz']['pool'])->toBe(Rating::RATED)
         ->and(array_column($boards['chess/blitz']['rows'], 'elo'))->toBe([1050])

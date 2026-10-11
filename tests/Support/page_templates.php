@@ -94,6 +94,7 @@ return [
     'stacker/⚡replays.blade.php' => ['T5 + Viewer', 'BlockfillReplays › BlockfillReplays'],
     'styleguide.blade.php' => ['-', null],
     'testing/js-throw.blade.php' => ['-', null],
+    'tournaments/⚡archive.blade.php' => ['T6, T14', 'Archive › Archive'],
     'tournaments/⚡director.blade.php' => ['T6 Leitstand', 'TournamentOps › TournamentOps'],
     'tournaments/⚡draw.blade.php' => ['T6 Auslosung', 'TournamentDraw › TournamentDraw'],
     'tournaments/⚡index.blade.php' => ['T6, T14', 'Tournaments › Tournaments'],

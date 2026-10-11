@@ -53,7 +53,7 @@
                     @if ($mine['due'] !== null)
                         <b class="font-bold">{{ $mine['due_kind'] === 'checkin' ? __('Check in by :time.', ['time' => $clock($mine['due'])]) : __('Your next deadline: :time.', ['time' => $clock($mine['due'])]) }}</b>
                     @endif
-                    <a href="{{ $mine['url'] }}" wire:navigate class="font-bold whitespace-nowrap text-btc-hi underline-offset-2 hover:underline">{{ __('Open match') }}</a>
+                    <a href="{{ $mine['url'] }}" @navigate($mine['url']) class="font-bold whitespace-nowrap text-btc-hi underline-offset-2 hover:underline">{{ __('Open match') }}</a>
                 </p>
             @endif
         </div>
