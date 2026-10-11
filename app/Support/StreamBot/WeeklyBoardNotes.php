@@ -283,14 +283,17 @@ abstract class WeeklyBoardNotes
     /**
      * The note's content in the wording its type takes next, the `p` tags of
      * the players it names, its note type and that wording (ProfileNotes).
+     * `report`: the text is the weekly report (WeeklyReport), its `p` tags
+     * those of the report's mentions; `body` the text without the event.
      *
-     * @return array{content: string, tags: list<list<string>>, type: string, variant: int, template: string, values: array<string, string|int|null>}
+     * @return array{content: string, body: string, report: bool, tags: list<list<string>>, type: string, variant: int, template: string, values: array<string, string|int|null>}
      */
     public function compose(Tournament $week, string $slot): array
     {
         $previous = app()->getLocale();
         app()->setLocale(self::LOCALE);
         $tags = [];
+        $reported = false;
 
         try {
             [$kind, $template, $values] = match (true) {
@@ -310,6 +313,7 @@ abstract class WeeklyBoardNotes
             // The weekly report (plan "KI-Stimme der Liga", P3): the league voice's winner note when it has one.
             if ($kind === 'winner' && ($report = app(WeeklyReport::class)->line($week, $this->runs->standings($week), $this->label(), (string) ($values['url'] ?? ''))) !== null) {
                 ['content' => $body, 'tags' => $tags] = $report;
+                $reported = true;
             }
         } finally {
             app()->setLocale($previous);
@@ -317,6 +321,8 @@ abstract class WeeklyBoardNotes
 
         return [
             'content' => $week->address() === null ? $body : $body."\n\nnostr:".$this->notes->naddr($week),
+            'body' => $body,
+            'report' => $reported,
             'tags' => $tags,
             'type' => $type,
             'variant' => $variant,
@@ -348,12 +354,16 @@ abstract class WeeklyBoardNotes
      */
     private function sign(LeagueKey $key, Tournament $week, string $slot, int $createdAt): array
     {
-        ['tags' => $tags, 'type' => $type, 'variant' => $variant, 'template' => $template, 'values' => $values] = $this->compose($week, $slot);
+        ['body' => $body, 'report' => $report, 'tags' => $tags, 'type' => $type, 'variant' => $variant, 'template' => $template, 'values' => $values] = $this->compose($week, $slot);
         $address = $week->address();
         $tags = $address === null ? $tags : [...$tags, ['q', $address, $this->notes->relayHint() ?? '']];
-        // With its switch on, the league voice writes the copy (BotVoice, `note_weekly`); mentions only as the players allow.
-        $composed = $this->voice->compose('note_weekly', $template, $variant, $values, $tags, CarbonImmutable::createFromTimestamp($createdAt), ['hold_template' => true, 'link_optional' => $address !== null])
-            ?? throw new HeldBack;
+        // The weekly report goes out as written, with the p tags of its own mentions (it passed the voice's checks and
+        // the spam gate in WeeklyReport::line()); otherwise, with its switch on, the league voice writes the copy
+        // (BotVoice, `note_weekly`); mentions only as the players allow.
+        $composed = $report
+            ? ['content' => $body, 'tags' => $tags]
+            : $this->voice->compose('note_weekly', $template, $variant, $values, $tags, CarbonImmutable::createFromTimestamp($createdAt), ['hold_template' => true, 'link_optional' => $address !== null])
+                ?? throw new HeldBack;
         $tags = $composed['tags'];
         $content = $address === null ? $composed['content'] : $composed['content']."\n\nnostr:".$this->notes->naddr($week);
         $problems = StreamBotCopy::violations($composed['content'], $tags, linkRequired: $address === null);
