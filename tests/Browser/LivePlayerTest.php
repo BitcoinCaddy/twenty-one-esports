@@ -320,7 +320,8 @@ test('tab, mini player and badge share the screen with the header, the match doc
     ChessGame::factory()->daily()->create(['white_id' => $player->id]);
 
     $page = livePage($width, $player, '/clans');
-    BrowserWait::until($page, '() => [...document.querySelectorAll("[data-live-floor]")].some((el) => el.checkVisibility())', 10_000);
+    // The action dock opens from the header and the tab bar (P7): it has no floating bar to wait for any more.
+    BrowserWait::until($page, '() => document.querySelector("[data-test=match-dock-root]") !== null && window.Alpine !== undefined', 10_000);
     // A toast lives 8 s, the video start below can take up to 20 s under load: each measurement gets a fresh one,
     // sent once the previous toast is gone (one toast on screen, as measured), and waited for until it shows.
     $toasts = '[...document.querySelectorAll("[aria-live=polite] > div")].filter((el) => el.checkVisibility()).length';
@@ -342,8 +343,8 @@ test('tab, mini player and badge share the screen with the header, the match doc
 
     fwrite(STDERR, "\n[live layout {$width}] tab ".json_encode($tab)."\n[live layout {$width}] open ".json_encode($open)."\n");
 
-    // Phones: the tab bar and the dock above it are both on screen, the player above both; the badge is in More.
-    $expected = $width < 1024 ? ['player', 'header', 'toast0', 'dock-mobile-bar', 'tab-bar'] : ['player', 'header', 'toast0', 'match-dock'];
+    // Phones: the tab bar on screen, the player above it; the badge is in More. Nothing of the dock floats (P7).
+    $expected = $width < 1024 ? ['player', 'header', 'toast0', 'tab-bar'] : ['player', 'header', 'toast0'];
 
     foreach (['tab' => $tab, 'open' => $open] as $state => $layout) {
         $dump = "{$state} at {$width}: ".json_encode($layout);
@@ -355,9 +356,9 @@ test('tab, mini player and badge share the screen with the header, the match doc
             ->and($layout['rects']['player'][3])->toBeLessThanOrEqual($layout['viewport'][1] - 8, $dump);
 
         if ($width < 1024) {
-            // Above the highest bar: the dock, which sits above the tab bar.
-            expect($layout['rects']['player'][3])->toBeLessThanOrEqual($layout['rects']['dock-mobile-bar'][1] - 8, $dump)
-                ->and($layout['rects']['dock-mobile-bar'][3])->toBeLessThanOrEqual($layout['rects']['tab-bar'][1], $dump);
+            // Above the highest bar: the tab bar.
+            expect($layout['rects']['player'][3])->toBeLessThanOrEqual($layout['rects']['tab-bar'][1] - 8, $dump)
+                ->and(array_key_exists('dock-mobile-bar', $layout['rects']))->toBeFalse($dump);
         } else {
             expect($layout['badgeInHeader'])->toBeTrue($dump);
         }

@@ -71,6 +71,9 @@ final class MempoolStrip
 {
     public const SIDE = 5;
 
+    /** How far back the finished side of /matches may reach once its chain is dragged to the left end. */
+    public const HISTORY = 60;
+
     /**
      * Highscore attempts take at most this many cubes a side: a busy
      * Blockfill week would otherwise push every match out of the strip.
@@ -84,13 +87,16 @@ final class MempoolStrip
     public const WAITING_SERIES = [SeriesStatus::Accepted, SeriesStatus::Reported, SeriesStatus::Disputed];
 
     /**
+     * `history`: how many finished blocks (SIDE up to HISTORY), the older ones on the left.
      * `live`: whether a season runs now, so the strip's copy promises mining
      * only then (before Block 0 and between seasons no win mines).
      *
      * @return array{finished: list<array<string, mixed>>, running: list<array<string, mixed>>, live: bool}
      */
-    public static function build(?User $viewer = null, ?string $chain = null, bool $runs = false, int $runsPerSide = self::ATTEMPTS_PER_SIDE): array
+    public static function build(?User $viewer = null, ?string $chain = null, bool $runs = false, int $runsPerSide = self::ATTEMPTS_PER_SIDE, int $history = self::SIDE): array
     {
+        // The finished side may reach further back: /matches loads older blocks when its chain is dragged to the left end.
+        $side = max(self::SIDE, min(self::HISTORY, $history));
         $runs = $runs && $chain !== 'season';
         $runsPerSide = max(0, min(self::SIDE, $runsPerSide));
         $boards = self::boardSlugs();
@@ -102,19 +108,19 @@ final class MempoolStrip
         /** @var list<array{kind: string, model: SeriesMatch|ChessGame|BoardGame|StackerRun|ScoreRun|HyperMatch|PongMatch, at: int}> $finished */
         $finished = [
             ...self::onChain(SeriesMatch::query(), $chain)->with($sides)->whereIn('status', [SeriesStatus::Confirmed, SeriesStatus::Resolved])
-                ->orderByDesc('finished_at')->limit(self::SIDE)->get()->tap(fn ($list) => ChessTeamMatches::preload($list))
+                ->orderByDesc('finished_at')->limit($side)->get()->tap(fn ($list) => ChessTeamMatches::preload($list))
                 ->map(fn (SeriesMatch $match): array => self::item('series', $match, $match->finished_at))->all(),
             ...self::onChain(ChessGame::query(), $chain)->with([...$players, 'seriesMatch:id,number'])->where('status', ChessGameStatus::Finished)
-                ->orderByDesc('ended_at')->limit(self::SIDE)->get()
+                ->orderByDesc('ended_at')->limit($side)->get()
                 ->map(fn (ChessGame $game): array => self::item('chess', $game, $game->ended_at))->all(),
             ...($boards === [] ? [] : self::onChain(BoardGame::query(), $chain)->with($players)->whereIn('game', $boards)->where('status', BoardGameStatus::Finished)
-                ->orderByDesc('ended_at')->limit(self::SIDE)->get()
+                ->orderByDesc('ended_at')->limit($side)->get()
                 ->map(fn (BoardGame $game): array => self::item('board', $game, $game->ended_at))->all()),
             ...(! $hyper ? [] : self::onChain(HyperMatch::query(), $chain)->whereHas('seats', fn ($seats) => $seats->where('place', 1)->whereNotNull('user_id')->where('bot', false))->with('seats.user')->where('status', HyperMatchStatus::Finished)
-                ->orderByDesc('ended_at')->limit(self::SIDE)->get()->tap(fn ($list) => HyperTeams::preload($list))
+                ->orderByDesc('ended_at')->limit($side)->get()->tap(fn ($list) => HyperTeams::preload($list))
                 ->map(fn (HyperMatch $match): array => self::item('hyper', $match, $match->ended_at))->all()),
             ...(! $pong ? [] : PongMatch::query()->with('winner')->where('status', PongMatchStatus::Finished)->whereNotNull('winner_id')->whereNotNull('started_at')
-                ->orderByDesc('ended_at')->limit(self::SIDE)->get()
+                ->orderByDesc('ended_at')->limit($side)->get()
                 ->map(fn (PongMatch $match): array => self::item('pong', $match, $match->ended_at))->all()),
             ...($runs ? self::attempts('done', $runsPerSide) : []),
         ];
@@ -134,7 +140,7 @@ final class MempoolStrip
         ];
 
         usort($finished, fn (array $a, array $b): int => $b['at'] <=> $a['at']);
-        $finished = array_reverse(array_slice($finished, 0, self::SIDE));
+        $finished = array_reverse(array_slice($finished, 0, $side));
 
         // Running now first, latest activity first; then the scheduled series, soonest first.
         $next = fn (array $item): bool => $item['model'] instanceof SeriesMatch && SeriesPresenter::blockState($item['model']) === 'next';

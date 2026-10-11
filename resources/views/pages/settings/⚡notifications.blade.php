@@ -192,9 +192,9 @@ new #[Title('Notifications')] #[Layout('layouts::app', ['scripts' => ['resources
         <span role="status" class="flex items-center gap-1.5 text-[13px] text-win" x-data x-show="$wire.saved" x-cloak data-test="settings-saved"><x-icon name="check" :size="16" />{{ __('Saved.') }}</span>
     </x-settings.header>
 
-    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,480px)_minmax(0,1fr)]">
+    <div class="grid grid-cols-1 items-start gap-5">
         <div class="flex min-w-0 flex-col gap-5">
-        <section id="notifications" aria-labelledby="ch-h" class="flex scroll-mt-20 flex-col rounded-lg bg-card px-4 py-5 lg:px-6" data-test="notification-channels">
+        <section id="notifications" aria-labelledby="ch-h" class="flex scroll-mt-20 flex-col rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="notification-channels">
             <h2 id="ch-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Channels') }}</h2>
             <div class="flex min-h-[61px] items-center gap-4 border-b border-hairline py-2" data-test="channel-bell">
                 <span class="flex min-w-0 grow flex-col gap-0.5"><span class="text-sm">{{ __('Bell and the page you are on') }}</span><span class="text-xs text-ink-2">{{ __('always, for every kind switched on') }}</span></span>
@@ -253,13 +253,12 @@ new #[Title('Notifications')] #[Layout('layouts::app', ['scripts' => ['resources
                 @endif
 
                 <div class="flex min-h-[61px] items-center gap-4 py-2">
-                    <span class="flex min-w-0 grow flex-col gap-0.5"><label for="remind-hours" class="text-sm">{{ __('Remind me when') }}</label><span class="text-xs text-ink-2">{{ __('are left before your move is due') }}</span></span>
-                    <select id="remind-hours" wire:change="setRemindHours($event.target.value)" data-test="remind-hours"
-                            class="h-11 rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
+                    <span class="flex min-w-0 grow flex-col gap-0.5"><span id="remind-hours-label" class="text-sm">{{ __('Remind me when') }}</span><span class="text-xs text-ink-2">{{ __('are left before your move is due') }}</span></span>
+                    <div role="group" aria-labelledby="remind-hours-label" class="flex shrink-0 gap-1" data-test="remind-hours">
                         @foreach (ChessSettings::REMIND_HOURS as $hours)
-                            <option value="{{ $hours }}" @selected($settings->remindHours === $hours)>{{ $hours }} h</option>
+                            <button type="button" wire:click="setRemindHours({{ $hours }})" aria-pressed="{{ $settings->remindHours === $hours ? 'true' : 'false' }}" class="rv-chip h-11" data-test="remind-hours-{{ $hours }}">{{ $hours }} h</button>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
                 <span class="border-t border-hairline pt-3 text-xs leading-normal text-ink-3" data-test="channels-explained">{{ __('Each shows in the bell and on the page you are on. Push and DM reach you only while you are not on the site, and only where the list says so. A live game sends neither: you are at the board.') }}</span>
                 <span class="pt-2 text-xs leading-normal text-ink-3" data-test="dm-explained">{{ __('Nostr DMs come from the league\'s own notification key, never from another player. They are on by default for what needs you while you are away. Turn them off with the switch above, or with the link at the end of every DM, no login needed.') }}</span>
@@ -268,25 +267,26 @@ new #[Title('Notifications')] #[Layout('layouts::app', ['scripts' => ['resources
             {{-- P45: per kind that goes out by DM, at once or in one DM a day (DmDigest, 18:00 Berlin time). --}}
             @php($dmKinds = $dmReady ? array_values(array_filter(NotificationKind::cases(), fn (NotificationKind $kind): bool => $settings->wants($kind->value) && $settings->dmFor($kind->value))) : [])
             @if ($dmKinds !== [])
-                <section aria-labelledby="dt-h" class="flex flex-col rounded-lg bg-card px-4 py-5 lg:px-6" data-test="dm-timing">
+                <section aria-labelledby="dt-h" class="flex flex-col rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="dm-timing">
                     <h2 id="dt-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Nostr DM: at once or daily') }}</h2>
                     <p class="m-0 mb-2 text-xs leading-normal text-ink-2">{{ __('Daily collects these into one DM at 18:00 (Berlin time). The bell still shows each at once.') }}</p>
                     @foreach ($dmKinds as $kind)
                         @php([$label] = $kind->setting())
-                        <div class="flex min-h-[61px] items-center gap-4 border-b border-hairline py-2 last:border-0">
-                            <label for="dm-timing-{{ $kind->value }}" class="min-w-0 grow text-sm">{{ __($label) }}</label>
-                            <select id="dm-timing-{{ $kind->value }}" wire:change="setDigest('{{ $kind->value }}', $event.target.value)" data-test="dm-timing-{{ $kind->value }}"
-                                    class="h-11 shrink-0 rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                                <option value="instant" @selected(! $settings->digestFor($kind->value))>{{ __('At once') }}</option>
-                                <option value="daily" @selected($settings->digestFor($kind->value))>{{ __('Daily digest') }}</option>
-                            </select>
+                        {{-- The row wraps and the group never grows past it: "Tägliche Zusammenfassung" beside "Sofort" ran 37 px out of a 320 px phone in German; on a phone the wrapped buttons start under the label. --}}
+                        <div class="flex min-h-[61px] flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline py-2 last:border-0">
+                            <span id="dm-timing-{{ $kind->value }}-label" class="min-w-0 grow text-sm">{{ __($label) }}</span>
+                            <div role="group" aria-labelledby="dm-timing-{{ $kind->value }}-label" class="flex max-w-full flex-wrap gap-1 sm:ml-auto sm:justify-end" data-test="dm-timing-{{ $kind->value }}">
+                                @foreach (['instant' => __('At once'), 'daily' => __('Daily digest')] as $value => $text)
+                                    <button type="button" wire:click="setDigest('{{ $kind->value }}', '{{ $value }}')" aria-pressed="{{ ($value === 'daily') === $settings->digestFor($kind->value) ? 'true' : 'false' }}" class="rv-chip h-11">{{ $text }}</button>
+                                @endforeach
+                            </div>
                         </div>
                     @endforeach
                 </section>
             @endif
         </div>
 
-            <section aria-labelledby="nf-h" class="flex flex-col self-start rounded-lg bg-card px-4 py-5 lg:px-6" data-test="notify-about">
+            <section aria-labelledby="nf-h" class="flex flex-col self-start rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="notify-about">
                 <h2 id="nf-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Notify me about') }}</h2>
                 @foreach (['correspondence' => __('Correspondence games'), 'play' => __('Live games and 1v1'), 'community' => __('Clans and tournaments'), 'league' => __('League')] as $group => $heading)
                     <h3 class="m-0 mt-4 text-xs font-bold tracking-wide text-ink-2 uppercase" data-test="notify-group-{{ $group }}">{{ $heading }}</h3>

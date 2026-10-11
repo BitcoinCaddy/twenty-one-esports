@@ -848,9 +848,13 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
 
 <div class="mx-auto flex w-full max-w-[1232px] grow flex-col gap-5 px-4 pb-6"
      x-data="nostrAction({ pubkey: @js(auth()->user()->pubkey), messages: @js($messages) })">
+    {{--
+        ClanManage.dc.html (P7, template T-Settings): the head, the clan in numbers, then the roster and its lineups on the
+        left and the ways in (invite, applications, the join link) on the right, the clan's own details last.
+    --}}
     <div class="flex flex-wrap items-center gap-4">
         {{-- The clan logo, or the tag tile when there is none. --}}
-        <x-clan-tag :clan="$clan" :tile="52" class="flex size-[52px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#F9B25F,#F7931A_55%,#B9640A)] font-display text-[15px] font-extrabold text-on-btc" />
+        <x-clan-tag :clan="$clan" :tile="52" loading="eager" class="flex size-[52px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#F9B25F,#F7931A_55%,#B9640A)] font-display text-[15px] font-extrabold text-on-btc" />
         <span class="flex min-w-0 flex-col gap-1.5">
             <span class="flex flex-wrap items-center gap-3">
                 <h1 class="m-0 font-display text-2xl font-bold lg:text-[28px]">{{ $clan->name }}</h1>
@@ -869,17 +873,365 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
         </span>
         <span class="hidden grow lg:block"></span>
         <span class="flex gap-2">
-            <button type="button" x-on:click="run('prepareLeave', 'leave')" x-bind:disabled="busy" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Leave clan') }}</button>
             <a href="{{ route('clans.show', $clan) }}" class="btn-w inline-flex h-11 items-center rounded-md border border-line bg-well px-4 text-[13px] whitespace-nowrap text-ink hover:text-ink">{{ __('Public clan page') }}</a>
+            <button type="button" x-on:click="run('prepareLeave', 'leave')" x-bind:disabled="busy" class="inline-flex h-11 cursor-pointer items-center rounded-[4px] border border-loss px-4 text-[13px] font-bold text-loss hover:bg-[color-mix(in_oklab,var(--color-loss)_12%,transparent)]">{{ __('Leave clan') }}</button>
         </span>
     </div>
 
     @error('clan')<p class="m-0 text-[13px] text-loss" role="alert">{{ $message }}</p>@enderror
     <p x-show="error" x-text="error" x-cloak class="m-0 text-[13px] text-loss" role="alert"></p>
 
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div class="rounded-lg bg-card px-4 py-2 lg:px-6">
+            @foreach ([
+                [__('Players'), trans_choice(':count active|:count active', $members->count()).', '.trans_choice(':count invite open|:count invites open', $pending->count()), 'text-ink'],
+                [__('Captains'), $captains, 'text-ink'],
+                [__('Founded'), $clan->created_at?->translatedFormat('M j'), 'text-ink'],
+                [__('Clan Rating, chess'), ! $clanStats->seasonLive() ? __('starts at Block 0') : ($rating['rating'] ? __(':n, average of the top 3 players', ['n' => $rating['rating']]) : __('needs 3 rapid Elos')), 'text-ink'],
+                [__('Hashrate'), ! $clanStats->seasonLive() ? __('starts at Block 0') : __(':season this season, :week in the last 7 days', ['season' => $hash['season'], 'week' => $hash['week']]), 'text-btc'],
+            ] as [$key, $value, $colour])
+                <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-sm lg:grid-cols-[160px_minmax(0,1fr)]"><span class="text-ink-2">{{ $key }}</span><span class="{{ $colour }}">{{ $value }}</span></div>
+            @endforeach
+        </div>
+        <div class="rounded-lg bg-card px-4 py-2 lg:px-6">
+            @foreach ($modes as $statsMode)
+                @php($stats = ($statsLineup = $lineups->firstWhere('mode', $statsMode)) ? $clanStats->lineup($statsLineup) : null)
+                <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-sm lg:grid-cols-[160px_minmax(0,1fr)]"><span class="text-ink-2">{{ __('Elo :mode', ['mode' => $statsMode]) }}</span>
+                    <span>{{ $lineups->firstWhere('mode', $statsMode) === null ? __('no lineup yet') : $stats['elo'].', '.($stats['tier'] === 'provisional' ? ($stats['series'] === 0 ? __('Provisional, no series yet') : __('Provisional, :n series', ['n' => $stats['series']])) : __(':tier, rank :rank of :of', ['tier' => __(ucfirst($stats['tier'])).' '.['I', 'II', 'III'][$stats['level'] - 1], 'rank' => $stats['rank'], 'of' => $stats['of']])) }}</span></div>
+            @endforeach
+            <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-sm lg:grid-cols-[160px_minmax(0,1fr)]"><span class="text-ink-2">{{ __('Meetup') }}</span><span>{{ $clan->meetup_name ?? '–' }}</span></div>
+            <div class="pt-3 pb-2">
+                <x-proof :rows="[[__('Clan record'), $clan->naddr().', kind 32150'], [__('Last updated'), $clan->updated_at?->diffForHumans().' '.__('by :npub', ['npub' => \Illuminate\Support\Str::limit(NostrKeys::hexToNpub($clan->owner_pubkey), 10, '…')])], [__('Members'), trans_choice(':count membership record, kind 12150|:count membership records, kind 12150', $members->count())]]" />
+            </div>
+        </div>
+    </div>
+
+    {{-- The ways in side by side (ClanManage.dc.html right column), then the roster with its lineups at full width:
+         its table needs the room (measured: at 7 of 12 columns the seats stacked and the roster labels overlapped). --}}
+    <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        {{-- Invite a player: into the roster only --}}
+        <section id="invite" class="flex flex-col gap-3.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6">
+            <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 class="m-0 text-[15px] font-bold">{{ __('Invite a player') }}</h2><span class="text-xs text-ink-3">{{ __('They join the clan roster. You place them in lineups afterwards.') }}</span></span>
+            @if ($isOwner)
+                <div class="grid grid-cols-1 items-end gap-3.5 lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <x-player-picker id="invite-player" wire:model="player" allow-npub :label="__('Player')" :exclude="$members->pluck('user_id')->all()" :placeholder="__('Name, npub or profile link')"
+                                     input-class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] text-ink placeholder:text-ink-3" class="gap-2" />
+                    <button type="button" x-on:click="run('prepareInvite', 'invite')" x-bind:disabled="busy" data-test="send-invite"
+                            class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
+                        <x-icon name="shield-check" :size="18" />{{ __('Send invite') }}
+                    </button>
+                </div>
+                @error('player')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+                @if ($inviteLink)
+                    <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-win" role="status">
+                        <x-icon name="check" :size="14" />{{ __('Invite ready. Send them this link:') }}
+                        <span class="min-w-0 truncate text-ink" data-test="invite-link">{{ $inviteLink }}</span>
+                        <button type="button" x-on:click="navigator.clipboard?.writeText(@js($inviteLink))" class="min-h-11 cursor-pointer text-btc">{{ __('Copy') }}</button>
+                    </p>
+                @endif
+                <span class="flex items-start gap-2 text-xs leading-normal text-ink-2"><x-icon name="alert" :size="14" class="mt-px shrink-0 text-btc-hi" />{{ __('Only the invited player can accept. One player, one clan: accepting also leaves their current clan.') }}</span>
+            @else
+                <p class="m-0 text-[13px] text-ink-2">{{ __('Only the founder of :clan can add or remove players: the clan record is confirmed with their key.', ['clan' => $clan->name]) }}</p>
+            @endif
+        </section>
+
+        {{-- Join requests and the join link (P6b, States.dc.html "Join request, captain side") --}}
+        @php($requests = $this->joinRequests)
+        {{-- Applications (plan "Clan-Bewerbungen", P4) are join requests too: the form data on top, the same answers, a decline with an optional reply sent by the captain's signer as NIP-17. --}}
+        <section id="join-requests" aria-labelledby="jr-h" class="flex flex-col gap-3.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="join-requests"
+                 x-data="clanDms({ me: @js(auth()->user()->pubkey), relays: @js(\App\Support\Nostr\NostrBar::browserRelays()), labels: @js([
+                     'sent' => __('Your reply went out as an encrypted Nostr message.'),
+                     'none' => __('Declined. Your reply did not reach the player as a Nostr message.'),
+                     'noSigner' => __('Declined. No Nostr signer was found to send your reply.'),
+                     'signer' => \App\Support\Nostr\SignerMessages::labels(),
+                     'no_nip44' => __("Your signer can't send private messages the modern way — update it or use one that supports NIP-44."),
+                 ]) })">
+            <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 id="jr-h" class="m-0 text-[15px] font-bold">{{ __('Applications and join requests') }}</h2><span class="text-xs text-ink-3">{{ __(':clan, seen by captains only', ['clan' => $clan->name]) }}</span></span>
+            <label class="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-md bg-well px-3 py-2" data-test="applications-switch">
+                <span class="flex min-w-0 flex-col gap-0.5"><b class="text-[13px]">{{ __('Applications open') }}</b><span class="text-xs leading-normal text-ink-2">{{ $clan->applications_open ? __('Players can apply on the clan page and in the clan list.') : __('Nobody can apply right now. Join links still work.') }}</span></span>
+                <input type="checkbox" role="switch" @checked($clan->applications_open) wire:click="toggleApplications" data-test="applications-open"
+                       class="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:mt-0.5 before:block before:size-5 before:translate-x-0.5 before:rounded-full before:bg-ink-2 before:transition-transform checked:bg-btc checked:before:translate-x-[22px] checked:before:bg-on-btc motion-reduce:transition-none motion-reduce:before:transition-none">
+            </label>
+            @error('joinRequests')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+            <p class="m-0 text-xs text-ink-2" x-show="dmNote" x-text="dmNote" x-cloak role="status" data-test="decline-dm-note"></p>
+            <p class="m-0 text-xs text-loss" x-show="dmError" x-text="dmError" x-cloak role="alert" data-test="decline-dm-error"></p>
+            <p class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2" x-show="waiting.length > 0" x-cloak data-test="decline-dm-confirm">
+                <span x-text="@js(__('No DM inbox relays (NIP-17) for :count of them. Send it as an older NIP-04 message instead?')).replace(':count', waiting.length)"></span>
+                <button type="button" x-on:click="sendWaiting()" x-bind:disabled="dmBusy" data-test="decline-dm-nip04"
+                        class="inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Send as NIP-04') }}</button>
+            </p>
+            @forelse ($requests as $request)
+                @php($applicant = $request->user)
+                <div wire:key="jr-{{ $request->id }}" class="grid grid-cols-1 items-center gap-3 rounded-md px-3 py-3 shadow-ring lg:grid-cols-[minmax(0,1fr)_auto]" data-test="{{ $request->isApplication() ? 'application' : 'join-request' }}"
+                     x-data="{ replying: false, reply: '' }">
+                    <span class="flex min-w-0 items-center gap-3">
+                        <x-avatar :user="$applicant" :size="40" class="rounded-md" />
+                        <span class="flex min-w-0 flex-col gap-0.5">
+                            <x-player-link :user="$applicant" class="inline-flex min-h-11 max-w-full items-center text-[15px] font-bold"><span class="truncate">{{ $applicant->displayName() }}</span></x-player-link>
+                            <span class="text-xs leading-normal text-ink-2">
+                                {{ trans_choice('Joined :count day ago|Joined :count days ago', (int) $applicant->created_at?->diffInDays(now())) }},
+                                {{ trans_choice(':count game played|:count games played', (int) $applicant->white_games_count + (int) $applicant->black_games_count) }}.
+                                {{ __('Asked :time.', ['time' => $request->created_at?->diffForHumans()]) }}
+                            </span>
+                            @if ($request->isApplication())
+                                <span class="flex flex-wrap gap-1.5 pt-1" data-test="application-fields">
+                                    <span class="inline-flex h-6 items-center rounded-tag bg-btc-chip px-2 text-[11px] font-bold text-btc-hi">{{ __('Application') }}</span>
+                                    @foreach ($request->games ?? [] as $slug)
+                                        <span class="inline-flex h-6 items-center rounded-tag bg-well px-2 text-[11px] text-ink">{{ app(GameRegistry::class)->name($slug) }}</span>
+                                    @endforeach
+                                    @foreach ($request->platforms ?? [] as $platform)
+                                        <span class="inline-flex h-6 items-center rounded-tag border border-line px-2 text-[11px] text-ink-2">{{ Platform::tryFrom($platform)?->label() ?? $platform }}</span>
+                                    @endforeach
+                                    @if ($request->timezone)
+                                        <span class="inline-flex h-6 items-center gap-1 rounded-tag border border-line px-2 text-[11px] text-ink-2"><x-icon name="clock" :size="12" />{{ $request->timezone }}</span>
+                                    @endif
+                                </span>
+                                @if (filled($request->message))
+                                    <span class="max-w-[68ch] text-[13px] leading-normal break-words text-ink" data-test="application-message">“{{ $request->message }}”</span>
+                                @endif
+                            @endif
+                            @if ($request->status === JoinRequestStatus::Approved)
+                                <span class="text-xs text-btc-hi" data-test="join-request-approved">{{ __('Approved by :name. Waiting for the founder to add them to the clan record.', ['name' => $request->decidedBy?->displayName() ?? '']) }}</span>
+                            @endif
+                        </span>
+                    </span>
+                    <span class="flex flex-wrap gap-2 lg:justify-end">
+                        @if ($isOwner)
+                            <button type="button" x-on:click="run('prepareListRequest', 'listRequest', {{ $request->id }})" x-bind:disabled="busy" data-test="approve-request"
+                                    class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold text-on-btc disabled:cursor-wait disabled:opacity-70">
+                                <x-icon name="shield-check" :size="16" />{{ __('Approve') }}
+                            </button>
+                        @elseif ($request->status === JoinRequestStatus::Pending)
+                            <button type="button" wire:click="approveRequest({{ $request->id }})" data-test="approve-request"
+                                    class="btn-p inline-flex h-11 cursor-pointer items-center justify-center rounded-md bg-btc px-5 text-sm font-bold text-on-btc">{{ __('Approve') }}</button>
+                        @endif
+                        @if ($request->isApplication())
+                            <button type="button" x-on:click="replying = true; $nextTick(() => $refs.reply.focus())" x-show="! replying" data-test="decline-request"
+                                    class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
+                        @else
+                            <button type="button" wire:click="declineRequest({{ $request->id }})" data-test="decline-request"
+                                    class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
+                        @endif
+                    </span>
+                    @if ($request->isApplication())
+                        <form x-show="replying" x-cloak class="flex flex-col gap-2 lg:col-span-2" data-test="decline-form"
+                              x-on:submit.prevent="const text = reply; deliver(await $wire.declineRequest({{ $request->id }}, text))">
+                            <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Reply to :name (optional, sent as an encrypted Nostr message from your signer)', ['name' => $applicant->displayName()]) }}</span>
+                                <textarea x-ref="reply" x-model="reply" maxlength="{{ ClanApplication::MESSAGE_MAX }}" rows="2" data-test="decline-reply"
+                                          class="w-full rounded-lg border border-edge bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink placeholder:text-ink-3"></textarea>
+                            </label>
+                            <span class="flex flex-wrap gap-2">
+                                <button type="submit" data-test="decline-confirm" x-bind:disabled="dmBusy"
+                                        class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] font-bold text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Decline application') }}</button>
+                                <button type="button" x-on:click="replying = false; reply = ''"
+                                        class="inline-flex h-11 cursor-pointer items-center rounded-md border-0 bg-transparent px-3 text-[13px] text-ink-2 hover:text-ink">{{ __('Cancel') }}</button>
+                            </span>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p class="m-0 text-[13px] text-ink-2">{{ $clan->applications_open ? __('No open applications. Players apply on your clan page or in the clan list, or share a join link below.') : __('No open requests. Share a join link and new players can ask to join.') }}</p>
+            @endforelse
+            <span class="text-xs leading-normal text-ink-3">{{ $isOwner
+                ? __('Approving adds the player to the clan record with your key; they join once they confirm their membership. Declining tells them plainly and closes the request.')
+                : __('Your yes goes to the founder, whose key adds the player to the clan record. Declining tells them plainly and closes the request.') }}</span>
+
+            <div class="flex flex-col gap-3 border-t border-hairline pt-4" data-test="join-link">
+                <span class="flex flex-col gap-1"><b class="text-[13px]">{{ __('Invite by link') }}</b><span class="text-xs leading-normal text-ink-2">{{ __('A join link for the roster. Everyone who uses it sends a request; a captain confirms each one. Lineups are set later, here.') }}</span></span>
+                {{-- The board's dropdowns (x-ui.select-menu, no native select). "Who can use it" takes the whole row, so its longest
+                     choice ("Several players, one request each") is never cut off in the half-width card; the time and the button share the next. --}}
+                <div class="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <div class="flex min-w-0 flex-col gap-2 sm:col-span-2"><span id="join-link-uses-label" class="text-xs text-ink-2">{{ __('Who can use it') }}</span>
+                        <x-ui.select-menu model="joinLinkUses" labelledby="join-link-uses-label" :value="$joinLinkUses"
+                                          :options="['several' => __('Several players, one request each'), 'once' => __('One player')]" data-test="join-link-uses" />
+                    </div>
+                    <div class="flex min-w-0 flex-col gap-2"><span id="join-link-hours-label" class="text-xs text-ink-2">{{ __('Link works for') }}</span>
+                        <x-ui.select-menu model="joinLinkHours" labelledby="join-link-hours-label" :value="$joinLinkHours"
+                                          :options="collect(InviteLinkType::Clan->expiryChoices())->mapWithKeys(fn (int $hours): array => [$hours => trans_choice(':count day|:count days', intdiv($hours, 24))])->all()" data-test="join-link-hours" />
+                    </div>
+                    <button type="button" wire:click="createJoinLink" data-test="create-join-link"
+                            class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold whitespace-nowrap text-on-btc">
+                        <x-icon name="link" :size="16" />{{ __('Create join link') }}
+                    </button>
+                </div>
+                @error('joinLink')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+                @foreach ($this->joinLinks as $joinLink)
+                    <a wire:key="jl-{{ $joinLink->id }}" href="{{ $joinLink->url() }}" class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline text-xs text-ink hover:text-ink">
+                        <span class="flex items-center gap-2"><x-icon name="link" :size="14" class="text-btc" />{{ __('Join link by :name', ['name' => $joinLink->inviter->displayName()]) }}</span>
+                        <span class="text-ink-2">{{ trans_choice('{0} not used yet|{1} used once|[2,*] used :count times', $joinLink->uses) }}, {{ __('open until :time', ['time' => $joinLink->expires_at->translatedFormat('M j, H:i')]) }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+
+    </div>
+
+    {{-- Lineups & members --}}
+    <section class="flex flex-col gap-2.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6">
+        <div class="flex flex-wrap items-end gap-x-6 border-b border-hairline">
+            <h2 class="m-0 pb-3 font-display text-lg font-bold">{{ __('Lineups & members') }}</h2>
+            <span role="tablist" aria-label="{{ __('Filter') }}" class="flex gap-1">
+                @foreach (['active' => __('Active (:n)', ['n' => $members->count()]), 'invited' => __('Invited (:n)', ['n' => $pending->count()]), 'former' => __('Former (:n)', ['n' => $clan->departures->count()])] as $key => $label)
+                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" x-on:click="$wire.$set('tab', @js($key), false)" data-test="tab-{{ $key }}-button"
+                            x-bind:aria-selected="$wire.tab === @js($key) ? 'true' : 'false'" x-bind:class="{ 'border-btc text-ink': $wire.tab === @js($key), 'border-transparent text-ink-2': $wire.tab !== @js($key) }"
+                            @class(['h-11 cursor-pointer border-b-2 px-3 text-[13px] lg:px-3.5', 'border-btc text-ink' => $tab === $key, 'border-transparent text-ink-2' => $tab !== $key])>{{ $label }}</button>
+                @endforeach
+            </span>
+        </div>
+
+        {{-- All three lists are rendered; the tab switches in the browser and goes along with the next request ($set without a roundtrip). --}}
+        <div class="contents" x-show="$wire.tab === 'active'" @style(['display: none' => $tab !== 'active']) data-test="tab-active">
+            <div class="hidden grid-cols-[110px_minmax(0,1fr)_190px_100px_auto] gap-3 px-2 pt-1 text-xs text-ink-3 lg:grid"><span>{{ __('Lineup') }}</span><span>{{ __('Seats') }}</span><span>{{ __('Status') }}</span><span>Elo</span><span></span></div>
+            @foreach ($lineupGames as $rowGame => $seriesGame)
+            <div class="flex items-center gap-3 px-2 pt-3" data-test="lineups-{{ $rowGame }}">
+                <x-game-cover :game="$rowGame" size="thumb" class="w-16 rounded-sm" />
+                <b class="text-[13px]">{{ GameNames::game($rowGame) }}</b>
+            </div>
+            @foreach ($modesOf($rowGame) as $rowMode)
+                @php($lineup = $allLineups->first(fn (Lineup $lineup) => $lineup->game === $rowGame && $lineup->mode === $rowMode))
+                {{-- A chess team match lineup has no Elo of its own: its boards are rated solo games (NIP rev. 9.22). --}}
+                @php($teamRow = isset($teamModes[$rowGame]))
+                @php($stats = $lineup && ! $teamRow ? $clanStats->lineup($lineup) : null)
+                @php($needed = app(GameRegistry::class)->mode($rowGame, $rowMode)?->lineupMinimum() ?? 1)
+                @php($active = $lineup?->activeCount() ?? 0)
+                {{-- Test hooks keep the bare mode for the first game (edit-lineup-2v2), the others add the game. --}}
+                @php($rowKey = $rowGame === $leadGame ? $rowMode : $rowGame.'-'.$rowMode)
+                @php($isEditing = $editing === $rowMode && ($editingGame ?? $leadGame) === $rowGame)
+                <div wire:key="lu-{{ $rowGame }}-{{ $rowMode }}" class="tr grid min-h-[60px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 rounded-sm border-b border-hairline p-2 lg:grid-cols-[110px_minmax(0,1fr)_190px_100px_auto]">
+                    <span class="flex flex-col gap-0.5"><b class="text-[15px]">{{ $rowMode }}</b>@if ($stats)<x-rank-badge :tier="$stats['tier']" :level="$stats['level']" class="font-normal" />@elseif ($teamRow)<span class="text-xs font-normal text-ink-2">{{ __('team matches, 2 or 3 boards') }}</span>@endif</span>
+                    <span class="flex min-w-0 flex-wrap gap-2">
+                        @foreach ($lineup?->activeSeats() ?? [] as $seat)
+                            {{-- min-w-0 + truncate: a long display name (a real Nostr name, not
+                                just a factory fixture) must not push this chip past the column's
+                                width and eat into the 16px side gutter (RouteSweepTest). --}}
+                            <span class="flex h-[34px] max-w-full min-w-0 items-center gap-1.5 rounded-md border border-line bg-well px-2.5 text-xs">
+                                <span class="min-w-0 truncate">{{ $seat->user->displayName() }}</span>
+                                @if ($seat->role !== LineupRole::Player)<span class="shrink-0 text-ink-3">{{ $seat->role->label() }}</span>@endif
+                            </span>
+                        @endforeach
+                        @for ($open = $lineup?->activeCount() ?? 0; $open < $needed; $open++)
+                            <span class="flex h-[34px] items-center rounded-md border border-dashed border-line px-2.5 text-xs text-ink-3">{{ __('open seat') }}</span>
+                        @endfor
+                    </span>
+                    <span data-test="lineup-status-{{ $rowKey }}" @class(['col-start-2 text-[13px] lg:col-start-auto', 'text-win' => $active >= $needed, 'text-btc-hi' => $active < $needed && $lineup, 'text-ink-3' => ! $lineup])>
+                        {{ ! $lineup ? __('no lineup yet') : ($active >= $needed ? __('ready, :n of :m', ['n' => $active, 'm' => $needed]) : __('needs players, :n of :m', ['n' => $active, 'm' => $needed])) }}
+                    </span>
+                    <b class="col-start-2 font-display text-[15px] lg:col-start-auto">{{ $stats ? $stats['elo'] : '–' }}</b>
+                    @if ($isOwner)
+                        <span class="col-start-2 lg:col-start-auto">
+                            @if (! $isEditing)
+                                <button type="button" wire:click="editLineup('{{ $rowMode }}', '{{ $rowGame }}')" data-test="edit-lineup-{{ $rowKey }}" class="btn-w inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-4 text-[13px] whitespace-nowrap text-ink">{{ $lineup ? __('Edit lineup') : __('Set up lineup') }}</button>
+                            @endif
+                        </span>
+                    @endif
+                </div>
+
+                @if ($isOwner && $isEditing)
+                    @php($picked = collect($picks)->filter(fn ($role) => in_array($role, ['captain', 'player'], true))->count())
+                    <div wire:key="builder-{{ $rowGame }}-{{ $rowMode }}" role="group" aria-labelledby="builder-title" class="flex flex-col gap-3 rounded-md bg-well px-4 py-4 shadow-ring lg:px-5">
+                        <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                            <b id="builder-title" class="text-[15px]">{{ __('Who plays the :mode', ['mode' => GameNames::game($rowGame).' '.$rowMode]) }}</b>
+                            <span @class(['text-xs', 'text-win' => $picked >= $needed, 'text-btc-hi' => $picked < $needed])>{{ __(':n of :m players picked', ['n' => $picked, 'm' => $needed]) }}</span>
+                        </span>
+                        <span class="text-xs leading-normal text-ink-2">{{ __('Pick from your roster. Joining the clan is their yes, so nobody has to confirm again; anyone can leave the clan at any time.') }}</span>
+                        <div class="flex max-w-[640px] flex-col">
+                            @foreach ($members as $member)
+                                {{-- The board's dropdown (x-ui.select-menu; rule: no native select), bound to the same picks.<id>. --}}
+                                <div wire:key="pick-{{ $rowGame }}-{{ $rowMode }}-{{ $member->user_id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_minmax(0,170px)] items-center gap-3 border-b border-hairline text-[13px]">
+                                    <span class="truncate">{{ $member->user->displayName() }}@if ($member->user->is(auth()->user())) ({{ __('you') }})@endif</span>
+                                    <x-ui.select-menu :model="'picks.'.$member->user_id" :id="'pick-'.$rowGame.'-'.$rowMode.'-'.$member->user_id" :value="$picks[$member->user_id] ?? ''"
+                                                      :label="__('Seat of :name', ['name' => $member->user->displayName()])"
+                                                      :options="['' => __('Not picked'), 'captain' => __('Captain'), 'player' => __('Player'), 'substitute' => __('Sub')]"
+                                                      data-test="pick-{{ $member->user_id }}" />
+                                </div>
+                            @endforeach
+                        </div>
+                        @error('lineup')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+                        @error('picks.*')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+                        <span class="text-xs leading-normal text-ink-3">{{ $teamRow
+                            ? __('A team match needs a player per board: :m for 2 boards, 3 for 3 boards. Before each match the captain picks who plays; the league orders the boards by rapid Elo.', ['m' => $needed])
+                            : __('A :mode needs :m players, captain included, to take challenges. Subs come on top.', ['mode' => $rowMode, 'm' => $needed]) }}</span>
+                        <span class="flex flex-wrap justify-end gap-2.5">
+                            <button type="button" wire:click="cancelLineup" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-card px-4 text-[13px] text-ink">{{ __('Cancel') }}</button>
+                            <button type="button" x-on:click="run('prepareLineup', 'saveLineup')" x-bind:disabled="busy" data-test="confirm-lineup"
+                                    class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
+                                <x-icon name="shield-check" :size="18" />{{ __('Confirm lineup') }}
+                            </button>
+                        </span>
+                    </div>
+                @endif
+            @endforeach
+            @endforeach
+
+            <div class="hidden grid-cols-[minmax(0,1fr)_180px_160px_300px] gap-3 px-2 pt-4 text-xs text-ink-3 lg:grid"><span>{{ __('Player') }}</span><span>{{ __('Role in clan') }}</span><span>{{ __('Lineups') }}</span><span></span></div>
+            @foreach ($members as $member)
+                @php($user = $member->user)
+                @php($seats = $allLineups->filter(fn (Lineup $lineup) => $lineup->seats->contains(fn (LineupSeat $seat) => $seat->user_id === $user->id && $seat->accepted_at !== null))->map(fn (Lineup $lineup) => ($lineup->game === $leadGame ? '' : $lineupGames[$lineup->game]->assets()->shortLabel.' ').$lineup->mode)->implode(', '))
+                <div wire:key="mb-{{ $member->id }}" class="tr grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-sm border-b border-hairline px-2 py-1.5 text-[13px] lg:grid-cols-[minmax(0,1fr)_180px_160px_300px]">
+                    <span class="flex min-w-0 flex-col gap-0.5">
+                        <b class="truncate">{{ $user->displayName() }}@if ($user->is(auth()->user())) ({{ __('you') }})@endif</b>
+                        <span @class(['text-xs', 'text-btc' => $user->is_member, 'text-ink-3' => ! $user->is_member])>{{ $user->is_member ? __('EINUNDZWANZIG member') : __('Block Height :n', ['n' => $heights[$user->id] ?? 0]) }}</span>
+                    </span>
+                    <span class="hidden text-ink-2 lg:block">{{ $member->user_id === $clan->owner_id ? __('Owner, captain') : $member->role->label() }}</span>
+                    <span class="hidden text-ink-2 lg:block">{{ $seats ?: '–' }}</span>
+                    <span class="flex justify-end gap-2">
+                        @if ($isOwner && $member->role !== ClanRole::Captain)
+                            <button type="button" x-on:click="run('prepareMakeCaptain', 'makeCaptain', {{ $user->id }})" x-bind:disabled="busy"
+                                    class="btn-w inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-3 text-[13px] whitespace-nowrap text-ink lg:px-4">
+                                <x-icon name="shield-check" :size="16" /><span class="hidden sm:inline">{{ __('Make captain') }}</span><span class="sm:hidden">{{ __('Captain') }}</span>
+                            </button>
+                        @endif
+                        @if ($isOwner && $member->user_id !== $clan->owner_id)
+                            <button type="button" wire:click="askRemoval({{ $user->id }})" aria-label="{{ __('Remove :name from :clan', ['name' => $user->displayName(), 'clan' => $clan->name]) }}"
+                                    class="inline-flex size-11 cursor-pointer items-center justify-center rounded-md border border-[#5A2A2E] text-loss">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
+                            </button>
+                        @endif
+                    </span>
+                </div>
+            @endforeach
+
+            @if ($confirmRemoval !== null && ($target = $members->firstWhere('user_id', $confirmRemoval)?->user))
+                <div role="alertdialog" aria-labelledby="rm-title" class="grid grid-cols-1 items-center gap-4 rounded-md bg-[#1D1214] px-4 py-3.5 shadow-[inset_0_0_0_1px_#5A2A2E] lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <span class="flex flex-col gap-1 text-[13px] leading-normal">
+                        <b id="rm-title" class="text-loss">{{ __('Remove :name from :clan?', ['name' => $target->displayName(), 'clan' => $clan->name]) }}</b>
+                        <span class="text-ink-2">{{ $this->removalEffects === [] ? __('No lineup changes.') : ucfirst(implode(', ', $this->removalEffects)).'. '.__('A lineup below its size cannot accept challenges until the seats are filled.') }}</span>
+                    </span>
+                    <span class="flex gap-2.5">
+                        <button type="button" wire:click="cancelRemoval" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Cancel') }}</button>
+                        <button type="button" x-on:click="run('prepareRemove', 'remove', {{ $target->id }})" x-bind:disabled="busy"
+                                class="inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-md bg-loss px-[22px] text-sm font-bold whitespace-nowrap text-on-btc">
+                            <x-icon name="shield-check" :size="18" />{{ __('Remove player') }}
+                        </button>
+                    </span>
+                </div>
+            @endif
+        </div>
+        <div class="contents" x-show="$wire.tab === 'invited'" @style(['display: none' => $tab !== 'invited']) data-test="tab-invited">
+            @forelse ($pending as $invite)
+                <div wire:key="iv-{{ $invite->id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-hairline px-2 text-[13px]">
+                    <span class="flex min-w-0 flex-col gap-0.5"><b class="truncate">{{ $invite->invitee->displayName() }}</b><span class="text-xs text-ink-3">{{ __('into the roster, sent :when', ['when' => $invite->created_at?->diffForHumans()]) }}</span></span>
+                    <button type="button" x-on:click="navigator.clipboard?.writeText(@js(route('invites.show', $invite)))" class="min-h-11 cursor-pointer text-xs text-btc">{{ __('Copy invite link') }}</button>
+                </div>
+            @empty
+                <p class="m-0 py-4 text-[13px] text-ink-2">{{ __('No open invites.') }}</p>
+            @endforelse
+        </div>
+        <div class="contents" x-show="$wire.tab === 'former'" @style(['display: none' => $tab !== 'former']) data-test="tab-former">
+            @forelse ($clan->departures->sortByDesc('left_at') as $departure)
+                <div wire:key="dp-{{ $departure->id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-hairline px-2 text-[13px]">
+                    <b class="truncate">{{ $departure->user?->displayName() ?? __('Deleted player') }}</b>
+                    <span class="text-xs text-ink-3">{{ ['left' => __('left'), 'removed' => __('removed'), 'switched' => __('joined another clan'), 'deleted' => __('deleted their account')][$departure->reason] ?? $departure->reason }}, {{ $departure->left_at->diffForHumans() }}</span>
+                </div>
+            @empty
+                <p class="m-0 py-4 text-[13px] text-ink-2">{{ __('Nobody has left yet.') }}</p>
+            @endforelse
+        </div>
+    </section>
+
     {{-- Edit clan: a new version of the clan event, same d, same roster (layout of ClanCreate.dc.html) --}}
     {{-- Opens and closes in the browser; its own actions render the island only, a save renders the page and closes it (clan-edited). --}}
-    <section id="edit-clan" aria-labelledby="edit-h" class="flex flex-col gap-3.5 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="edit-clan"
+    <section id="edit-clan" aria-labelledby="edit-h" class="flex flex-col gap-3.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="edit-clan"
              x-data="{ uploading: false, editOpen: false }" x-on:clan-edited.window="editOpen = false" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false"
              x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false">
         <span class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -1002,350 +1354,4 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
         @endisland
     </section>
 
-    {{-- Invite a player: into the roster only --}}
-    <section id="invite" class="flex flex-col gap-3.5 rounded-lg bg-card px-4 py-5 lg:px-6">
-        <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 class="m-0 text-[15px] font-bold">{{ __('Invite a player') }}</h2><span class="text-xs text-ink-3">{{ __('They join the clan roster. You place them in lineups afterwards.') }}</span></span>
-        @if ($isOwner)
-            <div class="grid grid-cols-1 items-end gap-3.5 lg:grid-cols-[minmax(0,1fr)_auto]">
-                <x-player-picker id="invite-player" wire:model="player" allow-npub :label="__('Player')" :exclude="$members->pluck('user_id')->all()" :placeholder="__('Name, npub or profile link')"
-                                 input-class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] text-ink placeholder:text-ink-3" class="gap-2" />
-                <button type="button" x-on:click="run('prepareInvite', 'invite')" x-bind:disabled="busy" data-test="send-invite"
-                        class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
-                    <x-icon name="shield-check" :size="18" />{{ __('Send invite') }}
-                </button>
-            </div>
-            @error('player')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-            @if ($inviteLink)
-                <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-win" role="status">
-                    <x-icon name="check" :size="14" />{{ __('Invite ready. Send them this link:') }}
-                    <span class="min-w-0 truncate text-ink" data-test="invite-link">{{ $inviteLink }}</span>
-                    <button type="button" x-on:click="navigator.clipboard?.writeText(@js($inviteLink))" class="min-h-11 cursor-pointer text-btc">{{ __('Copy') }}</button>
-                </p>
-            @endif
-            <span class="flex items-start gap-2 text-xs leading-normal text-ink-2"><x-icon name="alert" :size="14" class="mt-px shrink-0 text-btc-hi" />{{ __('Only the invited player can accept. One player, one clan: accepting also leaves their current clan.') }}</span>
-        @else
-            <p class="m-0 text-[13px] text-ink-2">{{ __('Only the founder of :clan can add or remove players: the clan record is confirmed with their key.', ['clan' => $clan->name]) }}</p>
-        @endif
-    </section>
-
-    {{-- Join requests and the join link (P6b, States.dc.html "Join request, captain side") --}}
-    @php($requests = $this->joinRequests)
-    {{-- Applications (plan "Clan-Bewerbungen", P4) are join requests too: the form data on top, the same answers, a decline with an optional reply sent by the captain's signer as NIP-17. --}}
-    <section id="join-requests" aria-labelledby="jr-h" class="flex flex-col gap-3.5 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="join-requests"
-             x-data="clanDms({ me: @js(auth()->user()->pubkey), relays: @js(\App\Support\Nostr\NostrBar::browserRelays()), labels: @js([
-                 'sent' => __('Your reply went out as an encrypted Nostr message.'),
-                 'none' => __('Declined. Your reply did not reach the player as a Nostr message.'),
-                 'noSigner' => __('Declined. No Nostr signer was found to send your reply.'),
-                 'signer' => \App\Support\Nostr\SignerMessages::labels(),
-                 'no_nip44' => __("Your signer can't send private messages the modern way — update it or use one that supports NIP-44."),
-             ]) })">
-        <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 id="jr-h" class="m-0 text-[15px] font-bold">{{ __('Applications and join requests') }}</h2><span class="text-xs text-ink-3">{{ __(':clan, seen by captains only', ['clan' => $clan->name]) }}</span></span>
-        <label class="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-md bg-well px-3 py-2" data-test="applications-switch">
-            <span class="flex min-w-0 flex-col gap-0.5"><b class="text-[13px]">{{ __('Applications open') }}</b><span class="text-xs leading-normal text-ink-2">{{ $clan->applications_open ? __('Players can apply on the clan page and in the clan list.') : __('Nobody can apply right now. Join links still work.') }}</span></span>
-            <input type="checkbox" role="switch" @checked($clan->applications_open) wire:click="toggleApplications" data-test="applications-open"
-                   class="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:mt-0.5 before:block before:size-5 before:translate-x-0.5 before:rounded-full before:bg-ink-2 before:transition-transform checked:bg-btc checked:before:translate-x-[22px] checked:before:bg-on-btc motion-reduce:transition-none motion-reduce:before:transition-none">
-        </label>
-        @error('joinRequests')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-        <p class="m-0 text-xs text-ink-2" x-show="dmNote" x-text="dmNote" x-cloak role="status" data-test="decline-dm-note"></p>
-        <p class="m-0 text-xs text-loss" x-show="dmError" x-text="dmError" x-cloak role="alert" data-test="decline-dm-error"></p>
-        <p class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2" x-show="waiting.length > 0" x-cloak data-test="decline-dm-confirm">
-            <span x-text="@js(__('No DM inbox relays (NIP-17) for :count of them. Send it as an older NIP-04 message instead?')).replace(':count', waiting.length)"></span>
-            <button type="button" x-on:click="sendWaiting()" x-bind:disabled="dmBusy" data-test="decline-dm-nip04"
-                    class="inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Send as NIP-04') }}</button>
-        </p>
-        @forelse ($requests as $request)
-            @php($applicant = $request->user)
-            <div wire:key="jr-{{ $request->id }}" class="grid grid-cols-1 items-center gap-3 rounded-md px-3 py-3 shadow-ring lg:grid-cols-[minmax(0,1fr)_auto]" data-test="{{ $request->isApplication() ? 'application' : 'join-request' }}"
-                 x-data="{ replying: false, reply: '' }">
-                <span class="flex min-w-0 items-center gap-3">
-                    <x-avatar :user="$applicant" :size="40" class="rounded-md" />
-                    <span class="flex min-w-0 flex-col gap-0.5">
-                        <x-player-link :user="$applicant" class="inline-flex min-h-11 max-w-full items-center text-[15px] font-bold"><span class="truncate">{{ $applicant->displayName() }}</span></x-player-link>
-                        <span class="text-xs leading-normal text-ink-2">
-                            {{ trans_choice('Joined :count day ago|Joined :count days ago', (int) $applicant->created_at?->diffInDays(now())) }},
-                            {{ trans_choice(':count game played|:count games played', (int) $applicant->white_games_count + (int) $applicant->black_games_count) }}.
-                            {{ __('Asked :time.', ['time' => $request->created_at?->diffForHumans()]) }}
-                        </span>
-                        @if ($request->isApplication())
-                            <span class="flex flex-wrap gap-1.5 pt-1" data-test="application-fields">
-                                <span class="inline-flex h-6 items-center rounded-tag bg-btc-chip px-2 text-[11px] font-bold text-btc-hi">{{ __('Application') }}</span>
-                                @foreach ($request->games ?? [] as $slug)
-                                    <span class="inline-flex h-6 items-center rounded-tag bg-well px-2 text-[11px] text-ink">{{ app(GameRegistry::class)->name($slug) }}</span>
-                                @endforeach
-                                @foreach ($request->platforms ?? [] as $platform)
-                                    <span class="inline-flex h-6 items-center rounded-tag border border-line px-2 text-[11px] text-ink-2">{{ Platform::tryFrom($platform)?->label() ?? $platform }}</span>
-                                @endforeach
-                                @if ($request->timezone)
-                                    <span class="inline-flex h-6 items-center gap-1 rounded-tag border border-line px-2 text-[11px] text-ink-2"><x-icon name="clock" :size="12" />{{ $request->timezone }}</span>
-                                @endif
-                            </span>
-                            @if (filled($request->message))
-                                <span class="max-w-[68ch] text-[13px] leading-normal break-words text-ink" data-test="application-message">“{{ $request->message }}”</span>
-                            @endif
-                        @endif
-                        @if ($request->status === JoinRequestStatus::Approved)
-                            <span class="text-xs text-btc-hi" data-test="join-request-approved">{{ __('Approved by :name. Waiting for the founder to add them to the clan record.', ['name' => $request->decidedBy?->displayName() ?? '']) }}</span>
-                        @endif
-                    </span>
-                </span>
-                <span class="flex flex-wrap gap-2 lg:justify-end">
-                    @if ($isOwner)
-                        <button type="button" x-on:click="run('prepareListRequest', 'listRequest', {{ $request->id }})" x-bind:disabled="busy" data-test="approve-request"
-                                class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold text-on-btc disabled:cursor-wait disabled:opacity-70">
-                            <x-icon name="shield-check" :size="16" />{{ __('Approve') }}
-                        </button>
-                    @elseif ($request->status === JoinRequestStatus::Pending)
-                        <button type="button" wire:click="approveRequest({{ $request->id }})" data-test="approve-request"
-                                class="btn-p inline-flex h-11 cursor-pointer items-center justify-center rounded-md bg-btc px-5 text-sm font-bold text-on-btc">{{ __('Approve') }}</button>
-                    @endif
-                    @if ($request->isApplication())
-                        <button type="button" x-on:click="replying = true; $nextTick(() => $refs.reply.focus())" x-show="! replying" data-test="decline-request"
-                                class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
-                    @else
-                        <button type="button" wire:click="declineRequest({{ $request->id }})" data-test="decline-request"
-                                class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
-                    @endif
-                </span>
-                @if ($request->isApplication())
-                    <form x-show="replying" x-cloak class="flex flex-col gap-2 lg:col-span-2" data-test="decline-form"
-                          x-on:submit.prevent="const text = reply; deliver(await $wire.declineRequest({{ $request->id }}, text))">
-                        <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Reply to :name (optional, sent as an encrypted Nostr message from your signer)', ['name' => $applicant->displayName()]) }}</span>
-                            <textarea x-ref="reply" x-model="reply" maxlength="{{ ClanApplication::MESSAGE_MAX }}" rows="2" data-test="decline-reply"
-                                      class="w-full rounded-lg border border-edge bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink placeholder:text-ink-3"></textarea>
-                        </label>
-                        <span class="flex flex-wrap gap-2">
-                            <button type="submit" data-test="decline-confirm" x-bind:disabled="dmBusy"
-                                    class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] font-bold text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Decline application') }}</button>
-                            <button type="button" x-on:click="replying = false; reply = ''"
-                                    class="inline-flex h-11 cursor-pointer items-center rounded-md border-0 bg-transparent px-3 text-[13px] text-ink-2 hover:text-ink">{{ __('Cancel') }}</button>
-                        </span>
-                    </form>
-                @endif
-            </div>
-        @empty
-            <p class="m-0 text-[13px] text-ink-2">{{ $clan->applications_open ? __('No open applications. Players apply on your clan page or in the clan list, or share a join link below.') : __('No open requests. Share a join link and new players can ask to join.') }}</p>
-        @endforelse
-        <span class="text-xs leading-normal text-ink-3">{{ $isOwner
-            ? __('Approving adds the player to the clan record with your key; they join once they confirm their membership. Declining tells them plainly and closes the request.')
-            : __('Your yes goes to the founder, whose key adds the player to the clan record. Declining tells them plainly and closes the request.') }}</span>
-
-        <div class="flex flex-col gap-3 border-t border-hairline pt-4" data-test="join-link">
-            <span class="flex flex-col gap-1"><b class="text-[13px]">{{ __('Invite by link') }}</b><span class="text-xs leading-normal text-ink-2">{{ __('A join link for the roster. Everyone who uses it sends a request; a captain confirms each one. Lineups are set later, here.') }}</span></span>
-            <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Who can use it') }}</span>
-                    <select wire:model="joinLinkUses" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                        <option value="several">{{ __('Several players, one request each') }}</option>
-                        <option value="once">{{ __('One player') }}</option>
-                    </select>
-                </label>
-                <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Link works for') }}</span>
-                    <select wire:model.number="joinLinkHours" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                        @foreach (InviteLinkType::Clan->expiryChoices() as $hours)
-                            <option value="{{ $hours }}">{{ trans_choice(':count day|:count days', intdiv($hours, 24)) }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                <button type="button" wire:click="createJoinLink" data-test="create-join-link"
-                        class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold whitespace-nowrap text-on-btc">
-                    <x-icon name="link" :size="16" />{{ __('Create join link') }}
-                </button>
-            </div>
-            @error('joinLink')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-            @foreach ($this->joinLinks as $joinLink)
-                <a wire:key="jl-{{ $joinLink->id }}" href="{{ $joinLink->url() }}" class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline text-xs text-ink hover:text-ink">
-                    <span class="flex items-center gap-2"><x-icon name="link" :size="14" class="text-btc" />{{ __('Join link by :name', ['name' => $joinLink->inviter->displayName()]) }}</span>
-                    <span class="text-ink-2">{{ trans_choice('{0} not used yet|{1} used once|[2,*] used :count times', $joinLink->uses) }}, {{ __('open until :time', ['time' => $joinLink->expires_at->translatedFormat('M j, H:i')]) }}</span>
-                </a>
-            @endforeach
-        </div>
-    </section>
-
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <div class="rounded-lg bg-card px-4 py-2 lg:px-6">
-            @foreach ([
-                [__('Players'), trans_choice(':count active|:count active', $members->count()).', '.trans_choice(':count invite open|:count invites open', $pending->count()), 'text-ink'],
-                [__('Captains'), $captains, 'text-ink'],
-                [__('Founded'), $clan->created_at?->translatedFormat('M j'), 'text-ink'],
-                [__('Clan Rating, chess'), ! $clanStats->seasonLive() ? __('starts at Block 0') : ($rating['rating'] ? __(':n, average of the top 3 players', ['n' => $rating['rating']]) : __('needs 3 rapid Elos')), 'text-ink'],
-                [__('Hashrate'), ! $clanStats->seasonLive() ? __('starts at Block 0') : __(':season this season, :week in the last 7 days', ['season' => $hash['season'], 'week' => $hash['week']]), 'text-btc'],
-            ] as [$key, $value, $colour])
-                <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-sm lg:grid-cols-[160px_minmax(0,1fr)]"><span class="text-ink-2">{{ $key }}</span><span class="{{ $colour }}">{{ $value }}</span></div>
-            @endforeach
-        </div>
-        <div class="rounded-lg bg-card px-4 py-2 lg:px-6">
-            @foreach ($modes as $statsMode)
-                @php($stats = ($statsLineup = $lineups->firstWhere('mode', $statsMode)) ? $clanStats->lineup($statsLineup) : null)
-                <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-sm lg:grid-cols-[160px_minmax(0,1fr)]"><span class="text-ink-2">{{ __('Elo :mode', ['mode' => $statsMode]) }}</span>
-                    <span>{{ $lineups->firstWhere('mode', $statsMode) === null ? __('no lineup yet') : $stats['elo'].', '.($stats['tier'] === 'provisional' ? ($stats['series'] === 0 ? __('Provisional, no series yet') : __('Provisional, :n series', ['n' => $stats['series']])) : __(':tier, rank :rank of :of', ['tier' => __(ucfirst($stats['tier'])).' '.['I', 'II', 'III'][$stats['level'] - 1], 'rank' => $stats['rank'], 'of' => $stats['of']])) }}</span></div>
-            @endforeach
-            <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-sm lg:grid-cols-[160px_minmax(0,1fr)]"><span class="text-ink-2">{{ __('Meetup') }}</span><span>{{ $clan->meetup_name ?? '–' }}</span></div>
-            <div class="pt-3 pb-2">
-                <x-proof :rows="[[__('Clan record'), $clan->naddr().', kind 32150'], [__('Last updated'), $clan->updated_at?->diffForHumans().' '.__('by :npub', ['npub' => \Illuminate\Support\Str::limit(NostrKeys::hexToNpub($clan->owner_pubkey), 10, '…')])], [__('Members'), trans_choice(':count membership record, kind 12150|:count membership records, kind 12150', $members->count())]]" />
-            </div>
-        </div>
-    </div>
-
-    {{-- Lineups & members --}}
-    <section class="flex flex-col gap-2.5 rounded-lg bg-card px-4 py-5 lg:px-6">
-        <div class="flex flex-wrap items-end gap-x-6 border-b border-hairline">
-            <h2 class="m-0 pb-3 font-display text-lg font-bold">{{ __('Lineups & members') }}</h2>
-            <span role="tablist" aria-label="{{ __('Filter') }}" class="flex gap-1">
-                @foreach (['active' => __('Active (:n)', ['n' => $members->count()]), 'invited' => __('Invited (:n)', ['n' => $pending->count()]), 'former' => __('Former (:n)', ['n' => $clan->departures->count()])] as $key => $label)
-                    <button type="button" role="tab" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" x-on:click="$wire.$set('tab', @js($key), false)" data-test="tab-{{ $key }}-button"
-                            x-bind:aria-selected="$wire.tab === @js($key) ? 'true' : 'false'" x-bind:class="{ 'border-btc text-ink': $wire.tab === @js($key), 'border-transparent text-ink-2': $wire.tab !== @js($key) }"
-                            @class(['h-11 cursor-pointer border-b-2 px-3 text-[13px] lg:px-3.5', 'border-btc text-ink' => $tab === $key, 'border-transparent text-ink-2' => $tab !== $key])>{{ $label }}</button>
-                @endforeach
-            </span>
-        </div>
-
-        {{-- All three lists are rendered; the tab switches in the browser and goes along with the next request ($set without a roundtrip). --}}
-        <div class="contents" x-show="$wire.tab === 'active'" @style(['display: none' => $tab !== 'active']) data-test="tab-active">
-            <div class="hidden grid-cols-[110px_minmax(0,1fr)_190px_100px_auto] gap-3 px-2 pt-1 text-xs text-ink-3 lg:grid"><span>{{ __('Lineup') }}</span><span>{{ __('Seats') }}</span><span>{{ __('Status') }}</span><span>Elo</span><span></span></div>
-            @foreach ($lineupGames as $rowGame => $seriesGame)
-            <div class="flex items-center gap-3 px-2 pt-3" data-test="lineups-{{ $rowGame }}">
-                <x-game-cover :game="$rowGame" size="thumb" class="w-16 rounded-sm" />
-                <b class="text-[13px]">{{ GameNames::game($rowGame) }}</b>
-            </div>
-            @foreach ($modesOf($rowGame) as $rowMode)
-                @php($lineup = $allLineups->first(fn (Lineup $lineup) => $lineup->game === $rowGame && $lineup->mode === $rowMode))
-                {{-- A chess team match lineup has no Elo of its own: its boards are rated solo games (NIP rev. 9.22). --}}
-                @php($teamRow = isset($teamModes[$rowGame]))
-                @php($stats = $lineup && ! $teamRow ? $clanStats->lineup($lineup) : null)
-                @php($needed = app(GameRegistry::class)->mode($rowGame, $rowMode)?->lineupMinimum() ?? 1)
-                @php($active = $lineup?->activeCount() ?? 0)
-                {{-- Test hooks keep the bare mode for the first game (edit-lineup-2v2), the others add the game. --}}
-                @php($rowKey = $rowGame === $leadGame ? $rowMode : $rowGame.'-'.$rowMode)
-                @php($isEditing = $editing === $rowMode && ($editingGame ?? $leadGame) === $rowGame)
-                <div wire:key="lu-{{ $rowGame }}-{{ $rowMode }}" class="tr grid min-h-[60px] grid-cols-[104px_minmax(0,1fr)] items-center gap-3 rounded-sm border-b border-hairline p-2 lg:grid-cols-[110px_minmax(0,1fr)_190px_100px_auto]">
-                    <span class="flex flex-col gap-0.5"><b class="text-[15px]">{{ $rowMode }}</b>@if ($stats)<x-rank-badge :tier="$stats['tier']" :level="$stats['level']" class="font-normal" />@elseif ($teamRow)<span class="text-xs font-normal text-ink-2">{{ __('team matches, 2 or 3 boards') }}</span>@endif</span>
-                    <span class="flex min-w-0 flex-wrap gap-2">
-                        @foreach ($lineup?->activeSeats() ?? [] as $seat)
-                            {{-- min-w-0 + truncate: a long display name (a real Nostr name, not
-                                just a factory fixture) must not push this chip past the column's
-                                width and eat into the 16px side gutter (RouteSweepTest). --}}
-                            <span class="flex h-[34px] max-w-full min-w-0 items-center gap-1.5 rounded-md border border-line bg-well px-2.5 text-xs">
-                                <span class="min-w-0 truncate">{{ $seat->user->displayName() }}</span>
-                                @if ($seat->role !== LineupRole::Player)<span class="shrink-0 text-ink-3">{{ $seat->role->label() }}</span>@endif
-                            </span>
-                        @endforeach
-                        @for ($open = $lineup?->activeCount() ?? 0; $open < $needed; $open++)
-                            <span class="flex h-[34px] items-center rounded-md border border-dashed border-line px-2.5 text-xs text-ink-3">{{ __('open seat') }}</span>
-                        @endfor
-                    </span>
-                    <span data-test="lineup-status-{{ $rowKey }}" @class(['col-start-2 text-[13px] lg:col-start-auto', 'text-win' => $active >= $needed, 'text-btc-hi' => $active < $needed && $lineup, 'text-ink-3' => ! $lineup])>
-                        {{ ! $lineup ? __('no lineup yet') : ($active >= $needed ? __('ready, :n of :m', ['n' => $active, 'm' => $needed]) : __('needs players, :n of :m', ['n' => $active, 'm' => $needed])) }}
-                    </span>
-                    <b class="col-start-2 font-display text-[15px] lg:col-start-auto">{{ $stats ? $stats['elo'] : '–' }}</b>
-                    @if ($isOwner)
-                        <span class="col-start-2 lg:col-start-auto">
-                            @if (! $isEditing)
-                                <button type="button" wire:click="editLineup('{{ $rowMode }}', '{{ $rowGame }}')" data-test="edit-lineup-{{ $rowKey }}" class="btn-w inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-4 text-[13px] whitespace-nowrap text-ink">{{ $lineup ? __('Edit lineup') : __('Set up lineup') }}</button>
-                            @endif
-                        </span>
-                    @endif
-                </div>
-
-                @if ($isOwner && $isEditing)
-                    @php($picked = collect($picks)->filter(fn ($role) => in_array($role, ['captain', 'player'], true))->count())
-                    <div wire:key="builder-{{ $rowGame }}-{{ $rowMode }}" role="group" aria-labelledby="builder-title" class="flex flex-col gap-3 rounded-md bg-well px-4 py-4 shadow-ring lg:px-5">
-                        <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                            <b id="builder-title" class="text-[15px]">{{ __('Who plays the :mode', ['mode' => GameNames::game($rowGame).' '.$rowMode]) }}</b>
-                            <span @class(['text-xs', 'text-win' => $picked >= $needed, 'text-btc-hi' => $picked < $needed])>{{ __(':n of :m players picked', ['n' => $picked, 'm' => $needed]) }}</span>
-                        </span>
-                        <span class="text-xs leading-normal text-ink-2">{{ __('Pick from your roster. Joining the clan is their yes, so nobody has to confirm again; anyone can leave the clan at any time.') }}</span>
-                        <div class="flex max-w-[640px] flex-col">
-                            @foreach ($members as $member)
-                                <label wire:key="pick-{{ $rowGame }}-{{ $rowMode }}-{{ $member->user_id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_minmax(0,150px)] items-center gap-3 border-b border-hairline text-[13px]">
-                                    <span class="truncate">{{ $member->user->displayName() }}@if ($member->user->is(auth()->user())) ({{ __('you') }})@endif</span>
-                                    <select wire:model="picks.{{ $member->user_id }}" data-test="pick-{{ $member->user_id }}" aria-label="{{ __('Seat of :name', ['name' => $member->user->displayName()]) }}" class="h-11 w-full min-w-0 appearance-none rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                                        <option value="">{{ __('Not picked') }}</option>
-                                        <option value="captain">{{ __('Captain') }}</option>
-                                        <option value="player">{{ __('Player') }}</option>
-                                        <option value="substitute">{{ __('Sub') }}</option>
-                                    </select>
-                                </label>
-                            @endforeach
-                        </div>
-                        @error('lineup')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-                        @error('picks.*')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-                        <span class="text-xs leading-normal text-ink-3">{{ $teamRow
-                            ? __('A team match needs a player per board: :m for 2 boards, 3 for 3 boards. Before each match the captain picks who plays; the league orders the boards by rapid Elo.', ['m' => $needed])
-                            : __('A :mode needs :m players, captain included, to take challenges. Subs come on top.', ['mode' => $rowMode, 'm' => $needed]) }}</span>
-                        <span class="flex flex-wrap justify-end gap-2.5">
-                            <button type="button" wire:click="cancelLineup" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-card px-4 text-[13px] text-ink">{{ __('Cancel') }}</button>
-                            <button type="button" x-on:click="run('prepareLineup', 'saveLineup')" x-bind:disabled="busy" data-test="confirm-lineup"
-                                    class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
-                                <x-icon name="shield-check" :size="18" />{{ __('Confirm lineup') }}
-                            </button>
-                        </span>
-                    </div>
-                @endif
-            @endforeach
-            @endforeach
-
-            <div class="hidden grid-cols-[minmax(0,1fr)_180px_160px_300px] gap-3 px-2 pt-4 text-xs text-ink-3 lg:grid"><span>{{ __('Player') }}</span><span>{{ __('Role in clan') }}</span><span>{{ __('Lineups') }}</span><span></span></div>
-            @foreach ($members as $member)
-                @php($user = $member->user)
-                @php($seats = $allLineups->filter(fn (Lineup $lineup) => $lineup->seats->contains(fn (LineupSeat $seat) => $seat->user_id === $user->id && $seat->accepted_at !== null))->map(fn (Lineup $lineup) => ($lineup->game === $leadGame ? '' : $lineupGames[$lineup->game]->assets()->shortLabel.' ').$lineup->mode)->implode(', '))
-                <div wire:key="mb-{{ $member->id }}" class="tr grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-sm border-b border-hairline px-2 py-1.5 text-[13px] lg:grid-cols-[minmax(0,1fr)_180px_160px_300px]">
-                    <span class="flex min-w-0 flex-col gap-0.5">
-                        <b class="truncate">{{ $user->displayName() }}@if ($user->is(auth()->user())) ({{ __('you') }})@endif</b>
-                        <span @class(['text-xs', 'text-btc' => $user->is_member, 'text-ink-3' => ! $user->is_member])>{{ $user->is_member ? __('EINUNDZWANZIG member') : __('Block Height :n', ['n' => $heights[$user->id] ?? 0]) }}</span>
-                    </span>
-                    <span class="hidden text-ink-2 lg:block">{{ $member->user_id === $clan->owner_id ? __('Owner, captain') : $member->role->label() }}</span>
-                    <span class="hidden text-ink-2 lg:block">{{ $seats ?: '–' }}</span>
-                    <span class="flex justify-end gap-2">
-                        @if ($isOwner && $member->role !== ClanRole::Captain)
-                            <button type="button" x-on:click="run('prepareMakeCaptain', 'makeCaptain', {{ $user->id }})" x-bind:disabled="busy"
-                                    class="btn-w inline-flex h-11 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-3 text-[13px] whitespace-nowrap text-ink lg:px-4">
-                                <x-icon name="shield-check" :size="16" /><span class="hidden sm:inline">{{ __('Make captain') }}</span><span class="sm:hidden">{{ __('Captain') }}</span>
-                            </button>
-                        @endif
-                        @if ($isOwner && $member->user_id !== $clan->owner_id)
-                            <button type="button" wire:click="askRemoval({{ $user->id }})" aria-label="{{ __('Remove :name from :clan', ['name' => $user->displayName(), 'clan' => $clan->name]) }}"
-                                    class="inline-flex size-11 cursor-pointer items-center justify-center rounded-md border border-[#5A2A2E] text-loss">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"></path></svg>
-                            </button>
-                        @endif
-                    </span>
-                </div>
-            @endforeach
-
-            @if ($confirmRemoval !== null && ($target = $members->firstWhere('user_id', $confirmRemoval)?->user))
-                <div role="alertdialog" aria-labelledby="rm-title" class="grid grid-cols-1 items-center gap-4 rounded-md bg-[#1D1214] px-4 py-3.5 shadow-[inset_0_0_0_1px_#5A2A2E] lg:grid-cols-[minmax(0,1fr)_auto]">
-                    <span class="flex flex-col gap-1 text-[13px] leading-normal">
-                        <b id="rm-title" class="text-loss">{{ __('Remove :name from :clan?', ['name' => $target->displayName(), 'clan' => $clan->name]) }}</b>
-                        <span class="text-ink-2">{{ $this->removalEffects === [] ? __('No lineup changes.') : ucfirst(implode(', ', $this->removalEffects)).'. '.__('A lineup below its size cannot accept challenges until the seats are filled.') }}</span>
-                    </span>
-                    <span class="flex gap-2.5">
-                        <button type="button" wire:click="cancelRemoval" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Cancel') }}</button>
-                        <button type="button" x-on:click="run('prepareRemove', 'remove', {{ $target->id }})" x-bind:disabled="busy"
-                                class="inline-flex h-12 cursor-pointer items-center gap-2.5 rounded-md bg-loss px-[22px] text-sm font-bold whitespace-nowrap text-on-btc">
-                            <x-icon name="shield-check" :size="18" />{{ __('Remove player') }}
-                        </button>
-                    </span>
-                </div>
-            @endif
-        </div>
-        <div class="contents" x-show="$wire.tab === 'invited'" @style(['display: none' => $tab !== 'invited']) data-test="tab-invited">
-            @forelse ($pending as $invite)
-                <div wire:key="iv-{{ $invite->id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-hairline px-2 text-[13px]">
-                    <span class="flex min-w-0 flex-col gap-0.5"><b class="truncate">{{ $invite->invitee->displayName() }}</b><span class="text-xs text-ink-3">{{ __('into the roster, sent :when', ['when' => $invite->created_at?->diffForHumans()]) }}</span></span>
-                    <button type="button" x-on:click="navigator.clipboard?.writeText(@js(route('invites.show', $invite)))" class="min-h-11 cursor-pointer text-xs text-btc">{{ __('Copy invite link') }}</button>
-                </div>
-            @empty
-                <p class="m-0 py-4 text-[13px] text-ink-2">{{ __('No open invites.') }}</p>
-            @endforelse
-        </div>
-        <div class="contents" x-show="$wire.tab === 'former'" @style(['display: none' => $tab !== 'former']) data-test="tab-former">
-            @forelse ($clan->departures->sortByDesc('left_at') as $departure)
-                <div wire:key="dp-{{ $departure->id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-hairline px-2 text-[13px]">
-                    <b class="truncate">{{ $departure->user?->displayName() ?? __('Deleted player') }}</b>
-                    <span class="text-xs text-ink-3">{{ ['left' => __('left'), 'removed' => __('removed'), 'switched' => __('joined another clan'), 'deleted' => __('deleted their account')][$departure->reason] ?? $departure->reason }}, {{ $departure->left_at->diffForHumans() }}</span>
-                </div>
-            @empty
-                <p class="m-0 py-4 text-[13px] text-ink-2">{{ __('Nobody has left yet.') }}</p>
-            @endforelse
-        </div>
-    </section>
 </div>

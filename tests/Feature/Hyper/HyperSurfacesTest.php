@@ -88,8 +88,10 @@ test('/matches lists a match once a player won it, the winner alone, never a run
     ['done' => $done, 'live' => $live, 'daily' => $daily] = hyperSurfaceMatches();
 
     $all = $this->get(route('matches.index'))->assertOk()->getContent();
-    preg_match_all('#<a href="([^"]+)" target="_blank" wire:key="h-\d+" data-test="hyper-row"#', $all, $rows);
-    $cubes = array_map(fn (string $cube): string => preg_match('#<a href="([^"]+)"\s+target="_blank"#', $cube, $link) === 1 ? $link[1] : 'no new tab', array_slice(explode('data-test="strip-cube" data-game="hyperbitcoinization"', $all), 1));
+    preg_match_all('#<a href="([^"]+)"(?=[^>]*target="_blank")(?=[^>]*data-test="hyper-row")#', $all, $rows);
+    // The chain's cubes (x-ui.mempool-chain): each cube's own anchor, with its target.
+    preg_match_all('#<a ([^>]*data-test="chain-cube" data-game="hyperbitcoinization"[^>]*)>#', $all, $found);
+    $cubes = array_map(fn (string $tag): string => str_contains($tag, 'target="_blank"') && preg_match('#href="([^"]+)"#', $tag, $link) === 1 ? $link[1] : 'no new tab', $found[1]);
 
     preg_match('#data-test="hyper-row".*?</a>#s', $all, $row);
 
@@ -103,7 +105,7 @@ test('/matches lists a match once a player won it, the winner alone, never a run
     $mine = $this->get(route('matches.index', ['game' => Hyperbitcoinization::SLUG]))->assertOk();
     $mine->assertSee('data-test="hyper-row"', false)->assertDontSee('data-test="chess-row"', false);
     $doneTable = Livewire\Livewire::withQueryParams(['game' => Hyperbitcoinization::SLUG])->test('pages::matches.index')->call('pickStatus', 'done')->html();
-    preg_match_all('#<a href="([^"]+)" target="_blank" wire:key="h-\d+" data-test="hyper-row"#', $doneTable, $finished);
+    preg_match_all('#<a href="([^"]+)"(?=[^>]*target="_blank")(?=[^>]*data-test="hyper-row")#', $doneTable, $finished);
     expect($finished[1])->toBe([route('hyper.match', $done)]);
 });
 

@@ -8,7 +8,7 @@
         bar      a game's ladder carries its game bar (x-game.subnav, tab "Ladder" current); the cross-game list has none
         head     `title` (the h1) with its `tag` and, on the right, the `leader` (['name' => …, 'value' => …]);
                  with a `lede` the head is the game's hero card instead (cover, title, one line, `action` on the right)
-        chips    `chips` (x-ui.chip-row, Priority+): the ladders to switch to, one line
+        chips    `chips` (x-ui.chips, Priority+): the ladders to switch to, one line
         main     the default slot, 8 of 12 columns: the standings (x-ladder.table) or the empty state
         aside    the right column, 4 of 12: how it counts, the strongest players
 --}}
@@ -54,7 +54,7 @@
         @endif
 
         @if ($chips !== [])
-            <x-ui.chip-row :items="$chips" :label="$chipsLabel ?? __('Ladder')" :caption="__('Ladder game')" />
+            <x-ui.chips :items="$chips" :label="$chipsLabel ?? __('Ladder')" :caption="__('Ladder game')" test="ladder-chips" size="lg" navigate />
         @endif
 
         <div @class(['gp-grid', 'lg:!grid-cols-1' => ! isset($aside)])>

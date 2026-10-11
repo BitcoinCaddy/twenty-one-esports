@@ -93,7 +93,8 @@ test('a player with something in every part: needs, running and upcoming, rating
     // The countdowns count: the daily game's clock changes within two seconds.
     $clock = $wide->evaluate('() => document.querySelector("[data-test=me-need-clock]").innerText');
     BrowserWait::until($wide, '() => document.querySelector("[data-test=me-need-clock]").innerText !== '.json_encode($clock), 3_000);
-    $order = $wide->evaluate('() => [...document.querySelectorAll("[data-test=me-hub] > section, [data-test=me-hub] > div > section, [data-test=me-hub] > [data-test=invite-module]")].map((el) => el.dataset.test)');
+    // Profile.dc.html (P7): the left column, then the right one, then the invite module below both.
+    $order = $wide->evaluate('() => [...document.querySelectorAll("[data-test=me-hub] section[data-test], [data-test=me-hub] [data-test=invite-module]")].filter((el) => !el.parentElement.closest("section[data-test]")).map((el) => el.dataset.test)');
     meHubShot($wide, 'me-1440');
     meHubShot($wide, 'me-results-1440', '[data-test=me-results]');
 
@@ -105,9 +106,10 @@ test('a player with something in every part: needs, running and upcoming, rating
     $phone = meHubGeometry($narrow);
     meHubShot($narrow, 'me-375');
 
-    expect($order)->toBe(['me-needs', 'me-going', 'me-ratings', 'me-results', 'follows-here', 'me-clan', 'me-looking', 'me-settings', 'invite-module'])
+    expect($order)->toBe(['me-needs', 'me-going', 'me-ratings', 'me-results', 'me-looking', 'me-clan', 'me-settings', 'follows-here', 'invite-module'])
         ->and($desk)->toMatchArray(['overflow' => 0, 'inside' => true, 'small' => [], 'clipped' => [], 'chainRows' => 1, 'chainScrolls' => false])
-        ->and($phone)->toMatchArray(['overflow' => 0, 'inside' => true, 'small' => [], 'clipped' => [], 'chainRows' => 1, 'chainScrolls' => true])
+        // The last six results as tiles (Profile.dc.html): one row of six from 640 px, two rows of three on a phone, no sideways scroll.
+        ->and($phone)->toMatchArray(['overflow' => 0, 'inside' => true, 'small' => [], 'clipped' => [], 'chainRows' => 2, 'chainScrolls' => false])
         // Every block of the chain the same height; the one card that needs the player at most 160 px.
         ->and($desk['blockHeights'])->toHaveCount(1)
         ->and($desk['needs'])->toHaveCount(1)

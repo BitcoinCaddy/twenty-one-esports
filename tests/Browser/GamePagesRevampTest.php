@@ -114,7 +114,7 @@ const GAME_PAGES_SQUEEZE = <<<'JS'
     const width = document.documentElement.clientWidth;
     if (document.documentElement.scrollWidth > width) out.push('page ' + document.documentElement.scrollWidth + ' > ' + width);
     for (const el of document.querySelectorAll('main *, header *, footer *')) {
-        if (!el.checkVisibility() || el.closest('.rv-chain-vp, [aria-hidden=true], .sr-only, #game-hub, #account-menu, #more-sheet, .gs-tabs, [data-test=chip-row] nav, canvas')) continue;
+        if (!el.checkVisibility() || el.closest('.rv-chain-vp, [aria-hidden=true], .sr-only, #game-hub, #account-menu, #more-sheet, .gs-tabs, .rv-chips-track, canvas')) continue;
         const r = el.getBoundingClientRect();
         if (r.width === 0) continue;
         if (r.right > width + 1 || r.left < -1) out.push((el.dataset.test || el.tagName) + ' x ' + Math.round(r.left) + '..' + Math.round(r.right));

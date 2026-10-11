@@ -119,7 +119,7 @@ new #[Title('Chess settings')] #[Layout('layouts::app', ['scripts' => ['resource
         <section aria-labelledby="bd-h" class="flex flex-col gap-4 self-start rounded-lg bg-card px-6 py-5">
             <h2 id="bd-h" class="m-0 text-[15px] font-bold">{{ __('Board') }}</h2>
             <span class="text-[13px]" id="colors-h">{{ __('Colors') }}</span>
-            <div role="radiogroup" aria-labelledby="colors-h" class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div role="radiogroup" aria-labelledby="colors-h" class="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:max-xl:grid-cols-2">
                 @foreach ($themes as $key => [$name, $note, $memberOnly, $light, $dark])
                     @php($locked = $memberOnly && ! $user->is_member)
                     <button type="button" role="radio" aria-checked="{{ $settings->board === $key ? 'true' : 'false' }}" wire:click="setBoard('{{ $key }}')" @disabled($locked) data-test="board-{{ $key }}"

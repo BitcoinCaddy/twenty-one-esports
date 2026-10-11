@@ -340,12 +340,14 @@ test('a series change reaches the other captain\'s match dock over Reverb, witho
     $page = chainPage($captainB, route('clans.index'));
     BrowserWait::until($page, '() => window.Echo?.connector?.pusher?.connection?.state === "connected"'
         .' && window.Echo.connector.pusher.channel("private-App.Models.User.'.$captainB->id.'")?.subscribed === true'
-        .' && document.querySelector("[data-test=match-dock-root]")?.innerText.includes("0 : 0")', 10_000);
+        // textContent, not innerText: since P7 the dock's cards sit in a drawer behind "Aktionen" (ActionDock.dc.html),
+        // closed it renders no text, but the card is in the page and morphs with every broadcast.
+        .' && document.querySelector("[data-test=match-dock-root] [data-test=dock-card]")?.textContent.includes("0 : 0")', 10_000);
 
     app(SeriesService::class)->saveLiveGame($match, $captainA, 0, 3, 1, null);
 
     // The dock polls only every 120 s with a websocket: this is the broadcast.
-    BrowserWait::until($page, '() => document.querySelector("[data-test=match-dock-root]")?.innerText.includes("0 : 1")', 8_000);
+    BrowserWait::until($page, '() => document.querySelector("[data-test=match-dock-root] [data-test=dock-card]")?.textContent.includes("0 : 1")', 8_000);
 
     expect($page->evaluate('() => window.__errors'))->toBe([]);
 });

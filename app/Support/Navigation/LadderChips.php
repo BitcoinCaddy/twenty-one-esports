@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
  * The chips of the ladder template's "Spiel" row (template T5, LadderPage.dc.html; rule R8): every ladder of the
  * league in the registry's display order, each with its short name from the registry ("Schach Blitz", "Blockli",
  * "RL 1v1"), Hyperbitcoinization's season ladder and Proof of Pong's Elo ladder among them. The current ladder is
- * marked; x-ui.chip-row folds what does not fit into "+N weitere".
+ * marked; x-ui.chips folds what does not fit into "+N weitere".
  */
 final class LadderChips
 {

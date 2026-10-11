@@ -37,28 +37,23 @@
 @endphp
 <x-layouts::app :title="$name">
     <div class="flex flex-col gap-6 pb-6 lg:px-12 lg:pb-8">
+        {{--
+            The head band (PlayerPublic.dc.html, template T7, P7): picture, name, address, honours and the ways to play on
+            the left, on the right the player's Nostr banner (or the drawn one) as the band's picture. The band is the page's
+            key art (R1): from lg it runs edge to edge and its picture touches the right edge (data-bleed), as on the board.
+        --}}
         <section aria-labelledby="ph-name" class="relative flex flex-col" data-test="player-header">
-            {{-- Banner --}}
-            @if ($profile->banner)
-                <img src="{{ $profile->banner }}" width="1344" height="200" alt="{{ __(':name banner', ['name' => $name]) }}" loading="lazy" decoding="async" referrerpolicy="no-referrer"
-                     data-test="header-banner" class="block h-[132px] w-full bg-row-hover object-cover lg:h-[200px] lg:rounded-lg"
-                     onerror="this.onerror=null;this.nextElementSibling.hidden=false;this.remove()">
-                <div aria-hidden="true" hidden class="h-[132px] lg:h-[200px] lg:rounded-lg" style="{{ $profile->bannerPlaceholderStyle() }}"></div>
-            @else
-                <div aria-hidden="true" class="h-[132px] lg:h-[200px] lg:rounded-lg" style="{{ $profile->bannerPlaceholderStyle() }}"></div>
-            @endif
-
-            {{-- Picture, name, address, challenge --}}
-            <div class="-mt-11 flex flex-col gap-3 px-4 lg:-mt-16 lg:grid lg:grid-cols-[136px_minmax(0,1fr)_auto] lg:items-end lg:gap-x-6 lg:gap-y-0 lg:pr-0 lg:pl-8">
-                <div class="flex items-end gap-3">
-                    <x-avatar :user="$user" :size="128" :class="\Illuminate\Support\Arr::toCssClasses(['size-[88px]! rounded-xl lg:size-32! lg:rounded-[14px]', 'shadow-[0_0_0_4px_#0A0A0B]' => ! $inviteFrame, 'shadow-[0_0_0_4px_#0A0A0B,0_0_0_7px_var(--color-btc),0_0_24px_rgba(247,147,26,0.35)]' => $inviteFrame])" :data-test="$inviteFrame ? 'invite-frame' : null" />
+            <div class="grid grid-cols-1 overflow-hidden border-b border-hairline bg-[linear-gradient(90deg,#14110C,var(--color-ground)_70%)] lg:-mx-12 lg:min-h-60 lg:grid-cols-[minmax(0,1fr)_minmax(0,30%)]" data-bleed data-test="player-band">
+                <div class="order-2 flex flex-col gap-3 px-4 py-6 lg:order-1 lg:grid lg:grid-cols-[96px_minmax(0,1fr)] lg:items-start lg:gap-x-6 lg:gap-y-3 lg:px-12 lg:py-10">
+                <div class="flex items-end gap-3 lg:row-span-3">
+                    <x-avatar :user="$user" :size="128" :class="\Illuminate\Support\Arr::toCssClasses(['size-[72px]! rounded-full lg:size-24!', 'shadow-[0_0_0_4px_#0A0A0B]' => ! $inviteFrame, 'shadow-[0_0_0_4px_#0A0A0B,0_0_0_7px_var(--color-btc),0_0_24px_rgba(247,147,26,0.35)]' => $inviteFrame])" :data-test="$inviteFrame ? 'invite-frame' : null" />
                     @if ($profile->isMember())
                         <span class="pb-1.5 lg:hidden"><x-member-badge solid /></span>
                     @endif
                 </div>
-                <div class="flex min-w-0 flex-col gap-1.5 lg:pb-1">
+                <div class="flex min-w-0 flex-col gap-1.5">
                     <span class="flex flex-wrap items-center gap-3">
-                        <h1 id="ph-name" class="m-0 font-display text-[26px] leading-tight font-bold [overflow-wrap:anywhere] lg:text-4xl">{{ $name }}</h1>
+                        <h1 id="ph-name" class="rv-h1 [overflow-wrap:anywhere] max-lg:text-[26px]">{{ $name }}</h1>
                         @if ($profile->isMember())
                             <x-member-badge solid class="max-lg:hidden" />
                         @endif
@@ -91,7 +86,7 @@
                     @endif
                 </div>
                 @unless ($isMe)
-                    <div class="flex min-w-0 flex-wrap items-center gap-3 max-lg:order-last lg:max-w-[520px] lg:flex-nowrap lg:pb-1">
+                    <div class="flex min-w-0 flex-wrap items-center gap-3 lg:col-start-2 lg:max-w-[520px]">
                         <a href="{{ route('chess.challenge', ['to' => $user->npub]) }}" data-test="challenge"
                            class="flex h-11 min-w-0 grow items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold whitespace-nowrap text-on-btc hover:bg-btc-hi hover:text-on-btc lg:grow-0">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" class="shrink-0"><path d="M8 5v14l11-7z"></path></svg><span class="truncate">{{ __('Challenge :name', ['name' => $name]) }}</span>
@@ -105,6 +100,18 @@
                         </a>
                     </div>
                 @endunless
+                </div>
+                <div class="order-1 lg:order-2" aria-hidden="false">
+                    {{-- The band's picture: the Nostr banner, else the drawn one. --}}
+                    @if ($profile->banner)
+                        <img src="{{ $profile->banner }}" width="1344" height="200" alt="{{ __(':name banner', ['name' => $name]) }}" loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                             data-test="header-banner" class="block h-[132px] w-full bg-row-hover object-cover lg:h-full"
+                             onerror="this.onerror=null;this.nextElementSibling.hidden=false;this.remove()">
+                        <div aria-hidden="true" hidden class="h-[132px] lg:h-full" style="{{ $profile->bannerPlaceholderStyle() }}"></div>
+                    @else
+                        <div aria-hidden="true" class="h-[132px] lg:h-full" style="{{ $profile->bannerPlaceholderStyle() }}"></div>
+                    @endif
+                </div>
             </div>
 
             {{-- Bio and chips | links --}}

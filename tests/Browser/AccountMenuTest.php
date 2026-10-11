@@ -132,7 +132,8 @@ test('the account menu opens with Enter, Space and the arrows, moves with the ar
     $page->locator(':focus')->press('Home');
     $home = $focus();
     $page->locator(':focus')->press('End');
-    expect($second)->toBe('account-invite')
+    // The groups of Profile.dc.html (P7): Play first, its daily games under the name.
+    expect($second)->toBe('Your daily games')
         ->and($wrapped)->toBe('Log out')
         ->and($home)->toBe('account-page')
         ->and($focus())->toBe('Log out');

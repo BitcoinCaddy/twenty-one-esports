@@ -281,26 +281,50 @@ export function dockCount() {
     let watched = null;
     const teardown = new AbortController();
 
+    let timer = null;
+
     return {
         dockOpen: 0,
+        // The entry under its limit (ActionDock.dc.html "Zu, Frist unter 15 Min"): its label and the time left.
+        urgentLabel: '',
+        urgentTime: '',
 
         init() {
+            let urgent = null;
+            const clock = () => {
+                if (!urgent?.tick) {
+                    this.urgentTime = '';
+
+                    return;
+                }
+                const left = Math.max(0, Math.ceil((urgent.tick.endsAt - Date.now()) / 1000));
+                this.urgentTime = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+            };
             const read = () => {
                 const root = document.querySelector('[data-test=match-dock-root]');
                 this.dockOpen = root ? Number(root.dataset.open || 0) : 0;
+                try {
+                    urgent = root?.dataset.urgent ? JSON.parse(root.dataset.urgent) : null;
+                } catch {
+                    urgent = null;
+                }
+                this.urgentLabel = urgent?.label ?? '';
+                clock();
                 if (root && root !== watched) {
                     observer?.disconnect();
                     watched = root;
                     observer = new MutationObserver(read);
-                    observer.observe(root, { attributes: true, attributeFilter: ['data-open'] });
+                    observer.observe(root, { attributes: true, attributeFilter: ['data-open', 'data-urgent'] });
                 }
             };
             this.$nextTick(read);
+            timer = setInterval(clock, 1000);
             document.addEventListener('livewire:navigated', read, { signal: teardown.signal });
         },
 
         destroy() {
             observer?.disconnect();
+            clearInterval(timer);
             teardown.abort();
         },
 

@@ -49,7 +49,8 @@ const MEMPOOL_CUTS = <<<'JS'
     () => {
         const cut = (el) => el.scrollWidth > el.clientWidth + 1;
         const out = [];
-        document.querySelectorAll('[data-test=block-strip] .bs-stamp, [data-test=block-strip] .bs-stamp-text, [data-test=block-strip] .bs-note, [data-test=block-strip] .bs-when, [data-test=block-strip] .bs-r1, [data-test=block-strip] .bs-mode, [data-test=block-strip] .bs-num, [data-test=block-strip] .bs-score, [data-test=board-row]').forEach((el) => {
+        // The chain of the Mempool page (x-ui.mempool-chain, P7 of plan "Refactor und Design-Revamp").
+        document.querySelectorAll('[data-test=mempool-chain] .rv-stamp > span:not(.sr-only), [data-test=strip-block-note], [data-test=strip-number], [data-test=mempool-chain] .rv-cube-v, [data-test=board-row]').forEach((el) => {
             if (cut(el)) { out.push(el.className + ': ' + el.innerText.replace(/\s+/g, ' ') + ' (' + el.scrollWidth + ' > ' + el.clientWidth + ')'); }
         });
         return out;
@@ -116,7 +117,7 @@ test('/matches keeps the mempool strip and the table whole at 320, 375 and 1280 
             $page = mempoolPage($viewer, $width, $locale);
 
             expect($page->evaluate('() => document.documentElement.lang'))->toBe($locale, $where)
-                ->and($page->evaluate('() => document.querySelectorAll("[data-test=strip-cube]").length'))->toBe(9, $where)
+                ->and($page->evaluate('() => document.querySelectorAll("[data-test=chain-cube]").length'))->toBe(9, $where)
                 ->and($page->evaluate('() => document.querySelectorAll("[data-test=strip-block-note]").length'))->toBe(2, "{$where}: void and older season notes")
                 ->and($page->evaluate('() => document.querySelectorAll("[data-test=board-row]").length'))->toBe(3, $where);
 
@@ -124,7 +125,7 @@ test('/matches keeps the mempool strip and the table whole at 320, 375 and 1280 
             expect($scroll)->toBeLessThanOrEqual($client, "{$where}: the page scrolls sideways ({$scroll} > {$client})")
                 ->and($page->evaluate(MEMPOOL_CUTS))->toBe([], "{$where}: cut text")
                 // User, 2026-10-08: every cube names its game in words, not only by a mini icon.
-                ->and($page->evaluate('() => [...document.querySelectorAll("[data-test=block-strip] a.bs-cube")].filter((cube) => (cube.querySelector("[data-test=strip-game-name]")?.innerText.trim() ?? "").length < 3).length'))->toBe(0, "{$where}: a cube without its game's name");
+                ->and($page->evaluate('() => [...document.querySelectorAll("[data-test=chain-cube]")].filter((cube) => (cube.querySelector("[data-test=strip-game-name]")?.innerText.trim() ?? "").length < 3).length'))->toBe(0, "{$where}: a cube without its game's name");
             app()->setLocale($locale);
             expect($page->evaluate('() => [...new Set([...document.querySelectorAll("[data-test=strip-game-name]")].map((el) => el.innerText.trim()))]'))
                 ->toContain(GameNames::cube('chess'), GameNames::cube(NineMensMorris::SLUG));
@@ -134,21 +135,20 @@ test('/matches keeps the mempool strip and the table whole at 320, 375 and 1280 
                 $page->screenshot(true, "mempool-{$locale}-{$width}");
                 File::move(base_path("tests/Browser/Screenshots/mempool-{$locale}-{$width}.png"), "{$shots}/mempool-{$locale}-{$width}.png");
                 // The strip opens on the divider; the oldest stamps sit at its start.
-                $page->evaluate('() => { document.querySelector("[data-test=block-strip] .bs-scroll").scrollLeft = 0; }');
+                $page->evaluate('() => { document.querySelector("[data-test=mempool-chain] .rv-chain-vp").scrollLeft = 0; }');
                 $page->screenshot(false, "mempool-{$locale}-{$width}-start");
                 File::move(base_path("tests/Browser/Screenshots/mempool-{$locale}-{$width}-start.png"), "{$shots}/mempool-{$locale}-{$width}-start.png");
             }
 
-            // A Livewire round trip (the status filter), then the same channels again.
+            // The status chip (a link since the revamp: the filter is the page's URL), then the same channels again.
             $page->locator('[data-test=status-done]')->click();
-            BrowserWait::until($page, '() => document.querySelector("[data-test=status-done]").getAttribute("aria-pressed") === "true"', 10_000);
+            BrowserWait::until($page, '() => location.search.includes("status=done") && document.querySelector("[data-test=status-done]")?.getAttribute("aria-current") === "page" && document.readyState === "complete"', 10_000);
 
-            // The Chain filter (P4): a second round trip narrows the strip to the casual matches; its buttons are never cut.
+            // The Chain chips (P4): narrow the strip to the casual matches, keep the status; they are never cut.
             $page->locator('[data-test=chain-casual]')->click();
-            BrowserWait::until($page, '() => document.querySelector("[data-test=chain-casual]").getAttribute("aria-pressed") === "true" && document.querySelector("[data-test=mobile-casual]").getAttribute("aria-current") === "page"', 10_000);
-            $chain = $page->evaluate('() => ({ cubes: document.querySelectorAll("[data-test=strip-cube]").length, cut: [...document.querySelectorAll("[data-test=chain-filter], [data-test=chain-filter] button")].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.dataset.test || el.innerText), url: location.search, current: [...document.querySelectorAll("[data-chain-key][aria-current=page]")].map((el) => el.dataset.test) })');
-            // The More sheet marks Casual now, without a reload (row 1 has no casual link since the revamp, Header.dc.html).
-            expect($chain)->toBe(['cubes' => $casualCubes, 'cut' => [], 'url' => '?status=done&chain=casual', 'current' => ['mobile-casual']], "{$where}: casual chain");
+            BrowserWait::until($page, '() => location.search.includes("chain=casual") && document.querySelector("[data-test=chain-casual]")?.getAttribute("aria-current") === "page" && document.readyState === "complete"', 10_000);
+            $chain = $page->evaluate('() => ({ cubes: document.querySelectorAll("[data-test=chain-cube]").length, cut: [...document.querySelectorAll("[data-test=chain] a")].filter((el) => el.checkVisibility() && el.scrollWidth > el.clientWidth + 1).map((el) => el.dataset.test || el.innerText), url: location.search })');
+            expect($chain)->toBe(['cubes' => $casualCubes, 'cut' => [], 'url' => '?status=done&chain=casual'], "{$where}: casual chain");
 
             expect($page->evaluate('() => window.__errors'))->toBe([], "{$where}: console")
                 ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "{$where}: responses")
@@ -197,7 +197,7 @@ test('/matches keeps highscore attempts and matches whole together at 375 and 14
     $cuts = <<<'JS'
         () => {
             const cut = (el) => el.scrollWidth > el.clientWidth + 1;
-            return [...document.querySelectorAll('[data-test=block-strip] .bs-when, [data-test=block-strip] .bs-r1, [data-test=block-strip] .bs-score, [data-test=score-row], [data-test=score-row-value], [role=group][aria-labelledby=f-game], [role=group][aria-labelledby=f-game] button')]
+            return [...document.querySelectorAll('[data-test=mempool-chain] .rv-cube-v, [data-test=score-row], [data-test=score-row-value], [data-test=game] a')]
                 .filter((el) => el.offsetParent !== null && cut(el))
                 .map((el) => (el.dataset.test || el.className) + ': ' + el.innerText.replace(/\s+/g, ' ') + ' (' + el.scrollWidth + ' > ' + el.clientWidth + ')');
         }
@@ -209,7 +209,7 @@ test('/matches keeps highscore attempts and matches whole together at 375 and 14
             $page = mempoolPage($viewer, $width, $locale);
 
             expect($page->evaluate('() => document.documentElement.lang'))->toBe($locale, $where)
-                ->and($page->evaluate('() => document.querySelectorAll("[data-test=strip-cube][data-game=blockfill]").length'))->toBe(3, $where)
+                ->and($page->evaluate('() => document.querySelectorAll("[data-test=chain-cube][data-game=blockfill]").length'))->toBe(3, $where)
                 ->and($page->evaluate('() => [...document.querySelectorAll("[data-test=score-row]")].map((el) => el.dataset.state)'))->toBe(['waiting', 'done', 'done'], $where)
                 ->and($page->evaluate('() => document.querySelectorAll("[data-test=match-row], [data-test=chess-row], [data-test=board-row]").length'))->toBe(5, $where)
                 ->and($page->evaluate('() => document.querySelector("[data-test=score-row][data-state=done]").innerText'))->toContain('El Presidento Ben')->toContain('0:20.000');
@@ -224,13 +224,9 @@ test('/matches keeps highscore attempts and matches whole together at 375 and 14
                 File::move(base_path("tests/Browser/Screenshots/runs-{$locale}-{$width}.png"), "{$shots}/runs-{$locale}-{$width}.png");
             }
 
-            // A Livewire round trip: the game filter narrows the table to Blockfill's runs (a select below sm, buttons from sm).
-            if ($width >= 640) {
-                $page->locator('[data-test=game-blockfill]')->click();
-            } else {
-                $page->locator('[data-test=game-filter-select]')->selectOption('blockfill');
-            }
-            BrowserWait::until($page, '() => location.search.includes("game=blockfill") && document.querySelectorAll("[data-test=match-row], [data-test=chess-row], [data-test=board-row]").length === 0', 10_000);
+            // The game chip narrows the table to Blockfill's runs (a chip at every width; a phone scrolls the row).
+            $page->locator('[data-test=game-blockfill]')->click();
+            BrowserWait::until($page, '() => location.search.includes("game=blockfill") && document.readyState === "complete" && document.querySelectorAll("[data-test=match-row], [data-test=chess-row], [data-test=board-row]").length === 0', 10_000);
 
             expect($page->evaluate('() => document.querySelectorAll("[data-test=score-row]").length'))->toBe(3, "{$where}: Blockfill filter")
                 ->and($page->evaluate('() => window.__errors'))->toBe([], "{$where}: console")

@@ -325,7 +325,7 @@ test('a ranked run that is not faster than the week\'s best is verified too: it 
     foreach ($runs as $run) {
         expect($html)->toContain('wire:key="run-'.$run->id.'"');
     }
-    Livewire::withQueryParams(['status' => 'done'])->test('pages::matches.index')->assertSee(__('done').' 2');
+    Livewire::withQueryParams(['status' => 'done'])->test('pages::matches.index')->assertSeeHtml('data-test="mempool-done">2</b>');
 });
 
 test('a run the hook missed joins on the hourly sweep', function () {

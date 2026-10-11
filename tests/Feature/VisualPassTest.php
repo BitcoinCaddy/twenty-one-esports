@@ -96,10 +96,11 @@ test('empty tournament and clan states show the real next tournament and clans w
     $visitor = $this->get(route('players.show', $player->npub))->assertOk()->getContent();
     expect($visitor)->toContain('data-test="open-picture"')->not->toContain('data-test="open-picture-cta"', 'data-test="join-picture-cta"');
 
-    // /me: the clan state has one button now.
+    // /me: the clan state has one button, "Find a clan" (Profile.dc.html, P7: no picture beside it).
     $me = $this->actingAs($player)->get(route('dashboard'))->assertOk()->getContent();
-    expect(substr_count(str($me)->after('data-test="me-clan"')->before('data-test="me-looking"')->toString(), 'href="'.route('clans.index').'"'))->toBe(2)
-        ->and(str($me)->after('data-test="me-clan"')->before('data-test="me-looking"')->toString())->not->toContain(route('clans.create'));
+    $clanPart = str($me)->after('data-test="me-clan"')->before('data-test="me-settings"')->toString();
+    expect(substr_count($clanPart, 'href="'.route('clans.index').'"'))->toBe(1)
+        ->and($clanPart)->not->toContain(route('clans.create'));
 });
 
 test('the casual challenge picks the game by its cover, one radio per game', function () {

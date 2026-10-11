@@ -139,8 +139,8 @@ test('every Proof of Pong surface as an admin in German at 390, 768, 1440 and 19
 
     $surfaces = [
         'home tile' => [route('home', absolute: false), '[data-test=home-games] a[data-game=proof-of-pong]'],
-        // On a desktop the invite's own tab; on a phone and a tablet the dock is one bar with the most urgent item.
-        'dock invite' => [route('home', absolute: false), '[data-test=dock-mobile-bar], [data-dock-tab^=pong-invite-]'],
+        // The action dock (P7) opens from the header's or the tab bar's "Aktionen", with the invite counted there.
+        'dock invite' => [route('home', absolute: false), '[data-test=nav-actions], [data-test=tab-actions]'],
         'matches row' => [route('matches.index', ['game' => ProofOfPong::SLUG], false), '[data-test=pong-row]'],
         'play card' => [route('play', absolute: false), '[data-test=play-game-proof-of-pong]'],
         'rules section' => [route('rules', absolute: false), '[data-test=doc-section-proof-of-pong]'],

@@ -144,7 +144,8 @@ test('every open series is on the dock: live, soon, waiting on someone, or sched
         ->and(app(OpenMatches::class)->for($player)->firstWhere('key', 'series-'.$toAccept->number)->phase)->toBe('waiting');
 });
 
-test('the dock shows the counts, the tabs that fit and says how many hidden ones need the player', function () {
+test('the dock groups every entry as one card, what is on the player first, and says how many need them', function () {
+    // ActionDock.dc.html (P7 of plan "Refactor und Design-Revamp"): no floating tabs any more, one panel with groups.
     $me = User::factory()->create();
     foreach ([2, 4, 6, 8, 10] as $hours) {
         dockDaily($me, mine: true, hoursLeft: $hours);
@@ -153,15 +154,14 @@ test('the dock shows the counts, the tabs that fit and says how many hidden ones
 
     Livewire::actingAs($me)->test('match-dock')
         ->assertOk()
-        ->assertSeeHtml('data-test="match-dock"')
+        ->assertSeeHtml('data-test="dock-sheet"')
         ->assertSeeInOrder(['data-test="dock-count"', '5', 'need you'], false)
-        // Three tabs from lg: 3 hidden, two of them on the player.
-        ->assertSeeInOrder(['+3 more', '2 need you'])
-        // Four from xl: 2 hidden, one on the player.
-        ->assertSeeInOrder(['+2 more', '1 needs you'])
+        ->assertSeeInOrder(['data-test="dock-group-turn"', 'data-test="dock-card"', 'data-test="dock-group-soon"', 'data-test="dock-card"'], false)
         ->assertSee('5 need you, 6 open')
         ->call('$refresh')
         ->assertOk();
+
+    expect(substr_count(Livewire::actingAs($me)->test('match-dock')->html(), 'data-test="dock-card"'))->toBe(6);
 });
 
 test('with nothing open there is no dock at all, and a guest gets none either', function () {
@@ -171,9 +171,8 @@ test('with nothing open there is no dock at all, and a guest gets none either', 
     $this->actingAs($me)->get(route('clans.index'))
         ->assertOk()
         ->assertSee('data-test="match-dock-root"', false)
-        ->assertDontSee('data-test="match-dock"', false)
-        ->assertDontSee('data-test="dock-mobile-bar"', false)
-        ->assertDontSee('data-test="dock-spacer"', false);
+        ->assertDontSee('data-test="dock-sheet"', false)
+        ->assertDontSee('data-test="dock-card"', false);
 
     auth()->logout();
     dockDaily($me, mine: true, hoursLeft: 5);
@@ -191,13 +190,12 @@ test('the game on screen has no tab, and on a running game the dock moves into t
         ->assertSee('data-dock-item="game-'.$other->id.'"', false)
         ->assertDontSee('data-dock-item="game-'.$onScreen->id.'"', false)
         ->assertSee('x-teleport="[data-dock-slot]"', false)
-        ->assertSee('data-dock-slot', false)
-        ->assertDontSee('data-test="match-dock"', false);
+        ->assertSee('data-dock-slot', false);
 
-    // Elsewhere both games have their tab, in the floating bar.
+    // Elsewhere both games have their entry; the header's "Aktionen" opens the dock, no title-row button.
     $this->get(route('clans.index'))
         ->assertSee('data-dock-item="game-'.$onScreen->id.'"', false)
-        ->assertSee('data-test="match-dock"', false)
+        ->assertSee('data-test="dock-sheet"', false)
         ->assertDontSee('x-teleport', false);
 });
 
