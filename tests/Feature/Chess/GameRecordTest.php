@@ -313,12 +313,13 @@ test('a record a relay has not taken yet is sent again, to that relay only', fun
     $event->deliveries()->create(['relay' => $took, 'accepted' => true, 'message' => '', 'attempted_at' => now()]);
     $event->deliveries()->create(['relay' => $missed, 'accepted' => false, 'message' => 'error: no OK before timeout', 'attempted_at' => now()]);
 
-    $this->travel(2)->minutes();
+    // The first retry waits out the backoff (RelayRetries::FIRST_DELAY_MINUTES).
+    $this->travel(5)->minutes();
     $this->artisan('nostr:republish')->expectsOutput('Republished 1 event(s).')->assertSuccessful();
 
     $attempts = $event->deliveries()->pluck('attempted_at', 'relay');
 
-    expect($attempts[$took]->toDateTimeString())->toBe(now()->subMinutes(2)->toDateTimeString())
+    expect($attempts[$took]->toDateTimeString())->toBe(now()->subMinutes(5)->toDateTimeString())
         ->and($attempts[$missed]->toDateTimeString())->toBe(now()->toDateTimeString());
 });
 

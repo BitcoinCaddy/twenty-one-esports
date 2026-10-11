@@ -82,10 +82,14 @@ final class RelayPublisher
                 ? ['accepted' => false, 'message' => 'error: relay not allowed']
                 : $this->send($relay, $event, $pins[$relay] ?? null);
 
-            RelayDelivery::query()->updateOrCreate(
-                ['nostr_event_id' => $event->id, 'relay' => $relay],
-                ['accepted' => $results[$relay]['accepted'], 'message' => mb_substr($results[$relay]['message'], 0, 500), 'attempted_at' => now()],
-            );
+            // Counts the tries: nostr:republish backs off per attempt and stops at RelayRetries::MAX_ATTEMPTS.
+            $delivery = RelayDelivery::query()->firstOrNew(['nostr_event_id' => $event->id, 'relay' => $relay]);
+            $delivery->fill([
+                'accepted' => $results[$relay]['accepted'],
+                'message' => mb_substr($results[$relay]['message'], 0, 500),
+                'attempted_at' => now(),
+                'attempts' => $delivery->exists ? $delivery->attempts + 1 : 1,
+            ])->save();
         }
 
         return $results;

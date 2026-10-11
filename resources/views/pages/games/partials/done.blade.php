@@ -7,7 +7,9 @@
     "does not count" for casual games.
 
     Daily games add ChessStates "Deadline missed" when time ran out; a record
-    that is not on a relay yet shows ChessStates "Public record delayed".
+    that is not on a relay yet shows ChessStates "Public record delayed" while
+    nostr:republish still tries (RelayRetries); after that the Proof says
+    calmly that the league keeps the record, never "retrying" for good.
     The record of a rated game is signed by the league when it ends (NIP
     rev. 9.4; casual games get none);
     games that ended before carry a player's record or, daily, the last move's
@@ -20,6 +22,7 @@
     use App\Support\Chess\ChessGameService;
     use App\Support\Chess\ChessPgn;
     use App\Support\Nostr\NostrKeys;
+    use App\Support\Nostr\RelayRetries;
 
     $aborted = $game->status === ChessGameStatus::Aborted;
     $mining = app(ChessGameService::class)->mining($game);
@@ -56,7 +59,13 @@
     $viewerZone = auth()->user()->timezone ?? config('app.timezone');
     $days = $game->ended_at && $game->created_at ? max(1, (int) ceil($game->created_at->diffInHours($game->ended_at) / 24)) : 1;
     $missedDeadline = $daily && $game->end_reason === ChessEndReason::Timeout;
-    $publicState = $record === null ? 'unsigned' : ($configured === 0 ? 'no-relay' : ($accepted > 0 ? 'published' : 'retrying'));
+    $publicState = match (true) {
+        $record === null => 'unsigned',
+        $configured === 0 => 'no-relay',
+        $accepted > 0 => 'published',
+        RelayRetries::pending($record, $relays, config('esports.relays', []), now()) => 'retrying',
+        default => 'kept',
+    };
 @endphp
 
 <div @class(['flex flex-col gap-5 px-4 pb-8 lg:px-12 lg:pb-10', 'max-lg:pb-24' => $chat ?? null]) data-test="chess-game-done">
@@ -267,6 +276,7 @@
                                 @switch ($publicState)
                                     @case('published') {{ __('On :count of :total relays', ['count' => $accepted, 'total' => $configured]) }} @break
                                     @case('no-relay') {{ __('No relay configured here, so it is kept by the league only') }} @break
+                                    @case('kept') <span data-test="record-kept">{{ __('Not on a public relay. The league keeps the signed record, and the result stands.') }}</span> @break
                                     @default {{ __('Waiting for the relays, we retry on our own') }}
                                 @endswitch
                             </span>
