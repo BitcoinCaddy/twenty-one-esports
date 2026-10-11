@@ -39,15 +39,15 @@ test('home lists every open cup as one row with its cover and seats in this week
         ->and($week)->not->toContain('data-test="cup-filters"');
 });
 
-test('the tournaments page shows the states as one bar with icon, count and word each', function () {
+test('the tournaments page shows what is open and what runs as two tables, each with its count', function () {
     openTournament(['name' => 'Autumn Blitz']);
-    runningChess(TournamentFormat::SingleElimination, 4);
+    runningChess(TournamentFormat::SingleElimination, 4)->forceFill(['published_at' => now()])->save();
 
     $html = $this->get(route('tournaments.index'))->assertOk()->getContent();
 
-    expect($html)->toContain('data-test="state-segment-signup"', 'data-test="state-segment-running"', 'data-test="state-count-finished"')
-        // A state with nothing in it has its legend entry, no segment.
-        ->not->toContain('data-test="state-segment-finished"');
+    expect($html)->toContain('data-test="open-tournaments"', 'data-test="running-tournaments"')
+        ->and(substr_count($html, 'data-test="open-row"'))->toBe(1)
+        ->and(substr_count($html, 'data-test="running-row"'))->toBe(1);
 });
 
 test('off air, /live shows the next tournament with its cover and its places', function () {

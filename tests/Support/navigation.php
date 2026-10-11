@@ -73,6 +73,8 @@ const NAV_PAGES = [
     // "Invite a friend": the account menu's link, on phones in the More sheet (ShellNavigation::account()).
     'invites.create' => ['roles' => NAV_LOGGED_IN, 'max' => 1],
     'tournaments.index' => ['roles' => NAV_ROLES, 'max' => 1],
+    // P6 of plan "Refactor und Design-Revamp": finished and called-off tournaments, the "Archiv" button of the list.
+    'tournaments.archive' => ['roles' => NAV_ROLES, 'max' => 2],
     'tournaments.show' => ['roles' => NAV_ROLES, 'max' => 2],
     'tournaments.draw' => ['roles' => NAV_ROLES, 'max' => 3],
     'tournaments.tv' => ['roles' => NAV_ROLES, 'max' => 3],

@@ -206,18 +206,7 @@ new class extends Component {
                 </header>
 
                 @if ($sees)
-                    <div x-data="{ show: false }" class="flex flex-col rounded-md bg-ground px-3 shadow-ring-hairline" data-test="lobby-access">
-                        <div class="grid min-h-12 grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-2 border-b border-hairline text-sm">
-                            <span class="text-ink-2">{{ __('Name') }}</span><b class="min-w-0 break-all" data-test="lobby-name">{{ $lobby['name'] ?? '' }}</b>
-                            <button type="button" x-on:click="navigator.clipboard?.writeText(@js((string) ($lobby['name'] ?? '')))" aria-label="{{ __('Copy lobby name') }}" class="btn-w inline-flex size-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well text-ink-2"><x-icon name="copy" :size="16" /></button>
-                        </div>
-                        <div class="grid min-h-12 grid-cols-[80px_minmax(0,1fr)_auto_auto] items-center gap-2 text-sm">
-                            <span class="text-ink-2">{{ __('Password') }}</span>
-                            <span class="min-w-0"><span x-show="! show">••••••</span><b x-show="show" x-cloak class="break-all" data-test="lobby-password">{{ $match->lobby_password ?? '–' }}</b></span>
-                            <button type="button" x-on:click="show = ! show" :aria-pressed="show ? 'true' : 'false'" aria-label="{{ __('Show password') }}" class="btn-w inline-flex size-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well text-ink-2"><x-icon name="eye" :size="16" /></button>
-                            <button type="button" x-on:click="navigator.clipboard?.writeText(@js((string) $match->lobby_password))" aria-label="{{ __('Copy password') }}" class="btn-w inline-flex size-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well text-ink-2"><x-icon name="copy" :size="16" /></button>
-                        </div>
-                    </div>
+                    <x-tournaments.lobby-creds :name="$lobby['name'] ?? ''" :password="$match->lobby_password" test="lobby" />
                     <p class="m-0 -mt-2 flex items-center gap-2 text-xs text-ink-2"><x-icon name="lock" :size="14" class="text-win" />{{ __('Only this lobby\'s players and the directors see this. It is never published.') }}</p>
                 @endif
 
@@ -255,20 +244,28 @@ new class extends Component {
                         <form wire:submit="{{ $decides && ! $plays ? 'enter' : 'report' }}({{ $match->id }})" class="flex flex-col gap-3 border-t border-hairline pt-3" data-test="lobby-report-form">
                             <span class="text-[13px] font-bold">{{ $decides && ! $plays ? __('Enter the places') : __('Report the places') }}</span>
                             <span class="text-xs leading-normal text-ink-2">{{ __('Place 1 for every ally still standing at the end; everyone else by the order they were defeated, the first one out last.') }}</span>
-                            @foreach ($sides as $side)
-                                <label class="grid min-w-0 grid-cols-[minmax(0,1fr)_96px] items-center gap-3 text-[13px]" wire:key="place-{{ $match->id }}-{{ $side['id'] }}">
-                                    <span class="min-w-0 truncate">{{ $side['name'] }}</span>
-                                    <select wire:model="places.{{ $match->id }}.{{ $side['id'] }}" class="h-11 w-full rounded-md border border-edge bg-ground px-2 text-[13px] text-ink" data-test="lobby-place">
-                                        <option value="">–</option>
-                                        @foreach (range(1, $count) as $place)
-                                            <option value="{{ $place }}">#{{ $place }}</option>
-                                        @endforeach
-                                    </select>
-                                </label>
-                            @endforeach
+                            {{-- The places as the board's result entry (TournamentLobby.dc.html, rule: scoreboard pattern): each player's place big, −/+ of 48 px, never a native select. --}}
+                            <ol class="m-0 flex list-none flex-col p-0">
+                                @foreach ($sides as $side)
+                                    <li class="flex min-h-16 min-w-0 items-center gap-3 border-b border-hairline" wire:key="place-{{ $match->id }}-{{ $side['id'] }}"
+                                        x-data="{ v: @js($this->places[$match->id][$side['id']] ?? null), pick(next) { this.v = next; $wire.$set('places.{{ $match->id }}.{{ $side['id'] }}', next, false); } }" data-side="{{ $side['id'] }}" data-test="lobby-place">
+                                        <b class="w-10 flex-none font-display text-2xl text-btc tabular-nums" x-text="v ? v + '.' : '–'" aria-live="polite">–</b>
+                                        <span class="min-w-0 grow truncate text-sm font-bold">{{ $side['name'] }}</span>
+                                        <button type="button" class="rv-b2 size-12 flex-none px-0 text-lg" x-on:click="pick(v ? Math.max(1, Number(v) - 1) : {{ $count }})"
+                                                aria-label="{{ __('One place up for :name', ['name' => $side['name']]) }}" data-test="lobby-place-minus">−</button>
+                                        <button type="button" class="rv-b2 size-12 flex-none px-0 text-lg" x-on:click="pick(v ? Math.min({{ $count }}, Number(v) + 1) : 1)"
+                                                aria-label="{{ __('One place down for :name', ['name' => $side['name']]) }}" data-test="lobby-place-plus">+</button>
+                                    </li>
+                                @endforeach
+                            </ol>
                             @if (! ($decides && ! $plays))
-                                <label class="flex flex-col gap-1 text-xs text-ink-2">{{ __('Screenshot of the end screen') }}
-                                    <input type="file" wire:model="shot" accept="image/png,image/jpeg,image/webp" class="max-w-full text-xs text-ink-2 file:mr-3 file:h-9 file:rounded-md file:border file:border-line file:bg-well file:px-3 file:text-ink" data-test="lobby-shot">
+                                {{-- The end screen: a dashed drop area with its button; the file input itself stays out of sight (no native control on show). --}}
+                                <label class="flex min-h-16 cursor-pointer items-center gap-3 rounded-[4px] border border-dashed border-dash px-4 text-[13px] text-ink-2 hover:border-edge">
+                                    <x-icon name="download" :size="18" class="flex-none rotate-180" />
+                                    <span class="grow">{{ __('Screenshot of the end screen') }}</span>
+                                    <span class="rv-b2 is-sm flex-none" wire:loading.remove wire:target="shot">{{ $this->shot ? __('Chosen') : __('Choose file') }}</span>
+                                    <span class="rv-m flex-none" wire:loading wire:target="shot">{{ __('Uploading') }}</span>
+                                    <input type="file" wire:model="shot" accept="image/png,image/jpeg,image/webp" class="sr-only" data-test="lobby-shot">
                                 </label>
                                 @error('shot')<p class="m-0 text-xs text-loss">{{ $message }}</p>@enderror
                             @endif

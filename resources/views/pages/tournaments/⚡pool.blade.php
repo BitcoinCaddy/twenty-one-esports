@@ -295,14 +295,19 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends PrizeP
     $releasable = auth()->user()?->can('admin') ? app(PotRelease::class)->releasableSats($tournament) : 0;
 @endphp
 
-<x-admin.page active="tournaments" :title="__('Prize pool')" :lead="__('The pot is kept in the league wallet, booked for this tournament alone: anyone can add sats to it, sponsors too. You set the prizes and the sponsors; an admin checks the tournament at its end and pays the winners from the league wallet.')" :crumbs="[[__('Tournaments'), route('admin.tournaments')], [$tournament->name, route('tournaments.show', $tournament)]]" data-test="pool-settings">
-    <x-slot:actions>
-        <x-tournaments.manage-actions :tournament="$tournament" :except="['pool']" />
-    </x-slot:actions>
+<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-10 lg:px-12" data-test="pool-settings">
+<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start">
+<aside class="rv-card flex flex-col gap-4 p-4 lg:order-last" aria-label="{{ __('Prize pool') }}" data-test="pool-aside">
+    <h2 class="rv-h3">{{ __('Prize pool') }}</h2>
+    <p class="m-0 text-[13px] leading-relaxed text-ink-2">{{ __('The pot is kept in the league wallet, booked for this tournament alone: anyone can add sats to it, sponsors too. You set the prizes and the sponsors; an admin checks the tournament at its end and pays the winners from the league wallet.') }}</p>
+    <x-tournaments.manage-actions :tournament="$tournament" :except="['pool']" />
+</aside>
+<div class="flex min-w-0 flex-col gap-6">
+<x-tournaments.page-head :tournament="$tournament" :page="__('Prize pool')" current="pool" organizer />
 
     @error('pool')<p class="m-0 rounded-md bg-loss-tint px-4 py-3 text-[13px] text-loss" role="alert" data-test="pool-error">{{ $message }}</p>@enderror
 
-    <section aria-labelledby="state-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="pool-state">
+    <section aria-labelledby="state-h" class="rv-feat flex flex-col gap-3 px-4 py-5 lg:px-6" data-test="pool-state">
         <h2 id="state-h" class="m-0 text-[15px] font-bold">{{ __('Status') }}</h2>
         @if ($movedFromOwnWallet)
             <p class="m-0 flex items-start gap-2 rounded-md bg-btc-chip px-3 py-2 text-[13px] leading-normal text-ink" role="note" data-test="pool-moved-notice">
@@ -315,9 +320,9 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends PrizeP
         @elseif ($tournament->pool_opened_at === null)
             <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('The pot opens when the tournament is published.') }}</p>
         @else
-            <p class="m-0 text-[13px]">
-                <b>{{ $sats((int) $pool->potSats($tournament)) }} {{ __('sats') }}</b>
-                · {{ $tournament->isPoolOpen() ? __('open since :date', ['date' => $tournament->pool_opened_at->format('Y-m-d H:i')]) : __('closed at the admin check, :date', ['date' => $tournament->pool_closed_at?->format('Y-m-d H:i')]) }}
+            <p class="m-0 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[13px] text-ink-2">
+                <b class="font-display text-[36px] leading-none font-bold text-btc tabular-nums lg:text-[48px]" data-test="pool-status-sats">{{ \App\Support\Engagement\HomeBoard::sats((int) $pool->potSats($tournament)) }} Sats</b>
+                {{ $tournament->isPoolOpen() ? __('open since :date', ['date' => $tournament->pool_opened_at->format('Y-m-d H:i')]) : __('closed at the admin check, :date', ['date' => $tournament->pool_closed_at?->format('Y-m-d H:i')]) }}
             </p>
             {{-- What came into the league wallet for this pot apart from what sponsors paid outside it: a payout only ever pays from the wallet. --}}
             <p class="m-0 text-[13px] text-ink-2" data-test="pool-in-wallet">
@@ -487,4 +492,6 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends PrizeP
         @endunless
     </section>
     @endif
-</x-admin.page>
+</div>
+</div>
+</div>

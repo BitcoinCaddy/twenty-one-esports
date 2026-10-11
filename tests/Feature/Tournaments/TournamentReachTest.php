@@ -7,7 +7,7 @@ use App\Models\IncomingPayment;
 use App\Models\Tournament;
 use App\Models\TournamentSponsor;
 use App\Models\User;
-use App\Support\Cards\ShareCard;
+use App\Support\Engagement\HomeBoard;
 use App\Support\LeagueTime;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
@@ -96,8 +96,9 @@ test('the prize pool, edit and payouts are buttons for whoever may use them, on 
         ->and($list)->not->toContain('data-test="manage-payouts"');
 
     $this->get(route('tournaments.show', $unset))->assertOk()->assertSeeHtml('data-test="manage-bar"')
-        ->assertSeeInOrder(['data-test="manage-bar"', __('Set up the prize pool'), 'data-test="tournament-hero"'], false);
-    $this->get(route('tournaments.show', $withPot))->assertSeeInOrder(['data-test="manage-bar"', __('Prize pool'), 'data-test="tournament-hero"'], false);
+        // Right under the hero and "What to do now" (TournamentDetail.dc.html), before the bracket.
+        ->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="manage-bar"', __('Set up the prize pool'), 'data-test="bracket"'], false);
+    $this->get(route('tournaments.show', $withPot))->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="manage-bar"', __('Prize pool'), 'data-test="bracket"'], false);
     $this->get(route('tournaments.show', $draft))->assertSeeHtml('data-test="manage-edit"')->assertDontSeeHtml('data-test="manage-pool"');
     $this->get(route('admin.tournaments.edit', $unset))->assertOk()->assertSeeHtml('data-test="manage-pool"')->assertDontSeeHtml('data-test="manage-edit"');
 
@@ -128,8 +129,9 @@ test('the prize pot heads the tournament page: the pot, the podium and the paid 
 
     // No paid sponsor yet: it says so, and anyone can add to the pot; "Add a sponsor" is the organizer's.
     $this->actingAs(User::factory()->create())->get(route('tournaments.show', $tournament))->assertOk()
-        ->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="prize-pool"', 'data-test="pool-sats">'.ShareCard::sats(100000).'<',
-            'data-test="pool-left"', 'data-test="pool-podium"', 'data-test="pool-no-sponsor"', 'href="#pot-fill"', 'data-test="signup-cta"', 'id="pot-fill"'], false)
+        // The pot heads the hero beside the action (TournamentDetail.dc.html); the prize card below holds podium and sponsors.
+        ->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="pool-sats">'.HomeBoard::sats(100000).' Sats<', 'data-test="signup-cta"', 'data-test="prize-pool"',
+            'data-test="pool-left"', 'data-test="pool-podium"', 'data-test="pool-no-sponsor"', 'href="#pot-fill"', 'id="pot-fill"'], false)
         ->assertDontSeeHtml('data-test="pool-add-sponsor"');
     $this->actingAs($tournament->creator)->get(route('tournaments.show', $tournament))
         ->assertSeeHtml('href="'.route('tournaments.pool', $tournament).'#sponsors-h"');
@@ -144,7 +146,7 @@ test('the prize pot heads the tournament page: the pot, the podium and the paid 
         'expires_at' => now()->addHour(), 'settled_at' => now()])->save();
 
     $this->get(route('tournaments.show', $tournament))
-        ->assertSeeInOrder(['data-test="prize-pool"', 'data-test="pool-sponsor"', 'sponsor-logos/pizza.png', 'Satoshi Pizza', 'data-test="signup-cta"'], false)
+        ->assertSeeInOrder(['data-test="signup-cta"', 'data-test="prize-pool"', 'data-test="pool-sponsor"', 'sponsor-logos/pizza.png', 'Satoshi Pizza'], false)
         ->assertDontSee('Pledge Only')
         ->assertDontSeeHtml('data-test="pool-no-sponsor"');
 });
@@ -158,7 +160,8 @@ test('a special tournament heads every page even when a casual cup starts sooner
     // Home lists the cups in this week's list (Main.dc.html), the other pages as cup mentions.
     $pages = [
         '/chess' => ['data-test="next-tournament" data-tournament="', 'data-test="cup-mention"'],
-        route('tournaments.index') => ['data-test="next-tournament" data-tournament="', 'data-test="cup-mention"'],
+        // The tournaments page (Tournaments.dc.html): the featured card, then the cup's row in the open table.
+        route('tournaments.index') => ['data-test="featured-tournament" data-tournament="', 'data-test="open-row"'],
         route('home') => ['data-test="home-hero" data-tournament="', 'data-test="week-row"'],
     ];
 
@@ -202,10 +205,10 @@ test('a draft puts Publish tournament first on the admin list, in a banner at th
             ->and($openRow)->toContain('data-test="manage-edit"')->not->toContain('manage-publish');
     }
 
-    // The page: the banner with the form above the hero; the bar above it carries no second Publish.
+    // The page: the banner with the form above the hero; the bar under it carries no second Publish.
     $this->actingAs($owner)->get(route('tournaments.show', $draft))->assertOk()
-        ->assertSeeInOrder(['data-test="manage-bar"', 'id="publish"', 'data-test="draft-banner"', __('Players cannot see this tournament yet'),
-            'data-test="publish-form"', __('Publish tournament'), 'data-test="tournament-hero"'], false)
+        ->assertSeeInOrder(['id="publish"', 'data-test="draft-banner"', __('Players cannot see this tournament yet'),
+            'data-test="publish-form"', __('Publish tournament'), 'data-test="tournament-hero"', 'data-test="manage-bar"'], false)
         ->assertDontSeeHtml('data-test="manage-publish"');
     $this->get(route('tournaments.show', $published))->assertOk()->assertDontSeeHtml('data-test="draft-banner"')->assertDontSeeHtml('data-test="publish-form"');
 

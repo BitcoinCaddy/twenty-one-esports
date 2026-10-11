@@ -254,14 +254,25 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
     $followNote = \App\Support\Tournaments\CasualCups::followNote($tournament);
 @endphp
 
-<div class="flex flex-col gap-6 px-4 pb-12 lg:px-12" data-test="tournament-signup" @if ($open) x-data="tournamentLive({ id: {{ $tournament->id }} })" @endif>
-    <a href="{{ route('tournaments.show', $tournament) }}" class="inline-flex min-h-11 items-center gap-1.5 self-start text-[13px]"><x-icon name="prev" :size="16" />{{ $tournament->name }}</a>
+<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-12 lg:px-12" data-test="tournament-signup" @if ($open) x-data="tournamentLive({ id: {{ $tournament->id }} })" @endif>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-        <section aria-labelledby="signup-h" class="flex min-w-0 flex-col gap-6 rounded-card bg-card p-4 shadow-ring sm:p-6"
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start">
+        <div class="flex min-w-0 flex-col gap-6">
+        <x-tournaments.page-head :tournament="$tournament" :page="__('Enter the tournament')" current="signup">
+            @if ($open && $tournament->signup_closes_at)
+                <x-slot:side>
+                    <span class="rv-m">{{ __('Sign-up closes in') }}</span>
+                    <x-ui.countdown :at="$tournament->signup_closes_at" size="sm" :label="__('Sign-up closes in')" />
+                </x-slot:side>
+            @endif
+        </x-tournaments.page-head>
+        <section aria-labelledby="signup-h" class="rv-feat flex min-w-0 flex-col gap-6 p-4 sm:p-6"
                  x-data="{ ...nostrAction({ pubkey: @js($me->pubkey), messages: @js(SignerMessages::labels()) }), who: 'solo' }">
             <div class="flex flex-col gap-2">
-                <h1 id="signup-h" class="m-0 font-display text-[26px] leading-tight font-bold break-words lg:text-[34px]">{{ __('Register: :name', ['name' => $tournament->name]) }}</h1>
+                <span class="flex items-start justify-between gap-4">
+                    <h2 id="signup-h" class="rv-h3">{{ __('Take your place') }}</h2>
+                    <span class="flex flex-none flex-col items-end"><span class="rv-m">{{ __('Places') }}</span><b class="font-display text-[30px] leading-none font-bold text-btc tabular-nums" data-test="signup-places">{{ $places['taken'] ?? '' }}/{{ $places['places'] ?? '' }}</b></span>
+                </span>
                 @if ($tournament->signup_closes_at)
                     <p class="m-0 text-[13px] text-ink-2">{{ __('Registration closes :time, :left. You can pull out until then.', ['time' => $at($tournament->signup_closes_at), 'left' => $tournament->signup_closes_at->diffForHumans()]) }}</p>
                 @endif
@@ -305,9 +316,6 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
                     @unless ($entry)
                         <p class="m-0 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px] text-ink-2">
                             <span><b class="text-ink">{{ trans_choice(':count spot left|:count spots left', $left) }}</b>, {{ __(':taken of :places spots taken', ['taken' => $places['taken'], 'places' => $places['places']]) }}</span>
-                            @if ($countdown)
-                                <span>{{ $countdown['label'] }} <b class="font-display text-ink tabular-nums" role="timer" x-data="countdown({ at: {{ $countdown['ms'] }}, days: @js(__(':count day|:count days')) })" x-text="text">{{ $countdown['text'] }}</b></span>
-                            @endif
                         </p>
                     @endunless
                 </div>
@@ -390,7 +398,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
                             <button type="button" x-on:click="who = 'lineup'; run('prepareLineup', 'enterLineup')" x-bind:disabled="busy" data-test="enter-lineup"
                                     class="btn-p tl-go inline-flex min-h-14 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-6 font-display text-base font-bold text-on-btc disabled:cursor-wait disabled:opacity-80">
                                 <x-icon name="shield-check" :size="20" />
-                                <span x-show="! (busy && who === 'lineup')">{{ __('Confirm registration') }}</span>
+                                <span x-show="! (busy && who === 'lineup')">{{ __('Enter the tournament') }}</span>
                                 <span x-show="busy && who === 'lineup'" x-cloak>{{ __('Signing…') }}</span>
                             </button>
                         </div>
@@ -408,8 +416,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
                         </div>
                     @endunless
                 @else
-                <div class="flex flex-col gap-3 rounded-md bg-ground p-4 shadow-ring-hairline" data-test="solo-entry">
-                    <h2 class="m-0 text-[15px] font-bold">{{ $teams ? __('You play solo, we draw you into a mix team.') : __('Take your seat') }}</h2>
+                <div class="flex flex-col gap-3" data-test="solo-entry">
+                    @if ($teams)
+                        <h2 class="m-0 text-[15px] font-bold">{{ __('You play solo, we draw you into a mix team.') }}</h2>
+                    @endif
                     @if ($lineup)
                         <p class="m-0 rounded-sm px-3 py-2 text-xs text-btc-hi shadow-[inset_0_0_0_1px_#5A3A12]">{{ __('You are captain of :clan. If you go solo, :clan can’t field you in this tournament.', ['clan' => $lineup->clan->name]) }}</p>
                     @endif
@@ -421,7 +431,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
                                 @class(['inline-flex min-h-14 cursor-pointer items-center justify-center gap-2.5 rounded-md px-6 font-display text-base font-bold disabled:cursor-wait disabled:opacity-80',
                                     'btn-s border border-edge text-ink' => $lineup, 'btn-p tl-go bg-btc text-on-btc' => ! $lineup])>
                             <x-icon name="shield-check" :size="20" />
-                            <span x-show="! (busy && who === 'solo')">{{ $teams ? __('Enter solo') : __('Confirm registration') }}</span>
+                            <span x-show="! (busy && who === 'solo')">{{ $teams ? __('Enter solo') : __('Enter the tournament') }}</span>
                             <span x-show="busy && who === 'solo'" x-cloak>{{ __('Signing…') }}</span>
                         </button>
                     </div>
@@ -445,17 +455,18 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
             @endif
             <p x-show="error" x-text="error" x-cloak class="m-0 text-[13px] text-loss" role="alert"></p>
         </section>
+        </div>
 
-        <aside class="flex flex-col gap-4 self-start">
-            @include('pages.tournaments.partials.cover', ['tournament' => $tournament, 'class' => 'w-full'])
-            <dl class="m-0 grid grid-cols-2 gap-2 text-[13px]">
-                <div class="flex flex-col gap-0.5 rounded-md bg-card px-3.5 py-3"><dt class="text-xs text-ink-3">{{ __('Format') }}</dt><dd class="m-0" data-test="signup-format">{{ \App\Support\Tournaments\Lobbies::formatLabel($tournament) }}</dd></div>
-                <div class="flex flex-col gap-0.5 rounded-md bg-card px-3.5 py-3"><dt class="text-xs text-ink-3">{{ __('Places') }}</dt><dd class="m-0 tabular-nums" data-test="places">{{ $places['taken'] }} / {{ $places['places'] }}</dd></div>
-                <div class="col-span-2 flex flex-col gap-0.5 rounded-md bg-card px-3.5 py-3"><dt class="text-xs text-ink-3">{{ __('Starts') }}</dt><dd class="m-0">{{ $at($tournament->starts_at) }}</dd></div>
+        <aside class="rv-card flex flex-col self-start overflow-hidden" data-test="signup-aside">
+            <x-game-cover :game="$tournament->game" size="card" class="w-full [&_img]:object-cover" data-test="game-cover" />
+            <dl class="m-0 flex flex-col px-4 text-[13px]">
+                <div class="flex h-10 items-center justify-between gap-3 border-b border-hairline"><dt class="text-ink-2">{{ __('Format') }}</dt><dd class="m-0 truncate"><span data-test="signup-format">{{ \App\Support\Tournaments\Lobbies::formatLabel($tournament) }}</span>, {{ \App\Support\Tournaments\Lobbies::gameLine($tournament) }}</dd></div>
+                <div class="flex h-10 items-center justify-between gap-3 border-b border-hairline"><dt class="text-ink-2">{{ __('Places') }}</dt><dd class="m-0 tabular-nums" data-test="places">{{ $places['taken'] }} / {{ $places['places'] }}</dd></div>
+                <div class="flex h-10 items-center justify-between gap-3 border-b border-hairline"><dt class="text-ink-2">{{ __('Starts') }}</dt><dd class="m-0">{{ $at($tournament->starts_at) }}</dd></div>
             </dl>
-            <span class="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
-                <a href="{{ route('tournaments.show', $tournament) }}">{{ __('Tournament page') }}</a>
-                <a href="{{ route('tournaments.index') }}">{{ __('All tournaments') }}</a>
+            <span class="flex flex-wrap gap-2 p-4">
+                <a href="{{ route('tournaments.show', $tournament) }}" class="rv-b2 is-sm">{{ __('Tournament page') }}</a>
+                <a href="{{ route('tournaments.index') }}" class="rv-b2 is-sm">{{ __('All tournaments') }}</a>
             </span>
         </aside>
     </div>

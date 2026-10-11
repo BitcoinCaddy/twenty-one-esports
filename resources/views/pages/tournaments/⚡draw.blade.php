@@ -78,14 +78,16 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
     ]));
 @endphp
 
-<div class="flex flex-col gap-5 px-4 pt-8 pb-10 lg:px-12" data-test="tournament-draw">
-    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-        <h1 class="m-0 font-display text-[28px] font-bold lg:text-[34px]">{{ __('The draw') }}</h1>
-        <a href="{{ route('tournaments.show', $tournament) }}" class="text-[13px] lg:grow">{{ $tournament->name }}</a>
-        @if ($drawn !== null)
-            <span class="inline-flex min-h-9 items-center gap-2 self-start rounded-sm bg-win-tint px-3 text-xs text-win shadow-[inset_0_0_0_1px_#1F5A34]"><x-icon name="shield-check" :size="14" />{{ __('Verified draw, anyone can re-check it') }}</span>
-        @endif
-    </div>
+<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-10 lg:px-12" data-test="tournament-draw">
+    <x-tournaments.page-head :tournament="$tournament" :page="__('Drawing the bracket')" current="draw">
+        <x-slot:side>
+            @if ($drawn !== null)
+                <span class="rv-tag is-ok h-8 px-3"><x-icon name="shield-check" :size="14" />{{ __('Verified draw, anyone can re-check it') }}</span>
+            @else
+                <span class="rv-tag h-8 px-3">{{ __('Draw pending') }}</span>
+            @endif
+        </x-slot:side>
+    </x-tournaments.page-head>
 
     <div class="grid gap-4 lg:grid-cols-2">
         <section class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6">

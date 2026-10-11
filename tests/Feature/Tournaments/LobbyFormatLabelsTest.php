@@ -14,6 +14,7 @@ use App\Support\GameNames;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Support\TestSigner;
@@ -129,15 +130,17 @@ test('a chess and a Rocket League tournament keep their mode and format', functi
     'Rocket League' => [true, 'Rocket League 3v3', 'Rocket League 3v3', '3v3, Single Elimination', 'Single Elimination'],
 ]);
 
-test('behind another tournament\'s hero, the AoE2 lobby tournament\'s card on the tournaments list says one lobby match', function () {
+test('behind another tournament\'s featured card, the AoE2 lobby tournament\'s row on the tournaments list says one lobby match', function () {
     $hero = openTournament(['name' => 'Earlier Cup']);
     $hero->forceFill(['signup_closes_at' => now()->addHours(12)])->save();
     labelLobby();
 
     $html = html_entity_decode($this->get(route('tournaments.index'))->assertOk()->getContent(), ENT_QUOTES | ENT_HTML5);
 
-    expect($html)->toContain('data-test="organizer-card"')->toContain('<p class="m-0 text-[13px] leading-normal text-ink-2">Age of Empires II: Definitive Edition, One lobby match</p>')
-        ->not->toContain('Definitive Edition 1v1, Free for All');
+    // Its row in the open table (Tournaments.dc.html): the data line under the name says one lobby match.
+    $row = str($html)->after('data-tournament="'.Tournament::query()->where('game', 'age-of-empires-2')->value('id').'"')->before('</tr>')->toString();
+    expect($row)->toContain('<div class="rv-m">Age of Empires II: Definitive Edition, One lobby match</div>')
+        ->and($html)->not->toContain('Definitive Edition 1v1, Free for All')->not->toContain('Free for All');
 });
 
 test('the cup board names an AoE2 lobby cup by its game, and a running one "One lobby match"', function () {
@@ -146,26 +149,28 @@ test('the cup board names an AoE2 lobby cup by its game, and a running one "One 
     $this->travelTo(CarbonImmutable::parse('2026-10-05 10:00:00', 'UTC'));
     cupTick();
 
-    preg_match('/data-test="cup-next-facts">([^<]*)</', $this->get(route('tournaments.index'))->assertOk()->getContent(), $facts);
+    // The cup board (<x-tournaments.cup-mentions heading filters>), which the game pages keep.
+    $board = fn (): string => Blade::render('<x-tournaments.cup-mentions heading filters />');
+    preg_match('/data-test="cup-next-facts">([^<]*)</', $board(), $facts);
 
     expect(html_entity_decode($facts[1] ?? '', ENT_QUOTES | ENT_HTML5))->toStartWith('Age of Empires II: Definitive Edition tournament, ');
 
-    expect($this->get(route('tournaments.index'))->getContent())
+    expect($board())
         ->toContain('One lobby match: everyone plays at once, in lobbies of at most 8.')
         ->not->toContain('The format is set at the start, by how many play.');
 
     Tournament::query()->casualCup()->update(['status' => TournamentStatus::Running]);
 
-    expect($this->get(route('tournaments.index'))->assertOk()->getContent())
+    expect($board())
         ->toContain('data-test="cup-format">One lobby match</span>')
         ->not->toContain('data-test="cup-format">Free for All');
 
-    // Over, the cups are listed under the board with their format and game.
-    Tournament::query()->casualCup()->update(['status' => TournamentStatus::Finished]);
-    $row = str(html_entity_decode($this->get(route('tournaments.index'))->assertOk()->getContent(), ENT_QUOTES | ENT_HTML5))
-        ->after('data-test="tournament-item"')->before('</li>')->toString();
+    // Over, the cups are on the archive with their game and format.
+    Tournament::query()->casualCup()->update(['status' => TournamentStatus::Finished, 'published_at' => now()]);
+    $row = str(html_entity_decode($this->get(route('tournaments.archive'))->assertOk()->getContent(), ENT_QUOTES | ENT_HTML5))
+        ->after('data-test="archive-row"')->before('</tr>')->toString();
 
-    expect(preg_replace('/\s+/', ' ', strip_tags($row)))->toContain('One lobby match Age of Empires II: Definitive Edition Finished')
+    expect(preg_replace('/\s+/', ' ', strip_tags($row)))->toContain('Age of Empires II: Definitive Edition, One lobby match')->toContain('Finished')
         ->not->toContain('1v1')->not->toContain('Free for All');
 });
 
@@ -175,6 +180,8 @@ test('a running AoE2 lobby tournament says its lobbies are on, not that results 
 
     $this->actingAs(User::query()->find($tournament->participants()->value('user_id')))
         ->get(route('tournaments.show', $tournament))->assertOk()
-        ->assertSee('The lobbies are on. A player reports the places after the time limit.')
+        // The board's head names the lobbies and the main action is to watch, never a bracket of results.
+        ->assertSeeHtml('<h2 id="bracket-h" class="rv-h3">Lobbies</h2>')
+        ->assertSee('Watch live')
         ->assertDontSee('Results land in the bracket');
 });

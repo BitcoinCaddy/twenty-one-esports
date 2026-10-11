@@ -138,7 +138,7 @@ function eveningStart(int $days): CarbonImmutable
     return CarbonImmutable::now(LeagueTime::zone())->addDays($days)->setTime(20, 0)->utc();
 }
 
-test('the when block sits above the fold at 375 and 1440 px in both languages, holds still, and its calendar file is UTC', function () {
+test('the when block names the start at 375 and 1440 px in both languages, the hero\'s data line above the fold, holds still, and its calendar file is UTC', function () {
     $tournament = openTournament(['name' => 'Einundzwanzig Fifa 2026', 'starts_at' => eveningStart(5),
         'description' => 'Sixteen seats, one evening, one final on the big screen. Bring your own controller.'], rocketLeague: true);
     $iso = $tournament->starts_at->utc()->format('Y-m-d\TH:i:s\Z');
@@ -169,14 +169,9 @@ test('the when block sits above the fold at 375 and 1440 px in both languages, h
                 ->and($state['startsIn'])->toMatch($locale === 'de' ? '/^startet in [45] T \d+ Std$/' : '/^starts in [45] d \d+ h$/')
                 ->and([$locale, $width, $state['overflow'], $state['shifts'], $state['errors'], $state['bad']])->toBe([$locale, $width, 0, [], [], []]);
 
-            if ($width >= 1024) {
-                // Above the fold, measured at the top of the page: the whole block, the time included.
-                expect($state['when']['bottom'])->toBeLessThanOrEqual($height);
-            } else {
-                // Below lg the call to action comes first, right under the name (user 2026-10-03: Sign up in the phone's first screen), and a game played in
-                // the player's own copy puts its "You need your own copy" box in front of the button. The block is the next thing after that card.
-                expect($state['when']['top'] - $state['cta']['bottom'])->toBeGreaterThanOrEqual(0)->toBeLessThanOrEqual(40);
-            }
+            // The start's own block sits with the tournament's rules (TournamentDetail.dc.html, P6 of plan "Refactor und
+            // Design-Revamp"); the hero's data line names the start above the fold.
+            expect($page->evaluate('() => { const r = document.querySelector("[data-test=tournament-format]").getBoundingClientRect(); return r.bottom <= innerHeight && r.top >= 0; }'))->toBeTrue();
 
             // The viewer's-time line appears exactly when the browser's zone runs on another offset at the start and is not one a privacy browser reports instead of the real one (P53, SPOOFED_ZONES).
             $differs = $page->evaluate('(at) => { const o = (z) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: z, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" }).formatToParts(new Date(at)).map((x) => [x.type, x.value])); return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute) - at; }; const own = Intl.DateTimeFormat().resolvedOptions().timeZone; return !["UTC", "Etc/UTC", "Etc/GMT", "GMT", "Etc/Universal", "Etc/Zulu", "Universal", "Zulu", "Atlantic/Reykjavik"].includes(own) && o(own) !== o("Europe/Berlin"); }', $tournament->starts_at->getTimestampMs());
@@ -195,8 +190,9 @@ test('the when block sits above the fold at 375 and 1440 px in both languages, h
         ->and($ics['body'])->toContain('DTSTART:'.$tournament->starts_at->utc()->format('Ymd\THis\Z'));
 
     // Positive control of the shift probe: moving the zone chip once the fonts are in counts as a shift of this page.
-    $moved = $page->evaluate('async () => { await document.fonts.ready; await new Promise((r) => setTimeout(r, 200)); document.querySelector("[data-test=when-time]").style.paddingLeft = "40px"; await new Promise((r) => setTimeout(r, 300)); return window.__shifts; }');
-    expect($moved)->not->toBe([])->and($moved[0])->toContain('SPAN[when-zone]');
+    $moved = $page->evaluate('async () => { document.querySelector("[data-test=tournament-when]").scrollIntoView({ block: "center" }); await document.fonts.ready; await new Promise((r) => setTimeout(r, 400)); document.querySelector("[data-test=when-time]").style.paddingLeft = "40px"; await new Promise((r) => setTimeout(r, 300)); return window.__shifts; }');
+    // The block sits further down the page now: the shift lands on the row and the lines after it.
+    expect($moved)->not->toBe([])->and(implode(' | ', $moved))->toContain('[when-');
 
     // Positive control: a thrown error and a broken image reach the collector.
     $page->evaluate('() => { setTimeout(() => { throw new Error("positive control"); }); const img = new Image(); img.src = "/__missing-positive-control.png"; document.body.append(img); }');

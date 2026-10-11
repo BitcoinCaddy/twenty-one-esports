@@ -20,11 +20,12 @@
     "Add a sponsor" leads to the sponsor form of the prize pool page.
 --}}
 @php
-    $sats = fn (int $amount): string => \App\Support\Cards\ShareCard::sats($amount);
-    $placeLabel = fn (int $place): string => match ($place) { 1 => __('1st place'), 2 => __('2nd place'), 3 => __('3rd place'), default => __(':place. place', ['place' => $place]) };
-    $poolLeft = $pool['left'] ?? $pool['sats'];
+    $sats = fn (int $amount): string => \App\Support\Engagement\HomeBoard::sats($amount);
+        $poolLeft = $pool['left'] ?? $pool['sats'];
     $podium = array_slice($pool['split'], 0, 3);
     $rest = array_slice($pool['split'], 3);
+    // The places 1 to 3 of a finished tournament (TournamentChampionMoment::of()['podium']), or none.
+    $results = array_values(array_filter($results ?? [], fn (array $place): bool => $place['entries'] !== []));
     $topUp ??= false;
     $manage ??= false;
     // A key an admin muted or banned site-wide shows no name or picture here; its sats still count in the pot (SiteModeration).
@@ -32,50 +33,51 @@
     $zapped = (int) ($pool['zaps'] ?? 0);
     $zapOpen = \App\Support\Prizes\PotZaps::open($tournament);
 @endphp
-<section aria-labelledby="pool-h" class="tl-pot flex flex-col gap-4 rounded-card bg-btc-chip p-4 shadow-ring-btc sm:p-5" data-test="prize-pool">
+<section aria-labelledby="pool-h" class="rv-card flex flex-col gap-4 p-4 sm:p-5" data-test="prize-pool">
     <div class="flex flex-col gap-1">
-        <h2 id="pool-h" class="m-0 flex items-center gap-1.5 text-[13px] font-bold text-btc-hi"><x-icon name="bolt" :size="16" />{{ __('Prize pool') }}</h2>
-        <p class="m-0 flex flex-col gap-1">
-            <span class="flex items-baseline gap-2 font-display leading-none font-bold text-btc tabular-nums"><span class="text-[44px] sm:text-[56px]" data-test="pool-sats">{{ $sats($pool['sats']) }}</span><span class="text-lg sm:text-xl">{{ __('sats') }}</span></span>
-            <span class="text-[13px] text-ink-2" data-test="pool-left">{{ __(':left of :total sats still to be won', ['left' => $sats($poolLeft), 'total' => $sats($pool['sats'])]) }}</span>
-            @if ($zapped > 0)
-                <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]" data-test="pool-zaps-on-top">
-                    <b class="inline-flex items-center gap-1 text-btc-hi"><x-icon name="bolt" :size="14" />{{ __('+:sats sats from zaps on top', ['sats' => $sats($zapped)]) }}</b>
-                    <span class="text-ink-2">{{ __(':base sats pot + :zaps sats zaps', ['base' => $sats((int) ($pool['base'] ?? $pool['sats'])), 'zaps' => $sats($zapped)]) }}</span>
-                </span>
-            @endif
-        </p>
-        @if ($pool['sats'] > 0)
-            <span class="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-raised" aria-hidden="true"><span class="block h-full bg-btc" style="width: {{ min(100, (int) floor(100 * $poolLeft / $pool['sats'])) }}%"></span></span>
-        @endif
+        <h2 id="pool-h" class="rv-h3">{{ __('Prize pool') }}</h2>
+        <span class="font-display text-[30px] leading-tight font-bold text-btc tabular-nums lg:text-[36px]"><span data-test="pool-sats-card">{{ $sats($pool['sats']) }}</span> Sats</span>
+        <span class="text-xs leading-normal text-ink-2" data-test="pool-left">
+            {{ __(':left of :total sats still to be won', ['left' => $sats($poolLeft), 'total' => $sats($pool['sats'])]) }}@if ($zapped > 0); <span data-test="pool-zaps-on-top">{{ __('+:sats sats from zaps on top', ['sats' => $sats($zapped)]) }}</span>@endif
+        </span>
     </div>
 
     @if ($podium !== [])
-        {{-- The first three as a podium: 2nd, 1st, 3rd from sm up; the list keeps the order 1, 2, 3 for reading. --}}
-        <ol class="m-0 grid list-none grid-cols-3 items-end gap-2 p-0" aria-label="{{ __('What each place wins') }}" data-test="pool-podium">
-            @foreach ($podium as $share)
-                <li @class([
-                        'flex min-w-0 flex-col justify-end gap-1 rounded-md px-3 py-2.5',
-                        'order-2 min-h-24 bg-btc text-on-btc' => $share['place'] === 1,
-                        'order-1 min-h-20 bg-ground shadow-ring-hairline' => $share['place'] === 2,
-                        'order-3 min-h-16 bg-ground shadow-ring-hairline' => $share['place'] === 3,
-                    ]) wire:key="pool-{{ $share['place'] }}" data-test="pool-place">
-                    <span @class(['text-xs', 'font-bold' => $share['place'] === 1, 'text-ink-2' => $share['place'] !== 1])>{{ $placeLabel($share['place']) }}@if ($share['percent'] !== null), {{ $share['percent'] }} %@endif</span>
-                    <span class="font-display text-base leading-tight font-bold break-words tabular-nums sm:text-lg">{{ __(':sats sats', ['sats' => $sats($share['sats'])]) }}</span>
+        {{-- What each place wins, one row per place (TournamentDetail.dc.html). --}}
+        <ol class="m-0 flex list-none flex-col p-0" aria-label="{{ __('What each place wins') }}" data-test="pool-podium">
+            @foreach ([...$podium, ...$rest] as $share)
+                <li class="flex h-10 items-center justify-between gap-3 border-b border-hairline px-3 text-sm" wire:key="pool-{{ $share['place'] }}" data-test="pool-place">
+                    <span>{{ __('Place :place', ['place' => $share['place']]) }}@if ($share['percent'] !== null), {{ $share['percent'] }} %@endif</span>
+                    <span class="tabular-nums"><b>{{ $sats($share['sats']) }}</b> <span class="text-ink-2">Sats</span></span>
                 </li>
             @endforeach
         </ol>
-        @if ($rest !== [])
-            <ul class="m-0 flex list-none flex-wrap gap-2 p-0 text-xs text-ink-2">
-                @foreach ($rest as $share)
-                    <li class="rounded-xs bg-ground px-2 py-1" wire:key="pool-{{ $share['place'] }}">{{ $placeLabel($share['place']) }}: <b class="text-ink tabular-nums">{{ __(':sats sats', ['sats' => $sats($share['sats'])]) }}</b></li>
+    @endif
+
+    @if ($results !== [])
+        {{-- The final places by the names the bracket shows (rule: one public name per player). --}}
+        <div class="flex flex-col gap-2" data-test="champion-podium">
+            <h3 class="rv-h3">{{ __('Results') }}</h3>
+            <ol class="m-0 flex list-none flex-col gap-1.5 p-0">
+                @foreach ($results as $place)
+                    @foreach ($place['entries'] as $entry)
+                        <li class="flex items-center gap-2.5 text-sm" data-test="podium-{{ $place['place'] }}">
+                            <b class="w-4 text-btc tabular-nums">{{ $place['place'] }}</b>
+                            @if ($entry['users'][0] ?? null)
+                                <x-avatar :user="$entry['users'][0]" :name="$entry['name']" :size="24" class="flex-none" />
+                            @else
+                                <span class="rv-av is-sm flex-none"><x-icon name="clans" :size="12" /></span>
+                            @endif
+                            <b class="min-w-0 truncate">{{ $entry['name'] }}</b>
+                        </li>
+                    @endforeach
                 @endforeach
-            </ul>
-        @endif
+            </ol>
+        </div>
     @endif
 
     {{-- The sponsors whose invoice is paid, with their logos; none yet: how to back the pot. --}}
-    <div class="flex flex-col gap-2 border-t border-btc-ring pt-4" data-test="pool-sponsors">
+    <div class="flex flex-col gap-2 border-t border-hairline pt-4" data-test="pool-sponsors">
         @if ($pool['sponsors'] !== [])
             <span class="text-xs text-ink-2">{{ __('Backed by') }}</span>
             {{-- One row that scrolls on a phone, so the pot does not push the sign-up far down; wraps from sm. --}}

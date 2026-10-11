@@ -12,6 +12,8 @@
  */
 
 import { jittered, livePoll } from './livePoll.js';
+// The chip filter rows of the tournament pages (Priority+, components/ui/chips).
+import './chipRow.js';
 
 const pad = (value) => String(value).padStart(2, '0');
 

@@ -77,7 +77,8 @@ const NOW_MEASURE = <<<'JS'
             action: action && { top: Math.round(action.top), bottom: Math.round(action.bottom), height: Math.round(action.height), width: Math.round(action.width) },
             titleSize: parseFloat(getComputedStyle(title).fontSize),
             titleOverflow: title.scrollWidth - title.clientWidth,
-            first: main.firstElementChild === hero,
+            // Right under the tournament's hero (TournamentDetail.dc.html): before the tabs and the bracket.
+            first: hero.getBoundingClientRect().top < main.querySelector('[data-test=tournament-tabs]').getBoundingClientRect().top,
             tab,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             text: hero.innerText,
@@ -117,7 +118,7 @@ function nowShot(Page $page, string $name): void
     File::move(base_path('tests/Browser/Screenshots/'.$name.'.png'), $dir.'/'.$name.'.png');
 }
 
-test('a waiting player sees the hero first, above the tab bar, and it flips to "Play now" without a reload and stays on the page', function () {
+test('a waiting player sees the hero right under the tournament\'s, above the tab bar, and it flips to "Play now" without a reload and stays on the page', function () {
     $measured = [];
     $page = null;
 

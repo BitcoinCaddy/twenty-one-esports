@@ -53,6 +53,8 @@ const NAVIGATE_SAFE_COMPONENTS = [
     // The revamped header and start page (P3 of plan "Refactor und Design-Revamp"): an observer, listeners behind an
     // AbortController and an interval, each released in destroy().
     'dockCount', 'mempoolChain', 'segmentCountdown',
+    // The chip filter rows of the tournament pages (P6): a ResizeObserver on its own row, disconnected in destroy().
+    'chipRow',
     // @persist keeps it across a swap; it removes its own livewire:navigated listener (livePlayer.js).
     'livePlayer',
     // Intervals cleared in destroy(), or nothing outside the element.

@@ -40,16 +40,17 @@ test('?game=rocket-league shows only Rocket League tournaments, as hero, cards a
 
     $html = (string) $this->get(route('tournaments.index', ['game' => 'rocket-league']))->assertOk()->getContent();
 
-    expect($html)->toContain('RL Open Signup')->toContain('RL Finished Cup')
-        ->not->toContain('Chess Open Signup')->not->toContain('Chess Finished')
-        ->toContain('data-test="tournaments-game-filter"')
-        ->toContain('href="'.route('tournaments.index').'"');
+    // The featured card and the rows are Rocket League's; its chip is the current one, "Alle" leads back to every game.
+    expect(str($html)->after('data-test="featured-tournament"')->before('</section>')->toString())->toContain('RL Open Signup')
+        ->and($html)->not->toContain('Chess Open Signup')->not->toContain('Chess Finished')->not->toContain('RL Finished Cup')
+        ->and($html)->toMatch('/aria-current="page"\s+class="rv-chip"\s+data-test="filter-game-rocket-league"/')
+        ->and($html)->toContain('href="'.route('tournaments.index').'" data-chip="0"');
 
-    // The state counts are the filtered ones: one open, one finished.
-    $component = Livewire::withQueryParams(['game' => 'rocket-league'])->test('pages::tournaments.index');
-    expect($component->instance()->tournaments->pluck('game')->unique()->all())->toBe(['rocket-league'])
-        ->and($component->instance()->next?->name)->toBe('RL Open Signup');
-    $component->call('$refresh')->assertOk();
+    // The ended ones are on the archive, narrowed the same way.
+    $archive = (string) $this->get(route('tournaments.archive', ['game' => 'rocket-league']))->assertOk()->getContent();
+    expect($archive)->toContain('RL Finished Cup')->not->toContain('Chess Finished');
+
+    Livewire::withQueryParams(['game' => 'rocket-league'])->test('pages::tournaments.index')->call('$refresh')->assertOk();
 });
 
 test('without a filter or with an unknown slug the list shows every game and no chip, without an error', function (?string $game) {

@@ -73,12 +73,13 @@ test('a player whose game is live sees "Play now" first, with the opponent, the 
         ->toContain('Round 1 against '.$opponent)
         ->toContain('Go to your game')
         ->toContain('href="'.route('games.show', $game).'"')
-        // First on the page: before the tournament's own hero, the bracket and everything else.
-        ->and(strpos($html, 'data-test="now-hero"'))->toBeLessThan(strpos($html, 'data-test="tournament-hero"'))
+        // Right under the tournament's hero (TournamentDetail.dc.html), before the bracket and everything else.
+        ->and(strpos($html, 'data-test="now-hero"'))->toBeGreaterThan(strpos($html, 'data-test="tournament-hero"'))
+        ->and(strpos($html, 'data-test="now-hero"'))->toBeLessThan(strpos($html, 'id="bracket"'))
         ->and(substr_count($html, 'href="'.route('games.show', $game).'"'))->toBeGreaterThanOrEqual(1);
 });
 
-test('the hero stands above the organizer\'s bar', function () {
+test('"What to do now" stands above the organizer\'s bar', function () {
     $tournament = runningChess(TournamentFormat::SingleElimination, 4, TournamentResultsMode::Players);
     $creator = organizer();
     $tournament->forceFill(['created_by_id' => $creator->id])->save();

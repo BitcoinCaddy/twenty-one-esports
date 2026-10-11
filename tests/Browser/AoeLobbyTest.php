@@ -200,8 +200,7 @@ test('the lobby cards of nine players show 5 and 4 with their own settings, the 
         ->and($page->evaluate('() => document.querySelector("[data-test=lobby-name]").innerText.trim()'))->toBe(LobbyWords::lobbyName($tournament->id, 1))
         ->and($page->evaluate('() => document.querySelector("[data-test=lobby-rules]") !== null'))->toBeTrue();
 
-    // The password shows on demand, and a Livewire roundtrip of the cards stays clean.
-    $page->locator('[data-test=lobby-access] button[aria-pressed]')->click();
+    // The password is shown (user, 2026-10-10), and a Livewire roundtrip of the cards stays clean.
     BrowserWait::until($page, '() => document.querySelector("[data-test=lobby-password]")?.checkVisibility()', 5_000);
     expect($page->evaluate('() => document.querySelector("[data-test=lobby-password]").innerText.trim()'))->toBe($lobbies[0]->lobby_password);
     shellOpen($page, route('tournaments.show', $tournament, false), $problems);
@@ -218,7 +217,7 @@ test('the lobby cards of nine players show 5 and 4 with their own settings, the 
     'desktop 1440, de' => [1440, 900, 'de'],
 ]);
 
-test('a player\'s own lobby is pinned above the hero at 375 and 1440: name and password copy, the password shows on demand, the console stays clean', function (int $width, int $height) {
+test('a player\'s own lobby is pinned right under the hero at 375 and 1440: name and password copy, the password shows on demand, the console stays clean', function (int $width, int $height) {
     [$tournament] = aoeLobbyTournament();
     $lobby = TournamentMatch::query()->where('tournament_id', $tournament->id)->orderBy('position')->with('slots.participant')->firstOrFail();
     $player = User::query()->find($lobby->slots[0]->participant->user_id);
@@ -241,25 +240,26 @@ test('a player\'s own lobby is pinned above the hero at 375 and 1440: name and p
         const copies = [...document.querySelectorAll("[data-test=my-lobby] [data-test^=my-lobby-copy]")];
         return {
             scrollY: window.scrollY,
-            inFold: seen(pinEl),
+            // The access block (name, password, copy) in the first screen; the report link may follow below.
+            inFold: seen(document.querySelector("[data-test=my-lobby-access]")),
             copies: copies.map((b) => seen(b) && b.getBoundingClientRect().width >= 44 && b.getBoundingClientRect().height >= 44),
-            aboveHero: pin.bottom <= document.querySelector("[data-test=tournament-hero]").getBoundingClientRect().top,
+            belowHero: pin.top >= document.querySelector("[data-test=tournament-hero]").getBoundingClientRect().bottom,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             text: document.querySelector("[data-test=my-lobby]").innerText,
         };
     }');
     shellShot($page, "aoe-my-lobby-en-{$width}");
 
-    expect(array_diff_key($box, ['text' => 0]))->toBe(['scrollY' => 0, 'inFold' => true, 'copies' => [true, true], 'aboveHero' => true, 'overflow' => 0])
+    expect(array_diff_key($box, ['text' => 0]))->toBe(['scrollY' => 0, 'inFold' => true, 'copies' => [true, true], 'belowHero' => true, 'overflow' => 0])
+        // The password is shown (user, 2026-10-10: "Das PW muss nicht hidden sein!"; TournamentLobby.dc.html).
         ->and($box['text'])->toContain('Join this lobby in Age of Empires II')->toContain($lobby->lobby['name'])->toContain('Lobby 1')
-        ->not->toContain($lobby->lobby_password);
+        ->toContain($lobby->lobby_password);
 
-    // Copy writes the values; the password shows on demand.
+    // Copy writes the values.
     $page->locator('[data-test=my-lobby-copy-name]')->click();
     $page->locator('[data-test=my-lobby-copy-password]')->click();
     BrowserWait::until($page, '() => (window.__copied ?? []).length === 2', 5_000);
     expect($page->evaluate('() => window.__copied'))->toBe([$lobby->lobby['name'], $lobby->lobby_password]);
-    $page->locator('[data-test=my-lobby-show]')->click();
     BrowserWait::until($page, '() => document.querySelector("[data-test=my-lobby-password]")?.checkVisibility()', 5_000);
     expect($page->evaluate('() => document.querySelector("[data-test=my-lobby-password]").innerText.trim()'))->toBe($lobby->lobby_password);
 
@@ -287,8 +287,11 @@ test('a player reports a shared place 1 with the end screen, and a director conf
     shellOpen($page, route('tournaments.show', $tournament, false), $problems);
     aoeLobbyScrollToCards($page);
 
+    // The board's result entry: + from empty sets place 1, every further + one place lower.
     foreach ($lobby->slots as $index => $slot) {
-        $page->locator('[data-lobby="2"] select[wire\\:model="places.'.$lobby->id.'.'.$slot->tournament_participant_id.'"]')->selectOption((string) $places[$index]);
+        for ($click = 0; $click < $places[$index]; $click++) {
+            $page->locator('[data-lobby="2"] [data-side="'.$slot->tournament_participant_id.'"] [data-test=lobby-place-plus]')->click();
+        }
     }
 
     $page->locator('[data-lobby="2"] [data-test=lobby-shot]')->setInputFiles(aoeLobbyEndScreen());
@@ -509,7 +512,7 @@ const AOE_LOBBY_CHIPS = <<<'JS'
     }
     JS;
 
-test('a live lobby tournament says "One lobby match" without a 1v1 on its page and on its /tournaments card, at 375 and 1440 in English and 1440 in German', function (int $width, int $height, string $locale) {
+test('a live lobby tournament says "One lobby match" without a 1v1 on its page and on its /tournaments row, at 375 and 1440 in English and 1440 in German', function (int $width, int $height, string $locale) {
     [$tournament] = aoeLobbyTournament();
     $page = shellPage(null, $width, $height);
     $problems = [];
@@ -519,7 +522,8 @@ test('a live lobby tournament says "One lobby match" without a 1v1 on its page a
     shellShot($page, "aoe-lobby-chips-{$locale}-{$width}");
     $hero = $page->evaluate(AOE_LOBBY_CHIPS, '[data-test=tournament-hero]');
 
-    $card = "[data-test=organizer-card][data-tournament=\"{$tournament->id}\"]";
+    // Its row on the tournaments page (Tournaments.dc.html "Läuft"): the name and the data line.
+    $card = "[data-test=running-row][data-tournament=\"{$tournament->id}\"]";
     shellOpen($page, route('tournaments.index', [], false), $problems);
     $page->evaluate('(selector) => { const card = document.querySelector(selector); window.scrollTo(0, card.getBoundingClientRect().top + window.scrollY - 80); }', $card);
     shellShot($page, "aoe-lobby-index-{$locale}-{$width}");

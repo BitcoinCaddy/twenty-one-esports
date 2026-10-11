@@ -239,7 +239,7 @@ test('the desk button sits in the champion hero for a day after the end', functi
     expect($tournament->refresh()->status)->toBe(TournamentStatus::Finished);
 
     $this->actingAs($player)->get(route('tournaments.show', $tournament))->assertOk()
-        ->assertSeeInOrder(['data-test="champion-hero"', 'data-test="desk-button"', 'data-test="champion-podium"'], false);
+        ->assertSeeInOrder(['data-test="champion-hero"', 'data-test="desk-button"', 'data-test="bracket-champion"'], false);
 });
 
 test('the desk button is on a tournament game\'s banner for its players, not for a spectator', function () {
@@ -275,7 +275,8 @@ test('the desk chat is drawn open for a member, under the hero or under the sign
     $player = User::query()->find($tournament->participants()->first()->user_id);
 
     $html = $this->actingAs($player)->get(route('tournaments.show', $tournament))->assertOk()
-        ->assertSeeInOrder(['data-test="now-hero"', 'data-test="desk-rail"', 'id="desk"', 'data-test="desk-chat"', 'data-test="desk-messages"', 'data-test="desk-hint"', 'data-test="desk-form"', 'data-test="tournament-hero"'], false)
+        // The hero first (TournamentDetail.dc.html), then "What to do now" and the desk in the chat rail.
+        ->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="now-hero"', 'data-test="desk-rail"', 'id="desk"', 'data-test="desk-chat"', 'data-test="desk-messages"', 'data-test="desk-hint"', 'data-test="desk-form"', 'data-test="bracket"'], false)
         ->getContent();
 
     $panel = substr($html, (int) strpos($html, 'data-test="desk-rail"'));
@@ -292,14 +293,15 @@ test('the desk chat is drawn open for a member, under the hero or under the sign
     [$solo, $soloKey] = keyedPlayer();
     soloSignup($open, $solo, $soloKey);
     $signup = $this->actingAs($solo)->get(route('tournaments.show', $open))->assertOk()
-        ->assertSeeInOrder(['data-test="tournament-show"', 'data-test="tournament-hero"', 'id="t-name"', 'data-test="signup-cta"', 'data-test="who-is-in"', 'data-test="desk-rail"', 'data-test="desk-form"'], false)
+        ->assertSeeInOrder(['data-test="tournament-show"', 'data-test="tournament-hero"', 'id="t-name"', 'data-test="signup-cta"', 'data-test="desk-rail"', 'data-test="desk-form"'], false)
         ->assertDontSee('data-test="desk-row"', false)
         ->assertDontSee('Questions or a problem?');
     expect(substr_count($signup->getContent(), 'data-test="desk-rail"'))->toBe(1);
 
+    // A guest gets no desk; the rail holds the game's public chat instead (rule: the chat at the same place on every page).
     auth()->logout();
     $this->get(route('tournaments.show', $tournament))->assertOk()
         ->assertDontSee('data-test="desk-rail"', false)
         ->assertDontSee('id="desk"', false)
-        ->assertDontSee('chat-rail-host', false);
+        ->assertSee('data-test="game-rail"', false);
 });

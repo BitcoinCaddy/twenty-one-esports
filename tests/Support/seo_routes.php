@@ -121,6 +121,7 @@ function seoRouteFixtures(): array
         },
         'players.show' => fn () => [route('players.show', User::factory()->create(['name' => 'satoshi'])->npub)],
         'tournaments.index' => fn () => [route('tournaments.index')],
+        'tournaments.archive' => fn () => [route('tournaments.archive')],
         'tournaments.show' => fn () => [
             route('tournaments.show', openTournament(['name' => 'Halving Cup'])),
             route('tournaments.show', seoLobbyTournament()),

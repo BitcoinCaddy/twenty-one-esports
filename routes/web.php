@@ -189,6 +189,7 @@ Route::livewire('matches/{match}', 'pages::matches.show')->whereNumber('match')-
  * pool settings (P9: its organizer and admins, gate `manage-tournament`).
  */
 Route::livewire('tournaments', 'pages::tournaments.index')->name('tournaments.index');
+Route::livewire('tournaments/archive', 'pages::tournaments.archive')->name('tournaments.archive');
 Route::livewire('tournaments/{tournament}', 'pages::tournaments.show')->whereNumber('tournament')->name('tournaments.show');
 Route::livewire('tournaments/{tournament}/draw', 'pages::tournaments.draw')->whereNumber('tournament')->name('tournaments.draw');
 Route::get('tournaments/{tournament}/calendar.ics', TournamentCalendarController::class)->whereNumber('tournament')->name('tournaments.calendar');

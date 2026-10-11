@@ -228,39 +228,27 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
     ];
 @endphp
 
-<div @class(['flex flex-col gap-8 px-4 pb-16 lg:px-12', 'chat-rail-host xl:[--chat-rail-own:3rem]' => $this->desk !== null])
+<div @class(['mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pb-16 lg:px-12', 'chat-rail-host xl:[--chat-rail-own:3rem]' => $this->desk !== null])
      data-test="tournament-live" @if ($live) wire:poll.15s.visible x-data="tournamentLive({ id: {{ $tournament->id }} })" @endif>
-    <header class="flex flex-col gap-3">
-        <span class="flex flex-wrap items-center gap-2 text-xs">
-            <span @class(['inline-flex items-center gap-1.5 rounded px-2 py-1 font-bold',
-                'bg-btc/15 text-btc' => $running && ! $tournament->isPaused(),
-                'bg-raised text-ink-2' => ! $running || $tournament->isPaused()]) data-test="live-status">
-                @if ($running && ! $tournament->isPaused())<span class="size-1.5 rounded-full bg-btc"></span>@endif
-                {{ $statusLabel }}
-            </span>
+    <x-tournaments.page-head :tournament="$tournament" :page="__('Live control')" current="live" organizer>
+        <x-slot:side>
+            <span @class(['rv-tag h-8 px-3', 'is-ok' => $running && ! $tournament->isPaused()]) data-test="live-status">{{ $statusLabel }}</span>
             @if ($this->round)
-                <span class="rounded bg-raised px-2 py-1 text-ink-2" data-test="live-round">{{ __('Round :number', ['number' => $this->round->number]) }}</span>
+                <span class="rv-m" data-test="live-round">{{ __('Round :number', ['number' => $this->round->number]) }}</span>
             @endif
-            <span class="text-ink-3">{{ __('Live control') }}</span>
             @if ($live)
                 {{-- The clock every deadline below is read against; the poll moves it. --}}
-                <time datetime="{{ now()->toIso8601String() }}" class="ms-auto inline-flex items-baseline gap-2 text-ink-2" data-test="live-now">
-                    {{ __('Now') }} <b class="font-display text-[15px] font-bold text-ink tabular-nums">{{ $clock(now()) }}</b>
-                </time>
+                <time datetime="{{ now()->toIso8601String() }}" class="inline-flex items-baseline gap-2 text-[13px] text-ink-2" data-test="live-now">{{ __('Now') }} <b class="font-display text-[15px] font-bold text-ink tabular-nums">{{ $clock(now()) }}</b></time>
             @endif
-        </span>
-        <h1 class="m-0 font-display text-2xl leading-tight font-extrabold [overflow-wrap:anywhere] lg:text-3xl">{{ $tournament->title() }}</h1>
-        <nav class="flex flex-wrap gap-2" aria-label="{{ __('Tournament') }}" data-test="live-links">
-            @if ($this->canDirect)
-                <x-button :href="route('tournaments.director', $tournament)" icon="flag" data-test="live-director">{{ __('Director desk') }}</x-button>
-            @endif
-            <x-button variant="secondary" :href="route('tournaments.show', $tournament)" icon="tournaments" data-test="live-public">{{ __('Tournament page') }}</x-button>
-            <x-button variant="secondary" :href="route('tournaments.tv', $tournament)" icon="expand" target="_blank" data-test="live-tv">{{ __('TV view') }}</x-button>
-            @if ($this->canManage)
-                <x-button variant="quiet" :href="route('admin.tournaments.edit', $tournament)" icon="settings" data-test="live-edit">{{ __('Edit') }}</x-button>
-            @endif
-        </nav>
-    </header>
+        </x-slot:side>
+    </x-tournaments.page-head>
+    <nav class="flex flex-wrap gap-2" aria-label="{{ __('Tournament') }}" data-test="live-links">
+        @if ($this->canDirect)
+            <a href="{{ route('tournaments.director', $tournament) }}" class="rv-b" data-test="live-director"><x-icon name="flag" :size="16" />{{ __('Director desk') }}</a>
+        @endif
+        <a href="{{ route('tournaments.show', $tournament) }}" class="rv-b2" data-test="live-public"><x-icon name="trophy" :size="16" />{{ __('Tournament page') }}</a>
+        <a href="{{ route('tournaments.tv', $tournament) }}" target="_blank" class="rv-b2" data-test="live-tv"><x-icon name="expand" :size="16" />{{ __('TV view') }}</a>
+    </nav>
 
     @if ($this->openSeries !== [])
         <section aria-labelledby="live-overview-h" class="flex flex-col gap-6" data-test="live-overview">
