@@ -238,9 +238,11 @@ final class VoiceGuard
             }
         }
 
-        // Names: no handle-like or unknown capitalised word outside the facts.
+        // Names: no handle-like or unknown capitalised word outside the facts. A fact name in another form ("Muller"
+        // for "Müller", "Adas" or "Ada's" for "Ada") is that fact, not an invented name (P2 yield round).
+        $factKeys = array_fill_keys(array_map(self::nameKey(...), self::words(implode(' ', $factStrings))), true);
         foreach (self::words($withoutFacts) as $word) {
-            if ($this->looksLikeInventedName($word, $entry)) {
+            if (! isset($factKeys[self::nameKey($word)]) && $this->looksLikeInventedName($word, $entry)) {
                 $violations[] = self::NAME;
                 break;
             }
@@ -368,6 +370,18 @@ final class VoiceGuard
         return $count;
     }
 
+    /** A word's form for comparing names: lower case, no diacritics, no possessive ("Müller's" → "muller", "Adas" → "ada"). */
+    public static function nameKey(string $word): string
+    {
+        $key = mb_strtolower((string) preg_replace('/[\'’]+$/u', '', $word));
+        $key = str_replace(['ß', 'æ', 'ø'], ['ss', 'ae', 'o'], $key);
+        $decomposed = class_exists(\Normalizer::class) ? (string) \Normalizer::normalize($key, \Normalizer::FORM_D) : $key;
+        $key = (string) preg_replace('/\p{Mn}+/u', '', $decomposed);
+        $key = (string) preg_replace('/[\'’]s$/u', '', $key);
+
+        return mb_strlen($key) > 3 && str_ends_with($key, 's') ? mb_substr($key, 0, -1) : $key;
+    }
+
     /**
      * @param  CanonEntry|null  $entry
      */
@@ -427,6 +441,7 @@ final class VoiceGuard
         $texts[] = is_file($styleGuide) ? (string) file_get_contents($styleGuide) : '';
 
         $texts[] = implode(' ', array_keys($this->englishWords()));
+        $texts[] = implode(' ', self::wordList('german-words.txt'));
 
         $vocabulary = [];
         foreach (self::words(implode(' ', $texts)) as $word) {
@@ -439,6 +454,18 @@ final class VoiceGuard
         }
 
         return $this->vocabulary = $vocabulary;
+    }
+
+    /**
+     * The lines of a word list in resources/data/voice/ without its # comments.
+     *
+     * @return list<string>
+     */
+    private static function wordList(string $file): array
+    {
+        $path = resource_path('data/voice/'.$file);
+
+        return array_values(array_filter(is_file($path) ? (file($path, FILE_IGNORE_NEW_LINES) ?: []) : [], fn (string $line): bool => ! str_starts_with(trim($line), '#')));
     }
 
     /** Whether every word of a canon wording is English ("Few understand" is, "Bester Mann" is not). */
@@ -475,11 +502,8 @@ final class VoiceGuard
             $texts[] = (string) preg_replace('/:[a-z_]+/u', ' ', (string) $source);
         }
 
-        $openers = resource_path('data/voice/english-words.txt');
-        foreach (is_file($openers) ? (file($openers, FILE_IGNORE_NEW_LINES) ?: []) : [] as $line) {
-            if (! str_starts_with(trim($line), '#')) {
-                $texts[] = $line;
-            }
+        foreach (self::wordList('english-words.txt') as $line) {
+            $texts[] = $line;
         }
 
         $english = [];

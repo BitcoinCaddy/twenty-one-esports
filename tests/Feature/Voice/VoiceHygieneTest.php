@@ -189,6 +189,17 @@ it('rejects a sign-off at the end of a post', function (string $text, string $la
     ['Satoshi gewinnt 3:1. Tschüss!', 'de'],
 ]);
 
+it('drops trailing sentences of a text with too many, as long as the required facts stay', function () {
+    $start = 'Sat, 3 Oct 2026, 9:00 PM CEST';
+
+    expect(VoiceHygiene::trimSentences('Satoshi gewinnt 3:1. Hal kämpft lange. Stark gespielt von beiden. Wer will als Nächstes?', 2))
+        ->toBe('Satoshi gewinnt 3:1. Hal kämpft lange.')
+        ->and(VoiceHygiene::trimSentences("Hey! Cup starts {$start}. Two seats left. Who joins now?", 2, [$start]))->toBe("Hey! Cup starts {$start}. Two seats left.")
+        // The fact the text must carry sits in the last sentence: nothing is dropped, the check rejects it.
+        ->and(VoiceHygiene::trimSentences("Cup is open. Two seats left. Who joins? It starts {$start}.", 2, [$start]))->toBe("Cup is open. Two seats left. Who joins? It starts {$start}.")
+        ->and(VoiceHygiene::trimSentences('Satoshi gewinnt 3:1. Stark!', 2))->toBe('Satoshi gewinnt 3:1. Stark!');
+});
+
 it('keeps a clan tag in square brackets', function () {
     expect((new VoiceHygiene)->check('Neuer Clan: Stacking Sats [SATS]. Hallo!', 'de'))->not->toContain(VoiceHygiene::TTS_MARKER);
 });

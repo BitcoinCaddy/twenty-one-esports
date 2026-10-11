@@ -216,6 +216,7 @@ final class LeagueVoice
         $cutOff = $response->steps->last()?->finishReason === FinishReason::Length;
 
         $text = $this->hygiene->clean($raw, $multiline, $language);
+        [$text, $canonId] = $this->repair($channel, $text, $facts, $settings, $options, $canonId);
         $named = $this->mentions->withNames($text, $facts);
 
         $violations = [
@@ -283,6 +284,46 @@ final class LeagueVoice
         $this->usage->recordOutcome(self::FACT_CHECK, $claims === [] ? 'accepted' : 'rejected');
 
         return $claims;
+    }
+
+    /**
+     * The deterministic repairs before the checks (P2 yield round): a person
+     * written as token and by name (VoiceMentions::repairDuplicates()), a
+     * sentence too many at the end (VoiceHygiene::trimSentences()). Each
+     * repair is counted under `<channel>_repaired`; what they cannot repair,
+     * the checks reject. A canon entry whose wording went with a dropped
+     * sentence is no longer the text's.
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @param  array<array-key, mixed>  $settings
+     * @param  array{must_contain?: list<string>}  $options
+     * @return array{0: string, 1: ?string}
+     */
+    private function repair(string $channel, string $text, array $facts, array $settings, array $options, ?string $canonId): array
+    {
+        $repairs = [];
+        $deduplicated = $this->mentions->repairDuplicates($text, $facts, $options['must_contain'] ?? []);
+
+        if ($deduplicated !== $text) {
+            $repairs[] = VoiceMentions::REPEATED;
+        }
+
+        $trimmed = VoiceHygiene::trimSentences($deduplicated, isset($settings['max_sentences']) ? (int) $settings['max_sentences'] : null, $options['must_contain'] ?? []);
+
+        if ($trimmed !== $deduplicated) {
+            $repairs[] = VoiceHygiene::TOO_MANY_SENTENCES;
+            $wording = $this->canon->find($canonId)['wording'] ?? null;
+
+            if ($wording !== null && preg_match(VoiceGuard::wordingPattern($wording), $deduplicated) === 1 && preg_match(VoiceGuard::wordingPattern($wording), $trimmed) !== 1) {
+                $canonId = null;
+            }
+        }
+
+        if ($repairs !== []) {
+            $this->usage->recordRejection($channel.'_repaired', $repairs);
+        }
+
+        return [$trimmed, $canonId];
     }
 
     /**

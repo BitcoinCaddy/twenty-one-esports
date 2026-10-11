@@ -120,6 +120,20 @@ it('accepts a quoted fact such as a tournament name', function () {
     expect(voiceGuard()->check('Satoshi_Fan gewinnt „Herbst Cup“.', ['winner' => 'Satoshi_Fan', 'tournament' => 'Herbst Cup'], 280, null))->toBe([]);
 });
 
+it('takes a fact name in another form for that fact, not an invented name', function (string $text) {
+    expect(voiceGuard()->check($text, ['winner' => 'Müller', 'loser' => 'Ada'], 280, null))->not->toContain(VoiceGuard::NAME);
+})->with([
+    'without diacritics' => 'Muller schlägt Ada.',
+    'German possessive' => 'Adas Lauf war stark.',
+    'English possessive' => "Ada's run was strong.",
+]);
+
+it('still takes an unknown capitalised word for an invented name beside a fact name', function () {
+    expect(voiceGuard()->check('Muller schlägt Kevin.', ['winner' => 'Müller', 'loser' => 'Ada'], 280, null))->toContain(VoiceGuard::NAME)
+        ->and(VoiceGuard::nameKey("Müller's"))->toBe('muller')
+        ->and(VoiceGuard::nameKey('Adas'))->toBe('ada');
+});
+
 it('rejects an email or Lightning address', function () {
     expect(voiceGuard()->check('Zaps an pool@esports.einundzwanzig.space', [], 280, null))->toContain(VoiceGuard::ADDRESS);
 });

@@ -259,6 +259,40 @@ final class VoiceHygiene
     }
 
     /**
+     * A text with more sentences than allowed, shortened from its end (P2
+     * yield round: the overflow is mostly a trailing "Wer will?" or "Klar."):
+     * the last sentence goes while there are too many and every string of
+     * `$mustContain` stays in it. Unchanged when that is not possible; the
+     * check rejects it then (fail closed). The shortened text runs through
+     * every check again, the fact check included.
+     *
+     * @param  list<string>  $mustContain
+     */
+    public static function trimSentences(string $text, ?int $maxSentences, array $mustContain = []): string
+    {
+        if ($maxSentences === null || self::sentences($text) <= $maxSentences) {
+            return $text;
+        }
+
+        $runs = preg_split('/(?<=[.!?…])\s+/u', trim($text)) ?: [];
+
+        while (count($runs) > 1 && self::sentences(implode(' ', $runs)) > $maxSentences) {
+            $shorter = array_slice($runs, 0, -1);
+            $candidate = implode(' ', $shorter);
+
+            foreach ($mustContain as $required) {
+                if ($required !== '' && ! str_contains($candidate, $required)) {
+                    return $text;
+                }
+            }
+
+            $runs = $shorter;
+        }
+
+        return self::sentences(implode(' ', $runs)) <= $maxSentences ? implode(' ', $runs) : $text;
+    }
+
+    /**
      * The sentences of a text, split after . ! ? or … (a last run without one counts too).
      *
      * @return list<string>

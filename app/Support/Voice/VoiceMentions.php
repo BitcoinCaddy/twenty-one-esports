@@ -141,6 +141,97 @@ final class VoiceMentions
     }
 
     /**
+     * Repairs a person written twice, as token and by name (P2 yield round:
+     * Haiku does it in about half of its drafts), where the repair cannot
+     * change the meaning: the name right next to its token ("Ada {@player}",
+     * "{@player} (Ada)", "Ada's {@player}") collapses into the token, and a
+     * name only addressed ("…, Ada!", "Ada, …") goes with its comma. Any
+     * other second naming stays, and check() rejects it (fail closed); a
+     * naming in a later sentence follows keepFirstNaming().
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @param  list<string>  $mustContain  fact strings the text has to keep
+     */
+    public function repairDuplicates(string $text, array $facts, array $mustContain = []): string
+    {
+        $people = self::people($facts);
+        preg_match_all(self::TOKEN, $text, $matches);
+
+        foreach (array_unique($matches[1]) as $role) {
+            $name = $people[$role]['name'] ?? '';
+
+            if ($name === '') {
+                continue;
+            }
+
+            $token = preg_quote('{@'.$role.'}', '/');
+            $plain = '(?<![\p{L}\p{N}])'.preg_quote($name, '/').'(?:[\'’]s)?(?![\p{L}\p{N}])';
+
+            $text = (string) preg_replace([
+                '/'.$plain.'\s*'.$token.'/u',
+                '/'.$token.'\s*(?:\(\s*'.$plain.'\s*\)|'.$plain.')/u',
+                // Addressed at the end of a sentence: "Läuft bei dir, Ada!"
+                '/\s*,\s*'.$plain.'(?=\s*[!?.…]|\s*$)/u',
+            ], ['{@'.$role.'}', '{@'.$role.'}', ''], $text);
+
+            // Addressed at the start of a sentence: "Ada, starker Lauf." The next word takes the capital.
+            $text = (string) preg_replace_callback('/(^|[.!?…]\s+)'.$plain.',\s*(\p{Ll})/u', fn (array $m): string => $m[1].mb_strtoupper($m[2]), $text);
+            $text = self::keepFirstNaming($text, '{@'.$role.'}', '/'.$plain.'/u', $mustContain);
+        }
+
+        return trim((string) preg_replace('/[ \t]{2,}/', ' ', $text));
+    }
+
+    /**
+     * The person named in two sentences ("Ada takes first place. … Ada is on
+     * top now."): the first naming becomes the token, every later sentence
+     * that names the person again goes, as long as a sentence stays and
+     * every string of `$mustContain` with it. A sentence holding the token
+     * and the name at once, or a later sentence the facts need, is left
+     * alone (check() rejects it).
+     *
+     * @param  list<string>  $mustContain
+     */
+    private static function keepFirstNaming(string $text, string $token, string $plainPattern, array $mustContain): string
+    {
+        $runs = preg_split('/(?<=[.!?…])\s+/u', trim($text)) ?: [];
+        $named = [];
+
+        foreach ($runs as $index => $run) {
+            $hasToken = str_contains($run, $token);
+            $hasName = preg_match($plainPattern, $run) === 1;
+
+            if ($hasToken && $hasName) {
+                return $text;
+            }
+
+            if ($hasToken || $hasName) {
+                $named[$index] = $hasToken;
+            }
+        }
+
+        if (count($named) < 2 || ! in_array(true, $named, true)) {
+            return $text;
+        }
+
+        $first = array_key_first($named);
+        if ($named[$first] === false) {
+            $runs[$first] = (string) preg_replace($plainPattern, $token, $runs[$first], 1);
+        }
+
+        $kept = array_values(array_filter($runs, fn (int $index): bool => $index === $first || ! isset($named[$index]), ARRAY_FILTER_USE_KEY));
+        $candidate = implode(' ', $kept);
+
+        foreach ($mustContain as $required) {
+            if ($required !== '' && ! str_contains($candidate, $required)) {
+                return $text;
+            }
+        }
+
+        return $candidate;
+    }
+
+    /**
      * The text with every token replaced by the person's plain name (what
      * the fact guard and the hygiene pass read).
      *

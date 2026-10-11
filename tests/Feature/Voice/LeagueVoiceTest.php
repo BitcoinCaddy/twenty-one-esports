@@ -7,6 +7,7 @@ use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoiceFactCheck;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceHygiene;
+use App\Support\Voice\VoiceMentions;
 use App\Support\Voice\VoiceUsage;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Http\Client\ConnectionException;
@@ -350,6 +351,19 @@ it('tells the model the openers of the channel\'s last posts and rejects a repea
     expect($second?->text)->toBe('Hal verliert 3:1 gegen Satoshi.')
         ->and(DB::table('voice_rejections')->where('reason', VoiceHygiene::OPENER_REPEAT)->value('count'))->toBe(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Die letzten Posts begannen mit „Satoshi“'));
+});
+
+it('repairs a draft before the checks: the name beside its token goes, a sentence too many is dropped, then the fact check reads the repaired text', function () {
+    config(['esports.voice.channels.stream_chat.max_sentences' => 2]);
+    VoiceAgent::fake([['text' => 'Satoshi {@winner} schlägt Hal 3:1. Stark gespielt. Wer will als Nächstes?', 'canon_id' => null, 'mood' => 'hype']]);
+
+    $line = leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect($line?->text)->toBe('nostr:'.NostrKeys::hexToNpub(str_repeat('a', 64)).' schlägt Hal 3:1. Stark gespielt.')
+        ->and(DB::table('voice_rejections')->where('channel', 'stream_chat_repaired')->orderBy('reason')->pluck('count', 'reason')->all())
+        ->toBe([VoiceMentions::REPEATED => 1, VoiceHygiene::TOO_MANY_SENTENCES => 1]);
+    VoiceAgent::assertPromptedTimes(1);
+    VoiceFactCheck::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Post:\nSatoshi schlägt Hal 3:1. Stark gespielt."));
 });
 
 it('counts the fact check\'s tokens into the monthly cost', function () {
