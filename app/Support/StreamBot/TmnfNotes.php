@@ -52,7 +52,7 @@ final class TmnfNotes extends WeeklyBoardNotes
         return self::SUBJECT;
     }
 
-    protected function label(): string
+    public function label(): string
     {
         return 'TMNF';
     }

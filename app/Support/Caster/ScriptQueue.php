@@ -223,7 +223,7 @@ class ScriptQueue
      *
      * @return list<string>
      */
-    private function topics(string $phase, CarbonImmutable $now): array
+    public function topics(string $phase, CarbonImmutable $now): array
     {
         $when = match ($phase) {
             ScenePhase::LIVE_MATCH => ['live_match'],

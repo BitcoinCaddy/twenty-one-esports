@@ -61,7 +61,7 @@ class FreePlaceNotes
     /** Notes are written in this locale, whatever the process runs in. */
     private const LOCALE = 'en';
 
-    private const TEMPLATE = 'tournament_note_places';
+    public const TEMPLATE = 'tournament_note_places';
 
     public function __construct(
         private TournamentNotes $notes,
@@ -211,7 +211,7 @@ class FreePlaceNotes
      *
      * @return array<string, string|int>
      */
-    private function values(Tournament $tournament, int $free, int $places, CarbonImmutable $now): array
+    public function values(Tournament $tournament, int $free, int $places, CarbonImmutable $now): array
     {
         $previous = app()->getLocale();
         app()->setLocale(self::LOCALE);
@@ -321,7 +321,7 @@ class FreePlaceNotes
     }
 
     /** The wording the next reminder takes (ProfileNotes). */
-    private static function nextVariant(): int
+    public static function nextVariant(): int
     {
         return ProfileNotes::nextVariant(self::NOTE_TYPE, StreamBotCopy::variants(self::TEMPLATE));
     }
