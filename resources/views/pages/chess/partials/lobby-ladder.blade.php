@@ -12,7 +12,9 @@
     $ladderModes ??= [];
     $top = $this->ladderTop;
     $rated = $top['pool'] === 'rated';
-    $ladderName = $ladderModes !== [] ? \App\Support\Chess\ChessModes::short($ladderMode)
+    // A board game's chips (Blockli, 2026-10-11): Blitz and Rapid short as chess's, correspondence by the game's own name.
+    $chipName = fn (string $mode): string => $ladderGame === 'chess' || in_array($mode, ['blitz', 'rapid'], true) ? \App\Support\Chess\ChessModes::short($mode) : \App\Support\GameNames::mode($ladderGame, $mode);
+    $ladderName = $ladderModes !== [] ? $chipName($ladderMode)
         : ($ladderMode === 'blitz' ? null : \App\Support\GameNames::mode($ladderGame, $ladderMode));
 @endphp
 
@@ -24,9 +26,9 @@
 
     <div class="gp-panel flex flex-col gap-2 p-2">
         @if (count($ladderModes) > 1)
-            <div role="group" aria-label="{{ __('Ladder') }}" class="flex gap-2 px-2 pt-2" data-test="lobby-ladder-modes">
+            <div role="group" aria-label="{{ __('Ladder') }}" class="flex flex-wrap gap-2 px-2 pt-2" data-test="lobby-ladder-modes">
                 @foreach ($ladderModes as $mode)
-                    <button type="button" wire:click="showLadder('{{ $mode }}')" aria-pressed="{{ $mode === $ladderMode ? 'true' : 'false' }}" data-test="lobby-ladder-mode-{{ $mode }}" class="gm-chip">{{ \App\Support\Chess\ChessModes::short($mode) }}</button>
+                    <button type="button" wire:click="showLadder('{{ $mode }}')" aria-pressed="{{ $mode === $ladderMode ? 'true' : 'false' }}" data-test="lobby-ladder-mode-{{ $mode }}" @class(['gm-chip', 'h-11' => $ladderGame !== 'chess'])>{{ $chipName($mode) }}</button>
                 @endforeach
             </div>
         @endif

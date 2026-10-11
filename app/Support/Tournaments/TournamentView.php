@@ -233,7 +233,11 @@ final class TournamentView
             'sides' => $sides,
             // A lobby's result (P10) is worded in the viewer's language, not the one it was entered in.
             // A lobby's, and a Hyperbitcoinization table's (P5, `lobby_label`), in the viewer's language.
-            'label' => ($match->lobby !== null || isset($result['lobby_label'])) && is_array($result) ? LobbyResults::describe($result) : ($result['label'] ?? null),
+            // A drawn decider settled by the race standing (Blockli, draw_decider `standing`) with its margin, worded anew too.
+            'label' => ($match->lobby !== null || isset($result['lobby_label'])) && is_array($result) ? LobbyResults::describe($result)
+                : (($result['decided'] ?? null) === 'standing' && isset($result['standing']['margin'])
+                    ? TournamentRunner::standingLabel((string) ($result['standing']['legs'] ?? ''), (float) $result['standing']['margin'])
+                    : ($result['label'] ?? null)),
             'number' => $match->seriesMatch !== null ? $match->seriesMatch->number : $match->chessGame?->number,
             'href' => $match->seriesMatch !== null
                 ? route('matches.show', $match->seriesMatch)
@@ -243,6 +247,9 @@ final class TournamentView
             // A result set on the tournament control (P18) is marked like a director's.
             'director' => $match->isDirectorResult() || ($result['by'] ?? null) === 'control' ? self::marker((array) $result) : null,
             'held' => $match->held !== null,
+            // Settled by the race standing (Blockli's drawn decider): the box says so with the margin.
+            'decision' => ($result['decided'] ?? null) === 'standing' && isset($result['standing']['margin'])
+                ? TournamentRunner::standingLabel((string) ($result['standing']['legs'] ?? ''), (float) $result['standing']['margin']) : null,
             'if_needed' => $match->if_needed,
         ];
     }

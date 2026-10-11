@@ -132,6 +132,7 @@ new #[Title('New tournament')] #[Layout('layouts::app', ['section' => 'admin'])]
                     'status' => TournamentStatus::Draft,
                     'created_by_id' => auth()->id(),
                     ...$this->chosenDeadlines(),
+                    ...$this->chosenDrawDecider(),
                 ]);
 
                 if ($tournament->results_mode === TournamentResultsMode::Director) {

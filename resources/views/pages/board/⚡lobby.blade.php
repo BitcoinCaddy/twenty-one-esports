@@ -130,11 +130,45 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     #[Locked]
     public int $renderedAt = 0;
 
+    /** The mode of the ladder card (its chips: every mode of the game, the lobby mode first shown). */
+    public string $ladderMode = '';
+
     public function mount(string $board): void
     {
         abort_unless(app(GameRegistry::class)->isBoard($board), 404);
 
         $this->slug = $board;
+        $this->ladderMode = $this->lobbyMode;
+    }
+
+    /**
+     * The modes this board game plays live with a clock (Blockli: blitz and rapid, user 2026-10-11), in the
+     * registry's order; none for a correspondence-only game.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function liveModes(): array
+    {
+        $definition = app(GameRegistry::class)->find($this->slug);
+
+        return $definition instanceof \App\Games\BoardGame ? $definition->liveModes() : [];
+    }
+
+    /** The ladder card's chip: one of the game's modes. */
+    public function showLadder(string $mode): void
+    {
+        if (app(GameRegistry::class)->mode($this->slug, $mode) !== null) {
+            $this->ladderMode = $mode;
+        }
+
+        unset($this->ladderTop);
+    }
+
+    /** A live mode the page may play: the one asked for, else the lobby mode. */
+    private function liveMode(?string $mode): string
+    {
+        return $mode !== null && in_array($mode, $this->liveModes, true) ? $mode : $this->lobbyMode;
     }
 
     /** The mode of the lobby's invite, "Looking to play", rating and ladder (blitz while offered, else correspondence). */
@@ -150,8 +184,8 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     {
         $name = GameNames::game($this->slug);
         $view->title($name);
-        app(PageMeta::class)->describe($name, $this->lobbyMode === 'blitz'
-            ? __('Play :game blitz 5+3 live against Bitcoiners: find an opponent, invite a player and climb the casual ladder. The server checks every move.', ['game' => $name])
+        app(PageMeta::class)->describe($name, $this->liveModes !== []
+            ? __('Play :game live against Bitcoiners (:clocks) or one move a day: find an opponent, invite a player and climb the ladder. The server checks every move.', ['game' => $name, 'clocks' => implode(', ', array_map(fn (string $mode): string => GameNames::mode($this->slug, $mode), $this->liveModes))])
             : __('Play :game against Bitcoiners, one move a day: challenge a player, invite someone online and climb the ladder. The server checks every move.', ['game' => $name]))
             ->card(fn () => \App\Support\Cards\PageCard::page('board.'.$this->slug));
 
@@ -167,17 +201,36 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
         $this->canInvite = $this->activeGame === null;
     }
 
-    public function findOpponent(bool $rated = false): void
+    /** "Find opponent" in a live mode (the tile opened: blitz or rapid), casual or rated. */
+    public function findOpponent(bool $rated = false, ?string $mode = null): void
     {
-        $this->attempt(function (User $user) use ($rated): void {
-            $refusal = $rated ? $this->ratedRefusal : null;
+        $mode = $this->liveMode($mode);
+
+        $this->attempt(function (User $user) use ($rated, $mode): void {
+            // A correspondence-only game (nine men's morris, checkers) has no queue: its games are challenges.
+            if ($this->liveModes === []) {
+                throw new BoardRuleViolation('no_live_mode');
+            }
+
+            $refusal = $rated ? ($this->ratedRefusals[$mode] ?? $this->ratedRefusal) : null;
 
             if ($refusal !== null) {
                 throw new BoardRuleViolation('rated_not_open', $refusal);
             }
 
-            $this->goTo(app(BoardQueue::class)->join($user, $this->slug, rated: $rated));
+            $this->goTo(app(BoardQueue::class)->join($user, $this->slug, $mode, rated: $rated));
         });
+    }
+
+    /**
+     * Why this player cannot search a rated game in each live mode now, or null (ratedRefusal() per mode).
+     *
+     * @return array<string, string|null>
+     */
+    #[Computed]
+    public function ratedRefusals(): array
+    {
+        return collect($this->liveModes)->mapWithKeys(fn (string $mode): array => [$mode => $this->refusalIn($mode)])->all();
     }
 
     /** Whether the page offers a rated search at all (the rated queue switch, P6). */
@@ -195,18 +248,23 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     #[Computed]
     public function ratedRefusal(): ?string
     {
+        return $this->refusalIn($this->lobbyMode);
+    }
+
+    private function refusalIn(string $mode): ?string
+    {
         $user = auth()->user();
 
         if (! $user instanceof User) {
             return match (true) {
-                Ladders::isOpen($this->slug, 'blitz') => __('Log in to play rated games.'),
+                Ladders::isOpen($this->slug, $mode) => __('Log in to play rated games.'),
                 // A season live since before the board games joined: their ladder opens with the board's next rule change.
                 Seasons::live() !== null => __('Rated :game starts when the board adds it to the running season.', ['game' => GameNames::game($this->slug)]),
                 default => Seasons::restMessage(),
             };
         }
 
-        $refusal = app(RatedBoard::class)->refusal($user, $this->slug, 'blitz');
+        $refusal = app(RatedBoard::class)->refusal($user, $this->slug, $mode);
 
         if ($refusal !== null) {
             return $refusal;
@@ -260,15 +318,16 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     /** P57: leave the rated search and search casual, which pairs with anyone. */
     public function searchCasualInstead(): void
     {
+        $mode = $this->entry?->mode;
         $this->attempt(fn (User $user) => app(BoardQueue::class)->leave($user));
-        $this->findOpponent(false);
+        $this->findOpponent(false, $mode);
     }
 
     /** P57: an accept from the searching card; the next poll can pair the two. */
     #[On('opponent-list-changed')]
     public function opponentListChanged(): void
     {
-        unset($this->ratedQueue, $this->mutualOpponents, $this->ratedRefusal);
+        unset($this->ratedQueue, $this->mutualOpponents, $this->ratedRefusal, $this->ratedRefusals);
     }
 
     public function cancelSearch(): void
@@ -343,9 +402,10 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
         ]));
     }
 
-    public function invite(int $userId): void
+    /** An invite from "Online now" (or "Your follows here"), in the live mode the tiles opened, else the lobby mode. */
+    public function invite(int $userId, ?string $mode = null): void
     {
-        $this->attempt(fn (User $user) => $this->goTo(app(BoardInvites::class)->invite($user, User::query()->findOrFail($userId), $this->slug, $this->lobbyMode)->boardGame));
+        $this->attempt(fn (User $user) => $this->goTo(app(BoardInvites::class)->invite($user, User::query()->findOrFail($userId), $this->slug, $this->liveMode($mode))->boardGame));
     }
 
     public function withdrawInvite(): void
@@ -436,11 +496,22 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
             : collect();
     }
 
-    /** How many players search a game of this board game right now (the Blitz tile). */
+    /** How many players search a game of this board game right now (all live modes). */
     #[Computed]
     public function searching(): int
     {
         return BoardQueueEntry::query()->where('game', $this->slug)->count();
+    }
+
+    /**
+     * How many search in each live mode (the tiles' counts).
+     *
+     * @return array<string, int>
+     */
+    #[Computed]
+    public function searchingByMode(): array
+    {
+        return BoardQueueEntry::query()->where('game', $this->slug)->groupBy('mode')->selectRaw('mode, count(*) as n')->pluck('n', 'mode')->map(fn ($n): int => (int) $n)->all();
     }
 
     /**
@@ -478,7 +549,7 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
 
         foreach ($this->liveGames->groupBy(fn (BoardGame $game): string => Ratings::pool($game->rated)) as $pool => $games) {
             $ids = $games->flatMap(fn (BoardGame $game): array => [$game->white_id, $game->black_id])->filter()->unique()->values()->all();
-            $now = Ratings::forUsers($ids, $this->slug, 'blitz', (string) $pool);
+            $now = collect($games->groupBy('mode'))->flatMap(fn ($inMode, string $mode): array => Ratings::forUsers($ids, $this->slug, $mode, (string) $pool))->all();
             $none = Ratings::summary(null, (string) $pool)['rating'];
 
             foreach ($games as $game) {
@@ -498,9 +569,10 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     #[Computed]
     public function ladderTop(): array
     {
-        $season = Ratings::season(Rating::RATED, $this->slug, $this->lobbyMode);
+        $mode = app(GameRegistry::class)->mode($this->slug, $this->ladderMode) !== null ? $this->ladderMode : $this->lobbyMode;
+        $season = Ratings::season(Rating::RATED, $this->slug, $mode);
         $top = fn (string $pool, string $season): Collection => Rating::query()
-            ->where(['pool' => $pool, 'season' => $season, 'game' => $this->slug, 'mode' => $this->lobbyMode])
+            ->where(['pool' => $pool, 'season' => $season, 'game' => $this->slug, 'mode' => $mode])
             ->where('results', '>', 0)->whereNotNull('user_id')->with('user')
             ->orderByDesc('rating')->orderByDesc('results')->orderBy('id')->limit(5)->get();
 
@@ -656,21 +728,23 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
 
 {{-- The lobby template T1 (x-game.page, GameLobby.dc.html "Brettspiel-Lobby (Blockli)"): the chess lobby's slots in the chess lobby's places. --}}
 <div class="flex grow flex-col" data-server-now="{{ now()->getTimestampMs() }}" @if ($this->waiting) data-check-at="{{ $this->checkAt }}" @endif
-     x-data="boardLobby(@js(['userId' => $user?->id, 'lookingKey' => $slug.'/'.$this->lobbyMode, 'looking' => $user?->looking_to_play === $slug.'/'.$this->lobbyMode, 'fallback' => $this::FALLBACK_SECONDS]))"
+     x-data="boardLobby(@js(['userId' => $user?->id, 'lookingKey' => $slug.'/'.$this->lobbyMode, 'looking' => $user?->looking_to_play === $slug.'/'.$this->lobbyMode, 'fallback' => $this::FALLBACK_SECONDS, 'liveMode' => $this->entry?->mode ?? ($this->liveModes[0] ?? null)]))"
      data-test="board-lobby" data-game="{{ $slug }}">
     @php
         $next = $this->nextTournament;
         $seats = $next !== null && $next->capacity > 0 ? $next->signups()->count() : null;
-        $modeName = $this->lobbyMode === 'blitz' ? __('Blitz 5+3') : __('Correspondence');
+        // The live modes by name (Blockli: "Blitz 5+3, Rapid 10+5"), else correspondence.
+        $liveNames = implode(', ', array_map(fn (string $mode): string => GameNames::mode($slug, $mode), $this->liveModes));
+        $modeName = $this->liveModes !== [] ? $liveNames : __('Correspondence');
         $season = \App\Support\SeasonChain\Seasons::live();
     @endphp
     <x-game.page :game="$slug" :mode="$modeName"
-                 :lede="__(':mode, 1 move a day. :season', ['mode' => $modeName, 'season' => $season === null ? __('Rated from Block 0.') : __(':season is live', ['season' => \App\Support\Badges\BadgeCopy::season($season->slug)])])"
+                 :lede="__($this->liveModes !== [] ? ':mode or 1 move a day. :season' : ':mode, 1 move a day. :season', ['mode' => $modeName, 'season' => $season === null ? __('Rated from Block 0.') : __(':season is live', ['season' => \App\Support\Badges\BadgeCopy::season($season->slug)])])"
                  :stat="$seats !== null ? $seats.'/'.$next->capacity : $this->correspondence['running']"
                  :stat-label="$seats !== null ? __('in :tournament', ['tournament' => \App\Support\Engagement\HomeBoard::shortName($next)]) : trans_choice('game running|games running', $this->correspondence['running'])">
         <x-slot:primary>
-            @if (app(\App\Games\GameRegistry::class)->mode($slug, 'blitz') !== null)
-                <button type="button" class="rv-b" x-on:click="const row = document.querySelector('[data-test=play-blitz]'); row?.getAttribute('aria-expanded') === 'true' || row?.click()" data-test="game-primary">{{ __('Play') }}</button>
+            @if ($this->liveModes !== [])
+                <button type="button" class="rv-b" x-on:click="const row = document.querySelector('[data-test=play-{{ $this->liveModes[0] }}]'); row?.getAttribute('aria-expanded') === 'true' || row?.click()" data-test="game-primary">{{ __('Play') }}</button>
             @else
                 <a href="{{ route('board.correspondence', $slug) }}" @navigate(route('board.correspondence', $slug)) class="rv-b" data-test="game-primary">{{ __('Play correspondence') }}</a>
             @endif
@@ -687,7 +761,7 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
                         <x-player-link :user="$invite->inviter" class="shrink-0"><x-avatar :user="$invite->inviter" :size="40" class="rounded-[4px]" /></x-player-link>
                         <span class="flex min-w-0 flex-col gap-0.5">
                             <b class="truncate text-[15px]">{{ __(':name invites you', ['name' => $invite->inviter->displayName()]) }}</b>
-                            <span class="text-xs text-ink-2">{{ $invite->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __('Blitz 5+3 · Casual · colours drawn at random') }}</span>
+                            <span class="text-xs text-ink-2">{{ $invite->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __(':mode · Casual · colours drawn at random', ['mode' => GameNames::mode($invite->game, $invite->mode)]) }}</span>
                         </span>
                     </span>
                     <span class="grid grid-cols-2 gap-2 lg:flex">
@@ -704,7 +778,8 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
 
         @include('pages.board.partials.lobby-games', ['user' => $user, 'active' => $active, 'name' => $name])
         @include('pages.board.partials.lobby-live', ['user' => $user, 'active' => $active, 'name' => $name])
-        @include('pages.chess.partials.lobby-ladder', ['ladderGame' => $slug, 'ladderMode' => $this->lobbyMode])
+        {{-- Every mode its own ladder (Blockli: blitz, rapid, correspondence), by the card's chips. --}}
+        @include('pages.chess.partials.lobby-ladder', ['ladderGame' => $slug, 'ladderMode' => $this->ladderMode, 'ladderModes' => count($this->liveModes) > 0 ? array_keys(app(\App\Games\GameRegistry::class)->get($slug)->modes()) : []])
 
         <x-slot:next>
             {{-- The next tournament of this board game open for sign-up, then its casual cups, as on every game page. --}}

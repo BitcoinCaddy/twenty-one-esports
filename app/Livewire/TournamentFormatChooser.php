@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
+use App\Enums\TournamentStatus;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Support\LeagueTime;
@@ -15,6 +16,7 @@ use App\Support\Tournaments\GameProfile;
 use App\Support\Tournaments\NightPause;
 use App\Support\Tournaments\TournamentDeadlines;
 use App\Support\Tournaments\TournamentGames;
+use App\Support\Tournaments\TournamentRunner;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Computed;
@@ -91,6 +93,12 @@ abstract class TournamentFormatChooser extends Component
     public string $nightPauseUntil = '';
 
     public string $nightPauseResume = '';
+
+    /**
+     * How a drawn two-leg decider is settled (Tournament::DRAW_DECIDER_*): the race standing by default for a new
+     * tournament (user, 2026-10-11); the edit page fills the stored rule (null = replay).
+     */
+    public string $drawDecider = Tournament::DRAW_DECIDER_STANDING;
 
     /** Form property => tournament column of each deadline. */
     public const DEADLINE_FIELDS = [
@@ -534,6 +542,46 @@ abstract class TournamentFormatChooser extends Component
         $typed = fn (string $value): ?string => ($value = trim($value)) === '' ? null : ($value === '24:00' ? '00:00' : $value);
 
         return ['until' => $typed($this->nightPauseUntil) ?? $defaults['until'], 'resume' => $typed($this->nightPauseResume) ?? $defaults['resume']];
+    }
+
+    /** Whether the chosen game can settle a drawn decider by the race standing (Blockli). */
+    public function drawDeciderApplies(): bool
+    {
+        return TournamentRunner::canDecideByStanding($this->profile()->game);
+    }
+
+    /**
+     * Whether the rule may still change: it is part of the rules players sign up under, so like the prizes only in a
+     * draft or while sign-up is open (PrizePool::canChangeSplit). The create page always may.
+     */
+    public function drawDeciderEditable(): bool
+    {
+        $tournament = property_exists($this, 'tournament') ? $this->tournament : null;
+
+        return ! $tournament instanceof Tournament
+            || (! $tournament->isCasualCup() && ($tournament->status === TournamentStatus::Draft || $tournament->isSignupOpen()));
+    }
+
+    public function useDrawDecider(string $rule): void
+    {
+        if (in_array($rule, [Tournament::DRAW_DECIDER_STANDING, Tournament::DRAW_DECIDER_REPLAY], true) && $this->drawDeciderEditable()) {
+            $this->drawDecider = $rule;
+        }
+    }
+
+    /**
+     * The rule to store: only for a game that can use it, and on the edit page only while it may change.
+     *
+     * @return array{draw_decider?: string|null}
+     */
+    protected function chosenDrawDecider(): array
+    {
+        if (! $this->drawDeciderEditable()) {
+            return [];
+        }
+
+        // Replay is stored as null, as every tournament before the rule had it: an unchanged edit changes nothing.
+        return ['draw_decider' => $this->drawDeciderApplies() && $this->drawDecider === Tournament::DRAW_DECIDER_STANDING ? Tournament::DRAW_DECIDER_STANDING : null];
     }
 
     /** The edit page fills the night pause from the stored tournament. */

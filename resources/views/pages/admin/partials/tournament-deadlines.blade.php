@@ -101,3 +101,29 @@
         @endif
     </section>
 @endif
+
+@if ($this->drawDeciderApplies())
+    @php
+        // A drawn deciding game of a two-leg pairing (Blockli): the race standing or a replay (DerCaddy, PR #5; user, 2026-10-11).
+        $replays = \App\Support\Tournaments\TournamentRunner::drawnReplays();
+        $deciderEditable = $this->drawDeciderEditable();
+    @endphp
+    {{-- The board's section (`sec`) with its choice list (`opts`), no native radio; locked once sign-up closed, like the prizes. --}}
+    <section aria-labelledby="draw-decider-h" class="rv-sec" data-test="tournament-draw-decider">
+        <span class="flex flex-col gap-1">
+            <h2 id="draw-decider-h" class="rv-h3">{{ __('Drawn decider') }}</h2>
+            <span class="max-w-[80ch] text-xs leading-normal text-ink-2">{{ __('At 1:1 after both games a third game decides. If it is drawn too:') }}</span>
+        </span>
+        @if ($deciderEditable)
+            <x-ui.options class="sm:max-w-xl" method="useDrawDecider" :current="$this->drawDecider" labelledby="draw-decider-h" test="draw-decider" :options="[
+                [\App\Models\Tournament::DRAW_DECIDER_STANDING, __('The race standing decides'), __('The side ahead in the race standing of the final position wins. A level standing is replayed.')],
+                [\App\Models\Tournament::DRAW_DECIDER_REPLAY, __('Replay'), trans_choice('Replayed up to :count time, then the higher seed goes through.|Replayed up to :count times, then the higher seed goes through.', $replays)],
+            ]" />
+        @else
+            <p class="m-0 text-[13px] text-ink" data-test="draw-decider-locked">
+                <b>{{ $this->drawDecider === \App\Models\Tournament::DRAW_DECIDER_STANDING ? __('The race standing decides') : __('Replay') }}.</b>
+                <span class="text-ink-2">{{ __('Part of the rules players signed up under: it no longer changes.') }}</span>
+            </p>
+        @endif
+    </section>
+@endif

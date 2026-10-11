@@ -530,8 +530,9 @@ final class RulesPage
             'game' => Blockli::SLUG,
             'lead' => __('A race on 9 × 9: bring your pawn to the far side first, and block the other pawn\'s way.'),
             'facts' => [
-                // Correspondence only (user, 2026-10-07: fast modes are for chess).
-                [__('Time control'), __('1 move a day')],
+                // Blitz and rapid as chess has them, and one move a day (user, 2026-10-11).
+                [__('Time control'), implode(', ', [__('Blitz 5+3'), __('Rapid 10+5'), __('1 move a day')])],
+                [__('First move'), self::seconds((int) config('esports.board_games.first_move_seconds'))],
             ],
             'items' => [
                 __('White starts on e1 and wins on rank 9, Black starts on e9 and wins on rank 1. White moves first.'),
@@ -809,6 +810,7 @@ final class RulesPage
                 __('Mixed teams and seeds are drawn from the hash of a Bitcoin block mined after sign-up closed, once it has :count confirmations. Anyone can check the draw.', ['count' => (int) config('esports.bitcoin.confirmations')]),
                 __('A side that misses its first move or does not show up loses the match by forfeit. Both missing: the higher seed advances in a knockout, both lose in Swiss and round robin.'),
                 __('A drawn knockout chess game is replayed with the colours swapped, at most :count times; then the higher seed advances.', ['count' => (int) $t['drawn_replays']]),
+                __('A Blockli pairing plays two games with the colours swapped; at 1:1 a third game decides. If that one is drawn too, the tournament page says what follows: the race standing of its final position, or replays as for chess.'),
                 __('A report or a no-show claim the other side does not answer in time is decided by the league.'),
                 __('Players get reminders :list minutes before the league decides a waiting match.', ['list' => implode(', ', (array) $t['reminders'])]),
                 __('In a tournament run by its directors, the directors enter every result; players report nothing.'),

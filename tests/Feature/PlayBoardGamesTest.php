@@ -102,7 +102,7 @@ test('home and the hub put the browser games first, the board games at their end
         ->and(array_column(ShellNavigation::current()->games(), 'slug'))->toBe(['chess', 'nine-mens-morris', 'checkers', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2']);
 });
 
-test('the board game tiles on home say correspondence and never blitz (user, 2026-10-07)', function () {
+test('the board game tiles on home say correspondence; nine men\'s morris and checkers never blitz (user, 2026-10-07), Blockli blitz and rapid first (2026-10-11)', function () {
     NineMensMorrisOn::play();
     CheckersGame::play();
     BlockliOn::play();
@@ -111,7 +111,10 @@ test('the board game tiles on home say correspondence and never blitz (user, 202
 
     foreach ([NineMensMorris::SLUG, Checkers::SLUG, Blockli::SLUG] as $slug) {
         expect(preg_match('~data-test="game-tile" data-game="'.$slug.'".*?</a>~s', $html, $tile))->toBe(1)
-            ->and($tile[0])->toContain('Fernpartie')
-            ->and($tile[0])->not->toContain('Blitz');
+            ->and($tile[0])->toContain('Fernpartie');
+
+        $slug === Blockli::SLUG
+            ? expect($tile[0])->toContain('Blitz 5+3, Rapid 10+5, Fernpartie')
+            : expect($tile[0])->not->toContain('Blitz');
     }
 });

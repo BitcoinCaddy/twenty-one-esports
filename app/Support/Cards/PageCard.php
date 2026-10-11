@@ -1295,7 +1295,7 @@ final class PageCard
         }
 
         $live = (bool) ($f['live'] ?? ! $f['daily']);
-        $line = $live ? __('Blitz 5+3 live against Bitcoiners. The server checks every move.') : __('One move a day, a reminder before your deadline. The server checks every move.');
+        $line = $live ? __(':clocks live against Bitcoiners. The server checks every move.', ['clocks' => implode(', ', array_map(fn (string $clock): string => __($clock), explode(', ', (string) ($f['clocks'] ?? 'Blitz 5+3'))))]) : __('One move a day, a reminder before your deadline. The server checks every move.');
         $this->c->paragraph($line, 'mono', self::MIN, self::M, $after + 16, 500, 3, Canvas::INK_2, 1.3);
         $running = (int) $f['running'];
         $this->figures([

@@ -663,6 +663,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             array_splice($chips, 2, 0, [['lock', __('Sign-up closes'), $at($tournament->signup_closes_at), 'closes']]);
         }
 
+        // A two-leg race game (Blockli): how a 1:1 and a drawn third game are settled (draw_decider, user 2026-10-11).
+        if (\App\Support\Tournaments\TournamentRunner::canDecideByStanding($tournament->game)) {
+            array_splice($chips, 1, 0, [['award', __('Pairings'), $tournament->decidesDrawByStanding()
+                ? __('two games with the colours swapped; at 1:1 a third game decides, and if it is drawn the race standing of its final position decides (a block counts :rate steps); a level standing is replayed', ['rate' => app()->getLocale() === 'de' ? str_replace('.', ',', (string) \App\Support\Board\BlockliRules::BLOCK_STEPS) : (string) \App\Support\Board\BlockliRules::BLOCK_STEPS])
+                : trans_choice('two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through', \App\Support\Tournaments\TournamentRunner::drawnReplays($tournament)), 'pairings']]);
+        }
+
         $proof = array_values(array_filter([
             $tournament->naddr() ? ['naddr', $tournament->naddr()] : null,
             $tournament->event ? [__('Calendar event'), $tournament->event->event_id] : null,
@@ -1367,6 +1374,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             </div>
                         @endforeach
                     </dl>
+                    @if (($modeSwitched = app(\App\Support\Tournaments\TournamentModeSwitch::class)->lastSwitch($tournament)) !== null)
+                        {{-- The time control was switched after publishing (Blockli, user 2026-10-11): one line, what and when. --}}
+                        <p class="m-0 rounded-[4px] border border-btc-ring bg-feature px-3.5 py-2.5 text-[13px] leading-normal text-ink" data-test="mode-switched">{{ __('Switched from :from to :to on :date. Games already under way finish as they started.', [
+                            'from' => \App\Support\GameNames::mode($tournament->game, $modeSwitched['from']), 'to' => \App\Support\GameNames::mode($tournament->game, $modeSwitched['to']),
+                            'date' => $at($modeSwitched['at']),
+                        ]) }}</p>
+                    @endif
                     @if ($tournament->isDirectorMode())
                         <p class="m-0 text-xs leading-normal text-ink-2" data-test="director-notice">{{ __('Results are entered by the tournament directors.') }}</p>
                     @endif

@@ -73,7 +73,7 @@ final class BoardInvites
 
         $definition = $this->registry->find($slug);
         // Without a mode the invite plays the game's lobby mode (correspondence for the board games since 2026-10-07).
-        $mode ??= $definition instanceof BoardGameDefinition ? $definition->lobbyMode() : '';
+        $mode ??= $definition instanceof BoardGameDefinition ? ($definition->mode(BoardGame::CORRESPONDENCE) !== null ? BoardGame::CORRESPONDENCE : $definition->lobbyMode()) : '';
 
         if (! $definition instanceof BoardGameDefinition || $definition->mode($mode) === null) {
             throw new BoardRuleViolation('unknown_game');

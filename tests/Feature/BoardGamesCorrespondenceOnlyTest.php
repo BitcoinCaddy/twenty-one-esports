@@ -33,9 +33,15 @@ use Tests\Support\TestSigner;
 | the invite module, the tournament chooser, the sitemap or a casual cup; an
 | old blitz ladder address leads to the correspondence ladder. The open
 | blitz cups are called off with esports:cancel-board-blitz-cups.
+|
+| Blockli left that group on 2026-10-11 (user: "Blockli braucht unbedingt
+| einen Rapid Modus, wie Schach ihn auch hat … am besten noch Blitz auch
+| anschalten"): it plays blitz 5+3, rapid 10+5 and correspondence, each on
+| its own ladder, in chess's order (BlockliLiveModesTest). Nine men's morris
+| and checkers stay correspondence only.
 */
 
-const BOARD_GAMES_NO_BLITZ = [NineMensMorris::SLUG, Checkers::SLUG, Blockli::SLUG];
+const BOARD_GAMES_NO_BLITZ = [NineMensMorris::SLUG, Checkers::SLUG];
 
 beforeEach(function () {
     Queue::fake();
@@ -44,7 +50,7 @@ beforeEach(function () {
     BlockliOn::play();
 });
 
-test('the three board games offer correspondence only, one move a day, and their lobby mode is correspondence', function () {
+test('nine men\'s morris and checkers offer correspondence only, one move a day, and their lobby mode is correspondence; Blockli has blitz and rapid too', function () {
     $registry = app(GameRegistry::class);
 
     foreach (BOARD_GAMES_NO_BLITZ as $slug) {
@@ -60,8 +66,10 @@ test('the three board games offer correspondence only, one move a day, and their
             ->and(TournamentGames::keyOf($slug, 'correspondence'))->not->toBeNull();
     }
 
-    // Chess keeps its fast modes.
-    expect($registry->mode('chess', 'blitz')?->timeControl)->toBe('300+3');
+    // Chess keeps its fast modes; Blockli has them again, in chess's order (user, 2026-10-11).
+    expect($registry->mode('chess', 'blitz')?->timeControl)->toBe('300+3')
+        ->and(array_keys($registry->get(Blockli::SLUG)->modes()))->toBe(['blitz', 'rapid', 'correspondence'])
+        ->and($registry->get(Blockli::SLUG)->lobbyMode())->toBe('blitz');
 });
 
 test('no surface offers blitz for them: menus, /play, home, their lobbies, the rules and the sitemap', function () {
@@ -115,7 +123,9 @@ test('an old blitz ladder address leads to the correspondence ladder; chess keep
     }
 
     $this->get(route('ladder.show', ['chess', 'blitz']))->assertOk();
-    $this->get(route('ladder.show', [Blockli::SLUG, 'rapid']))->assertNotFound();
+    // Blockli's blitz and rapid are its own ladders again (user, 2026-10-11): no redirect.
+    $this->get(route('ladder.show', [Blockli::SLUG, 'blitz']))->assertOk();
+    $this->get(route('ladder.show', [Blockli::SLUG, 'rapid']))->assertOk();
 });
 
 test('Blockli stands among the browser games, after Blockfill and before nine men\'s morris and checkers; TMNF closes the own-copy games (revamp, user 2026-10-10)', function () {
