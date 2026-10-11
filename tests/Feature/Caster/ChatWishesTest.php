@@ -214,7 +214,8 @@ it('tells verified canon jokes for a joke wish', function () {
     expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::JOKE))
         ->and($segment->kind)->toBe(CasterScript::LIVE)
         ->and($segment->scene)->toBe(ChatWishes::SCENE)
-        ->and($lines)->toHaveCount(4)
+        // Three jokes asked; the 24 h no-repeat guard may drop one whose carrier repeats a phrase of another (SpokenMemory).
+        ->and(count($lines))->toBeGreaterThanOrEqual(3)->toBeLessThanOrEqual(4)
         ->and($lines[0])->toBeIn(app(ReactionLines::class)->pool('wish_intro_joke'));
 
     // Every joke carries a canon entry word for word (a short saying inside a carrier sentence), nothing made up.
