@@ -875,13 +875,11 @@ final class RulesPage
             'lead' => __('A prize pot is the tournament’s own Lightning wallet. The league’s own wallet is never used for it.'),
             'facts' => [
                 [__('Default split'), implode(' / ', Tournament::DEFAULT_SPLIT).' %'],
-                [__('Fee reserve'), __(':percent %, at least :min sats', ['percent' => PrizePool::WALLET_FEE_PERCENT, 'min' => PrizePool::WALLET_FEE_MIN])],
                 [__('Places with a prize'), __('up to :count', ['count' => PrizePool::MAX_PLACES])],
             ],
             'items' => [
                 __('The pot shown is the pot as the tournament sets it, less what was already paid out.'),
                 __('Prizes are a share per place (for example :presets) or fixed sats per place. They cannot change after sign-up closed.', ['presets' => $presets]),
-                __('The fee reserve stays in the wallet for routing fees. With shares, the places split the pot less the reserve; with fixed sats, the pot must cover them plus the reserve.'),
                 __('Tied places share their prizes equally. A team’s prize is split equally among its roster. Rounding is down to whole sats; the rest stays in the pot.'),
                 __('After the tournament an admin checks the places and approves the payouts. Each player is paid to the Lightning address in their Nostr profile at that moment.'),
                 __('Without a Lightning address the payout waits until you add one and an admin approves it. A changed address also needs an admin’s approval.'),

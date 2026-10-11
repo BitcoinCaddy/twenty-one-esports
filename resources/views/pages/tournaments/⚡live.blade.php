@@ -135,7 +135,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             $reportedNoShow = $series->noshow_reported_at !== null;
             $autoAt = $director ? null : $series->autoNoshowAt();
             // Nobody in: the double no-show rule decides at the auto no-show time plus the response time (autoNoShow()).
-            $doubleAt = $autoAt !== null && $accepted && ! $reportedNoShow && ! $played && $in === [] ? $autoAt->copy()->addMinutes((int) $series->responseMinutes()) : null;
+            $doubleAt = $autoAt !== null && $accepted && ! $reportedNoShow && ! $played && $in === [] ? $series->doubleNoshowAt() : null;
 
             $rows = array_values(array_filter([
                 ['key' => 'start', 'label' => __('Start'), 'at' => $series->start_at, 'counts' => false, 'note' => null],

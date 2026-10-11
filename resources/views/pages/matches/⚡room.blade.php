@@ -1130,7 +1130,7 @@ new #[Title('Match room')] #[Layout('layouts::app', ['section' => 'matches', 'sc
                                 <span>{{ __('If no game is entered:') }}</span>
                                 <ol class="m-0 flex list-none flex-col gap-1.5 p-0">
                                     <li class="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2"><b class="text-ink tabular-nums">{{ SeriesPresenter::time($autoNoshowAt, $viewer, 'H:i') }}</b><span>{{ __('Only one side in: the other counts as a no-show and has :response minutes to answer.', ['response' => $m->responseMinutes()]) }}</span></li>
-                                    <li class="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2"><b class="text-ink tabular-nums">{{ SeriesPresenter::time($autoNoshowAt->copy()->addMinutes((int) $m->responseMinutes()), $viewer, 'H:i') }}</b><span>{{ __('Nobody in: the double no-show rule decides the match.') }}</span></li>
+                                    <li class="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2"><b class="text-ink tabular-nums">{{ SeriesPresenter::time($m->doubleNoshowAt(), $viewer, 'H:i') }}</b><span>{{ __('Nobody in: the double no-show rule decides the match.') }}</span></li>
                                 </ol>
                             </div>
                         @endif
