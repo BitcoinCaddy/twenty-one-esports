@@ -128,8 +128,9 @@ return [
         'fetch' => [
             'token' => env('TV_COMMENTARY_TOKEN'),
             'online_seconds' => 120,
-            // A claimed script that came back neither as a clip nor released is free again after this long.
-            'claim_seconds' => 180,
+            // A claimed script that came back neither as a clip nor released is free again after this long (a long
+            // Bauernkrieg segment is 15 to 30 sentences, about ten VoiceStudio calls).
+            'claim_seconds' => 300,
         ],
 
         'spool' => [
@@ -137,10 +138,12 @@ return [
             'dir' => 'caster/spool',
             'max_bytes' => (int) env('TV_COMMENTARY_SPOOL_MAX_BYTES', 50 * 1024 * 1024),
             'max_seconds' => 600,
-            'max_clip_bytes' => 2 * 1024 * 1024,
+            // A long Bauernkrieg segment of four minutes is about 1.5 MB at `opus_kbps` 48.
+            'max_clip_bytes' => 3 * 1024 * 1024,
             'max_clip_seconds' => 90,
-            // A news or history segment (the Bauernkrieg runs 60 to 120 s spoken) may be this long.
-            'segment_max_clip_seconds' => 150,
+            // A clip of these kinds may be this long (the long variants, tv.commentary.length): a long scene runs 60 to
+            // 100 s spoken, a long news segment up to two minutes, a long Bauernkrieg segment two to four minutes.
+            'long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280],
             // At most one news or history segment on air within this many minutes.
             'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
@@ -191,8 +194,9 @@ return [
             'tail_seconds' => 1.5,
             'lead_in_seconds' => 0.5,
             'max_hold_seconds' => 100,
-            // A news or history segment holds its slot until it has been spoken, up to this long.
-            'segment_max_hold_seconds' => 160,
+            // A clip of these kinds holds its slot until it has been spoken, up to this long (spool.long_clip_seconds
+            // plus the lead-in and tail): the scene stays on air through a long scene or story.
+            'long_max_hold_seconds' => ['scene' => 135, 'news' => 160, 'history' => 290],
         ],
 
         'news' => [
@@ -236,6 +240,36 @@ return [
             'repeat_hours' => 24,
             'max_age_minutes' => 120,
             'sentences' => ['min' => 6, 'max' => 12],
+        ],
+
+        // The length mix (user 2026-10-11: "Die Audios dürfen ruhig auch mal ganz viel länger werden … dann öfters auch
+        // mal viel längere Texte"): today's short scripts stay the base, and this share of each kind is a long variant
+        // (App\Support\Caster\LengthMix; 0 turns it off, 1 makes every one long). Sentences per script: a long scene is a
+        // pattern script of `scene_long` (a fact, canon lines, pride, an invitation, no model); a long news segment is the
+        // intro, the headline and a comment of `news_long` by the league voice (one call per headline, as before), so at
+        // most 10; a long Bauernkrieg segment chains `history_long` of the episode's facts, asides, twist and outro.
+        'length' => [
+            'shares' => [
+                'scene' => (float) env('TV_COMMENTARY_LONG_SCENES', 0.25),
+                'news' => (float) env('TV_COMMENTARY_LONG_NEWS', 0.5),
+                'history' => (float) env('TV_COMMENTARY_LONG_HISTORY', 0.5),
+            ],
+            'scene_long' => ['min' => 8, 'max' => 14],
+            'news_long' => ['min' => 4, 'max' => 8],
+            'history_long' => ['min' => 15, 'max' => 30],
+            // The fact guard's character cap for a whole long script (scripts.max_chars holds the short ones).
+            'max_chars' => 1_800,
+        ],
+
+        // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen
+        // zu Dauerkommentaren kommt"): every `every_minutes` (random within the range) `clips` clips back to back, each with
+        // its own scene and only a breath of `breath_seconds` between them instead of spool.gap_seconds
+        // (App\Support\Caster\SceneDirector).
+        'runs' => [
+            'enabled' => (bool) env('TV_COMMENTARY_RUNS', true),
+            'every_minutes' => ['min' => 10, 'max' => 15],
+            'clips' => ['min' => 2, 'max' => 4],
+            'breath_seconds' => ['min' => 1.0, 'max' => 3.0],
         ],
 
         'chat' => [

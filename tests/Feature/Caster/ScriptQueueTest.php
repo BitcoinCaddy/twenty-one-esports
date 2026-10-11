@@ -2,6 +2,7 @@
 
 use App\Models\CasterScript;
 use App\Support\Caster\CasterVoice;
+use App\Support\Caster\LengthMix;
 use App\Support\Caster\SceneFacts;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\SceneTopic;
@@ -226,7 +227,8 @@ it('frees a claim that never came back', function () {
 
     expect($queue->claim($now)?->id)->toBe($script->id)
         ->and($queue->claim($now->addSeconds(60)))->toBeNull()
-        ->and($queue->claim($now->addSeconds(181))?->id)->toBe($script->id);
+        ->and($queue->claim($now->addSeconds(299)))->toBeNull()
+        ->and($queue->claim($now->addSeconds(301))?->id)->toBe($script->id);
 });
 
 it('deletes rows that left the queue a day ago', function () {
@@ -290,4 +292,41 @@ it('estimates airtime from the words and the pauses', function () {
     config(['tv.commentary.scripts.words_per_second' => 2.0]);
 
     expect(ScriptQueue::estimateSeconds("Eins zwei drei vier.\n[laughter] Fünf sechs."))->toBe(3.4);
+});
+
+it('spreads the long variants evenly at their share, owes at most one that could not be built, and writes none at 0', function () {
+    config(['tv.commentary.length.shares.scene' => 0.25, 'tv.commentary.length.shares.news' => 0.0]);
+    $due = [];
+
+    foreach (range(1, 8) as $ignored) {
+        $due[] = LengthMix::isDue(LengthMix::SCENE);
+        LengthMix::written(LengthMix::SCENE, end($due));
+    }
+
+    expect($due)->toBe([false, false, false, true, false, false, false, true])
+        ->and(LengthMix::isDue(LengthMix::NEWS))->toBeFalse();
+
+    // A long one due but written short (eight times): owed once, then the next is long, never two in a row.
+    foreach (range(1, 8) as $ignored) {
+        LengthMix::written(LengthMix::SCENE, false);
+    }
+    expect(LengthMix::isDue(LengthMix::SCENE))->toBeTrue();
+    LengthMix::written(LengthMix::SCENE, true);
+    expect(LengthMix::isDue(LengthMix::SCENE))->toBeFalse();
+});
+
+it('writes about every fourth pattern scene long, 8 to 14 sentences, the rest short as before', function () {
+    config(['tv.commentary.ai' => false, 'tv.commentary.scripts.ahead_seconds' => 400]);
+    VoiceAgent::fake();
+
+    casterQueue(casterFactsWith())->fill(CarbonImmutable::now());
+
+    $counts = CasterScript::query()->where('kind', CasterScript::SCENE)->orderBy('id')->get()->map(fn (CasterScript $script): int => count($script->sentences()))->all();
+    $long = array_filter($counts, fn (int $count): bool => $count >= 8);
+
+    expect(count($counts))->toBeGreaterThanOrEqual(8)
+        ->and(count($long))->toBeGreaterThanOrEqual(intdiv(count($counts), 4) - 1)->toBeLessThanOrEqual(intdiv(count($counts), 4) + 1)
+        ->and(max($counts))->toBeLessThanOrEqual(14)
+        ->and(min(array_diff_key($counts, $long)))->toBeGreaterThanOrEqual(3);
+    VoiceAgent::assertNeverPrompted();
 });

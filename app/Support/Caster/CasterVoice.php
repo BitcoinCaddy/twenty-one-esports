@@ -130,10 +130,12 @@ final class CasterVoice
      * quote, community person or reported speech) and ScriptGuard, then
      * NewsFactCheck with the headline as the only fact: opinion, sarcasm and
      * slogans are no claims, anything new about the story is (fail closed).
+     * `$long` (the length mix, LengthMix): `length.news_long` sentences under
+     * the same checks, the fact guard's cap `length.max_chars`.
      *
      * @return array{skip: bool, text: string|null, reasons: list<string>}|null null: off, capped, or the request failed
      */
-    public function news(string $headline, string $source, string $section): ?array
+    public function news(string $headline, string $source, string $section, bool $long = false): ?array
     {
         if (! self::enabled()) {
             return null;
@@ -147,7 +149,7 @@ final class CasterVoice
                 return null;
             }
 
-            return $this->newsDraft($headline, $source, $section, $settings);
+            return $this->newsDraft($headline, $source, $section, $settings, $long);
         } catch (Throwable $exception) {
             if (Cache::add('caster:news-voice-failed-logged', true, 600)) {
                 Log::warning('Caster news voice failed', ['exception' => $exception::class]);
@@ -161,9 +163,10 @@ final class CasterVoice
      * @param  array<array-key, mixed>  $settings
      * @return array{skip: bool, text: string|null, reasons: list<string>}
      */
-    private function newsDraft(string $headline, string $source, string $section, array $settings): array
+    private function newsDraft(string $headline, string $source, string $section, array $settings, bool $long = false): array
     {
-        $range = (array) ($settings['sentences'] ?? []);
+        $range = $long ? (array) config('tv.commentary.length.news_long', []) : (array) ($settings['sentences'] ?? []);
+        $maxChars = $long ? (int) config('tv.commentary.length.max_chars', 1_800) : (int) config('tv.commentary.scripts.max_chars', 900);
         $min = max(1, (int) ($range['min'] ?? 1));
         $max = max($min, (int) ($range['max'] ?? 3));
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
@@ -193,7 +196,7 @@ final class CasterVoice
         // capitalised, and the league's vocabulary knows no politics): the fact check reads for invented names instead.
         $violations = [
             ...array_diff($this->hygiene->check($spoken, 'de', $this->recent('news'), null, $cutOff, null, VoiceGuard::factStrings($facts), $maxWords, ScriptGuard::maxCommas()), [VoiceHygiene::OPENER_REPEAT]),
-            ...array_diff($this->guard()->check($spoken, $facts, (int) config('tv.commentary.scripts.max_chars', 900), null), [VoiceGuard::NAME]),
+            ...array_diff($this->guard()->check($spoken, $facts, $maxChars, null), [VoiceGuard::NAME]),
             ...$this->scriptGuard->check($text, $min, $max, $maxWords),
         ];
 

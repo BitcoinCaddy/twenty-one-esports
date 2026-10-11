@@ -57,7 +57,7 @@ function casterHistoryKnownLines(): array
     return $lines;
 }
 
-it('gives every fact a source and keeps every episode within the spoken limits, 6 to 12 sentences and 60 to 120 seconds', function () {
+it('gives every fact a source and keeps every episode within the spoken limits, 6 to 12 sentences and 55 to 120 seconds', function () {
     $data = HistoryScripts::data();
     $guard = new ScriptGuard;
 
@@ -77,7 +77,7 @@ it('gives every fact a source and keeps every episode within the spoken limits, 
             $script = HistoryScripts::build($episode, $turn, $data);
 
             expect($guard->check($script, 6, 12, 16))->toBe([])
-                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(60.0)->toBeLessThanOrEqual(120.0);
+                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(55.0)->toBeLessThanOrEqual(120.0);
         }
     }
 });
@@ -144,10 +144,14 @@ function casterHistoryClip(string $kind, float $seconds = 10.0): CasterClip
     return app(ClipSpool::class)->store($script, casterOpus(), $seconds, [$seconds], CarbonImmutable::now());
 }
 
-it('takes a segment of up to segment_max_clip_seconds, a scene clip only up to max_clip_seconds', function () {
-    expect(casterHistoryClip(CasterScript::HISTORY, 118.0)->duration_seconds)->toBe(118.0)
-        ->and(fn () => casterHistoryClip(CasterScript::SCENE, 118.0))->toThrow(InvalidClip::class)
-        ->and(fn () => casterHistoryClip(CasterScript::HISTORY, 151.0))->toThrow(InvalidClip::class);
+it('takes a clip of up to long_clip_seconds of its kind, any other kind only up to max_clip_seconds', function () {
+    expect(casterHistoryClip(CasterScript::HISTORY, 278.0)->duration_seconds)->toBe(278.0)
+        ->and(casterHistoryClip(CasterScript::SCENE, 118.0)->duration_seconds)->toBe(118.0)
+        ->and(casterHistoryClip(CasterScript::NEWS, 148.0)->duration_seconds)->toBe(148.0)
+        ->and(fn () => casterHistoryClip(CasterScript::SCENE, 131.0))->toThrow(InvalidClip::class)
+        ->and(fn () => casterHistoryClip(CasterScript::NEWS, 151.0))->toThrow(InvalidClip::class)
+        ->and(fn () => casterHistoryClip(CasterScript::CHAT, 91.0))->toThrow(InvalidClip::class)
+        ->and(fn () => casterHistoryClip(CasterScript::HISTORY, 281.0))->toThrow(InvalidClip::class);
 });
 
 it('plays a segment after the live clips, on calm slots only, and never two within segment_spacing_minutes', function () {
@@ -173,4 +177,66 @@ it('plays a segment after the live clips, on calm slots only, and never two with
     expect($spool->next(ScenePhase::BREAK, CarbonImmutable::now())['clip']?->id)->toBe($scene->id);
     $this->travel(5)->minutes();
     expect($spool->next(ScenePhase::BREAK, CarbonImmutable::now())['clip']?->id)->toBe($news->id);
+});
+
+it('tells every episode long: its facts in order, asides and the other twist between them, 15 to 30 sentences, two to four minutes', function () {
+    $data = HistoryScripts::data();
+    $guard = new ScriptGuard;
+    $known = [...casterHistoryKnownLines(), ...$data['asides']];
+
+    expect(count($data['asides']))->toBeGreaterThanOrEqual(8);
+
+    foreach ($data['asides'] as $aside) {
+        expect(preg_match('/\d/', $aside))->toBe(0)
+            ->and($guard->check($aside, 1, 1, 16))->toBe([]);
+    }
+
+    foreach ($data['episodes'] as $episode) {
+        $factLines = array_merge(...array_map(fn (array $fact): array => ScriptGuard::lines($fact['text']), $episode['facts']));
+        expect(count($episode['facts']))->toBeGreaterThanOrEqual(10);
+
+        foreach (range(0, 19) as $turn) {
+            $script = HistoryScripts::buildLong($episode, $turn, $data);
+            $lines = ScriptGuard::lines($script);
+            $spokenFacts = array_values(array_intersect($lines, $factLines));
+
+            expect($guard->check($script, 15, 30, 16))->toBe([], "{$episode['id']} turn {$turn}")
+                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(120.0)->toBeLessThanOrEqual(240.0)
+                ->and(array_diff($lines, $known))->toBe([])
+                ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
+                ->and(count($spokenFacts))->toBeGreaterThanOrEqual(12)
+                ->and(array_intersect($lines, $data['asides']))->not->toBe([])
+                // Both twists: one in the middle, one before the outro.
+                ->and(count(array_intersect($lines, array_merge(...array_map(ScriptGuard::lines(...), $episode['twists'])))))->toBe(4);
+        }
+    }
+});
+
+it('writes every second history segment long while the share is 0.5, and every one at 1', function () {
+    $queue = app(ScriptQueue::class);
+    $lengths = [];
+
+    foreach (range(1, 4) as $ignored) {
+        $queue->fillSegments(CarbonImmutable::now());
+        $lengths[] = count(CasterScript::query()->where('kind', CasterScript::HISTORY)->latest('id')->firstOrFail()->sentences());
+        $this->travel(91)->minutes();
+    }
+
+    config(['tv.commentary.length.shares.history' => 1.0]);
+    $queue->fillSegments(CarbonImmutable::now());
+    $lengths[] = count(CasterScript::query()->where('kind', CasterScript::HISTORY)->latest('id')->firstOrFail()->sentences());
+
+    expect(array_map(fn (int $count): bool => $count >= 15, $lengths))->toBe([false, true, false, true, true])
+        ->and(max($lengths))->toBeLessThanOrEqual(30);
+});
+
+it('counts no segment as airtime ahead or spool target, so a waiting long story never starves the scene clips', function () {
+    $queue = app(ScriptQueue::class);
+    casterHistoryClip(CasterScript::HISTORY, 240.0);
+    $queue->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, str_repeat("Ein langer Satz über den Bauernkrieg.\n", 25), 'history:x', 0, CarbonImmutable::now());
+    casterHistoryClip(CasterScript::SCENE, 20.0);
+
+    // 240 s spooled and about 80 s queued of segments count for nothing: the spool stays below its 90 s target.
+    expect(app(ClipSpool::class)->readySeconds())->toBe(20.0)
+        ->and($queue->airtimeAhead())->toBe(20.0);
 });

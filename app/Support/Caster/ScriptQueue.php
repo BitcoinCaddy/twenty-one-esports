@@ -21,7 +21,13 @@ use Illuminate\Support\Facades\DB;
  * The long segments (news, "Markus erzählt vom Bauernkrieg") are written
  * here too, each when it is due (NewsScripts, HistoryScripts): normal
  * priority, so live moments and reactions still jump ahead of them, and
- * ClipSpool plays them on calm slots only.
+ * ClipSpool plays them on calm slots only. They do not count as airtime
+ * ahead: a long Bauernkrieg segment waiting for a calm slot must not starve
+ * the scene scripts of a live match.
+ *
+ * The length mix (LengthMix, `tv.commentary.length`): a share of each kind
+ * is a long variant, a long pattern scene, a long news comment, a long
+ * Bauernkrieg episode.
  *
  * Bounded: expired and voiced rows older than a day are deleted, so the table
  * holds at most a day of scripts.
@@ -55,14 +61,13 @@ class ScriptQueue
         return config('tv.commentary.ai') === true;
     }
 
-    /** Airtime (seconds) queued, claimed or spooled and not yet played, fillers left out. */
+    /** Airtime (seconds) queued, claimed or spooled and not yet played, fillers and segments left out. */
     public function airtimeAhead(): float
     {
         $scripts = (float) CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
-            ->where('kind', '!=', CasterScript::FILLER)->sum('estimated_seconds');
-        $clips = (float) CasterClip::query()->where('status', CasterClip::READY)->where('kind', '!=', CasterScript::FILLER)->sum('duration_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
 
-        return $scripts + $clips;
+        return $scripts + app(ClipSpool::class)->readySeconds();
     }
 
     /**
@@ -124,7 +129,11 @@ class ScriptQueue
             }
 
             $patternsLeft--;
-            $script = $this->patterns->write($topic, $phase, $facts, $now);
+            // Every so often a long one (LengthMix); when the topic cannot make one, the short script stands in.
+            $long = LengthMix::isDue(LengthMix::SCENE);
+            $script = $long ? $this->patterns->write($topic, $phase, $facts, $now, long: true) : null;
+            $long = $script !== null;
+            $script ??= $this->patterns->write($topic, $phase, $facts, $now);
 
             if ($script === null) {
                 $exhausted[] = $topic;
@@ -133,6 +142,7 @@ class ScriptQueue
             }
 
             $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_PATTERN, topic: $topic);
+            LengthMix::written(LengthMix::SCENE, $long);
             $written++;
         }
 
@@ -152,11 +162,13 @@ class ScriptQueue
         $written = 0;
 
         if (config('tv.commentary.history.enabled') === true && $this->history->due($now)) {
-            $segment = $this->history->write($now);
+            $long = LengthMix::isDue(LengthMix::HISTORY);
+            $segment = $this->history->write($now, $long);
 
             if ($segment !== null) {
                 $this->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, $segment['text'], HistoryScripts::HASH_PREFIX.$segment['episode'], 0, $now,
                     source: CasterScript::SOURCE_PATTERN, maxAgeMinutes: (int) config('tv.commentary.history.max_age_minutes', 120));
+                LengthMix::written(LengthMix::HISTORY, $long);
                 $written++;
             }
         }
@@ -165,11 +177,12 @@ class ScriptQueue
 
         if (config('tv.commentary.news.enabled') === true && ! CasterScript::query()->where('kind', CasterScript::NEWS)->where('created_at', '>', $since)->exists()) {
             $item = $this->news->next($now);
-            $segment = $item === null ? null : $this->news->write($item, $now, self::aiEnabled());
+            $segment = $item === null ? null : $this->news->write($item, $now, self::aiEnabled(), LengthMix::isDue(LengthMix::NEWS));
 
             if ($item !== null && $segment !== null) {
                 $this->enqueue(CasterScript::NEWS, ScenePhase::BREAK, $segment['text'], 'news:'.$item->id, 0, $now,
                     source: $segment['source'], topic: $item->section, maxAgeMinutes: (int) config('tv.commentary.news.max_age_minutes', 30));
+                LengthMix::written(LengthMix::NEWS, $segment['long']);
                 $written++;
             }
         }

@@ -328,11 +328,11 @@ it('never cuts the clip on air for a reaction, and plays it as soon as that clip
     expect($liveAt)->toBeGreaterThanOrEqual(10.5)->toBeLessThan(11.0);
 });
 
-it('holds the slot through a long history segment, beyond max_hold_seconds up to segment_max_hold_seconds', function () {
+it('holds the slot through a long history segment, beyond max_hold_seconds up to long_max_hold_seconds of its kind', function () {
     casterSpooledClip(120.0, ScenePhase::BREAK, CasterScript::HISTORY);
     $planner = casterPlanner();
     $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
-        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100, 'segment_max_hold_seconds' => 160,
+        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100, 'long_max_hold_seconds' => ['history' => 160],
     ]);
     $start = (float) CarbonImmutable::now()->getTimestamp();
     $changes = [];
@@ -349,4 +349,104 @@ it('holds the slot through a long history segment, beyond max_hold_seconds up to
 
     // Spoken 0.5 to 120.5 s, plus the 1.5 s tail: the slot changes at 122 s, not at the 100 s scene cap.
     expect($changes[1] ?? null)->toBeGreaterThanOrEqual(122.0)->toBeLessThan(123.0);
+});
+
+it('holds the slot through a long scene clip, beyond max_hold_seconds up to long_max_hold_seconds of a scene', function () {
+    casterSpooledClip(110.0);
+    $planner = casterPlanner();
+    $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100, 'long_max_hold_seconds' => ['scene' => 135],
+    ]);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $changes = [];
+    $last = null;
+
+    for ($t = $start; $t <= $start + 120; $t += 0.5) {
+        $director->tick($planner, $planner->at($t, []), $t);
+
+        if ($planner->slotNumber() !== $last) {
+            $changes[] = $t - $start;
+            $last = $planner->slotNumber();
+        }
+    }
+
+    // Spoken 0.5 to 110.5 s plus the tail: the slot changes at 112 s, not at the 100 s cap of the other kinds.
+    expect($changes[1] ?? null)->toBeGreaterThanOrEqual(112.0)->toBeLessThan(113.0);
+});
+
+/**
+ * The start times (seconds after the first tick) of every clip the director plays within `$seconds`.
+ *
+ * @return list<float>
+ */
+function casterClipStarts(SceneDirector $director, float $seconds): array
+{
+    $planner = casterPlanner();
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $starts = [];
+    $playing = null;
+
+    for ($t = $start; $t <= $start + $seconds; $t += 0.25) {
+        $director->tick($planner, $planner->at($t, []), $t);
+
+        if ($director->clip()?->id !== $playing) {
+            $playing = $director->clip()?->id;
+            if ($playing !== null) {
+                $starts[] = $t - $start;
+            }
+        }
+    }
+
+    return $starts;
+}
+
+function casterRunDirector(int $clips): SceneDirector
+{
+    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 5, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
+        'gap_seconds' => ['min' => 25.0, 'max' => 25.0],
+        'runs' => ['enabled' => true, 'every_minutes' => ['min' => 1.0, 'max' => 1.0], 'clips' => ['min' => $clips, 'max' => $clips], 'breath_seconds' => ['min' => 1.0, 'max' => 1.0]],
+    ]);
+}
+
+it('plays a run of clips back to back with only a breath between them, then the music gap returns', function () {
+    foreach (range(1, 6) as $ignored) {
+        casterSpooledClip(10.0);
+    }
+
+    $starts = casterClipStarts(casterRunDirector(3), 160);
+    $pauses = array_map(fn (float $next, float $previous): float => round($next - $previous - 10.0, 2), array_slice($starts, 1), array_slice($starts, 0, -1));
+
+    // Clip one draws the first run a minute ahead; clip two follows the 25 s gap; clip three (about 71 s, past
+    // the minute) opens a run of three: three, four and five only a breath apart; then the 25 s gap again.
+    expect($starts)->toHaveCount(6)
+        ->and(array_slice($pauses, 0, 2))->each->toBeGreaterThanOrEqual(25.0)
+        ->and(array_slice($pauses, 2, 2))->each->toBeLessThan(4.0)
+        ->and($pauses[4])->toBeGreaterThanOrEqual(25.0);
+});
+
+it('counts no reaction as a run clip, and ends a run at a slot without a clip', function () {
+    casterSpooledClip(10.0);
+    $director = casterRunDirector(2);
+    $planner = casterPlanner();
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $runs = [];
+
+    for ($t = $start; $t <= $start + 230; $t += 0.25) {
+        // A reaction lands at 70 s, past the minute; a scene clip at 140 s (counted, the reaction would have opened a run, and the clip a second one).
+        if (abs($t - $start - 70.0) < 0.01) {
+            casterSpooledClip(5.0, ScenePhase::BREAK, CasterScript::CHAT);
+        }
+        if (abs($t - $start - 140.0) < 0.01) {
+            casterSpooledClip(10.0);
+        }
+
+        $director->tick($planner, $planner->at($t, []), $t);
+        $runs[] = $director->run();
+    }
+
+    // The reaction opened no run; the scene clip did (run 1, one clip to come), and the empty slot after it ended the run.
+    expect(array_values(array_unique(array_column($runs, 'id'))))->toBe([0, 1])
+        ->and(array_column($runs, 'left'))->toContain(1)
+        ->and(end($runs))->toBe(['id' => 1, 'position' => 0, 'left' => 0]);
 });

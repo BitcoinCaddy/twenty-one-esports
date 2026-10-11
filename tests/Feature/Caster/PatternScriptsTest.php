@@ -460,3 +460,30 @@ it('quotes no canon line again within the last canon lines, whatever the rotatio
     expect($jokes[0])->not->toBe([])
         ->and(array_intersect($jokes[2], $jokes[0]))->toBe([]);
 });
+
+it('writes a long scene as a small monologue: one fact, up to three canon lines, pride and more, 8 to 14 sentences', function () {
+    $guard = new ScriptGuard;
+    $long = 0;
+
+    foreach ([SceneTopic::LEAGUE, SceneTopic::TOURNAMENTS, SceneTopic::LADDERS, SceneTopic::CLANS] as $index => $topic) {
+        $script = patternScripts()->write($topic, ScenePhase::BREAK, patternFactsByTopic()[$topic], CarbonImmutable::now()->addMinutes(25 * $index), long: true);
+
+        if ($script === null) {
+            continue;
+        }
+
+        $long++;
+        $roles = array_count_values($script['roles']);
+        expect($guard->check($script['text'], 8, 14, 16))->toBe([], $topic)
+            ->and($roles[PatternScripts::FACT] ?? 0)->toBeLessThanOrEqual(1)
+            ->and(count($script['canon_ids']))->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(3)
+            ->and(($roles[PatternScripts::PRIDE] ?? 0) + ($roles[PatternScripts::INVITE] ?? 0) + ($roles[PatternScripts::ENGAGE] ?? 0))->toBeGreaterThanOrEqual(2);
+    }
+
+    expect($long)->toBeGreaterThanOrEqual(3);
+});
+
+it('never writes a result moment long', function () {
+    expect(patternScripts()->write(SceneTopic::RESULTS, ScenePhase::AFTER_RESULT, patternFactsByTopic()[SceneTopic::RESULTS], long: true))->toBeNull()
+        ->and(patternScripts()->write(SceneTopic::RESULTS, ScenePhase::AFTER_RESULT, patternFactsByTopic()[SceneTopic::RESULTS]))->not->toBeNull();
+});

@@ -19,7 +19,8 @@ use Illuminate\Support\Str;
  * per file, never audio in the database.
  *
  * Bounded three ways: store() refuses a clip over `max_clip_bytes` or
- * `max_clip_seconds`, and any clip that would take the spool over
+ * `max_clip_seconds` (a scene, news or history clip: `long_clip_seconds` of
+ * its kind, the long variants of tv.commentary.length), and any clip that would take the spool over
  * `max_bytes` or (a scene clip) `max_seconds` of unplayed audio (SpoolFull, the endpoint
  * answers 507 and the fetcher backs off); played() deletes a clip right after
  * it played (fillers excepted, they are a fixed small set that plays in
@@ -78,13 +79,13 @@ class ClipSpool
             throw new InvalidClip('format');
         }
 
-        $maxSeconds = in_array($script->kind, CasterScript::SEGMENTS, true) ? (float) ($settings['segment_max_clip_seconds'] ?? 0) : (float) ($settings['max_clip_seconds'] ?? 0);
+        $maxSeconds = (float) ($settings['long_clip_seconds'][$script->kind] ?? $settings['max_clip_seconds'] ?? 0);
 
         if (strlen($opus) > (int) ($settings['max_clip_bytes'] ?? 0) || $durationSeconds <= 0 || $durationSeconds > $maxSeconds) {
             throw new InvalidClip('size');
         }
 
-        $airtimeCapped = $script->kind !== CasterScript::FILLER && ! in_array($script->kind, self::LIVE_KINDS, true);
+        $airtimeCapped = $script->kind !== CasterScript::FILLER && ! in_array($script->kind, [...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true);
 
         if ($this->bytes() + strlen($opus) > (int) ($settings['max_bytes'] ?? 0)
             || ($airtimeCapped && $this->readySeconds() + $durationSeconds > (float) ($settings['max_seconds'] ?? 0))) {
@@ -120,10 +121,15 @@ class ClipSpool
         return (int) CasterClip::query()->sum('bytes');
     }
 
-    /** Seconds of unplayed commentary ready (fillers left out). */
+    /**
+     * Seconds of unplayed commentary ready, fillers and segments left out: a
+     * long news or Bauernkrieg segment waits for a calm slot, and counted it
+     * would fill the spool's target, so a live match got no scene clip.
+     */
     public function readySeconds(): float
     {
-        return (float) CasterClip::query()->where('status', CasterClip::READY)->where('kind', '!=', CasterScript::FILLER)->sum('duration_seconds');
+        return (float) CasterClip::query()->where('status', CasterClip::READY)
+            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::SEGMENTS])->sum('duration_seconds');
     }
 
     public function fetcherOnline(CarbonImmutable $now): bool
