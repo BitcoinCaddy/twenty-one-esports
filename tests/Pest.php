@@ -226,6 +226,29 @@ function openSeason(array $attributes = [], bool $ladders = true): Season
 }
 
 /**
+ * openSeason() attributes for a season released before these games and
+ * modes mined: the chain defaults without their weights. Chess rapid and
+ * the board games mine from Block 0 by default (user, 2026-10-11); a live
+ * season whose genesis lacks them takes them in by a parameter change.
+ *
+ * @return array{parameters: array<string, mixed>}
+ */
+function seasonGenesisWithout(string ...$weightKeys): array
+{
+    $chain = ChainDraft::defaults();
+
+    return ['parameters' => [
+        'weights' => array_diff_key($chain['weights'], array_flip($weightKeys)),
+        'groups' => $chain['groups'],
+        'shares' => $chain['shares'],
+        'daily' => $chain['daily'],
+        'pairlimit' => $chain['pairlimit'],
+        'subtree' => $chain['subtree'],
+        'moves' => $chain['moves'],
+    ]];
+}
+
+/**
  * The first version of every ladder of the season, as Block 0 publishes
  * them (a throwaway trust key): a board game's ladder opens only with it
  * (Ladders::address(), plan "Mühle und Dame", P6).

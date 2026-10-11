@@ -90,6 +90,13 @@ function boardMiningAdminMeasure(Page $page, array $boxes): array
 test('the board fills in the board games\' proposal on the chain draft and saves it; the page stays clean and inside the viewport', function (int $width, int $height, string $locale) {
     $board = User::factory()->create(['name' => 'vorstand', 'timezone' => 'UTC']);
     config(['esports.board' => [NostrKeys::hexToNpub($board->pubkey)]]);
+    // A draft saved before the board games mined by default (user, 2026-10-11): the board's 35/40/25, none of theirs.
+    $defaults = ChainDraft::defaults();
+    saveChainDraft([
+        'weights' => array_diff_key($defaults['weights'], ['nine-mens-morris/correspondence' => true, 'checkers/correspondence' => true]),
+        'shares' => ['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25],
+        'daily' => array_diff_key($defaults['daily'], ['board-games' => true]),
+    ]);
 
     $page = boardMiningAdminPage($board, $width, $height, $locale);
     $before = boardMiningAdminMeasure($page, ['draft-row-board-games', 'draft-share-board-games', 'draft-daily-board-games', 'draft-weight-nine-mens-morris-correspondence', 'draft-weight-checkers-correspondence', 'board-games-proposal', 'fill-board-games-proposal', 'save-draft']);

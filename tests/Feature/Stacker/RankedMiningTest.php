@@ -322,9 +322,13 @@ test('the chain draft proposes Blockfill: a weight for 40 blocks, its own share 
         ->and($defaults['weights'])->not->toHaveKey('blockfill/40-blocks')
         ->and(ChainDraft::proposal(Blockfill::SLUG, $defaults))->toBe([
             'weights' => ['blockfill/40-blocks' => 1000],
-            'shares' => ['chess' => 33, 'rocket-league' => 38, 'ea-sports-fc' => 24, 'blockfill' => 5],
+            // The board games are off here: the defaults leave 10 % free (32/36/22, user 2026-10-11) and 5 % fit.
+            'shares' => ['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22, 'blockfill' => 5],
             'daily' => ['blockfill' => 1],
-        ]);
+        ])
+        // With the board games' 10 % in the draft the others shrink to 95 (30.4, 34.2, 20.9, 9.5; largest remainder).
+        ->and(ChainDraft::proposal(Blockfill::SLUG, [...$defaults, 'shares' => [...$defaults['shares'], 'board-games' => 10]])['shares'])
+        ->toBe(['chess' => 30, 'rocket-league' => 34, 'ea-sports-fc' => 21, 'board-games' => 10, 'blockfill' => 5]);
 
     Livewire::actingAs($board)->test('pages::admin.season')
         ->assertSee('data-test="blockfill-proposal"', false)

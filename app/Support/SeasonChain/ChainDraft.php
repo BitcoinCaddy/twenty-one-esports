@@ -56,9 +56,11 @@ final class ChainDraft
     ];
 
     /**
-     * config/season.php, the Pre-Season length in weeks. The share group of
-     * the board games (plan "Mühle und Dame", P6) is left out while none of
-     * them is switched on: nothing of a game that is on no page is signed.
+     * config/season.php, the Pre-Season length in weeks. Nothing of a game
+     * that is on no page is signed: the weight of a board game that is
+     * switched off is left out, and so are the share group of the board
+     * games (plan "Mühle und Dame", P6), its share and its daily limit while
+     * none of them is switched on.
      *
      * @return Chain
      */
@@ -68,7 +70,11 @@ final class ChainDraft
         $chain = config('season.chain');
         $registry = app(GameRegistry::class);
         $off = fn (string $game): bool => in_array($game, BoardGame::RESERVED_SLUGS, true) && ! $registry->isBoard($game);
-        $chain['groups'] = array_filter($chain['groups'], fn (array $games): bool => ! array_all($games, $off));
+        $dropped = array_keys(array_filter($chain['groups'], fn (array $games): bool => array_all($games, $off)));
+        $chain['groups'] = array_diff_key($chain['groups'], array_flip($dropped));
+        $chain['weights'] = array_filter($chain['weights'], fn (string $key): bool => ! $off(explode('/', $key, 2)[0]), ARRAY_FILTER_USE_KEY);
+        $chain['shares'] = array_diff_key($chain['shares'], array_flip($dropped));
+        $chain['daily'] = array_diff_key($chain['daily'], array_flip($dropped));
 
         return [
             'block0_at' => null,
@@ -240,9 +246,11 @@ final class ChainDraft
     }
 
     /**
-     * The games that joined after the board's shares of 2026-09-28 and mine
-     * only once the board takes up their proposal: the config key of each
-     * proposal, keyed by the proposal's name on the admin season page.
+     * The games that joined after the board's shares of 2026-09-28: the
+     * config key of each proposal, keyed by the proposal's name on the admin
+     * season page. Chess rapid and the board games are in the defaults since
+     * 2026-10-11; their proposal is for a draft or season that lacks them.
+     * Age of Empires II mines only once the board takes up its proposal.
      */
     public const PROPOSALS = [
         'board-games' => 'season.chain.board_games_proposal',

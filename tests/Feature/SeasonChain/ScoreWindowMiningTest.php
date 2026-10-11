@@ -38,6 +38,7 @@ use App\Support\Tournaments\TournamentRunner;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Tests\Support\BlockliOn;
 use Tests\Support\ScoreDemoOn;
 use Tests\Support\TestSigner;
 use Tests\Support\TrustedFacts;
@@ -307,27 +308,32 @@ describe('chain draft', function () {
         expect(ChainDraft::table($defaults))->toHaveKey('score-demo')
             ->and(ChainDraft::table($defaults)['score-demo'])->toBe(['score-demo/time-trial', 'score-demo/highscore'])
             ->and($defaults['weights'])->not->toHaveKey('score-demo/time-trial')
-            ->and($defaults['shares'])->toBe(['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25]);
+            ->and($defaults['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22]);
     });
 
     test('the chain form shows a score game only as a proposal; filling it in saves nothing, saving it shrinks the other shares visibly', function () {
+        // With a board game on, the defaults fill all 100 % (32/36/22 and the board games' 10, user 2026-10-11): the
+        // proposal's 5 % come out of them, scaled to 95 (30.4, 34.2, 20.9, 9.5) and the two seats left over going to
+        // the largest remainders, EA Sports FC (0.9) and the board games (0.5).
+        BlockliOn::play();
+
         Livewire::actingAs($this->board)->test('pages::admin.season')
             ->assertSee('data-test="score-demo-proposal"', false)
             ->assertSet('draftWeights.score-demo/time-trial', '')
             ->assertSet('draftShares.score-demo', '')
-            ->assertSet('draftShares.chess', '35')
+            ->assertSet('draftShares.chess', '32')
             ->call('fillProposal', 'score-demo')
             ->assertSet('draftWeights.score-demo/time-trial', '1')
             ->assertSet('draftShares.score-demo', '5')
             ->assertSet('draftDaily.score-demo', '1')
-            ->assertSet('draftShares.chess', '33')
+            ->assertSet('draftShares.chess', '30')
             ->tap(fn () => expect(ChainDraft::stored())->toBeNull())
             ->call('saveDraft')
             ->assertSet('draftError', '')
             ->assertDontSee('data-test="score-demo-proposal"', false);
 
         expect(ChainDraft::stored()['weights'])->toMatchArray(['score-demo/time-trial' => 1000, 'chess/blitz' => 1000])
-            ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 33, 'rocket-league' => 38, 'ea-sports-fc' => 24, 'score-demo' => 5]);
+            ->and(ChainDraft::stored()['shares'])->toEqual(['chess' => 30, 'rocket-league' => 34, 'ea-sports-fc' => 21, 'board-games' => 10, 'score-demo' => 5]);
     });
 
     test('Block 0 signs the solo rules after moves only when a score game mines; a draft of versus games signs the tags it always did', function () {
@@ -365,7 +371,7 @@ describe('chain draft', function () {
             ->assertSet('draftError', '');
 
         expect(ChainDraft::stored()['weights'])->not->toHaveKey('score-demo/time-trial')
-            ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25]);
+            ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22]);
     });
 });
 
