@@ -1,0 +1,9 @@
+{
+ "note": "Spoken respellings for VoiceStudio (OmniVoice, German, profile ee7a2a18): the fetcher replaces each term (whole word, case-sensitive) before /generate. Checked 2026-10-11 by a round trip (generate \"Und jetzt: <term>. Klar.\" with the profile, transcribe with VoiceStudio's Whisper WITHOUT a hint prompt): Blockfill, Blockli, Mempool, Nostr, Zaps, GG, Elo, Rocket League, Proof of Pong, Bitcoin, Lightning, Esports, Blitz, Rapid, Clan, Cup, TWENTY ONE TV, Stacker and HODL come back right as written, so they need no respelling. Sats is heard as \"Satz\", which is how it is spoken. Only the terms below change.",
+ "terms": {
+  "TMNF": "Trackmania",
+  "npub": "Nostr-Profil",
+  "EINUNDZWANZIG": "Einundzwanzig",
+  "Hyperbitcoinization": "Hyper-Bitcoinisation"
+ }
+}

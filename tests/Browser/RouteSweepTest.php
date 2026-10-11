@@ -11,6 +11,7 @@ use App\Models\Clan;
 use App\Models\ClanInvite;
 use App\Models\DisputeEvidence;
 use App\Models\Lineup;
+use App\Models\PongMatch;
 use App\Models\RankBadge;
 use App\Models\Rating;
 use App\Models\ScoreRun;
@@ -114,6 +115,15 @@ const SWEEP_JSON_ENDPOINTS = ['players.search', 'lnurl.pay', 'lnurl.callback', '
 const SWEEP_SECRET_URLS = ['broadcast.overlay'];
 
 /**
+ * Pictures of a moment the sweep's fixtures do not have (plan "KI-Stimme der Liga", P4): the player card of a player
+ * with a result in a ladder that counts now, the tale of the tape of a final that waits with both sides known. Fetched,
+ * sized and refused (404) in tests/Feature/Cards/PrideCardsTest.
+ *
+ * @var list<string>
+ */
+const SWEEP_MOMENT_IMAGES = ['cards.player', 'cards.tape'];
+
+/**
  * @param  array<string, string>  $bound  route key per bound parameter, from sweepFixtures()
  * @return list<array{name: string, url: string}>
  */
@@ -127,6 +137,7 @@ function sweepRoutes(array $bound = []): array
         ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_DOWNLOADS, true))
         ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_JSON_ENDPOINTS, true))
         ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_SECRET_URLS, true))
+        ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_MOMENT_IMAGES, true))
         ->reject(function (RoutingRoute $route) {
             foreach (SWEEP_VENDOR_PREFIXES as $prefix) {
                 if (str_starts_with($route->uri(), $prefix)) {
@@ -250,6 +261,8 @@ function sweepFixtures(): array
         'finished' => fn (?User $user, array $made): Model => shareTournament($made['npub'], User::factory()->create()),
         // A Blockfill moment's card: the `npub` player's verified personal best (the card stays while Blockfill is off).
         'run' => fn (?User $user, array $made): Model => StackerRun::factory()->for($made['npub'])->verified(2400)->create(),
+        // A meme card (plan "KI-Stimme der Liga", P5): a first live Proof of Pong win in overtime, 22:20.
+        'meme' => fn (?User $user, array $made): Model => PongMatch::factory()->finished(0, [22, 20])->create(),
 
         // A dispute screenshot of that series, served to admins only.
         'evidence' => function (?User $user, array $made): Model {
@@ -536,15 +549,16 @@ const SWEEP_FLUSH_PATHS = ['/', '/login'];
 
 /**
  * Flush pages whose path carries an id: the tournament detail opens with its hero band directly under the header and
- * its cover running to the right edge (TournamentDetail.dc.html, revamp P6).
+ * its cover running to the right edge (TournamentDetail.dc.html, revamp P6); the player page opens with its head band
+ * directly under the header, edge to edge (PlayerPublic.dc.html, revamp P7).
  *
  * @var list<string>
  */
-const SWEEP_FLUSH_PATTERNS = ['#^/tournaments/\d+$#'];
+const SWEEP_FLUSH_PATTERNS = ['#^/tournaments/\d+$#', '#^/players/npub1[02-9ac-hj-np-z]+$#'];
 
 /** @var list<string> Routes that answer without the app shell (JSON, images, the player card fragment, the full-screen tournament TV, the broadcast styleguide). */
 const SWEEP_NO_HEADER_ROUTES = ['tournaments.tv', 'broadcast.styleguide', 'nostr.nip05', 'admin.disputes.evidence', 'players.card', 'avatars.generated', 'invites.card',
-    'badges.rank', 'badges.rank.thumb', 'cards.rank-up', 'cards.block', 'cards.tournament', 'cards.tournament-invite', 'cards.wrapped', 'cards.blockfill', 'cards.page', 'stream.cover', 'stream.pride-image'];
+    'badges.rank', 'badges.rank.thumb', 'cards.rank-up', 'cards.block', 'cards.tournament', 'cards.tournament-invite', 'cards.wrapped', 'cards.blockfill', 'cards.meme', 'cards.page', 'stream.cover', 'stream.pride-image'];
 
 const SWEEP_GAP_SCRIPT = <<<'JS'
     async () => {

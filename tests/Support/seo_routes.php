@@ -16,6 +16,8 @@ use App\Games\Blockfill;
 use App\Games\GameRegistry;
 use App\Models\ChessGame;
 use App\Models\Clan;
+use App\Models\Rating;
+use App\Models\Season;
 use App\Models\SeriesMatch;
 use App\Models\StackerRun;
 use App\Models\Tournament;
@@ -120,6 +122,15 @@ function seoRouteFixtures(): array
             return $urls;
         },
         'players.show' => fn () => [route('players.show', User::factory()->create(['name' => 'satoshi'])->npub)],
+        // A player's Season Wrapped story (plan "KI-Stimme der Liga", P4): its card is the season card of that player.
+        'season.wrapped' => function (): array {
+            $season = Season::factory()->ended()->create(['slug' => 'seo-season']);
+            $player = User::factory()->create(['name' => 'hodlwrapped']);
+            Rating::query()->create(['pool' => Rating::RATED, 'season' => $season->slug, 'game' => 'chess', 'mode' => 'blitz',
+                'subject' => 'user:'.$player->id, 'user_id' => $player->id, 'rating' => 1040, 'results' => 4, 'wins' => 3, 'losses' => 1]);
+
+            return [route('season.wrapped', [$season->slug, $player->npub])];
+        },
         'tournaments.index' => fn () => [route('tournaments.index')],
         'tournaments.archive' => fn () => [route('tournaments.archive')],
         'tournaments.show' => fn () => [

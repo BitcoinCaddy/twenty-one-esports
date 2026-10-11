@@ -158,6 +158,10 @@ const NAV_NOT_PAGES = [
     'cards.page' => 'image',
     'cards.wrapped' => 'image',
     'cards.blockfill' => 'image: the share card of a Blockfill run',
+    'cards.meme' => 'image: the meme card of a live Proof of Pong win',
+    'cards.player' => 'image: the player card (plan "KI-Stimme der Liga", P4)',
+    'cards.tape' => 'image: the tale of the tape before a final (P4)',
+    'season.wrapped' => 'entry point: a player\'s Season Wrapped story, linked from their player page only when they played the season',
 ];
 
 /**

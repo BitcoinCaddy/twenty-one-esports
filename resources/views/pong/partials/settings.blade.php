@@ -16,6 +16,10 @@
     <label class="row"><input type="checkbox" name="music" data-test="pong-setting-music"><span>{{ __('Music') }}</span></label>
     <label class="row range"><span>{{ __('Volume: :channel', ['channel' => __('Music')]) }}</span><input type="range" name="musicVol" min="0" max="100" step="5" data-test="pong-setting-music-volume"></label>
     <label class="row"><input type="checkbox" name="motion" data-test="pong-setting-motion"><span>{{ __('Motion effects') }}</span></label>
+    @if (! empty($config['banter']))
+        {{-- The bot's lines in the game chat (plan "KI-Stimme der Liga", P5): off mutes them in this browser (resources/js/pong/banter.js). --}}
+        <label class="row"><input type="checkbox" name="banter" checked data-test="pong-setting-banter"><span>{{ __('Bot chat') }}</span></label>
+    @endif
     <label class="row select"><span>{{ __('Quality') }}</span>
         <select name="quality" data-test="pong-setting-quality">
             <option value="auto">{{ __('Automatic') }}</option>

@@ -1048,6 +1048,12 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             <div class="chat-rail tl-rail flex flex-col gap-4" x-data="{ fit() { const top = this.$el.getBoundingClientRect().top + scrollY; this.$el.style.setProperty('--tl-rail-h', Math.max(480, innerHeight - top - 24) + 'px'); } }" x-init="fit()" x-on:resize.window.debounce.150ms="fit()" data-test="game-rail"><livewire:game-channel :game="$tournament->game" :wire:key="'game-channel-'.$tournament->game" /></div>
         @endif
 
+        {{-- The tale of the tape while the final waits (plan "KI-Stimme der Liga", P4). --}}
+        @php($tapeFinal = \App\Support\Cards\PrideMoments::finalMayBeNext($this->stages) ? \App\Support\Cards\PrideMoments::upcomingFinal($tournament) : null)
+        @if ($tapeFinal !== null)
+            @include('pages.tournaments.partials.tape', ['tournament' => $tournament, 'final' => $tapeFinal])
+        @endif
+
         {{-- The page's tabs (one order on every tournament page) and, beside them, the bracket view's switch. --}}
         <div class="flex items-end gap-4">
             <nav class="rv-tabs grow" aria-label="{{ __('Tournament') }}" data-test="tournament-tabs">
@@ -1221,6 +1227,8 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                 @endif
             </section>
         @endif
+
+        @include('pages.tournaments.partials.recap', ['tournament' => $tournament])
 
         {{-- Who plays beside the prize card (TournamentDetail.dc.html: "Teilnehmer, Setzliste" and "Preispool"). --}}
         <div @class(['grid grid-cols-1 items-start gap-6', 'lg:grid-cols-2' => $this->pool !== null && ! $blockfillWeek])>
