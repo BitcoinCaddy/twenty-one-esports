@@ -33,7 +33,8 @@ final class VoiceFactCheck implements Agent, HasProviderOptions, HasStructuredOu
             You check a short post of an esports league against the facts it was written from.
             List every factual claim in the post (a result, state, time, record, streak, score, reason, who won or lost, whether something is open, running or finished, anything said about a person) and, for each, the fact that supports it.
             A claim is supported when the facts state it, in any words: "first place" is "leads", "on top", "takes the lead"; "wins" is "takes". The `template` fact says what the moment is. A date in the facts after "now" is still to come: whatever ends then is still running.
-            Not a claim: greetings, exclamations, questions, invitations to play or watch, praise without a fact in it ("Nice one!"), and the quoted canon line given with the post (a known community meme).
+            Not a claim: greetings and shout-outs ("Grüße gehen raus …"), exclamations, jokes and sayings, questions (also rhetorical ones and calls to write in the chat: "Wer von euch …?", "Schreibt in den Chat, wer …"), invitations to play, watch, log in, sign up or bring friends, pride or praise without a fact in it ("Nice one!", "Das ist unsere Liga."), and the quoted canon line given with the post (a known community meme).
+            A sentence that says what a line under `league_basics` says is supported by it.
             A person's mention token like {@winner} stands for the person of that role in the facts.
             Answer only in the schema: `claims` lists them, each with `claim` (word for word from the post), `evidence` (the supporting fact, word for word from the facts, or empty) and `supported` (false when no fact supports it or a fact contradicts it).
             TEXT;

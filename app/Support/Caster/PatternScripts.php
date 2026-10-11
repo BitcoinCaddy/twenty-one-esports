@@ -5,6 +5,7 @@ namespace App\Support\Caster;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceUsage;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -13,35 +14,112 @@ use Throwable;
  * Deterministic scene scripts, so airtime never depends on the model (P6
  * yield round, 2026-10-11: 0 of 5 real Haiku scripts passed the checks
  * against a prod snapshot). A script is assembled from
- * resources/data/voice/caster.json (`pattern_scripts`, the cast research's
- * patterns and invitations it allows): an opening, one to three fact lines,
- * one invitation, every second script a canon line (a curated few per
- * phase). `{slots}` are filled only from the topic's facts
- * (SceneFacts::forTopic()), all fact lines of a script from the same item
- * (one game, one result, one ladder); a line with a slot the facts cannot
- * fill is not used, so nothing is said the facts do not carry.
+ * resources/data/voice/caster.json (`pattern_scripts`).
  *
- * No line comes back within the last `recent` pattern scripts, nor within
- * the last `recent` about the same topic; at most one OmniVoice marker
- * stays. The script passes ScriptGuard and the caster's
- * fact guard (VoiceGuard, the same as for the league voice). A line that
- * fails on its own is dropped from the pool and logged once a day: a line
- * without slots (an invitation, a canon line) for the day, a line with slots
- * for this fill only (the facts may be what failed). Counted in VoiceUsage
- * under `caster_pattern`, without tokens: a pattern script costs nothing.
+ * Data diet (the user, 2026-10-11: "Er liest zu viele Daten vor, die sich
+ * auch wiederholen. Das wird langweilig. Mehr Sprüche, mehr Werbung, mehr
+ * Stolz, mehr Engagement Farming!"): a script carries at most one fact line,
+ * two in a result or champion moment. A fact's atoms (its `slot=value`
+ * pairs) are not said again within `fact_memory_minutes` by any script
+ * (RecentlySaid), so the same slide data does not come back every few
+ * minutes; a topic whose facts were all said lately gets a flavour-only
+ * script. The rest of the script is flavour, in one of a few rotating
+ * orders: a joke from the verified meme canon (followed by [laughter]), an
+ * invitation, league pride, a chat call, an emotion line, an opening. No
+ * flavour line comes back within the last `flavour_recent` pattern scripts;
+ * at most two OmniVoice markers stay.
+ *
+ * Names are the exception ("er muss echt nicht immer die Namen vorlesen"): a
+ * fact line with a person slot is used only in a result or champion moment,
+ * with one person, and not for a person named within `name_memory_minutes`;
+ * every other fact line says its fact without a name ("die Nummer eins der
+ * Ladder", "{?leader}" requires the fact without saying it).
+ *
+ * `{slots}` are filled only from the topic's facts (SceneFacts::forTopic());
+ * a line with a slot the facts cannot fill is not used, so nothing is said
+ * the facts do not carry. A line whose sentence carries more than one comma
+ * is not used either (spoken comma chains sound choppy, user 2026-10-11).
+ * The script passes ScriptGuard (with its name limit) and the caster's fact
+ * guard (VoiceGuard). A line that fails on its own is dropped from the pool
+ * and logged once a day: a line without slots (an invitation, a canon line)
+ * for the day, a line with slots for this fill only (the facts may be what
+ * failed). Counted in VoiceUsage under `caster_pattern`, without tokens.
  */
 final class PatternScripts
 {
     public const CHANNEL = 'caster_pattern';
 
+    /** The roles of a script's parts. */
+    public const FACT = 'fact';
+
+    public const JOKE = 'joke';
+
+    public const INVITE = 'invite';
+
+    public const PRIDE = 'pride';
+
+    public const ENGAGE = 'engage';
+
+    public const EMOTION = 'emotion';
+
+    public const OPENING = 'opening';
+
+    /** Slots whose value is a person: such a line is a name line. */
+    public const PERSON_SLOTS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw_a', 'draw_b', 'leader', 'second', 'first_entrant', 'champion', 'bf_leader', 'bf_second', 'leader_under'];
+
+    /** Slots that only say which item a line is about; a fact's atoms leave them out when it has others. */
+    private const CONTEXT_SLOTS = ['sender', 'website_spoken', 'game', 'mode', 'ladder', 'tournament', 'track', 'clan_name'];
+
+    /** Slots of the league as a whole (SceneFacts::basics()): their facts belong to no item. */
+    private const GLOBAL_SLOTS = ['sender', 'website_spoken', 'players', 'clans', 'live_now', 'games_today', 'games_played', 'games'];
+
+    /** Slots that carry the same value under two names. */
+    private const SLOT_ALIASES = ['a' => 'white', 'b' => 'black', 'games' => 'games_played'];
+
+    /**
+     * The orders a script's parts come in, taking turns; a role without a fresh line is left out.
+     *
+     * @var list<list<string>>
+     */
+    private const RECIPES = [
+        [self::OPENING, self::FACT, self::JOKE, self::INVITE, self::JOKE],
+        [self::JOKE, self::FACT, self::PRIDE, self::JOKE],
+        [self::FACT, self::JOKE, self::ENGAGE, self::JOKE],
+        [self::EMOTION, self::FACT, self::JOKE, self::INVITE],
+        [self::JOKE, self::FACT, self::JOKE, self::ENGAGE],
+        [self::FACT, self::JOKE, self::PRIDE, self::EMOTION, self::JOKE],
+    ];
+
+    /** A result or champion moment: two facts, then the flavour. */
+    private const MOMENT_RECIPE = [self::FACT, self::FACT, self::JOKE, self::EMOTION, self::JOKE];
+
+    /** Roles that top a script up to its minimum length. */
+    private const TOP_UP = [self::JOKE, self::ENGAGE, self::PRIDE, self::INVITE, self::EMOTION];
+
+    /** Canon lines per script at most (the user, 2026-10-11: more of the podcast's memes and sayings, not stats). */
+    private const MAX_CANON = 2;
+
+    /** A canon wording is spoken as a line of its own only up to this many words. */
+    private const CANON_MAX_WORDS = 14;
+
+    /** Canon wordings that would say something untrue or unwanted on this stream (donations, money advice, politics). */
+    private const CANON_DENY = '/spend|gebühr|startgeld|\bfee|kauf|steuer|raub|polit|regierung|krieg|nazi|hitler|tod\b|sterb|drogen|sex|religi|kirche|wahl|geld ist|der woche|podcast|folge/iu';
+
+    /** Spoken entity slots (tournament, track, clan, ladder): each said once per script, not again within `entity_memory_minutes`. */
+    private const ENTITY_SLOTS = ['tournament', 'last_spot', 'track', 'clan_name', 'ladder'];
+
     /** Assemblies tried per script before giving up (a line dropped, an opening that repeats). */
     private const TRIES = 4;
+
+    private const SLOT_PATTERN = '/\{(\??)([a-z0-9_]+)\}/';
 
     private const RECENT_KEY = 'caster:recent:patterns';
 
     private const DROPPED_KEY = 'caster:patterns:dropped';
 
     private const SEQUENCE_KEY = 'caster:patterns:sequence';
+
+    private const CANON_RECENT_KEY = 'caster:patterns:canon-recent';
 
     private const DAY_SECONDS = 86_400;
 
@@ -50,6 +128,12 @@ final class PatternScripts
 
     /** @var array<string, mixed>|null */
     private ?array $data = null;
+
+    /** @var array<string, string> flavour line id => the canon entry its wording quotes ("Grüße gehen raus …") */
+    private array $lineCanon = [];
+
+    /** @var list<string>|null the canon entries a pattern script may speak (canonPool()) */
+    private ?array $canonPool = null;
 
     public function __construct(
         private readonly VoiceCanon $canon,
@@ -64,13 +148,15 @@ final class PatternScripts
      * the pool has nothing fresh that passes.
      *
      * @param  array<array-key, mixed>  $facts  SceneFacts::forTopic()
-     * @return array{text: string, lines: list<string>, canon_id: string|null}|null
+     * @return array{text: string, lines: list<string>, canon_id: string|null, canon_ids: list<string>, roles: array<string, string>, parts: array<string, string>, part_canons: array<string, string>}|null
      */
-    public function write(string $topic, string $phase, array $facts): ?array
+    public function write(string $topic, string $phase, array $facts, ?CarbonImmutable $now = null): ?array
     {
+        $now ??= CarbonImmutable::now();
+
         try {
             for ($try = 0; $try < self::TRIES; $try++) {
-                $script = $this->assemble($topic, $phase, $facts, $try);
+                $script = $this->assemble($topic, $phase, $facts, $try, $now);
 
                 if ($script === null) {
                     return null;
@@ -79,11 +165,12 @@ final class PatternScripts
                 $violations = $this->violations($script, $facts, $this->recentOpenings());
 
                 if ($violations === []) {
-                    $this->remember($topic, $script);
+                    $this->remember($topic, $script, $now);
                     $this->usage->recordAttempt(self::CHANNEL);
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
-                    return ['text' => $script['text'], 'lines' => array_keys($script['parts']), 'canon_id' => $script['canon_id']];
+                    return ['text' => $script['text'], 'lines' => array_keys($script['parts']), 'canon_id' => $script['canon_id'], 'canon_ids' => $script['canon_ids'], 'roles' => $script['roles'], 'parts' => $script['parts'],
+                        'part_canons' => array_filter(array_map($this->partCanon(...), array_combine(array_keys($script['parts']), array_keys($script['parts']))))];
                 }
 
                 $this->dropCulprits($script, $facts, $violations);
@@ -205,55 +292,97 @@ final class PatternScripts
 
     /**
      * A template with its slots filled, or null when a slot has no value.
+     * `{?slot}` requires the value but says nothing ("Auf der Strecke ist
+     * schon jemand schneller als die Autorenzeit.{?leader_under}").
      *
      * @param  array<string, string>  $values
      */
     public static function fill(string $template, array $values): ?string
     {
         $missing = false;
-        $text = (string) preg_replace_callback('/\{([a-z0-9_]+)\}/', function (array $match) use ($values, &$missing): string {
-            if (! isset($values[$match[1]])) {
+        $text = (string) preg_replace_callback(self::SLOT_PATTERN, function (array $match) use ($values, &$missing): string {
+            if (! isset($values[$match[2]])) {
                 $missing = true;
 
                 return '';
             }
 
-            return $values[$match[1]];
+            return $match[1] === '?' ? '' : $values[$match[2]];
         }, $template);
 
-        return $missing ? null : $text;
+        return $missing ? null : trim($text);
     }
 
     /**
-     * The lines of the pool, by role: `opening`, `fact`, `invite` (id => template, topic and phase checked).
+     * The facts a filled template says, as atoms (`item|slot=value`, the
+     * context slots left out when there are others), and the persons it
+     * names aloud.
      *
-     * @return array{opening: array<string, string>, fact: array<string, string>, invite: array<string, string>}
+     * @param  array<string, string>  $values
+     * @return array{atoms: list<string>, persons: list<string>, entities: list<string>}
+     */
+    public static function atoms(string $template, array $values): array
+    {
+        preg_match_all(self::SLOT_PATTERN, $template, $slots, PREG_SET_ORDER);
+        $item = $values['tournament'] ?? $values['ladder'] ?? $values['track'] ?? $values['clan_name'] ?? '';
+        $all = [];
+        $facts = [];
+        $persons = [];
+        $entities = [];
+
+        foreach ($slots as [, $silent, $slot]) {
+            if (! isset($values[$slot])) {
+                continue;
+            }
+
+            $atom = RecentlySaid::normalize((in_array($slot, self::GLOBAL_SLOTS, true) ? '' : $item).'|'.(self::SLOT_ALIASES[$slot] ?? $slot).'='.$values[$slot]);
+            $all[$atom] = true;
+
+            if (! in_array($slot, self::CONTEXT_SLOTS, true)) {
+                $facts[$atom] = true;
+            }
+
+            if ($silent === '' && in_array($slot, self::PERSON_SLOTS, true)) {
+                $persons[RecentlySaid::normalize($values[$slot])] = $values[$slot];
+            }
+
+            if ($silent === '' && in_array($slot, self::ENTITY_SLOTS, true)) {
+                $entities[RecentlySaid::normalize($values[$slot])] = $values[$slot];
+            }
+        }
+
+        return ['atoms' => array_keys($facts !== [] ? $facts : $all), 'persons' => array_values($persons), 'entities' => array_values($entities)];
+    }
+
+    /**
+     * The lines of the pool by role (id => template, topic and phase checked):
+     * `opening`, `fact`, `invite`, `pride`, `engage`, `emotion`.
+     *
+     * @return array<string, array<string, string>>
      */
     public function pool(string $topic, string $phase): array
     {
         $data = $this->data();
         $section = (array) ($data['pattern_scripts'] ?? []);
-        $openings = [];
-        $facts = [];
-        $invites = [];
+        $pool = [self::OPENING => [], self::FACT => [], self::INVITE => [], self::PRIDE => [], self::ENGAGE => [], self::EMOTION => []];
         $fits = fn (array $topics): bool => in_array('*', $topics, true) || in_array($topic, $topics, true);
 
         foreach ((array) ($section['openings'] ?? []) as $row) {
             if (in_array($phase, (array) $row['phases'], true) && $fits((array) $row['topics'])) {
-                $openings[(string) $row['id']] = (string) $row['text'];
+                $pool[self::OPENING][(string) $row['id']] = (string) $row['text'];
             }
         }
 
         foreach ((array) ($section['facts'] ?? []) as $row) {
             if ($fits((array) $row['topics'])) {
-                $facts[(string) $row['id']] = (string) $row['text'];
+                $pool[self::FACT][(string) $row['id']] = (string) $row['text'];
             }
         }
 
         $patterns = array_column((array) $data['patterns'], 'template', 'id');
         foreach ((array) ($section['use_patterns'] ?? []) as $row) {
             if ($fits((array) $row['topics']) && isset($patterns[$row['id']])) {
-                $facts[(string) $row['id']] = (string) $patterns[$row['id']];
+                $pool[self::FACT][(string) $row['id']] = (string) $patterns[$row['id']];
             }
         }
 
@@ -267,124 +396,299 @@ final class PatternScripts
             }
 
             if ($role === 'fact' && $fits((array) ($row['topics'] ?? []))) {
-                $facts[(string) $row['id']] = $text;
-            } elseif ($role === 'opening' && in_array($phase, (array) ($row['phases'] ?? []), true)) {
-                $openings[(string) $row['id']] = $text;
-            } elseif ($role === 'invite' && in_array($phase, (array) ($row['phases'] ?? []), true)) {
-                $invites[(string) $row['id']] = $text;
+                $pool[self::FACT][(string) $row['id']] = $text;
+            } elseif (in_array($role, [self::OPENING, self::INVITE], true) && in_array($phase, (array) ($row['phases'] ?? []), true)) {
+                $pool[$role][(string) $row['id']] = $text;
             }
         }
 
         $when = (array) ($section['invite_when'][$phase] ?? []);
         foreach ((array) $data['promo'] as $row) {
             if (array_intersect($when, (array) $row['when']) !== []) {
-                $invites[(string) $row['id']] = (string) $row['text'];
+                $pool[self::INVITE][(string) $row['id']] = (string) $row['text'];
+            }
+        }
+
+        foreach ([self::INVITE, self::PRIDE, self::ENGAGE, self::EMOTION] as $role) {
+            foreach ((array) ($section['flavour'][$role] ?? []) as $row) {
+                if (in_array($phase, (array) ($row['phases'] ?? []), true)) {
+                    $pool[$role][(string) $row['id']] = (string) $row['text'];
+
+                    if (is_string($row['canon'] ?? null)) {
+                        $this->lineCanon[(string) $row['id']] = $row['canon'];
+                    }
+                }
             }
         }
 
         $out = [...$this->dropped(), ...$this->droppedNow];
 
-        return ['opening' => array_diff_key($openings, $out), 'fact' => array_diff_key($facts, $out), 'invite' => array_diff_key($invites, $out)];
+        return array_map(fn (array $lines): array => array_diff_key($lines, $out), $pool);
     }
 
     /**
-     * One script: the opening, the fact lines and the invitation in turn, none
-     * of the last `recent` scripts' lines.
+     * One script: at most one fact line (two in a moment), the flavour around
+     * it in the turn's order, no flavour line of the last scripts.
      *
      * @param  array<array-key, mixed>  $facts
-     * @return array{text: string, parts: array<string, string>, canon_id: string|null}|null
+     * @return array{text: string, parts: array<string, string>, roles: array<string, string>, canon_id: string|null, canon_ids: list<string>, atoms: list<string>, persons: list<string>, entities: list<string>, names_allowed: int}|null
      */
-    private function assemble(string $topic, string $phase, array $facts, int $try): ?array
+    private function assemble(string $topic, string $phase, array $facts, int $try, CarbonImmutable $now): ?array
     {
         $settings = (array) config('tv.commentary.patterns', []);
         $max = (int) ($settings['sentences']['max'] ?? 6);
         $min = (int) ($settings['sentences']['min'] ?? 3);
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
         $sequence = (int) Cache::get(self::SEQUENCE_KEY, 0) + $try;
-        $used = array_flip(array_merge(...$this->recent($topic)) ?: []);
+        $used = $this->recentFlavour();
+        $spoken = $this->recentSentences();
         $pool = $this->pool($topic, $phase);
         $slots = self::slots($facts);
 
-        $openings = $this->filled($this->rotate(array_diff_key($pool['opening'], $used), $sequence), [$slots['global']]);
-        $invites = $this->filled($this->rotate(array_diff_key($pool['invite'], $used), $sequence), [$slots['global']]);
-        // One item per script (one game, one result, one ladder): a line like "Dahinter …" or "die Partie" then
-        // always means the item the line before named. The items take turns; the first with a fresh line is taken.
-        $factLines = [];
-        foreach ($this->rotate($slots['items'], $sequence) as $item) {
-            $factLines = $this->filled($this->rotate(array_diff_key($pool['fact'], $used), $sequence), [$item], $slots['global']);
-
-            if ($factLines !== []) {
-                break;
-            }
-        }
-
-        if ($factLines === []) {
-            return null;
-        }
+        $factLines = $this->factLines($pool[self::FACT], $slots, $phase, $sequence, $now);
+        $moment = $factLines !== [] && ($phase === ScenePhase::AFTER_RESULT || $factLines[0]['champion']);
+        $recipe = $moment ? self::MOMENT_RECIPE : self::RECIPES[$sequence % count(self::RECIPES)];
 
         $parts = [];
+        $roles = [];
         $count = 0;
-        $add = function (string $id, string $line) use (&$parts, &$count, $maxWords): void {
+        $markers = 0;
+        $canonIds = [];
+        $laughed = false;
+        $canonOffered = false;
+        $fits = function (string $line) use (&$count, &$markers, $max, $maxWords): bool {
+            $split = ScriptGuard::splitSentences($line, $maxWords);
+
+            return $count + count(ScriptGuard::lines($split)) <= $max && $markers + self::markerCount($line) <= ScriptGuard::MAX_MARKERS && ! self::commaChain($split);
+        };
+        $add = function (string $id, string $line, string $role) use (&$parts, &$roles, &$count, &$markers, $maxWords): void {
             $parts[$id] = ScriptGuard::splitSentences($line, $maxWords);
+            $roles[$id] = $role;
             $count += count(ScriptGuard::lines($parts[$id]));
+            $markers += self::markerCount($line);
         };
 
-        $opening = array_key_first($openings);
-        if ($opening !== null) {
-            $add($opening, $openings[$opening][0]);
-        }
+        $factCount = 0;
+        foreach ([...$recipe, ...self::TOP_UP] as $index => $role) {
+            $topUp = $index >= count($recipe);
 
-        // Up to three fact lines, one sentence kept for the invitation. Each line has to say a fact the lines before did
-        // not ("Live auf dem Brett: Wels gegen X." then "Wels spielt Weiß gegen X." says nothing new): the one with the
-        // most new slot values goes next, a line with none is left out.
-        $said = [];
-        for ($factCount = 0; $factCount < 3; $factCount++) {
-            $next = null;
+            if ($topUp && $count >= $min) {
+                break;
+            }
 
-            foreach ($factLines as $id => [$line, , $values]) {
-                $new = count(array_diff($values, $said));
+            if ($role === self::FACT) {
+                $line = $factLines[$factCount] ?? null;
 
-                if (! isset($parts[$id]) && $new > 0 && $count + count(ScriptGuard::lines(ScriptGuard::splitSentences($line, $maxWords))) <= $max - 1 && ($next === null || $new > $next[1])) {
-                    $next = [$id, $new];
+                if ($line !== null && $fits($line['line'])) {
+                    $add($line['id'], $line['line'], self::FACT);
+                    $factCount++;
+                }
+
+                continue;
+            }
+
+            if ($role === self::JOKE) {
+                if (count($canonIds) >= self::MAX_CANON) {
+                    continue;
+                }
+
+                $joke = $this->jokeLine($used, $sequence + count($canonIds) * 101, $canonIds);
+                $canonOffered = $canonOffered || $joke !== null;
+
+                if ($joke !== null && $fits($joke['wording'])) {
+                    $canonIds[] = $joke['id'];
+                    // Laughter after the first joke; the second leaves the marker budget to an emotion line.
+                    $wording = ! $laughed && $fits($joke['wording'].' [laughter]') ? $joke['wording'].' [laughter]' : $joke['wording'];
+                    $laughed = $laughed || $wording !== $joke['wording'];
+                    $add('canon:'.$joke['id'], $wording, self::JOKE);
+                }
+
+                continue;
+            }
+
+            foreach ($this->rotate(array_diff_key($pool[$role], $used, $parts), $sequence * 7 + $index) as $id => $template) {
+                $line = self::fill($template, $slots['global']);
+
+                // No sentence a recent script spoke ("Mehr braucht's nicht." closes two different lines), nor one the league voice just said.
+                if ($line !== null && array_intersect_key(array_flip(self::sentenceKeys($line)), $spoken) !== []) {
+                    continue;
+                }
+
+                // A line that quotes a canon catchphrase counts as one of the script's canon lines.
+                $quotes = $this->lineCanon[$id] ?? null;
+
+                if ($line !== null && $fits($line) && ($quotes === null || (count($canonIds) < self::MAX_CANON && ! in_array($quotes, $canonIds, true) && $this->canon->find($quotes) !== null))) {
+                    $add($id, $line, $role);
+                    if ($quotes !== null) {
+                        $canonIds[] = $quotes;
+                    }
+                    break;
                 }
             }
-
-            if ($next === null) {
-                break;
-            }
-
-            $add($next[0], $factLines[$next[0]][0]);
-            $said = [...$said, ...$factLines[$next[0]][2]];
         }
 
-        foreach ($invites as $id => [$line]) {
-            if ($count + count(ScriptGuard::lines(ScriptGuard::splitSentences($line, $maxWords))) <= $max) {
-                $add($id, $line);
-                break;
-            }
-        }
-
-        $canonId = null;
-        if ($sequence % 2 === 1 && $count < $max) {
-            $canon = $this->canonLine($phase, $used, $sequence);
-
-            if ($canon !== null) {
-                $canonId = $canon['id'];
-                $add('canon:'.$canon['id'], $canon['wording']);
-            }
-        }
-
-        if ($count < $min) {
+        // Every script carries a canon line while the pool has a fresh one.
+        if ($count < $min || ($canonIds === [] && $canonOffered)) {
             return null;
         }
 
-        return ['text' => self::oneMarker(implode("\n", $parts)), 'parts' => $parts, 'canon_id' => $canonId];
+        $said = array_slice($factLines, 0, $factCount);
+
+        return [
+            'text' => implode("\n", $parts),
+            'parts' => $parts,
+            'roles' => $roles,
+            'canon_id' => $canonIds[0] ?? null,
+            'canon_ids' => $canonIds,
+            'atoms' => array_values(array_unique(array_merge(...array_map(fn (array $line): array => $line['atoms'], $said)))),
+            'persons' => array_values(array_unique(array_merge(...array_map(fn (array $line): array => $line['persons'], $said)))),
+            'entities' => array_values(array_unique(array_merge(...array_map(fn (array $line): array => $line['entities'], $said)))),
+            'names_allowed' => $moment ? 1 : 0,
+        ];
     }
 
     /**
-     * The script's violations: ScriptGuard (sentences, words, commas, markers, opening) and the fact guard.
+     * The fact lines a script may say, best first: the lines of the first
+     * item (in turn) with a fresh one, none with an atom said lately. A
+     * champion line leads; otherwise a line without a name comes first, and
+     * the second line (a moment only) says only new atoms and may name the
+     * one person (never one named lately). Lines with two persons, and lines
+     * with a person outside a result or champion moment, are not used.
      *
-     * @param  array{text: string, parts: array<string, string>, canon_id: string|null}  $script
+     * @param  array<string, string>  $templates
+     * @param  array{global: array<string, string>, items: list<array<string, string>>}  $slots
+     * @return list<array{id: string, line: string, atoms: list<string>, persons: list<string>, entities: list<string>, champion: bool}>
+     */
+    private function factLines(array $templates, array $slots, string $phase, int $sequence, CarbonImmutable $now): array
+    {
+        $saidFacts = RecentlySaid::active(RecentlySaid::FACTS, $now);
+        $saidNames = RecentlySaid::active(RecentlySaid::NAMES, $now);
+        $saidEntities = RecentlySaid::active(RecentlySaid::ENTITIES, $now);
+        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
+
+        foreach ($this->rotate($slots['items'], $sequence) as $item) {
+            $lines = [];
+
+            foreach ($this->rotate($templates, $sequence) as $id => $template) {
+                $values = [...$slots['global'], ...$item];
+                $line = self::fill($template, $values);
+
+                if ($line === null || self::commaChain(ScriptGuard::splitSentences($line, $maxWords))) {
+                    continue;
+                }
+
+                ['atoms' => $atoms, 'persons' => $persons, 'entities' => $entities] = self::atoms($template, $values);
+                $champion = str_contains($template, '{champion}');
+
+                if ($atoms === [] || array_intersect_key(array_flip($atoms), $saidFacts) !== []) {
+                    continue;
+                }
+
+                // A tournament, track, clan or ladder named lately is not named again (user 2026-10-11: "Turniernamen … 3 bis 4 Mal").
+                if (array_intersect_key(array_flip(array_map(RecentlySaid::normalize(...), $entities)), $saidEntities) !== []) {
+                    continue;
+                }
+
+                if ($persons !== [] && (count($persons) > 1 || ! ($champion || $phase === ScenePhase::AFTER_RESULT) || isset($saidNames[RecentlySaid::normalize($persons[0])]))) {
+                    continue;
+                }
+
+                $lines[] = ['id' => (string) $id, 'line' => $line, 'atoms' => $atoms, 'persons' => $persons, 'entities' => $entities, 'champion' => $champion];
+            }
+
+            if ($lines === []) {
+                continue;
+            }
+
+            usort($lines, fn (array $x, array $y): int => [! $x['champion'], $x['persons'] !== []] <=> [! $y['champion'], $y['persons'] !== []]);
+            $first = $lines[0];
+
+            // The second line of a moment: only new atoms; the name line (the moment itself) before a name-free one.
+            $second = null;
+            foreach ($lines as $line) {
+                if ($line['id'] !== $first['id'] && array_intersect($line['atoms'], $first['atoms']) === [] && ($first['persons'] === [] || $line['persons'] === []) && array_intersect($line['entities'], $first['entities']) === []
+                    && ($second === null || ($second['persons'] === [] && $line['persons'] !== []))) {
+                    $second = $line;
+                }
+            }
+
+            return $second === null ? [$first] : [$first, $second];
+        }
+
+        return [];
+    }
+
+    /**
+     * A canon line from canonPool(), none of the last `canon_recent` canon
+     * lines of the pattern scripts, nor of the script so far: its wording
+     * word for word, with a capital and a full stop.
+     *
+     * @param  array<string, mixed>  $used
+     * @param  list<string>  $taken
+     * @return array{id: string, wording: string}|null
+     */
+    private function jokeLine(array $used, int $sequence, array $taken): ?array
+    {
+        $recent = array_flip($this->recentCanon());
+        $dropped = $this->dropped();
+        $ids = array_values(array_filter(
+            $this->canonPool(),
+            fn (string $id): bool => ! isset($recent[$id]) && ! isset($used['canon:'.$id]) && ! isset($this->droppedNow['canon:'.$id]) && ! isset($dropped['canon:'.$id]) && ! in_array($id, $taken, true),
+        ));
+
+        if ($ids === []) {
+            return null;
+        }
+
+        // A stride through the pool, so consecutive scripts quote far-apart entries.
+        $id = $ids[($sequence * 37) % count($ids)];
+        $wording = mb_ucfirst(trim((string) $this->canon->find($id)['wording']));
+
+        return ['id' => $id, 'wording' => preg_match('/[.!?…]$/u', $wording) === 1 ? $wording : $wording.'.'];
+    }
+
+    /**
+     * The canon entries a pattern script may speak: the curated jokes
+     * (`flavour.jokes`) and every verified entry of the full canon whose
+     * wording stands as a spoken line (at most CANON_MAX_WORDS words and one
+     * comma, no bracket, colon, quote, emoji, digit or hash, no real person's
+     * name, nothing of CANON_DENY). The fact guard still checks each line;
+     * one that fails is dropped for the day.
+     *
+     * @return list<string>
+     */
+    public function canonPool(): array
+    {
+        if ($this->canonPool !== null) {
+            return $this->canonPool;
+        }
+
+        $persons = array_map('mb_strtolower', array_map('strval', (array) config('esports.voice.persons', [])));
+        $ids = array_values(array_filter((array) ($this->data()['pattern_scripts']['flavour']['jokes'] ?? []), fn (mixed $id): bool => is_string($id) && $this->canon->find($id) !== null));
+
+        foreach ($this->canon->entries() as $id => $entry) {
+            $wording = $entry['wording'];
+            $lower = mb_strtolower($wording);
+            $words = count(preg_split('/\s+/u', trim($wording), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+
+            if ($words < 2 || $words > self::CANON_MAX_WORDS || substr_count($wording, ',') > 1 || preg_match('/[#@()\[\]*:;„“”"»«…\/\d]|\p{So}|\p{Cs}/u', $wording) === 1
+                || preg_match(self::CANON_DENY, $wording) === 1 || preg_match('/(?<![\p{L}])\p{L}{1,3}\.\s/u', $wording) === 1 || in_array($entry['type'], ['segment', 'clip'], true)
+                || array_filter($persons, fn (string $person): bool => str_contains($lower, $person)) !== []) {
+                continue;
+            }
+
+            $ids[] = $id;
+        }
+
+        return $this->canonPool = array_values(array_unique($ids));
+    }
+
+    /**
+     * The script's violations: ScriptGuard (sentences, words, commas, markers,
+     * opening), its name limits, and the fact guard (part by part, each canon
+     * line under its own entry, so a script may quote two).
+     *
+     * @param  array{text: string, parts: array<string, string>, roles: array<string, string>, canon_id: string|null, canon_ids: list<string>, atoms: list<string>, persons: list<string>, entities: list<string>, names_allowed: int}  $script
      * @param  array<array-key, mixed>  $facts
      * @param  list<string>  $openings
      * @return list<string>
@@ -392,18 +696,34 @@ final class PatternScripts
     private function violations(array $script, array $facts, array $openings): array
     {
         $settings = (array) config('tv.commentary.patterns', []);
-        $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $script['text']));
+        $min = (int) ($settings['sentences']['min'] ?? 3);
+        $maxChars = (int) config('tv.commentary.scripts.max_chars', 900);
+        $names = ScriptGuard::limitNames($script['text'], ScriptGuard::personNames($facts), $script['names_allowed'], [], $min) === $script['text'] ? [] : [ScriptGuard::NAME_COUNT];
+        $repeats = ScriptGuard::dedupeEntities($script['text'], ScriptGuard::entityNames($facts), [], $min) === $script['text'] ? [] : [ScriptGuard::NAME_REPEAT];
+        $guard = mb_strlen(ScriptGuard::withoutMarkers(str_replace("\n", ' ', $script['text']))) > $maxChars ? [VoiceGuard::TOO_LONG] : [];
+
+        foreach ($script['parts'] as $id => $part) {
+            array_push($guard, ...$this->voice->guard()->check(ScriptGuard::withoutMarkers(str_replace("\n", ' ', $part)), $facts, $maxChars, $this->partCanon($id)));
+        }
 
         return array_values(array_unique([
-            ...$this->scriptGuard->check($script['text'], (int) ($settings['sentences']['min'] ?? 3), (int) ($settings['sentences']['max'] ?? 6), (int) config('tv.commentary.scripts.max_words_per_sentence', 16), $openings),
-            ...$this->voice->guard()->check($spoken, $facts, (int) config('tv.commentary.scripts.max_chars', 900), $script['canon_id']),
+            ...$this->scriptGuard->check($script['text'], $min, (int) ($settings['sentences']['max'] ?? 6), (int) config('tv.commentary.scripts.max_words_per_sentence', 16), $openings),
+            ...$names,
+            ...$repeats,
+            ...$guard,
         ]));
+    }
+
+    /** The canon entry a part quotes: a joke ("canon:<id>") or a flavour line that carries one. */
+    private function partCanon(string $id): ?string
+    {
+        return str_starts_with($id, 'canon:') ? substr($id, 6) : ($this->lineCanon[$id] ?? null);
     }
 
     /**
      * The lines that fail on their own leave the pool (a slot-free line for the day, a slot line for this fill), each logged once a day.
      *
-     * @param  array{text: string, parts: array<string, string>, canon_id: string|null}  $script
+     * @param  array{text: string, parts: array<string, string>, roles: array<string, string>, canon_id: string|null, canon_ids: list<string>, atoms: list<string>, persons: list<string>, entities: list<string>, names_allowed: int}  $script
      * @param  array<array-key, mixed>  $facts
      * @param  list<string>  $violations
      */
@@ -413,7 +733,7 @@ final class PatternScripts
         $templates = $this->allTemplates();
 
         foreach ($script['parts'] as $id => $line) {
-            $canonId = str_starts_with($id, 'canon:') ? substr($id, 6) : null;
+            $canonId = $this->partCanon($id);
             $own = array_values(array_unique([
                 ...array_diff($this->scriptGuard->check($line, 1, 8, $maxWords), [ScriptGuard::SENTENCE_COUNT]),
                 ...$this->voice->guard()->check(ScriptGuard::withoutMarkers(str_replace("\n", ' ', $line)), $facts, 900, $canonId),
@@ -423,7 +743,7 @@ final class PatternScripts
                 continue;
             }
 
-            $static = $canonId !== null || ! str_contains((string) ($templates[$id] ?? ''), '{');
+            $static = str_starts_with($id, 'canon:') || ! str_contains((string) ($templates[$id] ?? ''), '{');
 
             if ($static) {
                 Cache::put(self::DROPPED_KEY, [...array_keys($this->dropped()), $id], self::DAY_SECONDS);
@@ -451,6 +771,7 @@ final class PatternScripts
     {
         $data = $this->data();
         $section = (array) ($data['pattern_scripts'] ?? []);
+        $flavour = (array) ($section['flavour'] ?? []);
 
         return [
             ...array_column((array) ($section['openings'] ?? []), 'text', 'id'),
@@ -458,60 +779,8 @@ final class PatternScripts
             ...array_column((array) $data['patterns'], 'template', 'id'),
             ...array_column((array) $data['topics'], 'example_de', 'id'),
             ...array_column((array) $data['promo'], 'text', 'id'),
+            ...array_column([...(array) ($flavour[self::INVITE] ?? []), ...(array) ($flavour[self::PRIDE] ?? []), ...(array) ($flavour[self::ENGAGE] ?? []), ...(array) ($flavour[self::EMOTION] ?? [])], 'text', 'id'),
         ];
-    }
-
-    /**
-     * A canon line for the phase from the curated list (`pattern_scripts.canon`:
-     * entries whose usage fits any moment of that phase), not among the recent
-     * scripts' lines; its wording word for word, with a capital and a full stop.
-     *
-     * @param  array<string, int>  $used
-     * @return array{id: string, wording: string}|null
-     */
-    private function canonLine(string $phase, array $used, int $sequence): ?array
-    {
-        $ids = array_values(array_filter(
-            (array) ($this->data()['pattern_scripts']['canon'][$phase] ?? []),
-            fn (mixed $id): bool => is_string($id) && ! isset($used['canon:'.$id]) && $this->canon->find($id) !== null,
-        ));
-
-        if ($ids === []) {
-            return null;
-        }
-
-        $id = $ids[$sequence % count($ids)];
-        $wording = mb_ucfirst(trim((string) $this->canon->find($id)['wording']));
-
-        return ['id' => $id, 'wording' => preg_match('/[.!?…]$/u', $wording) === 1 ? $wording : $wording.'.'];
-    }
-
-    /**
-     * The templates filled with the first slot set that fills them: id => [line, item index, the slot values it says].
-     *
-     * @param  array<string, string>  $templates
-     * @param  array<int, array<string, string>>  $items
-     * @param  array<string, string>  $global
-     * @return array<string, array{0: string, 1: int, 2: list<string>}>
-     */
-    private function filled(array $templates, array $items, array $global = []): array
-    {
-        $filled = [];
-
-        foreach ($templates as $id => $template) {
-            foreach ($items as $index => $item) {
-                $values = [...$global, ...$item];
-                $line = self::fill($template, $values);
-
-                if ($line !== null) {
-                    preg_match_all('/\{([a-z0-9_]+)\}/', $template, $slots);
-                    $filled[$id] = [$line, $index, array_values(array_unique(array_map(fn (string $slot): string => $values[$slot], $slots[1])))];
-                    break;
-                }
-            }
-        }
-
-        return $filled;
     }
 
     /**
@@ -533,45 +802,118 @@ final class PatternScripts
         return array_slice($list, $offset, null, true) + array_slice($list, 0, $offset, true);
     }
 
-    /** Only the first OmniVoice marker stays. */
-    private static function oneMarker(string $text): string
+    /** Whether a sentence of the text carries more than one comma (a decimal comma not counted): spoken, a comma chain sounds choppy. */
+    public static function commaChain(string $text): bool
     {
-        $seen = false;
-        $pattern = '/\s*\[(?:'.implode('|', array_map(fn (string $marker): string => preg_quote($marker, '/'), ScriptGuard::MARKERS)).')\]/u';
-
-        return (string) preg_replace_callback($pattern, function (array $match) use (&$seen): string {
-            if ($seen) {
-                return '';
+        foreach (ScriptGuard::lines($text) as $line) {
+            if (preg_match_all('/(?<!\d),|,(?!\d)/u', ScriptGuard::withoutMarkers($line)) > 1) {
+                return true;
             }
-            $seen = true;
+        }
 
-            return $match[0];
-        }, $text);
+        return false;
+    }
+
+    private static function markerCount(string $text): int
+    {
+        return (int) preg_match_all(self::markerPattern(), $text);
+    }
+
+    private static function markerPattern(): string
+    {
+        return '/\s*\[(?:'.implode('|', array_map(fn (string $marker): string => preg_quote($marker, '/'), ScriptGuard::MARKERS)).')\]/u';
     }
 
     /**
-     * @param  array{text: string, parts: array<string, string>, canon_id: string|null}  $script
+     * @param  array{text: string, parts: array<string, string>, roles: array<string, string>, canon_id: string|null, canon_ids: list<string>, atoms: list<string>, persons: list<string>, entities: list<string>, names_allowed: int}  $script
      */
-    private function remember(string $topic, array $script): void
+    private function remember(string $topic, array $script, CarbonImmutable $now): void
     {
-        $row = ['topic' => $topic, 'lines' => array_keys($script['parts']), 'opening' => ScriptGuard::opening($script['text'])];
+        $flavour = array_keys(array_filter($script['roles'], fn (string $role): bool => $role !== self::FACT));
+        $sentences = array_merge(...array_map(fn (string $id): array => self::sentenceKeys($script['parts'][$id]), $flavour));
+        $row = ['topic' => $topic, 'lines' => array_keys($script['parts']), 'flavour' => $flavour, 'sentences' => $sentences, 'opening' => ScriptGuard::opening($script['text'])];
 
-        Cache::put(self::RECENT_KEY, array_slice([$row, ...$this->recentRows()], 0, self::recentCount() * count(SceneTopic::ALL)), self::DAY_SECONDS);
+        Cache::put(self::RECENT_KEY, array_slice([$row, ...$this->recentRows()], 0, max(self::flavourRecent(), self::recentCount())), self::DAY_SECONDS);
         Cache::increment(self::SEQUENCE_KEY);
+        RecentlySaid::remember(RecentlySaid::FACTS, $script['atoms'], RecentlySaid::factMinutes(), $now);
+        RecentlySaid::remember(RecentlySaid::NAMES, $script['persons'], RecentlySaid::nameMinutes(), $now);
+        RecentlySaid::remember(RecentlySaid::ENTITIES, $script['entities'], RecentlySaid::entityMinutes(), $now);
+        RecentlySaid::remember(RecentlySaid::FACT_LINES, array_map(fn (string $id): string => str_replace("\n", ' ', $script['parts'][$id]), array_keys(array_filter($script['roles'], fn (string $role): bool => $role === self::FACT))), RecentlySaid::factMinutes(), $now);
+        Cache::put(self::CANON_RECENT_KEY, array_slice([...array_reverse($script['canon_ids']), ...$this->recentCanon()], 0, max(1, (int) config('tv.commentary.patterns.canon_recent', 200))), self::DAY_SECONDS);
     }
 
     /**
-     * The line ids of the last `recent` pattern scripts, and of the last `recent` ones about `$topic`.
+     * The canon entries of the last `canon_recent` canon lines of the pattern scripts.
      *
-     * @return list<list<string>>
+     * @return list<string>
      */
-    private function recent(string $topic): array
+    private function recentCanon(): array
     {
-        $rows = $this->recentRows();
-        $last = array_slice($rows, 0, self::recentCount());
-        $topicLast = array_slice(array_values(array_filter($rows, fn (array $row): bool => ($row['topic'] ?? null) === $topic)), 0, self::recentCount());
+        $stored = Cache::get(self::CANON_RECENT_KEY);
 
-        return array_map(fn (array $row): array => array_values(array_filter((array) ($row['lines'] ?? []), 'is_string')), [...$last, ...$topicLast]);
+        return is_array($stored) ? array_values(array_filter($stored, 'is_string')) : [];
+    }
+
+    /**
+     * The normalised sentences of a line ("[sigh] Herrlich." → "herrlich").
+     *
+     * @return list<string>
+     */
+    private static function sentenceKeys(string $line): array
+    {
+        return array_values(array_filter(array_map(
+            fn (string $sentence): string => trim((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/[^\p{L}\p{N} ]+/u', ' ', mb_strtolower(ScriptGuard::withoutMarkers($sentence))))),
+            ScriptGuard::lines(ScriptGuard::splitSentences($line, (int) config('tv.commentary.scripts.max_words_per_sentence', 16))),
+        )));
+    }
+
+    /**
+     * The flavour sentences of the last `flavour_recent` pattern scripts and
+     * every sentence of the league voice's last scripts (CasterVoice keeps
+     * them under `caster:recent:texts`): it copies pattern lines word for word.
+     *
+     * @return array<string, true>
+     */
+    private function recentSentences(): array
+    {
+        $keys = [];
+
+        foreach (array_slice($this->recentRows(), 0, self::flavourRecent()) as $row) {
+            foreach ((array) ($row['sentences'] ?? []) as $key) {
+                if (is_string($key)) {
+                    $keys[$key] = true;
+                }
+            }
+        }
+
+        $voiced = Cache::get('caster:recent:texts');
+        foreach (is_array($voiced) ? array_filter($voiced, 'is_string') : [] as $text) {
+            foreach (self::sentenceKeys($text) as $key) {
+                $keys[$key] = true;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The flavour line ids of the last `flavour_recent` pattern scripts.
+     *
+     * @return array<string, true>
+     */
+    private function recentFlavour(): array
+    {
+        $ids = [];
+
+        foreach (array_slice($this->recentRows(), 0, self::flavourRecent()) as $row) {
+            foreach ((array) ($row['flavour'] ?? $row['lines'] ?? []) as $id) {
+                if (is_string($id)) {
+                    $ids[$id] = true;
+                }
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -597,6 +939,11 @@ final class PatternScripts
     private static function recentCount(): int
     {
         return max(1, (int) config('tv.commentary.patterns.recent', 4));
+    }
+
+    private static function flavourRecent(): int
+    {
+        return max(1, (int) config('tv.commentary.patterns.flavour_recent', 40));
     }
 
     /**

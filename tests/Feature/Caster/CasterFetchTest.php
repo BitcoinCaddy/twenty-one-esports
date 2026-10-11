@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Process\ExecutableFinder;
 
 /*
 |--------------------------------------------------------------------------
@@ -144,8 +145,9 @@ function casterWavResponse(string $id): mixed
     return Http::response(casterWav(), 200, ['Content-Type' => 'audio/wav', 'x-audio-id' => $id]);
 }
 
-it('voices every sentence, deletes each history entry, and uploads one clip with its sentence ends', function () {
-    casterFakeWorld([casterWavResponse('aaaa1111'), casterWavResponse('bbbb2222'), casterWavResponse('cccc3333')]);
+it('voices the script in chunks, deletes each history entry, and uploads one clip with its chunk ends', function () {
+    config(['tv.commentary.voicestudio.chunk.max_sentences' => 2]);
+    casterFakeWorld([casterWavResponse('aaaa1111'), casterWavResponse('bbbb2222')]);
     Process::fake(['*' => Process::result(output: casterOpus())]);
 
     expect((new CasterFetcher(fn () => null))->runOnce())->toBe(CasterFetcher::VOICED);
@@ -161,12 +163,13 @@ it('voices every sentence, deletes each history entry, and uploads one clip with
 
         return true;
     });
-    expect($texts)->toBe(['Hey!', 'Hier ist Block-li.', 'Läuft.']);
+    // Two sentences per call: one /generate per chunk, not per sentence.
+    expect($texts)->toBe(['Hey! Hier ist Block-li.', 'Läuft.']);
 
-    foreach (['aaaa1111', 'bbbb2222', 'cccc3333'] as $id) {
+    foreach (['aaaa1111', 'bbbb2222'] as $id) {
         Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE' && $request->url() === "http://voicestudio.test/history/{$id}");
     }
-    Http::assertSentCount(3 + 3 + 2);
+    Http::assertSentCount(2 + 2 + 2);
 
     Http::assertSent(function (Request $request): bool {
         if ($request->url() !== 'https://tv.test/api/caster/scripts/7/clip') {
@@ -176,11 +179,10 @@ it('voices every sentence, deletes each history entry, and uploads one clip with
         $ends = array_map('floatval', explode(',', $request->header('X-Caster-Sentence-Ends')[0]));
         $duration = (float) $request->header('X-Caster-Duration')[0];
 
-        // Tails trimmed to the tone (0.5 s) + 70 ms fade; 0.5 s after "Hey!" (an accent), 0.3 s after a plain sentence.
-        // Process::fake() ends its output with a newline.
-        return rtrim($request->body(), "\n") === casterOpus() && count($ends) === 3
-            && abs($ends[0] - 0.57) < 0.02 && abs($ends[1] - (0.57 + 0.5 + 0.57)) < 0.03
-            && abs($duration - $ends[2]) < 0.001 && abs($ends[2] - (0.57 * 3 + 0.5 + 0.3)) < 0.04;
+        // Each chunk's tail trimmed to the tone (0.5 s) + 70 ms fade; one pause between the chunks, 0.2 s after a
+        // plain sentence ("Hier ist Blockli."), none inside a chunk. Process::fake() ends its output with a newline.
+        return rtrim($request->body(), "\n") === casterOpus() && count($ends) === 2
+            && abs($ends[0] - 0.57) < 0.02 && abs($duration - $ends[1]) < 0.001 && abs($ends[1] - (0.57 + 0.2 + 0.57)) < 0.03;
     });
 
     Process::assertRan(fn ($process): bool => in_array('loudnorm=I=-16:TP=-1.5:LRA=11', $process->command, true) && in_array('libopus', $process->command, true) && in_array('pipe:1', $process->command, true));
@@ -233,6 +235,37 @@ it('says the server is unreachable without touching VoiceStudio', function () {
 
     expect((new CasterFetcher(fn () => null))->runOnce())->toBe(CasterFetcher::OFFLINE);
     Http::assertNotSent(fn (Request $request): bool => str_starts_with($request->url(), 'http://voicestudio.test'));
+});
+
+it('chunks a script into one thought per call, a marker always at a chunk edge', function (array $sentences, array $chunks) {
+    expect(CasterFetcher::chunks($sentences, 3, 25))->toBe($chunks);
+})->with([
+    'three short ones in one call' => [['Hey!', 'Hier ist Blockli.', 'Läuft.'], [['Hey!', 'Hier ist Blockli.', 'Läuft.']]],
+    'at most three sentences' => [['Eins.', 'Zwei.', 'Drei.', 'Vier.'], [['Eins.', 'Zwei.', 'Drei.'], ['Vier.']]],
+    'at most 25 words' => [
+        ['Das hier ist ein Satz mit genau zehn gesprochenen Wörtern drin.', 'Und das hier ist noch ein Satz mit zehn Wörtern.', 'Sechs Wörter passen dann nicht mehr.'],
+        [['Das hier ist ein Satz mit genau zehn gesprochenen Wörtern drin.', 'Und das hier ist noch ein Satz mit zehn Wörtern.'], ['Sechs Wörter passen dann nicht mehr.']],
+    ],
+    'a marker-led sentence starts a chunk' => [['Live bei uns.', '[surprise-wa] Na, schau einer an.', 'Weiter geht es.'], [['Live bei uns.'], ['[surprise-wa] Na, schau einer an.', 'Weiter geht es.']]],
+    'a closing marker ends a chunk' => [['Number go up. [laughter]', 'Schreibt in den Chat.', 'Bis gleich.'], [['Number go up. [laughter]'], ['Schreibt in den Chat.', 'Bis gleich.']]],
+]);
+
+it('keeps the first 200 ms of speech through the Opus encode and decode', function () {
+    if (! (new ExecutableFinder)->find('ffmpeg')) {
+        $this->markTestSkipped('ffmpeg is not installed');
+    }
+
+    ['pcm' => $pcm, 'rate' => $rate] = Pcm::fromWav(casterWav(1.0, 0.0));
+    $opus = (new CasterFetcher(fn () => null))->encode($pcm, $rate);
+    $decoded = Process::input((string) $opus)->run(['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-f', 'ogg', '-i', 'pipe:0', '-ac', '1', '-ar', (string) $rate, '-f', 's16le', 'pipe:1'])->output();
+    $rms = function (float $from, float $to) use ($decoded, $rate): float {
+        $samples = array_values(unpack('s*', substr($decoded, (int) ($from * $rate) * 2, (int) (($to - $from) * $rate) * 2)) ?: []);
+
+        return sqrt(array_sum(array_map(fn (int $sample): int => $sample * $sample, $samples)) / max(1, count($samples)));
+    };
+
+    expect($opus)->toStartWith('OggS')
+        ->and($rms(0.0, 0.2))->toBeGreaterThan(0.8 * $rms(0.5, 0.7));
 });
 
 it('trims the quiet tail after the last word with a short fade', function () {

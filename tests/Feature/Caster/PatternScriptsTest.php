@@ -10,6 +10,8 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceUsage;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -66,8 +68,12 @@ it('fills every slot from the scene facts and says no number they do not carry',
 
             expect($script)->not->toBeNull("{$topic}: no script")
                 ->and($script['text'])->not->toContain('{')
-                ->and(count(ScriptGuard::lines($script['text'])))->toBeGreaterThanOrEqual(3)->toBeLessThanOrEqual(6)
-                ->and(app(CasterVoice::class)->guard()->check(ScriptGuard::withoutMarkers(str_replace("\n", ' ', $script['text'])), $facts, 900, $script['canon_id']))->toBe([]);
+                ->and(count(ScriptGuard::lines($script['text'])))->toBeGreaterThanOrEqual(3)->toBeLessThanOrEqual(6);
+
+            // The fact guard part by part, each canon line under its own entry (a script quotes up to two).
+            foreach ($script['parts'] as $id => $part) {
+                expect(app(CasterVoice::class)->guard()->check(ScriptGuard::withoutMarkers(str_replace("\n", ' ', $part)), $facts, 900, $script['part_canons'][$id] ?? null))->toBe([], $part);
+            }
 
             preg_match_all('/\d+/', $script['text'], $spoken);
             expect(array_diff($spoken[0], $factNumbers[0]))->toBe([], "{$topic}: invented number in {$script['text']}");
@@ -87,65 +93,182 @@ it('talks about one item per script, so a line never borrows the name of another
     }
 });
 
-it('lets every fact line of a script say something the lines before did not', function () {
-    foreach ([SceneTopic::LIVE_GAMES, SceneTopic::RESULTS, SceneTopic::LADDERS, SceneTopic::TMNF, SceneTopic::TOURNAMENTS] as $topic) {
-        $facts = patternFactsByTopic()[$topic];
-        $values = array_values(array_unique(array_merge(...PatternScripts::slots($facts)['items'])));
+it('says at most one fact line, two only in a result or champion moment', function () {
+    foreach (patternFactsByTopic() as $topic => $facts) {
+        $phase = SceneTopic::phase($topic, now()->setTimezone('Europe/Berlin')->setTime(15, 0)->toImmutable());
 
-        for ($i = 0; $i < 2; $i++) {
-            $text = patternScripts()->write($topic, SceneTopic::phase($topic, now()->setTimezone('Europe/Berlin')->setTime(15, 0)->toImmutable()), $facts)['text'] ?? '';
-            $said = [];
+        for ($i = 0; $i < 3; $i++) {
+            $script = patternScripts()->write($topic, $phase, $facts);
+            $factParts = array_keys(array_filter($script['roles'] ?? [], fn (string $role): bool => $role === PatternScripts::FACT));
+            $moment = $phase === ScenePhase::AFTER_RESULT || array_filter($factParts, fn (string $id): bool => $id === 'f-lt-4') !== [];
 
-            foreach (ScriptGuard::lines($text) as $sentence) {
-                $here = array_values(array_filter($values, fn (string $value): bool => str_contains($sentence, $value)));
-
-                if ($here !== []) {
-                    expect(array_diff($here, $said))->not->toBe([], "{$topic}: \"{$sentence}\" says nothing new in\n{$text}");
-                    $said = [...$said, ...$here];
-                }
-            }
+            expect(count($factParts))->toBeLessThanOrEqual($moment ? 2 : 1, "{$topic}: {$script['text']}")
+                ->and(count(ScriptGuard::lines($script['text'] ?? '')))->toBeGreaterThanOrEqual(3)->toBeLessThanOrEqual(6);
         }
     }
 });
 
-it('repeats no line within the last scripts, about the topic or in all', function () {
-    config(['tv.commentary.patterns.recent' => 2]);
+it('says no fact again within twenty minutes, in any script, and may after that', function () {
     $facts = patternFactsByTopic()[SceneTopic::LADDERS];
-    $written = [];
+    $atoms = function (array $script): array {
+        $said = [];
+        foreach ($script['parts'] as $id => $text) {
+            if ($script['roles'][$id] === PatternScripts::FACT) {
+                preg_match_all('/\d+/', str_replace('Schach Blitz 5+3', '', $text), $numbers);
+                $said = [...$said, ...$numbers[0]];
+            }
+        }
 
-    for ($i = 0; $i < 4; $i++) {
-        $script = patternScripts()->write(SceneTopic::LADDERS, ScenePhase::BREAK, $facts);
-        $written[] = $script === null ? null : $script['lines'];
+        return $said;
+    };
+
+    $first = patternScripts()->write(SceneTopic::LADDERS, ScenePhase::BREAK, $facts);
+    $said = $atoms($first);
+    expect($said)->not->toBe([]);
+
+    // Every later script within twenty minutes: no number of the first fact again (flavour-only scripts are fine).
+    for ($minute = 1; $minute < 20; $minute += 3) {
+        $script = patternScripts()->write(SceneTopic::LADDERS, ScenePhase::BREAK, $facts, CarbonImmutable::now()->addMinutes($minute));
+        if ($script !== null) {
+            expect(array_intersect($atoms($script), $said))->toBe([], $script['text']);
+        }
     }
 
-    foreach ($written as $index => $lines) {
-        foreach (array_slice($written, max(0, $index - 2), min(2, $index)) as $before) {
-            if ($lines !== null && $before !== null) {
-                expect(array_intersect($lines, $before))->toBe([]);
+    $sayable = [];
+    for ($i = 0; $i < 8; $i++) {
+        $script = patternScripts()->write(SceneTopic::LADDERS, ScenePhase::BREAK, $facts, CarbonImmutable::now()->addMinutes(41 + 21 * $i));
+        $sayable = [...$sayable, ...($script === null ? [] : $atoms($script))];
+    }
+    expect(array_intersect($said, $sayable))->not->toBe([]);
+});
+
+it('repeats no flavour line within the last forty scripts and gives up when the pool is used up', function () {
+    config(['tv.commentary.patterns.flavour_recent' => 400]);
+    $facts = ['sender' => 'TWENTY ONE TV', 'players' => 34];
+    $seen = [];
+    $scripts = 0;
+
+    for ($i = 0; $i < 200; $i++) {
+        $script = patternScripts()->write(SceneTopic::LEAGUE, ScenePhase::BREAK, $facts);
+
+        if ($script === null) {
+            break;
+        }
+
+        $scripts++;
+        foreach ($script['roles'] as $id => $role) {
+            if ($role !== PatternScripts::FACT) {
+                expect($seen)->not->toHaveKey($id, "{$id} again in script {$scripts}");
+                $seen[$id] = true;
             }
         }
     }
-    expect($written[0])->not->toBeNull()->and($written[1])->not->toBeNull();
+
+    expect($scripts)->toBeGreaterThanOrEqual(25)->toBeLessThan(200);
 });
 
-it('gives up rather than say a line again when the pool is used up', function () {
-    config(['tv.commentary.patterns.recent' => 10]);
-    $facts = ['sender' => 'TWENTY ONE TV', 'players' => 34];
-    $scripts = [];
+it('mixes jokes, invitations, pride, chat calls and emotion into the scripts', function () {
+    $roles = [];
+    for ($i = 0; $i < 12; $i++) {
+        $script = patternScripts()->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE], CarbonImmutable::now()->addMinutes($i));
+        foreach ($script['roles'] ?? [] as $role) {
+            $roles[$role] = ($roles[$role] ?? 0) + 1;
+        }
+    }
+
+    expect(array_keys($roles))->toContain(PatternScripts::JOKE, PatternScripts::INVITE, PatternScripts::PRIDE, PatternScripts::ENGAGE, PatternScripts::EMOTION);
+});
+
+it('keeps at most two markers, and a joke is followed by laughter', function () {
+    $data = json_decode((string) file_get_contents(resource_path('data/voice/caster.json')), true);
+    $data['pattern_scripts']['openings'] = [['id' => 'test-open', 'phases' => ['break'], 'topics' => ['*'], 'text' => '[laughter] Hier ist {sender}.']];
+    $data['promo'] = [['id' => 'test-invite', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => '[sigh] Schaut einfach mal rein.']];
+    $path = storage_path('framework/testing/caster-markers-'.uniqid().'.json');
+    @mkdir(dirname($path), 0777, true);
+    file_put_contents($path, json_encode($data));
+    $jokes = 0;
 
     for ($i = 0; $i < 12; $i++) {
-        $scripts[] = patternScripts()->write(SceneTopic::LEAGUE, ScenePhase::BREAK, $facts);
+        $script = patternScripts($path)->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE], CarbonImmutable::now()->addMinutes($i));
+
+        expect($script)->not->toBeNull()
+            ->and(preg_match_all('/\[[a-z-]+\]/', $script['text'] ?? ''))->toBeLessThanOrEqual(2, $script['text'] ?? '');
+        // The first joke of a script laughs, unless two other markers took the budget.
+        $firstJoke = array_search(PatternScripts::JOKE, $script['roles'] ?? [], true);
+        if (is_string($firstJoke) && preg_match_all('/\[[a-z-]+\]/', implode(' ', array_diff_key($script['parts'], [$firstJoke => true]))) < 2) {
+            expect($script['parts'][$firstJoke])->toEndWith('[laughter]');
+            $jokes++;
+        }
+    }
+    unlink($path);
+
+    expect($jokes)->toBeGreaterThan(0);
+});
+
+it('names nobody outside a result or champion moment, one person at most, and not again within thirty minutes', function () {
+    foreach ([SceneTopic::LIVE_GAMES, SceneTopic::LADDERS, SceneTopic::TMNF, SceneTopic::TOURNAMENTS, SceneTopic::LIVE_TOURNAMENT] as $topic) {
+        $facts = patternFactsByTopic()[$topic];
+        $names = ScriptGuard::personNames($facts);
+
+        for ($i = 0; $i < 3; $i++) {
+            $text = patternScripts()->write($topic, SceneTopic::phase($topic, now()->setTimezone('Europe/Berlin')->setTime(15, 0)->toImmutable()), $facts)['text'] ?? '';
+
+            expect(ScriptGuard::namesIn($text, $names))->toBe([], "{$topic}: {$text}");
+        }
     }
 
-    $said = [];
-    foreach (array_filter($scripts) as $script) {
-        $facts = array_values(array_filter($script['lines'], fn (string $id): bool => str_starts_with($id, 'f-')));
-        expect(array_intersect($facts, $said))->toBe([]);
-        $said = [...$said, ...$facts];
+    $facts = patternFactsByTopic()[SceneTopic::RESULTS];
+    $named = [];
+    for ($minute = 0; $minute < 30; $minute += 2) {
+        $text = patternScripts()->write(SceneTopic::RESULTS, ScenePhase::AFTER_RESULT, $facts, CarbonImmutable::now()->addMinutes($minute))['text'] ?? '';
+        $here = ScriptGuard::namesIn($text, ScriptGuard::personNames($facts));
+
+        expect(count($here))->toBeLessThanOrEqual(1, $text)
+            ->and(array_intersect($here, $named))->toBe([], "named again within 30 minutes: {$text}");
+        $named = [...$named, ...$here];
+    }
+    expect($named)->not->toBe([]);
+});
+
+it('knows the person names of the facts and limits a script to its allowance', function () {
+    $facts = [...patternFactsByTopic()[SceneTopic::LIVE_TOURNAMENT], 'clan_spotlight' => ['name' => 'Einundzwanzig Bern']];
+
+    expect(ScriptGuard::personNames($facts))->toBe(['Ada', 'Bob', 'Cleo'])
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nBob ist Zweiter.\nSchaut rein.", ['Ada', 'Bob'], 1, [], 3))->toBe("Ada führt.\nDie Liga lebt.\nSchaut rein.")
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nSchaut rein.", ['Ada'], 0, [], 3))->toBeNull()
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nAda auch.\nSchaut rein.", ['Ada'], 1, [], 3))->toBe("Ada führt.\nDie Liga lebt.\nSchaut rein.")
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nBob ist Zweiter.\nSchaut rein.", ['Ada', 'Bob'], 1, ['ada' => true], 3))->toBe("Die Liga lebt.\nBob ist Zweiter.\nSchaut rein.");
+});
+
+it('writes forty flavour lines and more that pass the spoken rules and the hard rules', function () {
+    $flavour = json_decode((string) file_get_contents(resource_path('data/voice/caster.json')), true)['pattern_scripts']['flavour'];
+    $lines = array_column([...$flavour['pride'], ...$flavour['engage'], ...$flavour['emotion'], ...$flavour['invite']], 'text');
+
+    expect(count($flavour['pride']) + count($flavour['engage']) + count($flavour['emotion']))->toBeGreaterThanOrEqual(40);
+
+    // Each line passes the fact guard on its own, a canon catchphrase in it ("Grüße gehen raus") under its own canon id.
+    $basics = ['sender' => 'TWENTY ONE TV', 'website_spoken' => 'esports punkt einundzwanzig punkt space'];
+    foreach ([...$flavour['pride'], ...$flavour['engage'], ...$flavour['emotion'], ...$flavour['invite']] as $row) {
+        $line = (string) PatternScripts::fill($row['text'], $basics);
+        expect(app(CasterVoice::class)->guard()->check(ScriptGuard::withoutMarkers($line), $basics, 900, $row['canon'] ?? null))->toBe([], $line);
     }
 
-    expect($scripts[0])->not->toBeNull()
-        ->and(end($scripts))->toBeNull();
+    foreach ($lines as $line) {
+        $split = ScriptGuard::splitSentences($line, 16);
+
+        expect((new ScriptGuard)->check($split, 1, 3, 16))->toBe([], $line)
+            ->and(PatternScripts::commaChain($split))->toBeFalse($line)
+            ->and($line)->not->toMatch('/#|@|npub|lnurl|gebühr|startgeld|\bfee\b|gesicht|\bface\b|sats? zahlen/iu');
+    }
+
+    foreach ($flavour['jokes'] as $id) {
+        $wording = (string) (app(VoiceCanon::class)->find($id)['wording'] ?? '');
+
+        expect($wording)->not->toBe('', $id)
+            ->and(app(CasterVoice::class)->guard()->check($wording, $basics, 900, $id))->toBe([], $wording)
+            ->and((new ScriptGuard)->check(ScriptGuard::splitSentences($wording.' [laughter]', 16), 1, 3, 16))->toBe([], $wording)
+            ->and($wording)->not->toMatch('/#|@|gebühr|startgeld|\bfee\b|gesicht|\bface\b/iu');
+    }
 });
 
 it('uses no line with a slot the facts leave open', function () {
@@ -176,6 +299,8 @@ it('drops a line that fails the guard from the pool for the day and logs it once
         ['id' => 'test-bad', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => 'Die Liga hat 500 Spieler.'],
     ];
     $data['pattern_scripts']['use_topics'] = [];
+    $pride = array_map(fn (int $n): array => ['id' => "test-pride-{$n}", 'phases' => ['break'], 'text' => 'Das ist unsere Liga.'], range(1, 6));
+    $data['pattern_scripts']['flavour'] = ['pride' => $pride, 'engage' => [], 'emotion' => [], 'invite' => [], 'jokes' => []];
     $path = storage_path('framework/testing/caster-patterns-'.uniqid().'.json');
     @mkdir(dirname($path), 0777, true);
     file_put_contents($path, json_encode($data));
@@ -183,7 +308,7 @@ it('drops a line that fails the guard from the pool for the day and logs it once
 
     $texts = [];
     for ($i = 0; $i < 4; $i++) {
-        $texts[] = patternScripts($path)->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE])['text'] ?? '';
+        $texts[] = patternScripts($path)->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE], CarbonImmutable::now()->addMinutes(21 * $i))['text'] ?? '';
     }
     unlink($path);
 
@@ -191,22 +316,6 @@ it('drops a line that fails the guard from the pool for the day and logs it once
         ->and(implode("\n", $texts))->toContain('Schaut einfach mal rein.')
         ->and(DB::table('voice_rejections')->where('channel', PatternScripts::CHANNEL)->where('reason', VoiceGuard::NUMBER)->value('count'))->toBe(1);
     Log::shouldHaveReceived('info')->with('Caster pattern line dropped', Mockery::on(fn (array $context): bool => $context['line'] === 'test-bad' && $context['for'] === 'day'))->once();
-});
-
-it('keeps at most one expression marker', function () {
-    $data = json_decode((string) file_get_contents(resource_path('data/voice/caster.json')), true);
-    $data['pattern_scripts']['openings'] = [['id' => 'test-open', 'phases' => ['break'], 'topics' => ['*'], 'text' => '[laughter] Hier ist {sender}.']];
-    $data['promo'] = [['id' => 'test-invite', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => '[sigh] Schaut einfach mal rein.']];
-    $data['pattern_scripts']['use_topics'] = [];
-    $path = storage_path('framework/testing/caster-markers-'.uniqid().'.json');
-    @mkdir(dirname($path), 0777, true);
-    file_put_contents($path, json_encode($data));
-
-    $script = patternScripts($path)->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE]);
-    unlink($path);
-
-    expect($script)->not->toBeNull()
-        ->and(preg_match_all('/\[[a-z-]+\]/', $script['text'] ?? ''))->toBe(1);
 });
 
 it('counts a pattern script under its own channel, without tokens', function () {
@@ -248,3 +357,106 @@ it('knows the topic of every rotation slide', function (string $kind, ?string $s
     'blockfill set' => [RotationPlanner::BLOCKFILL, 'f2', SceneTopic::BLOCKFILL],
     'zap teaser' => [RotationPlanner::TEASER, 'a5', SceneTopic::LEAGUE],
 ]);
+
+/** A copy of caster.json changed by `$change`, at a path the test deletes. */
+function patternDataWith(Closure $change): string
+{
+    $data = json_decode((string) file_get_contents(resource_path('data/voice/caster.json')), true);
+    $data = $change($data);
+    $path = storage_path('framework/testing/caster-data-'.uniqid().'.json');
+    @mkdir(dirname($path), 0777, true);
+    file_put_contents($path, json_encode($data));
+
+    return $path;
+}
+
+it('quotes the full verified canon, one or two lines per script, none again within the last two hundred', function () {
+    $patterns = patternScripts();
+    $perScript = [];
+    $quoted = [];
+
+    expect(count($patterns->canonPool()))->toBeGreaterThan(400);
+
+    for ($i = 0; $i < 50; $i++) {
+        $script = patternScripts()->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE], CarbonImmutable::now()->addMinutes($i));
+
+        if ($script === null) {
+            continue;
+        }
+
+        $perScript[] = count($script['canon_ids']);
+        // The jokes; a greeting catchphrase ("Grüße gehen raus …") may come back in another greeting.
+        array_push($quoted, ...array_values(array_filter($script['part_canons'], fn (string $id, string $part): bool => str_starts_with($part, 'canon:'), ARRAY_FILTER_USE_BOTH)));
+    }
+
+    expect(min($perScript))->toBeGreaterThanOrEqual(1)
+        ->and(max($perScript))->toBeLessThanOrEqual(2)
+        ->and(array_sum($perScript) / count($perScript))->toBeGreaterThan(1.4)
+        ->and(count($quoted))->toBe(count(array_unique($quoted)));
+});
+
+it('uses a fact line with a name only in a result or champion moment', function () {
+    $path = patternDataWith(function (array $data): array {
+        $data['pattern_scripts']['facts'] = [['id' => 'test-named', 'topics' => ['ladders'], 'text' => '{leader} führt mit {leader_elo} Elo.']];
+        $data['pattern_scripts']['use_patterns'] = [];
+
+        return $data;
+    });
+
+    $text = patternScripts($path)->write(SceneTopic::LADDERS, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LADDERS])['text'] ?? '';
+    unlink($path);
+
+    expect($text)->not->toBe('')->not->toContain('Ada');
+});
+
+it('never assembles a line with a comma chain', function () {
+    $path = patternDataWith(function (array $data): array {
+        $data['pattern_scripts']['flavour']['invite'] = [['id' => 'test-chain', 'phases' => ['break'], 'text' => 'Browser auf, einloggen, spielen.']];
+        $data['promo'] = [];
+        $data['pattern_scripts']['use_topics'] = [];
+
+        return $data;
+    });
+    $texts = [];
+
+    for ($i = 0; $i < 6; $i++) {
+        $texts[] = patternScripts($path)->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE], CarbonImmutable::now()->addMinutes($i))['text'] ?? '';
+    }
+    unlink($path);
+
+    expect(implode("\n", $texts))->not->toContain('Browser auf')->not->toBe(str_repeat("\n", 5));
+});
+
+it('says a tournament name once per script, later as the noun, and not again within fifteen minutes', function () {
+    $names = ['Chess Cup Nummer 2' => ['Turnier', 'n'], 'A07-Race' => ['Strecke', 'f'], 'Schach Blitz 5+3' => ['Ladder', 'f']];
+
+    expect(ScriptGuard::entityNames(patternFactsByTopic()[SceneTopic::TOURNAMENTS]))->toBe(['Chess Cup Nummer 2' => ['Turnier', 'n']])
+        ->and(ScriptGuard::dedupeEntities("Chess Cup Nummer 2 startet bald.\nNoch 5 Plätze frei bei Chess Cup Nummer 2.\nChess Cup Nummer 2 wird gespielt.\nSchaut rein.", $names, [], 3))
+        ->toBe("Chess Cup Nummer 2 startet bald.\nNoch 5 Plätze frei beim Turnier.\nDas Turnier wird gespielt.\nSchaut rein.")
+        ->and(ScriptGuard::dedupeEntities("Auf A07-Race fährt die Nummer eins vorn.\nDie Zeit auf A07-Race ist stark.\nPlatz zwei in der Ladder Schach Blitz 5+3.\nIn der Ladder Schach Blitz 5+3 ist es eng.\nSchaut rein.", $names, [], 3))
+        ->toBe("Auf A07-Race fährt die Nummer eins vorn.\nDie Zeit auf der Strecke ist stark.\nPlatz zwei in der Ladder Schach Blitz 5+3.\nIn der Ladder ist es eng.\nSchaut rein.")
+        // Blocked (named lately) and no grammatical noun: the sentence goes; too few left: rejected.
+        ->and(ScriptGuard::dedupeEntities("Heute ist Chess Cup Nummer 2 dran.\nSchaut rein.\nDie Lobby ist offen.\nBis gleich.", $names, ['chess cup nummer 2' => true], 3))->toBe("Schaut rein.\nDie Lobby ist offen.\nBis gleich.")
+        ->and(ScriptGuard::dedupeEntities("Heute ist Chess Cup Nummer 2 dran.\nSchaut rein.\nBis gleich.", $names, ['chess cup nummer 2' => true], 3))->toBeNull();
+
+    $facts = patternFactsByTopic()[SceneTopic::TOURNAMENTS];
+    $first = patternScripts()->write(SceneTopic::TOURNAMENTS, ScenePhase::PRE_SHOW, $facts)['text'] ?? '';
+    $second = patternScripts()->write(SceneTopic::TOURNAMENTS, ScenePhase::PRE_SHOW, $facts, CarbonImmutable::now()->addMinutes(5))['text'] ?? '';
+
+    expect(substr_count($first, 'Chess Cup Nummer 2'))->toBe(1)
+        ->and(substr_count($second, 'Chess Cup Nummer 2'))->toBe(0);
+});
+
+it('quotes no canon line again within the last canon lines, whatever the rotation', function () {
+    config(['tv.commentary.patterns.flavour_recent' => 1, 'tv.commentary.patterns.recent' => 1]);
+    $jokes = [];
+
+    for ($i = 0; $i < 3; $i++) {
+        Cache::put('caster:patterns:sequence', 0);
+        $script = patternScripts()->write(SceneTopic::LEAGUE, ScenePhase::BREAK, patternFactsByTopic()[SceneTopic::LEAGUE], CarbonImmutable::now()->addMinutes(21 * $i));
+        $jokes[] = array_values(array_filter($script['part_canons'] ?? [], fn (string $id, string $part): bool => str_starts_with($part, 'canon:'), ARRAY_FILTER_USE_BOTH));
+    }
+
+    expect($jokes[0])->not->toBe([])
+        ->and(array_intersect($jokes[2], $jokes[0]))->toBe([]);
+});

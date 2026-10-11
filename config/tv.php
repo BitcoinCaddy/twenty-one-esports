@@ -72,7 +72,7 @@ return [
         'ai' => (bool) env('TV_COMMENTARY_AI', true),
 
         'scripts' => [
-            'ahead_seconds' => 300,
+            'ahead_seconds' => 150,
             'words_per_second' => 2.4,
             'sentences' => ['min' => 2, 'max' => 8],
             'live_sentences' => ['min' => 1, 'max' => 3],
@@ -93,10 +93,20 @@ return [
 
         // The deterministic scene scripts (App\Support\Caster\PatternScripts): at most `per_run` per fill() run,
         // `sentences` each, no line pattern again within the last `recent` pattern scripts.
+        // `fact_memory_minutes`: a fact atom is not said again by any script for this long; `name_memory_minutes` the same
+        // for a person's name; `flavour_recent`: no flavour line (joke, invitation, pride, chat call, emotion) again
+        // within this many pattern scripts (user 2026-10-11: fewer data, no repeats, more jokes and pride).
         'patterns' => [
             'per_run' => 40,
             'sentences' => ['min' => 3, 'max' => 6],
             'recent' => 4,
+            'fact_memory_minutes' => 20,
+            'name_memory_minutes' => 30,
+            // A tournament, track, clan or ladder name: once per script, not again within this long (user 2026-10-11).
+            'entity_memory_minutes' => 15,
+            'flavour_recent' => 40,
+            // No canon line again within this many canon lines of the pattern scripts (the full canon has over 1300).
+            'canon_recent' => 200,
         ],
 
         'fetch' => [
@@ -113,8 +123,12 @@ return [
             'max_seconds' => 600,
             'max_clip_bytes' => 2 * 1024 * 1024,
             'max_clip_seconds' => 90,
-            'target_seconds' => 180,
-            'filler_below_seconds' => 60,
+            // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
+            // airtime it did before the gap (180 and 60), and the queue writes half as much ahead (ahead_seconds).
+            'target_seconds' => 90,
+            'filler_below_seconds' => 30,
+            // Music only between two clips, a random length in this range (user 2026-10-11); a live moment cuts it short.
+            'gap_seconds' => ['min' => (float) env('TV_COMMENTARY_GAP_MIN', 20), 'max' => (float) env('TV_COMMENTARY_GAP_MAX', 30)],
         ],
 
         'voicestudio' => [
@@ -125,7 +139,10 @@ return [
             'timeout_seconds' => 60,
             'retries' => 3,
             'retry_seconds' => 5,
-            'pause' => ['sentence' => 0.3, 'accent' => 0.5, 'scene' => [1.0, 1.5], 'jitter' => 0.08],
+            // Pauses between chunks only; a chunk is one /generate call of up to `max_sentences` and `max_words`
+            // (user 2026-10-11: "Und er spricht zu abgehackt"; one call per sentence put a pause after each).
+            'pause' => ['sentence' => 0.2, 'accent' => 0.35, 'scene' => [1.0, 1.5], 'jitter' => 0.08],
+            'chunk' => ['max_sentences' => 3, 'max_words' => 25],
             'fade_ms' => 70,
             // Below this amplitude (of 32767) a 10 ms window counts as quiet when the tail is trimmed.
             'silence_threshold' => 400,
