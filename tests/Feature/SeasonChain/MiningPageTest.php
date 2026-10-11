@@ -98,8 +98,9 @@ test('while rated chess is off, /mining and AdminSeason show no chess reward as 
         ->assertOk()
         ->assertSee('data-test="rated-chess-not-open"', false)
         ->assertSee('data-test="reward-not-open"', false)
-        ->assertDontSee('Chess blitz win pays')
-        ->assertSee('Rocket League 1v1 win pays');
+        // Season.dc.html: "RL 1v1 zahlt", the registry's short name and the mode.
+        ->assertDontSee('Chess blitz pays')
+        ->assertSee('RL 1v1 pays');
     $this->actingAs($board)->get(route('admin.season'))
         ->assertOk()
         ->assertSee('data-test="rated-chess-not-open"', false)
@@ -111,7 +112,7 @@ test('while rated chess is off, /mining and AdminSeason show no chess reward as 
         ->assertOk()
         ->assertDontSee('data-test="rated-chess-not-open"', false)
         ->assertDontSee('data-test="reward-not-open"', false)
-        ->assertSee('Chess blitz win pays');
+        ->assertSee('Chess blitz pays');
     $this->actingAs($board)->get(route('admin.season'))
         ->assertOk()
         ->assertDontSee('data-test="rated-chess-not-open"', false)

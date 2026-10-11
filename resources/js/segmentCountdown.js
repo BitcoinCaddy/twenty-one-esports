@@ -23,6 +23,7 @@ export default function segmentCountdown(at, parts, units = 'dhm') {
             const s = Math.max(0, Math.ceil((at - Date.now()) / 1000));
             const split = {
                 dhm: [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60)],
+                dhms: [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60],
                 hms: [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60],
                 ms: [Math.floor(s / 60), s % 60],
             };

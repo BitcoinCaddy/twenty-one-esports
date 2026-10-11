@@ -227,6 +227,118 @@
         }
     }
 
+    /* The Season hero before Block 0 (Season.dc.html `.band`): an orange edge, the countdown, the genesis block. */
+    .sn-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: center;
+        gap: 32px;
+        padding: 20px 16px;
+        border: 1px solid var(--color-btc-ring);
+        border-radius: 4px;
+        background: linear-gradient(100deg, #1a140b, var(--color-card) 62%);
+        box-shadow: inset 4px 0 0 var(--color-btc);
+    }
+
+    @media (width >= 64rem) {
+        .sn-hero {
+            grid-template-columns: minmax(0, 1fr) auto;
+            padding: 32px;
+        }
+    }
+
+    .sn-cd .rv-cd-seg > b {
+        min-width: 68px;
+        font-size: 36px;
+    }
+
+    @media (width < 40rem) {
+        .sn-cd .rv-cd-seg > b {
+            min-width: 52px;
+            font-size: 24px;
+        }
+    }
+
+    .sn-genesis {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        flex: none;
+        filter: drop-shadow(0 0 22px rgb(247 147 26 / 0.5));
+    }
+
+    .sn-genesis > .rv-cube-tp {
+        width: 120px;
+        height: 14px;
+        background: var(--color-btc-hi);
+        clip-path: polygon(14px 0, 120px 0, 106px 14px, 0 14px);
+    }
+
+    .sn-genesis > .rv-cube-sd {
+        width: 14px;
+        height: 120px;
+        background: var(--color-btc-deep);
+        clip-path: polygon(0 14px, 14px 0, 14px 106px, 0 120px);
+    }
+
+    .sn-genesis-fr {
+        position: absolute;
+        top: 14px;
+        left: 0;
+        display: flex;
+        width: 106px;
+        height: 106px;
+        flex-direction: column;
+        padding: 10px;
+        background: var(--color-btc);
+        color: var(--color-on-btc);
+    }
+
+    .sn-link {
+        width: 20px;
+        height: 2px;
+        flex: none;
+        background: repeating-linear-gradient(90deg, var(--color-edge) 0 4px, transparent 4px 8px);
+    }
+
+    .sn-ghost {
+        display: grid;
+        flex: none;
+        place-items: center;
+        border: 1.5px dashed var(--color-edge);
+        border-radius: 3px;
+        background: var(--color-card);
+        color: var(--color-ink-3);
+        font-family: var(--font-display);
+        font-size: 14px;
+    }
+
+    /* The era table (Season.dc.html `.tb.tight`): 13 px, 6 px cells, the pay bar beside each era. */
+    .sn-tb th,
+    .sn-tb td {
+        padding-right: 6px;
+        padding-left: 6px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .sn-tb th:first-child,
+    .sn-tb td:first-child {
+        padding-left: 16px;
+    }
+
+    .sn-tb tr.is-current td {
+        background: var(--color-btc-chip);
+    }
+
+    .sn-bar {
+        display: inline-block;
+        height: 12px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, var(--color-btc), var(--color-btc-hi));
+        box-shadow: 0 0 10px rgb(247 147 26 / 0.35);
+    }
+
     /* The Mempool head: two big counts (Mempool.dc.html `.livebig`, Unbounded 48 tabular). */
     .mp-big {
         font-family: var(--font-display);
