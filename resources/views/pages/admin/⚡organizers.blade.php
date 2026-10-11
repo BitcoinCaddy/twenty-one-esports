@@ -92,6 +92,10 @@ new #[Title('Organizers')] #[Layout('layouts::app', ['section' => 'admin'])] cla
 }; ?>
 
 <x-admin.page active="organizers" :title="__('Organizers')" :lead="__('Organizers may create tournaments and manage their own. They see nothing else of the admin area.')" data-test="admin-organizers">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Organizers') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->organizers->count() }}</span></span>
+    </x-slot:readout>
+
     <x-slot:actions>
         <x-button variant="quiet" :href="route('admin.tournaments')">{{ __('All tournaments') }}</x-button>
     </x-slot:actions>

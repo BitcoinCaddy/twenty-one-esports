@@ -198,12 +198,19 @@ new #[Title('League weeks')] #[Layout('layouts::app', ['section' => 'admin'])] c
 }; ?>
 
 @php
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
+    $input = 'rv-in';
     $badge = 'inline-flex h-6 items-center rounded-xs px-2 text-xs font-bold';
     $tracks = collect(array_keys((array) config('esports.tmnf.tracks', [])))->map(fn (string $uid): ?array => TmnfWeeks::track($uid))->filter()->values();
 @endphp
 
+@php
+    $waitingWeeks = \App\Models\LeagueWeek::query()->whereNull('approved_at')->whereNull('tournament_id')->where('starts_at', '>', now()->subWeek())->count();
+@endphp
 <x-admin.page active="league-weeks" :title="__('League weeks')" :lead="__('Blockfill and TMNF open a new week every Monday 00:00 Berlin, but only once an admin approved it. Check the settings of the next week, change them if you like, then approve it. Not approved, no week runs and players see “Next week starts soon”.')" :notice="$notice" notice-test="league-weeks-notice" data-test="admin-league-weeks">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('waiting for approval') }}</span><span class="rv-num text-base {{ $waitingWeeks > 0 ? 'text-btc-hi' : 'text-ink' }}" data-test="readout-value">{{ $waitingWeeks }}</span></span>
+    </x-slot:readout>
+
     @forelse ($this->games as $entry)
         @php
             $running = $entry['running'];
@@ -235,7 +242,7 @@ new #[Title('League weeks')] #[Layout('layouts::app', ['section' => 'admin'])] c
                 @endphp
                 <form wire:submit="save({{ $week->id }})" wire:key="week-{{ $week->id }}" class="flex flex-col gap-4 border-t border-hairline pt-4" data-test="league-week" data-week="{{ $week->id }}">
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-                        <h3 class="m-0 text-[15px] font-bold">{{ __(':game week :week', ['game' => $entry['name'], 'week' => $week->weekNumber()]) }}</h3>
+                        <h3 class="rv-h3">{{ __(':game week :week', ['game' => $entry['name'], 'week' => $week->weekNumber()]) }}</h3>
                         <span class="{{ $badge }} {{ $state['class'] }}" data-test="league-week-state" data-state="{{ $state['test'] }}">{{ $state['label'] }}</span>
                     </div>
                     <p class="m-0 text-xs leading-normal text-ink-2" data-test="league-week-when">
@@ -275,7 +282,7 @@ new #[Title('League weeks')] #[Layout('layouts::app', ['section' => 'admin'])] c
                                 <div class="flex min-w-0 flex-col gap-1.5">
                                     <label for="goal-{{ $week->id }}" class="text-[13px] font-bold text-ink">{{ __('Blocks per run') }}</label>
                                     <div class="flex flex-wrap gap-2">
-                                        <input id="goal-{{ $week->id }}" type="text" inputmode="numeric" wire:model.live.debounce.300ms="{{ $field }}.goal" class="h-11 w-20 shrink-0 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink tabular-nums" data-test="rules-goal">
+                                        <input id="goal-{{ $week->id }}" type="text" inputmode="numeric" wire:model.live.debounce.300ms="{{ $field }}.goal" class="rv-in w-20! shrink-0 tabular-nums" data-test="rules-goal">
                                         @foreach ([20, 40, 60, 100] as $goal)
                                             <button type="button" wire:click="$set('{{ $field }}.goal', '{{ $goal }}')" @class([$pick, 'tabular-nums', 'border-btc text-btc-hi' => ($rules['goal'] ?? '') === (string) $goal, 'border-edge text-ink' => ($rules['goal'] ?? '') !== (string) $goal]) data-test="rules-goal-{{ $goal }}">{{ $goal }}</button>
                                         @endforeach
@@ -287,7 +294,7 @@ new #[Title('League weeks')] #[Layout('layouts::app', ['section' => 'admin'])] c
                                 <div class="flex min-w-0 flex-col gap-1.5">
                                     <label for="every-{{ $week->id }}" class="text-[13px] font-bold text-ink">{{ __('Level up every') }}</label>
                                     <div class="flex flex-wrap gap-2">
-                                        <input id="every-{{ $week->id }}" type="text" inputmode="numeric" wire:model.live.debounce.300ms="{{ $field }}.every" class="h-11 w-20 shrink-0 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink tabular-nums" data-test="rules-every">
+                                        <input id="every-{{ $week->id }}" type="text" inputmode="numeric" wire:model.live.debounce.300ms="{{ $field }}.every" class="rv-in w-20! shrink-0 tabular-nums" data-test="rules-every">
                                         @foreach ([10, 8, 5, 3] as $every)
                                             <button type="button" wire:click="$set('{{ $field }}.every', '{{ $every }}')" @class([$pick, 'tabular-nums', 'border-btc text-btc-hi' => ($rules['every'] ?? '') === (string) $every, 'border-edge text-ink' => ($rules['every'] ?? '') !== (string) $every]) data-test="rules-every-{{ $every }}">{{ $every }}</button>
                                         @endforeach
@@ -299,52 +306,38 @@ new #[Title('League weeks')] #[Layout('layouts::app', ['section' => 'admin'])] c
 
                                 <div class="flex min-w-0 flex-col gap-1.5">
                                     <label for="start-{{ $week->id }}" class="text-[13px] font-bold text-ink">{{ __('Start speed') }}</label>
-                                    <select id="start-{{ $week->id }}" wire:model.live="{{ $field }}.start" class="{{ $input }}" data-test="rules-start">
-                                        @foreach ($levels as $level)
-                                            <option value="{{ $level }}">{{ __('Level :level · :speed', ['level' => $level, 'speed' => BlockfillRules::levelSpeed($level)]) }}</option>
-                                        @endforeach
-                                    </select>
+                                    <x-ui.select-menu :model="$field.'.start'" live :id="'start-'.$week->id" :value="$rules['start'] ?? null" data-test="rules-start"
+                                                      :options="collect($levels)->mapWithKeys(fn (int $level): array => [$level => __('Level :level, :speed', ['level' => $level, 'speed' => BlockfillRules::levelSpeed($level)])])->all()" />
                                     @error($field.'.start')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
                                 </div>
 
                                 @if ($leveled)
                                     <div class="flex min-w-0 flex-col gap-1.5">
                                         <label for="step-{{ $week->id }}" class="text-[13px] font-bold text-ink">{{ __('Faster per level') }}</label>
-                                        <select id="step-{{ $week->id }}" wire:model.live="{{ $field }}.step" class="{{ $input }}" data-test="rules-step">
-                                            <option value="">{{ __('Choose…') }}</option>
-                                            @foreach (range(BlockfillRules::LIMITS['step'][0], BlockfillRules::LIMITS['step'][1]) as $step)
-                                                <option value="{{ $step }}">{{ trans_choice('One level of the curve|:count levels of the curve', $step) }}</option>
-                                            @endforeach
-                                        </select>
+                                        <x-ui.select-menu :model="$field.'.step'" live :id="'step-'.$week->id" :value="$rules['step'] ?? null" :placeholder="__('Choose…')" data-test="rules-step"
+                                                          :options="['' => __('Choose…')] + collect(range(BlockfillRules::LIMITS['step'][0], BlockfillRules::LIMITS['step'][1]))->mapWithKeys(fn (int $step): array => [$step => trans_choice('One level of the curve|:count levels of the curve', $step)])->all()" />
                                         @error($field.'.step')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
                                     </div>
 
                                     <div class="flex min-w-0 flex-col gap-1.5 sm:col-start-2">
                                         <label for="cap-{{ $week->id }}" class="text-[13px] font-bold text-ink">{{ __('Top speed') }}</label>
-                                        <select id="cap-{{ $week->id }}" wire:model.live="{{ $field }}.cap" class="{{ $input }}" data-test="rules-cap">
-                                            <option value="">{{ __('Choose…') }}</option>
-                                            @foreach ($levels as $level)
-                                                <option value="{{ $level }}">{{ __('Level :level · :speed', ['level' => $level, 'speed' => BlockfillRules::levelSpeed($level)]) }}</option>
-                                            @endforeach
-                                        </select>
+                                        <x-ui.select-menu :model="$field.'.cap'" live :id="'cap-'.$week->id" :value="$rules['cap'] ?? null" :placeholder="__('Choose…')" data-test="rules-cap"
+                                                          :options="['' => __('Choose…')] + collect($levels)->mapWithKeys(fn (int $level): array => [$level => __('Level :level, :speed', ['level' => $level, 'speed' => BlockfillRules::levelSpeed($level)])])->all()" />
                                         @error($field.'.cap')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
                                     </div>
                                 @endif
                             </div>
 
                             {{-- The rules in one sentence, as the fields stand --}}
-                            <p class="m-0 rounded-md bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink" aria-live="polite" data-test="rules-summary">{{ BlockfillRules::summary($rules) }}</p>
+                            <p class="m-0 rounded border border-hairline bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink" aria-live="polite" data-test="rules-summary">{{ BlockfillRules::summary($rules) }}</p>
                             <span class="text-xs leading-normal text-ink-3">{{ __('The speeds follow the guideline curve of Tetris Worlds (Tetris Wiki, Marathon). Ranked runs of the week are played and checked on exactly these rules; a run on other rules does not count for it.') }}</span>
                         </fieldset>
                     @else
                         <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                             <div class="flex min-w-0 flex-col gap-1.5">
                                 <label for="track-{{ $week->id }}" class="text-[13px] font-bold text-ink">{{ __('Track') }}</label>
-                                <select id="track-{{ $week->id }}" wire:model="{{ $field }}.track" class="{{ $input }}" data-test="league-week-track">
-                                    @foreach ($tracks as $track)
-                                        <option value="{{ $track['uid'] }}">{{ $track['name'] }} · {{ __('author time :time', ['time' => ScoreMetric::time()->format($track['author_ms'])]) }}</option>
-                                    @endforeach
-                                </select>
+                                <x-ui.select-menu :model="$field.'.track'" :id="'track-'.$week->id" :value="$this->form[$week->id]['track'] ?? null" data-test="league-week-track"
+                                                  :options="collect($tracks)->mapWithKeys(fn (array $track): array => [$track['uid'] => $track['name'].', '.__('author time :time', ['time' => ScoreMetric::time()->format($track['author_ms'])])])->all()" />
                                 @error($field.'.track')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
                                 <span class="text-xs leading-normal text-ink-3">{{ __('Nadeo’s stock tracks on our server. At the start of the week the server switches to it.') }}</span>
                             </div>

@@ -127,12 +127,14 @@ test('an admin switches a game\'s automatic casual cups off and on, at 375 and 1
 
     foreach ([[375, 812], [1440, 900]] as $round => [$width, $height]) {
         $page = leagueSettingsPage($admin, $width, $height);
-        $before = $page->evaluate('() => document.querySelector("'.$select.'").value');
+        // The value is the board's switch (revamp P8): aria-checked true is on.
+        $before = $page->evaluate('() => document.querySelector("'.$select.'").getAttribute("aria-checked") === "true" ? "on" : "off"');
         $page->evaluate('() => document.querySelector("[data-test=settings-group-casual_cups]").scrollIntoView({ block: "start" })');
         leagueSettingsViewShot($page, "league-settings-auto-cups-{$width}");
 
         // Off at 375, back on at 1440.
-        $page->locator($select)->selectOption($round === 0 ? 'off' : 'on');
+        $page->locator($select)->click();
+        BrowserWait::until($page, '() => document.querySelector("'.$select.'").getAttribute("aria-checked") === '.($round === 0 ? '"false"' : '"true"'), 5_000);
         $page->locator('[data-test=settings-save]')->click();
         BrowserWait::until($page, '() => document.querySelector("[data-test=settings-notice]")?.innerText.includes("Saved: 1 value changed.") === true', 10_000);
         $row = $page->evaluate('() => document.querySelector("[data-test=settings-log-row]").innerText');

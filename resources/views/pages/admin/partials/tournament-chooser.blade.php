@@ -183,7 +183,7 @@
 @endphp
 
 <div class="flex flex-col gap-4" data-test="tournament-chooser" data-format="{{ $format->value }}" data-recommended="{{ $evaluation->recommended?->value }}">
-    <section aria-labelledby="fmt-h" class="flex flex-col gap-5 rounded-lg bg-card px-4 py-5 lg:p-6">
+    <section aria-labelledby="fmt-h" class="flex flex-col gap-5 rounded border border-hairline bg-card p-4 lg:p-6">
         <div class="flex flex-col gap-1.5 lg:flex-row lg:items-baseline lg:gap-4">
             <h2 id="fmt-h" class="m-0 font-display text-lg font-bold lg:text-xl">{{ __('Pick a format') }}</h2>
             <span class="text-[13px] leading-normal text-ink-2">{{ __('Tell us who plays and how much time you have. We compare every system for you.') }}</span>
@@ -281,12 +281,12 @@
             </div>
         @endif
 
-        <div class="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] xl:items-start">
             {{-- Every system for this input --}}
-            <div class="flex flex-col gap-2 lg:pt-[22px]">
-                <div role="radiogroup" aria-labelledby="cmp-h" class="flex flex-col gap-1 lg:gap-0.5" data-test="format-rows">
-                    <span id="cmp-h" class="pb-1 text-[13px] font-bold lg:hidden">{{ __('All systems for your time') }}</span>
-                    <div class="hidden items-end gap-3 px-3 pb-2.5 text-xs text-ink-3 lg:grid lg:grid-cols-[164px_minmax(0,1fr)_164px_76px]" aria-hidden="true">
+            <div class="flex flex-col gap-2 xl:pt-[22px]">
+                <div role="radiogroup" aria-labelledby="cmp-h" class="flex flex-col gap-1 xl:gap-0.5" data-test="format-rows">
+                    <span id="cmp-h" class="pb-1 text-[13px] font-bold xl:hidden">{{ __('All systems for your time') }}</span>
+                    <div class="hidden items-end gap-3 px-3 pb-2.5 text-xs text-ink-3 xl:grid xl:grid-cols-[164px_minmax(0,1fr)_164px_76px]" aria-hidden="true">
                         <span>{{ __('System') }}</span>
                         <span class="relative h-[18px]">
                             @foreach ($ticks as $tick)
@@ -304,10 +304,10 @@
                     @foreach ($rows as $entry)
                         @php($row = $entry['row'])
                         @if (! $row->enabled)
-                            <div aria-disabled="true" class="flex flex-col gap-1 rounded-md p-3 lg:grid lg:grid-cols-[164px_minmax(0,1fr)] lg:items-center lg:gap-3" wire:key="row-{{ $row->format->value }}" data-test="row-{{ $row->format->value }}" data-disabled="true">
+                            <div aria-disabled="true" class="flex flex-col gap-1 rounded-md p-3 xl:grid xl:grid-cols-[164px_minmax(0,1fr)] xl:items-center xl:gap-3" wire:key="row-{{ $row->format->value }}" data-test="row-{{ $row->format->value }}" data-disabled="true">
                                 <span class="flex flex-col gap-1">
-                                    <span class="flex items-center gap-1.5 text-sm font-bold text-ink-3 lg:text-[13px]"><x-icon name="lock" :size="14" />{{ $row->format->label() }}</span>
-                                    <span class="hidden text-xs text-ink-3 lg:block">{{ __($entry['copy']['short']) }}</span>
+                                    <span class="flex items-center gap-1.5 text-sm font-bold text-ink-3 xl:text-[13px]"><x-icon name="lock" :size="14" />{{ $row->format->label() }}</span>
+                                    <span class="hidden text-xs text-ink-3 xl:block">{{ __($entry['copy']['short']) }}</span>
                                 </span>
                                 <span class="text-xs leading-normal text-ink-2" data-test="row-reason">{{ __('Not available for this game.') }} {{ __($row->reason) }}</span>
                             </div>
@@ -315,22 +315,22 @@
                             <button type="button" role="radio" aria-checked="{{ $entry['selected'] ? 'true' : 'false' }}" wire:click="select('{{ $row->format->value }}')" wire:key="row-{{ $row->format->value }}"
                                     data-test="row-{{ $row->format->value }}"
                                     aria-label="{{ $row->format->label() }}, {{ __('about :duration', ['duration' => $duration($row->total())]) }}, {{ $entry['fitText'] }}, {{ __('at least :games for everyone', ['games' => $gamesCount($row->guaranteed())]) }}{{ $entry['recommended'] ? ', '.__('recommended') : '' }}"
-                                    @class(['flex w-full cursor-pointer flex-col gap-2.5 rounded-md border-0 p-3 text-left text-ink hover:bg-row-hover lg:grid lg:min-h-16 lg:grid-cols-[164px_minmax(0,1fr)_164px_76px] lg:items-center lg:gap-3 lg:px-3 lg:py-2.5',
+                                    @class(['flex w-full cursor-pointer flex-col gap-2.5 rounded-md border-0 p-3 text-left text-ink hover:bg-row-hover xl:grid xl:min-h-16 xl:grid-cols-[164px_minmax(0,1fr)_164px_76px] xl:items-center xl:gap-3 xl:px-3 xl:py-2.5',
                                         'bg-btc-chip shadow-[inset_0_0_0_1px_var(--color-btc)]' => $entry['selected'], 'bg-transparent' => ! $entry['selected']])>
-                                <span class="flex w-full items-start gap-3 lg:w-auto">
+                                <span class="flex w-full items-start gap-3 xl:w-auto">
                                     <span class="flex min-w-0 grow flex-col gap-1">
-                                        <span class="text-sm font-bold lg:text-[13px]">{{ $row->format->label() }}</span>
+                                        <span class="text-sm font-bold xl:text-[13px]">{{ $row->format->label() }}</span>
                                         <span class="text-xs text-ink-3">{{ __($entry['copy']['short']) }}</span>
                                         @if ($entry['recommended'])
-                                            <span class="hidden h-[22px] items-center gap-1 self-start rounded-xs bg-btc-press px-2 text-[11px] font-bold whitespace-nowrap text-btc-hi lg:inline-flex" data-test="recommended-chip"><x-icon name="award" :size="12" />{{ __('Recommended') }}</span>
+                                            <span class="hidden h-[22px] items-center gap-1 self-start rounded-xs bg-btc-press px-2 text-[11px] font-bold whitespace-nowrap text-btc-hi xl:inline-flex" data-test="recommended-chip"><x-icon name="award" :size="12" />{{ __('Recommended') }}</span>
                                         @endif
                                     </span>
-                                    <span class="flex shrink-0 flex-col items-end gap-0.5 lg:hidden">
+                                    <span class="flex shrink-0 flex-col items-end gap-0.5 xl:hidden">
                                         <span class="text-[13px] font-bold">{{ $duration($row->total()) }}</span>
                                         <span class="text-xs text-ink-2">{{ __(':games at least', ['games' => $gamesCount($row->guaranteed())]) }}</span>
                                     </span>
                                 </span>
-                                <span class="block w-full py-1.5 lg:py-0" aria-hidden="true">
+                                <span class="block w-full py-1.5 xl:py-0" aria-hidden="true">
                                     <span class="relative block h-[22px]">
                                         @foreach ($ticks as $tick)
                                             <span class="absolute -top-1 -bottom-1 w-px bg-hairline" style="left: {{ $tick['pct'] }}%"></span>
@@ -351,16 +351,16 @@
                                         @endif
                                     </span>
                                 </span>
-                                <span class="flex w-full items-center justify-between gap-2 lg:w-auto lg:flex-col lg:items-start lg:gap-1">
-                                    <span class="hidden text-[13px] font-bold lg:block">{{ __('about :duration', ['duration' => $duration($row->total())]) }}</span>
+                                <span class="flex w-full items-center justify-between gap-2 xl:w-auto xl:flex-col xl:items-start xl:gap-1">
+                                    <span class="hidden text-[13px] font-bold xl:block">{{ __('about :duration', ['duration' => $duration($row->total())]) }}</span>
                                     <span @class(['flex items-center gap-1.5 text-xs', 'text-ink-2' => $entry['fits'], 'text-loss' => ! $entry['fits']]) data-test="row-fit">
                                         <x-icon :name="$entry['fits'] ? 'check' : 'warn'" :size="14" />{{ $entry['fitText'] }}
                                     </span>
                                     @if ($entry['recommended'])
-                                        <span class="inline-flex h-[22px] items-center gap-1 rounded-xs bg-btc-press px-2 text-[11px] font-bold whitespace-nowrap text-btc-hi lg:hidden"><x-icon name="award" :size="12" />{{ __('Recommended') }}</span>
+                                        <span class="inline-flex h-[22px] items-center gap-1 rounded-xs bg-btc-press px-2 text-[11px] font-bold whitespace-nowrap text-btc-hi xl:hidden"><x-icon name="award" :size="12" />{{ __('Recommended') }}</span>
                                     @endif
                                 </span>
-                                <span class="hidden text-right font-display text-lg font-bold lg:block">{{ $row->guaranteed() }}</span>
+                                <span class="hidden text-right font-display text-lg font-bold xl:block">{{ $row->guaranteed() }}</span>
                             </button>
                         @endif
                     @endforeach
@@ -391,33 +391,29 @@
 
                     @if ($format === TournamentFormat::SingleElimination)
                         <div class="{{ $optionRow }}">
-                            <label class="flex min-h-11 cursor-pointer items-center gap-2.5 text-[13px] font-bold">
-                                <input type="checkbox" class="size-4 accent-btc" @checked($options->thirdPlace) wire:click="option('thirdPlace', {{ $options->thirdPlace ? 'false' : 'true' }})">
-                                {{ __('Match for 3rd place') }}
-                            </label>
+                            <x-ui.check :checked="$options->thirdPlace" wire:click="option('thirdPlace', {{ $options->thirdPlace ? 'false' : 'true' }})" class="font-bold" data-test="third-place-toggle">{{ __('Match for 3rd place') }}</x-ui.check>
                             <span class="{{ $help }}">{{ __('The two semifinal losers play one more match. Without it, both share 3rd place.') }}</span>
                         </div>
                     @endif
 
                     @if ($format === TournamentFormat::DoubleElimination)
                         <div class="flex flex-col gap-2 border-t border-hairline py-3">
-                            <span class="text-[13px] font-bold">{{ __('Grand final') }}</span>
+                            <span class="text-[13px] font-bold" id="gf-l">{{ __('Grand final') }}</span>
+                            <div role="radiogroup" aria-labelledby="gf-l" class="flex flex-col gap-2">
                             @foreach ([
                                 ['reset', __('Grand final: lower-bracket winner must win twice'), __('Fair: the upper-bracket winner has not lost yet, so they get a second chance too. Adds a match only if needed.')],
                                 ['single', __('Grand final: one match'), __('Shorter. The upper-bracket winner loses the advantage of being unbeaten.')],
                                 ['skip', __('No grand final'), __('The upper-bracket winner wins the tournament, the lower-bracket winner is 2nd. They never play each other.')],
                             ] as [$value, $label, $text])
-                                <label wire:key="gf-{{ $value }}" @class(['grid cursor-pointer grid-cols-[18px_minmax(0,1fr)] gap-2.5 rounded-md p-3', 'bg-btc-chip shadow-[inset_0_0_0_1px_var(--color-btc)]' => $options->grandFinal === $value, 'shadow-ring' => $options->grandFinal !== $value])>
-                                    <input type="radio" name="grand-final" class="mt-0.5 accent-btc" @checked($options->grandFinal === $value) wire:click="option('grandFinal', '{{ $value }}')">
+                                <button type="button" role="radio" wire:key="gf-{{ $value }}" class="rv-opt items-start!" aria-checked="{{ $options->grandFinal === $value ? 'true' : 'false' }}" wire:click="option('grandFinal', '{{ $value }}')" data-test="grand-final-{{ $value }}">
+                                    <i aria-hidden="true" class="mt-0.5"></i>
                                     <span class="flex flex-col gap-1"><span class="text-[13px] font-bold">{{ $label }}</span><span class="{{ $help }}">{{ $text }}</span></span>
-                                </label>
+                                </button>
                             @endforeach
+                            </div>
                         </div>
                         <div class="{{ $optionRow }}">
-                            <label class="flex min-h-11 cursor-pointer items-center gap-2.5 text-[13px] font-bold">
-                                <input type="checkbox" class="size-4 accent-btc" @checked($options->split) wire:click="option('split', {{ $options->split ? 'false' : 'true' }})" data-test="split-toggle">
-                                {{ __('Lower seeds start in the lower bracket') }}
-                            </label>
+                            <x-ui.check :checked="$options->split" wire:click="option('split', {{ $options->split ? 'false' : 'true' }})" class="font-bold" data-test="split-toggle">{{ __('Lower seeds start in the lower bracket') }}</x-ui.check>
                             <span class="{{ $help }}" data-test="split-help">{{ __('The lowest seeds start in the lower bracket, with one life: here :seeds. Shorter, but less fair.', ['seeds' => $splitFrom === $n ? __('seed :seed', ['seed' => $n]) : __('seeds :from to :to', ['from' => $splitFrom, 'to' => $n])]) }}</span>
                         </div>
                     @endif
@@ -455,15 +451,11 @@
                             <span class="{{ $help }}">{{ __('Twice means a return match; in chess with the other color.') }}</span>
                         </div>
                         <div class="{{ $optionRow }}">
-                            <label class="flex flex-col items-start gap-2 text-[13px] font-bold">
-                                {{ __('Rank by') }}
-                                <select wire:model.live="options.rankBy" class="h-11 w-full max-w-64 rounded-md border border-edge bg-ground px-3 text-[13px] font-normal text-ink">
-                                    <option value="points">{{ __('Points (win 1, draw ½)') }}</option>
-                                    <option value="match-wins">{{ __('Matches won') }}</option>
-                                    <option value="game-wins">{{ __('Games won') }}</option>
-                                    <option value="custom">{{ __('Custom points') }}</option>
-                                </select>
-                            </label>
+                            <span class="flex flex-col items-start gap-2">
+                                <span class="text-[13px] font-bold" id="rank-by-l">{{ __('Rank by') }}</span>
+                                <x-ui.select-menu model="options.rankBy" live labelledby="rank-by-l" :value="$options->rankBy" width="16rem" data-test="rank-by"
+                                                  :options="['points' => __('Points (win 1, draw ½)'), 'match-wins' => __('Matches won'), 'game-wins' => __('Games won'), 'custom' => __('Custom points')]" />
+                            </span>
                             <span class="{{ $help }}">{{ __('Matches won counts wins. Games won counts single games inside a series. Custom points lets you set points for a win and a draw.') }}</span>
                         </div>
                         @include('pages.admin.partials.tournament-tie-breaks', ['key' => 'roundRobinTieBreaks', 'current' => $options->roundRobinTieBreaks, 'labels' => array_diff_key($tieBreakLabels, ['median-buchholz' => true])])
@@ -623,14 +615,14 @@
     </section>
 
     {{-- Who enters results (director mode, TOURNAMENT-FORMATS.md section 6) --}}
-    <section aria-labelledby="res-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:p-6" data-test="results-mode">
+    <section aria-labelledby="res-h" class="flex flex-col gap-4 rounded border border-hairline bg-card p-4 lg:p-6" data-test="results-mode">
         <h2 id="res-h" class="m-0 font-display text-lg font-bold">{{ __('Who enters results') }}</h2>
-        <div class="grid gap-2 lg:grid-cols-2">
+        <div role="radiogroup" aria-labelledby="res-h" class="grid gap-2 lg:grid-cols-2">
             @foreach (TournamentResultsMode::cases() as $mode)
-                <label wire:key="mode-{{ $mode->value }}" @class(['grid cursor-pointer grid-cols-[18px_minmax(0,1fr)] gap-2.5 rounded-md p-3', 'bg-btc-chip shadow-[inset_0_0_0_1px_var(--color-btc)]' => $this->resultsMode === $mode->value, 'bg-ground shadow-ring' => $this->resultsMode !== $mode->value])>
-                    <input type="radio" name="results-mode" class="mt-0.5 accent-btc" @checked($this->resultsMode === $mode->value) wire:click="pickResultsMode('{{ $mode->value }}')" data-test="results-{{ $mode->value }}">
+                <button type="button" role="radio" wire:key="mode-{{ $mode->value }}" class="rv-opt items-start!" aria-checked="{{ $this->resultsMode === $mode->value ? 'true' : 'false' }}" wire:click="pickResultsMode('{{ $mode->value }}')" data-test="results-{{ $mode->value }}">
+                    <i aria-hidden="true" class="mt-0.5"></i>
                     <span class="flex flex-col gap-1"><span class="text-[13px] font-bold">{{ $mode->label() }}</span><span class="text-xs leading-normal text-ink-2">{{ $mode->help() }}</span></span>
-                </label>
+                </button>
             @endforeach
         </div>
 

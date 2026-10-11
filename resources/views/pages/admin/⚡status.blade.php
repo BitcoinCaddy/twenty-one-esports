@@ -42,8 +42,15 @@ new #[Title('Status')] #[Layout('layouts::app', ['section' => 'admin'])] class e
         $attention > 0 => trans_choice(':count check needs you.|:count checks need you.', $attention),
         default => __('Everything runs.'),
     };
+    // The verdict as on the board (AdminOverview.dc.html): the count as a display numeral, the sentence beside it.
+    [$verdictCount, $verdictText, $verdictTone] = match (true) {
+        $down > 0 && $attention > 0 => [null, $verdict, 'text-loss'],
+        $down > 0 => [$down, trans_choice('check is down.|checks are down.', $down), 'text-loss'],
+        $attention > 0 => [$attention, trans_choice('check needs you.|checks need you.', $attention), 'text-btc-hi'],
+        default => [null, $verdict, 'text-win'],
+    };
     $label = ['ok' => __('OK'), 'attention' => __('Needs you'), 'down' => __('Down')];
-    $icon = ['ok' => 'check', 'attention' => 'warn', 'down' => 'alert'];
+    $icon = ['ok' => 'check', 'attention' => 'flag', 'down' => 'alert'];
     $chip = [
         'ok' => 'bg-win-tint text-win',
         'attention' => 'bg-btc-chip text-btc-hi',
@@ -59,11 +66,18 @@ new #[Title('Status')] #[Layout('layouts::app', ['section' => 'admin'])] class e
 @endphp
 
 <x-admin.page active="status" :title="__('Status')" :lead="__('What the league, the tournaments and the servers are doing. Read-only: nothing on this page writes, sends or contacts a relay.')" data-test="admin-status">
+    <x-slot:readout>
+        <span class="rv-live is-run" data-test="status-poll"><i></i>{{ __('Reads every 5 min.') }}</span>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('need you') }}</span><span @class(['rv-num text-base', 'text-btc-hi' => $attention + $down > 0, 'text-ink' => $attention + $down === 0]) data-test="readout-value">{{ $attention + $down }}</span></span>
+    </x-slot:readout>
+
     {{-- The verdict, and one block per check: the strip is the page in one line, each block jumps to its row. --}}
-    <section aria-labelledby="verdict-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-6" data-test="status-verdict" data-down="{{ $down }}" data-attention="{{ $attention }}">
+    <section aria-labelledby="verdict-h" class="rv-card rv-hero flex flex-col gap-4 px-4 py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-6" style="background: linear-gradient(90deg, #1A140A, var(--color-card) 60%)" data-test="status-verdict" data-down="{{ $down }}" data-attention="{{ $attention }}">
         <div class="flex min-w-0 flex-col gap-1">
-            <h2 id="verdict-h" class="m-0 font-display text-[22px] leading-[1.25] font-bold">{{ $verdict }}</h2>
-            <p class="m-0 text-xs leading-normal text-ink-3">{{ __('Read at :time (Berlin). Relay answers and log errors are counted every 5 minutes.', ['time' => $readAt]) }}</p>
+            <h2 id="verdict-h" class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 font-display text-[22px] leading-[1.25] font-bold">
+                @if ($verdictCount !== null)<span class="rv-num text-[36px] {{ $verdictTone }}" aria-hidden="true">{{ $verdictCount }}</span><span class="sr-only">{{ $verdict }}</span><span aria-hidden="true">{{ $verdictText }}</span>@else{{ $verdictText }}@endif
+            </h2>
+            <p class="m-0 flex items-start gap-2 text-xs leading-normal text-ink-3"><span class="rv-dot mt-1" aria-hidden="true"></span><span>{{ __('Read at :time (Berlin). Relay answers and log errors are counted every 5 minutes.', ['time' => $readAt]) }}</span></p>
         </div>
         <ol class="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label="{{ __('All checks') }}">
             @foreach ($checks as $check)
@@ -94,7 +108,7 @@ new #[Title('Status')] #[Layout('layouts::app', ['section' => 'admin'])] class e
                             <b class="text-[13px]">{{ $check['name'] }}</b>
                             <span class="text-xs text-ink-3">{{ $check['sub'] }}</span>
                         </span>
-                        <span class="col-span-2 text-[13px] font-bold lg:col-span-1" data-test="status-value">{{ $check['value'] }}</span>
+                        <span class="col-span-2 flex items-center gap-2 text-[13px] font-bold lg:col-span-1" data-test="status-value">@if ($check['state'] !== 'ok')<span class="rv-dot" style="--c: {{ $check['state'] === 'down' ? 'var(--color-loss)' : 'var(--color-btc-hi)' }}" aria-hidden="true"></span>@endif{{ $check['value'] }}</span>
                         <div class="col-span-2 flex min-w-0 flex-col gap-2 lg:col-span-1">
                             <p class="m-0 max-w-[75ch] text-[13px] leading-normal text-ink-2 [overflow-wrap:anywhere]">{{ $check['detail'] }}</p>
                             @if ($check['items'] !== [])
@@ -112,7 +126,7 @@ new #[Title('Status')] #[Layout('layouts::app', ['section' => 'admin'])] class e
                         </div>
                         <span class="col-span-2 lg:col-span-1 lg:justify-self-end">
                             @if ($check['href'])
-                                <a href="{{ $check['href'] }}" class="inline-flex min-h-11 items-center text-[13px] text-ink underline decoration-edge underline-offset-4 hover:decoration-ink" data-test="status-link">{{ $check['action'] }}</a>
+                                <a href="{{ $check['href'] }}" class="rv-lk inline-flex min-h-11 items-center text-[13px]" data-test="status-link">{{ $check['action'] }}</a>
                             @endif
                         </span>
                     </li>

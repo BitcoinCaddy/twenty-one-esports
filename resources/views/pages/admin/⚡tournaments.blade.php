@@ -93,12 +93,31 @@ new #[Title('Tournaments')] #[Layout('layouts::app', ['section' => 'admin'])] cl
     }
 }; ?>
 
+@php
+    // The readout (AdminTournaments.dc.html): how many run now (live), how many are open for sign-up, how many in all.
+    $byStatus = Tournament::query()->exceptLeagueWeeks()
+        ->when(! $this->isAdmin, fn ($query) => $query->where('created_by_id', auth()->id()))
+        ->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+    $running = (int) ($byStatus[\App\Enums\TournamentStatus::Running->value] ?? 0) + (int) ($byStatus[\App\Enums\TournamentStatus::Drawing->value] ?? 0);
+    $tone = fn (\App\Enums\TournamentStatus $status): string => match ($status) {
+        \App\Enums\TournamentStatus::Signup => 'is-btc',
+        \App\Enums\TournamentStatus::Running, \App\Enums\TournamentStatus::Drawing => 'is-ok',
+        \App\Enums\TournamentStatus::Cancelled => 'is-bad',
+        default => '',
+    };
+@endphp
+
 <x-admin.page active="tournaments" :title="__('Tournaments')" :lead="__('Tournament matches are normal rated challenges and count for Elo. They never mine season blocks; every tournament has its own prize pool.')" flash-test="tournaments-notice" data-test="admin-tournaments">
+    <x-slot:readout>
+        @if ($running > 0)<span class="rv-live" style="height: 20px"><i></i>{{ trans_choice(':count running|:count running', $running) }}</span>@endif
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('in sign-up') }}</span><span class="rv-num text-base text-ink">{{ (int) ($byStatus[\App\Enums\TournamentStatus::Signup->value] ?? 0) }}</span></span>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('in all') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ (int) $byStatus->sum() }}</span></span>
+    </x-slot:readout>
     <x-slot:actions>
         @if ($this->isAdmin)
-            <x-button variant="quiet" :href="route('admin.organizers')" data-test="to-organizers">{{ __('Organizers') }}</x-button>
+            <a href="{{ route('admin.organizers') }}" class="rv-b2" data-test="to-organizers">{{ __('Organizers') }}</a>
         @endif
-        <x-button :href="route('admin.tournaments.create')" data-test="new-tournament">{{ __('New tournament') }}</x-button>
+        <a href="{{ route('admin.tournaments.create') }}" class="rv-b" data-test="new-tournament">{{ __('New tournament') }}</a>
     </x-slot:actions>
 
     @if ($this->scheduler['stale'])
@@ -110,53 +129,54 @@ new #[Title('Tournaments')] #[Layout('layouts::app', ['section' => 'admin'])] cl
         </x-admin.flash>
     @endif
 
-    {{-- The casual cups the league opens on its own stay out of the way unless asked for. --}}
-    <div role="tablist" class="flex w-fit flex-wrap gap-1 rounded-lg bg-card p-1" data-test="tournament-kind">
-        @foreach (['manual' => __('Set up by people'), 'casual' => __('Casual cups'), 'all' => __('All')] as $key => $label)
-            <button type="button" role="tab" wire:click="$set('kind', '{{ $key }}')" aria-selected="{{ $kind === $key ? 'true' : 'false' }}" data-test="kind-{{ $key }}"
-                    @class(['h-11 cursor-pointer rounded-md border-0 px-4 text-[13px]', 'bg-raised font-bold text-btc' => $kind === $key, 'bg-transparent text-ink-2' => $kind !== $key])>{{ $label }} {{ $this->counts[$key] }}</button>
+    {{-- The casual cups the league opens on its own stay out of the way unless asked for (chips, rule R8). --}}
+    <div role="tablist" class="flex flex-wrap gap-2" data-test="tournament-kind">
+        @foreach (['all' => __('All'), 'manual' => __('Set up by people'), 'casual' => __('Casual cups')] as $key => $label)
+            <button type="button" role="tab" wire:click="$set('kind', '{{ $key }}')" aria-selected="{{ $kind === $key ? 'true' : 'false' }}" @if ($kind === $key) aria-current="true" @endif data-test="kind-{{ $key }}"
+                    class="rv-chip">{{ $label }} <span class="rv-m">{{ $this->counts[$key] }}</span></button>
         @endforeach
     </div>
 
-    <x-admin.panel :title="$this->isAdmin ? __('All tournaments') : __('Your tournaments')" :meta="__('newest first')" id="list-h">
-        @if ($this->tournaments->isEmpty())
+    @if ($this->tournaments->isEmpty())
+        <x-admin.panel :title="$this->isAdmin ? __('All tournaments') : __('Your tournaments')" id="list-h">
             <x-admin.empty :text="__('No tournaments yet. Create the first one as a draft; players see it once you publish.')">
-                <x-button variant="quiet" :href="route('admin.tournaments.create')">{{ __('New tournament') }}</x-button>
+                <a href="{{ route('admin.tournaments.create') }}" class="rv-b2">{{ __('New tournament') }}</a>
             </x-admin.empty>
-        @else
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[720px] border-collapse text-left text-[13px]">
-                    <thead class="text-xs text-ink-3">
-                        <tr>
-                            <th class="py-2 pr-3 font-normal">{{ __('Status') }}</th>
-                            <th class="py-2 pr-3 font-normal">{{ __('Tournament') }}</th>
-                            <th class="py-2 pr-3 font-normal">{{ __('Game, mode') }}</th>
-                            <th class="py-2 pr-3 font-normal">{{ __('Starts') }}</th>
-                            <th class="py-2 pr-3 font-normal">{{ __('Format') }}</th>
-                            <th class="py-2 text-right font-normal">{{ __('Entries') }}</th>
+        </x-admin.panel>
+    @else
+        <div class="rv-card relative overflow-x-auto" aria-label="{{ $this->isAdmin ? __('All tournaments') : __('Your tournaments') }}" role="region">
+            <table class="rv-tb min-w-[760px]">
+                <thead>
+                    <tr>
+                        <th>{{ __('Status') }}</th>
+                        <th>{{ __('Tournament') }}</th>
+                        <th>{{ __('Game, mode') }}</th>
+                        <th>{{ __('Starts') }}</th>
+                        <th>{{ __('Format') }}</th>
+                        <th class="is-r">{{ __('Entries') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($this->tournaments as $tournament)
+                        <tr class="align-top hover:bg-row-hover" wire:key="t-{{ $tournament->id }}" data-test="tournament-row">
+                            <td><span class="rv-tag {{ $tone($tournament->status) }}">{{ $tournament->status->label() }}</span></td>
+                            <td>
+                                <a href="{{ route('tournaments.show', $tournament) }}" class="font-bold text-ink hover:text-btc-hi">{{ $tournament->name }}</a>
+                                <span class="block rv-m">{{ $tournament->cup_series !== null ? __('Casual cup') : __('by :name', ['name' => $tournament->creator?->displayName() ?? __('a former player')]) }}</span>
+                                {{-- Prize pool, Edit and Payouts as buttons in the name column, reachable on a phone without scrolling the table sideways. --}}
+                                <x-tournaments.manage-actions :tournament="$tournament" class="pt-2" />
+                            </td>
+                            <td class="text-[13px]">{{ \App\Support\Tournaments\Lobbies::gameLine($tournament) }}</td>
+                            <td class="text-[13px] whitespace-nowrap"><x-league-time :at="$tournament->starts_at" /></td>
+                            <td class="text-[13px]">{{ \App\Support\Tournaments\Lobbies::formatLabel($tournament) }}
+                                <span class="block rv-m">{{ __('about :duration', ['duration' => Estimator::format($tournament->plannedDuration(), $tournament->profile())]) }}</span>
+                            </td>
+                            <td class="is-r tabular-nums">{{ $tournament->capacity }}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($this->tournaments as $tournament)
-                            <tr class="border-t border-hairline hover:bg-row-hover" wire:key="t-{{ $tournament->id }}" data-test="tournament-row">
-                                <td class="py-2.5 pr-3"><span class="inline-flex h-6 items-center rounded-xs bg-btc-chip px-2 text-xs font-bold text-btc-hi">{{ $tournament->status->label() }}</span></td>
-                                <td class="py-2.5 pr-3">
-                                    <a href="{{ route('tournaments.show', $tournament) }}" class="font-bold">{{ $tournament->name }}</a>
-                                    <span class="block text-xs text-ink-3">{{ __('by :name', ['name' => $tournament->creator?->displayName() ?? __('a former player')]) }}</span>
-                                    {{-- Prize pool, Edit and Payouts as buttons in the name column, reachable on a phone without scrolling the table sideways. --}}
-                                    <x-tournaments.manage-actions :tournament="$tournament" class="pt-2" />
-                                </td>
-                                <td class="py-2.5 pr-3">{{ \App\Support\Tournaments\Lobbies::gameLine($tournament) }}</td>
-                                <td class="py-2.5 pr-3 whitespace-nowrap"><x-league-time :at="$tournament->starts_at" /></td>
-                                <td class="py-2.5 pr-3">{{ \App\Support\Tournaments\Lobbies::formatLabel($tournament) }}
-                                    <span class="block text-xs text-ink-3">{{ __('about :duration', ['duration' => Estimator::format($tournament->plannedDuration(), $tournament->profile())]) }}</span>
-                                </td>
-                                <td class="py-2.5 text-right">{{ $tournament->capacity }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </x-admin.panel>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <span class="rv-m">{{ __('newest first') }}</span>
+    @endif
 </x-admin.page>

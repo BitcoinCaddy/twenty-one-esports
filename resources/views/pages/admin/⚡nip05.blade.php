@@ -130,6 +130,10 @@ new #[Title('Nostr addresses')] #[Layout('layouts::app', ['section' => 'admin'])
 }; ?>
 
 <x-admin.page active="nip05" :title="__('Nostr addresses')" :lead="__('Names players claimed on :domain. Revoke one that impersonates someone or breaks the rules: it stops answering at once and stays held until you lift the hold below.', ['domain' => Nip05Names::domain()])" data-test="admin-nip05">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Names') }}</span><span class="rv-num text-base text-ink">{{ $this->total }}</span></span><span class="flex items-baseline gap-2"><span class="rv-m">{{ __('held') }}</span><span class="rv-num text-base {{ $this->holdsTotal > 0 ? 'text-btc-hi' : 'text-ink' }}" data-test="readout-value">{{ $this->holdsTotal }}</span></span>
+    </x-slot:readout>
+
     <x-admin.panel :title="__('Claimed names')" :meta="trans_choice(':count name|:count names', $this->total)" data-test="nip05-names">
         <label class="flex flex-col gap-1.5 lg:max-w-[420px]">
             <span class="text-[13px]">{{ __('Search a name') }}</span>

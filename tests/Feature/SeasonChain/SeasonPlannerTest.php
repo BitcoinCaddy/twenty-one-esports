@@ -129,7 +129,7 @@ test('before the Pre-Season there is nothing to plan', function () {
         ->and(fn () => planNext($this->board))->toThrow(SeasonReleaseRefused::class, 'Release the Pre-Season first');
 
     $this->actingAs($this->board)->get(route('admin.season'))->assertOk()
-        ->assertSee('The planner is for the seasons after the Pre-Season. Release the Pre-Season first.');
+        ->assertSeeInOrder(['The planner is for the seasons after the Pre-Season.', 'Release the Pre-Season first.']);
 });
 
 test('the board plans the next season through the page: defaults, a logged row per change, and the announcement', function () {

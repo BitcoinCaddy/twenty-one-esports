@@ -414,7 +414,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
     $zone = (string) (auth()->user()->timezone ?? config('esports.preseason.display_timezone'));
     $teams = $tournament->profile()->entersTeams();
     $places = app(\App\Support\Tournaments\TournamentSignups::class)->places($tournament);
-    $field = 'h-11 w-full min-w-0 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
+    $field = 'rv-in';
     $actions = [
         'edited' => __('edited the tournament'),
         'removed' => __('removed an entry'),
@@ -454,6 +454,10 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
 @endphp
 
 <x-admin.page active="tournaments" :title="__('Edit :name', ['name' => $tournament->name])" :crumbs="[[__('Tournaments'), route('admin.tournaments')], [$tournament->name, route('tournaments.show', $tournament)]]" :notice="$notice" notice-test="edit-notice" :error="$error" error-test="edit-error" data-test="tournament-edit">
+    <x-slot:readout>
+        <span class="rv-tag">{{ $tournament->status->label() }}</span><span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Places') }}</span><span class="rv-num text-base text-btc" data-test="readout-value">{{ $this->signups->count() }}/{{ $tournament->capacity }}</span></span>
+    </x-slot:readout>
+
     <x-slot:badge>
         <span class="inline-flex h-7 items-center rounded-xs bg-btc-chip px-2 text-xs font-bold text-btc-hi" data-test="edit-status">{{ $tournament->status->label() }}</span>
     </x-slot:badge>
@@ -471,9 +475,9 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
     @include('pages.admin.partials.tournament-round-times')
 
     @if ($ended)
-        <p class="m-0 rounded-lg bg-card px-4 py-4 text-[13px] text-ink-2" data-test="edit-ended">{{ __('This tournament has ended; it can no longer be changed.') }}</p>
+        <p class="m-0 rounded border border-hairline bg-card px-4 py-4 text-[13px] text-ink-2" data-test="edit-ended">{{ __('This tournament has ended; it can no longer be changed.') }}</p>
     @else
-        <section aria-label="{{ __('Basics') }}" class="grid grid-cols-2 gap-3 rounded-lg bg-card p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.5fr)] lg:gap-4 lg:px-6 lg:py-5">
+        <section aria-label="{{ __('Basics') }}" class="grid grid-cols-2 gap-3 rounded border border-hairline bg-card p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.5fr)] lg:gap-4 lg:px-6 lg:py-5">
             <label class="col-span-2 flex min-w-0 flex-col gap-1.5 text-xs text-ink-2 lg:col-span-1">
                 {{ __('Name') }}
                 <input wire:model="name" maxlength="80" data-test="edit-name" class="{{ $field }}">
@@ -497,8 +501,8 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
                 @include('pages.admin.partials.tournament-chooser')
             @endisland
         @else
-            <section class="flex flex-col gap-2 rounded-lg bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#F7931A] lg:px-6" data-test="format-locked">
-                <h2 class="m-0 text-[15px] font-bold">{{ __('Format locked') }}</h2>
+            <section class="flex flex-col gap-2 rounded border border-hairline bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#F7931A] lg:px-6" data-test="format-locked">
+                <h2 class="rv-h3">{{ __('Format locked') }}</h2>
                 <p class="m-0 max-w-[80ch] text-[13px] leading-normal text-ink-2">{{ __('The draw committed to a Bitcoin block with these entries and this format: :format, :who. Game, format, capacity and sign-up can no longer change, and the draw is never redone, because the league would then pick among block hashes it has already seen. Name, description and start time can still change. To play in another system, call this tournament off and create a new one.', [
                     'format' => $tournament->format->label(),
                     'who' => $teams ? trans_choice(':count team|:count teams', $tournament->capacity) : trans_choice(':count player|:count players', $tournament->capacity),
@@ -511,7 +515,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
             @include('pages.admin.partials.tournament-deadlines')
         @endisland
 
-        <div class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5">
+        <div class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5">
             @island(name: 'summary')
                 {{-- An island renders in its own scope: nothing from the @php block above reaches it. --}}
                 <span class="flex min-w-0 flex-col gap-2" data-test="edit-summary">
@@ -524,10 +528,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
                         <span class="flex flex-col gap-2 rounded-md px-3 py-3 shadow-[inset_0_0_0_1px_#5A2A2E]" data-test="incompatible">
                             <span class="text-[13px] font-bold text-loss">{{ __('These lineups were entered for the old game or mode') }}</span>
                             <span class="text-[13px] [overflow-wrap:anywhere]">{{ $this->incompatible->pluck('name')->implode(', ') }}</span>
-                            <label class="flex items-start gap-2 text-xs leading-normal text-ink-2">
-                                <input type="checkbox" wire:model="confirmRemoval" class="mt-0.5 size-4 shrink-0 accent-btc" data-test="confirm-removal">
-                                {{ __('Remove them when saving. Their players are notified, and the removal is logged. Solo entries stay.') }}
-                            </label>
+                            <x-ui.check model="confirmRemoval" :checked="$this->confirmRemoval" class="text-xs! text-ink-2" data-test="confirm-removal">{{ __('Remove them when saving. Their players are notified, and the removal is logged. Solo entries stay.') }}</x-ui.check>
                         </span>
                     @endif
                 </span>
@@ -550,9 +551,9 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         <livewire:tournament-control :tournament="$tournament" :wire:key="'control-'.$tournament->id" />
     @endif
 
-    <section id="signups" aria-labelledby="signups-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="moderation">
+    <section id="signups" aria-labelledby="signups-h" class="flex flex-col gap-3 rounded border border-hairline bg-card p-4 lg:p-6" data-test="moderation">
         <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 id="signups-h" class="m-0 text-[15px] font-bold">{{ __('Sign-ups') }}</h2>
+            <h2 id="signups-h" class="rv-h3">{{ __('Sign-ups') }}</h2>
             <span class="text-xs text-ink-3">{{ $teams
                 ? __(':lineups lineups and :solos solo players, :taken of :places places', ['lineups' => $places['lineups'], 'solos' => $places['solos'], 'taken' => $places['taken'], 'places' => $places['places']])
                 : __(':taken of :places players', ['taken' => $places['taken'], 'places' => $places['places']]) }}</span>
@@ -594,10 +595,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
                                     {{ __('Reason (the players read it)') }}
                                     <input wire:model="removeReason" maxlength="500" class="{{ $field }}" data-test="remove-reason">
                                 </label>
-                                <label class="flex items-start gap-2 text-xs leading-normal text-ink-2">
-                                    <input type="checkbox" wire:model="removeBlock" class="mt-0.5 size-4 shrink-0 accent-btc" data-test="remove-block">
-                                    {{ $signup->lineup_id ? __('Also block its players from signing up for this tournament again') : __('Also block this player from signing up for this tournament again') }}
-                                </label>
+                                <x-ui.check model="removeBlock" :checked="$this->removeBlock" class="text-xs! text-ink-2" data-test="remove-block">{{ $signup->lineup_id ? __('Also block its players from signing up for this tournament again') : __('Also block this player from signing up for this tournament again') }}</x-ui.check>
                                 <span class="flex flex-wrap gap-2">
                                     <x-button type="submit" data-test="remove-confirm">{{ __('Remove entry') }}</x-button>
                                     <x-button variant="quiet" wire:click="cancelRemove">{{ __('Cancel') }}</x-button>
@@ -626,9 +624,9 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         @endif
     </section>
 
-    <section aria-labelledby="modlog-h" class="flex flex-col gap-2 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="moderation-log">
+    <section aria-labelledby="modlog-h" class="flex flex-col gap-2 rounded border border-hairline bg-card p-4 lg:p-6" data-test="moderation-log">
         <span class="flex items-baseline justify-between gap-3">
-            <h2 id="modlog-h" class="m-0 text-[15px] font-bold">{{ __('Moderation log') }}</h2>
+            <h2 id="modlog-h" class="rv-h3">{{ __('Moderation log') }}</h2>
             <span class="text-xs text-ink-3">{{ __('newest first') }}</span>
         </span>
         @forelse ($this->log as $entry)

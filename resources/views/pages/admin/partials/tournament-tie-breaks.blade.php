@@ -9,12 +9,7 @@
         <ol class="m-0 flex w-full flex-col gap-1.5 pl-5 text-xs text-ink-2">
             @foreach ([0, 1, 2] as $index)
                 <li wire:key="tb-{{ $key }}-{{ $index }}">
-                    <select wire:model.live="options.{{ $key }}.{{ $index }}" aria-label="{{ __('Tie-break :number', ['number' => $index + 1]) }}"
-                            class="h-11 w-full max-w-64 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink">
-                        @foreach ($labels as $value => $label)
-                            <option value="{{ $value }}" @selected(($current[$index] ?? null) === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <x-ui.select-menu :model="'options.'.$key.'.'.$index" live :value="$current[$index] ?? null" :label="__('Tie-break :number', ['number' => $index + 1])" :options="$labels" width="16rem" />
                 </li>
             @endforeach
         </ol>
