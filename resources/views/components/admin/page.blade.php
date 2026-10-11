@@ -44,7 +44,7 @@
 <div {{ $attributes->class(['-mt-page-top flex grow flex-col lg:-mt-page-top-lg', 'lg:grid lg:grid-cols-[240px_minmax(0,1fr)]' => $groups !== []]) }}>
     <x-admin.nav :active="$active" :groups="$groups" side />
 
-    <div class="flex min-w-0 flex-col gap-6 px-4 pt-4 pb-10 lg:px-8 lg:pt-6">
+    <div class="flex min-w-0 flex-col gap-6 px-4 pt-4 pb-10 lg:px-8 lg:pt-8">
         <nav aria-label="{{ __('Breadcrumb') }}" data-test="admin-crumbs" class="rv-console flex min-h-10 flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2 text-xs">
             <ol class="m-0 flex min-w-0 list-none flex-wrap items-center gap-x-2 p-0">
                 <li><a href="{{ $nav->homeHref() }}" class="inline-flex min-h-6 items-center text-ink-2 hover:text-ink">{{ __('Admin') }}</a></li>
