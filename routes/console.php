@@ -715,6 +715,8 @@ Schedule::command('twentyone:stream-bot')->everyMinute()->withoutOverlapping()->
  */
 Schedule::command('twentyone:stream-bot:champions')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command('twentyone:stream-bot:pride')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+// The tournament recap (TournamentRecapNotes) follows its champion note, off unless esports.recap.notes.enabled.
+Schedule::command('twentyone:stream-bot:recaps')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 
 /*
  * The same bot posts a note on its own profile for every published tournament

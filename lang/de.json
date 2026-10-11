@@ -8454,5 +8454,12 @@
     "Switched to :mode.": "Auf :mode umgestellt.",
     "Switching applies to every game that has not started yet; games under way finish as they started. The players get a message.": "Die Umstellung gilt für jede Partie, die noch nicht begonnen hat; laufende Partien werden so zu Ende gespielt, wie sie begonnen haben. Die Spieler bekommen eine Nachricht.",
     "Saved at once. Once players have signed up, each gets a message.": "Wird sofort gespeichert. Sobald sich Spieler angemeldet haben, bekommt jeder eine Nachricht.",
-    "Switched from :from to :to on :date. Games already under way finish as they started.": "Am :date von :from auf :to umgestellt. Laufende Partien werden so zu Ende gespielt, wie sie begonnen haben."
+    "Switched from :from to :to on :date. Games already under way finish as they started.": "Am :date von :from auf :to umgestellt. Laufende Partien werden so zu Ende gespielt, wie sie begonnen haben.",
+    "Recap": "Rückblick",
+    "Upsets by the Elo each side was seeded with": "Überraschungen nach der Elo, mit der beide Seiten gesetzt waren",
+    "Upsets": "Überraschungen",
+    "beat": "schlägt",
+    "Closest match": "Knappstes Match",
+    ":gap Elo below": ":gap Elo darunter",
+    ":winner vs :loser Elo": ":winner gegen :loser Elo"
 }

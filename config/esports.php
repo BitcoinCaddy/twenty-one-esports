@@ -1821,6 +1821,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tournament recap (plan "KI-Stimme der Liga", P3)
+    |--------------------------------------------------------------------------
+    |
+    | App\Support\Tournaments\TournamentRecap reads a finished tournament's
+    | upsets by Elo, its closest match and the champion's path.
+    |
+    | page: the recap section on the tournament page. Off until the
+    | TournamentDetail board carries it (design 1:1 rule of the revamp).
+    |
+    | notes: the recap note on the stream bot's profile
+    | (App\Support\StreamBot\TournamentRecapNotes), once per tournament,
+    | after its champion note; written by the league voice (channel `recap`)
+    | when that is on, else from its template. `days` and `per_run` as for
+    | the champion notes.
+    |
+    */
+
+    'recap' => [
+        'page' => (bool) env('ESPORTS_RECAP_PAGE', false),
+        'notes' => [
+            'enabled' => (bool) env('ESPORTS_STREAM_BOT_RECAP_NOTES', false),
+            'days' => 5,
+            'per_run' => 1,
+            'retry_minutes' => 10,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | League voice (plan "KI-Stimme der Liga", P1)
     |--------------------------------------------------------------------------
     |
@@ -1889,8 +1918,10 @@ return [
             'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
             'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
             'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
-            'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 1200, 'multiline' => true, 'language' => 'de'],
-            'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 1500, 'multiline' => true, 'language' => 'de'],
+            // Recap and weekly report go on the bot's profile (P3): English (user 2026-10-11, profile posts stay English)
+            // and short enough for the spam gate's 280 characters once the app adds the link line.
+            'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
+            'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
             'card' => ['enabled' => (bool) env('ESPORTS_VOICE_CARD', false), 'daily_cap' => 50, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de'],
             'meme' => ['enabled' => (bool) env('ESPORTS_VOICE_MEME', false), 'daily_cap' => 30, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'de'],
             // The caster is the largest consumer: throttled hardest per call, capped per day.
