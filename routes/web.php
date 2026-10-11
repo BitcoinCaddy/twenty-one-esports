@@ -3,6 +3,7 @@
 use App\Games\GameRegistry;
 use App\Http\Controllers\BadgeImageController;
 use App\Http\Controllers\BroadcastOverlayController;
+use App\Http\Controllers\CasterFetchController;
 use App\Http\Controllers\GeneratedAvatarController;
 use App\Http\Controllers\InviteCardController;
 use App\Http\Controllers\LiveStatusController;
@@ -146,6 +147,14 @@ Route::get('stream/cover.png', StreamCoverController::class)->withoutMiddleware(
 // The slides the stream bot's pride notes carry (PrideNotes), by their content hash; public, no session.
 Route::get('stream/pride/{hash}.png', StreamPrideImageController::class)->where('hash', '[0-9a-f]{64}')->withoutMiddleware('web')->name('stream.pride-image');
 
+// TWENTY ONE TV commentary (plan "KI-Stimme der Liga", P6): the workstation fetcher claims scripts and uploads their
+// clips with its bearer token (CasterFetchController, fail closed without a token). No session, no cookie, no CSRF.
+Route::post('api/caster/claim', [CasterFetchController::class, 'claim'])->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.claim');
+Route::post('api/caster/scripts/{id}/clip', [CasterFetchController::class, 'clip'])->whereNumber('id')
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.clip');
+Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
+
 // OBS overlays (plan "OBS-Broadcast-Overlays", P2): an admin's preset by its secret token, and its data. No session,
 // no cookie, no CSRF: OBS keeps no login; a wrong or rotated token is 404 (BroadcastOverlayController).
 Route::get('broadcast/{token}', [BroadcastOverlayController::class, 'show'])->where('token', OverlayPreset::TOKEN_PATTERN)
@@ -274,6 +283,7 @@ Route::prefix('cards/{locale}')
         Route::get('tape/{tournament}-{format}.png', [PrideController::class, 'tapeCard'])->where('tournament', '[0-9]{1,18}')->name('cards.tape');
         // A Blockfill moment (BlockfillMoments::card()), also while Blockfill is off: a posted note keeps its picture.
         Route::get('blockfill/{run}-{format}.png', [ShareCardController::class, 'blockfill'])->where('run', '[0-9]{1,18}')->name('cards.blockfill');
+        Route::get('meme/pong/{meme}-{format}.png', [ShareCardController::class, 'meme'])->where('meme', '[0-9a-z]{26}')->name('cards.meme');
         // A TMNF moment (TmnfMoments::card()), only while TMNF is on: its place is read from the running game.
         if (config('esports.tmnf.enabled')) {
             Route::get('tmnf/{run}-{format}.png', [ShareCardController::class, 'tmnf'])->where('run', '[0-9]{1,18}')->name('cards.tmnf');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PongMatch;
 use App\Models\RankBadgeVersion;
 use App\Models\Season;
 use App\Models\SeasonAttestation;
@@ -9,6 +10,8 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Support\Cards\ShareCard;
 use App\Support\Cards\ShareMoments;
+use App\Support\Memes\MemeCard;
+use App\Support\Memes\MemeShares;
 use App\Support\Stacker\BlockfillMoments;
 use App\Support\Tmnf\TmnfMoments;
 use App\Support\Tournaments\TournamentChampion;
@@ -97,6 +100,20 @@ class ShareCardController extends Controller
     /**
      * @param  \Closure(): ShareCard  $card
      */
+    /**
+     * The meme card of a finished live Proof of Pong match (plan "KI-Stimme der Liga", P5, MemeShares): only a match
+     * with a meme moment has one. Kept while Proof of Pong is off, so a posted note keeps its picture.
+     */
+    public function meme(string $locale, string $meme, string $format, MemeShares $memes): Response
+    {
+        App::setLocale($locale);
+        $match = PongMatch::query()->where('ulid', $meme)->first();
+        $card = $match === null ? null : $memes->card($match);
+        abort_if($card === null, 404);
+
+        return $this->png($locale, fn (): MemeCard => $card, $format);
+    }
+
     private function png(string $locale, \Closure $card, string $format): Response
     {
         App::setLocale($locale);

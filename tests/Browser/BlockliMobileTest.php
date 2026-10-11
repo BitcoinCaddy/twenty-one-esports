@@ -59,7 +59,7 @@ const BLOCKLI_FOLD = <<<'JS'
     const box = (sel) => { const el = document.querySelector(sel); if (!el || !el.checkVisibility()) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height) }; };
     const sheet = box('[data-test=chat-sheet-toggle]');
     return {
-        tabbar: parseFloat(getComputedStyle(document.body).paddingBottom) || 0, height: innerHeight, width: innerWidth, sheet: sheet ? sheet.top : innerHeight,
+        tabbar: parseFloat(getComputedStyle(document.body).paddingBottom) || 0, focus: document.documentElement.dataset.focus ?? null, height: innerHeight, width: innerWidth, sheet: sheet ? sheet.top : innerHeight,
         board: box('[data-test=board]'), chatPanel: box('[data-test=chat-panel]'), chatInput: box('#chatin'), moves: box('[data-test=moves]'), side: Math.round(Math.max(...[...document.querySelector('[data-test=board-game] > .grid > div:nth-child(2)').children].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().bottom))), dock: box('[data-test=block-input]'), modeMove: box('[data-test=mode-move]'), modeBlock: box('[data-test=mode-block]'),
         rotate: box('[data-test=rotate-block]'), confirm: box('[data-test=set-block]'), top: box('[data-test=player-top]') ?? box('[data-test=side-card-top]'), bottomCard: box('[data-test=player-bottom]') ?? box('[data-test=side-card-bottom]'),
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -77,12 +77,19 @@ test('the board, the pawn/block switch and Confirm fit the first phone screen ab
     $page->locator('[data-test=mode-block]')->tap();
     // A tap in the groove left of the crossing c4/d5 shows a block (BlockliTest's BLOCKLI_AT, White's board).
     $position = $page->evaluate('() => { const g = Alpine.$data(document.querySelector("[data-test=board-game]")); const p = g.layout.points.find((q) => q.id === "c4/d5"); const s = document.querySelector("[data-test=board]").getBoundingClientRect().width / g.layout.width; return { x: (p.x - 30) * s, y: p.y * s }; }');
+    // The tap on the board also starts focus mode (focusMode.js, P7): the tab bar and the page's bars (chat sheet, Blockli's
+    // bar) slide down 200 ms, then `focus-mode` refits the board. Read once that settled, never mid-slide (the gate read
+    // the sheet 9 px into its slide: 613 instead of 604).
+    $page->evaluate('() => { window.__focusSettled = false; addEventListener("focus-mode", () => { window.__focusSettled = true; }, { once: true }); }');
     $page->locator('[data-test=board]')->tap(['position' => $position]);
     BrowserWait::until($page, '() => !!Alpine.$data(document.querySelector("[data-test=board-game]")).preview?.move', 5_000);
+    BrowserWait::until($page, '() => window.__focusSettled && document.getAnimations().every((a) => a.playState !== "running")', 5_000);
     $m = $page->evaluate(BLOCKLI_FOLD);
     fwrite(STDERR, PHP_EOL."{$width}x{$height} ".json_encode($m).PHP_EOL);
 
-    expect($m['sheet'])->toBe($height - (int) $m['tabbar'] - 72, 'the chat sheet sits on the tab bar')
+    expect($m['focus'])->toBe('hidden', 'a tap on the board slides the tab bar away')
+        // The tab bar slid away: the sheet sits on the bottom edge, where the bar was it no longer reserves room.
+        ->and($m['sheet'])->toBe($height - 72, 'the chat sheet sits on the bottom edge')
         ->and($m['board']['top'])->toBeGreaterThanOrEqual(0)
         // One row: "Set a block" beside whose move it is; the board takes what the second row and the tab on it took.
         ->and($m['dock']['h'])->toBeLessThanOrEqual(58, 'Blockli\'s bar is one row')

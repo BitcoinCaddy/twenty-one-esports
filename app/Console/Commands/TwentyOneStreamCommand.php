@@ -3,6 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Models\ChessGame;
+use App\Support\Caster\ClipSpool;
+use App\Support\Caster\SceneDirector;
+use App\Support\Caster\VoiceFeed;
 use App\Support\TwentyOne\EventBuilder;
 use App\Support\TwentyOne\RelayPublisher;
 use App\Support\TwentyOne\Stream\Backoff;
@@ -117,6 +120,15 @@ class TwentyOneStreamCommand extends Command
 
     /** For sizing the music list only: the 32 tracks average ~181 s (96.5 min). */
     private const ASSUMED_TRACK_SECONDS = 180;
+
+    /**
+     * The spoken commentary (plan "KI-Stimme der Liga", P6), only while `tv.commentary.enabled`: it holds each
+     * slot until its clip has been spoken and feeds the voice into every encoder run (VoiceFeed).
+     */
+    private ?SceneDirector $director = null;
+
+    /** The director failed this series of polls (logged once). */
+    private bool $directorFailing = false;
 
     private bool $stopping = false;
 
@@ -269,6 +281,9 @@ class TwentyOneStreamCommand extends Command
         // The planner decides scene or loop; the machine only keeps a failed scene off.
         $modes = new ModeMachine(0);
         $planner = RotationPlanner::fromConfig($this->promoSeconds($prepared));
+        $this->director = config('tv.commentary.enabled') === true ? SceneDirector::fromConfig(app(ClipSpool::class)) : null;
+        /** @var string|null $caption the text lower third while the workstation is off */
+        $caption = null;
         $backoff = new Backoff(
             (int) config('twentyone.stream.backoff.initial_seconds', 5),
             (int) config('twentyone.stream.backoff.max_seconds', 300),
@@ -444,12 +459,32 @@ class TwentyOneStreamCommand extends Command
                 $slot = $planner->at($now, array_map(fn (ChessGame $game): array => ['id' => $game->id, 'blitz' => ! $game->isCorrespondence()], $sceneGames), TournamentSlides::featured($tournaments), $boards, TournamentLiveSlides::entries($liveFrames, $tournaments, (int) ($now * 1000), (int) config('twentyone.stream.rotation.champion_moment_seconds', 120)), $blockfill['week'], $blockfill['moment'], $hyper, $pong);
                 $modes->tick($slot['kind'] !== RotationPlanner::LOOP, (int) $now);
 
+                // The commentary: its clip for the slot, the hold until it is spoken. A failing director only loses the voice.
+                if ($this->director !== null) {
+                    try {
+                        $caption = $this->director->tick($planner, $slot, $now);
+                        $this->directorFailing = false;
+                    } catch (Throwable $e) {
+                        if (! $this->directorFailing) {
+                            $this->log('commentary failed, the stream goes on without it: '.$this->describe($e));
+                            $this->directorFailing = true;
+                        }
+
+                        $caption = null;
+                    }
+                }
+
                 if ($slot['scene'] !== null) {
                     $stats = $this->readStats($counts, $stats, $pollFailures === 0);
                     $frame = $this->frameFor($source, $slot, $sceneGames, $sceneMore, (int) ($now * 1000), $stats, $frame, $tournaments, $viewerCount, $liveFrames);
+
+                    if ($frame !== null && $this->director !== null) {
+                        $frame['data']['voice_caption'] = $caption;
+                    }
                 }
 
-                $key = $slot['kind'].':'.$slot['scene'].':'.$slot['gameId'].':'.$slot['tournamentId'].':'.$slot['until'];
+                // A new slot is a new number; its `until` can move while the commentary holds it.
+                $key = $slot['kind'].':'.$slot['scene'].':'.$slot['gameId'].':'.$slot['tournamentId'].':'.$planner->slotNumber();
 
                 if ($key !== $slotKey) {
                     $slotKey = $key;
@@ -483,6 +518,12 @@ class TwentyOneStreamCommand extends Command
                 $this->log(sprintf('scene render failing for %.0f s, back to the loop for %d s', $now - $renderFailingSince, self::SCENE_BLOCK_SECONDS));
                 $modes->forceLoop((int) $now + self::SCENE_BLOCK_SECONDS);
                 $renderFailingSince = null;
+            }
+
+            // The voice runs ahead of the wall clock into every encoder that reads it, every tick.
+            if ($this->director !== null) {
+                $this->active?->voice?->pump($this->director->timeline, $now);
+                $this->pending?->voice?->pump($this->director->timeline, $now);
             }
 
             foreach ([$this->active, $this->pending] as $run) {
@@ -677,18 +718,27 @@ class TwentyOneStreamCommand extends Command
         $music = $this->writeMusicList();
         $public->prune($mode);
         $pending = Process::forever()->env(ChildEnvironment::withoutSecrets());
+        // The commentary's voice pipe (VoiceFeed); without one (switch off, no pipe) the encoder runs as before.
+        $voice = $this->director === null ? null : VoiceFeed::create(
+            rtrim((string) config('twentyone.stream.scene.work_dir'), '/').'/voice-'.$runId.'.pcm',
+            (int) config('tv.commentary.mix.sample_rate', 24000),
+            (float) config('tv.commentary.mix.lead_seconds', 1.0),
+        );
 
         if ($mode === ModeMachine::SCENE) {
             $frames = new InputStream;
-            $process = $pending->input($frames)->start($ffmpeg->scene($hlsDir.'/'.$mode, $runId, $music, (int) config('twentyone.stream.scene.crf', 35)));
+            $process = $pending->input($frames)->start($ffmpeg->scene($hlsDir.'/'.$mode, $runId, $music, (int) config('twentyone.stream.scene.crf', 35), $voice?->path));
         } else {
             $frames = null;
-            $process = $pending->start($ffmpeg->hls($prepared, $hlsDir.'/'.$mode, $runId, $music));
+            $process = $pending->start($ffmpeg->hls($prepared, $hlsDir.'/'.$mode, $runId, $music, $voice?->path));
         }
 
-        $this->log('ffmpeg started mode='.$mode.' pid='.$process->id().' run='.$runId);
+        $this->log('ffmpeg started mode='.$mode.' pid='.$process->id().' run='.$runId.($voice !== null ? ' with commentary' : ''));
 
-        return new EncoderRun($mode, $runId, $process, microtime(true), $frames);
+        $run = new EncoderRun($mode, $runId, $process, microtime(true), $frames);
+        $run->voice = $voice;
+
+        return $run;
     }
 
     /**
@@ -1242,6 +1292,8 @@ class TwentyOneStreamCommand extends Command
         if ($process->running()) {
             $process->signal(SIGKILL);
         }
+
+        $run->voice?->close();
 
         $this->log('ffmpeg stopped mode='.$run->mode.' run='.$run->runId.', '.$this->exitStatus($run));
     }

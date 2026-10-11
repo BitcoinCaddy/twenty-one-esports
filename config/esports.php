@@ -1821,6 +1821,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tournament recap (plan "KI-Stimme der Liga", P3)
+    |--------------------------------------------------------------------------
+    |
+    | App\Support\Tournaments\TournamentRecap reads a finished tournament's
+    | upsets by Elo, its closest match and the champion's path.
+    |
+    | page: the recap section on the tournament page. Off until the
+    | TournamentDetail board carries it (design 1:1 rule of the revamp).
+    |
+    | notes: the recap note on the stream bot's profile
+    | (App\Support\StreamBot\TournamentRecapNotes), once per tournament,
+    | after its champion note; written by the league voice (channel `recap`)
+    | when that is on, else from its template. `days` and `per_run` as for
+    | the champion notes.
+    |
+    */
+
+    'recap' => [
+        'page' => (bool) env('ESPORTS_RECAP_PAGE', false),
+        'notes' => [
+            'enabled' => (bool) env('ESPORTS_STREAM_BOT_RECAP_NOTES', false),
+            'days' => 5,
+            'per_run' => 1,
+            'retry_minutes' => 10,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | League voice (plan "KI-Stimme der Liga", P1)
     |--------------------------------------------------------------------------
     |
@@ -1889,14 +1918,18 @@ return [
             'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
             'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
             'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
-            'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 1200, 'multiline' => true, 'language' => 'de'],
-            'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 1500, 'multiline' => true, 'language' => 'de'],
+            // Recap and weekly report go on the bot's profile (P3): English (user 2026-10-11, profile posts stay English)
+            // and short enough for the spam gate's 280 characters once the app adds the link line.
+            'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
+            'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
             // P4: one switch per pride picture on top of the channel's (App\Support\Cards\PrideVoice), each off by default.
             'card' => ['enabled' => (bool) env('ESPORTS_VOICE_CARD', false), 'daily_cap' => 50, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de',
                 'functions' => ['player' => (bool) env('ESPORTS_VOICE_CARD_PLAYER', false), 'wrapped' => (bool) env('ESPORTS_VOICE_CARD_WRAPPED', false), 'tape' => (bool) env('ESPORTS_VOICE_CARD_TAPE', false)]],
             'meme' => ['enabled' => (bool) env('ESPORTS_VOICE_MEME', false), 'daily_cap' => 30, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'de'],
             // The caster is the largest consumer: throttled hardest per call, capped per day.
             'caster' => ['enabled' => (bool) env('ESPORTS_VOICE_CASTER', false), 'daily_cap' => 300, 'max_chars' => 160, 'max_sentences' => 2, 'language' => 'de'],
+            // P5: a bot opponent's line in the game chat (App\Support\Memes\BotBanter), written ahead into a pool, never while a page waits.
+            'bot_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_BOT_CHAT', false), 'daily_cap' => 60, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de'],
         ],
         // The spam gate (App\Support\Voice\SpamGate, user 2026-10-11: "damit alles nicht zu bloaty und chatty wird
         // und zu muting führt"). It can only hold a post back, never add one: the stream bot's own cadence
@@ -1924,6 +1957,15 @@ return [
             'link_kind_per_day' => 2,
             // A burst of at least this many moments of one type becomes one roundup post.
             'roundup_min' => 3,
+        ],
+        // P5, meme moments (App\Support\Memes\MemeMoments) read from a finished match: `upset_elo`, the Elo the winner
+        // was below the loser before the match at least; `comeback_points`, the points a Proof of Pong winner was behind
+        // at least on the way (only when the match log adds up to its final score). `banter_pool`: lines kept per bot
+        // archetype and occasion.
+        'memes' => [
+            'upset_elo' => 150,
+            'comeback_points' => 6,
+            'banter_pool' => 8,
         ],
     ],
 

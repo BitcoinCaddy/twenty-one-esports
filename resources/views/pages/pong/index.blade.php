@@ -77,6 +77,8 @@
                         <span class="text-[13px] text-ink-2">{{ __(':score against :name', ['score' => max($lastWin->score()).':'.min($lastWin->score()), 'name' => $lastWin->player(1 - (int) $lastWin->sideOf(auth()->user()))?->displayName() ?? __('Deleted account')]) }}</span>
                     </span>
                     <livewire:share-button type="pong" :moment="$lastWin->ulid" :label="__('Post the win')" :wire:key="'pong-share-'.$lastWin->ulid" />
+                    {{-- Its meme (plan "KI-Stimme der Liga", P5, MemeShares): only an upset, comeback, deuce, first or close win has one; else the button renders nothing. --}}
+                    <livewire:share-button type="meme" :moment="'pong-'.$lastWin->ulid" :label="__('Post the meme')" :downloads="false" :wire:key="'pong-meme-'.$lastWin->ulid" />
                 </div>
             @else
                 <x-empty-state :heading="__('No win yet. Your latest win shows here, with a card to share.')" data-test="pong-yours-empty">

@@ -1228,6 +1228,8 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             </section>
         @endif
 
+        @include('pages.tournaments.partials.recap', ['tournament' => $tournament])
+
         {{-- Who plays beside the prize card (TournamentDetail.dc.html: "Teilnehmer, Setzliste" and "Preispool"). --}}
         <div @class(['grid grid-cols-1 items-start gap-6', 'lg:grid-cols-2' => $this->pool !== null && ! $blockfillWeek])>
             @unless ($blockfillWeek)

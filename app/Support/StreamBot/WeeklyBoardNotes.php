@@ -265,6 +265,11 @@ abstract class WeeklyBoardNotes
             $type = $this->noteType($kind);
             $variant = ProfileNotes::nextVariant($type, StreamBotCopy::variants($template));
             $body = StreamBotCopy::render($template, $variant, $values);
+
+            // The weekly report (plan "KI-Stimme der Liga", P3): the league voice's winner note when it has one.
+            if ($kind === 'winner' && ($report = app(WeeklyReport::class)->line($week, $this->runs->standings($week), $this->label(), (string) ($values['url'] ?? ''))) !== null) {
+                ['content' => $body, 'tags' => $tags] = $report;
+            }
         } finally {
             app()->setLocale($previous);
         }

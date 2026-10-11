@@ -1,0 +1,2855 @@
+{
+ "source": "docs/plans/2026-10-11T1114-ki-stimme-der-liga/cast-research (topics.json, patterns.json, promo.json), copied 2026-10-11 without evidence keys",
+ "topics": [
+  {
+   "id": "pbp_move_call",
+   "group": "play_by_play",
+   "name": "Zug ansagen",
+   "what": "Den gerade gespielten Zug knapp benennen und sofort einordnen, nicht nur wiederholen.",
+   "when": [
+    "live_match"
+   ],
+   "example_de": "Springer nach f5, und der steht da wie angenagelt."
+  },
+  {
+   "id": "pbp_material",
+   "group": "play_by_play",
+   "name": "Materialstand",
+   "what": "Wer hat mehr Material, wie groß ist der Abstand, seit wann.",
+   "when": [
+    "live_match",
+    "after_result"
+   ],
+   "example_de": "Weiß hat jetzt eine ganze Figur mehr, und so viel getauscht, dass Schwarz kaum noch angreifen kann."
+  },
+  {
+   "id": "pbp_clock",
+   "group": "play_by_play",
+   "name": "Uhr und Zeitnot",
+   "what": "Uhrabstand, Zeitnot, wer zu schnell spielt.",
+   "when": [
+    "live_match"
+   ],
+   "example_de": "Noch 40 Sekunden auf der Uhr von {player}, und der spielt wie die Feuerwehr."
+  },
+  {
+   "id": "pbp_phase",
+   "group": "play_by_play",
+   "name": "Partiephase",
+   "what": "Eröffnung, Mittelspiel, Endspiel aus Zugnummer und verbliebenem Material; wechselt die Erzähllage.",
+   "when": [
+    "live_match"
+   ],
+   "example_de": "Zug 34, die Damen sind runter. Willkommen im Endspiel."
+  },
+  {
+   "id": "pbp_board_games",
+   "group": "play_by_play",
+   "name": "Brettspiel-Lage Mühle/Dame/Blockli",
+   "what": "Steine auf dem Brett, geschlossene Mühlen, Damen, Blockli-Fläche — Lage in einem Satz.",
+   "when": [
+    "live_match"
+   ],
+   "example_de": "Bei Mühle sind es nur noch drei Steine für {player}: jetzt darf er springen, und das macht ihn gefährlich."
+  },
+  {
+   "id": "pbp_hyper_territory",
+   "group": "play_by_play",
+   "name": "Hyper: Gebietswechsel",
+   "what": "Welche Region hat gewechselt, welche Zentralbank ist gefallen, wie viele Fraktionen leben noch.",
+   "when": [
+    "live_match",
+    "after_result"
+   ],
+   "example_de": "Die nächste Zentralbank ist gefallen. Drei Fraktionen sind noch auf der Karte."
+  },
+  {
+   "id": "pbp_multi_board",
+   "group": "play_by_play",
+   "name": "Galerie: alle Bretter",
+   "what": "Überblick über alle laufenden Partien: wo es brennt, knappste Uhr.",
+   "when": [
+    "live_match"
+   ],
+   "example_de": "Drei Bretter gleichzeitig live, und am knappsten wird's oben links."
+  },
+  {
+   "id": "pbp_finish_type",
+   "group": "play_by_play",
+   "name": "Wie es endete",
+   "what": "Matt, Zeit, Aufgabe, Remis, 21:19 — die Endart als Pointe.",
+   "when": [
+    "after_result"
+   ],
+   "example_de": "Und das ist Matt. Kein Aufgeben, kein Zeitverlust, sauber bis zum Schluss."
+  },
+  {
+   "id": "pbp_score_reset",
+   "group": "play_by_play",
+   "name": "Spielstand-Reset",
+   "what": "Für Neu-Zuschauer regelmäßig sagen, was läuft und wie es steht (Time-and-score-Gewohnheit).",
+   "when": [
+    "live_match",
+    "between_matches"
+   ],
+   "example_de": "Für alle, die gerade erst eingeschaltet haben: {a} gegen {b}, Zug 22, Material ausgeglichen."
+  },
+  {
+   "id": "col_elo_gap",
+   "group": "colour",
+   "name": "Elo-Abstand und Favorit",
+   "what": "Wer ist auf dem Papier Favorit, wie groß ist der Abstand.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "Auf dem Papier ist das klar: 180 Elo Unterschied. Aber Papier spielt kein Schach."
+  },
+  {
+   "id": "col_head_to_head",
+   "group": "colour",
+   "name": "Direkter Vergleich",
+   "what": "Bisherige Duelle der beiden, letzte Begegnung.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "Die beiden haben sich schon viermal getroffen, und dreimal ging {a} als Sieger vom Brett."
+  },
+  {
+   "id": "col_form",
+   "group": "colour",
+   "name": "Form und Serie",
+   "what": "Siegesserie, Formkurve der letzten Partien.",
+   "when": [
+    "pre_show",
+    "live_match",
+    "after_result"
+   ],
+   "example_de": "Fünf Siege in Folge. {player} ist gerade richtig im Lauf."
+  },
+  {
+   "id": "col_losing_streak",
+   "group": "colour",
+   "name": "Negativserie",
+   "what": "Niederlagenserie, die reißen könnte — laut ESL-Guide oft stärker als Siegesserien.",
+   "when": [
+    "pre_show",
+    "after_result"
+   ],
+   "example_de": "Drei Niederlagen am Stück. Heute wäre ein guter Tag, das zu beenden."
+  },
+  {
+   "id": "col_rank_tier",
+   "group": "colour",
+   "name": "Rang und Abzeichen",
+   "what": "Rangstufe eines Spielers, Aufstieg, Abzeichen.",
+   "when": [
+    "after_result",
+    "break"
+   ],
+   "example_de": "{player} trägt seit gestern das Abzeichen {tier}. Das muss man erst mal verteidigen."
+  },
+  {
+   "id": "col_trophies",
+   "group": "colour",
+   "name": "Trophäenschrank",
+   "what": "Gewonnene Turniere, Trophäen, Titel.",
+   "when": [
+    "pre_show",
+    "after_result"
+   ],
+   "example_de": "Zwei Turniersiege stehen schon im Schrank von {player}. Heute könnte der dritte dazukommen."
+  },
+  {
+   "id": "col_clan",
+   "group": "colour",
+   "name": "Clan-Zugehörigkeit",
+   "what": "Für welchen Clan spielt jemand, Clan-Bilanz.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "{player} spielt für {clan}, und der Clan schaut heute garantiert zu."
+  },
+  {
+   "id": "col_activity",
+   "group": "colour",
+   "name": "Fleißkarte",
+   "what": "Wie viele Partien jemand diese Woche/Season gespielt hat.",
+   "when": [
+    "break",
+    "after_result"
+   ],
+   "example_de": "{player} hat diese Woche schon 38 Partien gespielt. Der wohnt quasi in der Lobby."
+  },
+  {
+   "id": "col_climber",
+   "group": "colour",
+   "name": "Kletterer der Woche",
+   "what": "Größter Elo-Zuwachs der Woche.",
+   "when": [
+    "break",
+    "between_matches"
+   ],
+   "example_de": "Plus 112 Elo in sieben Tagen. Das ist der Kletterer der Woche."
+  },
+  {
+   "id": "col_newcomer",
+   "group": "colour",
+   "name": "Neuling",
+   "what": "Erste Partie, erster Sieg, erster Turnierauftritt.",
+   "when": [
+    "after_result",
+    "pre_show"
+   ],
+   "example_de": "Das war der erste Sieg für {player} in dieser Liga. Merkt euch den Namen."
+  },
+  {
+   "id": "col_playstyle",
+   "group": "colour",
+   "name": "Spielweise",
+   "what": "Wie jemand spielt, aus messbaren Mustern: schnell/langsam (Zeitverbrauch), Remisquote, Lieblingsspiel.",
+   "when": [
+    "live_match",
+    "pre_show"
+   ],
+   "example_de": "{player} spielt schnell, im Schnitt bleibt die Hälfte der Uhr übrig."
+  },
+  {
+   "id": "col_turning_point",
+   "group": "colour",
+   "name": "Wendepunkt",
+   "what": "Zug mit dem größten Materialausschlag.",
+   "when": [
+    "after_result"
+   ],
+   "example_de": "Zug 27 war der Moment. Bis dahin ausgeglichen, danach lief nur noch eine Richtung."
+  },
+  {
+   "id": "col_comeback",
+   "group": "colour",
+   "name": "Comeback",
+   "what": "Sieg nach Materialrückstand oder Rückstand in der Serie.",
+   "when": [
+    "after_result",
+    "breaking"
+   ],
+   "example_de": "Zwei Bauern hinten, und trotzdem gewonnen. Das ist ein Comeback."
+  },
+  {
+   "id": "col_what_if",
+   "group": "colour",
+   "name": "Was wäre gewesen",
+   "what": "Der eine Moment, in dem es anders hätte kommen können (nur aus Materialkurve/Endstand).",
+   "when": [
+    "after_result"
+   ],
+   "example_de": "Ein Ballwechsel länger, und das hätte 21 zu 21 geheißen."
+  },
+  {
+   "id": "col_psychology",
+   "group": "colour",
+   "name": "Druck und Nerven",
+   "what": "Situativer Druck (Finale, Entscheidungsspiel, Zeitnot), ohne Gedanken zu erfinden.",
+   "when": [
+    "live_match"
+   ],
+   "example_de": "Finale, wenig Zeit, ein Fehler entscheidet. Da braucht es gute Nerven."
+  },
+  {
+   "id": "stk_bracket",
+   "group": "stakes",
+   "name": "Bracket-Folgen",
+   "what": "Was ein Sieg/eine Niederlage im Turnierbaum bedeutet.",
+   "when": [
+    "live_match",
+    "between_matches",
+    "after_result"
+   ],
+   "example_de": "Wer hier gewinnt, steht im Halbfinale. Wer verliert, ist raus."
+  },
+  {
+   "id": "stk_standings",
+   "group": "stakes",
+   "name": "Tabelle/Gruppe",
+   "what": "Gruppenstand, wer schon durch ist, was noch fehlt.",
+   "when": [
+    "between_matches",
+    "after_result"
+   ],
+   "example_de": "Mit dem Sieg ist {player} sicher weiter. Der Rest der Gruppe rechnet noch."
+  },
+  {
+   "id": "stk_elimination",
+   "group": "stakes",
+   "name": "Alles-oder-nichts",
+   "what": "Ausscheidungsspiel, letzte Chance.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "Das ist ein Ausscheidungsspiel. Hier gibt's kein Morgen."
+  },
+  {
+   "id": "stk_final",
+   "group": "stakes",
+   "name": "Finale",
+   "what": "Finale ansagen, was auf dem Spiel steht.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "Es ist alles angerichtet. Finale bei {tournament}."
+  },
+  {
+   "id": "stk_pot",
+   "group": "stakes",
+   "name": "Topf in Sats",
+   "what": "Größe des Topfs, wer was bekommt.",
+   "when": [
+    "pre_show",
+    "between_matches"
+   ],
+   "example_de": "Im Topf liegen {pot} Sats, und die verteilt heute das Brett."
+  },
+  {
+   "id": "stk_pot_growth",
+   "group": "stakes",
+   "name": "Topf wächst",
+   "what": "Zaps haben den Topf vergrößert.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Der Topf ist seit heute Mittag um 5.000 Sats gewachsen."
+  },
+  {
+   "id": "stk_payout",
+   "group": "stakes",
+   "name": "Auszahlung",
+   "what": "Sats sind tatsächlich ausgezahlt worden.",
+   "when": [
+    "after_result",
+    "break"
+   ],
+   "example_de": "Die Sats sind raus. {player} hat seinen Gewinn schon."
+  },
+  {
+   "id": "stk_rating_on_line",
+   "group": "stakes",
+   "name": "Elo im Spiel",
+   "what": "Wie viel Elo ein Sieg/eine Niederlage bringt.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "Für {a} geht es um 6 Elo, für {b} um 26. Das Risiko ist ungleich verteilt."
+  },
+  {
+   "id": "stk_season_chain",
+   "group": "stakes",
+   "name": "Season-Block im Spiel",
+   "what": "Ein gewerteter Sieg schürft den nächsten Block der Season-Chain.",
+   "when": [
+    "live_match",
+    "after_result"
+   ],
+   "example_de": "Wer hier gewinnt, schürft Block {height}."
+  },
+  {
+   "id": "stat_mempool",
+   "group": "stats",
+   "name": "Mempool-Zahl",
+   "what": "Eine Zahl groß: Partien heute, live gerade, wartend.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Heute schon 214 Partien im Mempool. Gestern um diese Zeit waren es 160."
+  },
+  {
+   "id": "stat_league_totals",
+   "group": "stats",
+   "name": "Liga in Zahlen",
+   "what": "Spieler, Clans, Partien gesamt.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "{players} Spieler, {clans} Clans, {games} Partien. Und jede einzelne davon war echt."
+  },
+  {
+   "id": "stat_milestone",
+   "group": "stats",
+   "name": "Meilenstein",
+   "what": "Runde Zahl erreicht (1.000. Partie, Block 100).",
+   "when": [
+    "breaking",
+    "after_result"
+   ],
+   "example_de": "Das war die tausendste Partie der Season."
+  },
+  {
+   "id": "stat_record",
+   "group": "stats",
+   "name": "Rekord",
+   "what": "Neue Bestzeit, längste Serie, höchste Elo.",
+   "when": [
+    "breaking",
+    "after_result"
+   ],
+   "example_de": "Neuer Rekord: {time}. Das gab es in dieser Liga noch nie."
+  },
+  {
+   "id": "stat_longest_game",
+   "group": "stats",
+   "name": "Längste Partie",
+   "what": "Meiste Züge/Ballwechsel heute.",
+   "when": [
+    "break",
+    "after_result"
+   ],
+   "example_de": "Die längste Partie heute: 87 Züge. Da brauchte jemand Sitzfleisch."
+  },
+  {
+   "id": "stat_quickest",
+   "group": "stats",
+   "name": "Kürzester Sieg",
+   "what": "Schnellstes Matt, kürzestes Pong-Match.",
+   "when": [
+    "break",
+    "after_result"
+   ],
+   "example_de": "Matt in 14 Zügen. Das ging schneller als dieser Satz."
+  },
+  {
+   "id": "stat_elo_change",
+   "group": "stats",
+   "name": "Elo-Bewegung",
+   "what": "Wie viel Elo nach dem Ergebnis gewandert ist.",
+   "when": [
+    "after_result"
+   ],
+   "example_de": "Plus 18 für {winner}, das ist ein großer Schritt."
+  },
+  {
+   "id": "stat_ladder_top",
+   "group": "stats",
+   "name": "Spitze der Ladder",
+   "what": "Wer steht oben, wie knapp ist es.",
+   "when": [
+    "break",
+    "between_matches"
+   ],
+   "example_de": "Oben auf der Ladder trennen die ersten zwei nur 9 Punkte."
+  },
+  {
+   "id": "stat_pong_rally",
+   "group": "stats",
+   "name": "Pong-Ballwechsel",
+   "what": "Längster Ballwechsel, Trefferzahl.",
+   "when": [
+    "after_result"
+   ],
+   "example_de": "Längster Ballwechsel des Tages: 31 Treffer am Stück."
+  },
+  {
+   "id": "stat_blockfill_gap",
+   "group": "stats",
+   "name": "Blockfill-Abstand",
+   "what": "Abstand zur Spitze in Tausendsteln, Splits.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Platz zwei fehlen 0,312 Sekunden auf die Spitze."
+  },
+  {
+   "id": "stat_tmnf",
+   "group": "stats",
+   "name": "Trackmania-Woche",
+   "what": "Wochenstrecke, Autorenzeit, Podium.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Auf der Strecke der Woche ist die Autorenzeit noch nicht gefallen."
+  },
+  {
+   "id": "nar_rivalry",
+   "group": "narrative",
+   "name": "Rivalität",
+   "what": "Wiederholte Duelle derselben Spieler oder Clans.",
+   "when": [
+    "pre_show"
+   ],
+   "example_de": "Die beiden kennen sich. Siebtes Duell, und es steht 3 zu 3."
+  },
+  {
+   "id": "nar_revenge",
+   "group": "narrative",
+   "name": "Revanche",
+   "what": "Letztes Duell verloren, heute die Chance.",
+   "when": [
+    "pre_show",
+    "after_result"
+   ],
+   "example_de": "Letztes Mal hat {b} gewonnen. Heute ist Revanche."
+  },
+  {
+   "id": "nar_underdog",
+   "group": "narrative",
+   "name": "Außenseiter",
+   "what": "Deutlich niedrigere Elo, trotzdem dabei.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "200 Elo weniger. Aber Außenseiter haben hier schon öfter gewonnen."
+  },
+  {
+   "id": "nar_upset",
+   "group": "narrative",
+   "name": "Überraschungssieg",
+   "what": "Sieg gegen ≥150 Elo Favorit.",
+   "when": [
+    "breaking",
+    "after_result"
+   ],
+   "example_de": "Das ist eine Überraschung! {winner} schlägt den Favoriten."
+  },
+  {
+   "id": "nar_defending_champion",
+   "group": "narrative",
+   "name": "Titelverteidiger",
+   "what": "Sieger des letzten Turniers tritt wieder an.",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "{player} hat das letzte Turnier gewonnen. Die Krone muss heute verteidigt werden."
+  },
+  {
+   "id": "nar_new_clan",
+   "group": "narrative",
+   "name": "Neuer Clan",
+   "what": "Ein Clan ist gegründet worden.",
+   "when": [
+    "break",
+    "after_result"
+   ],
+   "example_de": "Neu in der Liga: der Clan {clan}. Willkommen."
+  },
+  {
+   "id": "nar_clan_duel",
+   "group": "narrative",
+   "name": "Clan-Duell",
+   "what": "Clan-Herausforderung in Best-of-Serie.",
+   "when": [
+    "pre_show",
+    "live_match",
+    "after_result"
+   ],
+   "example_de": "Clan gegen Clan, Best-of-three, und es steht 1 zu 1."
+  },
+  {
+   "id": "nar_champion",
+   "group": "narrative",
+   "name": "Champion-Moment",
+   "what": "Turniersieger allein im Bild, mit Weg zum Titel.",
+   "when": [
+    "breaking",
+    "after_result"
+   ],
+   "example_de": "Und der Champion heißt {winner}."
+  },
+  {
+   "id": "nar_road_to",
+   "group": "narrative",
+   "name": "Weg ins Finale",
+   "what": "Wen jemand auf dem Weg geschlagen hat.",
+   "when": [
+    "pre_show",
+    "after_result"
+   ],
+   "example_de": "Auf dem Weg hierher hat {player} drei Gegner rausgeworfen, einer davon war an Nummer eins gesetzt."
+  },
+  {
+   "id": "nar_season_story",
+   "group": "narrative",
+   "name": "Season-Geschichte",
+   "what": "Wer prägt die Season bisher: meiste Blöcke, Serien.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Die meisten Blöcke dieser Season hat bisher {player} geschürft."
+  },
+  {
+   "id": "prg_coming_up",
+   "group": "program",
+   "name": "Gleich geht's weiter",
+   "what": "Teaser für den nächsten Slot mit Countdown.",
+   "when": [
+    "between_matches",
+    "pre_show"
+   ],
+   "example_de": "Gleich: {a} gegen {b}. Bleibt dran."
+  },
+  {
+   "id": "prg_tonight",
+   "group": "program",
+   "name": "Heute Abend",
+   "what": "Match des Abends oder Turnierstart ankündigen.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Heute um 20 Uhr: Cup Night. Und es sind noch Plätze frei."
+  },
+  {
+   "id": "prg_recap",
+   "group": "program",
+   "name": "Was bisher geschah",
+   "what": "Rückblick auf die Ergebnisse der letzten Stunden.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Kurz zusammengefasst, was ihr verpasst habt: drei Partien, ein Upset, ein neuer Rekord."
+  },
+  {
+   "id": "prg_weekly",
+   "group": "program",
+   "name": "Wochenrückblick",
+   "what": "Woche in Zahlen und Namen.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Die Woche in einem Satz: 900 Partien, zwei Turniere, ein neuer Blockfill-Rekord."
+  },
+  {
+   "id": "prg_blockfill_week",
+   "group": "program",
+   "name": "Blockfill-Woche läuft",
+   "what": "Countdown bis Montag 00:00, wer führt.",
+   "when": [
+    "between_matches",
+    "break"
+   ],
+   "example_de": "Noch zwei Tage Blockfill-Woche, und Platz eins wackelt."
+  },
+  {
+   "id": "prg_season_countdown",
+   "group": "program",
+   "name": "Season-Countdown",
+   "what": "Zeit bis Block 0 bzw. Season-Ende.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Noch drei Tage bis Block null der neuen Season."
+  },
+  {
+   "id": "prg_time_of_day",
+   "group": "program",
+   "name": "Uhrzeit und Programmlage",
+   "what": "Uhrzeit, Programmphase (Morgen, Abend, Nacht).",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Es ist kurz nach Mitternacht bei TWENTY ONE. Das Nachtprogramm beginnt."
+  },
+  {
+   "id": "prg_ident",
+   "group": "program",
+   "name": "Senderbegrüßung",
+   "what": "Kennung, Begrüßung, was dieser Sender ist.",
+   "when": [
+    "break",
+    "between_matches"
+   ],
+   "example_de": "Hier ist TWENTY ONE, der Sender der EINUNDZWANZIG-Liga."
+  },
+  {
+   "id": "prg_throw",
+   "group": "program",
+   "name": "Übergabe/Throw",
+   "what": "Mit Versprechen zur nächsten Szene überleiten, ohne 'Video' oder 'Übergabe' zu sagen.",
+   "when": [
+    "between_matches"
+   ],
+   "example_de": "Und wo wir gerade bei Rekorden sind: Schaut mal, was in der Blockfill-Woche passiert."
+  },
+  {
+   "id": "exp_game_rules",
+   "group": "explainer",
+   "name": "Spielregel kurz",
+   "what": "Eine Regel des gerade gezeigten Spiels für Neueinsteiger.",
+   "when": [
+    "live_match",
+    "break"
+   ],
+   "example_de": "Für alle Neuen: Pong geht bis 21, aber mit zwei Punkten Vorsprung."
+  },
+  {
+   "id": "exp_elo",
+   "group": "explainer",
+   "name": "Elo erklärt",
+   "what": "Wie Elo und Ränge funktionieren.",
+   "when": [
+    "break"
+   ],
+   "example_de": "Elo heißt: Wer gegen Stärkere gewinnt, steigt schneller."
+  },
+  {
+   "id": "exp_season_mining",
+   "group": "explainer",
+   "name": "Season-Mining erklärt",
+   "what": "Gewertete Siege schürfen Blöcke der Season-Chain.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "So funktioniert die Season: Jeder gewertete Sieg schürft einen Block."
+  },
+  {
+   "id": "exp_tournament",
+   "group": "explainer",
+   "name": "Turnierformat erklärt",
+   "what": "Format, Runden, Topf aus Zaps.",
+   "when": [
+    "pre_show",
+    "break"
+   ],
+   "example_de": "Das Format heute: K.-o., jede Runde ein Best-of-three."
+  },
+  {
+   "id": "exp_how_to_join",
+   "group": "explainer",
+   "name": "Einstieg erklärt",
+   "what": "Login mit Nostr oder Google, Lobby, erstes Spiel.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Einloggen mit Nostr oder Google, Lobby öffnen, Brett nehmen. Drei Schritte."
+  },
+  {
+   "id": "exp_daily_chess",
+   "group": "explainer",
+   "name": "Fernmodus erklärt",
+   "what": "Ein Zug am Tag, für Leute ohne Zeit.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Fernschach heißt: ein Zug am Tag, wann es euch passt."
+  },
+  {
+   "id": "exp_game_spotlight",
+   "group": "explainer",
+   "name": "Spiel-Spotlight",
+   "what": "Ein Spiel der Liga vorstellen: worum geht's, wie lange, mit wem.",
+   "when": [
+    "break"
+   ],
+   "example_de": "Spiel des Moments: Hyperbitcoinization, eine Weltkarte für zwei bis sechs."
+  },
+  {
+   "id": "exp_badges",
+   "group": "explainer",
+   "name": "Abzeichen erklärt",
+   "what": "Rangabzeichen fürs Nostr-Profil.",
+   "when": [
+    "break"
+   ],
+   "example_de": "Jeder Rang bringt ein Abzeichen, das ihr auf eurem Nostr-Profil zeigen könnt."
+  },
+  {
+   "id": "exp_series_games",
+   "group": "explainer",
+   "name": "Serien-Spiele erklärt",
+   "what": "RL, EA FC, AoE2: Best-of, Ergebnis eintragen.",
+   "when": [
+    "break"
+   ],
+   "example_de": "Bei EA FC spielt ihr Best-of-one oder Best-of-three, die Tore zählen."
+  },
+  {
+   "id": "com_nostr",
+   "group": "community",
+   "name": "Nostr-Bezug",
+   "what": "Liga postet auf Nostr, Stream-Chat, Profil folgen.",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Ergebnisse und Champions gehen hier auch auf Nostr raus."
+  },
+  {
+   "id": "com_chat_question",
+   "group": "community",
+   "name": "Frage an den Chat",
+   "what": "Prognose- oder Meinungsfrage an den Chat stellen.",
+   "when": [
+    "pre_show",
+    "between_matches"
+   ],
+   "example_de": "Was meint ihr: Hält {a} den Favoritenstatus? Schreibt's in den Chat."
+  },
+  {
+   "id": "com_chat_shoutout",
+   "group": "community",
+   "name": "Chat-Gruß",
+   "what": "Aktive im Chat grüßen (Anzeigename aus Chat).",
+   "when": [
+    "break"
+   ],
+   "example_de": "Grüße an alle, die gerade im Chat sind. Schön, dass ihr da seid."
+  },
+  {
+   "id": "com_zap_thanks",
+   "group": "community",
+   "name": "Zap-Dank",
+   "what": "Dank für eingegangene Zaps in den Ligatopf.",
+   "when": [
+    "break",
+    "between_matches"
+   ],
+   "example_de": "Danke für die Zaps! Die gehen direkt in den Topf."
+  },
+  {
+   "id": "com_invite",
+   "group": "community",
+   "name": "Einladung zum Mitspielen",
+   "what": "Werbender Aufruf aus promo.json, an den Moment gebunden.",
+   "when": [
+    "break",
+    "between_matches",
+    "after_result"
+   ],
+   "example_de": "Das nächste Ergebnis auf dieser Tafel könnte eures sein."
+  },
+  {
+   "id": "com_meme",
+   "group": "community",
+   "name": "Meme-Pause",
+   "what": "Ein Kanon-Meme an einen echten Moment knüpfen.",
+   "when": [
+    "break",
+    "after_result"
+   ],
+   "example_de": "(Kanon-Eintrag mit ID, Kontextregel beachten)"
+  },
+  {
+   "id": "com_night",
+   "group": "community",
+   "name": "Nachtschicht-Ton",
+   "what": "Leise, persönliche Nachtsätze ohne Erwähnungen.",
+   "when": [
+    "night"
+   ],
+   "example_de": "Für alle Nachteulen: Die Lobby schläft nie."
+  },
+  {
+   "id": "com_prediction",
+   "group": "community",
+   "name": "Prognose",
+   "what": "Vorsichtige Vorhersage aus Elo-Erwartung, nie als Gewissheit.",
+   "when": [
+    "pre_show"
+   ],
+   "example_de": "Nach Elo spricht viel für {a}, ungefähr sieben von zehn Partien. Aber eben nicht alle."
+  },
+  {
+   "id": "com_trivia",
+   "group": "community",
+   "name": "Spielwissen",
+   "what": "Kurzes Wissen zum Spiel aus kuratierter Faktenliste (z. B. GameLanding-Texte).",
+   "when": [
+    "break",
+    "night"
+   ],
+   "example_de": "Mühle ist eins der ältesten Brettspiele überhaupt. Und hier spielt man es mit Elo."
+  },
+  {
+   "id": "stk_streak_on_line",
+   "group": "stakes",
+   "name": "Serien auf dem Spiel",
+   "what": "Welche Serien in diesem Match reißen oder weiterlaufen können (Siegesserie, Serie im direkten Duell).",
+   "when": [
+    "pre_show",
+    "live_match"
+   ],
+   "example_de": "{a} hat {b} siebenmal in Folge geschlagen. Diese Serie steht heute auf dem Spiel."
+  },
+  {
+   "id": "col_season_record",
+   "group": "colour",
+   "name": "Season-Bilanz",
+   "what": "Bilanz der laufenden Season (z. B. nur eine Niederlage).",
+   "when": [
+    "pre_show",
+    "after_result"
+   ],
+   "example_de": "In dieser Season hat {player} erst eine Partie verloren."
+  },
+  {
+   "id": "stk_next_event",
+   "group": "stakes",
+   "name": "Was es fürs Nächste heißt",
+   "what": "Folge für das nächste Turnier/den nächsten Wochenstand (Setzliste, Season-Rang).",
+   "when": [
+    "after_result",
+    "pre_show"
+   ],
+   "example_de": "Gewinnt {a} heute, geht er als Nummer eins in den Cup am Samstag."
+  },
+  {
+   "id": "exp_modus",
+   "group": "explainer",
+   "name": "Modus und Motivation",
+   "what": "Turnierformat plus worum es für wen geht, in zwei Sätzen.",
+   "when": [
+    "pre_show",
+    "break"
+   ],
+   "example_de": "Soviel zum Modus: Sechzehn Leute, K.-o., und für die oberen vier gibt es Sats aus dem Topf."
+  },
+  {
+   "id": "col_build_up",
+   "group": "colour",
+   "name": "Vorgeschichte des Matches",
+   "what": "Wie es zu diesem Match kam: Weg durch Gruppen/Ladder, Erwartung vorher.",
+   "when": [
+    "pre_show"
+   ],
+   "example_de": "Das Duell lag die ganze Woche in der Luft: beide ungeschlagen durch die Gruppe."
+  },
+  {
+   "id": "com_tech_pause",
+   "group": "community",
+   "name": "Technikpause überbrücken",
+   "what": "Wenn ein Feed fehlt (Pause, Verbindung): Analyse, Geschichten, Ausblick statt Stille.",
+   "when": [
+    "break"
+   ],
+   "example_de": "Während wir auf das nächste Brett warten: ein kurzer Blick auf die Tabelle."
+  }
+ ],
+ "patterns": [
+  {
+   "id": "pat-001",
+   "kind": "opener",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Es ist alles angerichtet: {a} gegen {b}, {game}, live.",
+   "fits": [
+    "pre_show",
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-002",
+   "kind": "opener",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Herzlich willkommen bei TWENTY ONE. Wir sind mitten drin: {situation}.",
+   "fits": [
+    "break",
+    "between"
+   ]
+  },
+  {
+   "id": "pat-003",
+   "kind": "opener",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Für alle, die gerade erst einschalten: {score_reset}.",
+   "fits": [
+    "live_match",
+    "between"
+   ]
+  },
+  {
+   "id": "pat-004",
+   "kind": "opener",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Die Bretter sind aufgebaut, die Uhren laufen. {a} hat Weiß.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-005",
+   "kind": "opener",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Guten Abend aus dem Mempool. Heute schon {count} Partien, und es werden mehr.",
+   "fits": [
+    "break",
+    "night"
+   ]
+  },
+  {
+   "id": "pat-006",
+   "kind": "opener",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Wir schalten rüber zu {game}, und da ist richtig was los.",
+   "fits": [
+    "between",
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-007",
+   "kind": "opener",
+   "energy": 4,
+   "length": "mittel",
+   "template": "Und los geht's! {a} gegen {b}, und wir sind live dabei.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-008",
+   "kind": "opener",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Kurz durchatmen. Hier ist, was in der letzten Stunde passiert ist.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-009",
+   "kind": "funnel",
+   "energy": 2,
+   "length": "mittel",
+   "template": "{tournament}, Runde {round}, und auf diesem Brett: {a} gegen {b}.",
+   "fits": [
+    "pre_show",
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-010",
+   "kind": "funnel",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Die Liga heute: {count} Partien. Das Turnier: {tournament}. Und das Match, auf das alle schauen: {a} gegen {b}.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-011",
+   "kind": "transition",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Und wo wir gerade bei {topic_a} sind: {topic_b}.",
+   "fits": [
+    "between",
+    "break"
+   ]
+  },
+  {
+   "id": "pat-012",
+   "kind": "transition",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Apropos {keyword}: {fact}.",
+   "fits": [
+    "between",
+    "break"
+   ]
+  },
+  {
+   "id": "pat-013",
+   "kind": "transition",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Während dort noch gerechnet wird, schauen wir kurz rüber zu {other}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-014",
+   "kind": "transition",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Bevor es weitergeht, eine Zahl, die man kennen sollte: {stat}.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-015",
+   "kind": "transition",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Szenenwechsel. {game}, und da sieht es ganz anders aus.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-016",
+   "kind": "transition",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Aber aufgepasst, auf dem anderen Brett {event}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-017",
+   "kind": "call",
+   "energy": 4,
+   "length": "kurz",
+   "template": "{piece} nach {square}, und plötzlich {consequence}!",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-018",
+   "kind": "call",
+   "energy": 3,
+   "length": "kurz",
+   "template": "{player} zieht. {move}. Schnell gespielt.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-019",
+   "kind": "call",
+   "energy": 5,
+   "length": "kurz",
+   "template": "Und das ist Matt! {winner} macht es!",
+   "fits": [
+    "after_result",
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-020",
+   "kind": "call",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Einundzwanzig! {winner} holt den letzten Punkt!",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-021",
+   "kind": "call",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Weg damit. {player} tauscht ab, und das Brett wird leer.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-022",
+   "kind": "call",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Da fällt die nächste Zentralbank! {faction} übernimmt {region}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-023",
+   "kind": "call",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Mühle zu. {player} nimmt einen Stein, und es sind nur noch {left}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-024",
+   "kind": "call",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Neue Bestzeit! {time}, und das ist Platz eins.",
+   "fits": [
+    "breaking"
+   ]
+  },
+  {
+   "id": "pat-025",
+   "kind": "hype",
+   "energy": 4,
+   "length": "mittel",
+   "template": "Das ist nicht mehr knapp, das ist auf Messers Schneide!",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-026",
+   "kind": "hype",
+   "energy": 5,
+   "length": "kurz",
+   "template": "Was für ein Moment, was für eine Partie!",
+   "fits": [
+    "after_result",
+    "breaking"
+   ]
+  },
+  {
+   "id": "pat-027",
+   "kind": "hype",
+   "energy": 4,
+   "length": "mittel",
+   "template": "Der kommt ja immer näher, immer näher, und jetzt?",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-028",
+   "kind": "hype",
+   "energy": 5,
+   "length": "kurz",
+   "template": "Wer hätte das gedacht? {winner} schlägt {loser}!",
+   "fits": [
+    "breaking",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-029",
+   "kind": "hype",
+   "energy": 4,
+   "length": "mittel",
+   "template": "Das Finale ist sowas von lanciert, und wir sind erst bei {progress}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-030",
+   "kind": "hype",
+   "energy": 4,
+   "length": "kurz",
+   "template": "{score}! Da kann noch vieles passieren.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-031",
+   "kind": "hype",
+   "energy": 5,
+   "length": "mittel",
+   "template": "Unglaublich. {count} Treffer im Ballwechsel, und keiner gibt nach.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-032",
+   "kind": "hype",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Jetzt wird's eng. Ganz eng.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-033",
+   "kind": "hype",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Das hier riecht nach Überraschung.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-034",
+   "kind": "hype",
+   "energy": 5,
+   "length": "kurz",
+   "template": "Und da ist er, der Champion: {winner}!",
+   "fits": [
+    "breaking"
+   ]
+  },
+  {
+   "id": "pat-035",
+   "kind": "understatement",
+   "energy": 1,
+   "length": "kurz",
+   "template": "Kleiner Fehler, große Folgen.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-036",
+   "kind": "understatement",
+   "energy": 1,
+   "length": "kurz",
+   "template": "Das war jetzt nicht ganz der Plan.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-037",
+   "kind": "understatement",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Man könnte sagen: Das lief ganz ordentlich für {winner}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-038",
+   "kind": "understatement",
+   "energy": 1,
+   "length": "kurz",
+   "template": "Ein ruhiger Abend. Für die Statistik jedenfalls.",
+   "fits": [
+    "night"
+   ]
+  },
+  {
+   "id": "pat-039",
+   "kind": "understatement",
+   "energy": 2,
+   "length": "kurz",
+   "template": "{count} Züge. Da hat jemand Geduld mitgebracht.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-040",
+   "kind": "understatement",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Matt in {moves} Zügen. Das ging schneller als dieser Satz.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-041",
+   "kind": "understatement",
+   "energy": 2,
+   "length": "mittel",
+   "template": "{player} spielt wie die Feuerwehr. Ob das gut geht, sehen wir gleich.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-042",
+   "kind": "rhetorical",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Und jetzt die Frage: Reicht das noch?",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-043",
+   "kind": "rhetorical",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Wie dreht man so eine Partie? Mit Geduld. Oder mit Glück.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-044",
+   "kind": "rhetorical",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Wer stoppt {player}? Im Moment niemand.",
+   "fits": [
+    "after_result",
+    "between"
+   ]
+  },
+  {
+   "id": "pat-045",
+   "kind": "rhetorical",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Was macht man mit einer Figur weniger und zwei Minuten auf der Uhr? Man kämpft.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-046",
+   "kind": "rhetorical",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Wisst ihr, wie viele Partien heute schon gespielt wurden? {count}.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-047",
+   "kind": "rhetorical",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Wie bringt man die Nervosität weg, wenn das Finale wartet?",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-048",
+   "kind": "stat_intro",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Eine Zahl dazu: {stat}.",
+   "fits": [
+    "between",
+    "break"
+   ]
+  },
+  {
+   "id": "pat-049",
+   "kind": "stat_intro",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Kleiner Blick in die Statistik: {stat}. Und das sagt einiges.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-050",
+   "kind": "stat_intro",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Achtung, Statistik-Bombe: {stat}.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-051",
+   "kind": "stat_intro",
+   "energy": 2,
+   "length": "mittel",
+   "template": "{stat}. Lasst euch das mal auf der Zunge zergehen.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-052",
+   "kind": "stat_intro",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Zum Vergleich: gestern um diese Zeit {yesterday}, heute {today}.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-053",
+   "kind": "stat_intro",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Die direkte Bilanz: {h2h}. Das Papier spricht für {a}.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-054",
+   "kind": "stat_intro",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Interessanter als jede Siegesserie: {player} hat {n} Partien in Folge verloren. Heute kann das enden.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-055",
+   "kind": "prediction",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Auf dem Papier ist {a} Favorit. Aber das Papier spielt nicht mit.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-056",
+   "kind": "prediction",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Nach Elo gewinnt {a} etwa {x} von zehn solcher Partien. Heute zählt nur eine.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-057",
+   "kind": "prediction",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Ich lehne mich nicht weit aus dem Fenster: Das wird eng.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-058",
+   "kind": "prediction",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Es könnte durchaus auch ein Remis werden, wenn {b} ordentlich vorbereitet ist.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-059",
+   "kind": "prediction",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Mein Gefühl sagt {a}. Die Statistik sagt {b}. Mal sehen, wer recht hat.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-060",
+   "kind": "chat",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Was meint ihr: {question}? Schreibt's in den Chat.",
+   "fits": [
+    "pre_show",
+    "between"
+   ]
+  },
+  {
+   "id": "pat-061",
+   "kind": "chat",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Wer von euch hätte auf {winner} getippt? Ehrlich.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-062",
+   "kind": "chat",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Grüße an alle im Chat. Und an alle, die heimlich mitlesen.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-063",
+   "kind": "chat",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Im Chat ist es gerade ruhig. Perfekt, um eine Partie anzufangen.",
+   "fits": [
+    "night"
+   ]
+  },
+  {
+   "id": "pat-064",
+   "kind": "throw",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Und wer jetzt wissen will, wie {player} das geschafft hat: Schaut euch den Verlauf an.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-065",
+   "kind": "throw",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Gleich: {next}. Bis dahin ein Blick auf {now}.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-066",
+   "kind": "throw",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Bleibt dran, gleich wieder zurück mit {next}.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-067",
+   "kind": "throw",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Und damit rüber zur Tafel, die heute am meisten erzählt: {scene}.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-068",
+   "kind": "recap",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Kurz zusammengefasst: {item1}, {item2}, und {item3}.",
+   "fits": [
+    "break",
+    "between"
+   ]
+  },
+  {
+   "id": "pat-069",
+   "kind": "recap",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Falls ihr gerade erst dazugekommen seid: Ihr habt {missed} verpasst.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-070",
+   "kind": "recap",
+   "energy": 1,
+   "length": "kurz",
+   "template": "Der Tag bisher in einem Satz: {summary}.",
+   "fits": [
+    "night",
+    "break"
+   ]
+  },
+  {
+   "id": "pat-071",
+   "kind": "recap",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Das war {tournament}. Und so lief es: {path}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-072",
+   "kind": "suspense",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Noch ein Zug. Noch ein einziger Zug, und …",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-073",
+   "kind": "suspense",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Die Uhr läuft. {seconds} Sekunden. Und er denkt.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-074",
+   "kind": "suspense",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Alles hängt jetzt an diesem einen Ballwechsel.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-075",
+   "kind": "suspense",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Es wird ruhig auf dem Brett. Zu ruhig.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-076",
+   "kind": "reflect",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Was heißt das jetzt? {meaning}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-077",
+   "kind": "reflect",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Das war mehr als ein Sieg. Das war {meaning}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-078",
+   "kind": "reflect",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Mit dem Ergebnis rückt {player} auf Platz {rank}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-079",
+   "kind": "reflect",
+   "energy": 1,
+   "length": "kurz",
+   "template": "Ein Ergebnis, das man sich merken sollte.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-080",
+   "kind": "reflect",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Und schon wieder ein Block mehr auf der Season-Chain. Diesmal von {miner}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-081",
+   "kind": "metaphor",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Der Springer steht da wie angenagelt.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-082",
+   "kind": "metaphor",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Jetzt ist es nur noch Roulette.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-083",
+   "kind": "metaphor",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Türme wollen offene Linien, und {player} gibt ihnen eine.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-084",
+   "kind": "metaphor",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Das ist ein Krimi in {count} Zügen.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-085",
+   "kind": "metaphor",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Ein Ballwechsel wie ein Pingpong-Gewitter.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-086",
+   "kind": "metaphor",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Die Ladder ist ein Aufzug: Heute fährt {player} nach oben.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-087",
+   "kind": "swing",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Und plötzlich kippt es: {player} baut den Vorsprung aus.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-088",
+   "kind": "swing",
+   "energy": 3,
+   "length": "mittel",
+   "template": "{player} rutscht ab, und {other} ist auf einmal vorne.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-089",
+   "kind": "swing",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Ausgerechnet jetzt, ausgerechnet {player}.",
+   "fits": [
+    "live_match",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-090",
+   "kind": "swing",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Lange sah es ausgeglichen aus. Bis Zug {move}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-091",
+   "kind": "ellipsis",
+   "energy": 4,
+   "length": "kurz",
+   "template": "{a}, Angriff, Schach, und Matt!",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-092",
+   "kind": "ellipsis",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Neuer Block. Neuer Miner. {miner}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-093",
+   "kind": "ellipsis",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Erster Versuch, Bestzeit. Respekt.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-094",
+   "kind": "humor",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Wenn ich so schnell denken könnte, wie {player} zieht, hätte ich diesen Satz schon fertig.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-095",
+   "kind": "humor",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Der Bot hat übrigens wieder gewonnen. Er feiert nicht, er ist ein Bot.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-096",
+   "kind": "humor",
+   "energy": 1,
+   "length": "kurz",
+   "template": "Nachtschicht. Ich hab Kaffee, ihr habt die Lobby.",
+   "fits": [
+    "night"
+   ]
+  },
+  {
+   "id": "pat-097",
+   "kind": "callback",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Erinnert ihr euch an {earlier}? Genau das passiert gerade wieder.",
+   "fits": [
+    "live_match",
+    "between"
+   ]
+  },
+  {
+   "id": "pat-098",
+   "kind": "callback",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Vorhin hab ich gesagt, {claim}. Ich nehm's zurück.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-099",
+   "kind": "breaking",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Wir unterbrechen kurz: {event}.",
+   "fits": [
+    "breaking"
+   ]
+  },
+  {
+   "id": "pat-100",
+   "kind": "breaking",
+   "energy": 5,
+   "length": "kurz",
+   "template": "Eilmeldung aus der Liga: {event}!",
+   "fits": [
+    "breaking"
+   ]
+  },
+  {
+   "id": "pat-101",
+   "kind": "sign_off",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Das war's für den Moment. Die Lobby bleibt offen.",
+   "fits": [
+    "break",
+    "night"
+   ]
+  },
+  {
+   "id": "pat-102",
+   "kind": "sign_off",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Gute Nacht von TWENTY ONE. Morgen geht's weiter, die Tafel ist schon vorbereitet.",
+   "fits": [
+    "night"
+   ]
+  },
+  {
+   "id": "pat-103",
+   "kind": "sign_off",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Wir sehen uns beim nächsten Ergebnis.",
+   "fits": [
+    "between"
+   ]
+  },
+  {
+   "id": "pat-104",
+   "kind": "count_up",
+   "energy": 5,
+   "length": "mittel",
+   "template": "Der erste Treffer, der zweite, der dritte! {player} hört nicht auf!",
+   "fits": [
+    "live_match",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-105",
+   "kind": "question_answer",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Schafft {player} das? … Er schafft es!",
+   "fits": [
+    "live_match",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-106",
+   "kind": "question_answer",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Kann {player} das noch drehen? Im Moment sieht es nicht danach aus.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-107",
+   "kind": "epic",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Favoriten können fallen. Heute hat es {loser} erwischt.",
+   "fits": [
+    "breaking",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-108",
+   "kind": "epic",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Wo wart ihr, als {winner} {loser} geschlagen hat? Hoffentlich hier.",
+   "fits": [
+    "breaking"
+   ]
+  },
+  {
+   "id": "pat-109",
+   "kind": "epic",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Form ist vergänglich, Klasse bleibt. {player} beweist es mal wieder.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-110",
+   "kind": "epic",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Kein Turnier ist zu groß für {player}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-111",
+   "kind": "epic",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Eine harte Lektion. Und {winner} hat sie erteilt.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-112",
+   "kind": "epic",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Jetzt hängt alles an {player}. Das ist sein Moment.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-113",
+   "kind": "epic",
+   "energy": 4,
+   "length": "mittel",
+   "template": "Er macht es schon wieder! {count} Mal in Folge!",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-114",
+   "kind": "countdown",
+   "energy": 4,
+   "length": "kurz",
+   "template": "Noch fünf, vier, drei, zwei, eins, und vorbei!",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-115",
+   "kind": "point_of_no_return",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Ab hier gibt es kein Zurück mehr.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-116",
+   "kind": "only_one",
+   "energy": 3,
+   "length": "mittel",
+   "template": "Es gibt jetzt genau einen Zug, der hält. Einen einzigen.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-117",
+   "kind": "clock_update",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Kurzes Uhren-Update: {a} {clock_a}, {b} {clock_b}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-118",
+   "kind": "tour",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Mal sehen, was sonst noch los ist. Brett zwei: {status}.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-119",
+   "kind": "rarity",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Das hat in dieser Liga noch niemand geschafft.",
+   "fits": [
+    "breaking",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-120",
+   "kind": "build_up",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Das lag die ganze Woche in der Luft: {a} gegen {b}. Und jetzt ist es so weit.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-121",
+   "kind": "build_up",
+   "energy": 2,
+   "length": "mittel",
+   "template": "{a} hat in dieser Season erst {losses} Partie verloren. {b} will das ändern.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-122",
+   "kind": "build_up",
+   "energy": 3,
+   "length": "mittel",
+   "template": "{a} hat {b} {n} Mal in Folge geschlagen. Diese Serie steht heute auf dem Spiel.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-123",
+   "kind": "implication",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Gewinnt {a} heute, sieht die Tabelle für {event} ganz anders aus.",
+   "fits": [
+    "pre_show",
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-124",
+   "kind": "explainer",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Soviel zum Modus. Und zur Motivation: {pot} Sats im Topf.",
+   "fits": [
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-125",
+   "kind": "explainer",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Für alle, die {game} noch nicht kennen: {rule}.",
+   "fits": [
+    "live_match",
+    "break"
+   ]
+  },
+  {
+   "id": "pat-126",
+   "kind": "explainer",
+   "energy": 1,
+   "length": "mittel",
+   "template": "Ich erklär's mal so, wie ich's meiner Mutter erklären würde: {simple}.",
+   "fits": [
+    "break"
+   ]
+  },
+  {
+   "id": "pat-127",
+   "kind": "why_it_matters",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Warum das wichtig ist? {reason}.",
+   "fits": [
+    "pre_show",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-128",
+   "kind": "celebrate",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Lassen wir den Moment kurz stehen. {winner} hat sich das verdient.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-129",
+   "kind": "question",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Die Frage ist nur: {question}",
+   "fits": [
+    "live_match",
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-130",
+   "kind": "other_side",
+   "energy": 2,
+   "length": "mittel",
+   "template": "Auf der anderen Seite {player}, und der sieht das ganz anders.",
+   "fits": [
+    "live_match",
+    "pre_show"
+   ]
+  },
+  {
+   "id": "pat-131",
+   "kind": "tension",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Und jetzt wird's richtig spannend.",
+   "fits": [
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-132",
+   "kind": "back",
+   "energy": 2,
+   "length": "kurz",
+   "template": "{player} ist wieder da. Und wie.",
+   "fits": [
+    "after_result",
+    "live_match"
+   ]
+  },
+  {
+   "id": "pat-133",
+   "kind": "first_time",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Zum ersten Mal in dieser Season: {event}.",
+   "fits": [
+    "breaking",
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-134",
+   "kind": "who_thought",
+   "energy": 3,
+   "length": "kurz",
+   "template": "Wer hätte das vor einer Woche gedacht?",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-135",
+   "kind": "standings_math",
+   "energy": 2,
+   "length": "kurz",
+   "template": "Jetzt kann man wieder anfangen zu rechnen: {math}.",
+   "fits": [
+    "after_result"
+   ]
+  },
+  {
+   "id": "pat-136",
+   "kind": "tally",
+   "energy": 2,
+   "length": "mittel",
+   "template": "{a}: zwei Spiele, zwei Siege. {b}: ein Spiel, eine Niederlage.",
+   "fits": [
+    "between"
+   ]
+  }
+ ],
+ "promo": [
+  {
+   "id": "promo-001",
+   "category": "play_now",
+   "when": [
+    "break",
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Wer beim Zuschauen kribbelige Finger kriegt: esports punkt einundzwanzig punkt space, einloggen, und das nächste Brett gehört euch."
+  },
+  {
+   "id": "promo-002",
+   "category": "play_now",
+   "when": [
+    "break",
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Ihr müsst nicht nur zuschauen. Die Lobby ist offen, rund um die Uhr, auch jetzt."
+  },
+  {
+   "id": "promo-003",
+   "category": "play_now",
+   "when": [
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Kleiner Tipp vom Sender: Zwischen zwei Sendungen passt locker eine Partie Schnellschach. Zehn plus fünf, direkt im Browser."
+  },
+  {
+   "id": "promo-004",
+   "category": "play_now",
+   "when": [
+    "between",
+    "break"
+   ],
+   "energy": "hype",
+   "text": "Blitz fünf plus drei ist offen. Die Uhr läuft, sobald beide sitzen. Na, wer traut sich?"
+  },
+  {
+   "id": "promo-005",
+   "category": "play_now",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Keine Installation, kein Download, kein Theater. Browser auf, einloggen, spielen."
+  },
+  {
+   "id": "promo-008",
+   "category": "play_now",
+   "when": [
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Nachts ist die Lobby ruhiger, aber nicht leer. Wer noch wach ist, findet hier vielleicht genau den Gegner, der auch nicht schlafen kann."
+  },
+  {
+   "id": "promo-009",
+   "category": "play_now",
+   "when": [
+    "between"
+   ],
+   "energy": "trocken",
+   "text": "Zuschauen ist schön. Mitspielen zählt für die Tabelle."
+  },
+  {
+   "id": "promo-010",
+   "category": "play_now",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Alles, was ihr hier im Stream seht, könnt ihr selbst spielen. Jedes Spiel, jeder Modus, auf einer Seite."
+  },
+  {
+   "id": "promo-011",
+   "category": "login",
+   "when": [
+    "break",
+    "between"
+   ],
+   "energy": "trocken",
+   "text": "Einloggen geht mit Nostr oder Google, dauert Sekunden. Danach seid ihr Spieler, nicht Gast."
+  },
+  {
+   "id": "promo-012",
+   "category": "login",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Ein Nostr-Schlüssel reicht, und ihr seid drin. Wer noch keinen hat: Google geht auch."
+  },
+  {
+   "id": "promo-013",
+   "category": "login",
+   "when": [
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Der Einstieg ist so kurz, dass er in eine Werbepause passen würde. Wenn wir Werbepausen hätten."
+  },
+  {
+   "id": "promo-014",
+   "category": "try_game",
+   "when": [
+    "break",
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Proof of Pong: bis einundzwanzig, zwei Punkte Vorsprung. Gegen den Bot zum Warmwerden, oder eins gegen eins, das Elo bewegt."
+  },
+  {
+   "id": "promo-015",
+   "category": "try_game",
+   "when": [
+    "break"
+   ],
+   "energy": "hype",
+   "text": "Wer meint, Pong sei ein Spiel für Opas, hat noch nie einundzwanzig zu zwanzig im Ballwechsel gestanden. Probiert's aus."
+  },
+  {
+   "id": "promo-016",
+   "category": "try_game",
+   "when": [
+    "break",
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Hyperbitcoinization ist offen: eine Weltkarte für zwei bis sechs Leute. Live oder ein Zug am Tag, ganz wie es eure Runde mag."
+  },
+  {
+   "id": "promo-017",
+   "category": "try_game",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Blockfill: Die Blöcke der Woche räumen, die beste Zeit zählt. Und jeder Lauf hat sein eigenes Replay."
+  },
+  {
+   "id": "promo-018",
+   "category": "try_game",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Ein Blockfill-Lauf fängt bei null an. Die Woche nicht. Wer jetzt spielt, hat noch alle Versuche vor sich."
+  },
+  {
+   "id": "promo-019",
+   "category": "try_game",
+   "when": [
+    "break",
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Mühle, Dame, Blockli: Brettspiele ohne Uhr. Ein Zug, wann immer ihr einen habt."
+  },
+  {
+   "id": "promo-021",
+   "category": "try_game",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Fernschach für Leute ohne Zeit: ein Zug am Tag, wann es euch passt. Die Partie wartet auf euch."
+  },
+  {
+   "id": "promo-022",
+   "category": "try_game",
+   "when": [
+    "break",
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Trackmania Nations Forever hat jede Woche eine neue Strecke. Die Autorenzeit wartet, und die Bestenliste auch."
+  },
+  {
+   "id": "promo-023",
+   "category": "try_game",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Ihr spielt eh EA Sports FC? Dann tragt es hier aus: bester aus eins oder drei, die Tore zählen."
+  },
+  {
+   "id": "promo-024",
+   "category": "try_game",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Rocket League, Age of Empires zwei, EA FC: Die großen Titel laufen hier als Serien. Ergebnis eintragen, fertig."
+  },
+  {
+   "id": "promo-025",
+   "category": "try_game",
+   "when": [
+    "between"
+   ],
+   "energy": "trocken",
+   "text": "Zwölf Spiele, eine Liga. Irgendwas davon könnt ihr bestimmt."
+  },
+  {
+   "id": "promo-028",
+   "category": "tournament_signup",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Turniere sind offen: anmelden, spielen, und am Ende geht es um den Topf."
+  },
+  {
+   "id": "promo-029",
+   "category": "tournament_signup",
+   "when": [
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Das Bracket hat noch Lücken. Eine davon hat euren Namen noch nicht drauf."
+  },
+  {
+   "id": "promo-036",
+   "category": "pot",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Hier stackt man Sats nicht beim Zuschauen. Man stackt sie am Brett."
+  },
+  {
+   "id": "promo-037",
+   "category": "pot",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Jeder Zap in den Stream landet im Ligatopf. Und der Ligatopf landet bei den Spielern."
+  },
+  {
+   "id": "promo-038",
+   "category": "zap_stream",
+   "when": [
+    "break",
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Der Sender läuft den ganzen Tag. Ein Zap ist, wie man hier winkt. Der QR-Code steht im Bild."
+  },
+  {
+   "id": "promo-039",
+   "category": "zap_stream",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Euch gefällt, was hier läuft? Ein Zap über den QR-Code im Bild, und jeder Sat sagt danke."
+  },
+  {
+   "id": "promo-040",
+   "category": "zap_stream",
+   "when": [
+    "after_result"
+   ],
+   "energy": "warm",
+   "text": "Danke für die Zaps gerade. Die gehen direkt in den Topf, und der Topf geht an die Spieler."
+  },
+  {
+   "id": "promo-042",
+   "category": "clans",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Ein Clan ist ein Kürzel und Leute, die auftauchen. Mehr braucht's nicht."
+  },
+  {
+   "id": "promo-045",
+   "category": "season",
+   "when": [
+    "between",
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Die Season läuft: Jeder gewertete Sieg schürft einen Block auf der Liga-Chain. Euer Sieg könnte der nächste Block sein."
+  },
+  {
+   "id": "promo-047",
+   "category": "season",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Proof of Work, aber am Brett. Gewertete Siege schürfen hier Blöcke."
+  },
+  {
+   "id": "promo-049",
+   "category": "badges",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Jeder Rang hat ein Abzeichen, das ihr auf eurem Nostr-Profil zeigen könnt. Der Aufstieg beginnt mit der ersten Partie."
+  },
+  {
+   "id": "promo-051",
+   "category": "badges",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Ränge gibt es hier nicht geschenkt. Aber man kann sie sich in einer Woche verdienen."
+  },
+  {
+   "id": "promo-052",
+   "category": "invite_friend",
+   "when": [
+    "break",
+    "night"
+   ],
+   "energy": "warm",
+   "text": "Ihr habt einen Freund, der immer behauptet, er sei besser? In der Lobby macht ihr einen Einladungslink, und dann klärt ihr das."
+  },
+  {
+   "id": "promo-053",
+   "category": "invite_friend",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Ein Freund, ein Link, ein Brett. Das ist der ganze Weg."
+  },
+  {
+   "id": "promo-054",
+   "category": "invite_friend",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Die Lobby schreibt den Link, ihr müsst ihn nur verschicken. Wohin auch immer."
+  },
+  {
+   "id": "promo-055",
+   "category": "nostr",
+   "when": [
+    "break",
+    "night"
+   ],
+   "energy": "warm",
+   "text": "Die Liga postet auf Nostr: Ergebnisse, Champions, Rekorde. Folgt dem Profil, dann verpasst ihr nichts."
+  },
+  {
+   "id": "promo-056",
+   "category": "nostr",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Schreibt uns im Stream-Chat. Hier liest jemand mit, und manchmal schafft es eure Frage sogar in die Sendung."
+  },
+  {
+   "id": "promo-057",
+   "category": "nostr",
+   "when": [
+    "after_result"
+   ],
+   "energy": "trocken",
+   "text": "Der Champion-Post geht gleich auf Nostr raus. Wer da drinstehen will, weiß ja jetzt, wie."
+  },
+  {
+   "id": "promo-060",
+   "category": "tmnf_week",
+   "when": [
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Die Strecke der Woche steht. Wer die Autorenzeit knackt, kriegt seinen Moment hier im Stream."
+  },
+  {
+   "id": "promo-061",
+   "category": "night",
+   "when": [
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Nachtprogramm bei TWENTY ONE. Die Bretter stehen trotzdem offen, für alle, die nachts besser denken."
+  },
+  {
+   "id": "promo-062",
+   "category": "night",
+   "when": [
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Wer morgen früh als Erster auf der Tafel stehen will, kann heute Nacht schon anfangen."
+  },
+  {
+   "id": "promo-063",
+   "category": "night",
+   "when": [
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Fernschach ist das perfekte Nachtspiel: Zug machen, schlafen gehen, morgen schauen, was der Gegner gemacht hat."
+  },
+  {
+   "id": "promo-065",
+   "category": "watch",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Das hier ist euer Sender: Spiele, Turniere, Rekorde, rund um die Uhr. Und jeder Moment hier kommt von echten Spielern."
+  },
+  {
+   "id": "promo-067",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Ihr müsst kein Profi sein. Die meisten hier haben mit einer Partie angefangen, die sie verloren haben."
+  },
+  {
+   "id": "promo-068",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Neu hier? Dann seid ihr genau richtig. Die Ladder fängt bei jedem ganz unten an."
+  },
+  {
+   "id": "promo-069",
+   "category": "community",
+   "when": [
+    "break",
+    "night"
+   ],
+   "energy": "ruhig",
+   "text": "Kein Haken, keine Hürde. Nur Spiele und Leute, die sie spielen."
+  },
+  {
+   "id": "promo-071",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Die Tabelle ist geduldig. Sie wartet, bis ihr euch eintragt."
+  },
+  {
+   "id": "promo-072",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Wer sich fragt, wie die Leute hier auf die Tafel kommen: Sie haben einfach angefangen."
+  },
+  {
+   "id": "promo-073",
+   "category": "community",
+   "when": [
+    "after_result"
+   ],
+   "energy": "hype",
+   "text": "So fühlt sich ein Sieg in dieser Liga an. Und das hier ist kein Profi-Event. Das sind Leute wie ihr."
+  },
+  {
+   "id": "promo-074",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Regeln für alle Spiele stehen auf der Seite, kurz und klar. Zwei Minuten lesen, dann seid ihr turnierfähig."
+  },
+  {
+   "id": "promo-075",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "trocken",
+   "text": "Kein Gegner da? Bei Pong wartet der Bot. Der hat immer Zeit und nie Ausreden."
+  },
+  {
+   "id": "promo-076",
+   "category": "community",
+   "when": [
+    "between"
+   ],
+   "energy": "warm",
+   "text": "Ihr habt einen Lieblingsspieler auf dieser Tafel? Fordert ihn heraus. So entstehen Rivalitäten."
+  },
+  {
+   "id": "promo-077",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Jede Partie hier zählt für irgendwas: für die Ladder, für die Season, für euren Rang. Keine verschwendet."
+  },
+  {
+   "id": "promo-078",
+   "category": "community",
+   "when": [
+    "break"
+   ],
+   "energy": "warm",
+   "text": "Auch wer verliert, schürft Erfahrung. Und manchmal das nächste Revanche-Match."
+  }
+ ]
+}

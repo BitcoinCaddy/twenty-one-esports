@@ -2,6 +2,7 @@
 
 namespace App\Support\TwentyOne\Stream;
 
+use App\Support\Caster\VoiceFeed;
 use Illuminate\Contracts\Process\InvokedProcess;
 use Symfony\Component\Process\InputStream;
 
@@ -15,6 +16,9 @@ final class EncoderRun
 
     /** @var list<string> the last stderr lines */
     public array $stderr = [];
+
+    /** The commentary's voice pipe this run reads (plan "KI-Stimme der Liga", P6); null without commentary. */
+    public ?VoiceFeed $voice = null;
 
     public function __construct(
         public readonly string $mode,

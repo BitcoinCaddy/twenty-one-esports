@@ -7,6 +7,7 @@ use App\Models\PongInvite;
 use App\Models\PongMatch;
 use App\Models\User;
 use App\Support\Cards\PageCard;
+use App\Support\Memes\BotBanter;
 use App\Support\Pong\PongCast;
 use App\Support\Pong\PongInvites;
 use App\Support\Pong\PongLadder;
@@ -116,6 +117,8 @@ class PongController extends Controller
                 'rules' => PongRules::fromConfig((array) config('esports.pong'))->toArray(),
                 'texts' => array_combine(self::TEXTS, array_map(fn (string $key): string => __($key), self::TEXTS)),
                 'castTexts' => PongCast::texts(),
+                // The bot's lines in the game chat, as its archetype (plan "KI-Stimme der Liga", P5); muted in the browser.
+                'banter' => app(BotBanter::class)->forPongBot($bot['id']),
                 'urls' => [
                     'lobby' => route('pong.index', absolute: false),
                     'again' => route('pong.bot', array_filter(['bot' => $bot['id'], 'figure' => $figure]), false),

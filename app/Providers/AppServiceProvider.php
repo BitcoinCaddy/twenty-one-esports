@@ -146,6 +146,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('invites', fn (Request $request): Limit => Limit::perMinute(60)->by($request->ip()));
         // Score servers (plan "AoE2 und Trackmania", P4): a server posts its finishes in batches, never hundreds a minute.
         RateLimiter::for('score-ingest', fn (Request $request): Limit => Limit::perMinute(120)->by($request->ip()));
+        // The TV commentary fetcher (plan "KI-Stimme der Liga", P6): one claim and one upload every few seconds at most.
+        RateLimiter::for('caster-fetch', fn (Request $request): Limit => Limit::perMinute(120)->by($request->ip()));
 
         // The player picker (<x-player-picker>) asks once per typing pause.
         RateLimiter::for('player-search', fn (Request $request): Limit => Limit::perMinute(60)
