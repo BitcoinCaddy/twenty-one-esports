@@ -227,8 +227,8 @@ it('frees a claim that never came back', function () {
 
     expect($queue->claim($now)?->id)->toBe($script->id)
         ->and($queue->claim($now->addSeconds(60)))->toBeNull()
-        ->and($queue->claim($now->addSeconds(299)))->toBeNull()
-        ->and($queue->claim($now->addSeconds(301))?->id)->toBe($script->id);
+        ->and($queue->claim($now->addSeconds(89)))->toBeNull()
+        ->and($queue->claim($now->addSeconds(91))?->id)->toBe($script->id);
 });
 
 it('deletes rows that left the queue a day ago', function () {

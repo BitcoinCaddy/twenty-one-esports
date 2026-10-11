@@ -130,7 +130,7 @@ return [
             'online_seconds' => 120,
             // A claimed script that came back neither as a clip nor released is free again after this long (a long
             // Bauernkrieg segment is 15 to 30 sentences, about ten VoiceStudio calls).
-            'claim_seconds' => 300,
+            'claim_seconds' => (int) env('TV_COMMENTARY_CLAIM_SECONDS', 90),
         ],
 
         'spool' => [
