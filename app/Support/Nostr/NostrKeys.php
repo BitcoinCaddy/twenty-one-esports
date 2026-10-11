@@ -6,6 +6,7 @@ use Throwable;
 
 use function BitWasp\Bech32\convertBits;
 use function BitWasp\Bech32\decode;
+use function BitWasp\Bech32\decodeRaw;
 use function BitWasp\Bech32\encode;
 
 /**
@@ -80,6 +81,79 @@ final class NostrKeys
         }
 
         return vsprintf(str_repeat('%02x', 32), $bytes);
+    }
+
+    /**
+     * NIP-19 `nprofile`: TLV 0 = pubkey (32 bytes, exactly once), 1 = relay
+     * hint (UTF-8, any number); unknown types are skipped. The pubkey as
+     * lowercase hex and the hints as written, or null for anything else,
+     * including a truncated TLV. Read without bech32's 90-character cap: an
+     * nprofile with relay hints is longer, and the checksum still holds.
+     *
+     * @return array{pubkey: string, relays: list<string>}|null
+     */
+    public static function nprofileDecode(string $nprofile): ?array
+    {
+        try {
+            [$hrp, $data] = decodeRaw(strtolower(trim($nprofile)));
+            $bytes = convertBits($data, count($data), 5, 8, false);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($hrp !== 'nprofile') {
+            return null;
+        }
+
+        $binary = pack('C*', ...$bytes);
+        $pubkey = null;
+        $relays = [];
+
+        for ($offset = 0; $offset < strlen($binary);) {
+            if ($offset + 2 > strlen($binary)) {
+                return null;
+            }
+
+            $type = ord($binary[$offset]);
+            $length = ord($binary[$offset + 1]);
+            $value = substr($binary, $offset + 2, $length);
+
+            if (strlen($value) !== $length) {
+                return null;
+            }
+
+            if ($type === 0) {
+                if ($pubkey !== null || $length !== 32) {
+                    return null;
+                }
+                $pubkey = bin2hex($value);
+            } elseif ($type === 1 && $length > 0 && mb_check_encoding($value, 'UTF-8')) {
+                $relays[] = $value;
+            }
+
+            $offset += 2 + $length;
+        }
+
+        return $pubkey === null ? null : ['pubkey' => $pubkey, 'relays' => $relays];
+    }
+
+    /**
+     * An npub, nprofile or 64-character hex pubkey as the pubkey (hex) and
+     * the relay hints it carries (only an nprofile has any), or null.
+     *
+     * @return array{pubkey: string, relays: list<string>}|null
+     */
+    public static function profileReference(string $reference): ?array
+    {
+        $reference = (string) preg_replace('/^nostr:/i', '', trim($reference));
+
+        if (str_starts_with(strtolower($reference), 'nprofile1')) {
+            return self::nprofileDecode($reference);
+        }
+
+        $hex = self::toHex($reference);
+
+        return $hex === null ? null : ['pubkey' => $hex, 'relays' => []];
     }
 
     public static function hexToNpub(string $hex): string

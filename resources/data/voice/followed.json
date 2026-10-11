@@ -1,0 +1,36 @@
+{
+ "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note.",
+ "intros": [
+  "Kurzer Blick rüber auf Nostr, da hat {name} wieder was gepostet.",
+  "Auf Nostr meldet sich {name} zu Wort.",
+  "Frisch auf Nostr, und zwar hat {name} getippt.",
+  "Was schreibt denn {name} da auf Nostr?",
+  "Ich hab mal auf Nostr reingeschaut, und {name} war fleißig."
+ ],
+ "self_intros": [
+  "Ich hab mal wieder auf Nostr was rausgehauen.",
+  "Kurzer Blick auf Nostr, da hab ich doch neulich was gepostet.",
+  "Auf Nostr hab ich mich mal wieder zu Wort gemeldet.",
+  "Frisch von meinem eigenen Nostr-Profil."
+ ],
+ "attribution": "Auf Nostr schreibt {name}:",
+ "self_attribution": "Auf Nostr hab ich geschrieben:",
+ "reactions": [
+  "Na, das lass ich mal so stehen.",
+  "Kann man so sehen.\nMuss man aber nicht.",
+  "Starke Worte.\nIch nicke mal wissend in die Kamera.",
+  "Tja.\nNostr ist halt das ehrlichste Netzwerk der Welt.",
+  "Da sag ich jetzt lieber nichts dazu.\nOder doch, aber erst nach dem nächsten Block.",
+  "Ich hätte es nicht schöner sagen können.\nOkay, vielleicht ein bisschen schöner.",
+  "Herrlich.\nGenau dafür gibt es Nostr.",
+  "Interessanter Gedanke.\nIch denk da mal ein paar Blöcke drüber nach.",
+  "Das unterschreib ich.\nMit meinem privaten Schlüssel natürlich.",
+  "Ganz ehrlich, das ist Content.\nDa kann kein Algorithmus mithalten.",
+  "Respekt.\nKein Zensor, kein Algorithmus, einfach raus damit.",
+  "Ich muss schmunzeln.\nUnd ich stack einfach weiter.",
+  "So spricht ein freier Mensch.\nOder einer, der zu viel Kaffee hatte.",
+  "Mutig.\nAber auf Nostr darf man das.",
+  "Das war jetzt sehr Allgäu.\nOder sehr Bitcoin, das ist ja fast dasselbe.",
+  "Gut gebrüllt.\nVerifizieren statt vertrauen, wie immer."
+ ]
+}

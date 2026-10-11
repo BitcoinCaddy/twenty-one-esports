@@ -18,8 +18,9 @@ use Illuminate\Support\Facades\DB;
  * the facts of its topic changed. The workstation fetcher claims the next
  * script, voices it and uploads the clip (ClipSpool), or releases it.
  *
- * The long segments (news, "Markus erzählt vom Bauernkrieg") are written
- * here too, each when it is due (NewsScripts, HistoryScripts): normal
+ * The long segments (news, "Markus erzählt vom Bauernkrieg", a followed
+ * profile's Nostr note) are written here too, each when it is due
+ * (NewsScripts, HistoryScripts, FollowedScripts): normal
  * priority, so live moments and reactions still jump ahead of them, and
  * ClipSpool plays them on calm slots only. They do not count as airtime
  * ahead: a long Bauernkrieg segment waiting for a calm slot must not starve
@@ -43,16 +44,20 @@ class ScriptQueue
 
     private HistoryScripts $history;
 
+    private FollowedScripts $followed;
+
     public function __construct(
         private CasterVoice $voice,
         private SceneFacts $facts,
         ?PatternScripts $patterns = null,
         ?NewsScripts $news = null,
         ?HistoryScripts $history = null,
+        ?FollowedScripts $followed = null,
     ) {
         $this->patterns = $patterns ?? app(PatternScripts::class);
         $this->news = $news ?? app(NewsScripts::class);
         $this->history = $history ?? app(HistoryScripts::class);
+        $this->followed = $followed ?? app(FollowedScripts::class);
     }
 
     /** Whether the league voice writes scene scripts (TV_COMMENTARY_AI); off, the patterns fill the airtime alone. */
@@ -153,7 +158,8 @@ class ScriptQueue
      * The long segments, each when it is due: a history segment every
      * `history.every_minutes`, a news segment at most every
      * `news.every_minutes` (the headline's comment by the league voice while
-     * `tv.commentary.ai` is on, else a pattern reaction).
+     * `tv.commentary.ai` is on, else a pattern reaction), a followed-profile
+     * segment at most every `followed.every_minutes` (the same, for a note).
      *
      * @return int segments written
      */
@@ -183,6 +189,19 @@ class ScriptQueue
                 $this->enqueue(CasterScript::NEWS, ScenePhase::BREAK, $segment['text'], 'news:'.$item->id, 0, $now,
                     source: $segment['source'], topic: $item->section, maxAgeMinutes: (int) config('tv.commentary.news.max_age_minutes', 30));
                 LengthMix::written(LengthMix::NEWS, $segment['long']);
+                $written++;
+            }
+        }
+
+        $since = $now->subMinutes((int) config('tv.commentary.followed.every_minutes', 10));
+
+        if (config('tv.commentary.followed.enabled') === true && ! CasterScript::query()->where('kind', CasterScript::FOLLOWED)->where('created_at', '>', $since)->exists()) {
+            $note = $this->followed->next($now);
+            $segment = $note === null ? null : $this->followed->write($note, $now, self::aiEnabled());
+
+            if ($note !== null && $segment !== null) {
+                $this->enqueue(CasterScript::FOLLOWED, ScenePhase::BREAK, $segment['text'], 'followed:'.$note->id, 0, $now,
+                    source: $segment['source'], maxAgeMinutes: (int) config('tv.commentary.followed.max_age_minutes', 30));
                 $written++;
             }
         }

@@ -848,7 +848,8 @@ if (app(GameRegistry::class)->find(TrackmaniaNationsForever::SLUG) !== null) {
  * queues reactions to the stream chat and its zaps (reading every 15 s, in the
  * background so it never holds up the minute's other tasks) and recomputes the
  * web of trust daily. `caster:news` reads the news segment's headlines from public
- * feeds every 15 minutes (in the background: a slow feed never holds up the minute).
+ * feeds every 15 minutes (in the background: a slow feed never holds up the minute),
+ * `caster:followed` the new Nostr notes of the followed profiles every five minutes.
  * `caster:prune` runs always, so the spool and the chatter cache stay within their
  * caps whatever the switches say (and are emptied after a switch-off).
  * `caster:fetch` is not scheduled here: it runs on the workstation that voices.
@@ -857,4 +858,5 @@ Schedule::command('caster:script')->everyMinute()->withoutOverlapping()->onOneSe
 Schedule::command('caster:chat')->everyMinute()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
 Schedule::command('caster:chat', ['--wot'])->dailyAt('05:11')->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
 Schedule::command('caster:news')->everyFifteenMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.news.enabled') === true);
+Schedule::command('caster:followed')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.followed.enabled') === true);
 Schedule::command('caster:prune')->everyTenMinutes()->withoutOverlapping()->onOneServer();

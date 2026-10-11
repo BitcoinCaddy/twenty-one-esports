@@ -234,6 +234,35 @@ return [
             ],
         ],
 
+        // Followed profiles (user 2026-10-11: "Für mehr Varianz kann er noch auf die Nostr-Posts von nprofile1… reagieren,
+        // aber pro Post nur einmal"): npub, nprofile or hex, comma-separated. `caster:followed` reads their new kind 1
+        // notes every five minutes from the nprofile's relay hints and the stream's relays (App\Support\Caster\FollowedNotes);
+        // each note gets at most one segment ever (App\Support\Caster\FollowedScripts).
+        'followed_profiles' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_FOLLOWED_PROFILES', 'nprofile1qqs0ys979d5ylpwvs9tx7gyp8p40s8t5yl4gvfgv300xk759qrrkrws3c57u3'))))),
+
+        'followed' => [
+            'enabled' => (bool) env('TV_COMMENTARY_FOLLOWED', true),
+            // At most one followed-profile segment within this many minutes.
+            'every_minutes' => (int) env('TV_COMMENTARY_FOLLOWED_EVERY_MINUTES', 10),
+            // A note older than this is not spoken (nor read); rows older than `keep_days` are deleted, beyond `max_rows` the oldest.
+            'fresh_hours' => 24,
+            'keep_days' => 7,
+            'max_rows' => 500,
+            // Notes read per profile and run, newest first.
+            'per_profile' => 20,
+            // A note with fewer words (links, references and markup left out) is not spoken.
+            'min_words' => 5,
+            // Replies (NIP-10 `e` tags other than a mention) are left out unless this is on.
+            'replies' => false,
+            'max_age_minutes' => 30,
+            // Markus' retelling of the note (one or two sentences) plus his reaction (two to five).
+            'sentences' => ['min' => 3, 'max' => 7],
+            // The quote the pattern stand-in reads out, in words.
+            'quote_words' => 20,
+            'name_hours' => 24,
+            'daily_cap' => (int) env('TV_COMMENTARY_FOLLOWED_DAILY_CAP', 60),
+        ],
+
         'history' => [
             'enabled' => (bool) env('TV_COMMENTARY_HISTORY', true),
             'every_minutes' => ['min' => 45, 'max' => 90],
