@@ -149,31 +149,19 @@ export default function matchDock(config) {
             this.open = null;
             window.dispatchEvent(new CustomEvent('dock-toggle', { detail: false }));
             if (returnFocus) {
-                const selector = was.startsWith('item:') ? `[data-dock-tab="${was.slice(5)}"]` : was === 'more' ? '[data-test=dock-more-button]' : was === 'slot' ? '[data-test=dock-slot-button]' : null;
+                const selector = was === 'sheet' ? '[data-test=dock-slot-button], [data-test=nav-actions], [data-test=tab-actions], [data-test=dock-bar-tab]' : was === 'slot' ? '[data-test=dock-slot-button]' : null;
                 const target = selector && [...document.querySelectorAll(selector)].find((el) => el.getClientRects().length > 0);
                 target?.focus();
             }
         },
 
         /**
-         * The header's "Aktionen" entry (design canvas, Header.dc.html): on a phone the sheet, on a game page's
-         * title row its slot list, else the floating bar unfolded with the focus on its handle.
+         * The header's and the tab bar's "Aktionen" (ActionDock.dc.html, ActionDockPhone.dc.html): the dock, a panel
+         * under the header from 1024 px and a sheet over the tab bar below. Nothing open: the link's own page.
          */
         openFromHeader() {
-            if (Number(this.$root.dataset.open || 0) === 0) return false;
-            if (!window.matchMedia('(width >= 64rem)').matches) {
-                this.toggle('sheet');
-
-                return true;
-            }
-            const slot = this.$root.querySelector('[data-test=dock-slot-button]');
-            if (slot && slot.getClientRects().length > 0) {
-                this.toggle('slot', slot);
-
-                return true;
-            }
-            if (this.folded) this.fold();
-            this.$nextTick(() => this.$root.querySelector('[data-test=dock-handle]')?.focus());
+            if (Number(this.$root.dataset.open || 0) === 0 && this.$root.dataset.cup !== '1') return false;
+            this.toggle('sheet');
 
             return true;
         },
@@ -322,7 +310,7 @@ export default function matchDock(config) {
             const turned = [...this.$root.querySelectorAll('[data-dock-item][data-need="1"]')].filter((el) => !before.has(el.dataset.dockItem));
             if (turned.length === 0 || config.quiet) return;
             turned.forEach((item) => {
-                this.$root.querySelectorAll(`[data-dock-tab="${item.dataset.dockItem}"]`).forEach((el) => {
+                this.$root.querySelectorAll(`[data-test=dock-card][data-key="${item.dataset.dockItem}"]`).forEach((el) => {
                     el.classList.remove('dk-ping');
                     void el.offsetWidth;
                     el.classList.add('dk-ping');

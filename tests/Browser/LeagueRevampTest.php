@@ -175,6 +175,104 @@ test('a league or account page stays quiet and inside the page for an admin from
     }
 })->with('league pages');
 
+test('the action dock opens from the header as a panel under it and from the tab bar as a sheet, nothing floats over the page', function () {
+    ['me' => $me] = leagueRevampWorld();
+
+    foreach ([1440 => 'nav-actions', 390 => 'tab-actions'] as $width => $entry) {
+        $page = leagueRevampOpen($me, '/clans', $width);
+        $closed = $page->evaluate('() => ({
+            floating: [...document.querySelectorAll("[data-test=match-dock-root] *")].filter((el) => el.checkVisibility() && getComputedStyle(el).position === "fixed").map((el) => el.dataset.test || el.tagName),
+            open: Number(document.querySelector("[data-test=match-dock-root]").dataset.open),
+        })');
+        $page->locator('[data-test='.$entry.']')->click();
+        $page->evaluate('() => new Promise((r) => setTimeout(r, 350))');
+        leagueRevampShot($page, "p7-dock-{$width}");
+        $opened = $page->evaluate('() => {
+            const sheet = document.querySelector("[data-test=dock-sheet]");
+            const box = sheet.getBoundingClientRect();
+            const cards = [...sheet.querySelectorAll("[data-test=dock-card]")].filter((el) => el.checkVisibility());
+            const cut = cards.flatMap((card) => [...card.querySelectorAll("a, b, span")]).filter((el) => el.checkVisibility() && el.getBoundingClientRect().right > box.right + 1).length;
+            return { visible: sheet.checkVisibility(), top: Math.round(box.top), right: Math.round(box.right), width: Math.round(box.width), cards: cards.length, actions: cards.filter((c) => c.querySelector("[data-test=dock-card-action]")?.getBoundingClientRect().height >= 32).length, cut, focus: document.activeElement?.getAttribute("aria-label") };
+        }');
+        fwrite(STDERR, "[dock {$width}] ".json_encode([$closed, $opened]).PHP_EOL);
+
+        expect($closed['floating'])->toBe([], "{$width}: nothing of the dock floats over the page while it is closed")
+            ->and($closed['open'])->toBeGreaterThan(0)
+            ->and($opened['visible'])->toBeTrue()
+            ->and($opened['cards'])->toBe($closed['open'])
+            ->and($opened['actions'])->toBe($opened['cards'])
+            ->and($opened['cut'])->toBe(0)
+            ->and($opened['right'])->toBe($width);
+        if ($width === 1440) {
+            // ActionDock.dc.html: under the 56 px header on the right, 460 px wide.
+            expect($opened['top'])->toBe(56)->and($opened['width'])->toBe(460);
+        }
+
+        // Escape closes it and gives the focus back to the entry that opened it.
+        $page->locator('[data-test=dock-sheet] .dk-x')->press('Escape');
+        $page->evaluate('() => new Promise((r) => setTimeout(r, 100))');
+        expect($page->evaluate('() => document.querySelector("[data-test=dock-sheet]").checkVisibility()'))->toBeFalse()
+            ->and($page->evaluate('() => document.activeElement?.dataset.test'))->toBe($entry);
+        leagueRevampQuiet($page, "dock {$width}");
+    }
+});
+
+test('T12: on a 375 x 667 phone nothing floats over the ways to play of a game page, the chat bar sits under them', function () {
+    // P4 found the floating match dock and the chat handle over the ways to play (rule R3). The dock no longer floats
+    // (ActionDock.dc.html): every control of the primary block in the first screen is hit where it is drawn.
+    ['me' => $me] = leagueRevampWorld();
+
+    foreach (['/games/rocket-league', '/chess'] as $path) {
+        $page = leagueRevampOpen($me, $path, 375, 667);
+        $probe = $page->evaluate('() => {
+            const floor = Math.min(innerHeight, ...[...document.querySelectorAll("[data-test=tab-bar]")].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().top));
+            const lead = document.querySelector(".gp-lead");
+            const controls = [...lead.querySelectorAll("a[href], button")].filter((el) => el.checkVisibility()).map((el) => [el, el.getBoundingClientRect()])
+                .filter(([, r]) => r.height > 0 && r.top >= 0 && r.bottom <= floor);
+            const covered = controls.filter(([el, r]) => { const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !(hit && (hit === el || el.contains(hit))); })
+                .map(([el]) => el.dataset.test || el.innerText.trim().slice(0, 24));
+            const floating = [...document.querySelectorAll("body *")].filter((el) => el.checkVisibility() && getComputedStyle(el).position === "fixed" && el.getBoundingClientRect().height > 0)
+                .filter((el) => !el.closest("header, [data-test=tab-bar], [data-test=toast-stack], #more-sheet, [aria-hidden=true]"))
+                .map((el) => el.dataset.test || el.tagName + "." + el.className.toString().split(" ")[0]);
+            return { floor: Math.round(floor), controls: controls.length, covered, floating };
+        }');
+        fwrite(STDERR, "[T12 {$path}] ".json_encode($probe).PHP_EOL);
+        leagueRevampShot($page, 'p7-t12-'.trim(str_replace('/', '-', $path), '-'));
+
+        expect($probe['controls'])->toBeGreaterThan(0, $path)
+            ->and($probe['covered'])->toBe([], $path)
+            ->and($probe['floating'])->toBe([], $path);
+        leagueRevampQuiet($page, "T12 {$path}");
+    }
+});
+
+test('on a board game page at 1440 x 900 with open matches nothing covers the chat composer and its send button', function () {
+    // PR #5 measured the old floating dock bar over the send button; the dock now opens from the header only.
+    ['me' => $me] = leagueRevampWorld();
+    $game = mempoolBoard('blockli', ['mode' => 'correspondence', 'white_id' => $me->id, 'black_id' => User::factory()->create(['name' => 'Nidan21'])->id, 'ply' => 2,
+        'initial_ms' => 86_400_000, 'increment_ms' => 0, 'white_ms' => 86_400_000, 'black_ms' => 86_400_000]);
+
+    $page = leagueRevampOpen($me, route('board.show', $game, false), 1440, 900);
+    // The composer shows once the chat is live (it needs a relay): set the chat's own state, then measure the form's place.
+    $page->evaluate('() => { const form = [...document.querySelectorAll("form")].find((f) => f.querySelector("[data-test=chat-send]")); window.Alpine.$data(form).status = "live"; return new Promise((r) => requestAnimationFrame(() => r(true))); }');
+    $probe = $page->evaluate('() => {
+        const open = Number(document.querySelector("[data-test=match-dock-root]")?.dataset.open ?? 0);
+        const hits = ["[data-test=chat-send]", "[data-test=chat-input]"].map((sel) => {
+            const el = [...document.querySelectorAll(sel)].find((e) => e.checkVisibility());
+            if (!el) return sel + " missing";
+            el.scrollIntoView({ block: "center" });
+            const r = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return hit && (hit === el || el.contains(hit)) ? "ok" : sel + " covered by " + (hit?.closest("[data-test]")?.dataset.test ?? hit?.tagName);
+        });
+        return { open, hits };
+    }');
+    fwrite(STDERR, '[board chat] '.json_encode($probe).PHP_EOL);
+
+    expect($probe['open'])->toBeGreaterThan(0)->and($probe['hits'])->toBe(['ok', 'ok']);
+    leagueRevampQuiet($page, 'board chat 1440');
+});
+
 test('the Mempool chain loads older blocks at its left end and keeps the cube it showed in place', function () {
     ['me' => $me] = leagueRevampWorld();
 

@@ -97,10 +97,13 @@
 
         @if ($user)
             {{-- Aktionen: the match dock's entries (its own count, components/⚡match-dock), the dock opens on click; empty, the player's page. --}}
-            <a href="{{ route('dashboard') }}" class="rv-act hidden lg:inline-flex" x-data="dockCount" x-on:click="openDock($event)"
+            {{-- An entry under its limit turns it red with its label and time (ActionDock.dc.html "Zu, Frist unter 15 Min"). --}}
+            <a href="{{ route('dashboard') }}" class="rv-act hidden lg:inline-flex" x-data="dockCount" x-on:click="openDock($event)" x-bind:class="urgentLabel && 'is-hot'"
                x-bind:aria-label="dockOpen > 0 ? @js(__('Actions')).concat(', ', dockOpen, ' ', @js(__('open'))) : @js(__('Actions'))" data-test="nav-actions">
-                <x-icon name="bolt" :size="14" class="text-btc" />
-                <span class="max-xl:hidden">{{ __('Actions') }}</span>
+                <x-icon name="bolt" :size="14" class="text-btc" x-show="! urgentLabel" />
+                <span class="rv-live h-5 w-6 justify-center px-0" x-show="urgentLabel" x-cloak aria-hidden="true"><i></i></span>
+                <span class="max-xl:hidden" x-show="! urgentLabel">{{ __('Actions') }}</span>
+                <span class="whitespace-nowrap" x-show="urgentLabel" x-cloak data-test="actions-urgent"><span x-text="urgentLabel"></span> <b class="tabular-nums" x-text="urgentTime"></b></span>
                 <span class="rv-n is-o" x-show="dockOpen > 0" x-text="dockOpen" x-cloak data-test="actions-count"></span>
             </a>
 

@@ -143,8 +143,8 @@ test('every open room is on the match dock with a countdown, a far one waiting a
         ->toBe(['starts', '30 min', (int) $soon->start_at->getTimestampMs()]);
 
     Livewire::actingAs($me)->test('match-dock')
-        ->assertSeeHtml('data-dock-tab="series-'.$later->number.'"')
-        ->assertSeeHtml('data-dock-tab="series-'.$live->number.'"');
+        ->assertSeeHtml('data-key="series-'.$later->number.'"')
+        ->assertSeeHtml('data-key="series-'.$live->number.'"');
 });
 
 test('a scheduled casual 1v1 counts down to its check-in, asks to check in now inside the window, then wants the result', function () {

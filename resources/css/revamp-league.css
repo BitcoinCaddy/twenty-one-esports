@@ -339,6 +339,85 @@
         box-shadow: 0 0 10px rgb(247 147 26 / 0.35);
     }
 
+    /* The action dock (ActionDock.dc.html): a panel under the header on the right from 1024 px, a sheet over the tab bar. */
+    .dk-drawer {
+        position: fixed;
+        z-index: 40;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: flex;
+        max-height: 80svh;
+        flex-direction: column;
+        border-top: 1px solid var(--color-line);
+        border-radius: 8px 8px 0 0;
+        background: var(--color-bar);
+        box-shadow: 0 -16px 32px rgb(10 10 11 / 0.8);
+        animation: dk-sheet 0.25s ease-out both;
+    }
+
+    @media (width >= 64rem) {
+        .dk-drawer {
+            top: 56px;
+            bottom: 0;
+            left: auto;
+            width: 460px;
+            max-height: none;
+            border-top: 0;
+            border-left: 1px solid var(--color-line);
+            border-radius: 0;
+            animation: dk-rise 0.2s ease-out both;
+        }
+    }
+
+    .dk-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid var(--color-hairline);
+        border-radius: 4px;
+        background: var(--color-card);
+    }
+
+    .dk-card.is-now {
+        box-shadow: inset 3px 0 0 var(--color-live);
+    }
+
+    .dk-card-title {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 14px;
+        line-height: 1.3;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .dk-card-time {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .dk-card-time.is-urgent {
+        color: var(--color-live);
+    }
+
+    .dk-card-dot {
+        display: block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--color-live);
+    }
+
     /* The Mempool head: two big counts (Mempool.dc.html `.livebig`, Unbounded 48 tabular). */
     .mp-big {
         font-family: var(--font-display);
@@ -392,5 +471,11 @@
 @media (prefers-reduced-motion: reduce) {
     .rv-adv > summary > svg {
         transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dk-drawer {
+        animation: none;
     }
 }
