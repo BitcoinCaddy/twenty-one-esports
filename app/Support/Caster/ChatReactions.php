@@ -364,7 +364,7 @@ class ChatReactions
      *
      * @param  list<array{id: string, zapper: string, at: int, sats: int, comment: string}>  $bundle
      */
-    private function thank(array $bundle, int $bigSats, CarbonImmutable $now): CasterScript
+    private function thank(array $bundle, int $bigSats, CarbonImmutable $now): ?CasterScript
     {
         $sats = array_sum(array_column($bundle, 'sats'));
         $count = count($bundle);

@@ -24,7 +24,20 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 
     public const MOODS = ['hype', 'deadpan', 'frage', 'understatement', 'call', 'fakten', 'zitat'];
 
-    public function __construct(private readonly string $fixedPart = '') {}
+    /**
+     * @param  float|null  $temperatureOverride  sampling temperature (null: the provider's default); the TV voice samples hot for variance
+     * @param  int|null  $maxTokensOverride  output tokens (null: `esports.voice.max_output_tokens`); a long TV segment needs more than a post
+     */
+    public function __construct(
+        private readonly string $fixedPart = '',
+        private readonly ?float $temperatureOverride = null,
+        private readonly ?int $maxTokensOverride = null,
+    ) {}
+
+    public function temperature(): ?float
+    {
+        return $this->temperatureOverride;
+    }
 
     public function instructions(): string
     {
@@ -48,7 +61,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 
     public function maxTokens(): int
     {
-        return (int) config('esports.voice.max_output_tokens', 400);
+        return $this->maxTokensOverride ?? (int) config('esports.voice.max_output_tokens', 400);
     }
 
     /**

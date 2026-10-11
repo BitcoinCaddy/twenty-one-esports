@@ -1,32 +1,5 @@
 {
- "note": "TWENTY ONE TV, segment \"Markus erzählt vom Bauernkrieg\" (App\\Support\\Caster\\HistoryScripts). Every fact is one or two spoken German sentences (one per line, at most 16 words each, numbers as words for the voice), checked against the source URL beside it (German Wikipedia, read 2026-10-11), in the episode's narrative order. A short segment is an intro, the episode's first facts, one twist (a joke, always announced as one) and an outro, 6 to 12 sentences, about 60 to 90 seconds. A long segment (tv.commentary.length.shares.history) chains the episode's facts in order with an aside after every second fact, then the twist and the outro, 15 to 30 sentences, about two to four minutes. Twists and asides are opinion and jokes, never facts. Add a fact only with its source.",
- "intros": [
-  "Und jetzt mal was ganz anderes, Markus erzählt euch heute ein Stück vom Bauernkrieg.",
-  "Kleine Geschichtsstunde zwischendurch, diesmal aus dem Bauernkrieg von fünfzehnhundertfünfundzwanzig.",
-  "Zeit für ein bisschen Heimatkunde aus dem Allgäu, heute wieder mit dem Bauernkrieg.",
-  "Lehnt euch zurück, der Onkel Markus erzählt jetzt ein bisschen was vom Bauernkrieg.",
-  "Gerade ist Pause im Spielbetrieb, also reden wir zwischendurch einfach mal über den Bauernkrieg."
- ],
- "outros": [
-  "Das war die Geschichtsstunde für heute, und gleich geht's weiter mit der Liga.",
-  "So viel zum Bauernkrieg für heute, beim nächsten Mal erzähl ich euch mehr davon.",
-  "Ende der Geschichtsstunde, bleibt frei, bleibt neugierig und bleibt dran bei TWENTY ONE TV.",
-  "Mehr Bauernkrieg gibt's beim nächsten Mal, jetzt geht es wieder weiter mit der Liga."
- ],
- "asides": [
-  "Stellt euch das mal heute vor, mit Livestream und Kommentarspalte.",
-  "Und jetzt haltet euch fest, es geht noch weiter.",
-  "Ganz ehrlich, das muss man sich auf der Zunge zergehen lassen.",
-  "Kommt euch das irgendwie bekannt vor?",
-  "Ich sag's ja, Obrigkeit bleibt Obrigkeit.",
-  "Da hätte ich ehrlich gesagt gern Mäuschen gespielt.",
-  "Freiheit war also schon damals keine Selbstverständlichkeit.",
-  "Bleibt dran, jetzt wird's richtig spannend.",
-  "Man merkt, die Leute hatten einfach die Nase voll.",
-  "Das muss man erst mal sacken lassen.",
-  "Ein bisschen Respekt habe ich vor diesen Leuten schon.",
-  "Und das alles ganz ohne Internet und ohne Gruppenchat."
- ],
+ "note": "TWENTY ONE TV, segment \"Markus erzählt vom Bauernkrieg\" (App\\Support\\Caster\\HistoryScripts). Every fact is one or two spoken German sentences (one per line, at most 16 words each, numbers as words for the voice), checked against the source URL beside it (German Wikipedia, read 2026-10-11), in the episode's narrative order. A short segment is an intro, the episode's first facts, one twist (a joke, always announced as one) and an outro, 6 to 12 sentences, about 60 to 90 seconds. A long segment (tv.commentary.length.shares.history) chains the episode's facts in order with an aside after every second fact, then the twist and the outro, 15 to 30 sentences, about two to four minutes. Twists and asides are opinion and jokes, never facts. Add a fact only with its source. Since 2026-10-12 the league voice narrates each episode freely from its facts; the facts and twists here are its data and the pattern fallback (no fixed intros, asides or outros: they repeated on every episode).",
  "episodes": [
   {
    "id": "memmingen",
@@ -49,7 +22,7 @@
      "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
     },
     {
-     "text": "Der zweite Artikel wollte den kleinen Zehnten ganz abschaffen.\nDie Begründung: Gott habe das Vieh dem Menschen frei erschaffen.",
+     "text": "Der zweite Artikel wollte den kleinen Zehnten ganz abschaffen.\nAls Begründung schrieben die Bauern, dass Gott das Vieh dem Menschen frei erschaffen habe.",
      "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
     },
     {
@@ -78,8 +51,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Heute hätten die bestimmt noch einen dreizehnten Artikel geschrieben.\nUnd der hätte natürlich einen Bitcoin-Standard für die ganze Christliche Vereinigung gefordert.",
-    "Nur so als Witz gemeint: Fünfundzwanzigtausend Exemplare in zwei Monaten und das ganz ohne Internet.\nDas war damals viral, ganz ohne Algorithmus und ohne Faktenchecker vom Ministerium."
+    "Heute hätten die bestimmt noch einen dreizehnten Artikel geschrieben.\nUnd der hätte natürlich einen Bitcoin-Standard für die ganze Christliche Vereinigung gefordert.",
+    "Fünfundzwanzigtausend Exemplare in zwei Monaten und das ganz ohne Internet.\nDas war damals viral, ganz ohne Algorithmus und ohne Faktenchecker vom Ministerium."
    ]
   },
   {
@@ -128,8 +101,8 @@
     }
    ],
    "twists": [
-    "Mal mit einem Augenzwinkern: Die Allgäuer hatten also schon damals keinen Bock auf Obrigkeit.\nDas hat sich bei uns daheim bis heute ziemlich gut gehalten, kann ich euch sagen.",
-    "Kleiner Scherz am Rande: Erst verhandeln statt gleich draufhauen, das klingt doch vernünftig.\nDas würde man manchem Ministerium in Berlin heute auch mal wünschen."
+    "Die Allgäuer hatten also schon damals keinen Bock auf Obrigkeit.\nDas hat sich bei uns daheim bis heute ziemlich gut gehalten, kann ich euch sagen.",
+    "Erst verhandeln statt gleich draufhauen, das klingt doch vernünftig.\nDas würde man manchem Ministerium in Berlin heute auch mal wünschen."
    ]
   },
   {
@@ -190,8 +163,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Damals schreibt ein Kürschner mal eben ein Freiheitsmanifest für halb Europa.\nUnd heute braucht man für jeden Flyer im Dorf drei Formulare und einen Stempel.",
-    "Nur als Witz gemeint: Ab in die Schweiz, sobald die Obrigkeit vor der Tür steht.\nManche Dinge ändern sich in fünfhundert Jahren offenbar überhaupt nicht."
+    "Damals schreibt ein Kürschner mal eben ein Freiheitsmanifest für halb Europa.\nUnd heute braucht man für jeden Flyer im Dorf drei Formulare und einen Stempel.",
+    "Ab in die Schweiz, sobald die Obrigkeit vor der Tür steht.\nManche Dinge ändern sich in fünfhundert Jahren offenbar überhaupt nicht."
    ]
   },
   {
@@ -248,8 +221,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Die großen Bankiers finanzieren die Armee gegen die eigenen Bauern.\nKommt euch das irgendwie bekannt vor, liebe Freunde des Fiatgelds?",
-    "Mal mit einem Augenzwinkern: Erst feierlich Beistand versprechen und dann einfach nicht kommen.\nDas nennt man heute in Berlin wohl eine ganz normale Koalition."
+    "Die großen Bankiers finanzieren die Armee gegen die eigenen Bauern.\nKommt euch das irgendwie bekannt vor, liebe Freunde des Fiatgelds?",
+    "Erst feierlich Beistand versprechen und dann einfach nicht kommen.\nDas nennt man heute in Berlin wohl eine ganz normale Koalition."
    ]
   },
   {
@@ -302,8 +275,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Schiedsgerichte fest versprochen und dann nie einberufen.\nDas klingt fast genauso wie die Digitalisierung der deutschen Verwaltung.",
-    "Mal mit einem Augenzwinkern: Ihr zahlt brav eure Abgaben und kriegt dafür ein schönes Versprechen.\nDieses Geschäftsmodell läuft beim Staat bis heute erstaunlich gut."
+    "Schiedsgerichte fest versprochen und dann nie einberufen.\nDas klingt fast genauso wie die Digitalisierung der deutschen Verwaltung.",
+    "Ihr zahlt brav eure Abgaben und kriegt dafür ein schönes Versprechen.\nDieses Geschäftsmodell läuft beim Staat bis heute erstaunlich gut."
    ]
   },
   {
@@ -360,8 +333,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Tausend Kilometer in vier Monaten und das ganz ohne Deutsche Bahn.\nDa kann man ehrlich gesagt nur den Hut ziehen.",
-    "Mal mit einem Augenzwinkern: Ausgerechnet Götz von Berlichingen geht vor dem großen Tag einfach heim.\nSein bekanntestes Zitat lassen wir hier im Programm heute lieber weg."
+    "Tausend Kilometer in vier Monaten und das ganz ohne Deutsche Bahn.\nDa kann man ehrlich gesagt nur den Hut ziehen.",
+    "Ausgerechnet Götz von Berlichingen geht vor dem großen Tag einfach heim.\nSein bekanntestes Zitat lassen wir hier im Programm heute lieber weg."
    ]
   },
   {
@@ -422,8 +395,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Erst die Gemeinschaft aller Güter fordern und dann auf dem Geld landen.\nAusgerechnet auf einem Geldschein, den am Ende wirklich keiner mehr haben wollte.",
-    "Mal mit einem Augenzwinkern: Alles gehört allen, das klingt am Anfang immer richtig gut.\nBis dann jemand fragt, wer morgen früh eigentlich die Kühe melkt."
+    "Erst die Gemeinschaft aller Güter fordern und dann auf dem Geld landen.\nAusgerechnet auf einem Geldschein, den am Ende wirklich keiner mehr haben wollte.",
+    "Alles gehört allen, das klingt am Anfang immer richtig gut.\nBis dann jemand fragt, wer morgen früh eigentlich die Kühe melkt."
    ]
   },
   {
@@ -476,8 +449,8 @@
     }
    ],
    "twists": [
-    "Kleiner Scherz am Rande: Danach zahlten viele Bauern ihre Steuern auch direkt an die Fürsten.\nDas nennt man dann wohl Fortschritt auf gut Deutsch.",
-    "Mal mit einem Augenzwinkern: Statt Aufstand gab es danach eben den Rechtsweg.\nDreihundert Jahre Formulare statt Mistgabeln, auch eine Form von Frieden."
+    "Danach zahlten viele Bauern ihre Steuern auch direkt an die Fürsten.\nDas nennt man dann wohl Fortschritt auf gut Deutsch.",
+    "Statt Aufstand gab es danach eben den Rechtsweg.\nDreihundert Jahre Formulare statt Mistgabeln, auch eine Form von Frieden."
    ]
   }
  ]

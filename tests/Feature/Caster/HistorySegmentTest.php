@@ -11,6 +11,7 @@ use App\Support\Caster\ScriptQueue;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Prompts\AgentPrompt;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,10 +19,12 @@ use Illuminate\Support\Facades\Storage;
 |--------------------------------------------------------------------------
 |
 | User 2026-10-11: "Ein Gag wäre es, wenn er ab und an mal etwas Längeres
-| über die Bauernkriege erzählen würde." Built from the fact file alone (every
-| fact with its source, no model): 6 to 12 sentences, 60 to 120 seconds, every
-| 45 to 90 minutes, no episode twice a day. On air a segment comes after the
-| live clips, on calm slots only, one at a time.
+| über die Bauernkriege erzählen würde." Since 2026-10-12 the league voice
+| narrates each episode freely from its facts (every fact with its source);
+| the pattern episode (facts and a twist, no fixed intro, aside or outro)
+| stands in only when the voice gives nothing. Every 45 to 90 minutes, no
+| episode twice a day. On air a segment comes after the live clips, on calm
+| slots only, one at a time.
 |
 */
 
@@ -32,7 +35,7 @@ beforeEach(function () {
 });
 
 /**
- * Every spoken line of the fact file (facts, intros, outros, twists).
+ * Every spoken line of the fact file (facts and twists).
  *
  * @return list<string>
  */
@@ -40,10 +43,6 @@ function casterHistoryKnownLines(): array
 {
     $data = HistoryScripts::data();
     $lines = [];
-
-    foreach ([...$data['intros'], ...$data['outros']] as $text) {
-        array_push($lines, ...ScriptGuard::lines($text));
-    }
 
     foreach ($data['episodes'] as $episode) {
         foreach ($episode['facts'] as $fact) {
@@ -57,33 +56,59 @@ function casterHistoryKnownLines(): array
     return $lines;
 }
 
-it('gives every fact a source and keeps every episode within the spoken limits, 6 to 12 sentences and 55 to 120 seconds', function () {
+it('gives every fact a source and keeps every pattern episode within the spoken limits, 6 to 12 sentences and 50 to 120 seconds', function () {
     $data = HistoryScripts::data();
     $guard = new ScriptGuard;
 
-    expect($data['episodes'])->toHaveCount(8);
+    expect($data['episodes'])->toHaveCount(8)
+        ->and(array_keys($data))->not->toContain('intros')->not->toContain('outros')->not->toContain('asides');
 
     foreach ($data['episodes'] as $episode) {
         foreach ($episode['facts'] as $fact) {
             expect($fact['source'])->toStartWith('https://de.wikipedia.org/wiki/');
         }
 
-        // Every twist is announced as a joke.
+        // No stock announcement in front of a twist any more (user 2026-10-12: "Er wiederholt Phrasen 'mal mit einem Augenzwinkern'").
         foreach ($episode['twists'] as $twist) {
-            expect($twist)->toMatch('/^(Kleiner Scherz am Rande|Nur so als Witz gemeint|Nur als Witz gemeint|Mal mit einem Augenzwinkern):/u');
+            expect($twist)->not->toMatch('/Scherz am Rande|als Witz gemeint|Augenzwinkern/u');
         }
 
         foreach (range(0, 39) as $turn) {
-            $script = HistoryScripts::build($episode, $turn, $data);
+            $script = HistoryScripts::build($episode, $turn);
 
-            expect($guard->check($script, 6, 12, 16))->toBe([])
-                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(55.0)->toBeLessThanOrEqual(120.0);
+            expect($guard->check($script, 6, 12, 32))->toBe([])
+                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(50.0)->toBeLessThanOrEqual(120.0);
         }
     }
 });
 
-it('writes a history segment from the fact file alone: intro, three to five facts in order, a joke, an outro', function () {
-    VoiceAgent::fake();
+it('lets the league voice narrate the episode freely from its facts, sources as context, no fixed intro or outro', function () {
+    $story = implode("\n", [
+        'Stellt euch mal das Jahr fünfzehnhundertfünfundzwanzig vor, als die Bauern in Memmingen endgültig genug hatten.',
+        'Die haben sich zusammengesetzt und ihre Forderungen aufgeschrieben, und das ganz ohne Formular vom Amt.',
+        'Zwölf Artikel sind dabei herausgekommen, und die waren damals so etwas wie ein Freiheitsmanifest.',
+        'Heute würde man so etwas wohl erst einmal von drei Ausschüssen prüfen lassen, bevor es überhaupt jemand lesen darf.',
+        'Die Obrigkeit fand das natürlich überhaupt nicht lustig, und die Steuern blieben trotzdem fällig.',
+        'Und genau deshalb erzähl ich euch das, weil sich manche Dinge in fünfhundert Jahren kaum verändert haben.',
+    ]);
+    VoiceAgent::fake([['text' => $story, 'canon_id' => null, 'mood' => 'zitat']]);
+
+    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
+
+    $script = CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->sole();
+    $episode = HistoryScripts::data()['episodes'][0];
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->facts_hash)->toBe('history:memmingen')
+        ->and(casterWholeSentences($script))->toBe(ScriptGuard::lines($story));
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, str_replace("\n", ' ', $episode['facts'][0]['text']))
+        && str_contains($prompt->prompt, 'de.wikipedia.org')
+        && str_contains($prompt->prompt, $episode['title'])
+        && str_contains($prompt->prompt, 'kein „gleich geht es weiter“')
+        && str_contains($prompt->prompt, 'Dein Blickwinkel diesmal:'));
+});
+
+it('writes the pattern episode when the voice gives nothing: three to five facts in order and a twist, nothing fixed around it', function () {
+    VoiceAgent::fake([['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'], ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype']]);
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
@@ -99,7 +124,14 @@ it('writes a history segment from the fact file alone: intro, three to five fact
         ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
         ->and(count($spokenFacts))->toBeGreaterThanOrEqual(6)
         ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(120)))->toBeTrue();
-    VoiceAgent::assertNeverPrompted();
+});
+
+it('queues no pattern episode while the pattern fallback is off (the default): the music plays', function () {
+    config(['tv.commentary.patterns.enabled' => false]);
+    VoiceAgent::fake([['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'], ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype']]);
+
+    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(0)
+        ->and(CasterScript::query()->count())->toBe(0);
 });
 
 it('tells the next history segment 45 to 90 minutes later, and no episode twice within a day', function () {
@@ -180,34 +212,26 @@ it('plays a segment after the live clips, on calm slots only, and never two with
     expect($spool->next(ScenePhase::BREAK, CarbonImmutable::now())['clip']?->id)->toBe($news->id);
 });
 
-it('tells every episode long: its facts in order, asides and the other twist between them, 15 to 30 sentences, two to four minutes', function () {
+it('tells every pattern episode long: its facts in order, the other twist between them, 15 to 30 sentences, at least one and a half minutes', function () {
     $data = HistoryScripts::data();
     $guard = new ScriptGuard;
-    $known = [...casterHistoryKnownLines(), ...$data['asides']];
-
-    expect(count($data['asides']))->toBeGreaterThanOrEqual(8);
-
-    foreach ($data['asides'] as $aside) {
-        expect(preg_match('/\d/', $aside))->toBe(0)
-            ->and($guard->check($aside, 1, 1, 16))->toBe([]);
-    }
+    $known = casterHistoryKnownLines();
 
     foreach ($data['episodes'] as $episode) {
         $factLines = array_merge(...array_map(fn (array $fact): array => ScriptGuard::lines($fact['text']), $episode['facts']));
         expect(count($episode['facts']))->toBeGreaterThanOrEqual(10);
 
         foreach (range(0, 19) as $turn) {
-            $script = HistoryScripts::buildLong($episode, $turn, $data);
+            $script = HistoryScripts::buildLong($episode, $turn);
             $lines = ScriptGuard::lines($script);
             $spokenFacts = array_values(array_intersect($lines, $factLines));
 
-            expect($guard->check($script, 15, 30, 16))->toBe([], "{$episode['id']} turn {$turn}")
-                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(120.0)->toBeLessThanOrEqual(240.0)
+            expect($guard->check($script, 15, 30, 32))->toBe([], "{$episode['id']} turn {$turn}")
+                ->and(ScriptQueue::estimateSeconds($script))->toBeGreaterThanOrEqual(85.0)->toBeLessThanOrEqual(240.0)
                 ->and(array_diff($lines, $known))->toBe([])
                 ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
                 ->and(count($spokenFacts))->toBeGreaterThanOrEqual(12)
-                ->and(array_intersect($lines, $data['asides']))->not->toBe([])
-                // Both twists: one in the middle, one before the outro.
+                // Both twists: one in the middle, one at the end.
                 ->and(count(array_intersect($lines, array_merge(...array_map(ScriptGuard::lines(...), $episode['twists'])))))->toBe(4);
         }
     }

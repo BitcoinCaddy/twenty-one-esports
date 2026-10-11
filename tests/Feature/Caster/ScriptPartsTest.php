@@ -31,7 +31,8 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Storage::fake('local');
-    config(['tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10, 'tv.commentary.parts.sentences' => 5]);
+    // The part mechanics alone: the numbered test lines are near copies for the no-repeat memory (SpokenMemory).
+    config(['tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10, 'tv.commentary.parts.sentences' => 5, 'tv.commentary.repeat_hours' => 0]);
 });
 
 /** A script of `$count` numbered sentences, one per line. */

@@ -347,7 +347,7 @@ it('gives a big zap an extra emotional line with a sound marker', function () {
 
     expect($text)->toContain('einundzwanzigtausend Sats')
         ->and($text)->toMatch('/\[(surprise-wa|surprise-oh|laughter)\]/')
-        ->and((new ScriptGuard)->check($text, 1, 4, 16))->toBe([]);
+        ->and((new ScriptGuard)->check($text, 1, 4, 32))->toBe([]);
 
     // Just under the threshold: no marker.
     CasterScript::query()->delete();
@@ -361,9 +361,9 @@ it('lets the league voice write the thank-you when the AI is on, and keeps the p
     $lnurl = casterZapSetup();
     config(['tv.commentary.ai' => true]);
     VoiceAgent::fake([
-        ['text' => "Wow, zweitausendeinhundert Sats!\nDanke dir, das ist Liebe in Sats.", 'canon_id' => null, 'mood' => 'hype'],
-        ['text' => "Wow, ein Zap!\nDanke dir.", 'canon_id' => null, 'mood' => 'hype'],
-        ['text' => "Wow, ein Zap!\nDanke dir.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Wow, da kommen gerade zweitausendeinhundert Sats bei uns im Stream an!\nDanke dir von Herzen, denn das ist echte Liebe in der härtesten Währung der Welt.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Wow, da kommt gerade ein richtig schöner Zap bei uns an!\nIch danke dir ganz herzlich dafür, denn das freut mich wirklich sehr.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Wow, da kommt gerade ein richtig schöner Zap bei uns an!\nIch danke dir ganz herzlich dafür, denn das freut mich wirklich sehr.", 'canon_id' => null, 'mood' => 'hype'],
     ]);
     VoiceFactCheck::fake([['claims' => []], ['claims' => []], ['claims' => []]]);
     $this->reader->events = [casterZap($lnurl, new TestSigner, 2100, 'grüße aus wien')];
@@ -486,7 +486,7 @@ it('keeps every reaction line speakable: short sentences, known markers, no fees
     // A reply line holds with a three-word name as well: still at most sixteen words, at most one marker.
     foreach ($replies as $pool) {
         foreach ($lines->pool($pool) as $line) {
-            expect((new ScriptGuard)->check(strtr($line, ['{name}' => 'El Presidento Ben']), 1, 1, 16))->toBe([], $line)
+            expect((new ScriptGuard)->check(strtr($line, ['{name}' => 'El Presidento Ben']), 1, 1, 32))->toBe([], $line)
                 ->and(preg_match_all('/\[[^\]]*\]/u', $line))->toBeLessThanOrEqual(1)
                 ->and($line)->toContain('{name}');
         }
@@ -497,13 +497,13 @@ it('keeps every reaction line speakable: short sentences, known markers, no fees
 
         foreach ($lines->pool($pool) as $line) {
             $filled = strtr($line, ['{wer}' => 'Ein Zuschauer', '{sats}' => 'zweitausendeinhundert Sats', '{anzahl}' => 'drei', '{name}' => 'Anna']);
-            expect((new ScriptGuard)->check($filled, 1, 1, 16))->toBe([], $line)
+            expect((new ScriptGuard)->check($filled, 1, 1, 32))->toBe([], $line)
                 ->and(mb_strtolower($line))->not->toMatch('/gebühr|\bfees?\b|gesicht|@|#|lnurl/u');
         }
     }
 
     // A composed big bundle thank-you passes the script checks as a whole (at most two markers).
-    expect((new ScriptGuard)->check($lines->zapThanks(3, 21_000, null, true), 1, 4, 16))->toBe([]);
+    expect((new ScriptGuard)->check($lines->zapThanks(3, 21_000, null, true), 1, 4, 32))->toBe([]);
 });
 
 it('reads the chat on the same relays as the /live chat, also when the bot has no chat relays (prod, 2026-10-11)', function () {

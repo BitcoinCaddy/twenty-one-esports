@@ -10,13 +10,17 @@ use Illuminate\Support\Facades\Cache;
 /**
  * The news segment (user 2026-10-11: "Breaking Bitcoin News kommentieren und
  * auch Schlagzeilen aus Deutschland … gerne viel Sarkasmus und Häme"): an
- * intro for the section, the headline word for word with its source ("Laut
- * tagesschau: …"), then Markus' comment. The sections take turns; the
+ * intro for the section, the headline word for word inside a full sentence
+ * that names its source ("Im Nachrichtenfeed von tagesschau steht gerade
+ * diese Schlagzeile: …", headlineLine(); user 2026-10-12: a bare title "wird
+ * zu schlecht tonalisiert, also komplette Sätze ab jetzt nur noch"), then
+ * Markus' comment. The sections take turns; the
  * newest fresh headline of the section comes first, and each headline is
  * used once, whatever became of it.
  *
- * The comment is the league voice's (CasterVoice::news(), one model call per
- * headline: the headline is marked used before the call). When the model
+ * The segment is the league voice's (CasterVoice::news(), one model call per
+ * headline: the headline is marked used before the call): its own lead-in,
+ * the headline word for word, its free comment. When the model
  * calls the headline unfit (SKIP), the segment is dropped; when the voice is
  * off, capped, failed or its draft was turned down, a pattern reaction from
  * resources/data/voice/news.json stands in (opinion only, fits any headline
@@ -87,7 +91,13 @@ class NewsScripts
         $source = CasterScript::SOURCE_PATTERN;
 
         if ($ai) {
-            $answer = $this->voice->news($news->title, $news->source, $news->section, $long);
+            // The source as context (user 2026-10-12: "die Source als Kontext nutzen"): feed, link domain, publication time.
+            $context = array_filter([
+                'Feed' => (string) $news->feed,
+                'Link-Domain' => (string) parse_url((string) $news->link, PHP_URL_HOST),
+                'Veröffentlicht' => $news->published_at->timezone('Europe/Berlin')->format('d.m.Y H:i'),
+            ]);
+            $answer = $this->voice->news($news->title, $news->source, $news->section, $long, $context);
 
             if ($answer !== null && $answer['skip']) {
                 $news->update(['skipped' => 'model']);
@@ -101,19 +111,48 @@ class NewsScripts
             }
         }
 
+        // The model's segment stands alone: its own lead-in, the headline word for word, its comment (user
+        // 2026-10-12: the fixed intros and reactions repeated). The pools below are the fallback only.
+        if ($comment !== null) {
+            return ['text' => $comment, 'source' => $source, 'long' => $long];
+        }
+
+        if (! PatternScripts::enabled()) {
+            return null;
+        }
+
         $data = self::data();
         $intros = $data['intros'][$news->section] ?? $data['intros'][CasterNews::GERMANY];
-        $attribution = str_replace('{source}', $news->source, $data['attribution'][$news->language] ?? $data['attribution']['de']);
 
         return [
             'text' => implode("\n", [
                 $intros[$news->id % count($intros)],
-                $attribution.' '.self::asSentence(CasterVoice::withoutHashtags($news->title)),
-                $comment ?? implode("\n", array_map(fn (int $turn): string => $this->reaction($news->section, $data), range(1, $long ? self::LONG_REACTIONS : 1))),
+                self::headlineLine(CasterVoice::withoutHashtags($news->title), $news->source, (int) $news->id, $data['headline_carriers']),
+                implode("\n", array_map(fn (int $turn): string => $this->reaction($news->section, $data), range(1, $long ? self::LONG_REACTIONS : 1))),
             ]),
             'source' => $source,
             'long' => $long,
         ];
+    }
+
+    /**
+     * The headline word for word at the end of a carrier sentence naming its
+     * source (`headline_carriers`, by `$turn`); the shortest carrier when the
+     * picked one would push the sentence over `max_words_per_sentence`.
+     *
+     * @param  list<string>  $carriers  each with {source} and {headline}
+     */
+    public static function headlineLine(string $headline, string $source, int $turn, array $carriers): string
+    {
+        $fill = fn (string $carrier): string => str_replace(['{source}', '{headline}'], [$source, self::asSentence($headline)], $carrier);
+        $line = $fill($carriers[$turn % count($carriers)]);
+
+        if (count(preg_split('/\s+/u', $line, -1, PREG_SPLIT_NO_EMPTY) ?: []) > (int) config('tv.commentary.scripts.max_words_per_sentence', 32)) {
+            usort($carriers, fn (string $a, string $b): int => mb_strlen($a) <=> mb_strlen($b));
+            $line = $fill($carriers[0]);
+        }
+
+        return $line;
     }
 
     /** A headline as one spoken sentence: a final full stop when it has no closing mark. */
@@ -143,11 +182,11 @@ class NewsScripts
     }
 
     /**
-     * @return array{intros: array<string, list<string>>, attribution: array<string, string>, reactions: array<string, list<string>>}
+     * @return array{intros: array<string, list<string>>, headline_carriers: list<string>, reactions: array<string, list<string>>}
      */
     public static function data(): array
     {
-        /** @var array{intros: array<string, list<string>>, attribution: array<string, string>, reactions: array<string, list<string>>} $data */
+        /** @var array{intros: array<string, list<string>>, headline_carriers: list<string>, reactions: array<string, list<string>>} $data */
         $data = json_decode((string) file_get_contents(resource_path('data/voice/news.json')), true, flags: JSON_THROW_ON_ERROR);
 
         return $data;

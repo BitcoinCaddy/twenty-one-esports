@@ -164,32 +164,62 @@ it('prunes headlines past keep_hours and keeps at most max_rows', function () {
         ->and(CasterNews::query()->orderBy('published_at')->pluck('title')->all())->toBe(['Schlagzeile 3', 'Schlagzeile 2', 'Schlagzeile 1']);
 });
 
-it('writes a news segment: intro, the headline word for word with its source, then the comment', function () {
+it('writes a news segment in the model\'s own words: its lead-in, the headline word for word with its source, its comment, no fact check', function () {
     $news = casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
-    VoiceAgent::fake([casterNewsDraft("Noch eine Steuer, wie originell.\nDer Staat findet immer was zum Abkassieren.")]);
-    NewsFactCheck::fake([['claims' => []]]);
+    $segment = "Aus Berlin kommt mal wieder eine Meldung, bei der man sich nur an den Kopf fassen kann.\nDie tagesschau meldet nämlich wörtlich: Bundesregierung plant neue Zuckersteuer.\nNoch eine Steuer, wie originell, denn dem Staat fällt einfach nichts anderes mehr ein.\nDer Staat findet immer irgendetwas zum Abkassieren, und diesmal ist es halt euer Kuchen.";
+    VoiceAgent::fake([casterNewsDraft($segment)]);
+    NewsFactCheck::fake();
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
     $script = CasterScript::query()->where('kind', CasterScript::NEWS)->sole();
-    expect($script->sentences())->toBe([
-        NewsScripts::data()['intros']['germany'][$news->id % 4],
-        'Laut tagesschau: Bundesregierung plant neue Zuckersteuer.',
-        'Noch eine Steuer, wie originell.',
-        'Der Staat findet immer was zum Abkassieren.',
-    ])
+    expect($script->sentences())->toBe(ScriptGuard::lines($segment))
         ->and($script->source)->toBe(CasterScript::SOURCE_AI)
         ->and($script->topic)->toBe(CasterNews::GERMANY)
         ->and($script->priority)->toBe(0)
         ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(30)))->toBeTrue()
         ->and($news->fresh()->used_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'tagesschau: Bundesregierung plant neue Zuckersteuer') && str_contains($prompt->prompt, 'SKIP'));
-    NewsFactCheck::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Headline:\nBundesregierung plant neue Zuckersteuer") && str_contains($prompt->prompt, "Comment:\nNoch eine Steuer, wie originell."));
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'tagesschau: Bundesregierung plant neue Zuckersteuer') && str_contains($prompt->prompt, 'SKIP')
+        // The source as context (user 2026-10-12): feed and publication time.
+        && str_contains($prompt->prompt, 'Feed: ') && str_contains($prompt->prompt, 'Veröffentlicht: '));
+    NewsFactCheck::assertNeverPrompted();
+});
+
+it('puts the headline in a carrier sentence in front when the model left it out', function () {
+    $comment = "Noch eine Steuer, wie originell, denn dem Staat fällt einfach nichts anderes mehr ein.\nDer Staat findet immer irgendetwas zum Abkassieren, und diesmal ist es halt euer Kuchen.";
+    VoiceAgent::fake([casterNewsDraft($comment)]);
+
+    $answer = app(CasterVoice::class)->news('Bundesregierung plant neue Zuckersteuer', 'tagesschau', CasterNews::GERMANY);
+    $lines = ScriptGuard::lines((string) $answer['text']);
+
+    expect($lines)->toHaveCount(3)
+        ->and($lines[0])->toContain('tagesschau')->toEndWith('Bundesregierung plant neue Zuckersteuer.')
+        ->and(array_slice($lines, 1))->toBe(ScriptGuard::lines($comment));
+});
+
+it('never reads a bare headline: every carrier names the source and keeps the headline word for word inside one sentence', function () {
+    $carriers = NewsScripts::data()['headline_carriers'];
+
+    expect(count($carriers))->toBeGreaterThanOrEqual(10);
+
+    foreach ($carriers as $turn => $carrier) {
+        $line = NewsScripts::headlineLine('Ausschuss prüft das neue Rentenpaket', 'FAZ', $turn, $carriers);
+
+        expect($carrier)->toContain('{source}')->toContain('{headline}')
+            ->and($line)->toContain('FAZ')->toEndWith('Ausschuss prüft das neue Rentenpaket.')
+            ->and(ScriptGuard::runs($line))->toHaveCount(1)
+            ->and((new ScriptGuard)->check($line, 1, 1, 32))->toBe([], $line);
+    }
+
+    // A headline that would push the sentence over the limit gets the shortest carrier.
+    $long = implode(' ', array_fill(0, 22, 'Wort'));
+    expect(count(preg_split('/\s+/u', NewsScripts::headlineLine($long, 'FAZ', 0, $carriers))))->toBeLessThanOrEqual(32);
 });
 
 it('writes at most one news segment per every_minutes, the sections in turn, no headline twice', function () {
-    config(['tv.commentary.ai' => false]);
+    // The order alone: the no-repeat memory may drop a stand-in intro said before.
+    config(['tv.commentary.ai' => false, 'tv.commentary.repeat_hours' => 0]);
     casterNewsHeadline('Bundesregierung plant neue Zuckersteuer', minutesAgo: 10);
     casterNewsHeadline('Ausschuss prüft Rentenpaket', minutesAgo: 20);
     casterNewsHeadline('Bitcoin-Hashrate erreicht neues Allzeithoch', CasterNews::BITCOIN, 'BTC-Echo', 40);
@@ -207,11 +237,12 @@ it('writes at most one news segment per every_minutes, the sections in turn, no 
 
     $spoken = CasterScript::query()->whole()->where('kind', CasterScript::NEWS)->orderBy('id')->get();
     expect($spoken->pluck('topic')->all())->toBe([CasterNews::BITCOIN, CasterNews::GERMANY, CasterNews::GERMANY])
-        ->and($spoken->map(fn (CasterScript $script): string => $script->sentences()[1])->all())->toBe([
-            'Laut BTC-Echo: Bitcoin-Hashrate erreicht neues Allzeithoch.',
-            'Laut tagesschau: Bundesregierung plant neue Zuckersteuer.',
-            'Laut tagesschau: Ausschuss prüft Rentenpaket.',
+        ->and($spoken->map(fn (CasterScript $script): string => preg_replace('/^.*: /u', '', $script->sentences()[1]))->all())->toBe([
+            'Bitcoin-Hashrate erreicht neues Allzeithoch.',
+            'Bundesregierung plant neue Zuckersteuer.',
+            'Ausschuss prüft Rentenpaket.',
         ])
+        ->and($spoken->map(fn (CasterScript $script): bool => str_contains($script->sentences()[1], 'BTC-Echo') || str_contains($script->sentences()[1], 'tagesschau'))->unique()->all())->toBe([true])
         ->and($spoken->pluck('source')->unique()->all())->toBe([CasterScript::SOURCE_PATTERN]);
 });
 
@@ -235,47 +266,37 @@ it('never speaks a stored headline the widened filter now turns down', function 
     VoiceAgent::assertNeverPrompted();
 });
 
-it('rejects a comment with invented facts and speaks a pattern reaction instead, after one model call', function (string $draft, array $factCheck, string $reason) {
+it('speaks a pattern reaction instead when the segment breaks a house rule, after one model call', function (string $draft, string $reason) {
     casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
-    VoiceAgent::fake([casterNewsDraft($draft), casterNewsDraft("Ganz harmlos.\nWirklich.")]);
-    NewsFactCheck::fake($factCheck);
+    VoiceAgent::fake([casterNewsDraft($draft)]);
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
     $script = CasterScript::query()->sole();
     expect($script->source)->toBe(CasterScript::SOURCE_PATTERN)
         ->and(implode("\n", array_slice($script->sentences(), 2)))->toBeIn(NewsScripts::data()['reactions']['germany'])
-        ->and($script->text)->not->toContain(explode("\n", $draft)[0])
         ->and(DB::table('voice_rejections')->where('channel', CasterVoice::NEWS_CHANNEL)->where('reason', $reason)->value('count'))->toBe(1);
     VoiceAgent::assertPromptedTimes(1);
 })->with([
-    'invented cause (fact check)' => ["Die kommt, weil die Kassen leer sind.\nTypisch.", [['claims' => [['claim' => 'Die kommt, weil die Kassen leer sind.', 'evidence' => '', 'supported' => false]]]], VoiceGuard::UNSUPPORTED_CLAIM],
-    'invented number (guard)' => ["Zwanzig Prozent mehr, sagt ein Experte.\nTypisch.", [['claims' => []]], VoiceGuard::ATTRIBUTION],
-    'invented digits (guard)' => ["Das kostet uns 3 Milliarden.\nTypisch.", [['claims' => []]], VoiceGuard::NUMBER],
+    'a link' => ["Mehr dazu findet ihr unter https://example.com in aller Ausführlichkeit.\nDer Staat findet immer irgendetwas zum Abkassieren, und diesmal ist es euer Kuchen.", VoiceGuard::URL],
+    'fragments' => ["Typisch.\nNa klar.\nWieder mal.", ScriptGuard::SENTENCE_SHORT],
 ]);
 
-it('lets the comment name a person the headline names, and no other', function (string $comment, ?string $source) {
+it('lets the comment name anyone and claim what it likes: free mode, no fact check', function (string $comment) {
     config(['esports.voice.persons' => ['Saylor', 'Jilch']]);
     casterNewsHeadline('Saylor kündigt neue Bitcoin-Käufe an', CasterNews::BITCOIN, 'BTC-Echo');
     VoiceAgent::fake([casterNewsDraft($comment)]);
-    NewsFactCheck::fake([['claims' => []]]);
+    NewsFactCheck::fake();
 
     app(ScriptQueue::class)->fillSegments(CarbonImmutable::now());
 
-    expect(CasterScript::query()->sole()->source)->toBe($source);
+    expect(CasterScript::query()->sole()->source)->toBe(CasterScript::SOURCE_AI);
+    NewsFactCheck::assertNeverPrompted();
 })->with([
-    'named in the headline' => ["Saylor kauft halt einfach weiter.\nIch auch.", CasterScript::SOURCE_AI],
-    'not in the headline' => ["Jilch hätte das kommen sehen.\nIch auch.", CasterScript::SOURCE_PATTERN],
+    'named in the headline' => ["Saylor kauft halt einfach immer weiter, und ich mache es ganz genauso.\nIch stack jedenfalls auch heute wieder ein paar Sats in aller Ruhe."],
+    'not in the headline' => ["Jilch hätte das bestimmt schon vor Jahren kommen sehen, da bin ich mir sicher.\nIch stack jedenfalls auch heute wieder ein paar Sats in aller Ruhe."],
+    'a cause the headline does not give' => ["Die kaufen nur, weil die Kassen voll sind, und zwar randvoll mit Fiatgeld.\nIch stack jedenfalls auch heute wieder ein paar Sats in aller Ruhe."],
 ]);
-
-it('lets opinion through the news fact check and fails closed when the check fails', function () {
-    casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
-    VoiceAgent::fake([casterNewsDraft("Noch eine Steuer.\nDer Staat kann halt nicht anders.")]);
-    NewsFactCheck::fake(fn () => throw new RuntimeException('timeout'));
-
-    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1)
-        ->and(CasterScript::query()->sole()->source)->toBe(CasterScript::SOURCE_PATTERN);
-});
 
 it('writes no news segment when the switch is off or no fresh headline waits', function () {
     casterNewsHeadline('Uralte Schlagzeile', minutesAgo: 13 * 60);
@@ -294,11 +315,11 @@ it('keeps the pattern reactions free of facts, names and numbers, and within the
 
     expect(count($data['reactions']['bitcoin']))->toBeGreaterThanOrEqual(15)
         ->and(count($data['reactions']['germany']))->toBeGreaterThanOrEqual(15)
-        ->and(array_keys($data['attribution']))->toBe(['de']);
+        ->and(count($data['headline_carriers']))->toBeGreaterThanOrEqual(10);
 
     foreach ([...$data['reactions']['bitcoin'], ...$data['reactions']['germany'], ...$data['intros']['bitcoin'], ...$data['intros']['germany']] as $line) {
         expect(preg_match('/\d/', $line))->toBe(0)
-            ->and((new ScriptGuard)->check($line, 1, 3, 16))->toBe([]);
+            ->and((new ScriptGuard)->check($line, 1, 3, 32))->toBe([]);
     }
 });
 
@@ -324,44 +345,40 @@ it('never stores an English headline as speakable, even from a feed configured a
         ->and(CasterNews::query()->where('skipped', NewsFilter::FOREIGN)->value('title'))->toStartWith('Saylor teases');
 });
 
-it('writes a long news segment: the same one model call, asking for four to eight sentences of comment, at most ten in all', function () {
+it('writes a long news segment: the same one model call, asking for three to six sentences of comment', function () {
     config(['tv.commentary.length.shares.news' => 1.0]);
     casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
-    $comment = implode("\n", [
-        'Noch eine Steuer, wie originell.',
-        'Ich hab schon fast drauf gewartet.',
-        'Irgendwann zahlen wir auch fürs Atmen.',
-        'Der Staat findet immer einen Grund.',
-        'Und am Ende heißt es wieder Gesundheit.',
-        'Ich bleib bei meinem Kaffee schwarz.',
+    $segment = implode("\n", [
+        'Aus Berlin kommt mal wieder eine Meldung, bei der man sich nur an den Kopf fassen kann.',
+        'Die tagesschau meldet nämlich wörtlich: Bundesregierung plant neue Zuckersteuer.',
+        'Noch eine Steuer, wie originell, und ich hab ehrlich gesagt schon fast darauf gewartet.',
+        'Irgendwann zahlen wir in diesem Land auch noch Steuern aufs Atmen, wenn das so weitergeht.',
+        'Der Staat findet immer einen Grund, uns in die Tasche zu greifen, und diesmal trifft es den Kuchen.',
+        'Und am Ende heißt es dann wieder, dass das alles nur zu unserer Gesundheit passiert.',
+        'Ich bleib jedenfalls bei meinem Kaffee schwarz und stacke das gesparte Geld in Sats.',
     ]);
-    VoiceAgent::fake([casterNewsDraft($comment)]);
-    NewsFactCheck::fake([['claims' => []]]);
+    VoiceAgent::fake([casterNewsDraft($segment)]);
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
     $script = CasterScript::query()->whole()->where('kind', CasterScript::NEWS)->sole();
-    expect(casterWholeSentences($script))->toHaveCount(8)
-        ->and(array_slice(casterWholeSentences($script), 2))->toBe(ScriptGuard::lines($comment))
+    expect(casterWholeSentences($script))->toBe(ScriptGuard::lines($segment))
         ->and($script->source)->toBe(CasterScript::SOURCE_AI);
     VoiceAgent::assertPromptedTimes(1);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, '4 bis 8 kurze Sätze'));
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'dann 3 bis 6 Sätze dein Kommentar'));
 });
 
-it('holds a long comment to four to eight sentences: fewer is turned down, more is trimmed to eight', function (int $sentences, bool $accepted) {
-    $comment = implode("\n", array_map(fn (int $i): string => "Das ist mein Gedanke Nummer {$i} dazu.", range(1, $sentences)));
+it('trims a long segment to its comment maximum plus lead-in and headline, the carrier sentence in front where the headline is missing', function (int $sentences, int $lines) {
+    $comment = implode("\n", array_map(fn (int $i): string => "Das ist mein ganz eigener Gedanke Nummer {$i} zu dieser Meldung.", range(1, $sentences)));
     $comment = str_replace(['1', '2', '3', '4', '5', '6', '7', '8', '9'], ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'], $comment);
     VoiceAgent::fake([casterNewsDraft($comment)]);
-    NewsFactCheck::fake([['claims' => []]]);
 
     $answer = app(CasterVoice::class)->news('Bundesregierung plant neue Zuckersteuer', 'tagesschau', CasterNews::GERMANY, long: true);
 
-    expect($answer['text'] !== null)->toBe($accepted)
-        ->and(count(ScriptGuard::lines((string) $answer['text'])))->toBe($accepted ? min(8, $sentences) : 0);
+    expect(count(ScriptGuard::lines((string) $answer['text'])))->toBe($lines);
 })->with([
-    'three: too short' => [3, false],
-    'four' => [4, true],
-    'nine: trimmed to eight' => [9, true],
+    'two: free mode keeps them' => [2, 3],
+    'nine: trimmed to eight' => [9, 9],
 ]);
 
 it('stands in for a long comment with three different pattern reactions', function () {
@@ -372,7 +389,7 @@ it('stands in for a long comment with three different pattern reactions', functi
 
     expect($segment['long'])->toBeTrue()
         ->and(count(explode("\n", (string) $segment['text'])))->toBeLessThanOrEqual(10)
-        ->and(count($reactions))->toBeGreaterThanOrEqual(4)
+        ->and(count($reactions))->toBe(3)
         ->and(array_diff($reactions, $known))->toBe([])
         ->and(array_unique($reactions))->toBe($reactions);
 });

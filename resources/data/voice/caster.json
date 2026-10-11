@@ -40,7 +40,7 @@
    "when": [
     "live_match"
    ],
-   "example_de": "Zug 34, die Damen sind runter. Willkommen im Endspiel."
+   "example_de": "Wir sind bei Zug 34 angekommen, und weil die Damen runter sind, heißt es jetzt willkommen im Endspiel."
   },
   {
    "id": "pbp_board_games",
@@ -61,7 +61,7 @@
     "live_match",
     "after_result"
    ],
-   "example_de": "Die nächste Zentralbank ist gefallen. Drei Fraktionen sind noch auf der Karte."
+   "example_de": "Die nächste Zentralbank ist gefallen, und jetzt sind nur noch drei Fraktionen auf der Karte übrig."
   },
   {
    "id": "pbp_multi_board",
@@ -81,7 +81,7 @@
    "when": [
     "after_result"
    ],
-   "example_de": "Und das ist Matt. Kein Aufgeben, kein Zeitverlust, sauber bis zum Schluss."
+   "example_de": "Und das ist Matt, ganz ohne Aufgeben und ohne Zeitverlust, sondern sauber gespielt bis zum Schluss."
   },
   {
    "id": "pbp_score_reset",
@@ -103,7 +103,7 @@
     "pre_show",
     "live_match"
    ],
-   "example_de": "Auf dem Papier ist das klar: 180 Elo Unterschied. Aber Papier spielt kein Schach."
+   "example_de": "Auf dem Papier ist das mit 180 Elo Unterschied eigentlich klar, aber Papier spielt nun mal kein Schach."
   },
   {
    "id": "col_head_to_head",
@@ -126,7 +126,7 @@
     "live_match",
     "after_result"
    ],
-   "example_de": "Fünf Siege in Folge. {player} ist gerade richtig im Lauf."
+   "example_de": "Mit fünf Siegen in Folge ist {player} gerade richtig gut im Lauf."
   },
   {
    "id": "col_losing_streak",
@@ -137,7 +137,7 @@
     "pre_show",
     "after_result"
    ],
-   "example_de": "Drei Niederlagen am Stück. Heute wäre ein guter Tag, das zu beenden."
+   "example_de": "Nach drei Niederlagen am Stück wäre heute ein richtig guter Tag, um diese Serie zu beenden."
   },
   {
    "id": "col_rank_tier",
@@ -148,7 +148,7 @@
     "after_result",
     "break"
    ],
-   "example_de": "{player} trägt seit gestern das Abzeichen {tier}. Das muss man erst mal verteidigen."
+   "example_de": "{player} trägt seit gestern das Abzeichen {tier}, und das muss man erst einmal verteidigen."
   },
   {
    "id": "col_trophies",
@@ -159,7 +159,7 @@
     "pre_show",
     "after_result"
    ],
-   "example_de": "Zwei Turniersiege stehen schon im Schrank von {player}. Heute könnte der dritte dazukommen."
+   "example_de": "Zwei Turniersiege stehen schon im Schrank von {player}, und heute könnte der dritte dazukommen."
   },
   {
    "id": "col_clan",
@@ -181,7 +181,7 @@
     "break",
     "after_result"
    ],
-   "example_de": "{player} hat diese Woche schon 38 Partien gespielt. Der wohnt quasi in der Lobby."
+   "example_de": "{player} hat diese Woche schon 38 Partien gespielt und wohnt damit quasi in der Lobby."
   },
   {
    "id": "col_climber",
@@ -192,7 +192,7 @@
     "break",
     "between_matches"
    ],
-   "example_de": "Plus 112 Elo in sieben Tagen. Das ist der Kletterer der Woche."
+   "example_de": "Mit einem Plus von 112 Elo in sieben Tagen ist das ganz klar der Kletterer der Woche."
   },
   {
    "id": "col_newcomer",
@@ -203,7 +203,7 @@
     "after_result",
     "pre_show"
    ],
-   "example_de": "Das war der erste Sieg für {player} in dieser Liga. Merkt euch den Namen."
+   "example_de": "Das war der erste Sieg für {player} in dieser Liga, also merkt euch diesen Namen gut."
   },
   {
    "id": "col_playstyle",
@@ -224,7 +224,7 @@
    "when": [
     "after_result"
    ],
-   "example_de": "Zug 27 war der Moment. Bis dahin ausgeglichen, danach lief nur noch eine Richtung."
+   "example_de": "Zug 27 war der entscheidende Moment, denn bis dahin war es ausgeglichen, und danach lief es nur noch in eine Richtung."
   },
   {
    "id": "col_comeback",
@@ -235,7 +235,7 @@
     "after_result",
     "breaking"
    ],
-   "example_de": "Zwei Bauern hinten, und trotzdem gewonnen. Das ist ein Comeback."
+   "example_de": "Mit zwei Bauern weniger trotzdem zu gewinnen, das nenne ich ein echtes Comeback."
   },
   {
    "id": "col_what_if",
@@ -255,7 +255,7 @@
    "when": [
     "live_match"
    ],
-   "example_de": "Finale, wenig Zeit, ein Fehler entscheidet. Da braucht es gute Nerven."
+   "example_de": "Im Finale mit wenig Zeit kann ein einziger Fehler alles entscheiden, und da braucht es wirklich gute Nerven."
   },
   {
    "id": "stk_bracket",
@@ -267,7 +267,7 @@
     "between_matches",
     "after_result"
    ],
-   "example_de": "Wer hier gewinnt, steht im Halbfinale. Wer verliert, ist raus."
+   "example_de": "Wer hier gewinnt, steht im Halbfinale, während der Verlierer leider direkt raus ist."
   },
   {
    "id": "stk_standings",
@@ -278,7 +278,7 @@
     "between_matches",
     "after_result"
    ],
-   "example_de": "Mit dem Sieg ist {player} sicher weiter. Der Rest der Gruppe rechnet noch."
+   "example_de": "Mit diesem Sieg ist {player} sicher weiter, während der Rest der Gruppe noch fleißig rechnet."
   },
   {
    "id": "stk_elimination",
@@ -289,7 +289,7 @@
     "pre_show",
     "live_match"
    ],
-   "example_de": "Das ist ein Ausscheidungsspiel. Hier gibt's kein Morgen."
+   "example_de": "Das ist ein Ausscheidungsspiel, und deshalb gibt es hier für niemanden ein Morgen."
   },
   {
    "id": "stk_final",
@@ -300,7 +300,7 @@
     "pre_show",
     "live_match"
    ],
-   "example_de": "Es ist alles angerichtet. Finale bei {tournament}."
+   "example_de": "Es ist alles angerichtet, denn jetzt steht das Finale beim Turnier {tournament} an."
   },
   {
    "id": "stk_pot",
@@ -333,7 +333,7 @@
     "after_result",
     "break"
    ],
-   "example_de": "Die Sats sind raus. {player} hat seinen Gewinn schon."
+   "example_de": "Die Sats sind schon raus, und {player} hat den Gewinn bereits sicher bekommen."
   },
   {
    "id": "stk_rating_on_line",
@@ -355,7 +355,7 @@
     "live_match",
     "after_result"
    ],
-   "example_de": "Wer hier gewinnt, schürft Block {height}."
+   "example_de": "Wer diese Partie hier gewinnt, der schürft am Ende den Block {height}."
   },
   {
    "id": "stat_mempool",
@@ -366,7 +366,7 @@
     "between_matches",
     "break"
    ],
-   "example_de": "Heute schon 214 Partien im Mempool. Gestern um diese Zeit waren es 160."
+   "example_de": "Heute wurden schon 214 Partien im Mempool gespielt, während es gestern um diese Zeit erst 160 waren."
   },
   {
    "id": "stat_league_totals",
@@ -377,7 +377,7 @@
     "break",
     "night"
    ],
-   "example_de": "{players} Spieler, {clans} Clans, {games} Partien. Und jede einzelne davon war echt."
+   "example_de": "Wir haben {players} Spieler und {clans} Clans mit {games} Partien, und jede einzelne davon war echt."
   },
   {
    "id": "stat_milestone",
@@ -399,7 +399,7 @@
     "breaking",
     "after_result"
    ],
-   "example_de": "Neuer Rekord: {time}. Das gab es in dieser Liga noch nie."
+   "example_de": "Wir haben einen neuen Rekord von {time}, und so etwas gab es in dieser Liga noch nie."
   },
   {
    "id": "stat_longest_game",
@@ -410,7 +410,7 @@
     "break",
     "after_result"
    ],
-   "example_de": "Die längste Partie heute: 87 Züge. Da brauchte jemand Sitzfleisch."
+   "example_de": "Die längste Partie heute ging über 87 Züge, und da brauchte jemand richtig viel Sitzfleisch."
   },
   {
    "id": "stat_quickest",
@@ -421,7 +421,7 @@
     "break",
     "after_result"
    ],
-   "example_de": "Matt in 14 Zügen. Das ging schneller als dieser Satz."
+   "example_de": "Das war Matt in 14 Zügen, und das ging schneller, als ich diesen Satz sagen kann."
   },
   {
    "id": "stat_elo_change",
@@ -484,7 +484,7 @@
    "when": [
     "pre_show"
    ],
-   "example_de": "Die beiden kennen sich. Siebtes Duell, und es steht 3 zu 3."
+   "example_de": "Die beiden kennen sich schon gut, denn das ist ihr siebtes Duell, und es steht 3 zu 3."
   },
   {
    "id": "nar_revenge",
@@ -495,7 +495,7 @@
     "pre_show",
     "after_result"
    ],
-   "example_de": "Letztes Mal hat {b} gewonnen. Heute ist Revanche."
+   "example_de": "Letztes Mal hat {b} gewonnen, und deshalb ist heute die große Revanche angesagt."
   },
   {
    "id": "nar_underdog",
@@ -506,7 +506,7 @@
     "pre_show",
     "live_match"
    ],
-   "example_de": "200 Elo weniger. Aber Außenseiter haben hier schon öfter gewonnen."
+   "example_de": "Mit 200 Elo weniger geht es in diese Partie, aber Außenseiter haben hier schon öfter gewonnen."
   },
   {
    "id": "nar_upset",
@@ -517,7 +517,7 @@
     "breaking",
     "after_result"
    ],
-   "example_de": "Das ist eine Überraschung! {winner} schlägt den Favoriten."
+   "example_de": "Das ist eine echte Überraschung, denn {winner} schlägt gerade den Favoriten!"
   },
   {
    "id": "nar_defending_champion",
@@ -528,7 +528,7 @@
     "pre_show",
     "live_match"
    ],
-   "example_de": "{player} hat das letzte Turnier gewonnen. Die Krone muss heute verteidigt werden."
+   "example_de": "{player} hat das letzte Turnier gewonnen, und heute muss die Krone verteidigt werden."
   },
   {
    "id": "nar_new_clan",
@@ -539,7 +539,7 @@
     "break",
     "after_result"
    ],
-   "example_de": "Neu in der Liga: der Clan {clan}. Willkommen."
+   "example_de": "Neu in unserer Liga ist der Clan {clan}, und dem sage ich ein herzliches Willkommen."
   },
   {
    "id": "nar_clan_duel",
@@ -562,7 +562,7 @@
     "breaking",
     "after_result"
    ],
-   "example_de": "Und der Champion heißt {winner}."
+   "example_de": "Und der Champion, den wir heute feiern dürfen, heißt {winner}."
   },
   {
    "id": "nar_road_to",
@@ -595,7 +595,7 @@
     "between_matches",
     "pre_show"
    ],
-   "example_de": "Gleich: {a} gegen {b}. Bleibt dran."
+   "example_de": "Gleich spielen {a} und {b} gegeneinander, also bleibt unbedingt hier dran."
   },
   {
    "id": "prg_tonight",
@@ -606,7 +606,7 @@
     "between_matches",
     "break"
    ],
-   "example_de": "Heute um 20 Uhr: Cup Night. Und es sind noch Plätze frei."
+   "example_de": "Heute um 20 Uhr steigt die Cup Night, und es sind sogar noch ein paar Plätze frei."
   },
   {
    "id": "prg_recap",
@@ -661,7 +661,7 @@
     "break",
     "night"
    ],
-   "example_de": "Es ist kurz nach Mitternacht bei TWENTY ONE. Das Nachtprogramm beginnt."
+   "example_de": "Es ist kurz nach Mitternacht bei TWENTY ONE, und jetzt beginnt ganz gemütlich das Nachtprogramm."
   },
   {
    "id": "prg_ident",
@@ -672,7 +672,7 @@
     "break",
     "between_matches"
    ],
-   "example_de": "Hier ist TWENTY ONE, der Sender der EINUNDZWANZIG-Liga."
+   "example_de": "Hier ist TWENTY ONE, der Sender der EINUNDZWANZIG-Liga, und ihr seid live mit dabei."
   },
   {
    "id": "prg_throw",
@@ -736,7 +736,7 @@
     "break",
     "night"
    ],
-   "example_de": "Einloggen mit Nostr oder Google, Lobby öffnen, Brett nehmen. Drei Schritte."
+   "example_de": "Ihr loggt euch mit Nostr oder Google ein, öffnet die Lobby und nehmt euch ein Brett, und schon seid ihr dabei."
   },
   {
    "id": "exp_daily_chess",
@@ -799,7 +799,7 @@
     "pre_show",
     "between_matches"
    ],
-   "example_de": "Was meint ihr: Hält {a} den Favoritenstatus? Schreibt's in den Chat."
+   "example_de": "Ich will von euch wissen, ob {a} den Favoritenstatus halten kann, also schreibt es mir in den Chat."
   },
   {
    "id": "com_chat_shoutout",
@@ -809,7 +809,7 @@
    "when": [
     "break"
    ],
-   "example_de": "Grüße an alle, die gerade im Chat sind. Schön, dass ihr da seid."
+   "example_de": "Ich schicke Grüße an alle, die gerade im Chat sind, und schön dass ihr da seid."
   },
   {
    "id": "com_zap_thanks",
@@ -820,7 +820,7 @@
     "break",
     "between_matches"
    ],
-   "example_de": "Danke für die Zaps! Die gehen direkt in den Topf."
+   "example_de": "Danke für die Zaps, denn die gehen bei uns direkt in den Topf für die Spieler."
   },
   {
    "id": "com_invite",
@@ -832,7 +832,7 @@
     "between_matches",
     "after_result"
    ],
-   "example_de": "Das nächste Ergebnis auf dieser Tafel könnte eures sein."
+   "example_de": "Das nächste Ergebnis auf dieser Tafel könnte schon bald eures sein, wenn ihr euch traut."
   },
   {
    "id": "com_meme",
@@ -853,7 +853,7 @@
    "when": [
     "night"
    ],
-   "example_de": "Für alle Nachteulen: Die Lobby schläft nie."
+   "example_de": "Für alle Nachteulen da draußen gilt, dass unsere Lobby niemals schläft."
   },
   {
    "id": "com_prediction",
@@ -863,7 +863,7 @@
    "when": [
     "pre_show"
    ],
-   "example_de": "Nach Elo spricht viel für {a}, ungefähr sieben von zehn Partien. Aber eben nicht alle."
+   "example_de": "Nach Elo spricht viel für {a}, ungefähr sieben von zehn Partien, aber eben nicht alle."
   },
   {
    "id": "com_trivia",
@@ -947,7 +947,7 @@
    "kind": "opener",
    "energy": 3,
    "length": "mittel",
-   "template": "Es ist alles angerichtet: {a} gegen {b}, {game}, live.",
+   "template": "Es ist alles angerichtet, denn bei {game} spielen jetzt {a} und {b} gegeneinander, und wir sind live dabei.",
    "fits": [
     "pre_show",
     "live_match"
@@ -958,7 +958,7 @@
    "kind": "opener",
    "energy": 2,
    "length": "mittel",
-   "template": "Herzlich willkommen bei TWENTY ONE. Wir sind mitten drin: {situation}.",
+   "template": "Herzlich willkommen bei TWENTY ONE, und wir sind gerade mitten drin, denn {situation}.",
    "fits": [
     "break",
     "between"
@@ -980,7 +980,7 @@
    "kind": "opener",
    "energy": 3,
    "length": "mittel",
-   "template": "Die Bretter sind aufgebaut, die Uhren laufen. {a} hat Weiß.",
+   "template": "Die Bretter sind aufgebaut und die Uhren laufen, und {a} hat in dieser Partie die weißen Steine.",
    "fits": [
     "live_match"
    ]
@@ -990,7 +990,7 @@
    "kind": "opener",
    "energy": 1,
    "length": "mittel",
-   "template": "Guten Abend aus dem Mempool. Heute schon {count} Partien, und es werden mehr.",
+   "template": "Guten Abend aus dem Mempool, wo heute schon {count} Partien gespielt wurden, und es werden noch mehr.",
    "fits": [
     "break",
     "night"
@@ -1012,7 +1012,7 @@
    "kind": "opener",
    "energy": 4,
    "length": "mittel",
-   "template": "Und los geht's! {a} gegen {b}, und wir sind live dabei.",
+   "template": "Und los geht es mit {a} gegen {b}, und wir sind live für euch dabei.",
    "fits": [
     "live_match"
    ]
@@ -1022,7 +1022,7 @@
    "kind": "opener",
    "energy": 1,
    "length": "mittel",
-   "template": "Kurz durchatmen. Hier ist, was in der letzten Stunde passiert ist.",
+   "template": "Wir atmen kurz durch, und ich erzähl euch jetzt, was in der letzten Stunde alles passiert ist.",
    "fits": [
     "break"
    ]
@@ -1043,7 +1043,7 @@
    "kind": "funnel",
    "energy": 2,
    "length": "mittel",
-   "template": "Die Liga heute: {count} Partien. Das Turnier: {tournament}. Und das Match, auf das alle schauen: {a} gegen {b}.",
+   "template": "Die Liga hat heute {count} Partien gesehen, das Turnier heißt {tournament}, und alle schauen auf das Match von {a} gegen {b}.",
    "fits": [
     "pre_show"
    ]
@@ -1064,7 +1064,7 @@
    "kind": "transition",
    "energy": 2,
    "length": "kurz",
-   "template": "Apropos {keyword}: {fact}.",
+   "template": "Wo wir gerade beim Thema {keyword} sind, passt dazu noch eine Sache, denn {fact}.",
    "fits": [
     "between",
     "break"
@@ -1095,7 +1095,7 @@
    "kind": "transition",
    "energy": 2,
    "length": "mittel",
-   "template": "Szenenwechsel. {game}, und da sieht es ganz anders aus.",
+   "template": "Wir wechseln jetzt die Szene rüber zu {game}, und da sieht es ganz anders aus.",
    "fits": [
     "between"
    ]
@@ -1115,7 +1115,7 @@
    "kind": "call",
    "energy": 4,
    "length": "kurz",
-   "template": "{piece} nach {square}, und plötzlich {consequence}!",
+   "template": "{piece} zieht nach {square}, und plötzlich {consequence}!",
    "fits": [
     "live_match"
    ]
@@ -1125,7 +1125,7 @@
    "kind": "call",
    "energy": 3,
    "length": "kurz",
-   "template": "{player} zieht. {move}. Schnell gespielt.",
+   "template": "{player} zieht {move}, und das wurde richtig schnell gespielt.",
    "fits": [
     "live_match"
    ]
@@ -1135,7 +1135,7 @@
    "kind": "call",
    "energy": 5,
    "length": "kurz",
-   "template": "Und das ist Matt! {winner} macht es!",
+   "template": "Und das ist Matt, denn {winner} macht es tatsächlich und gewinnt die Partie!",
    "fits": [
     "after_result",
     "live_match"
@@ -1146,7 +1146,7 @@
    "kind": "call",
    "energy": 4,
    "length": "kurz",
-   "template": "Einundzwanzig! {winner} holt den letzten Punkt!",
+   "template": "Einundzwanzig Punkte sind erreicht, und {winner} holt sich den letzten Punkt im Spiel!",
    "fits": [
     "after_result"
    ]
@@ -1156,7 +1156,7 @@
    "kind": "call",
    "energy": 3,
    "length": "mittel",
-   "template": "Weg damit. {player} tauscht ab, und das Brett wird leer.",
+   "template": "Weg damit, denn {player} tauscht ab, und das Brett wird immer leerer.",
    "fits": [
     "live_match"
    ]
@@ -1166,7 +1166,7 @@
    "kind": "call",
    "energy": 4,
    "length": "kurz",
-   "template": "Da fällt die nächste Zentralbank! {faction} übernimmt {region}.",
+   "template": "Da fällt die nächste Zentralbank, denn {faction} übernimmt gerade {region}!",
    "fits": [
     "live_match"
    ]
@@ -1176,7 +1176,7 @@
    "kind": "call",
    "energy": 3,
    "length": "mittel",
-   "template": "Mühle zu. {player} nimmt einen Stein, und es sind nur noch {left}.",
+   "template": "Die Mühle ist zu, und {player} nimmt einen Stein, sodass nur noch {left} übrig sind.",
    "fits": [
     "live_match"
    ]
@@ -1186,7 +1186,7 @@
    "kind": "call",
    "energy": 4,
    "length": "kurz",
-   "template": "Neue Bestzeit! {time}, und das ist Platz eins.",
+   "template": "Wir haben eine neue Bestzeit von {time}, und das bedeutet Platz eins in der Tabelle!",
    "fits": [
     "breaking"
    ]
@@ -1227,7 +1227,7 @@
    "kind": "hype",
    "energy": 5,
    "length": "kurz",
-   "template": "Wer hätte das gedacht? {winner} schlägt {loser}!",
+   "template": "Wer hätte das gedacht, dass {winner} heute ausgerechnet {loser} schlägt!",
    "fits": [
     "breaking",
     "after_result"
@@ -1248,7 +1248,7 @@
    "kind": "hype",
    "energy": 4,
    "length": "kurz",
-   "template": "{score}! Da kann noch vieles passieren.",
+   "template": "Es steht {score}, und in dieser Partie kann noch eine ganze Menge passieren!",
    "fits": [
     "live_match"
    ]
@@ -1258,7 +1258,7 @@
    "kind": "hype",
    "energy": 5,
    "length": "mittel",
-   "template": "Unglaublich. {count} Treffer im Ballwechsel, und keiner gibt nach.",
+   "template": "Das ist unglaublich, denn im Ballwechsel gab es {count} Treffer, und keiner gibt nach.",
    "fits": [
     "after_result"
    ]
@@ -1268,7 +1268,7 @@
    "kind": "hype",
    "energy": 4,
    "length": "kurz",
-   "template": "Jetzt wird's eng. Ganz eng.",
+   "template": "Jetzt wird es auf dem Brett richtig eng, und zwar so eng wie schon lange nicht mehr.",
    "fits": [
     "live_match"
    ]
@@ -1278,7 +1278,7 @@
    "kind": "hype",
    "energy": 3,
    "length": "kurz",
-   "template": "Das hier riecht nach Überraschung.",
+   "template": "Das, was wir hier gerade sehen, riecht für mich ganz stark nach einer Überraschung.",
    "fits": [
     "live_match"
    ]
@@ -1298,7 +1298,7 @@
    "kind": "understatement",
    "energy": 1,
    "length": "kurz",
-   "template": "Kleiner Fehler, große Folgen.",
+   "template": "Ein kleiner Fehler hat hier ganz große Folgen, und das sieht man jetzt auf dem Brett.",
    "fits": [
     "after_result"
    ]
@@ -1328,7 +1328,7 @@
    "kind": "understatement",
    "energy": 1,
    "length": "kurz",
-   "template": "Ein ruhiger Abend. Für die Statistik jedenfalls.",
+   "template": "Das ist ein ruhiger Abend, zumindest wenn man nur auf die Statistik schaut.",
    "fits": [
     "night"
    ]
@@ -1338,7 +1338,7 @@
    "kind": "understatement",
    "energy": 2,
    "length": "kurz",
-   "template": "{count} Züge. Da hat jemand Geduld mitgebracht.",
+   "template": "Diese Partie hat schon {count} Züge, und da hat ganz offensichtlich jemand Geduld mitgebracht.",
    "fits": [
     "after_result"
    ]
@@ -1348,7 +1348,7 @@
    "kind": "understatement",
    "energy": 1,
    "length": "mittel",
-   "template": "Matt in {moves} Zügen. Das ging schneller als dieser Satz.",
+   "template": "Das war Matt in {moves} Zügen, und das ging schneller, als ich diesen Satz sagen kann.",
    "fits": [
     "after_result"
    ]
@@ -1358,7 +1358,7 @@
    "kind": "understatement",
    "energy": 2,
    "length": "mittel",
-   "template": "{player} spielt wie die Feuerwehr. Ob das gut geht, sehen wir gleich.",
+   "template": "{player} spielt wie die Feuerwehr, und ob das gut geht, sehen wir gleich.",
    "fits": [
     "live_match"
    ]
@@ -1378,7 +1378,7 @@
    "kind": "rhetorical",
    "energy": 2,
    "length": "mittel",
-   "template": "Wie dreht man so eine Partie? Mit Geduld. Oder mit Glück.",
+   "template": "Wie dreht man so eine Partie, frag ich euch, und die Antwort heißt Geduld oder einfach Glück.",
    "fits": [
     "live_match"
    ]
@@ -1388,7 +1388,7 @@
    "kind": "rhetorical",
    "energy": 3,
    "length": "kurz",
-   "template": "Wer stoppt {player}? Im Moment niemand.",
+   "template": "Wer stoppt eigentlich {player}, denn im Moment schafft das wirklich niemand.",
    "fits": [
     "after_result",
     "between"
@@ -1399,7 +1399,7 @@
    "kind": "rhetorical",
    "energy": 2,
    "length": "mittel",
-   "template": "Was macht man mit einer Figur weniger und zwei Minuten auf der Uhr? Man kämpft.",
+   "template": "Was macht man mit einer Figur weniger und zwei Minuten auf der Uhr, und die Antwort ist, dass man kämpft.",
    "fits": [
     "live_match"
    ]
@@ -1409,7 +1409,7 @@
    "kind": "rhetorical",
    "energy": 2,
    "length": "mittel",
-   "template": "Wisst ihr, wie viele Partien heute schon gespielt wurden? {count}.",
+   "template": "Wisst ihr eigentlich, dass heute schon {count} Partien bei uns gespielt wurden?",
    "fits": [
     "break"
    ]
@@ -1429,7 +1429,7 @@
    "kind": "stat_intro",
    "energy": 2,
    "length": "kurz",
-   "template": "Eine Zahl dazu: {stat}.",
+   "template": "Dazu habe ich noch eine Zahl für euch, und zwar lautet die {stat}.",
    "fits": [
     "between",
     "break"
@@ -1440,7 +1440,7 @@
    "kind": "stat_intro",
    "energy": 2,
    "length": "mittel",
-   "template": "Kleiner Blick in die Statistik: {stat}. Und das sagt einiges.",
+   "template": "Wir werfen einen kleinen Blick in die Statistik, die {stat} zeigt, und das sagt schon einiges.",
    "fits": [
     "between"
    ]
@@ -1450,7 +1450,7 @@
    "kind": "stat_intro",
    "energy": 3,
    "length": "kurz",
-   "template": "Achtung, Statistik-Bombe: {stat}.",
+   "template": "Achtung, jetzt kommt eine echte Statistik-Bombe, denn {stat}.",
    "fits": [
     "break"
    ]
@@ -1460,7 +1460,7 @@
    "kind": "stat_intro",
    "energy": 2,
    "length": "mittel",
-   "template": "{stat}. Lasst euch das mal auf der Zunge zergehen.",
+   "template": "Lasst euch das mal auf der Zunge zergehen, denn {stat}.",
    "fits": [
     "break"
    ]
@@ -1480,7 +1480,7 @@
    "kind": "stat_intro",
    "energy": 2,
    "length": "mittel",
-   "template": "Die direkte Bilanz: {h2h}. Das Papier spricht für {a}.",
+   "template": "Die direkte Bilanz lautet {h2h}, und damit spricht das Papier ganz klar für {a}.",
    "fits": [
     "pre_show"
    ]
@@ -1490,7 +1490,7 @@
    "kind": "stat_intro",
    "energy": 2,
    "length": "mittel",
-   "template": "Interessanter als jede Siegesserie: {player} hat {n} Partien in Folge verloren. Heute kann das enden.",
+   "template": "Interessanter als jede Siegesserie ist, dass {player} {n} Partien in Folge verloren hat, und heute kann das enden.",
    "fits": [
     "pre_show"
    ]
@@ -1500,7 +1500,7 @@
    "kind": "prediction",
    "energy": 2,
    "length": "mittel",
-   "template": "Auf dem Papier ist {a} Favorit. Aber das Papier spielt nicht mit.",
+   "template": "Auf dem Papier ist {a} der Favorit, aber das Papier spielt hier am Brett nicht mit.",
    "fits": [
     "pre_show"
    ]
@@ -1510,7 +1510,7 @@
    "kind": "prediction",
    "energy": 2,
    "length": "mittel",
-   "template": "Nach Elo gewinnt {a} etwa {x} von zehn solcher Partien. Heute zählt nur eine.",
+   "template": "Nach Elo gewinnt {a} etwa {x} von zehn solcher Partien, aber heute zählt nur diese eine.",
    "fits": [
     "pre_show"
    ]
@@ -1540,7 +1540,7 @@
    "kind": "prediction",
    "energy": 3,
    "length": "mittel",
-   "template": "Mein Gefühl sagt {a}. Die Statistik sagt {b}. Mal sehen, wer recht hat.",
+   "template": "Mein Gefühl tippt auf {a}, während die Statistik auf {b} setzt, und wir werden sehen wer recht hat.",
    "fits": [
     "pre_show"
    ]
@@ -1550,7 +1550,7 @@
    "kind": "chat",
    "energy": 2,
    "length": "kurz",
-   "template": "Was meint ihr: {question}? Schreibt's in den Chat.",
+   "template": "Ich will von euch wissen, {question}, also schreibt es mir in den Chat.",
    "fits": [
     "pre_show",
     "between"
@@ -1561,7 +1561,7 @@
    "kind": "chat",
    "energy": 2,
    "length": "kurz",
-   "template": "Wer von euch hätte auf {winner} getippt? Ehrlich.",
+   "template": "Wer von euch hätte vorher ehrlich auf {winner} getippt, und jetzt bitte ganz ehrlich sein?",
    "fits": [
     "after_result"
    ]
@@ -1571,7 +1571,7 @@
    "kind": "chat",
    "energy": 2,
    "length": "mittel",
-   "template": "Grüße an alle im Chat. Und an alle, die heimlich mitlesen.",
+   "template": "Ich schicke Grüße an alle im Chat und auch an alle, die hier heimlich mitlesen.",
    "fits": [
     "break"
    ]
@@ -1581,7 +1581,7 @@
    "kind": "chat",
    "energy": 2,
    "length": "mittel",
-   "template": "Im Chat ist es gerade ruhig. Perfekt, um eine Partie anzufangen.",
+   "template": "Im Chat ist es gerade ziemlich ruhig, und das ist der perfekte Moment, um eine Partie anzufangen.",
    "fits": [
     "night"
    ]
@@ -1601,7 +1601,7 @@
    "kind": "throw",
    "energy": 2,
    "length": "kurz",
-   "template": "Gleich: {next}. Bis dahin ein Blick auf {now}.",
+   "template": "Gleich geht es weiter mit {next}, und bis dahin werfen wir einen Blick auf {now}.",
    "fits": [
     "between"
    ]
@@ -1631,7 +1631,7 @@
    "kind": "recap",
    "energy": 2,
    "length": "kurz",
-   "template": "Kurz zusammengefasst: {item1}, {item2}, und {item3}.",
+   "template": "Kurz zusammengefasst hatten wir {item1} und {item2} und dazu noch {item3}.",
    "fits": [
     "break",
     "between"
@@ -1663,7 +1663,7 @@
    "kind": "recap",
    "energy": 2,
    "length": "kurz",
-   "template": "Das war {tournament}. Und so lief es: {path}.",
+   "template": "Das war das Turnier {tournament}, und so ist es gelaufen, denn {path}.",
    "fits": [
     "after_result"
    ]
@@ -1673,7 +1673,7 @@
    "kind": "suspense",
    "energy": 3,
    "length": "mittel",
-   "template": "Noch ein Zug. Noch ein einziger Zug, und …",
+   "template": "Es fehlt nur noch ein einziger Zug, und dann ist es hier auf dem Brett vorbei.",
    "fits": [
     "live_match"
    ]
@@ -1683,7 +1683,7 @@
    "kind": "suspense",
    "energy": 3,
    "length": "kurz",
-   "template": "Die Uhr läuft. {seconds} Sekunden. Und er denkt.",
+   "template": "Die Uhr läuft mit noch {seconds} Sekunden, und er denkt und denkt und denkt.",
    "fits": [
     "live_match"
    ]
@@ -1703,7 +1703,7 @@
    "kind": "suspense",
    "energy": 2,
    "length": "kurz",
-   "template": "Es wird ruhig auf dem Brett. Zu ruhig.",
+   "template": "Es wird ruhig auf dem Brett, und ich finde, es ist schon fast ein bisschen zu ruhig.",
    "fits": [
     "live_match"
    ]
@@ -1713,7 +1713,7 @@
    "kind": "reflect",
    "energy": 2,
    "length": "kurz",
-   "template": "Was heißt das jetzt? {meaning}.",
+   "template": "Was heißt das jetzt für die Liga, fragt ihr euch, und die Antwort lautet {meaning}.",
    "fits": [
     "after_result"
    ]
@@ -1723,7 +1723,7 @@
    "kind": "reflect",
    "energy": 2,
    "length": "mittel",
-   "template": "Das war mehr als ein Sieg. Das war {meaning}.",
+   "template": "Das war mehr als ein gewöhnlicher Sieg, denn das war {meaning}.",
    "fits": [
     "after_result"
    ]
@@ -1753,7 +1753,7 @@
    "kind": "reflect",
    "energy": 2,
    "length": "mittel",
-   "template": "Und schon wieder ein Block mehr auf der Season-Chain. Diesmal von {miner}.",
+   "template": "Und schon wieder gibt es einen Block mehr auf der Season-Chain, und diesmal kommt er von {miner}.",
    "fits": [
     "after_result"
    ]
@@ -1763,7 +1763,7 @@
    "kind": "metaphor",
    "energy": 3,
    "length": "kurz",
-   "template": "Der Springer steht da wie angenagelt.",
+   "template": "Der Springer steht da auf seinem Feld, als wäre er dort festgenagelt worden.",
    "fits": [
     "live_match"
    ]
@@ -1773,7 +1773,7 @@
    "kind": "metaphor",
    "energy": 3,
    "length": "kurz",
-   "template": "Jetzt ist es nur noch Roulette.",
+   "template": "Jetzt ist es auf dem Brett eigentlich nur noch ein Spiel wie beim Roulette.",
    "fits": [
     "live_match"
    ]
@@ -1803,7 +1803,7 @@
    "kind": "metaphor",
    "energy": 3,
    "length": "kurz",
-   "template": "Ein Ballwechsel wie ein Pingpong-Gewitter.",
+   "template": "Das ist ein Ballwechsel wie ein echtes Pingpong-Gewitter, und ich komme kaum noch hinterher.",
    "fits": [
     "after_result"
    ]
@@ -1843,7 +1843,7 @@
    "kind": "swing",
    "energy": 3,
    "length": "kurz",
-   "template": "Ausgerechnet jetzt, ausgerechnet {player}.",
+   "template": "Ausgerechnet jetzt passiert das, und ausgerechnet {player} ist derjenige, dem es passiert.",
    "fits": [
     "live_match",
     "after_result"
@@ -1854,7 +1854,7 @@
    "kind": "swing",
    "energy": 3,
    "length": "kurz",
-   "template": "Lange sah es ausgeglichen aus. Bis Zug {move}.",
+   "template": "Lange sah es in dieser Partie ausgeglichen aus, bis dann der Zug {move} kam.",
    "fits": [
     "after_result"
    ]
@@ -1864,7 +1864,7 @@
    "kind": "ellipsis",
    "energy": 4,
    "length": "kurz",
-   "template": "{a}, Angriff, Schach, und Matt!",
+   "template": "{a} greift an und gibt Schach, und dann ist es auch schon Matt!",
    "fits": [
     "live_match"
    ]
@@ -1874,7 +1874,7 @@
    "kind": "ellipsis",
    "energy": 3,
    "length": "kurz",
-   "template": "Neuer Block. Neuer Miner. {miner}.",
+   "template": "Es gibt einen neuen Block und einen neuen Miner, und der heißt {miner}.",
    "fits": [
     "after_result"
    ]
@@ -1884,7 +1884,7 @@
    "kind": "ellipsis",
    "energy": 3,
    "length": "kurz",
-   "template": "Erster Versuch, Bestzeit. Respekt.",
+   "template": "Gleich im ersten Versuch eine Bestzeit zu fahren, dafür hat man meinen vollen Respekt verdient.",
    "fits": [
     "after_result"
    ]
@@ -1904,7 +1904,7 @@
    "kind": "humor",
    "energy": 2,
    "length": "mittel",
-   "template": "Der Bot hat übrigens wieder gewonnen. Er feiert nicht, er ist ein Bot.",
+   "template": "Der Bot hat übrigens wieder gewonnen, aber er feiert nicht, weil er eben nur ein Bot ist.",
    "fits": [
     "after_result"
    ]
@@ -1914,7 +1914,7 @@
    "kind": "humor",
    "energy": 1,
    "length": "kurz",
-   "template": "Nachtschicht. Ich hab Kaffee, ihr habt die Lobby.",
+   "template": "Ich hab jetzt Nachtschicht und dafür einen Kaffee, während ihr die Lobby ganz für euch habt.",
    "fits": [
     "night"
    ]
@@ -1924,7 +1924,7 @@
    "kind": "callback",
    "energy": 2,
    "length": "mittel",
-   "template": "Erinnert ihr euch an {earlier}? Genau das passiert gerade wieder.",
+   "template": "Erinnert ihr euch noch an {earlier}, denn genau das passiert hier gerade wieder?",
    "fits": [
     "live_match",
     "between"
@@ -1935,7 +1935,7 @@
    "kind": "callback",
    "energy": 2,
    "length": "kurz",
-   "template": "Vorhin hab ich gesagt, {claim}. Ich nehm's zurück.",
+   "template": "Vorhin hab ich noch behauptet, {claim}, aber das nehme ich jetzt ganz offiziell zurück.",
    "fits": [
     "after_result"
    ]
@@ -1945,7 +1945,7 @@
    "kind": "breaking",
    "energy": 4,
    "length": "kurz",
-   "template": "Wir unterbrechen kurz: {event}.",
+   "template": "Wir unterbrechen hier kurz für eine Meldung aus der Liga, denn {event}.",
    "fits": [
     "breaking"
    ]
@@ -1955,7 +1955,7 @@
    "kind": "breaking",
    "energy": 5,
    "length": "kurz",
-   "template": "Eilmeldung aus der Liga: {event}!",
+   "template": "Wir haben eine echte Eilmeldung aus der Liga für euch, denn {event}!",
    "fits": [
     "breaking"
    ]
@@ -1965,7 +1965,7 @@
    "kind": "sign_off",
    "energy": 1,
    "length": "mittel",
-   "template": "Das war's für den Moment. Die Lobby bleibt offen.",
+   "template": "Für den Moment war es das mit dieser Partie, aber die Lobby bleibt für euch offen.",
    "fits": [
     "break",
     "night"
@@ -1996,7 +1996,7 @@
    "kind": "count_up",
    "energy": 5,
    "length": "mittel",
-   "template": "Der erste Treffer, der zweite, der dritte! {player} hört nicht auf!",
+   "template": "Der erste Treffer, der zweite und dann auch noch der dritte, denn {player} hört einfach nicht auf!",
    "fits": [
     "live_match",
     "after_result"
@@ -2007,7 +2007,7 @@
    "kind": "question_answer",
    "energy": 4,
    "length": "kurz",
-   "template": "Schafft {player} das? … Er schafft es!",
+   "template": "Schafft {player} das wirklich, frag ich mich, und tatsächlich schafft er es!",
    "fits": [
     "live_match",
     "after_result"
@@ -2018,7 +2018,7 @@
    "kind": "question_answer",
    "energy": 3,
    "length": "mittel",
-   "template": "Kann {player} das noch drehen? Im Moment sieht es nicht danach aus.",
+   "template": "Kann {player} das noch drehen, frag ich mich, aber im Moment sieht es nicht danach aus.",
    "fits": [
     "live_match"
    ]
@@ -2028,7 +2028,7 @@
    "kind": "epic",
    "energy": 4,
    "length": "kurz",
-   "template": "Favoriten können fallen. Heute hat es {loser} erwischt.",
+   "template": "Favoriten können fallen, und heute hat es ausgerechnet {loser} erwischt.",
    "fits": [
     "breaking",
     "after_result"
@@ -2039,7 +2039,7 @@
    "kind": "epic",
    "energy": 3,
    "length": "mittel",
-   "template": "Wo wart ihr, als {winner} {loser} geschlagen hat? Hoffentlich hier.",
+   "template": "Wo wart ihr eigentlich, als {winner} gegen {loser} gewonnen hat, denn hoffentlich wart ihr hier?",
    "fits": [
     "breaking"
    ]
@@ -2049,7 +2049,7 @@
    "kind": "epic",
    "energy": 3,
    "length": "mittel",
-   "template": "Form ist vergänglich, Klasse bleibt. {player} beweist es mal wieder.",
+   "template": "Form ist vergänglich und Klasse bleibt, und genau das beweist {player} mal wieder.",
    "fits": [
     "after_result"
    ]
@@ -2069,7 +2069,7 @@
    "kind": "epic",
    "energy": 3,
    "length": "kurz",
-   "template": "Eine harte Lektion. Und {winner} hat sie erteilt.",
+   "template": "Das war eine harte Lektion für den Gegner, und {winner} hat sie erteilt.",
    "fits": [
     "after_result"
    ]
@@ -2079,7 +2079,7 @@
    "kind": "epic",
    "energy": 3,
    "length": "mittel",
-   "template": "Jetzt hängt alles an {player}. Das ist sein Moment.",
+   "template": "Jetzt hängt alles an {player}, und das ist ganz eindeutig der große Moment.",
    "fits": [
     "live_match"
    ]
@@ -2089,7 +2089,7 @@
    "kind": "epic",
    "energy": 4,
    "length": "mittel",
-   "template": "Er macht es schon wieder! {count} Mal in Folge!",
+   "template": "Er macht es schon wieder, und zwar jetzt schon {count} Mal in Folge!",
    "fits": [
     "after_result"
    ]
@@ -2119,7 +2119,7 @@
    "kind": "only_one",
    "energy": 3,
    "length": "mittel",
-   "template": "Es gibt jetzt genau einen Zug, der hält. Einen einzigen.",
+   "template": "Es gibt jetzt genau einen einzigen Zug, der diese Stellung noch halten kann.",
    "fits": [
     "live_match"
    ]
@@ -2129,7 +2129,7 @@
    "kind": "clock_update",
    "energy": 2,
    "length": "kurz",
-   "template": "Kurzes Uhren-Update: {a} {clock_a}, {b} {clock_b}.",
+   "template": "Hier kommt ein kurzes Uhren-Update, denn {a} hat {clock_a} und {b} hat noch {clock_b}.",
    "fits": [
     "live_match"
    ]
@@ -2139,7 +2139,7 @@
    "kind": "tour",
    "energy": 2,
    "length": "mittel",
-   "template": "Mal sehen, was sonst noch los ist. Brett zwei: {status}.",
+   "template": "Wir schauen mal was sonst noch los ist, und auf Brett zwei steht es gerade so, denn {status}.",
    "fits": [
     "live_match"
    ]
@@ -2160,7 +2160,7 @@
    "kind": "build_up",
    "energy": 2,
    "length": "mittel",
-   "template": "Das lag die ganze Woche in der Luft: {a} gegen {b}. Und jetzt ist es so weit.",
+   "template": "Das lag die ganze Woche schon in der Luft, und jetzt ist es endlich so weit mit {a} gegen {b}.",
    "fits": [
     "pre_show"
    ]
@@ -2170,7 +2170,7 @@
    "kind": "build_up",
    "energy": 2,
    "length": "mittel",
-   "template": "{a} hat in dieser Season erst {losses} Partie verloren. {b} will das ändern.",
+   "template": "{a} hat in dieser Season erst {losses} Partie verloren, und {b} will genau das heute ändern.",
    "fits": [
     "pre_show"
    ]
@@ -2201,7 +2201,7 @@
    "kind": "explainer",
    "energy": 2,
    "length": "mittel",
-   "template": "Soviel zum Modus. Und zur Motivation: {pot} Sats im Topf.",
+   "template": "So viel zum Modus, und für die Motivation liegen {pot} Sats im Topf.",
    "fits": [
     "pre_show"
    ]
@@ -2232,7 +2232,7 @@
    "kind": "why_it_matters",
    "energy": 2,
    "length": "kurz",
-   "template": "Warum das wichtig ist? {reason}.",
+   "template": "Ihr fragt euch warum das wichtig ist, und die Antwort ist ganz einfach, denn {reason}.",
    "fits": [
     "pre_show",
     "after_result"
@@ -2243,7 +2243,7 @@
    "kind": "celebrate",
    "energy": 2,
    "length": "mittel",
-   "template": "Lassen wir den Moment kurz stehen. {winner} hat sich das verdient.",
+   "template": "Lassen wir diesen Moment einfach mal kurz stehen, denn {winner} hat sich das wirklich verdient.",
    "fits": [
     "after_result"
    ]
@@ -2253,7 +2253,7 @@
    "kind": "question",
    "energy": 2,
    "length": "kurz",
-   "template": "Die Frage ist nur: {question}",
+   "template": "Die Frage, die sich jetzt eigentlich nur noch stellt, lautet {question}",
    "fits": [
     "live_match",
     "pre_show"
@@ -2275,7 +2275,7 @@
    "kind": "tension",
    "energy": 3,
    "length": "kurz",
-   "template": "Und jetzt wird's richtig spannend.",
+   "template": "Und jetzt wird es hier bei uns auf dem Brett so richtig spannend.",
    "fits": [
     "live_match"
    ]
@@ -2285,7 +2285,7 @@
    "kind": "back",
    "energy": 2,
    "length": "kurz",
-   "template": "{player} ist wieder da. Und wie.",
+   "template": "{player} ist wieder da, und zwar mit einem richtig großen Auftritt.",
    "fits": [
     "after_result",
     "live_match"
@@ -2327,7 +2327,7 @@
    "kind": "tally",
    "energy": 2,
    "length": "mittel",
-   "template": "{a}: zwei Spiele, zwei Siege. {b}: ein Spiel, eine Niederlage.",
+   "template": "{a} hat zwei Spiele und zwei Siege auf dem Konto, während {b} bei einem Spiel und einer Niederlage steht.",
    "fits": [
     "between"
    ]
@@ -2352,7 +2352,7 @@
     "night"
    ],
    "energy": "ruhig",
-   "text": "Ihr müsst nicht nur zuschauen. Die Lobby ist offen, rund um die Uhr, auch jetzt."
+   "text": "Ihr müsst nicht nur zuschauen, denn die Lobby ist rund um die Uhr offen, auch genau jetzt."
   },
   {
    "id": "promo-003",
@@ -2361,7 +2361,7 @@
     "between"
    ],
    "energy": "warm",
-   "text": "Kleiner Tipp vom Sender: Zwischen zwei Sendungen passt locker eine Partie Schnellschach. Zehn plus fünf, direkt im Browser."
+   "text": "Kleiner Tipp vom Sender: Zwischen zwei Sendungen passt locker eine Partie Schnellschach mit zehn plus fünf direkt im Browser."
   },
   {
    "id": "promo-004",
@@ -2371,7 +2371,7 @@
     "break"
    ],
    "energy": "hype",
-   "text": "Blitz fünf plus drei ist offen. Die Uhr läuft, sobald beide sitzen. Na, wer traut sich?"
+   "text": "Blitz mit fünf plus drei ist offen, und die Uhr läuft sobald beide sitzen, also wer von euch traut sich?"
   },
   {
    "id": "promo-005",
@@ -2380,7 +2380,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Keine Installation, kein Download, kein Theater. Browser auf, einloggen, spielen."
+   "text": "Ihr braucht keine Installation und keinen Download, sondern einfach den Browser, und dann loggt ihr euch ein und spielt."
   },
   {
    "id": "promo-008",
@@ -2398,7 +2398,7 @@
     "between"
    ],
    "energy": "trocken",
-   "text": "Zuschauen ist schön. Mitspielen zählt für die Tabelle."
+   "text": "Zuschauen ist schön und gut, aber nur wer mitspielt, landet am Ende auch in der Tabelle."
   },
   {
    "id": "promo-010",
@@ -2417,7 +2417,7 @@
     "between"
    ],
    "energy": "trocken",
-   "text": "Einloggen geht mit Nostr oder Google, dauert Sekunden. Danach seid ihr Spieler, nicht Gast."
+   "text": "Einloggen geht mit Nostr oder Google und dauert nur Sekunden, und danach seid ihr Spieler und nicht mehr nur Gast."
   },
   {
    "id": "promo-012",
@@ -2435,7 +2435,7 @@
     "night"
    ],
    "energy": "ruhig",
-   "text": "Der Einstieg ist so kurz, dass er in eine Werbepause passen würde. Wenn wir Werbepausen hätten."
+   "text": "Der Einstieg ist so kurz, dass er in eine Werbepause passen würde, wenn wir hier überhaupt Werbepausen hätten."
   },
   {
    "id": "promo-014",
@@ -2454,7 +2454,7 @@
     "break"
    ],
    "energy": "hype",
-   "text": "Wer meint, Pong sei ein Spiel für Opas, hat noch nie einundzwanzig zu zwanzig im Ballwechsel gestanden. Probiert's aus."
+   "text": "Wer glaubt, dass Pong ein Spiel für Opas ist, hat noch nie bei einundzwanzig zu zwanzig im Ballwechsel gestanden und sollte es einfach ausprobieren."
   },
   {
    "id": "promo-016",
@@ -2482,7 +2482,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Ein Blockfill-Lauf fängt bei null an. Die Woche nicht. Wer jetzt spielt, hat noch alle Versuche vor sich."
+   "text": "Ein Blockfill-Lauf fängt zwar immer bei null an, aber die Woche läuft weiter und wer jetzt spielt, hat noch alle Versuche vor sich."
   },
   {
    "id": "promo-019",
@@ -2492,7 +2492,7 @@
     "night"
    ],
    "energy": "ruhig",
-   "text": "Mühle, Dame, Blockli: Brettspiele ohne Uhr. Ein Zug, wann immer ihr einen habt."
+   "text": "Bei Mühle, Dame und Blockli spielt ihr Brettspiele ohne Uhr und macht einfach einen Zug, wann immer ihr Zeit habt."
   },
   {
    "id": "promo-021",
@@ -2501,7 +2501,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Fernschach für Leute ohne Zeit: ein Zug am Tag, wann es euch passt. Die Partie wartet auf euch."
+   "text": "Fernschach ist perfekt für Leute ohne Zeit, weil ihr nur einen Zug am Tag macht und die Partie geduldig auf euch wartet."
   },
   {
    "id": "promo-022",
@@ -2520,7 +2520,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Ihr spielt eh EA Sports FC? Dann tragt es hier aus: bester aus eins oder drei, die Tore zählen."
+   "text": "Ihr spielt eh EA Sports FC, dann tragt es doch hier im Modus bester aus eins oder drei aus, bei dem die Tore zählen."
   },
   {
    "id": "promo-024",
@@ -2529,7 +2529,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Rocket League, Age of Empires zwei, EA FC: Die großen Titel laufen hier als Serien. Ergebnis eintragen, fertig."
+   "text": "Die großen Titel wie Rocket League, Age of Empires zwei und EA FC laufen hier als Serien, bei denen ihr einfach das Ergebnis eintragt."
   },
   {
    "id": "promo-025",
@@ -2538,7 +2538,7 @@
     "between"
    ],
    "energy": "trocken",
-   "text": "Zwölf Spiele, eine Liga. Irgendwas davon könnt ihr bestimmt."
+   "text": "Bei uns gibt es zwölf Spiele in einer einzigen Liga, und irgendetwas davon könnt ihr ganz bestimmt."
   },
   {
    "id": "promo-028",
@@ -2556,7 +2556,7 @@
     "between"
    ],
    "energy": "warm",
-   "text": "Das Bracket hat noch Lücken. Eine davon hat euren Namen noch nicht drauf."
+   "text": "Das Bracket hat noch Lücken, und auf einer davon steht euer Name bisher noch nicht drauf."
   },
   {
    "id": "promo-036",
@@ -2565,7 +2565,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Hier stackt man Sats nicht beim Zuschauen. Man stackt sie am Brett."
+   "text": "Hier stackt man Sats nicht beim Zuschauen, sondern man stackt sie selbst am Brett."
   },
   {
    "id": "promo-037",
@@ -2584,7 +2584,7 @@
     "night"
    ],
    "energy": "ruhig",
-   "text": "Der Sender läuft den ganzen Tag. Ein Zap ist, wie man hier winkt. Der QR-Code steht im Bild."
+   "text": "Der Sender läuft den ganzen Tag, und ein Zap über den QR-Code im Bild ist hier die Art, wie man winkt."
   },
   {
    "id": "promo-039",
@@ -2593,7 +2593,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Euch gefällt, was hier läuft? Ein Zap über den QR-Code im Bild, und jeder Sat sagt danke."
+   "text": "Wenn euch gefällt was hier läuft, dann schickt einen Zap über den QR-Code im Bild, denn jeder Sat sagt danke."
   },
   {
    "id": "promo-040",
@@ -2602,7 +2602,7 @@
     "after_result"
    ],
    "energy": "warm",
-   "text": "Danke für die Zaps gerade. Die gehen direkt in den Topf, und der Topf geht an die Spieler."
+   "text": "Danke für die Zaps gerade, denn die gehen direkt in den Topf, und der Topf geht am Ende an die Spieler."
   },
   {
    "id": "promo-042",
@@ -2611,7 +2611,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Ein Clan ist ein Kürzel und Leute, die auftauchen. Mehr braucht's nicht."
+   "text": "Ein Clan ist eigentlich nur ein Kürzel und ein paar Leute, die immer wieder auftauchen, und mehr braucht es dafür nicht."
   },
   {
    "id": "promo-045",
@@ -2630,7 +2630,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Proof of Work, aber am Brett. Gewertete Siege schürfen hier Blöcke."
+   "text": "Das ist Proof of Work, aber am Brett, denn gewertete Siege schürfen hier echte Blöcke."
   },
   {
    "id": "promo-049",
@@ -2648,7 +2648,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Ränge gibt es hier nicht geschenkt. Aber man kann sie sich in einer Woche verdienen."
+   "text": "Ränge gibt es hier nicht geschenkt, aber man kann sie sich innerhalb einer Woche ehrlich verdienen."
   },
   {
    "id": "promo-052",
@@ -2667,7 +2667,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Ein Freund, ein Link, ein Brett. Das ist der ganze Weg."
+   "text": "Ihr braucht nur einen Freund und einen Link für ein Brett, und das ist schon der ganze Weg zur Partie."
   },
   {
    "id": "promo-054",
@@ -2676,7 +2676,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Die Lobby schreibt den Link, ihr müsst ihn nur verschicken. Wohin auch immer."
+   "text": "Die Lobby schreibt den Link für euch, und ihr müsst ihn nur noch verschicken, wohin auch immer ihr wollt."
   },
   {
    "id": "promo-055",
@@ -2695,7 +2695,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Schreibt uns im Stream-Chat. Hier liest jemand mit, und manchmal schafft es eure Frage sogar in die Sendung."
+   "text": "Schreibt uns im Stream-Chat, denn hier liest jemand mit, und manchmal schafft es eure Frage sogar in die Sendung."
   },
   {
    "id": "promo-057",
@@ -2713,7 +2713,7 @@
     "between"
    ],
    "energy": "warm",
-   "text": "Die Strecke der Woche steht. Wer die Autorenzeit knackt, kriegt seinen Moment hier im Stream."
+   "text": "Die Strecke der Woche steht, und wer die Autorenzeit knackt, kriegt dafür seinen eigenen Moment hier im Stream."
   },
   {
    "id": "promo-061",
@@ -2722,7 +2722,7 @@
     "night"
    ],
    "energy": "ruhig",
-   "text": "Nachtprogramm bei TWENTY ONE. Die Bretter stehen trotzdem offen, für alle, die nachts besser denken."
+   "text": "Bei TWENTY ONE läuft jetzt das Nachtprogramm, aber die Bretter stehen trotzdem offen für alle, die nachts besser denken."
   },
   {
    "id": "promo-062",
@@ -2758,7 +2758,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Ihr müsst kein Profi sein. Die meisten hier haben mit einer Partie angefangen, die sie verloren haben."
+   "text": "Ihr müsst kein Profi sein, denn die meisten hier haben mit einer Partie angefangen, die sie verloren haben."
   },
   {
    "id": "promo-068",
@@ -2767,7 +2767,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Neu hier? Dann seid ihr genau richtig. Die Ladder fängt bei jedem ganz unten an."
+   "text": "Wenn ihr neu hier seid, dann seid ihr genau richtig, weil die Ladder bei jedem ganz unten anfängt."
   },
   {
    "id": "promo-069",
@@ -2777,7 +2777,7 @@
     "night"
    ],
    "energy": "ruhig",
-   "text": "Kein Haken, keine Hürde. Nur Spiele und Leute, die sie spielen."
+   "text": "Hier gibt es keinen Haken und keine Hürde, sondern nur Spiele und die Leute, die sie spielen."
   },
   {
    "id": "promo-071",
@@ -2786,7 +2786,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Die Tabelle ist geduldig. Sie wartet, bis ihr euch eintragt."
+   "text": "Die Tabelle ist geduldig, und sie wartet ganz in Ruhe darauf, bis ihr euch selbst eintragt."
   },
   {
    "id": "promo-072",
@@ -2804,7 +2804,7 @@
     "after_result"
    ],
    "energy": "hype",
-   "text": "So fühlt sich ein Sieg in dieser Liga an. Und das hier ist kein Profi-Event. Das sind Leute wie ihr."
+   "text": "So fühlt sich ein Sieg in dieser Liga an, und das hier ist kein Profi-Event, sondern das sind Leute wie ihr."
   },
   {
    "id": "promo-074",
@@ -2822,7 +2822,7 @@
     "break"
    ],
    "energy": "trocken",
-   "text": "Kein Gegner da? Bei Pong wartet der Bot. Der hat immer Zeit und nie Ausreden."
+   "text": "Wenn gerade kein Gegner da ist, dann wartet bei Pong der Bot, denn der hat immer Zeit und nie eine Ausrede."
   },
   {
    "id": "promo-076",
@@ -2831,7 +2831,7 @@
     "between"
    ],
    "energy": "warm",
-   "text": "Ihr habt einen Lieblingsspieler auf dieser Tafel? Fordert ihn heraus. So entstehen Rivalitäten."
+   "text": "Ihr habt einen Lieblingsspieler auf dieser Tafel, dann fordert ihn doch heraus, denn so entstehen echte Rivalitäten."
   },
   {
    "id": "promo-077",
@@ -2840,7 +2840,7 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Jede Partie hier zählt für irgendwas: für die Ladder, für die Season, für euren Rang. Keine verschwendet."
+   "text": "Jede Partie hier zählt für irgendetwas, nämlich für die Ladder und die Season und euren Rang, und keine ist verschwendet."
   },
   {
    "id": "promo-078",
@@ -2849,11 +2849,11 @@
     "break"
    ],
    "energy": "warm",
-   "text": "Auch wer verliert, schürft Erfahrung. Und manchmal das nächste Revanche-Match."
+   "text": "Auch wer verliert, schürft hier eine Menge Erfahrung und manchmal sogar gleich das nächste Revanche-Match."
   }
  ],
  "pattern_scripts": {
-  "note": "Deterministic scene scripts (App\\Support\\Caster\\PatternScripts), the fallback when the league voice writes nothing. A script carries at most one fact line (two in a result or champion moment); the rest is flavour: a joke from the verified meme canon (`flavour.jokes`, canon ids, quoted word for word), an invitation (`flavour.invite` and the promo lines of `invite_when`), league pride, a chat call and an emotion line with an OmniVoice marker. Every {slot} is filled only from the scene's facts (SceneFacts::forTopic()); {?slot} requires the fact without saying it. A fact line with a person slot is used only in a result or champion moment, one name at most. Lines carry no claim beyond their slots: no move, no mistake, no favourite, no mood of a player.",
+  "note": "Deterministic scene scripts (App\\Support\\Caster\\PatternScripts), the fallback when the league voice writes nothing. A script carries at most one fact line (two in a result or champion moment); the rest is flavour: a joke from the verified meme canon (`flavour.jokes`, canon ids, quoted word for word; a short saying or fragment is spoken inside one of `canon_carriers` with its {saying} slot, never bare, user 2026-10-12), an invitation (`flavour.invite` and the promo lines of `invite_when`), league pride, a chat call and an emotion line with an OmniVoice marker. Every {slot} is filled only from the scene's facts (SceneFacts::forTopic()); {?slot} requires the fact without saying it. A fact line with a person slot is used only in a result or champion moment, one name at most. Lines carry no claim beyond their slots: no move, no mistake, no favourite, no mood of a player. Every spoken sentence is complete, with subject and verb, and has at least seven words (tv.commentary.scripts.min_words_per_sentence).",
   "openings": [
    {
     "id": "op-live-1",
@@ -2864,7 +2864,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "Live bei {sender}."
+    "text": "Wir sind live bei {sender}, und auf den Brettern ist gerade richtig was los."
    },
    {
     "id": "op-live-2",
@@ -2875,7 +2875,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "Wir sind live dabei."
+    "text": "Wir sind live mit dabei, während auf den Brettern die nächsten Züge fallen."
    },
    {
     "id": "op-live-3",
@@ -2886,7 +2886,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "Die Bretter sind besetzt."
+    "text": "Die Bretter sind besetzt, und wir schauen jetzt gemeinsam, was dort gerade passiert."
    },
    {
     "id": "op-live-4",
@@ -2897,7 +2897,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "Ein Blick auf die laufenden Partien."
+    "text": "Wir werfen jetzt einen genauen Blick auf die Partien, die gerade bei uns laufen."
    },
    {
     "id": "op-live-5",
@@ -2907,7 +2907,7 @@
     "topics": [
      "live_tournament"
     ],
-    "text": "Turnier-Update bei {sender}."
+    "text": "Jetzt gibt es ein kleines Turnier-Update bei {sender}, und das will ich euch nicht vorenthalten."
    },
    {
     "id": "op-live-6",
@@ -2917,7 +2917,7 @@
     "topics": [
      "live_tournament"
     ],
-    "text": "Ein Blick auf das Turnier."
+    "text": "Wir werfen jetzt einen Blick auf das Turnier, denn da tut sich gerade etwas."
    },
    {
     "id": "op-live-7",
@@ -2927,7 +2927,7 @@
     "topics": [
      "live_tournament"
     ],
-    "text": "Turnier im Blick."
+    "text": "Ich hab das laufende Turnier fest im Blick, und ihr könnt jetzt einfach mitschauen."
    },
    {
     "id": "op-res-1",
@@ -2937,7 +2937,7 @@
     "topics": [
      "*"
     ],
-    "text": "Schauen wir auf die Ergebnisse."
+    "text": "Jetzt schauen wir uns gemeinsam die Ergebnisse an, die gerade reingekommen sind."
    },
    {
     "id": "op-res-2",
@@ -2957,7 +2957,7 @@
     "topics": [
      "*"
     ],
-    "text": "Die Ergebnisse sind da."
+    "text": "Die Ergebnisse sind da, und ich lese euch gleich vor, was auf den Brettern passiert ist."
    },
    {
     "id": "op-res-4",
@@ -2967,7 +2967,7 @@
     "topics": [
      "*"
     ],
-    "text": "Ergebnisse bei {sender}."
+    "text": "Bei {sender} gibt es frische Ergebnisse, und die schauen wir uns jetzt gemeinsam an."
    },
    {
     "id": "op-pre-1",
@@ -2977,7 +2977,7 @@
     "topics": [
      "*"
     ],
-    "text": "Turnierzeit bei {sender}."
+    "text": "Bei {sender} ist jetzt Turnierzeit, und ich hab die wichtigsten Infos für euch."
    },
    {
     "id": "op-pre-2",
@@ -2987,7 +2987,7 @@
     "topics": [
      "*"
     ],
-    "text": "Die Anmeldung ist offen."
+    "text": "Die Anmeldung ist offen, und ich erzähl euch jetzt, worauf ihr euch freuen könnt."
    },
    {
     "id": "op-pre-3",
@@ -2997,7 +2997,7 @@
     "topics": [
      "*"
     ],
-    "text": "Schauen wir auf die nächsten Turniere."
+    "text": "Wir schauen jetzt auf die nächsten Turniere, weil da bald wieder etwas ansteht."
    },
    {
     "id": "op-pre-4",
@@ -3007,7 +3007,7 @@
     "topics": [
      "*"
     ],
-    "text": "Ein Blick in den Turnierkalender."
+    "text": "Wir werfen einen Blick in den Turnierkalender, damit ihr nichts Wichtiges verpasst."
    },
    {
     "id": "op-brk-1",
@@ -3017,7 +3017,7 @@
     "topics": [
      "*"
     ],
-    "text": "Hier ist {sender}."
+    "text": "Hier ist {sender}, und ich freu mich, dass ihr gerade eingeschaltet habt."
    },
    {
     "id": "op-brk-2",
@@ -3027,7 +3027,7 @@
     "topics": [
      "*"
     ],
-    "text": "Ihr schaut {sender}."
+    "text": "Ihr schaut {sender}, den Sender, der rund um die Uhr für unsere Liga läuft."
    },
    {
     "id": "op-brk-3",
@@ -3037,7 +3037,7 @@
     "topics": [
      "*"
     ],
-    "text": "Willkommen bei {sender}."
+    "text": "Herzlich willkommen bei {sender}, schön, dass ihr heute wieder dabei seid."
    },
    {
     "id": "op-brk-4",
@@ -3047,7 +3047,7 @@
     "topics": [
      "*"
     ],
-    "text": "Kurz durchatmen."
+    "text": "Wir atmen jetzt einmal kurz durch, bevor es mit der Liga gleich weitergeht."
    },
    {
     "id": "op-brk-5",
@@ -3057,7 +3057,7 @@
     "topics": [
      "*"
     ],
-    "text": "Kleiner Blick auf die Liga."
+    "text": "Wir werfen jetzt einen kleinen Blick auf die Liga und schauen, was sich getan hat."
    },
    {
     "id": "op-brk-6",
@@ -3067,7 +3067,7 @@
     "topics": [
      "ladders"
     ],
-    "text": "Ein Blick auf die Ladder."
+    "text": "Wir werfen jetzt einen Blick auf die Ladder, denn da bewegt sich einiges."
    },
    {
     "id": "op-brk-7",
@@ -3077,7 +3077,7 @@
     "topics": [
      "ladders"
     ],
-    "text": "Die Tabellen der Liga."
+    "text": "Jetzt schauen wir uns die Tabellen der Liga an, weil die immer etwas zu erzählen haben."
    },
    {
     "id": "op-brk-8",
@@ -3087,7 +3087,7 @@
     "topics": [
      "tmnf"
     ],
-    "text": "Trackmania, Strecke der Woche."
+    "text": "Bei Trackmania gibt es wieder eine Strecke der Woche, und die schauen wir uns jetzt an."
    },
    {
     "id": "op-brk-9",
@@ -3097,7 +3097,7 @@
     "topics": [
      "clans"
     ],
-    "text": "Clan im Blick."
+    "text": "Ich hab jetzt einen Clan ganz besonders im Blick, und den stell ich euch kurz vor."
    },
    {
     "id": "op-brk-10",
@@ -3107,7 +3107,7 @@
     "topics": [
      "blockfill"
     ],
-    "text": "Blockfill, die Woche läuft."
+    "text": "Bei Blockfill läuft die Woche, und wir schauen jetzt, wie sie bisher gelaufen ist."
    },
    {
     "id": "op-brk-11",
@@ -3117,7 +3117,7 @@
     "topics": [
      "mempool"
     ],
-    "text": "Was läuft im Mempool?"
+    "text": "Ich frag mich, was gerade im Mempool läuft, und genau das schauen wir uns jetzt an."
    },
    {
     "id": "op-ngt-1",
@@ -3127,7 +3127,7 @@
     "topics": [
      "*"
     ],
-    "text": "Nachtprogramm bei {sender}."
+    "text": "Bei {sender} läuft jetzt das Nachtprogramm, und ich leiste euch dabei ganz ruhig Gesellschaft."
    },
    {
     "id": "op-ngt-2",
@@ -3137,7 +3137,7 @@
     "topics": [
      "*"
     ],
-    "text": "Ruhige Nacht bei {sender}."
+    "text": "Es ist eine ruhige Nacht bei {sender}, und wir lassen es jetzt ganz gemütlich angehen."
    },
    {
     "id": "op-ngt-3",
@@ -3157,7 +3157,7 @@
     "topics": [
      "*"
     ],
-    "text": "Leise Stunde bei {sender}."
+    "text": "Bei {sender} ist jetzt die leise Stunde, und ich erzähl euch ganz in Ruhe ein bisschen was."
    }
   ],
   "facts": [
@@ -3175,7 +3175,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "{white} spielt Weiß gegen {black}."
+    "text": "{white} spielt gerade mit den weißen Steinen gegen {black}, und wir schauen zu."
    },
    {
     "id": "f-live-3",
@@ -3183,7 +3183,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "{mode} läuft: {white} gegen {black}."
+    "text": "Im Modus {mode} läuft gerade die Partie von {white} gegen {black}."
    },
    {
     "id": "f-live-4",
@@ -3215,7 +3215,7 @@
      "results",
      "mempool"
     ],
-    "text": "{winner} gewinnt gegen {loser}."
+    "text": "{winner} gewinnt die Partie gegen {loser}, und das Ergebnis steht jetzt fest."
    },
    {
     "id": "f-res-2",
@@ -3223,7 +3223,7 @@
      "results",
      "mempool"
     ],
-    "text": "Im {mode} schlägt {winner} {loser}."
+    "text": "Im Modus {mode} schlägt {winner} gerade {loser}, und damit ist die Partie entschieden."
    },
    {
     "id": "f-res-3",
@@ -3247,7 +3247,7 @@
      "results",
      "mempool"
     ],
-    "text": "{draw_a} und {draw_b} trennen sich remis."
+    "text": "{draw_a} und {draw_b} trennen sich remis, und damit gibt es heute keinen Sieger."
    },
    {
     "id": "f-res-6",
@@ -3263,7 +3263,7 @@
      "results",
      "mempool"
     ],
-    "text": "Heute schon {games_today} Partien gespielt."
+    "text": "Heute wurden bei uns schon {games_today} Partien gespielt, und der Tag ist noch nicht vorbei."
    },
    {
     "id": "f-res-8",
@@ -3271,14 +3271,14 @@
      "results",
      "mempool"
     ],
-    "text": "Der Punkt geht an {winner}."
+    "text": "Der Punkt in dieser Partie geht an {winner}, und das Ergebnis ist eingetragen."
    },
    {
     "id": "f-tour-1",
     "topics": [
      "tournaments"
     ],
-    "text": "{tournament} startet {start}."
+    "text": "Das Turnier {tournament} startet {start}, und bis dahin könnt ihr euch noch vorbereiten."
    },
    {
     "id": "f-tour-2",
@@ -3286,7 +3286,7 @@
      "tournaments",
      "live_tournament"
     ],
-    "text": "Bei {tournament} wird {game} gespielt."
+    "text": "Beim Turnier {tournament} wird {game} gespielt, und dafür könnt ihr euch anmelden."
    },
    {
     "id": "f-tour-3",
@@ -3300,7 +3300,7 @@
     "topics": [
      "tournaments"
     ],
-    "text": "Noch {spots_left} Plätze frei bei {tournament}."
+    "text": "Beim Turnier {tournament} sind noch {spots_left} Plätze frei, also überlegt nicht zu lange."
    },
    {
     "id": "f-tour-5",
@@ -3321,21 +3321,21 @@
     "topics": [
      "tournaments"
     ],
-    "text": "Schon angemeldet für {tournament}: {first_entrant}."
+    "text": "Für das Turnier {tournament} hat sich schon {first_entrant} angemeldet und wartet auf Gegner."
    },
    {
     "id": "f-tour-8",
     "topics": [
      "tournaments"
     ],
-    "text": "Modus bei {tournament}: {mode}."
+    "text": "Beim Turnier {tournament} wird im Modus {mode} gespielt, damit ihr wisst, worauf ihr euch einlasst."
    },
    {
     "id": "f-tour-9",
     "topics": [
      "tournaments"
     ],
-    "text": "Anmelden geht auf {website_spoken}."
+    "text": "Anmelden könnt ihr euch ganz einfach auf {website_spoken}, und das dauert nur einen Moment."
    },
    {
     "id": "f-lt-1",
@@ -3356,14 +3356,14 @@
     "topics": [
      "live_tournament"
     ],
-    "text": "Platz zwei bei {tournament}: {second}."
+    "text": "Den zweiten Platz beim Turnier {tournament} holt sich {second}, und das kann sich sehen lassen."
    },
    {
     "id": "f-lt-4",
     "topics": [
      "live_tournament"
     ],
-    "text": "{champion} gewinnt {tournament}."
+    "text": "{champion} gewinnt das Turnier {tournament}, und damit steht der Sieger fest."
    },
    {
     "id": "f-lt-5",
@@ -3377,14 +3377,14 @@
     "topics": [
      "live_tournament"
     ],
-    "text": "{entrants} Teilnehmer sind bei {tournament} dabei."
+    "text": "Beim Turnier {tournament} sind {entrants} Teilnehmer dabei, und die geben sich gerade alle Mühe."
    },
    {
     "id": "f-lt-7",
     "topics": [
      "live_tournament"
     ],
-    "text": "{tournament} ist {state}."
+    "text": "Das Turnier {tournament} ist im Moment {state}, und wir behalten es für euch im Blick."
    },
    {
     "id": "f-lad-1",
@@ -3426,35 +3426,35 @@
     "topics": [
      "ladders"
     ],
-    "text": "In der Ladder {ladder} führt {leader}."
+    "text": "In der Ladder {ladder} führt gerade {leader}, und die anderen müssen jetzt nachziehen."
    },
    {
     "id": "f-clan-1",
     "topics": [
      "clans"
     ],
-    "text": "Clan im Blick: {clan_name}."
+    "text": "Ich hab jetzt einen Clan im Blick, und zwar heißt der {clan_name}."
    },
    {
     "id": "f-clan-2",
     "topics": [
      "clans"
     ],
-    "text": "Das Kürzel von {clan_name} ist {clan_tag}."
+    "text": "Das Kürzel von {clan_name} ist {clan_tag}, falls ihr den Clan in der Liga sucht."
    },
    {
     "id": "f-clan-3",
     "topics": [
      "clans"
     ],
-    "text": "{clan_name} hat {clan_members} Mitglieder."
+    "text": "Der Clan {clan_name} hat inzwischen {clan_members} Mitglieder, die zusammen in der Liga spielen."
    },
    {
     "id": "f-clan-4",
     "topics": [
      "clans"
     ],
-    "text": "{clan_games} Partien hat {clan_name} schon gespielt."
+    "text": "Der Clan {clan_name} hat schon {clan_games} Partien gespielt, und es werden immer mehr."
    },
    {
     "id": "f-clan-5",
@@ -3468,21 +3468,21 @@
     "topics": [
      "tmnf"
     ],
-    "text": "Die Strecke der Woche heißt {track}."
+    "text": "Die Strecke der Woche bei Trackmania heißt {track}, und die könnt ihr alle selbst fahren."
    },
    {
     "id": "f-tm-2",
     "topics": [
      "tmnf"
     ],
-    "text": "Die Autorenzeit liegt bei {author_time}."
+    "text": "Die Autorenzeit auf der Strecke der Woche liegt bei {author_time}, und die gilt es zu knacken."
    },
    {
     "id": "f-tm-3",
     "topics": [
      "tmnf"
     ],
-    "text": "{leader} führt mit {leader_time}."
+    "text": "{leader} führt auf der Strecke der Woche mit einer Zeit von {leader_time}."
    },
    {
     "id": "f-tm-4",
@@ -3503,7 +3503,7 @@
     "topics": [
      "tmnf"
     ],
-    "text": "{leader_under} ist schneller als die Autorenzeit."
+    "text": "{leader_under} ist auf der Strecke der Woche schneller als die Autorenzeit gefahren."
    },
    {
     "id": "f-bf-1",
@@ -3568,7 +3568,7 @@
      "live_games",
      "mempool"
     ],
-    "text": "Bei {game} läuft gerade eine Partie.{?a}"
+    "text": "Bei {game} läuft gerade eine Partie, und die schauen wir uns jetzt gemeinsam an.{?a}"
    },
    {
     "id": "f-live-9",
@@ -3600,7 +3600,7 @@
      "results",
      "mempool"
     ],
-    "text": "Bei {game} steht ein Ergebnis: {score}.{?winner}"
+    "text": "Bei {game} steht jetzt ein Ergebnis fest, und zwar endet die Partie {score}.{?winner}"
    },
    {
     "id": "f-res-11",
@@ -3616,7 +3616,7 @@
      "results",
      "mempool"
     ],
-    "text": "Eine Partie endet gerade durch {how}.{?winner}"
+    "text": "Eine Partie endet gerade durch {how}, und damit ist sie entschieden.{?winner}"
    },
    {
     "id": "f-res-13",
@@ -3640,7 +3640,7 @@
      "results",
      "mempool"
     ],
-    "text": "{winner} gewinnt bei {game}."
+    "text": "{winner} gewinnt bei {game}, und das Ergebnis ist jetzt eingetragen."
    },
    {
     "id": "f-tour-11",
@@ -3661,7 +3661,7 @@
     "topics": [
      "live_tournament"
     ],
-    "text": "Runde {round} bei {tournament} ist gespielt. Ergebnis: {score}.{?winner}"
+    "text": "Die Runde {round} beim Turnier {tournament} ist gespielt, und das Ergebnis lautet {score}.{?winner}"
    },
    {
     "id": "f-lad-7",
@@ -3710,7 +3710,7 @@
     "topics": [
      "tmnf"
     ],
-    "text": "Platz zwei auf {track} fährt {second_time}."
+    "text": "Den zweiten Platz auf {track} belegt gerade jemand mit einer Zeit von {second_time}."
    },
    {
     "id": "f-tm-9",
@@ -3836,7 +3836,7 @@
       "break",
       "night"
      ],
-     "text": "Das hier ist unsere Liga. Von Bitcoinern für Bitcoiner."
+     "text": "Das hier ist unsere Liga, gemacht von Bitcoinern für Bitcoiner, und genau das macht sie so besonders."
     },
     {
      "id": "pr-02",
@@ -3847,7 +3847,7 @@
       "break",
       "night"
      ],
-     "text": "Hier spielen Bitcoiner gegen Bitcoiner. Und das rund um die Uhr."
+     "text": "Hier spielen Bitcoiner gegen Bitcoiner, und das wirklich rund um die Uhr."
     },
     {
      "id": "pr-03",
@@ -3858,7 +3858,7 @@
       "break",
       "night"
      ],
-     "text": "Eine Community, die Bock auf Spiele hat. Mehr braucht's nicht."
+     "text": "Wir sind eine Community, die einfach Bock auf Spiele hat, und mehr braucht es dafür nicht."
     },
     {
      "id": "pr-04",
@@ -3879,7 +3879,7 @@
       "break",
       "night"
      ],
-     "text": "Jede Partie hier ist echt. Echte Leute, echte Züge."
+     "text": "Jede Partie hier ist echt, denn hier sitzen echte Leute und machen echte Züge."
     },
     {
      "id": "pr-06",
@@ -3890,7 +3890,7 @@
       "break",
       "night"
      ],
-     "text": "Hier loggt man sich mit Nostr ein. Das find ich schon ziemlich cool."
+     "text": "Hier loggt man sich mit Nostr ein, und das finde ich ehrlich gesagt schon ziemlich cool."
     },
     {
      "id": "pr-07",
@@ -3911,7 +3911,7 @@
       "break",
       "night"
      ],
-     "text": "Bitcoin, Nostr und Spiele. Für mich die perfekte Mischung."
+     "text": "Bitcoin, Nostr und Spiele zusammen sind für mich ganz persönlich die perfekte Mischung."
     },
     {
      "id": "pr-09",
@@ -3922,7 +3922,7 @@
       "break",
       "night"
      ],
-     "text": "Hier zocken keine Profis. Hier zocken Leute wie du und ich."
+     "text": "Hier zocken keine Profis, sondern ganz normale Leute wie du und ich."
     },
     {
      "id": "pr-10",
@@ -3933,7 +3933,7 @@
       "break",
       "night"
      ],
-     "text": "Ein eigener Sender nur für unsere Liga. Wer hätte das gedacht?"
+     "text": "Wir haben einen eigenen Sender nur für unsere Liga, und wer hätte das bitte gedacht?"
     },
     {
      "id": "pr-11",
@@ -3954,7 +3954,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Gewonnen wird hier am Brett. Nicht im Marketing."
+     "text": "Gewonnen wird hier am Brett und ganz sicher nicht in irgendeiner Marketingabteilung."
     },
     {
      "id": "pr-13",
@@ -3965,7 +3965,7 @@
       "break",
       "night"
      ],
-     "text": "Gewertete Siege schürfen hier Blöcke. Wie geil ist das denn?"
+     "text": "Gewertete Siege schürfen hier Blöcke, und ich frag euch, wie geil ist das denn bitte?"
     },
     {
      "id": "pr-14",
@@ -3976,7 +3976,7 @@
       "break",
       "night"
      ],
-     "text": "Die Community macht den Unterschied. Ohne euch wär hier nix los."
+     "text": "Die Community macht hier den Unterschied, denn ohne euch wär hier überhaupt nichts los."
     },
     {
      "id": "pr-15",
@@ -3987,7 +3987,7 @@
       "break",
       "night"
      ],
-     "text": "Aus dem EINUNDZWANZIG-Kosmos direkt aufs Brett. Das ist unser Ding."
+     "text": "Wir holen den EINUNDZWANZIG-Kosmos direkt aufs Brett, und das ist einfach unser Ding."
     },
     {
      "id": "pr-16",
@@ -4008,7 +4008,7 @@
       "break",
       "night"
      ],
-     "text": "Unsere Liga, unser Sender. Das fühlt sich gut an."
+     "text": "Das ist unsere Liga und unser Sender, und das fühlt sich ehrlich gesagt richtig gut an."
     },
     {
      "id": "pr-18",
@@ -4018,7 +4018,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Was Bitcoiner in ihrer Freizeit machen? Genau das hier."
+     "text": "Ihr fragt euch, was Bitcoiner in ihrer Freizeit machen, und die Antwort darauf ist ganz einfach genau das hier."
     }
    ],
    "engage": [
@@ -4042,7 +4042,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Wer von euch hat heute schon eine Partie gespielt? Ab in den Chat damit."
+     "text": "Ich will wissen, wer von euch heute schon eine Partie gespielt hat, also schreibt es direkt in den Chat."
     },
     {
      "id": "en-03",
@@ -4072,7 +4072,7 @@
       "break",
       "night"
      ],
-     "text": "Wer von euch ist Team Schach und wer Team Pong? Schreibt's in den Chat."
+     "text": "Ich will wissen, wer von euch Team Schach und wer Team Pong ist, also schreibt es in den Chat."
     },
     {
      "id": "en-06",
@@ -4093,7 +4093,7 @@
       "break",
       "night"
      ],
-     "text": "Wer ist zum ersten Mal hier? Ein kurzes Hallo in den Chat!"
+     "text": "Wer von euch ist zum ersten Mal hier, denn dann freu ich mich über ein kurzes Hallo im Chat."
     },
     {
      "id": "en-08",
@@ -4115,7 +4115,7 @@
       "break",
       "night"
      ],
-     "text": "Welches Spiel ist euer Liebling hier? Ab in den Chat damit."
+     "text": "Schreibt mir bitte in den Chat, welches Spiel hier bei uns euer absoluter Liebling ist."
     },
     {
      "id": "en-10",
@@ -4125,7 +4125,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Wer von euch traut sich ans nächste Turnier? Hand hoch im Chat."
+     "text": "Wer von euch sich ans nächste Turnier traut, der hebt jetzt bitte die Hand im Chat."
     },
     {
      "id": "en-11",
@@ -4147,7 +4147,7 @@
       "break",
       "night"
      ],
-     "text": "Wer hört gerade mit Kopfhörern zu? Kurz ein Ja in den Chat."
+     "text": "Wer mir gerade mit Kopfhörern zuhört, der schreibt mir doch bitte kurz ein Ja in den Chat."
     },
     {
      "id": "en-13",
@@ -4169,7 +4169,7 @@
       "break",
       "night"
      ],
-     "text": "Wer von euch hat schon mal gegen den Pong-Bot verloren? Ehrlich sein."
+     "text": "Wer von euch hat schon mal gegen den Pong-Bot verloren, und jetzt bitte ganz ehrlich sein."
     },
     {
      "id": "en-15",
@@ -4180,7 +4180,7 @@
       "break",
       "night"
      ],
-     "text": "Kaffee oder Bier gerade? Schreibt's in den Chat."
+     "text": "Schreibt mir gern in den Chat, ob ihr gerade eher einen Kaffee oder ein Bier trinkt."
     },
     {
      "id": "en-16",
@@ -4191,7 +4191,7 @@
       "break",
       "night"
      ],
-     "text": "Grüße gehen raus ins Allgäu. Und überallhin, wo ihr gerade sitzt.",
+     "text": "Grüße gehen raus ins Allgäu und überallhin, wo ihr gerade sitzt und zuschaut.",
      "canon": "e21-gruesse-gehen-raus"
     },
     {
@@ -4203,7 +4203,7 @@
       "break",
       "night"
      ],
-     "text": "Fragen zur Liga? Ab damit in den Chat, hier liest jemand mit."
+     "text": "Wenn ihr Fragen zur Liga habt, dann ab damit in den Chat, denn hier liest jemand mit."
     },
     {
      "id": "en-18",
@@ -4213,7 +4213,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Wer spielt lieber Blitz und wer lieber Fernschach? Ich will's wissen."
+     "text": "Ich will wissen, wer von euch lieber Blitz und wer lieber Fernschach spielt, also ab in den Chat."
     }
    ],
    "emotion": [
@@ -4225,7 +4225,7 @@
       "pre_show",
       "break"
      ],
-     "text": "[laughter] Ich lieb diesen Sender."
+     "text": "[laughter] Ich lieb diesen Sender einfach, und das sag ich euch heute nicht zum letzten Mal."
     },
     {
      "id": "em-02",
@@ -4235,7 +4235,7 @@
       "pre_show",
       "break"
      ],
-     "text": "[surprise-wa] Na, schau einer an."
+     "text": "[surprise-wa] Na, da schau einer an, was hier gerade bei uns los ist."
     },
     {
      "id": "em-03",
@@ -4246,7 +4246,7 @@
       "break",
       "night"
      ],
-     "text": "[sigh] Herrlich. Einfach mal zurücklehnen."
+     "text": "[sigh] Das ist herrlich, und ich lehne mich jetzt einfach mal entspannt zurück."
     },
     {
      "id": "em-04",
@@ -4256,7 +4256,7 @@
       "pre_show",
       "break"
      ],
-     "text": "[surprise-oh] Oh, das gefällt mir."
+     "text": "[surprise-oh] Oh, das gefällt mir richtig gut, was ich hier gerade sehe."
     },
     {
      "id": "em-05",
@@ -4277,7 +4277,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Boah, macht das heute Spaß. [laughter]"
+     "text": "Boah, macht das heute einen Spaß hier bei uns im Stream. [laughter]"
     },
     {
      "id": "em-07",
@@ -4308,7 +4308,7 @@
       "break",
       "night"
      ],
-     "text": "[question-oh] Seid ihr noch dabei? Ich schon."
+     "text": "[question-oh] Seid ihr eigentlich noch mit dabei, so wie ich es auf jeden Fall bin?"
     },
     {
      "id": "em-10",
@@ -4319,7 +4319,7 @@
       "break",
       "night"
      ],
-     "text": "[sigh] Ach, ich könnt hier stundenlang zuschauen."
+     "text": "[sigh] Ach, ich könnte hier wirklich stundenlang zuschauen, ohne dass es langweilig wird."
     },
     {
      "id": "em-11",
@@ -4339,7 +4339,7 @@
       "pre_show",
       "break"
      ],
-     "text": "[surprise-yo] Jo, weiter geht's!"
+     "text": "[surprise-yo] Jo, und weiter geht es hier bei uns, als wäre nichts gewesen!"
     },
     {
      "id": "em-13",
@@ -4350,7 +4350,7 @@
       "break",
       "night"
      ],
-     "text": "[question-ei] Hey, ihr da draußen. Alles gut bei euch?"
+     "text": "[question-ei] Hey, ihr da draußen, ist bei euch eigentlich alles gut?"
     },
     {
      "id": "em-14",
@@ -4378,7 +4378,7 @@
       "pre_show",
       "break"
      ],
-     "text": "[surprise-ah] Ah, da kommt Stimmung auf."
+     "text": "[surprise-ah] Ah, da kommt jetzt so langsam richtig Stimmung bei uns auf."
     }
    ],
    "invite": [
@@ -4401,7 +4401,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Bringt eure Freunde mit. Zu zweit macht's doppelt Spaß."
+     "text": "Bringt eure Freunde einfach mit, denn zu zweit macht es gleich doppelt so viel Spaß."
     },
     {
      "id": "in-03",
@@ -4412,7 +4412,7 @@
       "break",
       "night"
      ],
-     "text": "Die Lobby ist offen. Schnappt euch einen Gegner."
+     "text": "Die Lobby ist offen, also schnappt euch einfach einen Gegner und legt direkt los."
     },
     {
      "id": "in-04",
@@ -4422,7 +4422,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Turniere findet ihr auf der Seite. Anmelden geht ganz schnell."
+     "text": "Die Turniere findet ihr auf unserer Seite, und das Anmelden geht wirklich ganz schnell."
     },
     {
      "id": "in-05",
@@ -4433,7 +4433,7 @@
       "break",
       "night"
      ],
-     "text": "Noch kein Nostr? Das ist schnell erledigt, und dann seid ihr drin."
+     "text": "Ihr habt noch kein Nostr, aber das ist schnell erledigt, und dann seid ihr direkt dabei."
     },
     {
      "id": "in-06",
@@ -4454,7 +4454,7 @@
       "break",
       "night"
      ],
-     "text": "Wer mitspielen will: {website_spoken}."
+     "text": "Wer selbst mitspielen will, findet uns ganz einfach auf {website_spoken}."
     },
     {
      "id": "in-08",
@@ -4464,7 +4464,7 @@
       "pre_show",
       "break"
      ],
-     "text": "Holt eure Leute aus dem Meetup dazu. Dann wird's erst richtig lustig."
+     "text": "Holt eure Leute aus dem Meetup dazu, denn dann wird es erst so richtig lustig."
     }
    ],
    "jokes": [
@@ -4515,7 +4515,37 @@
     "e21-ultra-geil",
     "e21-ohne-witz"
    ]
-  }
+  },
+  "canon_carriers": [
+   "Wie wir im Podcast so gern sagen, und das passt hier wirklich perfekt: {saying}",
+   "Da fällt mir der alte Spruch aus unserer Community ein, der genau hierher passt: {saying}",
+   "Ich muss bei diesem Moment an einen Satz denken, den ihr alle kennt: {saying}",
+   "In der Bitcoin-Szene gibt es dafür einen Spruch, den ich euch nicht vorenthalten will: {saying}",
+   "Wer schon länger bei EINUNDZWANZIG dabei ist, kennt diesen Satz natürlich auswendig: {saying}",
+   "Und wie heißt es bei uns so schön, wenn so etwas passiert: {saying}",
+   "Ich bring es mal mit einem Klassiker aus unserem Kanon auf den Punkt: {saying}",
+   "Dazu passt ein Spruch, den man bei uns immer wieder hört, und zwar: {saying}",
+   "Ihr wisst ja, was wir in solchen Momenten immer wieder gern zitieren: {saying}",
+   "Bei uns ist dieser Satz schon fast Kult und lautet ganz einfach so: {saying}",
+   "Ich zitier an dieser Stelle einfach mal einen echten Klassiker aus dem Podcast: {saying}",
+   "Dafür haben wir in der Community einen Spruch, der seit Jahren hält: {saying}",
+   "Wenn ich das hier so sehe, fällt mir sofort wieder dieser Spruch ein: {saying}",
+   "Ganz nach dem Motto, das wir bei EINUNDZWANZIG so lieben: {saying}",
+   "Ich halte es da ganz mit dem Spruch, den ihr bestimmt schon kennt: {saying}",
+   "Für alle, die neu dabei sind, gibt es jetzt einen Klassiker aus unserem Kanon: {saying}",
+   "Und weil es so schön passt, bringe ich jetzt noch diesen Spruch: {saying}",
+   "Unser Kanon hat für genau so einen Moment den passenden Satz parat: {saying}",
+   "Ich sag dazu nur eines, und das ist ein Spruch, der bei uns Tradition hat: {saying}",
+   "Und hier kommt wieder einer dieser Sprüche, die jeder Plebs im Schlaf aufsagen kann: {saying}",
+   "Der Spruch {saying} passt hier gerade wieder wie die Faust aufs Auge.",
+   "Den Satz {saying} hört man bei uns ständig, und heute passt er besonders gut.",
+   "Ich hab gerade wieder an den alten Spruch {saying} denken müssen, und ihr wisst warum.",
+   "Bei uns im Chat würde jetzt bestimmt jemand {saying} schreiben, und das völlig zu Recht.",
+   "Wer den Spruch {saying} noch nicht kennt, hat ab heute einen neuen Lieblingssatz.",
+   "Ich finde, der Spruch {saying} gehört eigentlich in jedes gute Bitcoin-Wohnzimmer.",
+   "Mein Lieblingssatz für so einen Moment ist und bleibt einfach {saying}",
+   "Da kann ich gar nicht anders, als euch den Spruch {saying} mitzugeben."
+  ]
  },
  "moment_lines": [
   {
@@ -4540,7 +4570,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{capture_by} schlägt {captured}, das tut weh."
+   "text": "{capture_by} schlägt gerade {captured}, und das tut auf dem Brett richtig weh."
   },
   {
    "id": "ml-chess-capture-2",
@@ -4548,7 +4578,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Zack, {capture_by} nimmt {captured} vom Brett."
+   "text": "Zack, und schon nimmt {capture_by} {captured} vom Brett, als wäre es nichts."
   },
   {
    "id": "ml-chess-exchange-1",
@@ -4612,7 +4642,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Bei {clock_low} wird die Zeit knapp."
+   "text": "Bei {clock_low} wird die Zeit auf der Uhr jetzt so langsam richtig knapp."
   },
   {
    "id": "ml-chess-clock-2",
@@ -4620,7 +4650,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Die Uhr tickt gegen {clock_low}."
+   "text": "Die Uhr tickt jetzt gegen {clock_low}, und jede Sekunde zählt auf dem Brett."
   },
   {
    "id": "ml-chess-phase-1",
@@ -4644,7 +4674,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Im Rennen liegt {race_leader} vorne."
+   "text": "Im Rennen liegt gerade {race_leader} vorne, und die anderen müssen sich jetzt beeilen."
   },
   {
    "id": "ml-race-2",
@@ -4668,7 +4698,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{race_leader} hat schon {leader_blocks_used} gesetzt."
+   "text": "{race_leader} hat in diesem Rennen schon {leader_blocks_used} gesetzt, und es geht weiter."
   },
   {
    "id": "ml-race-5",
@@ -4676,7 +4706,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{mood_dominance} zieht im Rennen davon.{?race_leader}"
+   "text": "{mood_dominance} zieht im Rennen gerade richtig davon, und die anderen schauen hinterher.{?race_leader}"
   },
   {
    "id": "ml-race-6",
@@ -4716,7 +4746,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{men_trailer} hat schon {trailer_men_lost} verloren."
+   "text": "{men_trailer} hat in dieser Partie schon {trailer_men_lost} verloren, und das sieht man auf dem Brett."
   },
   {
    "id": "ml-morris-level-1",
@@ -4732,7 +4762,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{mill_owner} hat {mills} auf dem Brett."
+   "text": "{mill_owner} hat inzwischen {mills} auf dem Brett, und das macht richtig Druck."
   },
   {
    "id": "ml-flying-1",
@@ -4772,7 +4802,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Bei Hyperbitcoinization führt {hyper_leader} mit {leader_territories}."
+   "text": "Bei Hyperbitcoinization führt gerade {hyper_leader} mit {leader_territories}, und die Karte färbt sich langsam ein."
   },
   {
    "id": "ml-hyper-leader-2",
@@ -4780,7 +4810,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{hyper_leader} hält {leader_banks}."
+   "text": "{hyper_leader} hält im Moment {leader_banks}, und das ist auf der Karte deutlich zu sehen."
   },
   {
    "id": "ml-hyper-leader-3",
@@ -4788,7 +4818,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{mood_dominance} dominiert die Karte.{?hyper_leader}"
+   "text": "{mood_dominance} dominiert gerade die ganze Karte, und die anderen kommen kaum hinterher.{?hyper_leader}"
   },
   {
    "id": "ml-hyper-duel-1",
@@ -4804,7 +4834,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{bank_by} hat eine Zentralbank gestürzt!"
+   "text": "{bank_by} hat gerade eine Zentralbank gestürzt, und darauf haben wir alle gewartet!"
   },
   {
    "id": "ml-hyper-bank-2",
@@ -4812,7 +4842,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{bank_by} stürzt die {bank_name}."
+   "text": "{bank_by} stürzt gerade die {bank_name}, und das ist für die ganze Runde ein echter Einschnitt."
   },
   {
    "id": "ml-hyper-conquests-1",
@@ -4828,7 +4858,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Nur noch {still_in} sind im Spiel."
+   "text": "Nur noch {still_in} sind in diesem Spiel übrig, und die Karte wird jetzt Zug um Zug leerer."
   },
   {
    "id": "ml-series-1",
@@ -4909,7 +4939,7 @@
    "topics": [
     "results"
    ],
-   "text": "Der längste Ballwechsel ging über {rally_hits}."
+   "text": "Der längste Ballwechsel in diesem Spiel ging über {rally_hits}, und das muss man erst mal schaffen."
   },
   {
    "id": "ml-tour-field-1",
@@ -4923,14 +4953,14 @@
    "topics": [
     "live_tournament"
    ],
-   "text": "Finale bei {tournament}: {finalist_a} gegen {finalist_b}."
+   "text": "Im Finale beim Turnier {tournament} spielen {finalist_a} und {finalist_b} jetzt gegeneinander."
   },
   {
    "id": "ml-tour-upset-1",
    "topics": [
     "live_tournament"
    ],
-   "text": "Überraschung bei {tournament}: {upset_winner} schlägt {upset_loser}."
+   "text": "Beim Turnier {tournament} schlägt {upset_winner} gerade {upset_loser}, und damit hat wohl kaum jemand gerechnet."
   },
   {
    "id": "ml-tour-upset-2",
@@ -4985,7 +5015,7 @@
     "blockfill",
     "tmnf"
    ],
-   "text": "{new_top} verdrängt {dethroned} von Platz eins."
+   "text": "{new_top} verdrängt gerade {dethroned} von Platz eins, und die Tabelle sieht jetzt ganz anders aus."
   },
   {
    "id": "ml-score-bests-1",
@@ -5001,7 +5031,7 @@
     "blockfill",
     "tmnf"
    ],
-   "text": "Heute schon {attempts_today} bei {game}."
+   "text": "Heute gab es bei {game} schon {attempts_today}, und es werden bestimmt noch mehr."
   },
   {
    "id": "ml-chess-check-3",
@@ -5025,7 +5055,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{capture_color} schlägt {captured}, das tut weh."
+   "text": "{capture_color} schlägt gerade {captured}, und das tut auf dem Brett richtig weh."
   },
   {
    "id": "ml-chess-exchange-2",
@@ -5033,7 +5063,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Was für ein Schlagabtausch: {exchange} hintereinander."
+   "text": "Was für ein Schlagabtausch auf dem Brett, denn da gab es gerade {exchange} hintereinander."
   },
   {
    "id": "ml-chess-comeback-2",
@@ -5065,7 +5095,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{clock_color} gerät in Zeitnot."
+   "text": "{clock_color} gerät jetzt in Zeitnot, und auf der Uhr wird es richtig ungemütlich."
   },
   {
    "id": "ml-chess-clock-4",
@@ -5081,7 +5111,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Wir sind {phase_in}, Zug {move}."
+   "text": "Wir befinden uns {phase_in}, und auf dem Brett steht gerade der Zug {move} an."
   },
   {
    "id": "ml-chess-losses-2",
@@ -5089,7 +5119,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Weiß hat schon {white_lost} verloren."
+   "text": "Weiß hat in dieser Partie schon {white_lost} verloren, und das merkt man auf dem Brett."
   },
   {
    "id": "ml-chess-losses-3",
@@ -5097,7 +5127,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Schwarz hat schon {black_lost} verloren."
+   "text": "Schwarz hat in dieser Partie schon {black_lost} verloren, und das merkt man auf dem Brett."
   },
   {
    "id": "ml-race-7",
@@ -5161,7 +5191,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Auf dem Brett: {mills}.{?mill_owner}"
+   "text": "Auf dem Brett stehen jetzt schon {mills}, und das verändert die ganze Partie.{?mill_owner}"
   },
   {
    "id": "ml-flying-2",
@@ -5185,7 +5215,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Auf dem Brett: schon {kings}.{?king_owner}"
+   "text": "Auf dem Brett gibt es jetzt schon {kings}, und die ziehen ab sofort in alle Richtungen.{?king_owner}"
   },
   {
    "id": "ml-hyper-leader-4",
@@ -5193,7 +5223,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Die Spitze bei Hyperbitcoinization hält {leader_territories}.{?hyper_leader}"
+   "text": "Die Spitze bei Hyperbitcoinization hält gerade jemand mit {leader_territories} auf der Karte.{?hyper_leader}"
   },
   {
    "id": "ml-hyper-leader-5",
@@ -5201,7 +5231,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Die Spitze hält {leader_banks}.{?hyper_leader}"
+   "text": "Die Spitze in dieser Runde hält gerade jemand mit {leader_banks} in der Hand.{?hyper_leader}"
   },
   {
    "id": "ml-hyper-leader-6",
@@ -5209,7 +5239,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Da dominiert jemand die Karte.{?mood_dominance}{?hyper_leader}"
+   "text": "Da dominiert gerade jemand die ganze Karte, und die anderen kommen kaum noch hinterher.{?mood_dominance}{?hyper_leader}"
   },
   {
    "id": "ml-hyper-duel-2",
@@ -5225,7 +5255,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Eine Zentralbank ist gefallen!{?bank_by}"
+   "text": "Eine Zentralbank ist gerade gefallen, und darauf haben wir alle lange gewartet!{?bank_by}"
   },
   {
    "id": "ml-hyper-bank-4",
@@ -5233,7 +5263,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Die {bank_name} ist gefallen!"
+   "text": "Die {bank_name} ist gerade gefallen, und darauf haben wir alle lange gewartet!"
   },
   {
    "id": "ml-hyper-conquests-2",
@@ -5249,7 +5279,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "In der Serie steht es {series_score}."
+   "text": "In der Serie steht es jetzt {series_score}, und es ist noch nichts entschieden."
   },
   {
    "id": "ml-series-level-2",
@@ -5257,7 +5287,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Ausgleich in der Serie: {series_level}."
+   "text": "In der Serie gibt es jetzt den Ausgleich zum {series_level}, und alles ist wieder offen."
   },
   {
    "id": "ml-series-point-2",
@@ -5272,14 +5302,14 @@
    "topics": [
     "results"
    ],
-   "text": "Proof of Pong endet {pong_score}."
+   "text": "Proof of Pong endet mit {pong_score}, und damit ist dieses Match entschieden."
   },
   {
    "id": "ml-tour-final-2",
    "topics": [
     "live_tournament"
    ],
-   "text": "Das Finale bei {tournament} steht.{?finalist_a}"
+   "text": "Das Finale beim Turnier {tournament} steht jetzt fest, und ich bin gespannt, wer es am Ende holt.{?finalist_a}"
   },
   {
    "id": "ml-tour-upset-3",
@@ -5326,7 +5356,7 @@
     "blockfill",
     "tmnf"
    ],
-   "text": "Heute schon {bests_today} bei {game}."
+   "text": "Heute gab es bei {game} schon {bests_today}, und der Tag ist noch lange nicht vorbei."
   }
  ]
 }

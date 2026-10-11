@@ -124,6 +124,9 @@ final class PatternScripts
     /** A canon wording is spoken as a line of its own only up to this many words. */
     private const CANON_MAX_WORDS = 14;
 
+    /** The slot of a canon carrier (caster.json, `pattern_scripts.canon_carriers`) the saying goes into. */
+    public const SAYING_SLOT = '{saying}';
+
     /** Canon wordings that would say something untrue or unwanted on this stream (donations, money advice, politics). */
     private const CANON_DENY = '/spend|gebühr|startgeld|\bfee|kauf|steuer|raub|polit|regierung|krieg|nazi|hitler|tod\b|sterb|drogen|sex|religi|kirche|wahl|geld ist|der woche|podcast|folge/iu';
 
@@ -156,6 +159,16 @@ final class PatternScripts
 
     /** @var list<string>|null the canon entries a pattern script may speak (canonPool()) */
     private ?array $canonPool = null;
+
+    /**
+     * Whether template text may reach the voice at all (`patterns.enabled`, off by default since the user, 2026-10-12:
+     * "KEINE SICH WIEDERHOLENDEN FÜLLSÄTZE MEHR: ALLES NUR NOCH MIT KI"): pattern scenes, the pattern stand-ins of the
+     * segments and chat reactions, and the fillers. Off, ScriptQueue::enqueue() refuses them.
+     */
+    public static function enabled(): bool
+    {
+        return config('tv.commentary.patterns.enabled') === true;
+    }
 
     public function __construct(
         private readonly VoiceCanon $canon,
@@ -473,7 +486,7 @@ final class PatternScripts
     {
         [$min, $max] = self::sentenceRange($long);
         $maxCanon = $long ? self::LONG_MAX_CANON : self::MAX_CANON;
-        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
+        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
         $sequence = (int) Cache::get(self::SEQUENCE_KEY, 0) + $try;
         $used = $this->recentFlavour();
         $spoken = $this->recentSentences();
@@ -608,7 +621,7 @@ final class PatternScripts
         $saidFacts = RecentlySaid::active(RecentlySaid::FACTS, $now);
         $saidNames = RecentlySaid::active(RecentlySaid::NAMES, $now);
         $saidEntities = RecentlySaid::active(RecentlySaid::ENTITIES, $now);
-        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
+        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
 
         foreach ($this->rotate($slots['items'], $sequence) as $item) {
             $lines = [];
@@ -686,18 +699,85 @@ final class PatternScripts
 
         // A stride through the pool, so consecutive scripts quote far-apart entries.
         $id = $ids[($sequence * 37) % count($ids)];
-        $wording = mb_ucfirst(trim((string) $this->canon->find($id)['wording']));
+        $line = $this->spokenCanon($id, $sequence);
 
-        return ['id' => $id, 'wording' => preg_match('/[.!?…]$/u', $wording) === 1 ? $wording : $wording.'.'];
+        return $line === null ? null : ['id' => $id, 'wording' => $line];
+    }
+
+    /**
+     * A canon entry as one complete spoken sentence (user 2026-10-12: "komplette
+     * Sätze ab jetzt nur noch. Auch die Sprüche!"): a wording that is one
+     * sentence of at least ScriptGuard::minWords() words with its own closing
+     * mark stands as it is; any other (a short saying like "Few understand",
+     * a fragment) goes into a carrier sentence of `canon_carriers`, its words
+     * kept in order, so the fact guard still finds it. The carrier is picked
+     * by the entry and `$turn` (no side effect, the same id and turn give the
+     * same line). Null for a wording of several sentences (one of them would
+     * be a fragment) or one the carrier would push over the word limit.
+     */
+    public function spokenCanon(string $id, int $turn = 0): ?string
+    {
+        $entry = $this->canon->find($id);
+        $wording = trim((string) preg_replace('/\s+/u', ' ', (string) ($entry['wording'] ?? '')));
+
+        if ($wording === '' || count(ScriptGuard::runs($wording)) !== 1) {
+            return null;
+        }
+
+        $words = count(preg_split('/\s+/u', $wording, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
+
+        if ($words >= ScriptGuard::minWords() && preg_match('/[.!?]$/u', $wording) === 1) {
+            return $words <= $maxWords ? mb_ucfirst($wording) : null;
+        }
+
+        $carriers = $this->carriers();
+        if ($carriers === []) {
+            return null;
+        }
+
+        $question = preg_match('/\?$/u', $wording) === 1;
+        $start = (crc32($id) + $turn * 7) % count($carriers);
+
+        for ($i = 0; $i < count($carriers); $i++) {
+            $carrier = $carriers[($start + $i) % count($carriers)];
+            $atEnd = str_ends_with($carrier, self::SAYING_SLOT);
+
+            // A question stands only at the end; inside a sentence its mark would break it. Carrier and saying
+            // together keep to one comma, or the script's comma rule (commaChain()) would turn the line down.
+            if (($question && ! $atEnd) || substr_count($carrier, ',') + substr_count($wording, ',') > 1) {
+                continue;
+            }
+
+            $saying = $atEnd
+                ? mb_ucfirst(preg_match('/[.!?…]$/u', $wording) === 1 ? $wording : $wording.'.')
+                : rtrim($wording, '.!…');
+            $line = str_replace(self::SAYING_SLOT, $saying, $carrier);
+
+            return count(preg_split('/\s+/u', ScriptGuard::withoutMarkers($line), -1, PREG_SPLIT_NO_EMPTY) ?: []) <= $maxWords ? $line : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * The carrier sentences a short canon saying is spoken in (caster.json, `pattern_scripts.canon_carriers`).
+     *
+     * @return list<string>
+     */
+    public function carriers(): array
+    {
+        return array_values(array_filter((array) ($this->data()['pattern_scripts']['canon_carriers'] ?? []), fn (mixed $carrier): bool => is_string($carrier) && str_contains($carrier, self::SAYING_SLOT)));
     }
 
     /**
      * The canon entries a pattern script may speak: the curated jokes
      * (`flavour.jokes`) and every verified entry of the full canon whose
-     * wording stands as a spoken line (at most CANON_MAX_WORDS words and one
-     * comma, no bracket, colon, quote, emoji, digit or hash, no real person's
-     * name, nothing of CANON_DENY). The fact guard still checks each line;
-     * one that fails is dropped for the day.
+     * wording stands as a spoken line (one sentence of at most CANON_MAX_WORDS
+     * words and one comma, no bracket, colon, quote, emoji, digit or hash, no
+     * real person's name, nothing of CANON_DENY); spokenCanon() makes each a
+     * complete sentence. The fact guard still checks each line; one that
+     * fails is dropped for the day.
      *
      * @return list<string>
      */
@@ -715,7 +795,7 @@ final class PatternScripts
             $lower = mb_strtolower($wording);
             $words = count(preg_split('/\s+/u', trim($wording), -1, PREG_SPLIT_NO_EMPTY) ?: []);
 
-            if ($words < 2 || $words > self::CANON_MAX_WORDS || substr_count($wording, ',') > 1 || preg_match('/[#@()\[\]*:;„“”"»«…\/\d]|\p{So}|\p{Cs}/u', $wording) === 1
+            if ($words < 2 || $words > self::CANON_MAX_WORDS || count(ScriptGuard::runs($wording)) !== 1 || substr_count($wording, ',') > 1 || preg_match('/[#@()\[\]*:;„“”"»«…\/\d]|\p{So}|\p{Cs}/u', $wording) === 1
                 || preg_match(self::CANON_DENY, $wording) === 1 || preg_match(ScriptQueue::SIGN_OFF, $wording) === 1 || preg_match('/(?<![\p{L}])\p{L}{1,3}\.\s/u', $wording) === 1 || in_array($entry['type'], ['segment', 'clip'], true)
                 || array_filter($persons, fn (string $person): bool => str_contains($lower, $person)) !== []) {
                 continue;
@@ -724,7 +804,7 @@ final class PatternScripts
             $ids[] = $id;
         }
 
-        return $this->canonPool = array_values(array_unique($ids));
+        return $this->canonPool = array_values(array_filter(array_unique($ids), fn (string $id): bool => $this->spokenCanon($id) !== null));
     }
 
     /**
@@ -750,7 +830,7 @@ final class PatternScripts
         }
 
         return array_values(array_unique([
-            ...$this->scriptGuard->check($script['text'], $min, $max, (int) config('tv.commentary.scripts.max_words_per_sentence', 16), $openings),
+            ...$this->scriptGuard->check($script['text'], $min, $max, (int) config('tv.commentary.scripts.max_words_per_sentence', 32), $openings),
             ...$names,
             ...$repeats,
             ...$guard,
@@ -765,9 +845,9 @@ final class PatternScripts
     private static function sentenceRange(bool $long): array
     {
         $range = $long ? (array) config('tv.commentary.length.scene_long', []) : (array) config('tv.commentary.patterns.sentences', []);
-        $min = (int) ($range['min'] ?? ($long ? 8 : 3));
+        $min = (int) ($range['min'] ?? ($long ? 6 : 3));
 
-        return [$min, max($min, (int) ($range['max'] ?? ($long ? 14 : 6)))];
+        return [$min, max($min, (int) ($range['max'] ?? ($long ? 10 : 6)))];
     }
 
     /** The canon entry a part quotes: a joke ("canon:<id>") or a flavour line that carries one. */
@@ -785,7 +865,7 @@ final class PatternScripts
      */
     private function dropCulprits(array $script, array $facts, array $violations): void
     {
-        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
+        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
         $templates = $this->allTemplates();
 
         foreach ($script['parts'] as $id => $line) {
@@ -859,11 +939,11 @@ final class PatternScripts
         return array_slice($list, $offset, null, true) + array_slice($list, 0, $offset, true);
     }
 
-    /** Whether a sentence of the text carries more than one comma (a decimal comma not counted): spoken, a comma chain sounds choppy. */
+    /** Whether a sentence of the text carries more than `max_commas` commas (a decimal comma not counted): spoken, a comma chain sounds choppy. */
     public static function commaChain(string $text): bool
     {
         foreach (ScriptGuard::lines($text) as $line) {
-            if (preg_match_all('/(?<!\d),|,(?!\d)/u', ScriptGuard::withoutMarkers($line)) > 1) {
+            if (preg_match_all('/(?<!\d),|,(?!\d)/u', ScriptGuard::withoutMarkers($line)) > ScriptGuard::maxCommas()) {
                 return true;
             }
         }
@@ -920,7 +1000,7 @@ final class PatternScripts
     {
         return array_values(array_filter(array_map(
             fn (string $sentence): string => trim((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/[^\p{L}\p{N} ]+/u', ' ', mb_strtolower(ScriptGuard::withoutMarkers($sentence))))),
-            ScriptGuard::lines(ScriptGuard::splitSentences($line, (int) config('tv.commentary.scripts.max_words_per_sentence', 16))),
+            ScriptGuard::lines(ScriptGuard::splitSentences($line, (int) config('tv.commentary.scripts.max_words_per_sentence', 32))),
         )));
     }
 
