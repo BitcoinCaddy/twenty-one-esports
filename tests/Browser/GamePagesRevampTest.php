@@ -153,12 +153,15 @@ dataset('game pages', [
     'strongest' => ['/ladder/strongest', 'ladder-strongest', 'ladder'],
 ]);
 
-test('a game page stays quiet and inside the page for an admin at 390 and 1440, through its shared template', function (string $path, string $name, ?string $template) {
+test('a game page stays quiet and inside the page for an admin from 390 to 1920, through its shared template', function (string $path, string $name, ?string $template) {
     $admin = gamePagesLeague();
 
-    foreach ([1440, 390] as $width) {
+    // 1440 and 390 for the side-by-side with the boards; 768, 1024 and 1920 for the squeeze between them.
+    foreach ([1440, 390, 768, 1024, 1920] as $width) {
         $page = gamePagesOpen($admin, $path, $width);
-        gamePagesShot($page, "p4-{$name}-{$width}");
+        if (in_array($width, [1440, 390], true)) {
+            gamePagesShot($page, "p4-{$name}-{$width}");
+        }
         gamePagesQuiet($page, "{$name} {$width}");
 
         if ($template !== null && $template !== 'ladder') {

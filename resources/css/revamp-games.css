@@ -660,3 +660,14 @@
         transition: none;
     }
 }
+
+/*
+ * Unlayered, beside app.css's own unlayered `.hh-seats.is-wide`: the next tournament's poster sits in the main column
+ * of the lobby template (8 of 12). Its 16 seats to a row need that column at xl; at 1024 px they were 11 px each and cut
+ * their "take your seat" icon (GamePagesRevampTest squeeze), so below xl it keeps 8 to a row.
+ */
+@media (width < 80rem) {
+    .gp-foot .hh-seats.is-wide {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
+}

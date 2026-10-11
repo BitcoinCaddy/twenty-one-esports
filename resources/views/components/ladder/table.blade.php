@@ -19,9 +19,9 @@
         <tr>
             <th scope="col" class="w-14">#</th>
             <th scope="col">{{ __('Player') }}</th>
-            <th scope="col" class="is-r">{{ $valueLabel ?? __('Elo') }}</th>
+            <th scope="col" class="is-r whitespace-nowrap">{{ $valueLabel ?? __('Elo') }}</th>
             @if ($recordLabel !== false)
-                <th scope="col" class="is-r max-sm:hidden">{{ $recordLabel ?? __('Win record') }}</th>
+                <th scope="col" class="is-r whitespace-nowrap max-sm:hidden">{{ $recordLabel ?? __('Win record') }}</th>
             @endif
         </tr>
     </thead>
@@ -45,9 +45,9 @@
                         <span class="text-ink-3">{{ __('Deleted account') }}</span>
                     @endif
                 </td>
-                <td class="is-r"><b class="font-display text-lg tabular-nums">{{ $format($row['value']) }}</b></td>
+                <td class="is-r whitespace-nowrap"><b class="font-display text-lg tabular-nums">{{ $format($row['value']) }}</b></td>
                 @if ($recordLabel !== false)
-                    <td class="is-r text-ink-2 max-sm:hidden">{{ $row['record'] ?? '' }}</td>
+                    <td class="is-r whitespace-nowrap text-ink-2 max-sm:hidden">{{ $row['record'] ?? '' }}</td>
                 @endif
             </tr>
         @endforeach
