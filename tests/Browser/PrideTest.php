@@ -164,8 +164,9 @@ test('the player card sits on the player page at 390 and 1440, its picture loade
         $label = $width.($viewer ? ' player' : ' guest');
         $page = p4PridePage($viewer, route('players.show', $this->player->npub, false), $width, $height);
         // Lazy (R7): the placeholder first, the card after its own roundtrip once it scrolls into view.
-        BrowserWait::until($page, '() => document.querySelector("[data-test=player-pride-card-placeholder]") !== null', 5_000);
-        $page->evaluate('() => document.querySelector("[data-test=player-pride-card-placeholder]").scrollIntoView({ block: "center" })');
+        // When the placeholder is already in the first screen, the card may have arrived before this line runs.
+        BrowserWait::until($page, '() => document.querySelector("[data-test=player-pride-card-placeholder], [data-test=player-pride-card]") !== null', 5_000);
+        $page->evaluate('() => document.querySelector("[data-test=player-pride-card-placeholder], [data-test=player-pride-card]").scrollIntoView({ block: "center" })');
         BrowserWait::until($page, '() => document.querySelector("[data-test=player-pride-card]") !== null', 10_000);
         $page->evaluate('() => document.querySelector("[data-test=player-pride-card]").scrollIntoView({ block: "center" })');
         BrowserWait::until($page, '() => { const img = document.querySelector("[data-test=player-pride-card-image]"); return img.complete && img.naturalWidth === 1200 && img.naturalHeight === 630; }', 10_000);

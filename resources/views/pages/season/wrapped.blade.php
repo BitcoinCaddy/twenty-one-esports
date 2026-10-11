@@ -1,5 +1,5 @@
 {{--
-    Season Wrapped as a story (plan "KI-Stimme der Liga", P4; PrideController::wrapped()). The season card's facts
+    Season Wrapped as a story (plan "KI-Stimme der Liga", P4; PrideController::wrapped(); board SeasonWrapped.dc.html, desktop and phone). The season card's facts
     (ShareMoments::wrapped(), PrideMoments::wrapped()) page by page: who and which season, the blocks and sats, the
     games, the best rank, the tournaments won (only when there are any) and a last page with a line and the card.
 

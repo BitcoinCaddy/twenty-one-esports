@@ -11,7 +11,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /*
- * The player card on the player page (plan "KI-Stimme der Liga", P4; PrideCard::player()): the trading-card picture of
+ * The player card on the player page (plan "KI-Stimme der Liga", P4, board PlayerPrideCard.dc.html; PrideCard::player()): the trading-card picture of
  * the player's real numbers, its title from PrideVoice (the model's once written and switched on, else
  * PrideMoments::playerTitle()). On the own page: post it (share-button, `player-card`) and the downloads. For
  * everybody: the season's Wrapped story, when the player played the season. Nothing for a player without a result, a

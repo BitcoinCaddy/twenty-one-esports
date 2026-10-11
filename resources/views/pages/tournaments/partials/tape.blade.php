@@ -1,5 +1,5 @@
 {{--
-    The tale of the tape before a final (plan "KI-Stimme der Liga", P4; PrideMoments::upcomingFinal(), PrideCard::tape()):
+    The tale of the tape before a final (plan "KI-Stimme der Liga", P4, board TournamentTape.dc.html; PrideMoments::upcomingFinal(), PrideCard::tape()):
     both finalists side by side, five rows from the league's records (Elo and record in the tournament's ladder, wins
     in this tournament, tournaments won before, seed). The leading value of a row is bright AND underlined, with its
     word for screen readers (colour never carries it alone, WCAG 1.4.1). The line under it comes from PrideVoice (the
