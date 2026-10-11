@@ -181,6 +181,16 @@ class ClipSpool
                     return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
                 }
             }
+
+            // Nothing for this phase: any ready commentary beats silence (user 2026-10-11: "große Lücken immer" — clips
+            // of another phase waited while the stream played only music).
+            // A clip about a live match stays with live match slides: wrong context is worse than music.
+            $clip = (clone $ready)->where('kind', CasterScript::SCENE)
+                ->when($phase !== ScenePhase::LIVE_MATCH, fn ($query) => $query->where('phase', '!=', ScenePhase::LIVE_MATCH))
+                ->orderBy('id')->first();
+            if ($clip !== null) {
+                return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
+            }
         } else {
             // The filler played longest ago (updated_at moves on every play).
             $filler = CasterClip::query()->where('kind', CasterScript::FILLER)->where('status', CasterClip::READY)->orderBy('updated_at')->orderBy('id')->first();

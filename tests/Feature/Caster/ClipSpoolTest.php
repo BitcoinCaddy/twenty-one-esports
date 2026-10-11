@@ -132,8 +132,9 @@ it('plays the clip about the slide on air first, and any clip of the phase witho
     expect(casterSpool()->next(ScenePhase::BREAK, $now, SceneTopic::LADDERS)['clip']?->id)->toBe($ladderClip->id)
         ->and(casterSpool()->next(ScenePhase::BREAK, $now, SceneTopic::TMNF)['clip']?->id)->toBe($first->id)
         ->and(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($first->id)
-        // The topic never pulls a clip out of its phase.
-        ->and(casterSpool()->next(ScenePhase::LIVE_MATCH, $now, SceneTopic::LADDERS)['clip'])->toBeNull();
+        // Without a clip of its own phase a slide takes any other ready commentary rather than staying silent
+        // (user 2026-10-11: "große Lücken immer").
+        ->and(casterSpool()->next(ScenePhase::LIVE_MATCH, $now, SceneTopic::LADDERS)['clip']?->id)->toBe($first->id);
 });
 
 it('lets the calm phases stand in for each other', function () {

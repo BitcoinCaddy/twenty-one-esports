@@ -123,6 +123,16 @@ final class SceneDirector
         }
 
         if ($planner->slotNumber() === $this->slotNumber) {
+            // The gap is over and the slide is still on air: the next clip starts now instead of waiting for the next
+            // slide (user 2026-10-11: "große Lücken immer" — up to 49 s of music with 300 s of commentary ready).
+            if ($this->clip === null && $now >= $this->quietUntil) {
+                $decision = $this->spool->next(ScenePhase::forSlot($slot, CarbonImmutable::createFromTimestamp($now)), CarbonImmutable::createFromTimestamp($now), SceneTopic::forSlot($slot));
+
+                if ($decision['clip'] !== null) {
+                    $this->play($planner, $decision['clip'], $now);
+                }
+            }
+
             return $this->caption;
         }
 

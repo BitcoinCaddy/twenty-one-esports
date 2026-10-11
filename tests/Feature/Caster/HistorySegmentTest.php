@@ -165,8 +165,9 @@ it('plays a segment after the live clips, on calm slots only, and never two with
     expect($spool->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($live->id);
     $spool->played($live);
 
-    expect($spool->next(ScenePhase::LIVE_MATCH, $now)['clip'])->toBeNull()
-        ->and($spool->next(ScenePhase::AFTER_RESULT, $now)['clip'])->toBeNull()
+    // Segments stay on calm slots; a busy slot without a clip of its own takes the scene clip instead of music.
+    expect($spool->next(ScenePhase::LIVE_MATCH, $now)['clip']?->id)->toBe($scene->id)
+        ->and($spool->next(ScenePhase::AFTER_RESULT, $now)['clip']?->id)->toBe($scene->id)
         ->and($spool->next(ScenePhase::BREAK, $now))->toMatchArray(['source' => 'segment'])
         ->and($spool->next(ScenePhase::NIGHT, $now)['clip']?->id)->toBe($history->id);
 
