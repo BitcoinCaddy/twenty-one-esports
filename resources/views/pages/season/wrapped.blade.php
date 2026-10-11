@@ -124,7 +124,7 @@
                                             @endif
                                         @endforeach
                                     </span>
-                                    <ul class="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[14px]">
+                                    <ul class="m-0 flex list-none flex-col gap-1 p-0 text-[14px]">{{-- one per line (board SeasonWrapped): a row ran 16 px past a 390 story --}}
                                         @foreach ($split as $part)
                                             <li class="flex items-center gap-2"><span class="{{ $part['class'] }} size-2.5 rounded-[2px]" aria-hidden="true"></span>{{ $part['label'] }}</li>
                                         @endforeach
