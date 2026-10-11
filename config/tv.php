@@ -87,10 +87,11 @@ return [
         'ai' => (bool) env('TV_COMMENTARY_AI', true),
 
         'scripts' => [
-            'ahead_seconds' => 150,
+            'ahead_seconds' => 300,
             'words_per_second' => 2.4,
             'sentences' => ['min' => 2, 'max' => 8],
             'live_sentences' => ['min' => 1, 'max' => 3],
+            'chat_sentences' => ['min' => 1, 'max' => 8, 'ask' => 4],
             'max_words_per_sentence' => 16,
             'max_commas' => 2,
             'max_chars' => 900,
@@ -144,10 +145,10 @@ return [
             'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
             // airtime it did before the gap (180 and 60), and the queue writes half as much ahead (ahead_seconds).
-            'target_seconds' => 90,
+            'target_seconds' => 240,
             'filler_below_seconds' => 30,
             // Music only between two clips, a random length in this range (user 2026-10-11); a live moment cuts it short.
-            'gap_seconds' => ['min' => (float) env('TV_COMMENTARY_GAP_MIN', 20), 'max' => (float) env('TV_COMMENTARY_GAP_MAX', 30)],
+            'gap_seconds' => ['min' => (float) env('TV_COMMENTARY_GAP_MIN', 6), 'max' => (float) env('TV_COMMENTARY_GAP_MAX', 12)],
         ],
 
         'voicestudio' => [
