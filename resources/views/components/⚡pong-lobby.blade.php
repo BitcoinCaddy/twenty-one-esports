@@ -223,14 +223,14 @@ new class extends Component {
     $looking = $user?->looking_to_play === PongInvites::LOOKING;
 @endphp
 
-<section class="@container flex flex-col gap-4 rounded-lg bg-card p-5 shadow-ring" aria-labelledby="pong-live-h" data-test="pong-lobby"
+<section class="@container flex flex-col gap-4 rounded-[4px] border border-hairline bg-ground p-4" aria-labelledby="pong-live-h" data-test="pong-lobby"
          data-server-now="{{ now()->getTimestampMs() }}" @if ($checkAt !== null) data-check-at="{{ $checkAt }}" @endif
          x-data="boardLobby(@js(['userId' => $user?->id, 'lookingKey' => PongInvites::LOOKING, 'looking' => $user?->looking_to_play === PongInvites::LOOKING, 'fallback' => $this::FALLBACK_SECONDS, 'events' => ['started' => '.pong.match-started', 'invite' => '.pong.invite'], 'newTab' => true]))">
     {{-- The card's head carries its state: Looking to play is the switch others see (P9: in the first screen on a phone, too). --}}
     <div class="flex flex-col gap-2">
         <span class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             {{-- Below md the segmented control above names the card. --}}
-            <h2 id="pong-live-h" class="m-0 scroll-mt-24 font-display text-xl font-bold max-md:sr-only">{{ __('Live 1v1') }}</h2>
+            <h2 id="pong-live-h" class="m-0 scroll-mt-24 text-[14px] font-bold">{{ __('Live 1v1') }}</h2>
             @if ($user)
                 <x-lobby.looking-toggle :on="$user->looking_to_play === PongInvites::LOOKING" />
             @endif

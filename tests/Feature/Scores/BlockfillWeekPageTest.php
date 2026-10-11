@@ -123,8 +123,9 @@ test('scores/blockfill leads with Play now and this week, and links the rules, t
         ->assertSeeHtml('data-test="time-to-beat"')
         ->getContent();
 
+    // The game page (template T1, GameScore.dc.html): Play in the ways to play, the rules in the game bar's Regeln tab.
     expect(blockfillPageAttr($html, 'play-now'))->toBe(route('stacker.play'))
-        ->and(blockfillPageAttr($html, 'how-it-works'))->toBe(route('rules').'#blockfill')
+        ->and(blockfillPageAttr($html, 'ctx-rules'))->toBe(route('rules').'#blockfill')
         ->and(blockfillPageAttr($html, 'nav-this-week'))->toBe(route('tournaments.scores', $this->weeks->current()))
         ->and(blockfillPageAttr($html, 'nav-last-week'))->toBe(route('tournaments.scores', $this->weeks->previous()))
         ->and(blockfillPageAttr($html, 'nav-points'))->toBe(route('scores.show', Blockfill::SLUG).'#points')

@@ -147,15 +147,50 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
     }
 @endphp
 
-@php($chatRail = $tmnf && \App\Support\GameChat\GameChannels::has($this->game))
-<div @class(['flex flex-col gap-6 px-4 pt-6 pb-12 lg:gap-8 lg:px-12 lg:pt-8', 'chat-rail-host xl:[--chat-rail-top:2rem] xl:[--chat-rail-bottom:3rem]' => $chatRail]) data-test="score-game" style="--game: {{ $score->assets()->colour }}">
+@php
+    $chatRail = \App\Support\GameChat\GameChannels::has($this->game);
+@endphp
+{{-- The lobby template T1 (x-game.page; GameScore.dc.html for Blockfill): game bar, hero, Spielarten, this week's board, the leaderboards and the points ladder; the chat on the right. --}}
+{{-- Blockfill's play field is its own page (stacker.play, the "Spielen" tab); this page is its leaderboard tab. --}}
+<x-game.page :game="$this->game" :active="$blockfill ? 'leaderboard' : 'play'" data-test="score-game" :mode="$blockfill && $week !== null ? __('Week :week', ['week' => (int) $week->starts_at->copy()->timezone(\App\Support\Stacker\BlockfillWeeks::TIMEZONE)->format('W')]) : null"
+             :lede="__('Everyone plays alone, as often as they like, for the best value on the course inside the window. No lobby, no opponent to wait for. Each leaderboard\'s places score points on the ladder below.')">
     @if ($blockfill)
-        {{-- Blockfill: the game first (Play now), then this week's board, then the way around the weeks. --}}
-        @include('pages.scores.partials.blockfill-hero', ['heading' => $name, 'week' => $week, 'standings' => $weekStandings, 'metric' => $weekMetric])
+        <x-slot:primary>
+            <a href="{{ route('stacker.play') }}" class="rv-b" data-test="game-primary">{{ __('Start a ranked run') }}</a>
+        </x-slot:primary>
+        <x-slot:hero>
+            @include('pages.scores.partials.game-hero', ['heading' => $name, 'week' => $week, 'standings' => $weekStandings, 'metric' => $weekMetric])
+        </x-slot:hero>
+    @elseif ($tmnf)
+        <x-slot:hero>
+            @include('pages.scores.partials.tmnf-hero', ['heading' => $name, 'week' => $week, 'standings' => $weekStandings, 'metric' => $weekMetric, 'track' => $tmnfTrack])
+        </x-slot:hero>
+    @endif
 
-        <section aria-labelledby="week-h" class="flex flex-col gap-3 rounded-lg bg-card px-2 py-4 lg:px-5" @if ($week) wire:key="running-{{ $week->id }}" @endif data-test="score-running">
+    @if ($blockfill)
+        {{-- Spielarten (GameScore.dc.html): the ranked run of the week and the practice run, both on the play field. --}}
+        <x-slot:lead>
+        <section class="gp-panel gp-modes" aria-labelledby="play-h" data-test="play">
+            <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
+            <ul role="list" class="m-0 flex list-none flex-col p-0">
+                <li>
+                    <x-chess.lobby-tile :label="__('Ranked run of the week')" :action="__('Start run')" variant="primary" :href="route('stacker.play')" data-test="play-now">
+                        <x-slot:detail>{{ $week !== null ? __('counts for week :week, with a replay', ['week' => (int) $week->starts_at->copy()->timezone(\App\Support\Stacker\BlockfillWeeks::TIMEZONE)->format('W')]) : __('Next week starts soon. Ranked runs count again once it is open.') }}</x-slot:detail>
+                        <x-slot:meta>@if ($week !== null){{ __('Week :week', ['week' => (int) $week->starts_at->copy()->timezone(\App\Support\Stacker\BlockfillWeeks::TIMEZONE)->format('W')]) }}@endif</x-slot:meta>
+                    </x-chess.lobby-tile>
+                </li>
+                <li>
+                    <x-chess.lobby-tile :label="__('Practice run')" :action="__('Practise')" :href="route('stacker.play')" data-test="play-practice">
+                        <x-slot:detail>{{ __('never counts, also for guests') }}</x-slot:detail>
+                    </x-chess.lobby-tile>
+                </li>
+            </ul>
+        </section>
+        </x-slot:lead>
+
+        <section aria-labelledby="week-h" class="gp-panel flex flex-col gap-3 px-2 py-4 lg:px-4" @if ($week) wire:key="running-{{ $week->id }}" @endif data-test="score-running">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 lg:px-0">
-                <h2 id="week-h" class="m-0 text-[15px] font-bold">{{ $week !== null ? BlockfillWeeks::title($week) : __('This week') }}</h2>
+                <h2 id="week-h" class="gp-h">{{ $week !== null ? BlockfillWeeks::title($week) : __('This week') }}</h2>
                 @if ($week !== null)
                     <a href="{{ route('tournaments.scores', $week) }}" class="inline-flex min-h-11 items-center text-[13px] font-bold text-ink underline decoration-edge underline-offset-4 hover:decoration-ink" data-test="score-full-table">{{ __('Full table') }}</a>
                 @endif
@@ -172,14 +207,8 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
 
         @include('pages.scores.partials.blockfill-nav', ['week' => null])
     @elseif ($tmnf)
-        @include('pages.scores.partials.tmnf-hero', ['heading' => $name, 'week' => $week, 'standings' => $weekStandings, 'metric' => $weekMetric, 'track' => $tmnfTrack])
 
-        {{-- TMNF's global chat (2026-10-03, every game has one): right under the hero and its way in, from xl the side column. --}}
-        @if ($chatRail)
-            <div class="chat-rail"><livewire:game-channel :game="$this->game" :wire:key="'game-channel-'.$this->game" /></div>
-        @endif
-
-        <section aria-labelledby="week-h" class="flex flex-col gap-3 rounded-lg bg-card px-2 py-4 lg:px-5" @if ($week) wire:key="running-{{ $week->id }}" @endif data-test="score-running">
+        <section aria-labelledby="week-h" class="flex flex-col gap-3 rounded-[4px] bg-card px-2 py-4 lg:px-5" @if ($week) wire:key="running-{{ $week->id }}" @endif data-test="score-running">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 lg:px-0">
                 <h2 id="week-h" class="m-0 text-[15px] font-bold">{{ $week !== null ? $week->title() : __('This week') }}</h2>
                 @if ($week !== null)
@@ -199,22 +228,19 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
 
         @include('pages.scores.partials.tmnf-join', ['week' => $week, 'track' => $tmnfTrack])
     @else
-    <header class="flex flex-col gap-2">
-        <h1 class="m-0 font-display text-[28px] leading-[1.15] font-bold lg:text-4xl">{{ $name }}</h1>
-        <p class="m-0 max-w-[68ch] text-[13px] leading-normal text-ink-2">{{ __('Everyone plays alone, as often as they like, for the best value on the course inside the window. No lobby, no opponent to wait for. Each leaderboard\'s places score points on the ladder below.') }}</p>
+        {{-- Any other score game: the template's hero carries its name and line; its modes and how to start. --}}
         @include('pages.scores.partials.play-auto', ['slug' => $this->game, 'class' => 'pt-1'])
         <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
             @foreach ($score->modes() as $mode)
-                <li class="inline-flex min-h-8 items-center gap-2 rounded-md bg-card px-3 text-xs text-ink-2" wire:key="mode-{{ $mode->slug }}">
+                <li class="rv-tag" wire:key="mode-{{ $mode->slug }}">
                     <b class="text-ink">{{ __($mode->name) }}</b>{{ $score->metric($mode)->lowerIsBetter() ? __('the fastest time wins') : __('the highest score wins') }}
                 </li>
             @endforeach
         </ul>
-    </header>
     @endif
 
     <section aria-labelledby="boards-h" class="flex flex-col gap-3">
-        <h2 id="boards-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('Leaderboards') }}</h2>
+        <h2 id="boards-h" class="gp-h">{{ __('Leaderboards') }}</h2>
         @if ($this->leaderboards->isEmpty())
             <x-empty-state :heading="__('No leaderboard yet')" :text="__('The next one shows up here as soon as it is published.')">
                 <x-button :href="route('tournaments.index')" variant="secondary">{{ __('All tournaments') }}</x-button>
@@ -225,7 +251,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
                     @php($window = ScoreWindow::of($tournament))
                     <li wire:key="board-{{ $tournament->id }}" data-test="score-board-card">
                         {{-- A Blockfill week opens on its board; any other leaderboard on its tournament page --}}
-                        <a href="{{ $blockfill && ! $tmnf ? route('tournaments.scores', $tournament) : route('tournaments.show', $tournament) }}" class="flex h-full flex-col gap-2 rounded-lg bg-card p-4 text-ink shadow-ring hover:text-ink hover:shadow-[inset_0_0_0_1px_var(--color-btc)]">
+                        <a href="{{ $blockfill && ! $tmnf ? route('tournaments.scores', $tournament) : route('tournaments.show', $tournament) }}" class="flex h-full flex-col gap-2 rounded-[4px] bg-card p-4 text-ink shadow-ring hover:text-ink hover:shadow-[inset_0_0_0_1px_var(--color-btc)]">
                             {{-- The title wraps rather than cutting a translated name short --}}
                             <span class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                                 <b class="min-w-0 text-[15px] [overflow-wrap:anywhere]" data-test="score-board-title">{{ BlockfillWeeks::title($tournament) }}</b>
@@ -247,7 +273,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
         @continue($week !== null && $tournament->is($week))
         @php($shareMoment = app(\App\Support\Stacker\BlockfillMoments::class)->shareableOn(auth()->user(), $tournament))
         @php($shareable = $shareable || $shareMoment !== null)
-        <section aria-labelledby="running-h-{{ $tournament->id }}" class="flex flex-col gap-3 rounded-lg bg-card px-2 py-4 lg:px-5" wire:key="running-{{ $tournament->id }}" data-test="score-running">
+        <section aria-labelledby="running-h-{{ $tournament->id }}" class="flex flex-col gap-3 rounded-[4px] bg-card px-2 py-4 lg:px-5" wire:key="running-{{ $tournament->id }}" data-test="score-running">
             <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-2 lg:px-0">
                 <h2 id="running-h-{{ $tournament->id }}" class="m-0 text-[15px] font-bold">{{ BlockfillWeeks::title($tournament) }}</h2>
                 <a href="{{ route('tournaments.scores', $tournament) }}" class="inline-flex min-h-11 items-center text-[13px] font-bold text-ink underline decoration-edge underline-offset-4 hover:decoration-ink">{{ __('Full table') }}</a>
@@ -262,7 +288,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
 
     <section id="points" aria-labelledby="points-h" class="flex scroll-mt-24 flex-col gap-3">
         <div class="flex flex-col gap-2">
-            <h2 id="points-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('Points ladder') }}</h2>
+            <h2 id="points-h" class="gp-h">{{ __('Points ladder') }}</h2>
             {{-- The points per place of every finished leaderboard, as chips: place, then its points --}}
             <ol class="m-0 flex list-none flex-wrap gap-1.5 p-0" aria-label="{{ __('Points per place') }}" data-test="score-points-table">
                 @foreach (ScorePoints::table($score) as $index => $points)
@@ -273,7 +299,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
         </div>
         <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
             @foreach ($score->modes() as $mode)
-                <div class="flex flex-col gap-2 rounded-lg bg-card px-2 py-4 lg:px-5" wire:key="ladder-{{ $mode->slug }}" data-test="score-points-{{ $mode->slug }}">
+                <div class="flex flex-col gap-2 rounded-[4px] bg-card px-2 py-4 lg:px-5" wire:key="ladder-{{ $mode->slug }}" data-test="score-points-{{ $mode->slug }}">
                     <h3 class="m-0 px-2 text-[15px] font-bold lg:px-0">{{ __($mode->name) }}</h3>
                     @forelse ($this->ladders[$mode->slug] as $index => $entry)
                         <div class="grid min-h-11 grid-cols-[32px_minmax(0,1fr)_64px] items-center gap-3 border-b border-hairline px-2 text-[13px] last:border-b-0" data-test="score-points-row">
@@ -291,4 +317,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
             @endforeach
         </div>
     </section>
-</div>
+    @if ($chatRail)
+        <x-slot:chat>
+            {{-- The game's chat (every game has one, 2026-10-03): the right column, sticky (rule R6). --}}
+            <livewire:game-channel :game="$this->game" :wire:key="'game-channel-'.$this->game" />
+        </x-slot:chat>
+    @endif
+</x-game.page>

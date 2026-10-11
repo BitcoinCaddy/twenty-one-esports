@@ -12,13 +12,14 @@ function orderGame(string $slug): Game
     return $game;
 }
 
-test('games show chess, Rocket League and Blockfill first, Nine Men\'s Morris and Checkers last, the rest as registered', function () {
-    $registered = array_map(orderGame(...), ['chess', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'nine-mens-morris', 'checkers', 'blockfill', 'new-game']);
+test('the browser games lead, Proof of Pong second, then the own-copy games, a game added later after them (R19)', function () {
+    $registered = array_map(orderGame(...), ['chess', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'nine-mens-morris', 'checkers', 'blockli', 'blockfill', 'tmnf', 'hyperbitcoinization', 'proof-of-pong', 'new-game']);
 
     $ordered = GameRegistry::ordered($registered, (array) config('esports.game_order.first'), (array) config('esports.game_order.last'));
 
     expect(array_map(fn (Game $game): string => $game->slug(), $ordered))->toBe([
-        'chess', 'rocket-league', 'blockfill', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'new-game', 'nine-mens-morris', 'checkers',
+        'hyperbitcoinization', 'proof-of-pong', 'chess', 'blockfill', 'blockli', 'nine-mens-morris', 'checkers',
+        'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'tmnf', 'new-game',
     ]);
 });
 

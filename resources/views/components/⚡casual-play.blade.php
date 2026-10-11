@@ -400,39 +400,40 @@ new class extends Component
             @endif
 
             {{-- The tiles: find, platform, looking to play, the players looking. --}}
-            <ul role="list" class="m-0 grid list-none grid-cols-2 gap-2 p-0 lg:grid-cols-4 lg:gap-3" data-test="casual-tiles" x-data="{ panel: null }">
+            {{-- The casual 1v1's own rows, as the lobby template's "Spielarten" list (T1, GameSeries.dc.html): name left, action right. --}}
+            <ul role="list" class="m-0 grid list-none grid-cols-1 gap-1 p-0" data-test="casual-tiles" x-data="{ panel: null }">
                 <li>
                     @if ($searchingHere)
-                        <x-chess.lobby-tile :label="__('Find opponent')" variant="primary" x-on:click="$root.querySelector('[data-test=casual-cancel]')?.focus()" aria-describedby="casual-searching" data-test="casual-find">
+                        <x-chess.lobby-tile :label="$gameName.' 1v1'" :action="__('Find opponent')" variant="primary" x-on:click="$root.querySelector('[data-test=casual-cancel]')?.focus()" aria-describedby="casual-searching" data-test="casual-find">
                             <x-slot:glyph><span class="font-display text-lg leading-none font-bold lg:text-[1.75rem]">1v1</span></x-slot:glyph>
                             <x-slot:meta><span class="{{ $tag }} bg-btc text-on-btc" data-test="casual-find-state">{{ __('You are searching') }}</span></x-slot:meta>
                         </x-chess.lobby-tile>
                     @else
-                        <x-chess.lobby-tile :label="__('Find opponent')" variant="primary" x-on:click="act('find')" x-bind:disabled="busy || {{ $running !== null || $locked !== null ? 'true' : 'false' }}" :disabled="$running !== null || $locked !== null" class="disabled:cursor-not-allowed disabled:opacity-60" data-test="casual-find">
+                        <x-chess.lobby-tile :label="$gameName.' 1v1'" :action="__('Find opponent')" variant="primary" x-on:click="act('find')" x-bind:disabled="busy || {{ $running !== null || $locked !== null ? 'true' : 'false' }}" :disabled="$running !== null || $locked !== null" class="disabled:cursor-not-allowed disabled:opacity-60" data-test="casual-find">
                             <x-slot:glyph><span class="font-display text-lg leading-none font-bold lg:text-[1.75rem]">1v1</span></x-slot:glyph>
                             <x-slot:meta><b class="text-ink">{{ $this->searching }}</b> {{ __('searching') }}</x-slot:meta>
                         </x-chess.lobby-tile>
                     @endif
                 </li>
                 <li>
-                    <x-chess.lobby-tile :label="$settings['platform']->label()" icon="settings" x-on:click="panel = panel === 'platform' ? null : 'platform'" x-bind:aria-expanded="(panel === 'platform').toString()" aria-expanded="false" aria-controls="casual-platform" data-test="casual-platform-tile">
+                    <x-chess.lobby-tile :label="$settings['platform']->label()" :action="__('Change')" icon="settings" x-on:click="panel = panel === 'platform' ? null : 'platform'" x-bind:aria-expanded="(panel === 'platform').toString()" aria-expanded="false" aria-controls="casual-platform" data-test="casual-platform-tile">
                         <x-slot:meta>{{ $settings['crossplay'] && ! $crossplayOff ? __('Crossplay on') : __('Crossplay off') }}</x-slot:meta>
                     </x-chess.lobby-tile>
                 </li>
                 <li>
                     <x-chess.lobby-tile :label="__('Looking to play')" icon="bell" role="switch" wire:ignore x-on:click="toggleLooking()" x-bind:aria-checked="looking ? 'true' : 'false'" aria-checked="{{ $lookingHere ? 'true' : 'false' }}" data-test="casual-looking">
-                        <x-slot:meta><b x-bind:class="looking ? 'text-win' : 'text-ink-2'" x-text="looking ? @js(__('On')) : @js(__('Off'))" data-test="casual-looking-state">{{ $lookingHere ? __('On') : __('Off') }}</b></x-slot:meta>
+                        <x-slot:action><b x-bind:class="looking ? 'text-win' : 'text-ink-2'" x-text="looking ? @js(__('On')) : @js(__('Off'))" data-test="casual-looking-state">{{ $lookingHere ? __('On') : __('Off') }}</b></x-slot:action>
                     </x-chess.lobby-tile>
                 </li>
                 <li>
-                    <x-chess.lobby-tile :label="__('Invite a player')" icon="send" aria-controls="casual-list" data-test="casual-invite-tile"
+                    <x-chess.lobby-tile :label="__('Invite a player')" :action="__('Invite')" icon="send" aria-controls="casual-list" data-test="casual-invite-tile"
                                         x-on:click="document.getElementById('casual-list').scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); ($root.querySelector('[data-test=casual-invite]') ?? document.getElementById('casual-list-h')).focus({ preventScroll: true })">
                         <x-slot:meta><b class="text-ink">{{ $looking->count() }}</b> {{ __('looking') }}</x-slot:meta>
                     </x-chess.lobby-tile>
                 </li>
 
                 {{-- Platform and crossplay, opened by their tile; remembered for this game. --}}
-                <li id="casual-platform" x-show="panel === 'platform'" x-cloak class="col-span-2 flex flex-col gap-3 rounded-md bg-well p-3 shadow-ring lg:col-span-4 lg:flex-row lg:items-center" data-test="casual-platform">
+                <li id="casual-platform" x-show="panel === 'platform'" x-cloak class="flex flex-col gap-3 rounded-md bg-well p-3 shadow-ring lg:flex-row lg:items-center" data-test="casual-platform">
                     <div role="radiogroup" aria-label="{{ __('Your platform') }}" class="grid grow grid-cols-2 gap-1 rounded-md bg-ground p-1 shadow-ring sm:grid-cols-4">
                         @foreach (App\Enums\Platform::cases() as $platform)
                             <button type="button" role="radio" aria-checked="{{ $settings['platform'] === $platform ? 'true' : 'false' }}" wire:click="setPlatform('{{ $platform->value }}')" data-test="casual-platform-{{ $platform->value }}"

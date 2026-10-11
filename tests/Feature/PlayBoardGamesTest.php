@@ -42,17 +42,17 @@ function boardHooks(string $html, string $prefix): array
     return array_values(array_unique($matches[1]));
 }
 
-test('/play shows the board games as one group at the end, and as tiles to their lobbies in the casual block', function () {
+test('/play shows the board games as one group after chess (the browser games first, rule R19), and as tiles to their lobbies in the casual block', function () {
     NineMensMorrisOn::play();
     CheckersGame::play();
 
     $html = $this->get(route('play'))->assertOk()
-        ->assertSeeInOrder(['data-test="casual-play"', 'data-test="casual-boards"', 'data-test="play-game-chess"', 'data-test="play-game-rocket-league"', 'data-test="play-board-games"', 'Board games', 'data-test="play-game-nine-mens-morris"', 'data-test="play-game-checkers"'], false)
+        ->assertSeeInOrder(['data-test="casual-play"', 'data-test="casual-boards"', 'data-test="play-game-chess"', 'data-test="play-board-games"', 'Board games', 'data-test="play-game-nine-mens-morris"', 'data-test="play-game-checkers"', 'data-test="play-game-rocket-league"'], false)
         ->assertSee('href="'.route('board.lobby', NineMensMorris::SLUG).'" data-test="casual-board-nine-mens-morris"', false)
         ->assertSee('href="'.route('board.lobby', Checkers::SLUG).'" data-test="casual-board-checkers"', false)
         ->getContent();
 
-    expect(boardHooks($html, 'play-game-'))->toBe(['chess', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'nine-mens-morris', 'checkers'])
+    expect(boardHooks($html, 'play-game-'))->toBe(['chess', 'nine-mens-morris', 'checkers', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2'])
         ->and(boardHooks($html, 'casual-board-'))->toBe(['nine-mens-morris', 'checkers'])
         // The game names inside the group are one level below its heading.
         ->and($html)->toMatch('~<h3 class="[^"]*"><a href="'.preg_quote(route('board.lobby', Checkers::SLUG), '~').'"~');
@@ -65,15 +65,15 @@ test('/play shows the board games as one group at the end, and as tiles to their
 test('without board games /play keeps its list and the casual block has no board tiles', function () {
     $html = $this->get(route('play'))->assertOk()->getContent();
 
-    // Without board games a player still reads the old line: their games do come first.
-    $this->actingAs(User::factory()->create())->get(route('play'))->assertOk()->assertSee('Your games come first, the one you played last on top.');
+    // A player reads how the list is sorted: the browser games first, the own-copy games after them (rule R19).
+    $this->actingAs(User::factory()->create())->get(route('play'))->assertOk()->assertSee('Every game of the league: the browser games first, the games with your own copy after them.');
 
     expect(boardHooks($html, 'play-game-'))->toBe(['chess', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2'])
         ->and($html)->not->toContain('data-test="play-board-games"')
         ->and($html)->not->toContain('data-test="casual-boards"');
 });
 
-test('a player who played a board game after chess still finds the board games at the end', function () {
+test('a player who played a board game after chess sees the same order as everyone: the registry\'s, browser games first (user, 2026-10-10)', function () {
     NineMensMorrisOn::play();
     CheckersGame::play();
     $player = User::factory()->create();
@@ -83,14 +83,12 @@ test('a player who played a board game after chess still finds the board games a
 
     $html = $this->actingAs($player)->get(route('play'))->assertOk()->getContent();
 
-    // Chess first (played), the rest in registry order, the board games last although Checkers was played last.
-    expect(boardHooks($html, 'play-game-'))->toBe(['chess', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'nine-mens-morris', 'checkers'])
-        // The line above the list says how it is sorted, board games included, not "your games come first".
-        ->and($html)->toContain('Sorted by what you played, the latest on top; the board games always come last.')
+    expect(boardHooks($html, 'play-game-'))->toBe(['chess', 'nine-mens-morris', 'checkers', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2'])
+        ->and($html)->toContain('Every game of the league: the browser games first, the games with your own copy after them.')
         ->and($html)->not->toContain('Your games come first');
 });
 
-test('home puts the browser games first with the board games at their end; the hub keeps the board games last', function () {
+test('home and the hub put the browser games first, the board games at their end, then the own-copy games', function () {
     NineMensMorrisOn::play();
     CheckersGame::play();
 
@@ -100,8 +98,8 @@ test('home puts the browser games first with the board games at their end; the h
 
     // Browser games (played here) above the own-copy games (user 2026-10-10).
     expect(array_values(array_unique($tiles[1])))->toBe(['chess', 'nine-mens-morris', 'checkers', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2'])
-        ->and(array_slice(array_values(array_unique($hub[1])), -2))->toBe(['nine-mens-morris', 'checkers'])
-        ->and(array_column(ShellNavigation::current()->games(), 'slug'))->toBe(['chess', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'nine-mens-morris', 'checkers']);
+        ->and(array_values(array_unique($hub[1])))->toBe(['chess', 'nine-mens-morris', 'checkers', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2'])
+        ->and(array_column(ShellNavigation::current()->games(), 'slug'))->toBe(['chess', 'nine-mens-morris', 'checkers', 'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2']);
 });
 
 test('the board game tiles on home say correspondence and never blitz (user, 2026-10-07)', function () {

@@ -28,16 +28,18 @@ use Tests\Support\NineMensMorrisOn;
 | The rendered bars are measured in tests/Browser/ShellNavigationTest.php.
 */
 
-test('your games come first, by the last match, then the registry order; guests get the registry order', function () {
+test('every viewer gets the registry order; the viewer\'s games are "recently played", by the last match (revamp, user 2026-10-10)', function () {
     $lineup = Lineup::factory()->mode('3v3')->ready()->create();
     $player = $lineup->clan->owner;
     ChessGame::factory()->create(['white_id' => $player->id, 'created_at' => now()->subDays(3)]);
     SeriesMatch::factory()->accepted()->create(['challenger_lineup_id' => $lineup->id, 'created_at' => now()->subDay()]);
     $registryOrder = array_keys(app(GameRegistry::class)->all());
 
-    // Row 1 has no game tabs since the revamp (Header.dc.html): the game hub carries the viewer's games first.
+    // The games menu (GamesMenu.dc.html) keeps the registry's order for everyone; a player's own games no longer move up.
     $this->actingAs($player)->get('/clans')->assertOk()
-        ->assertSeeInOrder(['data-test="hub-game-rocket-league"', 'data-test="hub-yours"', 'data-test="hub-game-chess"', 'data-test="hub-yours"', 'data-test="hub-game-ea-sports-fc-27"'], false);
+        ->assertSeeInOrder(['data-test="hub-game-chess"', 'data-test="hub-game-rocket-league"', 'data-test="hub-game-ea-sports-fc-27"'], false);
+    expect(array_column(ShellNavigation::current()->games(), 'slug'))->toBe($registryOrder)
+        ->and(array_column(ShellNavigation::current()->recent(), 'slug'))->toBe(['rocket-league', 'chess']);
 
     auth()->logout();
     expect(array_column(ShellNavigation::current()->games(), 'slug'))->toBe($registryOrder);

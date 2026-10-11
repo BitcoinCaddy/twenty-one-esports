@@ -209,11 +209,11 @@ test('a casual ladder’s Proof has no njump link', function () {
 });
 
 test('the navigation links the list beside each game’s ladder, in the hub\'s top row and in the phone’s More sheet, not on every hub card', function () {
-    // A game's ladder page carries the game's context bar (until P4 puts its tabs into the game template).
+    // A game's ladder page (template T5, LadderPage.dc.html) links the list in its right column, "Die stärksten Spieler".
     $ladder = $this->get(route('ladder.show', ['chess', 'blitz']))->assertOk()->getContent();
     $html = $this->get(route('ladder.strongest'))->assertOk()->getContent();
 
-    expect($ladder)->toContain('data-test="ctx-strongest"')
+    expect($ladder)->toContain('data-test="ladder-strongest-link-aside"')
         ->toContain('data-test="mobile-strongest"')
         ->and($html)->toContain('data-test="mobile-strongest"')
         ->and($html)->toContain('data-test="hub-strongest"')

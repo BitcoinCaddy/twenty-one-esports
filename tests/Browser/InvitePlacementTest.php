@@ -120,19 +120,19 @@ function inviteShot(Page $page, string $name): void
  */
 function rocketLeagueFirstViewport(Page $page, int $width, string $label): void
 {
-    if ($width >= 1024) {
-        inviteInFirstViewport($page, $label);
-
-        return;
-    }
-
-    $tile = $page->evaluate(INVITE_BOX, '[data-tile=tournaments]');
+    // An own-copy game's page (template T1, GameSeries.dc.html): the ways to play in the first viewport, the invite in
+    // the secondary slot (T11 maps invite-link there), which opens in place and shows the module whole.
+    $rows = $page->evaluate(INVITE_BOX, '[data-test=play]');
     $floor = $page->evaluate(INVITE_FLOOR);
-    fwrite(STDERR, "\n[invite] {$label}: tournaments tile ".json_encode($tile + ['floor' => $floor])."\n");
+    fwrite(STDERR, "\n[invite] {$label}: ways to play ".json_encode($rows + ['floor' => $floor])."\n");
 
-    expect($tile['top'])->toBeGreaterThanOrEqual(0, $label)
-        ->and($tile['bottom'])->toBeLessThanOrEqual($floor, "{$label}: the Tournaments tile in the first viewport")
-        ->and($page->evaluate('() => document.querySelector("[data-test=invite-module]") !== null'))->toBeTrue("{$label}: the invite is on the page");
+    expect($rows['top'])->toBeGreaterThanOrEqual(0, $label)
+        ->and($rows['top'])->toBeLessThan($floor, "{$label}: the ways to play start in the first viewport");
+
+    $page->evaluate('() => { const details = document.querySelector("[data-test=game-secondary]"); details.open = true; details.scrollIntoView({ block: "start" }); }');
+    BrowserWait::until($page, '() => document.querySelector("[data-test=invite-module]")?.checkVisibility() === true', 5_000);
+    $box = $page->evaluate(INVITE_BOX, '[data-test=invite-module]');
+    expect($box['left'])->toBeGreaterThanOrEqual(0, $label)->and($box['right'])->toBeLessThanOrEqual($box['vw'], $label);
 }
 
 /**
@@ -236,7 +236,7 @@ test('the invite sits in the first viewport of /chess at 375 and 1440 px and mak
         foreach (['ea-sports-fc-27', 'ea-sports-fc-26'] as $slug) {
             $page = invitePage($captain, route('games.series', $slug, false), $width, $height);
             BrowserWait::until($page, '() => document.querySelector("[data-test=invite-module]") !== null', 10_000);
-            inviteInFirstViewport($page, "{$slug} invite {$width}x{$height}");
+            rocketLeagueFirstViewport($page, $width, "{$slug} invite {$width}x{$height}");
             inviteClean($page, "{$slug} {$width}");
         }
 

@@ -46,93 +46,76 @@
     $teamHref = $teamClan !== null ? route('clans.show', $teamClan) : route('clans.index');
 @endphp
 
-<section aria-labelledby="play-h" class="@container flex flex-col gap-2 lg:gap-3" data-test="play"
+<section aria-labelledby="play-h" class="@container flex flex-col gap-3" data-test="play"
          x-data="{ stage: @js($busy ? 'quick' : null), help: false, rated: false, either: false, refusals: @js($ratedRefusals) }"
          {{-- The search's own mode comes in here, never in the page's x-data: a changed root x-data restarts chessLobby and drops its notification question. --}}
-         x-init="if (@js($entry?->mode) !== null) liveMode = @js($entry?->mode); if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' }"
+         x-init="if (@js($entry?->mode) !== null) liveMode = @js($entry?->mode); if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' }; $watch('stage', (open) => open && $nextTick(() => document.getElementById(open === 'quick' ? 'lobby-quick' : 'lobby-invite')?.scrollIntoView({ block: 'nearest' })))"
          x-effect="if (refusals[liveMode] !== null) rated = false">
-    <h2 id="play-h" class="sr-only">{{ __('Ways to play') }}</h2>
-
-    {{-- Columns by the section's own width (2026-10-03): from xl the game chat's side column takes 392 px, and six tiles below 72rem cut their words. --}}
-    {{-- Rapid first (user, 2026-10-05). Below a 48rem section 2 columns of six tiles, three rows as before rapid (the Team match tile waits for the wider grid: a fourth row pushed "Find opponent" and the invite under the tab bar at 375 x 667; below 48rem it is a slim link at the end of the section); from 48rem 4 columns, Rapid two wide, seven tiles in two rows. --}}
-    <ul role="list" class="m-0 grid list-none grid-cols-2 gap-2 p-0 @3xl:grid-cols-4 lg:gap-3" data-test="play-grid">
-        @foreach ($liveModes as $liveMode)
-            <li @class(['@3xl:col-span-2' => $loop->first])>
-                <x-chess.lobby-tile :label="ChessModes::short($liveMode)" :variant="$loop->first ? 'primary' : 'default'" data-test="play-{{ $liveMode }}" data-mode="{{ $liveMode }}"
-                                    x-on:click="if (stage === 'quick' && liveMode === '{{ $liveMode }}') { stage = null } else { liveMode = '{{ $liveMode }}'; stage = 'quick' }"
-                                    x-bind:aria-expanded="(stage === 'quick' && liveMode === '{{ $liveMode }}').toString()"
-                                    aria-expanded="{{ in_array($liveMode, $entry?->takes() ?? [], true) || ($outgoing !== null && $loop->first) ? 'true' : 'false' }}" aria-controls="{{ $entry ? 'lobby-searching' : ($outgoing ? 'lobby-waiting' : 'lobby-quick') }}">
-                    <x-slot:glyph><span class="font-display text-lg leading-none font-bold tracking-tight lg:text-[1.75rem]">{{ ChessModes::clock($liveMode) }}</span></x-slot:glyph>
-                    <x-slot:meta>
-                        @if (in_array($liveMode, $entry?->takes() ?? [], true))
-                            {{-- One short word: "You are searching" was cut in the half-width blitz tile at 390 px (tests/Browser/ChessRapidLobbyTest.php). --}}
-                            <span class="{{ $tag }} bg-btc text-on-btc" data-test="play-{{ $liveMode }}-state">{{ __('Searching') }}</span>
-                        @else
-                            <b class="text-ink" data-test="play-{{ $liveMode }}-searching">{{ $byMode[$liveMode] ?? 0 }}</b> {{ __('searching') }}
-                        @endif
-                    </x-slot:meta>
-                    @if ($loop->first)
-                        <x-slot:detail>{{ __('Our default: more time to think') }}</x-slot:detail>
-                    @endif
+    {{-- "Spielarten" (template T1, GameLobby.dc.html): one row per way to play, rapid first (user, 2026-10-05). --}}
+    <div class="gp-panel gp-modes">
+        <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
+        <ul role="list" class="m-0 flex list-none flex-col p-0" data-test="play-grid">
+            @foreach ($liveModes as $liveMode)
+                <li>
+                    <x-chess.lobby-tile :label="ChessModes::label($liveMode)" :action="__('Seek')" :variant="$loop->first ? 'primary' : 'default'" data-test="play-{{ $liveMode }}" data-mode="{{ $liveMode }}"
+                                        x-on:click="if (stage === 'quick' && liveMode === '{{ $liveMode }}') { stage = null } else { liveMode = '{{ $liveMode }}'; stage = 'quick' }"
+                                        x-bind:aria-expanded="(stage === 'quick' && liveMode === '{{ $liveMode }}').toString()"
+                                        aria-expanded="{{ in_array($liveMode, $entry?->takes() ?? [], true) || ($outgoing !== null && $loop->first) ? 'true' : 'false' }}" aria-controls="{{ $entry ? 'lobby-searching' : ($outgoing ? 'lobby-waiting' : 'lobby-quick') }}">
+                        <x-slot:meta>
+                            @if (in_array($liveMode, $entry?->takes() ?? [], true))
+                                <span class="{{ $tag }} bg-btc text-on-btc" data-test="play-{{ $liveMode }}-state">{{ __('Searching') }}</span>
+                            @else
+                                <span class="rv-live h-5 font-normal"><i></i><b data-test="play-{{ $liveMode }}-searching">{{ $byMode[$liveMode] ?? 0 }}</b> {{ __('searching') }}</span>
+                            @endif
+                        </x-slot:meta>
+                        <x-slot:detail>{{ $loop->first ? __('Our default: more time to think') : __('as in the casual cups') }}</x-slot:detail>
+                    </x-chess.lobby-tile>
+                </li>
+            @endforeach
+            <li>
+                @auth
+                    {{-- A live game with someone online now: the invite buttons are in the online list. --}}
+                    <x-chess.lobby-tile :label="__('Challenge a player')" :action="__('Challenge')" data-test="play-challenge" aria-controls="online-now"
+                                        x-on:click="document.getElementById('online-now').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); (document.querySelector('#online-now [data-test=invite]') ?? document.getElementById('online-h')).focus({ preventScroll: true })">
+                        <x-slot:detail>{{ __('Daily chess, or a friend who is online') }}</x-slot:detail>
+                        <x-slot:meta><b class="text-ink" x-text="connection === 'connected' ? others.length : '–'" data-test="play-online-count">–</b> {{ __('online') }}</x-slot:meta>
+                    </x-chess.lobby-tile>
+                @else
+                    <x-chess.lobby-tile :label="__('Challenge a player')" :action="__('Log in')" :href="route('login')" data-test="play-challenge">
+                        <x-slot:detail>{{ __('Log in to play') }}</x-slot:detail>
+                    </x-chess.lobby-tile>
+                @endauth
+            </li>
+            <li>
+                <x-chess.lobby-tile :label="__('Invite a friend')" :action="__('Send a link')" data-test="play-invite"
+                                    x-on:click="stage = stage === 'invite' ? null : 'invite'" x-bind:aria-expanded="(stage === 'invite').toString()"
+                                    aria-expanded="false" aria-controls="lobby-invite">
+                    <x-slot:detail>{{ __('Send a link') }}</x-slot:detail>
                 </x-chess.lobby-tile>
             </li>
-        @endforeach
-        {{-- Challenge and Invite share a row: both labels take two lines below 48rem, and two such rows pushed the invite under the tab bar at 375 x 667. --}}
-        <li>
-            @auth
-                {{-- A live blitz game with someone online now: the invite buttons are in the online list. --}}
-                <x-chess.lobby-tile :label="__('Challenge a player')" icon="send" data-test="play-challenge" aria-controls="online-now"
-                                    x-on:click="document.getElementById('online-now').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); (document.querySelector('#online-now [data-test=invite]') ?? document.getElementById('online-h')).focus({ preventScroll: true })">
-                    <x-slot:meta><b class="text-ink" x-text="connection === 'connected' ? others.length : '–'" data-test="play-online-count">–</b> {{ __('online') }}</x-slot:meta>
+            <li>
+                <x-chess.lobby-tile :label="__('Daily chess')" :action="__('Start a game')" :href="route('chess.challenge')" data-test="play-daily"
+                                    :count="$yourMove" :count-label="trans_choice(':count game waits for your move|:count games wait for your move', $yourMove)">
+                    <x-slot:detail>{{ __('1 move a day') }}</x-slot:detail>
+                    <x-slot:meta>
+                        @if ($yourMove > 0)
+                            {{ __('Your move') }}
+                        @elseif ($this->dailyGames->isNotEmpty())
+                            {{ trans_choice(':count game running|:count games running', $this->dailyGames->count()) }}
+                        @else
+                            {{ __('casual') }}
+                        @endif
+                    </x-slot:meta>
                 </x-chess.lobby-tile>
-            @else
-                <x-chess.lobby-tile :label="__('Challenge a player')" icon="send" :href="route('login')" data-test="play-challenge">
-                    <x-slot:meta>{{ __('Log in to play') }}</x-slot:meta>
+            </li>
+            {{-- Below lg the team match is one slim line under the list, so the ways to play stay above the tab bar at 375 x 667. --}}
+            <li class="max-lg:hidden">
+                <x-chess.lobby-tile :label="__('Team match')" :action="__('Challenge a clan')" :href="$teamHref" data-test="play-team">
+                    <x-slot:detail>{{ __('Rapid · 2 or 3 boards') }}, {{ __('Clan against clan') }}</x-slot:detail>
                 </x-chess.lobby-tile>
-            @endauth
-        </li>
-        <li>
-            <x-chess.lobby-tile :label="__('Invite a friend')" icon="link" data-test="play-invite"
-                                x-on:click="stage = stage === 'invite' ? null : 'invite'" x-bind:aria-expanded="(stage === 'invite').toString()"
-                                aria-expanded="false" aria-controls="lobby-invite">
-                <x-slot:meta>{{ __('Send a link') }}</x-slot:meta>
-            </x-chess.lobby-tile>
-        </li>
-        <li>
-            <x-chess.lobby-tile :label="__('Daily chess')" icon="calendar" :href="route('chess.challenge')" data-test="play-daily"
-                                :count="$yourMove" :count-label="trans_choice(':count game waits for your move|:count games wait for your move', $yourMove)">
-                <x-slot:meta>
-                    @if ($yourMove > 0)
-                        {{ __('Your move') }}
-                    @elseif ($this->dailyGames->isNotEmpty())
-                        {{ trans_choice(':count game running|:count games running', $this->dailyGames->count()) }}
-                    @else
-                        {{ __('1 move a day') }}
-                    @endif
-                </x-slot:meta>
-            </x-chess.lobby-tile>
-        </li>
-        <li>
-            <x-chess.lobby-tile :label="__('Tournaments')" icon="trophy" :href="$next ? route('tournaments.show', $next) : route('tournaments.index')" data-test="play-tournaments">
-                <x-slot:meta>
-                    @if ($next)
-                        <span class="sr-only">{{ __('Sign-up') }} </span>{{ __('until :when', ['when' => $next->signup_closes_at->copy()->timezone($zone)->locale(app()->getLocale())->isoFormat('ddd HH:mm')]) }}
-                    @else
-                        {{ __('None open') }}
-                    @endif
-                </x-slot:meta>
-                @if ($next)
-                    <x-slot:detail>{{ $next->name }}</x-slot:detail>
-                @endif
-            </x-chess.lobby-tile>
-        </li>
-        <li class="@max-3xl:hidden">
-            <x-chess.lobby-tile :label="__('Team match')" icon="clans" :href="$teamHref" data-test="play-team">
-                <x-slot:meta>{{ __('Rapid · 2 or 3 boards') }}</x-slot:meta>
-                <x-slot:detail>{{ __('Clan against clan') }}</x-slot:detail>
-            </x-chess.lobby-tile>
-        </li>
-    </ul>
+            </li>
+        </ul>
+    </div>
 
     @if ($entry)
         @php
@@ -143,7 +126,7 @@
             $ratedQueue = $this->ratedQueue;
         @endphp
         {{-- ChessStates "Finding opponent" --}}
-        <div id="lobby-searching" data-check-at="{{ $this->checkAt }}" role="status" aria-live="polite" class="flex flex-col items-center gap-4 rounded-lg bg-card p-4 shadow-ring-btc" data-test="searching">
+        <div id="lobby-searching" data-check-at="{{ $this->checkAt }}" role="status" aria-live="polite" class="flex flex-col items-center gap-4 rounded-[4px] bg-card p-4 shadow-ring-btc" data-test="searching">
             {{-- Against two thin queues (user, 2026-10-05): after a while alone, who searches the other mode, and one click to switch with the place kept. First in the card: at 390 px it lay under the fold below the cube. --}}
             @if ($hint !== null)
                 <div class="flex flex-col gap-2.5 self-stretch rounded-md bg-toast-challenge p-3 text-left shadow-ring-btc" data-test="switch-hint" data-mode="{{ $hint['mode'] }}">
@@ -198,7 +181,7 @@
         </div>
     @elseif ($outgoing)
         {{-- ChessStates "Waiting for a friend" --}}
-        <div id="lobby-waiting" data-check-at="{{ $this->checkAt }}" class="flex flex-col gap-3.5 rounded-lg bg-card p-5 shadow-ring-btc" data-test="waiting-for-friend">
+        <div id="lobby-waiting" data-check-at="{{ $this->checkAt }}" class="flex flex-col gap-3.5 rounded-[4px] bg-card p-5 shadow-ring-btc" data-test="waiting-for-friend">
             <span class="flex items-center gap-3"><span aria-hidden="true" class="block size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-btc"></span><b class="min-w-0 text-base wrap-anywhere" data-test="waiting-name">{{ __('Waiting for :name', ['name' => $outgoing->invitee->displayName()]) }}</b></span>
             <div class="flex flex-col">
                 <div class="grid h-9 grid-cols-[110px_minmax(0,1fr)] items-center border-b border-hairline text-[13px]"><span class="text-ink-2">{{ __('Time control') }}</span><span>{{ __(':mode, colours at random', ['mode' => ChessModes::label($outgoing->mode)]) }}</span></div>
@@ -214,7 +197,7 @@
         <div id="lobby-quick" role="region" aria-label="{{ $labels[ChessModes::DEFAULT] }}" x-bind:aria-label="@js($labels)[liveMode]" x-show="stage === 'quick'" x-cloak
              x-bind:data-mode="liveMode" data-mode="{{ ChessModes::DEFAULT }}"
              x-transition:enter="transition duration-200 ease-out motion-reduce:transition-none" x-transition:enter-start="opacity-0 -translate-y-1"
-             class="flex flex-col gap-2 rounded-lg bg-card p-2 shadow-ring-btc lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:p-3" data-test="find-opponent">
+             class="flex flex-col gap-2 rounded-[4px] bg-card p-2 shadow-ring-btc lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:p-3" data-test="find-opponent">
             <div class="flex gap-2 lg:contents">
                 <div role="radiogroup" aria-label="{{ __('Game kind') }}" class="grid min-w-0 grow grid-cols-2 gap-1 rounded-md bg-ground p-1 shadow-ring lg:w-80 lg:grow-0" data-test="game-kind"
                      data-rated-open="{{ $defaultRefusal === null ? 'true' : 'false' }}" x-bind:data-rated-open="(refusals[liveMode] === null).toString()">
@@ -276,10 +259,9 @@
         <livewire:invite-link place="lobby" />
     </div>
 
-    {{-- Below 48rem the Team match entry is one slim row after everything else, so "Find opponent" stays above the tab bar. --}}
-    <a href="{{ $teamHref }}" class="flex min-h-11 items-center gap-2 rounded-md border border-line px-3 text-[13px] text-ink hover:text-ink @3xl:hidden" data-test="play-team-link">
+    <a href="{{ $teamHref }}" class="flex min-h-11 items-center gap-2 rounded-[4px] border border-line px-3 text-[13px] text-ink hover:text-ink lg:hidden" data-test="play-team-link">
         <x-icon name="clans" :size="16" class="shrink-0 text-ink-2" />
         <b class="shrink-0">{{ __('Team match') }}</b>
-        <span class="min-w-0 truncate text-ink-2">{{ __('Clan against clan') }} · {{ __('Rapid · 2 or 3 boards') }}</span>
+        <span class="min-w-0 truncate text-ink-2">{{ __('Clan against clan') }}</span>
     </a>
 </section>

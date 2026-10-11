@@ -6,6 +6,7 @@ use App\Enums\InviteStatus;
 use App\Enums\TournamentStatus;
 use App\Games\Blockfill;
 use App\Games\Contracts\Game;
+use App\Games\Contracts\PlayedOnOwnCopy;
 use App\Games\GameKind;
 use App\Games\GameRegistry;
 use App\Games\Hyperbitcoinization;
@@ -18,6 +19,7 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Support\Chess\ChessModes;
 use App\Support\Dock\UpcomingEvents;
+use App\Support\Engagement\HomeBoard;
 use App\Support\GameNames;
 use App\Support\Matches\MempoolStrip;
 use App\Support\RequestMemo;
@@ -42,7 +44,7 @@ use Throwable;
  * same on every page and row 2 always names the game it is about.
  *
  * @phpstan-type NavLink array{key: string, href: string, label: string, short: string, icon: string, test: ?string, mobileTest: ?string, tab: ?string, routes?: list<string>, count?: int}
- * @phpstan-type NavGame array{slug: string, name: string, short: string, colour: string, formats: string, kinds: list<string>, page: string, played: bool, actions: list<NavLink>}
+ * @phpstan-type NavGame array{slug: string, name: string, short: string, colour: string, formats: string, kinds: list<string>, page: string, played: bool, lastAt: ?string, browser: bool, kind: string, meta: string, actions: list<NavLink>}
  */
 final class ShellNavigation
 {
@@ -99,10 +101,10 @@ final class ShellNavigation
     }
 
     /**
-     * Every registered game, the viewer's games first (by their last match),
-     * the others in registry order; the games the config keeps last (user
-     * 2026-10-03: Nine Men's Morris and Checkers) close the list in their
-     * order, played or not.
+     * Every registered game in the registry's display order (`esports.game_order`, rule R19: the browser games
+     * first, Proof of Pong second, then the own-copy games), each marked with whether and when the viewer last
+     * played it. The order no longer moves with what the viewer played (revamp P4, user 2026-10-10): the games
+     * menu shows the viewer's games apart, as "Zuletzt gespielt" (recent()).
      *
      * @return list<NavGame>
      */
@@ -113,24 +115,71 @@ final class ShellNavigation
         }
 
         $lastPlayed = $this->lastPlayed();
-        $tail = array_values(array_filter((array) config('esports.game_order.last', []), is_string(...)));
-        $games = [];
 
-        foreach (array_values($this->registry->all()) as $index => $game) {
-            $games[] = [$game, $lastPlayed[$game->slug()] ?? null, $index, array_search($game->slug(), $tail, true)];
-        }
-
-        // The tail games last, in their order; before them the played games by their last match, newest first, then the rest in registry order.
-        usort($games, fn (array $a, array $b): int => [$a[3] === false ? -1 : $a[3], $a[1] === null, $b[1] ?? '', $a[2]] <=> [$b[3] === false ? -1 : $b[3], $b[1] === null, $a[1] ?? '', $b[2]]);
-
-        return $this->games = array_map(fn (array $entry): array => $this->describe($entry[0], $entry[1] !== null), $games);
+        return $this->games = array_map(fn (Game $game): array => $this->describe($game, $lastPlayed[$game->slug()] ?? null), array_values($this->registry->all()));
     }
 
     /**
-     * The order /play, home and the header list the games in: games(), so
-     * Nine Men's Morris and Checkers stand at the end (user 2026-10-03:
-     * "überall ganz nach hinten"), no longer as one block next to chess
-     * (plan "Mühle und Dame", P7).
+     * The viewer's last played games, newest first (the games menu's "Zuletzt gespielt", GamesMenu20.dc.html).
+     *
+     * @return list<NavGame>
+     */
+    public function recent(int $limit = 3): array
+    {
+        $played = array_values(array_filter($this->games(), fn (array $game): bool => $game['lastAt'] !== null));
+        usort($played, fn (array $a, array $b): int => strcmp((string) $b['lastAt'], (string) $a['lastAt']));
+
+        return array_slice($played, 0, $limit);
+    }
+
+    /**
+     * The fixed tabs of a game's bar (rule R5, GameLobby.dc.html `.sn`): Spielen, Matches, Ladder (Blockfill: its
+     * leaderboard and replays), Turniere, Regeln, always in this order; a tab the game does not have is left out,
+     * never moved. Built from the game's own links (actions()), so the bar never promises a page the menus do not
+     * reach. Keys stay those of the old context bar (`ctx-<key>` test hooks).
+     *
+     * @return list<NavLink>
+     */
+    public function gameTabs(string $slug): array
+    {
+        $game = $this->registry->find($slug);
+
+        if ($game === null) {
+            return [];
+        }
+
+        /** @var array<string, NavLink> $actions */
+        $actions = [];
+        foreach ($this->actions($game) as $link) {
+            $actions[$link['key']] = $link;
+        }
+
+        $tabs = [];
+        if (isset($actions['play'])) {
+            $tabs[] = [...$actions['play'], 'label' => __('Play'), 'short' => __('Play')];
+        }
+        if (isset($actions['matches'])) {
+            $tabs[] = $actions['matches'];
+        }
+        if (isset($actions['ladder'])) {
+            $tabs[] = [...$actions['ladder'], 'label' => __('Ladder')];
+        } elseif (isset($actions['leaderboard'])) {
+            $tabs[] = [...$actions['leaderboard'], 'label' => __('Leaderboard')];
+        }
+        if (isset($actions['replays'])) {
+            $tabs[] = $actions['replays'];
+        }
+        // Every game's tournaments are the list filtered to it (Rocket League's "Tournaments & prizes" is this tab).
+        if ($game->kind() !== GameKind::Score || $slug === Blockfill::SLUG) {
+            $tabs[] = self::link('tournaments', route('tournaments.index', ['game' => $slug]), __('Tournaments'), 'trophy');
+        }
+        $tabs[] = self::link('rules', route('rules').'#'.$slug, __('Rules'), 'shield-check');
+
+        return $tabs;
+    }
+
+    /**
+     * The order /play, home and the header list the games in: games(), the registry's display order.
      *
      * @return list<NavGame>
      */
@@ -458,7 +507,7 @@ final class ShellNavigation
     }
 
     /** @return NavGame */
-    private function describe(Game $game, bool $played): array
+    private function describe(Game $game, ?string $lastAt): array
     {
         $slug = $game->slug();
         $modes = $game->modes();
@@ -481,7 +530,12 @@ final class ShellNavigation
             'formats' => implode(', ', array_map(fn ($mode): string => __($mode->name), array_values($modes))),
             'kinds' => $kinds,
             'page' => GameNames::page($slug),
-            'played' => $played,
+            'played' => $lastAt !== null,
+            'lastAt' => $lastAt,
+            // Played right here in the browser, or with the player's own copy of the game (PlayedOnOwnCopy).
+            'browser' => ! $game instanceof PlayedOnOwnCopy,
+            'kind' => $game->kind()->value,
+            'meta' => HomeBoard::menuLine($slug, $game->kind()),
             'actions' => $this->actions($game),
         ];
     }

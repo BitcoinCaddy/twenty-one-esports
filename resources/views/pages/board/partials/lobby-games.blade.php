@@ -18,13 +18,14 @@
     $tag = 'shrink-0 rounded-xs px-1.5 py-0.5 text-[11px] leading-4 font-bold';
 @endphp
 
-<section id="your-games" aria-labelledby="games-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:col-span-4 lg:px-5 xl:max-2xl:col-span-5" data-test="lobby-games">
-    <span class="flex items-baseline justify-between gap-3">
-        <h2 id="games-h" class="m-0 text-[15px] font-bold">{{ __('Your games') }}</h2>
+<section id="your-games" aria-labelledby="games-h" class="flex flex-col gap-3" data-test="lobby-games">
+    <div class="gp-head">
+        <h2 id="games-h" class="gp-h">{{ __('Your running games') }}</h2>
         @if ($user && $correspondenceOn)
-            <a href="{{ route('board.correspondence', $slug) }}" class="inline-flex min-h-11 items-center text-xs text-ink lg:min-h-6" data-test="lobby-games-all">{{ __('All :count', ['count' => $games->count()]) }}</a>
+            <a href="{{ route('board.correspondence', $slug) }}" class="rv-lk inline-flex min-h-11 items-center lg:min-h-6" data-test="lobby-games-all">{{ __('All :count', ['count' => $games->count()]) }}</a>
         @endif
-    </span>
+    </div>
+    <div class="gp-panel flex flex-col gap-3 px-4 py-2">
 
     @guest
         <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Log in to see your games.') }}</p>
@@ -81,7 +82,8 @@
         </ul>
 
         @if (! $active && $challenges === 0 && $games->isEmpty())
-            <p class="m-0 text-[13px] leading-normal text-ink-2" data-test="lobby-games-empty">{{ __('No game running. Start one with a tile above.') }}</p>
+            <p class="m-0 text-[13px] leading-normal text-ink-2" data-test="lobby-games-empty">{{ __('No game running. Start one above.') }}</p>
         @endif
     @endguest
+    </div>
 </section>

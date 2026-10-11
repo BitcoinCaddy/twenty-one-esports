@@ -354,7 +354,11 @@ test('the header\'s game hub and game chips list the games in the registry order
     preg_match_all('#data-test="mobile-([a-z0-9-]+)"#', $html, $chips);
 
     expect(gameSurfacesMissing($hub[1]))->toBe([]);
-    gameSurfacesInOrder($hub[1], 'the game hub');
+    // The games menu (GamesMenu.dc.html) splits the registry's order in two: the browser games, then the own-copy games.
+    $registered = array_values(app(GameRegistry::class)->all());
+    $browser = array_map(fn ($game): string => $game->slug(), array_values(array_filter($registered, fn ($game): bool => ! $game instanceof PlayedOnOwnCopy)));
+    $own = array_map(fn ($game): string => $game->slug(), array_values(array_filter($registered, fn ($game): bool => $game instanceof PlayedOnOwnCopy)));
+    expect($hub[1])->toBe([...array_values(array_intersect($browser, $hub[1])), ...array_values(array_intersect($own, $hub[1]))], 'the game hub: browser games, then own-copy games, each in the registry order');
     gameSurfacesInOrder($chips[1], 'the game chips');
 });
 
@@ -366,9 +370,13 @@ test('a player who played a board game last still sees it at the end of Play now
     preg_match_all('#data-test="hub-game-([a-z0-9-]+)"#', $html, $hub);
     $tiles = gameSurfacesAttribute($html, ['game-tile']);
 
-    // Home keeps the plan's order whoever plays what (user 2026-10-10); the hub ends with Blockli, nine men's morris and checkers (user, 2026-10-07).
+    // Home and the hub keep the registry's order whoever plays what (user 2026-10-10): Blockli, nine men's morris and
+    // checkers close the browser games, the own-copy games follow.
+    $boards = array_values(array_intersect($hub[1], [Blockli::SLUG, NineMensMorris::SLUG, Checkers::SLUG]));
+    $start = array_search(Blockli::SLUG, $hub[1], true);
     expect($tiles)->toBe(gameSurfacesHomeOrder())
-        ->and(array_slice($hub[1], -3))->toBe([Blockli::SLUG, NineMensMorris::SLUG, Checkers::SLUG]);
+        ->and($boards)->toBe([Blockli::SLUG, NineMensMorris::SLUG, Checkers::SLUG])
+        ->and(array_slice($hub[1], $start, 3))->toBe($boards);
 });
 
 test('the invite chooser lists the games in the registry order', function () {

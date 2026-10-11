@@ -90,6 +90,8 @@ function boardFollowsPage(?User $user, string $to, int $width, int $height, stri
     $page->goto(ComputeUrl::from(route('locale.switch', $locale, false)));
     $page->goto(ComputeUrl::from($to));
     BrowserWait::until($page, '() => document.readyState === "complete" && window.Alpine !== undefined && window.Livewire !== undefined', 15_000);
+    // "Your follows here" waits in the lobby's closed secondary slot (template T1, rule R7): open it as a player does.
+    $page->evaluate('() => document.querySelectorAll("[data-test=game-secondary]").forEach((details) => { details.open = true; })');
 
     return $page;
 }

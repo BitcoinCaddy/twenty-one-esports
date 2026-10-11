@@ -568,7 +568,10 @@ const SWEEP_GAP_SCRIPT = <<<'JS'
 
         // A guest's "New here?" strip sits under the sticky header, outside it (it scrolls away): the chrome ends below it.
         const steps = document.querySelector('[data-test=first-steps]');
-        const headerBottom = Math.max(header.getBoundingClientRect().bottom, steps?.checkVisibility() ? steps.getBoundingClientRect().bottom : 0);
+        // A game page's sticky game bar (template T1/T5, rule R5) is chrome too: the content starts under it.
+        const gameBar = document.querySelector('[data-test=game-subnav]');
+        const headerBottom = Math.max(header.getBoundingClientRect().bottom, steps?.checkVisibility() ? steps.getBoundingClientRect().bottom : 0,
+            gameBar?.checkVisibility() ? gameBar.getBoundingClientRect().bottom : 0);
         const viewport = document.documentElement.clientWidth;
         let top = Infinity;
         let first = null;
@@ -577,6 +580,7 @@ const SWEEP_GAP_SCRIPT = <<<'JS'
 
         for (const el of main.querySelectorAll('*')) {
             if (el.closest('svg') && el.tagName !== 'svg') continue;
+            if (gameBar?.contains(el)) continue;
             if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
             const rect = el.getBoundingClientRect();
             if (rect.width <= 1 || rect.height <= 1) continue;

@@ -29,7 +29,8 @@ test('each series game has its own page with its cover and only its own series; 
     $this->get(route('games.series', 'ea-sports-fc-27'))->assertOk()
         ->assertSee('EA Sports FC 27')
         ->assertSee('images/games/ea-sports-fc-27-480.webp', false)
-        ->assertSee('Modes: 1v1, 2v2 · best of 1 / 3')
+        // The clan series row of the ways to play (template T1, GameSeries.dc.html) names its best-of.
+        ->assertSee('Best of 1 / 3, with a clan lineup')
         ->assertSee(route('matches.show', $fc27), false)
         ->assertDontSee(route('matches.show', $rl), false);
 
@@ -48,8 +49,11 @@ test('the games menu links every game with its cover', function () {
     }
 
     expect($html)->toContain('href="'.route('games.series', 'ea-sports-fc-27').'"')
-        ->toContain('href="'.route('challenges.create', ['game' => 'ea-sports-fc-26']).'"')
         ->toContain('data-test="games-menu-rocket-league"');
+
+    // A game's own actions (challenge a clan) are on its page, the menu leads there (GamesMenu.dc.html).
+    $this->actingAs(User::factory()->create())->get(route('games.series', 'ea-sports-fc-26'))->assertOk()
+        ->assertSee('href="'.route('challenges.create', ['game' => 'ea-sports-fc-26']).'"', false);
 });
 
 test('the match list filters by an FC game and shows a cover in every row', function () {
@@ -110,7 +114,7 @@ test('Age of Empires II has its page, 2v2 and 3v3 lineups built by the owner, a 
     $this->get(route('games.series', 'age-of-empires-2'))->assertOk()
         ->assertSee('Age of Empires II: Definitive Edition')
         ->assertSee('images/games/age-of-empires-2-480.webp', false)
-        ->assertSee('Modes: 1v1, 2v2, 3v3 · best of 1 / 3');
+        ->assertSee('Best of 1 / 3, with a clan lineup');
 
     $signer = new TestSigner;
     $owner = User::factory()->withPubkey($signer->pubkey)->create();

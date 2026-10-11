@@ -220,10 +220,16 @@ return [
     | the `last` slugs. User 2026-10-01: Blockfill third, Nine Men's Morris
     | and Checkers at the very end. User 2026-10-07: Blockli right after
     | TMNF (the last registered game), before Nine Men's Morris and Checkers.
+    | Revamp (user 2026-10-10, rule R19): the browser games lead, Proof of Pong
+    | second so the coloured covers start on top, then the own-copy games
+    | (App\Games\Contracts\PlayedOnOwnCopy) in this order.
     */
     'game_order' => [
-        'first' => ['chess', 'rocket-league', 'blockfill'],
-        'last' => ['blockli', 'nine-mens-morris', 'checkers'],
+        'first' => [
+            'hyperbitcoinization', 'proof-of-pong', 'chess', 'blockfill', 'blockli', 'nine-mens-morris', 'checkers',
+            'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'tmnf',
+        ],
+        'last' => [],
     ],
 
     'games' => [

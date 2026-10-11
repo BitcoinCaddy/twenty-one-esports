@@ -17,6 +17,8 @@
     $games = $nav->playOrder();
     $active = $nav->activeGame();
     $onGamePage = $nav->onGamePage();
+    // A page drawn with the game templates (x-game.subnav, revamp P4) carries its own game bar: row 2 stays off there.
+    $contextBar = $onGamePage && ! request()->attributes->get('game-subnav', false);
     $community = $nav->community();
     $chain = $nav->chain($section);
     $mempool = collect($chain)->firstWhere('key', 'mempool');
@@ -25,10 +27,6 @@
     $admin = $nav->admin();
     $account = $nav->account();
     $upcoming = collect($account)->firstWhere('key', 'upcoming');
-    // The hub's "Yours" group first; the games the config keeps last stay at the end even when played (user 2026-10-03), marked "Yours" there.
-    $tail = (array) config('esports.game_order.last', []);
-    $played = array_values(array_filter($games, fn (array $game): bool => $game['played'] && ! in_array($game['slug'], $tail, true)));
-    $unplayed = array_values(array_filter($games, fn (array $game): bool => ! $game['played'] || in_array($game['slug'], $tail, true)));
     $onLogin = request()->routeIs('login');
     // On the results page the field keeps what was searched.
     $searchTerm = request()->routeIs('search') ? (string) request()->string('q') : '';
@@ -41,7 +39,7 @@
     below it. An open notification panel, game hub or account menu lifts it above the toast stack and the dock.
 --}}
 <header class="shell-header sticky top-0 z-30 shrink-0 bg-bar" style="--shell-game: {{ $active['colour'] }}" x-data="shellHeader" x-bind:style="(bell || hub || account) ? { zIndex: 55 } : {}"
-        x-on:bell-toggle="bell = $event.detail" x-on:keydown.escape.window="closeSearch(); closeHub()" @if ($onGamePage) data-game-page @endif>
+        x-on:bell-toggle="bell = $event.detail" x-on:keydown.escape.window="closeSearch(); closeHub()" @if ($contextBar) data-game-page @endif>
     <span class="shell-edge" aria-hidden="true" data-test="shell-edge"></span>
 
     <div class="flex h-[52px] items-center gap-1 border-b border-hairline pr-2 pl-3 lg:h-14 lg:px-6">
@@ -175,8 +173,8 @@
         </button>
     </div>
 
-    @if ($onGamePage)
-        {{-- Row 2 (from lg, game pages): the context bar of the active game, until P4 puts its tabs into the shared game template. --}}
+    @if ($contextBar)
+        {{-- Row 2 (from lg, game pages not yet drawn with the game templates): the context bar of the active game. --}}
         <nav class="ctx hidden h-12 items-center gap-1 border-b border-hairline px-6 lg:flex" style="--game: {{ $active['colour'] }}" aria-label="{{ $active['name'] }}" data-test="context-bar" data-game="{{ $active['slug'] }}">
             <span class="ctx-name">{{ $active['name'] }}</span>
             <x-game-credit :game="$active['slug']" class="-ms-2 me-3 whitespace-nowrap" />
@@ -200,7 +198,7 @@
         </form>
     </div>
 
-    <x-shell.game-hub :played="$played" :unplayed="$unplayed" :count="count($games)" />
+    <x-shell.game-hub :games="$games" :recent="$nav->recent()" :live="$mempool['count'] ?? null" />
 </header>
 
 {{--

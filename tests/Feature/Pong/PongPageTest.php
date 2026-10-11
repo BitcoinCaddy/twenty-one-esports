@@ -61,10 +61,9 @@ test('the lobby offers the five bots and every figure, and opens the game in a n
         ->assertSee(route('pong.bot'), false);
 });
 
-test('on a phone the lobby opens on the live 1v1 when something waits there for the viewer, else on the bot (P9)', function () {
+test('the live 1v1 leads the ways to play when something waits there for the viewer, else the figure and the bot do (P9, template T1)', function () {
     PongOn::play();
-    $live = 'data-test="pong-way-live"';
-    $segment = fn (string $html): string => (string) preg_replace('/.*(<button[^>]*'.preg_quote($live, '/').'[^>]*>).*/s', '$1', $html);
+    $leads = fn (string $html): bool => strpos($html, 'data-test="pong-lobby"') < strpos($html, 'data-test="pong-play-form"');
 
     $guest = (string) $this->get(route('pong.index'))->assertOk()->getContent();
     $quiet = (string) $this->actingAs(User::factory()->create())->get(route('pong.index'))->getContent();
@@ -73,7 +72,7 @@ test('on a phone the lobby opens on the live 1v1 when something waits there for 
     PongInvite::factory()->create(['invitee_id' => $invited->id]);
     $waiting = (string) $this->actingAs($invited)->get(route('pong.index'))->getContent();
 
-    expect(array_map(fn (string $html): bool => str_contains($segment($html), 'aria-pressed="true"'), [$guest, $quiet, $looking, $waiting]))->toBe([false, false, true, true]);
+    expect(array_map($leads, [$guest, $quiet, $looking, $waiting]))->toBe([false, false, true, true]);
 });
 
 test('a logged-in player gets the full-screen game page with seed, level, rules and texts; a guest logs in first', function () {

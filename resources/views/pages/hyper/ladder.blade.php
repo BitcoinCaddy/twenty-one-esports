@@ -1,115 +1,114 @@
 {{--
-    Hyperbitcoinization's season ladder (plan "Hyperbitcoinization", P5; HyperMatchController::ladder()), in the look of
-    the league's ladder page (pages/ladder/⚡show): the live season, one primary action, a switch between the three
-    tables (free-for-all points, 1v1 Elo, team Elo), the rows, and the scoring as chips. Before Block 0 and between
-    seasons the empty state says when rated play starts.
+    Hyperbitcoinization's season ladder (plan "Hyperbitcoinization", P5; HyperMatchController::ladder()) through the one
+    ladder template T5 (x-ladder.page; LadderHyper.dc.html): game bar, the game's hero with the season's action, the
+    ladders as chips, a switch between the three tables (free-for-all points, 1v1 Elo, team Elo), the standings
+    (x-ladder.table) or, before Block 0 and between seasons, the empty state that says when rated play starts; the
+    scoring on the right ("So wird gezählt").
 --}}
 @php
-    $tab = 'inline-flex h-11 items-center border-0 px-4 text-[13px] whitespace-nowrap';
     $boards = ['ffa' => __('Free for all'), 'duel' => __('1v1'), 'team' => __('Teams')];
     $points = (array) config('esports.hyper.season_points', []);
     $elo = $board !== 'ffa';
-    $grid = 'grid grid-cols-[28px_minmax(0,1fr)_56px] gap-3 lg:grid-cols-[40px_minmax(0,1fr)_96px_96px_64px]';
+    $slug = \App\Games\Hyperbitcoinization::SLUG;
     // Indexed, with its own link preview (P6): the season's first three by free-for-all points.
     app(\App\Support\PageMeta::class)->describe(__('Hyperbitcoinization ladder'), __('The Hyperbitcoinization season ladder of the TWENTY ONE esports league: free-for-all points by place, 1v1 and team Elo, rated matches without bots only.'))
         ->card(fn () => \App\Support\Cards\PageCard::page('hyper-ladder'));
 @endphp
 <x-layouts::app :title="__('Hyperbitcoinization ladder')">
-    <div class="flex grow flex-col gap-4 px-4 pb-8 lg:gap-6 lg:px-12" data-test="hyper-ladder">
-        <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-            <div class="flex min-w-0 flex-col gap-2">
-                <h1 class="m-0 flex flex-wrap items-baseline gap-x-3 font-display text-[26px] font-bold lg:text-[34px]">
-                    Hyperbitcoinization <span class="font-sans text-xs font-normal text-ink-2">{{ __('Ladder') }}</span>
-                </h1>
-                <ul class="m-0 flex list-none flex-wrap items-center gap-2 p-0 text-xs" aria-label="{{ __('Season') }}">
-                    <li class="inline-flex h-8 items-center gap-2 rounded-md bg-ground px-3 shadow-ring" data-test="hyper-ladder-season">
-                        @if ($season !== null)
-                            <b>{{ \App\Support\Badges\BadgeCopy::season($season) }}</b>
-                        @else
-                            <x-icon name="lock" :size="14" />{{ __('Rated play starts at Block 0') }}
-                        @endif
-                    </li>
-                    @if ($mine !== null)
-                        <li class="inline-flex h-8 items-center gap-2 rounded-md bg-ground px-3 shadow-ring" data-test="hyper-ladder-mine">
-                            <span class="text-ink-2">{{ __('You') }}</span>
-                            <b class="tabular-nums">{{ $mine['ffa'] === null ? '–' : __(':points pts', ['points' => $mine['ffa']]) }}</b>
-                            <span class="text-ink-3">·</span><span class="text-ink-2">1v1</span><b class="tabular-nums">{{ $mine['duel'] ?? '–' }}</b>
-                            <span class="text-ink-3">·</span><span class="text-ink-2">{{ __('Team') }}</span><b class="tabular-nums">{{ $mine['team'] ?? '–' }}</b>
-                        </li>
-                    @endif
-                </ul>
-            </div>
-            <a href="{{ route('hyper.index') }}" class="btn-p inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-btc px-6 font-display text-[15px] font-bold text-on-btc hover:text-on-btc" data-test="hyper-ladder-play">
-                <x-icon name="play" :size="18" />{{ __('Play a season match') }}
-            </a>
+    <x-ladder.page :game="$slug" :title="__('Hyperbitcoinization ladder')" data-test="hyper-ladder"
+                   :lede="__('Points by place in free-for-all, Elo for 1v1 and teams. The season starts at Block 0; until then every match is casual.')"
+                   :chips="\App\Support\Navigation\LadderChips::items($slug)" :chips-label="__('Ladders')">
+        <x-slot:action>
+            <a href="{{ route('hyper.index') }}" class="rv-b h-[52px] px-4" data-test="hyper-ladder-play">{{ $season === null ? __('Play a casual match') : __('Play a season match') }}</a>
+        </x-slot:action>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <nav aria-label="{{ __('Table') }}" class="flex gap-2">
+                @foreach ($boards as $key => $label)
+                    <a href="{{ route('hyper.ladder', $key === 'ffa' ? [] : ['board' => $key]) }}" @if ($key === $board) aria-current="page" @endif data-test="hyper-ladder-board-{{ $key }}" class="gm-chip h-11">{{ $label }}</a>
+                @endforeach
+            </nav>
+            <span class="rv-tag" data-test="hyper-ladder-season">
+                @if ($season !== null)
+                    {{ \App\Support\Badges\BadgeCopy::season($season) }}
+                @else
+                    <x-icon name="lock" :size="12" />{{ __('Rated play starts at Block 0') }}
+                @endif
+            </span>
+            @if ($mine !== null)
+                <span class="flex flex-wrap items-center gap-2 text-[13px]" data-test="hyper-ladder-mine">
+                    <span class="rv-m">{{ __('You') }}</span>
+                    <b class="tabular-nums">{{ $mine['ffa'] === null ? '–' : __(':points pts', ['points' => $mine['ffa']]) }}</b>
+                    <span class="text-ink-2">1v1</span><b class="tabular-nums">{{ $mine['duel'] ?? '–' }}</b>
+                    <span class="text-ink-2">{{ __('Team') }}</span><b class="tabular-nums">{{ $mine['team'] ?? '–' }}</b>
+                </span>
+            @endif
         </div>
 
         @if ($cup !== null)
-            <a href="{{ route('tournaments.show', $cup) }}" class="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-card px-4 py-2 text-ink shadow-ring hover:bg-row-hover hover:text-ink" data-test="hyper-ladder-cup">
+            <a href="{{ route('tournaments.show', $cup) }}" class="gp-panel flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-ink hover:bg-row-hover hover:text-ink" data-test="hyper-ladder-cup">
                 <x-icon name="trophy" :size="18" class="shrink-0 text-btc" />
                 <b class="min-w-0 truncate text-sm">{{ $cup->name }}</b>
                 <span class="text-xs text-ink-2">{{ $cup->status === \App\Enums\TournamentStatus::Signup ? __('Sign-up open until :time', ['time' => \App\Support\LeagueTime::stamp($cup->signup_closes_at)]) : __('Running') }}</span>
             </a>
         @endif
 
-        <nav aria-label="{{ __('Table') }}" class="flex self-start overflow-hidden rounded-md border border-edge">
-            @foreach ($boards as $key => $label)
-                <a href="{{ route('hyper.ladder', $key === 'ffa' ? [] : ['board' => $key]) }}" @if ($key === $board) aria-current="page" @endif data-test="hyper-ladder-board-{{ $key }}"
-                   @class([$tab, 'border-l border-edge' => ! $loop->first, 'bg-btc font-bold text-on-btc hover:text-on-btc' => $key === $board, 'bg-ground text-ink-2 hover:text-ink' => $key !== $board])>{{ $label }}</a>
-            @endforeach
-        </nav>
-
         @if ($season === null)
-            <section class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-8 lg:py-7" data-test="hyper-ladder-preseason">
-                <x-empty-state :heading="__('The season starts at Block 0')"
-                               :text="__('Until then every match is casual. From Block 0 every match without bots counts: free-for-all for points, 1v1 and clan matches for Elo (start :elo).', ['elo' => $start])">
-                    <a href="{{ route('hyper.index') }}" class="btn-p inline-flex h-11 items-center rounded-md bg-btc px-5 text-sm font-bold text-on-btc hover:text-on-btc">{{ __('Play a casual match') }}</a>
-                </x-empty-state>
-            </section>
-        @else
-            <section aria-labelledby="hyper-ladder-h" class="flex flex-col rounded-lg bg-card px-2 py-4 lg:px-6 lg:py-5">
-                <h2 id="hyper-ladder-h" class="m-0 px-2 pb-3 text-[15px] font-bold lg:px-0">{{ $boards[$board] }}</h2>
-                <div class="{{ $grid }} h-8 items-center border-b border-hairline px-2 text-xs font-bold text-ink-2">
-                    <span>#</span>
-                    <span>{{ __('Player') }}</span>
-                    <span class="text-right">{{ $elo ? __('Elo') : __('Points') }}</span>
-                    <span class="hidden text-right lg:block">{{ $elo ? __('W / L') : __('Wins') }}</span>
-                    <span class="hidden text-right lg:block">{{ $elo ? __('Results') : __('Matches') }}</span>
-                </div>
-                @forelse ($rows as $row)
-                    @php $wins = $row['user'] === null ? 0 : ($cupWins[$row['user']->id] ?? 0); @endphp
-                    <a href="{{ $row['user'] === null ? '#' : route('players.show', $row['user']->npub) }}" class="tr {{ $grid }} min-h-[52px] items-center rounded-sm px-2 py-1.5 text-[13px] text-ink hover:text-ink" data-test="hyper-ladder-row">
-                        <span class="text-ink-3 tabular-nums">{{ $row['rank'] }}</span>
-                        <span class="flex min-w-0 items-center gap-2">
-                            @if ($row['user'] !== null)<x-avatar :user="$row['user']" :size="24" />@endif
-                            <span class="truncate font-bold">{{ $row['user']?->displayName() ?? __('Deleted account') }}</span>
-                            @if ($wins > 0)
-                                <span class="inline-flex h-6 shrink-0 items-center gap-1 rounded-tag bg-btc-chip px-2 text-[11px] font-bold text-btc-hi" title="{{ __('Won the Hyperbitcoinization Weekend Cup') }}" data-test="hyper-cup-badge">
-                                    <x-icon name="trophy" :size="12" />{{ $wins > 1 ? '×'.$wins : __('Cup') }}
+            <section class="gp-hero !grid-cols-1 gap-4 p-6" data-test="hyper-ladder-preseason">
+                <span class="rv-tag self-start justify-self-start">{{ __('Season ladder') }}</span>
+                <h2 class="m-0 font-display text-[30px] leading-[1.15] font-bold">{{ __('The season starts at Block 0') }}</h2>
+                <p class="gp-lede m-0">{{ __('Until then every match is casual. From Block 0 every match without bots counts: free-for-all for points, 1v1 and clan matches for Elo (start :elo).', ['elo' => $start]) }}</p>
+                @if (isset($points[4]))
+                    {{-- The points per place of a four-seat table, as the board draws them: the winner's column tallest. --}}
+                    <figure class="m-0 flex flex-col gap-2" data-test="hyper-ladder-podium">
+                        <figcaption class="rv-m">{{ __('Points per place, table of :count', ['count' => 4]) }}</figcaption>
+                        <span class="flex items-end gap-2" aria-hidden="true">
+                            @foreach ([1, 0, 2, 3] as $place)
+                                @php
+                                    $value = (int) ($points[4][$place] ?? 0);
+                                    $height = max(8, (int) round($value / max(1, (int) max($points[4])) * 88));
+                                @endphp
+                                <span class="flex w-16 flex-col items-center gap-1">
+                                    <b @class(['font-display text-lg', 'text-btc' => $place !== 0 && $place !== 3])>{{ $value }}</b>
+                                    <span @class(['block w-full rounded-t-[2px]', 'bg-ink-2' => $place === 0, 'bg-btc-deep' => in_array($place, [1, 2], true), 'bg-raised' => $place === 3]) style="height: {{ $height }}px"></span>
+                                    <span class="rv-m">{{ $place + 1 }}.</span>
                                 </span>
-                            @endif
+                            @endforeach
                         </span>
-                        <b class="text-right text-[15px] tabular-nums">{{ $elo ? $row['rating'] : $row['points'] }}</b>
-                        <span class="hidden text-right text-ink-2 tabular-nums lg:block">{{ $elo ? $row['wins'].' / '.$row['losses'] : $row['wins'] }}</span>
-                        <span class="hidden text-right text-ink-2 tabular-nums lg:block">{{ $elo ? $row['results'] : $row['matches'] }}</span>
-                    </a>
-                @empty
-                    <p class="m-0 px-2 py-6 text-[13px] text-ink-2" data-test="hyper-ladder-empty">{{ __('No rated result this season yet. A match without bots counts.') }}</p>
-                @endforelse
+                        <span class="sr-only">{{ implode(', ', array_map(fn (int $value, int $index): string => ($index + 1).'. '.$value, $points[4], array_keys($points[4]))) }}</span>
+                    </figure>
+                @endif
+                <span class="flex flex-wrap gap-3">
+                    <a href="{{ route('hyper.index') }}" class="rv-b">{{ __('Play a casual match') }}</a>
+                </span>
+            </section>
+        @elseif ($rows === [])
+            <x-empty-state :heading="__('No rated result this season yet. A match without bots counts.')" data-test="hyper-ladder-empty">
+                <a href="{{ route('hyper.index') }}" class="rv-b2 is-sm">{{ __('Play a season match') }}</a>
+            </x-empty-state>
+        @else
+            <section aria-labelledby="hyper-ladder-h" class="gp-panel p-2">
+                <h2 id="hyper-ladder-h" class="sr-only">{{ $boards[$board] }}</h2>
+                <x-ladder.table row-test="hyper-ladder-row" :value-label="$elo ? __('Elo') : __('Points')" :record-label="$elo ? __('W / L') : __('Wins')"
+                                :rows="array_map(fn (array $row): array => ['rank' => $row['rank'], 'user' => $row['user'], 'value' => (int) ($elo ? $row['rating'] : $row['points']), 'key' => $row['rank'],
+                                    'mark' => ($wins = $row['user'] === null ? 0 : ($cupWins[$row['user']->id] ?? 0)) > 0 ? ($wins > 1 ? __('Cup').' ×'.$wins : __('Cup')) : null,
+                                    'record' => $elo ? $row['wins'].' / '.$row['losses'] : (string) $row['wins']], $rows)" />
             </section>
         @endif
 
-        {{-- How it counts, as chips: the points per table size, forfeits, bots. --}}
-        <section aria-labelledby="hyper-ladder-how" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:px-6">
-            <h2 id="hyper-ladder-how" class="m-0 text-[15px] font-bold">{{ __('How it counts') }}</h2>
-            <ul class="m-0 flex list-none flex-wrap gap-2 p-0 text-xs" data-test="hyper-ladder-rules">
-                @foreach ($points as $seats => $table)
-                    <li class="inline-flex h-8 items-center gap-2 rounded-md bg-ground px-3 shadow-ring"><span class="text-ink-2">{{ __(':count players', ['count' => $seats]) }}</span><b class="tabular-nums">{{ implode(' · ', $table) }}</b></li>
-                @endforeach
-                <li class="inline-flex h-8 items-center rounded-md bg-ground px-3 shadow-ring">{{ __('1v1 and clan matches: Elo') }}</li>
-                <li class="inline-flex h-8 items-center rounded-md bg-ground px-3 shadow-ring">{{ __('Only matches without bots') }}</li>
-                <li class="inline-flex h-8 items-center rounded-md bg-ground px-3 shadow-ring">{{ __('Leaving = last place, 0 points') }}</li>
-            </ul>
-        </section>
-    </div>
+        <x-slot:aside>
+            {{-- How it counts: the points per table size, forfeits, bots. --}}
+            <section aria-labelledby="hyper-ladder-how" class="gp-panel flex flex-col gap-3 p-4">
+                <h2 id="hyper-ladder-how" class="gp-h">{{ __('How it counts') }}</h2>
+                <ul class="m-0 flex list-disc flex-col gap-1 ps-5 text-[13px] text-ink-2" data-test="hyper-ladder-rules">
+                    @foreach ($points as $seats => $table)
+                        <li>{{ __(':count players', ['count' => $seats]) }}: {{ implode(' · ', $table) }}</li>
+                    @endforeach
+                    <li>{{ __('1v1 and clan matches: Elo') }} ({{ __('Start rating') }} {{ $start }})</li>
+                    <li>{{ __('Only matches without bots') }}</li>
+                    <li>{{ __('Leaving = last place, 0 points') }}</li>
+                </ul>
+            </section>
+        </x-slot:aside>
+    </x-ladder.page>
 </x-layouts::app>

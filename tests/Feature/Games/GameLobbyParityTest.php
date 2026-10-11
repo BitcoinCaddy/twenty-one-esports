@@ -78,8 +78,10 @@ test('the board lobby has the chess lobby\'s sections in the chess lobby\'s orde
     $chess = lobbySections($this->get(route('chess.lobby'))->assertOk()->getContent());
     $board = lobbySections($this->get(route('board.lobby', NineMensMorris::SLUG))->assertOk()->getContent());
 
-    // The chat sits right under the play row since 2026-10-04 (a bar on the phone, the side column from 1280 px).
-    $expected = ['title', 'play', 'chat', 'next tournament', 'cups', 'your games', 'live', 'online', 'ladder', ...($signedIn ? ['follows'] : [])];
+    // The lobby template T1 (GameLobby.dc.html): hero, ways to play, the chat right after them in the reading order (a
+    // bar below lg, the right column from lg; rule R6, 2026-10-03 "weiter oben"), your games, live and online, the
+    // ladder, the next tournament and its cups, then the secondary slot (follows).
+    $expected = ['title', 'play', 'chat', 'your games', 'live', 'online', 'ladder', 'next tournament', 'cups', ...($signedIn ? ['follows'] : [])];
 
     // The board games run no casual cup since 2026-10-07 (correspondence only): the same order without it.
     expect($board)->toBe(array_values(array_diff($expected, ['cups'])))

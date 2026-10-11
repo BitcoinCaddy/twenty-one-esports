@@ -157,9 +157,9 @@ test('the page leads with one action per viewer: log in, the own match, else a c
         ->and($own)->toContain('href="'.route('matches.show', $open).'"')
         ->and($own)->toContain('data-test="game-pulse-open" data-count="1"')
         ->and($own)->toContain('data-test="game-pulse-clans" data-count="2"')
-        // The hero comes before the invite, and the invite before the matches.
-        ->and(strpos($own, 'data-test="game-cta"'))->toBeLessThan(strpos($own, 'data-test="invite-module"'))
-        ->and(strpos($own, 'data-test="invite-module"'))->toBeLessThan(strpos($own, 'data-test="game-matches"'))
+        // The primary action in the game bar first, the matches in the main column, the invite in the secondary slot after them (rule R7).
+        ->and(strpos($own, 'data-test="game-cta"'))->toBeLessThan(strpos($own, 'data-test="game-matches"'))
+        ->and(strpos($own, 'data-test="game-matches"'))->toBeLessThan(strpos($own, 'data-test="invite-module"'))
         ->and($guest)->not->toContain('data-test="game-steps"')
         ->and($player)->toContain('data-test="game-steps"');
 });

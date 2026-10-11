@@ -65,15 +65,15 @@ const RL_START_MEASURE = <<<'JS'
             vw: innerWidth, vh: innerHeight, floor,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             start: one('[data-test=game-start]'), band: one('[data-test=prize-band]'), chat: one('[data-test=game-chat]'),
-            tiles: [...document.querySelectorAll('[data-test=start-tile]')].map((el) => ({ tile: el.dataset.tile, ...box(el) })),
-            tabs: [...document.querySelectorAll('[data-test=ctx-prizes]')].map((el) => ({ tab: el.innerText.trim().replace(/\s+/g, ' '), ...box(el) })),
+            tiles: [...document.querySelectorAll('[data-test=play] li > a')].map((el) => ({ tile: el.dataset.test, ...box(el) })),
+            tabs: [...document.querySelectorAll('[data-test=ctx-tournaments]')].map((el) => ({ tab: el.innerText.trim().replace(/\s+/g, ' '), ...box(el) })),
             cards: ['next-tournament-empty', 'next-tournament', 'prize-last', 'prize-cups'].map((t) => ({ card: t, box: one('[data-test=' + t + ']') })).filter((c) => c.box !== null),
             buttons: inside('a.btn-p, a.btn-s, a.btn-w, button, [data-test=start-tile], [data-test=section-tab], [data-test=section-tab-tournaments]').map((el) => ({ el: label(el), ...box(el) })),
             low: inside('a.btn-p, a.btn-s, a.btn-w, button, [data-test=start-tile], [data-test=section-tab], [data-test=section-tab-tournaments], [data-test=prize-last-name]').filter((el) => el.getBoundingClientRect().height < 44).map(label),
             cut: inside('*').filter((el) => !(el instanceof SVGElement) && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1).map(label),
             wrapped: inside('a.btn-p, a.btn-s, a.btn-w, button').filter((el) => el.getBoundingClientRect().height > 46).map(label),
-            first: { tile: firstScreen('[data-tile=tournaments]'), tab: firstScreen('[data-test=ctx-prizes]'), all: firstScreen('[data-test=prize-band-all]') },
-            order: [...document.querySelectorAll('[data-test=start-tile]')].map((el) => el.dataset.tile),
+            first: { tile: firstScreen('[data-test=play-tournaments]'), tab: firstScreen('[data-test=ctx-tournaments]'), all: firstScreen('[data-test=prize-band-all]') },
+            order: [...document.querySelectorAll('[data-test=play] li > a')].map((el) => el.dataset.test),
             // Words running into the next box (de "Herausforderungen" in the pulse at 1280): an inline text wider than its own cell.
             spill: [...document.querySelectorAll('[data-test=game-pulse] li span')].filter((el) => el.scrollWidth > el.parentElement.clientWidth + 1).map(label),
             // Squeezed text (user, 2026-10-07: widths cramped beside the chat): a sentence of more than 6 words wrapped into a box under 240 px wide and over 60 px high.
@@ -143,7 +143,7 @@ function rlStartShot(Page $page, string $name): void
     File::move(base_path('tests/Browser/Screenshots/'.$name.'-band.png'), $dir.'/'.$name.'-band.png');
 }
 
-test('the Rocket League page at 390, 1024, 1280 and 1440: nothing squeezed, cut or overflowing, Tournaments & prizes first and in the first screen, a quiet console', function () {
+test('the Rocket League page at 390, 1024, 1280 and 1440: nothing squeezed, cut or overflowing, Tournaments & prizes in the ways to play and in the first screen, a quiet console', function () {
     rlStartWorld();
     $player = User::factory()->create();
     $report = [];
@@ -160,15 +160,16 @@ test('the Rocket League page at 390, 1024, 1280 and 1440: nothing squeezed, cut 
         $label = "{$width}x{$height}";
 
         expect($m['overflow'])->toBe(0, "{$label}: sideways overflow")
-            ->and($m['order'])->toBe(['tournaments', 'play', 'ladder', 'latest'], "{$label}: tile order")
+            // The ways to play (template T1, GameSeries.dc.html): casual 1v1, the clan series, Tournaments & prizes.
+            ->and($m['order'])->toBe(['play-casual', 'game-page-challenge', 'play-tournaments'], "{$label}: row order")
             ->and($m['cut'])->toBe([], "{$label}: text wider than its box")
             ->and($m['low'])->toBe([], "{$label}: buttons below 44 px")
             ->and($m['wrapped'])->toBe([], "{$label}: a button wrapped onto two lines")
-            ->and($m['first']['tile'])->toBeTrue("{$label}: Tournaments tile in the first screen");
+            ->and($m['first']['tile'])->toBeTrue("{$label}: Tournaments & prizes in the first screen");
 
-        // No tile narrower than 150 px or squeezed below its content; all four the same width in a row.
+        // No row narrower than 150 px.
         foreach ($m['tiles'] as $tile) {
-            expect($tile['w'])->toBeGreaterThanOrEqual(150, "{$label}: tile {$tile['tile']} {$tile['w']} px wide");
+            expect($tile['w'])->toBeGreaterThanOrEqual(150, "{$label}: row {$tile['tile']} {$tile['w']} px wide");
         }
 
         // A card never runs under the chat column.
@@ -181,8 +182,9 @@ test('the Rocket League page at 390, 1024, 1280 and 1440: nothing squeezed, cut 
         expect($m['squeezed'])->toBe([], "{$label}: squeezed text");
 
         if ($width === 1440) {
-            expect($m['first']['tab'])->toBeTrue("{$label}: the accented Tournaments & prizes entry in the game bar")
-                ->and($m['first']['all'])->toBeTrue("{$label}: All Rocket League tournaments in the first screen");
+            // The way into the Rocket League tournaments in the first screen: the game bar's tab and the Tournaments & prizes
+            // row (checked above at every width); the prize band with its own button follows the ways to play (GameSeries.dc.html).
+            expect($m['first']['tab'])->toBeTrue("{$label}: the Tournaments tab in the game bar");
         }
 
         // A roundtrip: the console stays quiet after it too.

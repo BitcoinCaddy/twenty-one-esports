@@ -2,6 +2,7 @@
 @import './revamp.css';
 @import './revamp-tournaments.css';
 @import './match.css';
+@import './revamp-games.css';
 
 @source '../views';
 @source '../../app/Support';

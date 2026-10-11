@@ -155,7 +155,8 @@ test('two players find an opponent on the Rocket League page, both get the ready
         expect($module[0])->toMatchArray(['overflow' => 0, 'inWindow' => true, 'small' => [], 'outside' => [], 'clipped' => []])
             ->and($module[1])->toMatchArray(['overflow' => 0, 'inWindow' => true, 'small' => [], 'outside' => [], 'clipped' => []])
             // Four tiles in one row from lg.
-            ->and(array_unique($tiles))->toHaveCount(1);
+            // One row each, as the lobby template's ways to play (T1): four rows, one above the other.
+            ->and(count(array_unique($tiles)))->toBe(4);
 
         $wide->locator('[data-test=casual-find]')->click();
         BrowserWait::until($wide, '() => document.querySelector("[data-test=casual-searching]") !== null', 10_000);

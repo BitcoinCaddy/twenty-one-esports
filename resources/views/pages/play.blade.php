@@ -1,7 +1,8 @@
 {{--
     All games and modes (/play, header concept B): every registered game
     (GameRegistry) with its cover, its modes and what a player does in it,
-    the viewer's games first, the board games as one group at the end.
+    in the registry's order (rule R19: the browser games first, Proof of Pong second, the own-copy games after them),
+    the board games as one group where the first of them stands (PlayPage.dc.html, PlayGame.dc.html).
     The game hub links here. Public: a guest sees
     the pages anyone can open, and "Log in to play" instead of the actions
     that need an account. The links are the navigation's own
@@ -23,9 +24,11 @@
         <div class="flex max-w-[60ch] flex-col gap-2">
             <h1 class="m-0 font-display text-[28px] leading-[1.1] font-bold lg:text-4xl">{{ __('All games and modes') }}</h1>
             <p class="m-0 text-[13px] leading-normal text-ink-2">
-                {{-- With board games the order is playOrder(): by what the player played, the board games at the end. --}}
-                {{ $user ? ($boards === [] ? __('Your games come first, the one you played last on top.') : __('Sorted by what you played, the latest on top; the board games always come last.')) : __('Every game of the league. Log in with Nostr or Google to play, challenge and climb a ladder.') }}
+                {{ $user ? __('Every game of the league: the browser games first, the games with your own copy after them.') : __('Every game of the league. Log in with Nostr or Google to play, challenge and climb a ladder.') }}
             </p>
+            @if (\App\Support\SeasonChain\Seasons::live() === null)
+                <p class="rv-m m-0" data-test="play-preseason">{{ __('Pre-Season: casual until Block 0.') }}</p>
+            @endif
         </div>
 
         {{-- Casual 1v1 (P23 S3): the quickest way into a Rocket League or EA FC match, the game picked here. --}}
@@ -34,8 +37,8 @@
         @endif
 
         {{--
-            The board games (plan "Mühle und Dame", P7) as one group where the first of them stands: at the end
-            (ShellNavigation::playOrder(), user 2026-10-03).
+            The board games (plan "Mühle und Dame", P7) as one group where the first of them stands: after Blockfill
+            (ShellNavigation::playOrder(), esports.game_order).
         --}}
         <ul class="m-0 flex list-none flex-col gap-4 p-0">
             @foreach ($games as $game)

@@ -154,8 +154,10 @@ test('the dock and the notifications name the game\'s and the invite\'s mode', f
 });
 
 test('navigation opens the default ladder; the ladder page, the rules and the sitemap list every mode', function () {
-    $html = $this->actingAs(User::factory()->create())->get(route('clans.index'))->assertOk()->getContent();
-    expect($html)->toContain('href="'.route('ladder.show', ['chess', ChessModes::DEFAULT]).'"');
+    // The game bar of the chess lobby (template T1, rule R5): its Ladder tab opens the default mode.
+    $html = $this->actingAs(User::factory()->create())->get(route('chess.lobby'))->assertOk()->getContent();
+    expect($html)->toContain('href="'.route('ladder.show', ['chess', ChessModes::DEFAULT]).'"')
+        ->and($html)->toMatch('~href="'.preg_quote(route('ladder.show', ['chess', ChessModes::DEFAULT]), '~').'"[^>]*data-test="ctx-ladder"~');
 
     $ladder = $this->get(route('ladder.show', ['chess', ChessModes::DEFAULT]))->assertOk()->getContent();
     foreach (ChessModes::all() as $mode) {

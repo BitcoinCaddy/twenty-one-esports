@@ -130,28 +130,22 @@ test('an open Rocket League tournament stands in the band as its poster with its
     $html = (string) $this->get(route('games.rocket-league'))->assertOk()->getContent();
 
     expect(between($html, 'data-test="prize-band"', 'data-test="prize-last"'))->toContain('data-test="next-tournament"')->toContain('RL Friday Open')
-        ->and(between($html, 'data-tile="tournaments"', '</a>'))->toContain('data-test="start-tile-next"')
         ->and($open->id)->toBeInt();
 });
 
-test('four start tiles, Tournaments & prizes first and the only orange one; the tab leads to the Rocket League tournaments', function () {
+test('the ways to play name the prizes paid and lead to the Rocket League tournaments; the game bar\'s Tournaments tab too (template T1, GameSeries.dc.html)', function () {
     tournamentTwo();
     $html = (string) $this->get(route('games.rocket-league'))->assertOk()->getContent();
-
-    preg_match_all('#<a href="([^"]*)" class="([^"]*)" data-test="start-tile" data-tile="([a-z]+)"#', $html, $tiles, PREG_SET_ORDER);
     $filtered = e(route('tournaments.index', ['game' => 'rocket-league']));
 
-    expect(array_column($tiles, 3))->toBe(['tournaments', 'play', 'ladder', 'latest'])
-        ->and(array_values(array_filter($tiles, fn (array $tile): bool => preg_match('/\bbg-btc\b/', $tile[2]) === 1)))->toHaveCount(1)
-        ->and(preg_match('/\bbg-btc\b/', $tiles[0][2]))->toBe(1)
-        ->and($tiles[0][1])->toBe($filtered)
-        ->and(between($html, 'data-tile="tournaments"', '</a>'))->toContain("23\u{00A0}310 sats won")->toContain('Champion: Industrie_KPI')
-        // The game bar leads with Tournaments & prizes, accented, to this game's list; no second tab row on the page.
-        ->and($html)->toMatch('#<a href="'.preg_quote($filtered, '#').'"[^>]*class="ctx-link ctx-link-accent" data-test="ctx-prizes"#')
+    expect(between($html, 'data-test="play"', '</section>'))->toContain('data-test="play-tournaments"')
+        ->and(between($html, 'data-test="play-tournaments"', '</a>'))->toContain("23\u{00A0}310 sats won")->toContain('Champion: Industrie_KPI')
+        ->and($html)->toMatch('#<a\s+href="'.preg_quote($filtered, '#').'"[^>]*data-test="play-tournaments"#')
+        ->and($html)->toMatch('#<a href="'.preg_quote($filtered, '#').'"[^>]*class="gs-tab"[^>]*data-test="ctx-tournaments"#')
+        // One game bar, no second tab row and no start tiles on the page; the prize band follows the ways to play.
         ->and($html)->not->toContain('data-test="game-sections"')
-        // The tabs and tiles come right under the head, before the body.
-        ->and(strpos($html, 'data-test="game-start"'))->toBeGreaterThan(strpos($html, '</header>'))
-        ->and(strpos($html, 'data-test="start-tiles"'))->toBeLessThan(strpos($html, 'data-test="prize-band"'));
+        ->and($html)->not->toContain('data-test="start-tiles"')
+        ->and(strpos($html, 'data-test="play"'))->toBeLessThan(strpos($html, 'data-test="prize-band"'));
 
     Livewire::test('pages::games.series', ['slug' => 'rocket-league'])->call('$refresh')->assertOk()->assertSeeHtml('data-test="prize-band"');
 });
