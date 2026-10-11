@@ -3,6 +3,7 @@
 namespace App\Support\Caster;
 
 use App\Models\ChatterExchange;
+use App\Models\ChatterLine;
 use App\Models\ChatterNote;
 use App\Models\ChatterProfile;
 use App\Models\TrustRank;
@@ -176,6 +177,7 @@ class ChatterCache
     {
         ChatterNote::query()->where('pubkey', $pubkey)->delete();
         ChatterExchange::query()->where('pubkey', $pubkey)->delete();
+        ChatterLine::query()->where('pubkey', $pubkey)->delete();
         ChatterProfile::query()->where('pubkey', $pubkey)->delete();
     }
 

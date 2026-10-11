@@ -382,6 +382,23 @@ return [
             'wishes_max_age_minutes' => 30,
             // `caster:chat` runs every minute and reads the chat and zaps this often within it (a reaction is written sooner).
             'poll_seconds' => 15,
+            // The latest EINUNDZWANZIG podcast episodes as data for every chat reply (App\Support\Caster\PodcastFeed):
+            // fetched at most once per `podcast_minutes`, the last good copy kept when the feed fails.
+            'podcast_feed' => env('TV_COMMENTARY_PODCAST_FEED', 'https://anchor.fm/s/d8d3c38/podcast/rss'),
+            'podcast_episodes' => 3,
+            'podcast_chars' => 600,
+            'podcast_minutes' => 60,
+            'podcast_timeout_seconds' => 8,
+            'podcast_max_bytes' => 12 * 1024 * 1024,
+            // A question in the chat is first looked up on the web (WebLookupAgent with Anthropic's server-side web
+            // search, at most `max_searches` searches), the finding goes into the reply prompt as data.
+            'web_search' => (bool) env('TV_COMMENTARY_CHAT_WEB_SEARCH', true),
+            'max_searches' => 1,
+            // The rolling chat memory (App\Support\Caster\ChatMemory): every trusted message the caster saw and its
+            // reply, kept `memory_hours`; a reply prompt sees the asker's thread and the others' latest lines, each
+            // block at most `memory_tokens` (characters / 4).
+            'memory_hours' => (int) env('TV_COMMENTARY_CHAT_MEMORY_HOURS', 24),
+            'memory_tokens' => 1_500,
         ],
     ],
 

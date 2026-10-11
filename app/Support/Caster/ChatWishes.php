@@ -75,6 +75,12 @@ class ChatWishes
         self::MORE => '/erzähl mehr|mehr davon|\bweiter\b|erzähl weiter|noch eine|noch einen|nochmal|noch mal/u',
     ];
 
+    /**
+     * A question about the podcast's latest episodes is no wish for jokes: the reply answers it from the feed
+     * (PodcastFeed, user 2026-10-12: "Was lief so im letzten Podcast?").
+     */
+    private const EPISODE_QUESTION = '/(?:letzt|neu|aktuell)\w*\s+(?:podcast|folge|episode)|was lief|was kam|worum ging|welche folge|in der folge|podcast-?folge/u';
+
     public function __construct(
         private ChatterCache $cache,
         private HistoryScripts $history,
@@ -95,6 +101,10 @@ class ChatWishes
     public static function intent(string $message): ?string
     {
         $text = mb_strtolower($message);
+
+        if (preg_match(self::EPISODE_QUESTION, $text) === 1) {
+            return null;
+        }
 
         foreach (self::PATTERNS as $type => $pattern) {
             if (preg_match($pattern, $text) === 1) {

@@ -53,6 +53,13 @@ use Illuminate\Support\Facades\Cache;
  * news, jokes, the game; ChatWishes) is acknowledged by name and the segment
  * queued right behind the reply. An untrusted chatter's message is never read. Skips are counted per reason in VoiceUsage
  * (`chat_reaction`), never the text.
+ *
+ * Every model reply also gets, as data (user 2026-10-12): the podcast's
+ * latest episodes (PodcastFeed), the asking person's thread of the last
+ * `memory_hours` and the latest lines of everybody else (ChatMemory). Every
+ * trusted message the caster saw goes into that memory, also one held back
+ * by a cooldown or the hourly cap, with the first words of the reply it got;
+ * an untrusted or muted chatter's never.
  */
 class ChatReactions
 {
@@ -96,6 +103,8 @@ class ChatReactions
         private CasterVoice $voice,
         private ReactionLines $lines,
         private ChatWishes $wishes,
+        private ChatMemory $memory,
+        private PodcastFeed $podcast,
     ) {}
 
     public static function enabled(): bool
@@ -156,6 +165,11 @@ class ChatReactions
 
             if ($reason !== null) {
                 $this->usage->recordRejection(self::SKIPS, [$reason]);
+
+                // Seen but not answered (a cooldown or the hourly cap): still part of the chat memory.
+                if (in_array($reason, ['person_cooldown', 'hourly_cap'], true)) {
+                    $this->memory->remember($event->pubkey, self::speakableName(ChatterProfile::query()->where('pubkey', $event->pubkey)->value('name')), $event->content, $now);
+                }
 
                 continue;
             }
@@ -278,6 +292,9 @@ class ChatReactions
         // the name stays the one fact from the chatter: their own public kind 0 name (never a gamer tag).
         $message = self::sanitizeMessage($event->content);
         $facts = $name === null ? ['chat' => 'eine Nachricht im Stream-Chat'] : ['chatter_name' => $name];
+        // The memory as it was before this message, then this message into it (its reply follows below).
+        $data = ScriptQueue::aiEnabled() ? $this->replyData($event->pubkey, $now) : [];
+        $line = $this->memory->remember($event->pubkey, $name, $message, $now);
 
         // A wish of a trusted chatter (ChatWishes): the acknowledgement, then the segment right behind it, both live.
         $wish = $this->wishes->grant($event->pubkey, $message, $now);
@@ -285,32 +302,56 @@ class ChatReactions
             $live = (int) config('tv.commentary.scripts.live_priority', 100);
             // The acknowledgement answers the message too (user 2026-10-11: "antwortet nur generisch!"); the template only
             // when the model is off or its draft broke a house rule.
-            $ack = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, [...$hints, 'gleich_danach' => self::WISH_TEASERS[$wish['type']] ?? 'du erfüllst den Wunsch']) : null;
-            $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $ack ?? $this->lines->wish($wish['type'], $name), SceneFacts::hash($facts), $live, $now, source: $ack === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
+            $ack = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, [...$hints, 'gleich_danach' => self::WISH_TEASERS[$wish['type']] ?? 'du erfüllst den Wunsch'], $data) : null;
+            $spoken = $ack ?? $this->lines->wish($wish['type'], $name);
+            $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $spoken, SceneFacts::hash($facts), $live, $now, source: $ack === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
             $this->queue->enqueue($wish['kind'], ScenePhase::BREAK, $wish['text'], $wish['facts_hash'], $live, $now, scene: ChatWishes::SCENE, source: $wish['source'], topic: $wish['topic'],
                 maxAgeMinutes: (int) config('tv.commentary.chat.wishes_max_age_minutes', 30));
             $profile->last_reaction_at = Carbon::instance($now);
             $profile->save();
             $this->cache->rememberExchange($event->pubkey, implode(', ', $keywords));
+            if ($line !== null) {
+                $this->memory->answer($line, $spoken);
+            }
 
             return true;
         }
 
         $priority = (int) config('tv.commentary.scripts.chat_priority', 50);
-        $text = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, $hints) : null;
+        $text = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, $hints, $data) : null;
 
         if ($text === null && ScriptQueue::aiEnabled()) {
             $this->usage->recordRejection(self::SKIPS, ['voice_rejected']);
         }
 
         // The model is off or its draft did not pass: a pattern reply to the message's intent, never silence.
-        $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $text ?? $this->lines->reply($message, $name), SceneFacts::hash($facts), $priority, $now, source: $text === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
+        $spoken = $text ?? $this->lines->reply($message, $name);
+        $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $spoken, SceneFacts::hash($facts), $priority, $now, source: $text === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
+        if ($line !== null) {
+            $this->memory->answer($line, $spoken);
+        }
 
         $profile->last_reaction_at = Carbon::instance($now);
         $profile->save();
         $this->cache->rememberExchange($event->pubkey, implode(', ', $keywords));
 
         return true;
+    }
+
+    /**
+     * The data blocks of a model reply: the podcast's latest episodes, the
+     * asking person's thread and everybody else's latest lines (each left out
+     * when empty).
+     *
+     * @return array<string, string>
+     */
+    private function replyData(string $pubkey, CarbonImmutable $now): array
+    {
+        return array_filter([
+            'Die letzten Folgen des EINUNDZWANZIG-Podcasts, neueste zuerst' => $this->podcast->block(),
+            'Was diese Person in den letzten Stunden geschrieben hat, neueste zuerst' => $this->memory->thread($pubkey, $now),
+            'Was die anderen im Chat zuletzt geschrieben haben, neueste zuerst' => $this->memory->others($pubkey, $now),
+        ], fn (?string $block): bool => $block !== null);
     }
 
     /**

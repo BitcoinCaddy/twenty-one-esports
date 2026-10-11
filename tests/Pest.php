@@ -11,6 +11,7 @@ use App\Support\SeasonChain\LeagueKey;
 use App\Support\SeasonChain\SeasonChains;
 use App\Support\Voice\ChatFactCheck;
 use App\Support\Voice\VoiceFactCheck;
+use App\Support\Voice\WebLookupAgent;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
@@ -75,6 +76,8 @@ pest()->extend(TestCase::class)
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
         ChatFactCheck::fake(fn (): array => ['claims' => []]);
+        // A chat question's web lookup is a model call too: nothing to look up by default (ChatContextTest fakes findings).
+        WebLookupAgent::fake(fn (): string => WebLookupAgent::NOTHING);
         // Quiet hours follow the wall clock: off by default so a run after one at night tests the day schedule (QuietHoursTest switches them on).
         config(['tv.commentary.spool.quiet_hours.from' => '']);
         // The stream command refreshes the cover picture at config('twentyone.stream.cover.path'); with the fake renderer
@@ -136,6 +139,8 @@ pest()->extend(TestCase::class)
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
         ChatFactCheck::fake(fn (): array => ['claims' => []]);
+        // A chat question's web lookup is a model call too: nothing to look up by default (ChatContextTest fakes findings).
+        WebLookupAgent::fake(fn (): string => WebLookupAgent::NOTHING);
         // Quiet hours follow the wall clock: off by default so a run after one at night tests the day schedule (QuietHoursTest switches them on).
         config(['tv.commentary.spool.quiet_hours.from' => '']);
         config(['session.expire_on_close' => true]);
