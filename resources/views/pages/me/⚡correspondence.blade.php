@@ -200,64 +200,63 @@ new #[Title('Daily chess')] #[Layout('layouts::app', ['section' => 'chess', 'scr
     $opponentRatings = \App\Support\Rating\Ratings::forUsers($cards->map(fn ($card) => $card['opponent']?->id)->all(), 'chess', 'correspondence', $pool);
     $myDeltas = \App\Models\RatingChange::query()->where('source', \App\Models\RatingChange::CHESS)->whereIn('source_id', $finished->pluck('id'))
         ->whereHas('rating', fn ($query) => $query->where('subject', 'user:'.$user->id))->pluck('delta', 'source_id');
+    /*
+     * One list for every correspondence game (Correspondence.dc.html, T14, plan "Refactor und Design-Revamp", P5): chess,
+     * Blockli, nine men's morris and checkers, running ones first by whose move it is and the deadline, then the finished
+     * chess games. Each row: game, pairing, move state, deadline, one action.
+     */
+    $leftOf = fn (int $deadlineMs): int => intdiv(max(0, $deadlineMs - (int) now()->getTimestampMs()), 60_000);
+    $corrRows = collect();
+
+    foreach ($cards as $card) {
+        $left = $leftOf((int) $card['game']->deadline_ms);
+        $corrRows->push(['key' => 'c'.$card['game']->id, 'game' => 'chess', 'status' => $card['mine'] ? 'mine' : 'theirs', 'href' => route('games.show', $card['game']), 'number' => $card['game']->number(),
+            'opponent' => $card['opponent']?->displayName() ?? __('Deleted player'), 'detail' => $card['last'] === null ? __('No move yet') : __('after'), 'move' => $card['last'], 'npub' => $card['opponent']?->npub,
+            'left' => intdiv($left, 60).':'.str_pad((string) ($left % 60), 2, '0', STR_PAD_LEFT), 'urgent' => $card['urgent'], 'test' => $card['mine'] ? 'daily-mine' : 'daily-theirs']);
+    }
+
+    foreach ($this->boardCorrespondence['games'] as $boardGame) {
+        $boardMine = $boardGame->turn === $boardGame->colorOf($user);
+        $left = $leftOf((int) $boardGame->deadline_ms);
+        $corrRows->push(['key' => 'b'.$boardGame->id, 'game' => $boardGame->game, 'status' => $boardMine ? 'mine' : 'theirs', 'href' => route('board.show', $boardGame), 'number' => \App\Support\GameNames::game($boardGame->game),
+            'opponent' => $boardGame->opponentOf($user)?->displayName() ?? __('Deleted player'), 'detail' => __('move :n', ['n' => intdiv($boardGame->ply, 2) + 1]),
+            'left' => intdiv($left, 60).':'.str_pad((string) ($left % 60), 2, '0', STR_PAD_LEFT), 'urgent' => $left < 8 * 60, 'test' => 'board-correspondence-game']);
+    }
+
+    // Yours to move first, each group by the deadline (the rows came in deadline order).
+    $corrRows = $corrRows->sortBy(fn (array $row): int => $row['status'] === 'mine' ? 0 : 1)->values();
+
+    foreach ($finished as $i => $game) {
+        $outcome = $outcomes[$i];
+        $corrRows->push(['key' => 'f'.$game->id, 'game' => 'chess', 'status' => 'done', 'href' => route('games.show', $game), 'number' => $game->number(),
+            'opponent' => $game->opponentOf($user)?->displayName() ?? __('Deleted player'), 'detail' => ($game->result ? str_replace(['1/2', '-'], ['½', '–'], $game->result).', ' : '').['win' => __('Win'), 'loss' => __('Loss'), 'draw' => __('Draw'), 'aborted' => __('Aborted')][$outcome],
+            'left' => $game->ended_at?->diffForHumans() ?? '–', 'urgent' => false, 'test' => 'daily-finished', 'outcome' => $outcome]);
+    }
+
+    $reachText = $notificationsOn
+        ? trim(($moveReach !== [] ? __('A browser push for an opponent\'s move, at most once an hour and only while you are away.') : __('Opponent moves show here and in the bell.')).' '.($reminderChannels !== [] ? __(':channels :hours h before your deadline.', ['channels' => ucfirst(implode(' '.__('and').' ', $reminderChannels)), 'hours' => $settings->remindHours]) : __('No reminder before your deadline.')))
+        : __('You only see new moves here. Turn on a reminder so no deadline slips by.');
+    $corrCounts = ['all' => $corrRows->count(), 'mine' => $corrRows->where('status', 'mine')->count(), 'theirs' => $corrRows->where('status', 'theirs')->count(), 'done' => $corrRows->where('status', 'done')->count()];
 @endphp
 
-<div class="flex grow flex-col gap-4 px-4 pb-8 lg:px-12 lg:pb-6" data-test="correspondence-list">
-    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h1 class="m-0 font-display text-[28px] font-bold lg:text-[40px]">{{ __('Daily chess') }}</h1>
-        <span class="text-[13px] text-ink-2">{{ __('your games, 1 move per day, every move saved and verified') }}</span>
+<div class="flex min-w-0 grow flex-col gap-5 px-4 pt-6 pb-8 lg:mx-auto lg:w-full lg:max-w-[1376px] lg:px-12 lg:pb-10" data-test="correspondence-list" x-data="{ show: 'all' }">
+    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-[4px] border-l-4 border-chess bg-gradient-to-r from-card to-transparent px-4 py-3">
+        <h1 class="m-0 font-display text-[28px] leading-tight font-bold lg:text-[34px]">{{ __('Your correspondence games') }}</h1>
+        <span class="rv-m text-[13px]">{{ __('Chess, Blockli, nine men\'s morris, checkers: one list') }}</span>
     </div>
 
     @if (session('status'))
-        <p role="status" class="m-0 rounded-lg bg-win-tint px-4 py-3 text-[13px] text-win">{{ session('status') }}</p>
+        <p role="status" class="m-0 rounded-[4px] bg-win-tint px-4 py-3 text-[13px] text-win">{{ session('status') }}</p>
     @endif
     @if ($error)
-        <p role="alert" class="m-0 rounded-lg bg-loss-tint px-4 py-3 text-[13px] text-loss">{{ $error }}</p>
+        <p role="alert" class="m-0 rounded-[4px] bg-loss-tint px-4 py-3 text-[13px] text-loss">{{ $error }}</p>
     @endif
 
-    {{-- Numbers and notifications: one row from 1440 px (the design width; the row needs ~1420 px), below that four numbers over the notification block (at 1024 px the row ran 163 px past the edge). --}}
-    <section aria-label="{{ __('Overview') }}" class="grid grid-cols-2 gap-x-6 gap-y-4 rounded-lg bg-card px-4 py-4 lg:grid-cols-4 lg:px-6 lg:py-5 min-[90rem]:flex min-[90rem]:items-center min-[90rem]:gap-6">
-        <span class="flex flex-col gap-1 min-[90rem]:min-w-[180px]"><span class="text-xs text-ink-2">{{ __('In progress') }}</span><b class="font-display text-[22px]" data-test="count-running">{{ $cards->count() }}</b></span>
-        <span class="flex flex-col gap-1 min-[90rem]:min-w-[180px]"><span class="text-xs text-ink-2">{{ __('Your move') }}</span><b class="font-display text-[22px] text-btc" data-test="count-mine">{{ $mine->count() }}</b></span>
-        <span class="flex flex-col gap-1 min-[90rem]:min-w-[180px]">
-            <span class="text-xs text-ink-2">{{ __('Next deadline') }}</span>
-            @if ($next)
-                @php($leftMin = intdiv(max(0, (int) $next['game']->deadline_ms - (int) now()->getTimestampMs()), 60_000))
-                <b class="font-display text-[22px]">{{ intdiv($leftMin, 60) }}:{{ str_pad((string) ($leftMin % 60), 2, '0', STR_PAD_LEFT) }}</b>
-                <span class="text-xs text-ink-2">{{ __('h, vs :name', ['name' => $next['opponent']?->displayName()]) }}</span>
-            @else
-                <b class="font-display text-[22px]">–</b>
-                <span class="text-xs text-ink-2">{{ __('nothing due') }}</span>
-            @endif
-        </span>
-        <span class="flex flex-col gap-1 min-[90rem]:min-w-[180px]">
-            <span class="text-xs text-ink-2">{{ __('Finished') }}</span>
-            <b class="font-display text-[22px]">{{ $finished->count() }}</b>
-            <span class="text-xs text-ink-2">{{ __(':wins won · :draws drawn · :losses lost', ['wins' => $outcomes->filter(fn ($o) => $o === 'win')->count(), 'draws' => $outcomes->filter(fn ($o) => $o === 'draw')->count(), 'losses' => $outcomes->filter(fn ($o) => $o === 'loss')->count()]) }}</span>
-        </span>
-        <span class="col-span-2 flex items-center gap-3.5 border-t border-hairline pt-4 lg:col-span-4 min-[90rem]:ml-auto min-[90rem]:border-t-0 min-[90rem]:border-l min-[90rem]:pt-0 min-[90rem]:pl-6">
-            <span class="flex size-10 shrink-0 items-center justify-center rounded-md bg-proof-fill text-proof"><x-icon name="bell" :size="16" /></span>
-            <span class="flex min-w-0 grow flex-col gap-0.5 text-[13px] lg:max-w-[280px]">
-                @if ($notificationsOn)
-                    <b class="flex items-center gap-1.5 text-win"><x-icon name="check" :size="14" />{{ __('Notifications on') }}</b>
-                    <span class="text-xs leading-normal text-ink-2" data-test="correspondence-reach">
-                        {{ $moveReach !== [] ? __('A browser push for an opponent\'s move, at most once an hour and only while you are away.') : __('Opponent moves show here and in the bell.') }}
-                        {{ $reminderChannels !== [] ? __(':channels :hours h before your deadline.', ['channels' => ucfirst(implode(' '.__('and').' ', $reminderChannels)), 'hours' => $settings->remindHours]) : __('No reminder before your deadline.') }}
-                    </span>
-                @else
-                    <b class="text-ink-2">{{ __('Notifications off') }}</b>
-                    <span class="text-xs leading-normal text-ink-2">{{ __('You only see new moves here. Turn on a reminder so no deadline slips by.') }}</span>
-                @endif
-            </span>
-            <x-button variant="quiet" :href="route('settings.notifications')" data-test="correspondence-notifications-change">{{ __('Change') }}</x-button>
-        </span>
-    </section>
-
-    {{-- Challenges (ChessOverlays "Daily challenge received") --}}
+    {{-- Challenges to answer stay above the list: the list has no row for a game that has not started. --}}
     @foreach ($this->incoming as $challenge)
-        <section wire:key="in-{{ $challenge->id }}" aria-labelledby="ch-{{ $challenge->id }}" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 shadow-ring lg:flex-row lg:items-center lg:gap-6 lg:px-6" data-test="challenge-received">
+        <section wire:key="in-{{ $challenge->id }}" aria-labelledby="ch-{{ $challenge->id }}" class="rv-card flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-center lg:gap-6 lg:px-6" data-test="challenge-received">
             <span class="flex min-w-0 grow items-start gap-3">
-                <x-player-link :user="$challenge->challenger" class="shrink-0"><x-avatar :user="$challenge->challenger" :size="40" class="rounded-md" /></x-player-link>
+                <x-player-link :user="$challenge->challenger" class="shrink-0"><x-avatar :user="$challenge->challenger" :size="40" class="rounded-[4px]" /></x-player-link>
                 <span class="flex min-w-0 flex-col gap-1">
                     <b id="ch-{{ $challenge->id }}" class="text-base">{{ __(':name challenges you', ['name' => $challenge->challenger->displayName()]) }}</b>
                     <span class="text-xs text-ink-2">{{ __('Daily chess · Casual · you play :color', ['color' => match ($challenge->color) { 'white' => __('Black'), 'black' => __('White'), default => __('a random colour') }]) }}</span>
@@ -272,132 +271,89 @@ new #[Title('Daily chess')] #[Layout('layouts::app', ['section' => 'chess', 'scr
         </section>
     @endforeach
     @foreach ($this->outgoing as $challenge)
-        <section wire:key="out-{{ $challenge->id }}" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-6 lg:px-6" data-test="challenge-sent">
+        <section wire:key="out-{{ $challenge->id }}" class="rv-card flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-center lg:gap-6 lg:px-6" data-test="challenge-sent">
             <span class="flex min-w-0 grow items-center gap-3">
-                <span aria-hidden="true" class="block size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-btc"></span>
+                <span aria-hidden="true" class="block size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-btc motion-reduce:animate-none"></span>
                 <span class="flex min-w-0 flex-col gap-0.5">
                     <b class="text-[15px]">{{ __('Waiting for :name', ['name' => $challenge->challenged->displayName()]) }}</b>
                     <span class="text-xs text-ink-2">{{ __('Daily chess · Casual · open until :at', ['at' => $challenge->expires_at->timezone($user->timezone ?? config('app.timezone'))->isoFormat('ddd HH:mm')]) }}</span>
                 </span>
             </span>
-            <button type="button" wire:click="withdrawChallenge({{ $challenge->id }})" class="inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-[#5A2A2E] bg-transparent px-4 text-[13px] text-loss">{{ __('Withdraw') }}</button>
+            <button type="button" wire:click="withdrawChallenge({{ $challenge->id }})" class="rv-b2 border-[#5A2A2E]! text-loss!">{{ __('Withdraw') }}</button>
         </section>
     @endforeach
+    @foreach ($this->boardCorrespondence['challenges'] as $slug => $count)
+        <a wire:key="bc-{{ $slug }}" href="{{ route('board.correspondence', $slug) }}" class="rv-card flex min-h-12 min-w-0 items-center justify-between gap-3 px-4 text-[13px] text-ink hover:text-ink" data-test="board-correspondence-challenges">
+            <span class="truncate">{{ __(':game correspondence', ['game' => \App\Support\GameNames::game($slug)]) }}</span>
+            <span class="shrink-0 font-bold text-btc-hi">{{ trans_choice(':count challenge to answer|:count challenges to answer', $count) }}</span>
+        </a>
+    @endforeach
 
-    @if ($cards->isEmpty() && $finished->isEmpty() && $this->incoming->isEmpty() && $this->outgoing->isEmpty() && $this->boardCorrespondence['games']->isEmpty())
-        <section class="flex flex-col items-start gap-3 rounded-lg bg-card px-4 py-6 lg:px-6" data-test="correspondence-empty">
+    @if ($corrRows->isEmpty() && $this->incoming->isEmpty() && $this->outgoing->isEmpty())
+        <section class="rv-card flex flex-col items-start gap-3 px-4 py-6 lg:px-6" data-test="correspondence-empty">
             <b class="font-display text-lg">{{ __('No daily games yet') }}</b>
-            <span class="text-[13px] leading-normal text-ink-2">{{ __('Challenge someone: one move a day, at your pace, casual until Block 0.') }}</span>
             <x-button icon="pawn" :href="route('chess.challenge')">{{ __('Start daily chess') }}</x-button>
         </section>
-    @endif
+    @else
+        {{-- Status chips: all first, then by count; a zero stays visible, dimmed (rule "Chip filter rows"). --}}
+        <div role="group" aria-label="{{ __('Status') }}" class="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto" data-test="correspondence-filter">
+            <span class="rv-m mr-2 shrink-0 text-[13px]">{{ __('Status') }}</span>
+            @foreach (['all' => __('All'), 'mine' => __('Your move'), 'theirs' => __('Their move'), 'done' => __('Finished')] as $filter => $label)
+                <button type="button" x-on:click="show = '{{ $filter }}'" :aria-pressed="(show === '{{ $filter }}').toString()" data-test="correspondence-filter-{{ $filter }}"
+                        class="rv-b2 shrink-0 gap-2 {{ $corrCounts[$filter] === 0 ? 'opacity-60' : '' }}" :class="show === '{{ $filter }}' ? 'border-btc! bg-btc! text-on-btc! font-bold' : ''">
+                    {{ $label }} <span class="tabular-nums opacity-80" data-test="{{ ['mine' => 'count-mine', 'all' => 'count-running', 'theirs' => 'count-theirs', 'done' => 'count-done'][$filter] }}">{{ $corrCounts[$filter] }}</span>
+                </button>
+            @endforeach
+        </div>
 
-    @foreach ([[__('Your move'), $mine, true], [__('Their move'), $theirs, false]] as [$heading, $group, $isMine])
-        @if ($group->isNotEmpty())
-            <h2 class="m-0 mt-1 text-[15px] font-bold">{{ $heading }} <span class="font-normal text-ink-3">{{ $group->count() }}</span></h2>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5 xl:grid-cols-3">
-                @foreach ($group as $card)
-                    @php($game = $card['game'])
-                    @php($opp = $card['opponent'])
-                    <article wire:key="g-{{ $game->id }}" class="flex items-start gap-4 rounded-lg bg-card p-4 lg:gap-5 lg:p-5" data-test="{{ $isMine ? 'daily-mine' : 'daily-theirs' }}">
-                        <div class="w-[136px] shrink-0 pt-4 pr-4 max-sm:hidden lg:w-[176px]" x-data="{ cells: window.chessBoardCells(@js($game->fen), { noCoords: true, flip: @js($card['flip']), last: @js($card['lastSquares']) }), boardLabel: @js(__('Board of :number', ['number' => $game->number()])) }">
-                            <x-chess.board />
-                        </div>
-                        <div class="flex min-w-0 grow flex-col gap-2">
-                            <span class="flex items-center gap-2 text-xs text-ink-3"><a href="{{ route('games.show', $game) }}">{{ $game->number() }}</a>{{ __('Daily chess') }}</span>
-                            <span class="flex min-w-0 flex-wrap items-center gap-2">
-                                @if ($opp)<x-player-link :user="$opp" class="flex min-h-6 min-w-0 items-center gap-2 text-[15px] font-bold" data-test="correspondence-opponent"><x-avatar :user="$opp" :size="20" class="rounded-sm" /><span class="truncate">{{ $opp->displayName() }}</span></x-player-link>@endif
-                                <x-clan-tag :clan="$opp?->clanMember?->clan" size="sm" />
-                                @if ($opp?->is_member)<x-member-badge />@endif
-                                @if ($opp)<x-copy-npub :npub="$opp->npub" :name="$opp->displayName()" />@endif
-                            </span>
-                            @if ($opp)<x-rating :rating="$opponentRatings[$opp->id]" :label="__('Daily')" class="text-xs text-ink-2" />@endif
-                            <span class="text-xs text-ink-2">{{ $card['colorText'] }}</span>
-                            <span class="text-[13px]">@if ($card['last']){{ __('Last move') }} <b>{{ $card['last'] }}</b>@else{{ __('No move yet') }}@endif</span>
-                            <span class="flex flex-col gap-1 pt-1">
-                                <span class="flex flex-wrap justify-between gap-x-2 gap-y-0.5 text-xs">
-                                    <span class="text-ink-2">{{ $isMine ? __('your deadline') : __('deadline for :name', ['name' => $opp?->displayName()]) }}</span>
-                                    <b class="flex items-center gap-1.5 whitespace-nowrap">@if ($isMine && $card['urgent'])<x-icon name="warn" :size="14" class="text-loss" />@endif{{ $card['left'] }}</b>
+        {{-- relative: the sr-only header cell is absolute and would scroll the page from outside this scrollport. --}}
+        <div class="rv-card relative max-w-full min-w-0 overflow-x-auto">
+            <table class="rv-tb min-w-[640px]">
+                <thead>
+                    <tr><th scope="col" class="w-24">{{ __('Game') }}</th><th scope="col">{{ __('Pairing') }}</th><th scope="col">{{ __('Move') }}</th><th scope="col" class="is-r">{{ __('Deadline') }}</th><th scope="col"><span class="sr-only">{{ __('Action') }}</span></th></tr>
+                </thead>
+                <tbody>
+                    @foreach ($corrRows as $row)
+                        <tr wire:key="{{ $row['key'] }}" x-show="show === 'all' || show === '{{ $row['status'] }}'" @class(['is-featured' => $row['status'] === 'mine']) data-test="{{ $row['test'] }}" data-mine="{{ $row['status'] === 'mine' ? 'true' : 'false' }}">
+                            <td><x-game-cover :game="$row['game']" size="thumb" class="w-16 rounded-[2px]" /></td>
+                            <td class="max-w-[300px]"><span class="flex min-w-0 items-center gap-1.5"><a href="{{ $row['href'] }}" class="block min-w-0 truncate font-bold text-ink hover:text-btc-hi" data-test="correspondence-opponent">{{ __(':number against :name', ['number' => $row['number'], 'name' => $row['opponent']]) }}</a>@if (($row['npub'] ?? null) !== null)<x-copy-npub :npub="$row['npub']" :name="$row['opponent']" />@endif</span></td>
+                            <td>
+                                <span class="flex flex-wrap items-center gap-2">
+                                    @if ($row['status'] === 'mine')
+                                        <span class="rv-live" style="height: 22px"><i></i>{{ __('your move') }}</span>
+                                    @elseif ($row['status'] === 'theirs')
+                                        <span class="rv-tag">{{ __('their move') }}</span>
+                                    @else
+                                        <span @class(['rv-tag', 'is-ok' => ($row['outcome'] ?? '') === 'win', 'is-bad' => ($row['outcome'] ?? '') === 'loss'])>{{ __('finished') }}</span>
+                                    @endif
+                                    <span class="text-ink-2">{{ $row['detail'] }}@if (($row['move'] ?? null) !== null) <b>{{ $row['move'] }}</b>@endif</span>
                                 </span>
-                                <span role="img" aria-label="{{ ($isMine ? __('your deadline') : __('deadline for :name', ['name' => $opp?->displayName()])).': '.$card['left'] }}" class="block h-1.5 overflow-hidden rounded-[3px] bg-raised">
-                                    <span class="block h-1.5" style="width: {{ $card['share'] }}%; background: {{ ! $isMine ? '#63636A' : ($card['urgent'] ? '#F87171' : '#F7931A') }}"></span>
-                                </span>
-                            </span>
-                            @if ($isMine)
-                                <x-button :href="route('games.show', $game)" class="mt-1 self-start font-bold" aria-label="{{ __('Open game :number vs :name', ['number' => $game->number(), 'name' => $opp?->displayName()]) }}" data-test="play-your-move">{{ __('Play your move') }}</x-button>
-                            @else
-                                <x-button variant="quiet" :href="route('games.show', $game)" class="mt-1 self-start">{{ __('View') }}</x-button>
-                            @endif
-                        </div>
-                    </article>
-                @endforeach
-            </div>
-        @endif
-    @endforeach
-
-    @if ($finished->isNotEmpty())
-        <section aria-labelledby="fin-h" class="flex flex-col gap-2 rounded-lg bg-card px-4 py-4 lg:px-6 lg:py-5" data-test="daily-finished">
-            <h2 id="fin-h" class="m-0 text-[15px] font-bold">{{ __('Finished') }} <span class="font-normal text-ink-3">{{ $finished->count() }}</span></h2>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[760px] border-collapse text-left text-[13px]">
-                    <thead>
-                        <tr class="text-xs text-ink-2">
-                            @foreach (['#', __('Opponent'), __('You'), __('Result'), __('For you'), __('Ending'), __('Moves'), __('Elo'), __('Date'), __('Record')] as $column)
-                                <th scope="col" class="h-10 border-b border-hairline px-2 font-normal">{{ $column }}</th>
-                            @endforeach
+                            </td>
+                            <td class="is-r"><b @class(['whitespace-nowrap tabular-nums', 'font-display text-xl' => $row['status'] !== 'done', 'text-loss' => $row['urgent'] && $row['status'] === 'mine', 'text-ink-2 font-normal' => $row['status'] === 'done'])>{{ $row['left'] }}</b></td>
+                            <td class="is-r">
+                                @if ($row['status'] === 'mine')
+                                    <a href="{{ $row['href'] }}" class="rv-b is-sm h-9" data-test="play-your-move">{{ __('Move') }}</a>
+                                @else
+                                    <a href="{{ $row['href'] }}" class="rv-b2 is-sm h-9">{{ __('View') }}</a>
+                                @endif
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($finished as $i => $game)
-                            @php($outcome = $outcomes[$i])
-                            @php($opp = $game->opponentOf($user))
-                            <tr class="h-11 border-b border-hairline last:border-0">
-                                <td class="px-2"><a href="{{ route('games.show', $game) }}">{{ $game->number() }}</a></td>
-                                <td class="max-w-[200px] truncate px-2">{{ $opp?->displayName() }}</td>
-                                <td class="px-2">{{ $game->colorOf($user) === 'w' ? __('White') : __('Black') }}</td>
-                                <td class="px-2">{{ $game->result ? str_replace(['1/2', '-'], ['½', '–'], $game->result) : '–' }}</td>
-                                <td @class(['px-2', 'text-win' => $outcome === 'win', 'text-loss' => $outcome === 'loss', 'text-ink-2' => $outcome === 'aborted'])>{{ ['win' => __('Win'), 'loss' => __('Loss'), 'draw' => __('Draw'), 'aborted' => __('Aborted')][$outcome] }}</td>
-                                <td class="px-2">{{ $game->end_reason === ChessEndReason::Timeout ? __('Time, deadline missed') : __($game->end_reason?->label() ?? '') }}</td>
-                                <td class="px-2 text-right tabular-nums">{{ intdiv($game->ply + 1, 2) }}</td>
-                                @php($delta = $myDeltas[$game->id] ?? null)
-                                <td @class(['px-2 tabular-nums', 'text-win' => $delta > 0, 'text-loss' => $delta < 0, 'text-ink-3' => ! $delta])>{{ $delta === null ? '–' : ($delta > 0 ? '+'.$delta : ($delta < 0 ? '−'.abs($delta) : '±0')) }}</td>
-                                <td class="px-2 text-ink-2">{{ $game->ended_at?->diffForHumans() }}</td>
-                                <td @class(['px-2', 'text-win' => $game->record_event_id, 'text-ink-3' => ! $game->record_event_id])>{{ $game->record_event_id ? __('verified') : ($game->result ? __('saved on the server') : '–') }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
         <x-button icon="pawn" :href="route('chess.challenge')" data-test="new-challenge">{{ __('Challenge a player') }}</x-button>
+        {{-- Notifications: one line, the details in the settings (the list design has no panel for it). --}}
+        <span class="flex min-w-0 grow items-center gap-3 text-[13px]">
+            <x-icon name="bell" :size="16" class="shrink-0 text-proof" />
+            <span class="min-w-0">
+                <b @class(['text-win' => $notificationsOn, 'text-ink-2' => ! $notificationsOn])>{{ $notificationsOn ? __('Notifications on') : __('Notifications off') }}</b>
+                @if ($notificationsOn)<span class="text-xs leading-normal text-ink-2" data-test="correspondence-reach">{{ $reachText }}</span>@else<span class="text-xs leading-normal text-ink-2">{{ $reachText }}</span>@endif
+            </span>
+            <x-button variant="quiet" :href="route('settings.notifications')" class="shrink-0" data-test="correspondence-notifications-change">{{ __('Change') }}</x-button>
+        </span>
     </div>
-
-    {{-- Board games by correspondence (P8): played and answered on their own pages, listed here so this page has every daily game. --}}
-    {{-- Inline @php only: a block @php after the page's inline ones would be compiled from the first of them on. --}}
-    @php($boards = $this->boardCorrespondence)
-    @if ($boards['games']->isNotEmpty() || $boards['challenges'] !== [])
-        <section aria-labelledby="board-corr-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:px-6 lg:py-5" data-test="board-correspondence-games">
-            <h2 id="board-corr-h" class="m-0 text-[15px] font-bold">{{ __('Board games by correspondence') }}</h2>
-            @foreach ($boards['challenges'] as $slug => $count)
-                <a wire:key="bc-{{ $slug }}" href="{{ route('board.correspondence', $slug) }}" class="flex min-h-11 min-w-0 items-center justify-between gap-3 rounded-md bg-btc-press px-3 text-[13px] text-ink hover:text-ink" data-test="board-correspondence-challenges">
-                    <span class="truncate">{{ __(':game correspondence', ['game' => \App\Support\GameNames::game($slug)]) }}</span>
-                    <span class="shrink-0 font-bold text-btc-hi">{{ trans_choice(':count challenge to answer|:count challenges to answer', $count) }}</span>
-                </a>
-            @endforeach
-            @foreach ($boards['games'] as $boardGame)
-                @php($boardMine = $boardGame->turn === $boardGame->colorOf($user))
-                @php($boardLeft = intdiv(max(0, (int) $boardGame->deadline_ms - (int) now()->getTimestampMs()), 60_000))
-                <a wire:key="bg-{{ $boardGame->id }}" href="{{ route('board.show', $boardGame) }}" data-test="board-correspondence-game" data-mine="{{ $boardMine ? 'true' : 'false' }}"
-                   @class(['flex min-h-11 min-w-0 items-center justify-between gap-3 rounded-md px-3 text-[13px] text-ink hover:text-ink', 'bg-btc-press' => $boardMine, 'bg-well' => ! $boardMine])>
-                    <span class="min-w-0 truncate">{{ \App\Support\GameNames::game($boardGame->game) }} · {{ $boardGame->opponentOf($user)?->displayName() ?? __('Deleted player') }}</span>
-                    <span @class(['shrink-0 tabular-nums', 'font-bold text-btc-hi' => $boardMine, 'text-ink-2' => ! $boardMine])>
-                        {{ $boardMine ? __('Your move · :h h :m min left', ['h' => intdiv($boardLeft, 60), 'm' => $boardLeft % 60]) : __('Their move · move :n', ['n' => intdiv($boardGame->ply, 2) + 1]) }}
-                    </span>
-                </a>
-            @endforeach
-        </section>
-    @endif
 </div>

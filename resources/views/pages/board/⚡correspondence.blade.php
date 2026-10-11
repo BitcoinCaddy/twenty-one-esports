@@ -358,10 +358,13 @@ new #[Layout('layouts::app')] class extends Component {
 @endphp
 
 <div class="flex grow flex-col gap-5 px-4 pb-8 lg:mx-auto lg:w-full lg:max-w-[1232px] lg:px-4 lg:pb-10" data-test="board-correspondence">
-    <div class="flex flex-col gap-2">
+    {{-- BoardCorrespondence.dc.html (T1/T14, plan "Refactor und Design-Revamp", P5): the game's band with its cover, the rule in one line and the one action. --}}
+    <section class="flex flex-col gap-4 rounded-[4px] border-l-4 border-btc p-4 sm:flex-row sm:items-center sm:gap-6" style="background: linear-gradient(90deg, var(--color-feature), var(--color-ground) 70%)" data-test="correspondence-band">
+        <x-game-cover :game="$slug" size="thumb" class="w-full shrink-0 rounded-[4px] sm:w-[240px]" />
+        <div class="flex min-w-0 grow flex-col gap-2">
         <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 class="m-0 font-display text-[28px] font-bold lg:text-[32px]">{{ __(':game correspondence', ['game' => $name]) }}</h1>
-            <a href="{{ route('board.lobby', $slug) }}" class="text-[13px] text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink hover:decoration-btc" data-test="correspondence-lobby-link">{{ __('Lobby') }}</a>
+            <h1 class="m-0 font-display text-[28px] font-bold lg:text-[34px]">{{ __(':game correspondence', ['game' => $name]) }}</h1>
+            <a href="{{ route('board.lobby', $slug) }}" class="rv-lk text-[13px]" data-test="correspondence-lobby-link">{{ __('Lobby') }}</a>
         </div>
         <p class="m-0 max-w-[70ch] text-[13px] leading-normal text-ink-2">{{ __('One move a day: each move has 24 hours, a reminder comes before your deadline, and a missed deadline loses the game. The server checks every move.') }}</p>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
@@ -371,7 +374,11 @@ new #[Layout('layouts::app')] class extends Component {
             <a href="{{ route('rules') }}#{{ $slug }}" class="text-ink underline decoration-edge underline-offset-4 hover:decoration-btc">{{ __('Rules of :game', ['game' => $name]) }}</a>
             <a href="{{ route('ladder.show', [$slug, 'correspondence']) }}" class="text-ink underline decoration-edge underline-offset-4 hover:decoration-btc" data-test="correspondence-ladder">{{ __('Ladder') }}</a>
         </div>
-    </div>
+        </div>
+        @auth
+            <a href="#corr-new-h" class="rv-b h-[52px] shrink-0 px-6" data-test="correspondence-cta">{{ __('Challenge a player') }}</a>
+        @endauth
+    </section>
 
     @if ($error)
         <p role="alert" class="m-0 rounded-lg bg-loss-tint px-4 py-3 text-[13px] text-loss" data-test="correspondence-error">{{ $error }}</p>
@@ -415,14 +422,14 @@ new #[Layout('layouts::app')] class extends Component {
                             $left = max(0, (int) $game->deadline_ms - $nowMs);
                         @endphp
                         <a wire:key="g-{{ $game->id }}" href="{{ route('board.show', $game) }}" data-test="correspondence-game" data-mine="{{ $mine ? 'true' : 'false' }}"
-                           @class(['flex min-h-12 min-w-0 items-center justify-between gap-3 rounded-md px-3 text-[13px] text-ink hover:text-ink', 'bg-btc-press' => $mine, 'bg-well' => ! $mine])>
-                            <span class="flex min-w-0 items-center gap-2">
-                                <x-avatar :user="$game->opponentOf($me)" :size="24" class="rounded-sm" />
-                                <span class="truncate">{{ $game->opponentOf($me)?->displayName() ?? __('Deleted player') }}</span>
-                                @if ($game->rated)<span class="shrink-0 rounded-sm bg-raised px-1.5 py-0.5 text-[11px] font-bold">{{ __('Rated') }}</span>@endif
+                           class="flex min-h-14 min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-l-[3px] border-hairline border-l-btc px-3 py-2 text-[14px] text-ink hover:bg-row-hover hover:text-ink">
+                            <span class="flex min-w-0 items-center gap-3">
+                                <x-avatar :user="$game->opponentOf($me)" :size="28" class="rounded-full" />
+                                <b class="truncate">{{ __(':a against :b', ['a' => $me->displayName(), 'b' => $game->opponentOf($me)?->displayName() ?? __('Deleted player')]) }}</b>
+                                @if ($game->rated)<span class="rv-tag shrink-0">{{ __('Rated') }}</span>@endif
                             </span>
-                            <span @class(['shrink-0 tabular-nums', 'font-bold text-btc-hi' => $mine, 'text-ink-2' => ! $mine])>
-                                {{ $mine ? __('Your move · :h h :m min left', ['h' => intdiv($left, 3_600_000), 'm' => intdiv($left % 3_600_000, 60_000)]) : __('Their move · move :n', ['n' => intdiv($game->ply, 2) + 1]) }}
+                            <span @class(['shrink-0 tabular-nums', 'rv-live' => $mine, 'rv-tag' => ! $mine]) @style(['height: 22px' => $mine])>
+                                @if ($mine)<i></i>@endif{{ $mine ? __('Your move · :h h :m min left', ['h' => intdiv($left, 3_600_000), 'm' => intdiv($left % 3_600_000, 60_000)]) : __('Their move · move :n', ['n' => intdiv($game->ply, 2) + 1]) }}
                             </span>
                         </a>
                     @empty

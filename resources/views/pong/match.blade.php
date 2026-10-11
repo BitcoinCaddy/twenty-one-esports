@@ -33,8 +33,9 @@
 
 <header class="hud">
     <div class="side me">
+        {{-- PlayFrame.dc.html (T2, plan "Refactor und Design-Revamp", P5): leaving reads "Leave" with the exit mark, top left, as in every play frame; the word gives way below 1024 px. --}}
         <a class="leave" href="{{ $config['urls']['lobby'] }}" aria-label="{{ __('Back to lobby') }}" title="{{ __('Back to lobby') }}" data-test="pong-leave">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h5v16h-5"/><path d="M10 8l-4 4 4 4M6 12h10"/></svg><span class="leave-t" aria-hidden="true">{{ __('Leave') }}</span>
         </a>
         <img class="face" data-test="pong-face-me" src="/pong/art/por-{{ $config['figure'] }}.webp" alt="" width="44" height="44">
         <span class="score" data-test="pong-score-me" aria-label="{{ __('Your points') }}">0</span>

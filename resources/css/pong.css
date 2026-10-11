@@ -62,8 +62,10 @@ body.gl #arena { display: none; }
 .hud .title { font: 800 12px/1 var(--font-display); letter-spacing: 0.08em; white-space: nowrap; }
 .hud .title b { color: var(--pong-btc); }
 .hud .rally { font: 500 12px/1 var(--font-mono); color: var(--pong-ink-2); white-space: nowrap; }
-.hud .leave { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: 10px; color: var(--pong-ink-2); text-decoration: none; background: rgb(255 255 255 / 0.06); cursor: pointer; }
+.hud .leave { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; height: 44px; padding: 0 12px; flex: none; border: 0; border-radius: 4px; font-size: 14px; white-space: nowrap; color: var(--pong-ink-2); text-decoration: none; background: rgb(255 255 255 / 0.06); cursor: pointer; }
 .hud .leave:hover, .hud .leave:focus-visible { color: var(--pong-ink); background: rgb(255 255 255 / 0.12); }
+.hud .leave-t { display: none; }
+@media (min-width: 64rem) { .hud .leave-t { display: inline; } }
 .hud .leave:focus-visible, .btn:focus-visible, .settings :focus-visible { outline: 2px solid var(--pong-btc); outline-offset: 2px; }
 
 /* ---------- The field ---------------------------------------------------------------------------------------- */
@@ -229,7 +231,7 @@ body[data-portrait="1"] .cheer.in[data-side="1"] { animation-name: cheer-t; }
     .hud .fig { display: none; }
     .hud .face { width: 36px; height: 36px; border-radius: 10px; }
     .hud .score { font-size: 24px; }
-    .hud .leave { width: 40px; height: 40px; }
+    .hud .leave { min-width: 40px; width: 40px; height: 40px; padding: 0; }
 }
 @media (width < 480px) {
     .hud .who, .hud .mid-text { display: none; }

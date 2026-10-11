@@ -273,6 +273,9 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 'drawOffer' => __(':name offers a draw', ['name' => $this->name($this->boardGame->colorOf(auth()->user()) === 'w' ? 'b' : 'w')]),
                 'status' => ['live' => __('Live · move :move · :side to move'), 'daily' => __('Correspondence · move :move · :side to move'), 'over' => __('Game over'), 'aborted' => __('Aborted')],
                 'deadline' => __(':side moves by :time, or loses on time.'),
+                // The turn card of the harmonised match view (MatchBoards.dc.html, P5): who is to move, "your move" for the player.
+                'toMove' => __(':name to move'),
+                'yourMove' => __('Your move'),
                 'connection' => ['connected' => __('Connected'), 'connecting' => __('Connecting …'), 'polling' => __('Live via server')],
                 'outcome' => ['wins' => __(':name wins'), 'draw' => __('Draw'), 'aborted' => __('Game aborted')],
                 'reasons' => [
@@ -331,34 +334,87 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
             <span class="flex h-7 items-center rounded-md bg-btc-press px-3 text-xs font-bold text-btc-hi max-lg:w-full lg:h-[34px] lg:px-3.5 lg:text-[13px]" :class="hasDock ? 'max-lg:hidden' : ''" x-text="statusLine" data-test="status-line"></span>
         </div>
 
-        {{-- As daily chess (P2, user: "bei Schach hat das geklappt"): from lg the side column and the chat end with the
-             board, its moves scroll inside; from 87.5rem the chat is a third column as tall as the board. --}}
+        {{-- The match view template T2 (MatchBoards.dc.html, plan "Refactor und Design-Revamp", P5), harmonised to daily
+             chess, the model (user: "Chat viel Platz, Verlauf in der Mitte, gut sichtbar wer dran ist"): the board left
+             with the game's actions under it, the middle column with the opponent on top, who is to move with the clock,
+             the moves as a two-column list and the player at the bottom, the chat right from 87.5rem. On a phone both
+             players share one row above the board (P2) and the board keeps the height. --}}
         <div @class(['grid grid-cols-1 gap-3 lg:gap-x-7 lg:gap-y-5', $boardColumn, 'min-[87.5rem]:grid-cols-[minmax(0,560px)_380px_minmax(0,1fr)]' => $chat])>
             {{-- The board: the rules describe it, the script draws it --}}
-            {{-- On a phone both players share one row above the board (P2): the board gets the height. --}}
             <div class="grid min-w-0 grid-cols-2 gap-2 lg:flex lg:flex-col lg:gap-3">
-                <div class="flex min-w-0 flex-col items-start rounded-lg bg-card px-3 py-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3 lg:py-2" data-test="player-top">
-                    <span class="max-w-full min-w-0 truncate text-xs leading-4 lg:text-sm lg:leading-normal"><span class="lg:hidden" x-text="t.names[topSide]"></span><span class="max-lg:hidden" x-text="sideName(topSide)"></span></span>
-                    <span class="flex shrink-0 items-baseline gap-1.5"><span class="text-[11px] text-ink-3 lg:hidden" x-text="topSide === 'w' ? t.white : t.black"></span><span role="timer" class="shrink-0 font-display text-lg font-bold max-lg:leading-6 lg:text-2xl whitespace-nowrap tabular-nums" :class="state.clock.running === topSide ? 'text-btc-hi' : 'text-ink-2'" x-text="clock(topSide)" data-test="clock-top"></span></span>
+                <div class="flex min-w-0 flex-col items-start rounded-lg bg-card px-3 py-1 lg:hidden" data-test="player-top">
+                    <span class="max-w-full min-w-0 truncate text-xs leading-4"><span x-text="t.names[topSide]"></span></span>
+                    <span class="flex shrink-0 items-baseline gap-1.5"><span class="text-[11px] text-ink-3" x-text="topSide === 'w' ? t.white : t.black"></span><span role="timer" class="shrink-0 font-display text-lg font-bold whitespace-nowrap tabular-nums max-lg:leading-6" :class="state.clock.running === topSide ? 'text-btc-hi' : 'text-ink-2'" x-text="clock(topSide)" data-test="clock-top"></span></span>
                 </div>
-                {{-- Black sees the board from its own side: its name and clock sit below it. --}}
+                {{-- Black sees the board from its own side. --}}
                 <svg x-ref="board" viewBox="0 0 {{ $config['layout']['width'] ?? 100 }} {{ $config['layout']['height'] ?? 100 }}"
                      x-on:click="pick($event)" x-on:keydown="pickKey($event)"
                      role="group" aria-label="{{ __('Game board') }}"
                      x-bind:class="color === 'b' ? 'rotate-180' : ''"
                      style="aspect-ratio: {{ $config['layout']['width'] ?? 1 }} / {{ $config['layout']['height'] ?? 1 }}"
-                     class="col-span-2 mx-auto block w-full touch-manipulation rounded-lg bg-well select-none" data-test="board"></svg>
-                <div class="flex min-w-0 flex-col items-start rounded-lg bg-card px-3 py-1 max-lg:order-first max-lg:col-start-2 max-lg:row-start-1 lg:flex-row lg:items-center lg:justify-between lg:gap-3 lg:py-2" data-test="player-bottom">
-                    <span class="max-w-full min-w-0 truncate text-xs leading-4 lg:text-sm lg:leading-normal"><span class="lg:hidden" x-text="t.names[bottomSide]"></span><span class="max-lg:hidden" x-text="sideName(bottomSide)"></span></span>
-                    <span class="flex shrink-0 items-baseline gap-1.5"><span class="text-[11px] text-ink-3 lg:hidden" x-text="bottomSide === 'w' ? t.white : t.black"></span><span role="timer" class="shrink-0 font-display text-lg font-bold max-lg:leading-6 lg:text-2xl whitespace-nowrap tabular-nums" :class="state.clock.running === bottomSide ? 'text-btc-hi' : 'text-ink-2'" x-text="clock(bottomSide)" data-test="clock-bottom"></span></span>
+                     class="col-span-2 mx-auto block w-full touch-manipulation rounded-[4px] bg-well select-none" data-test="board"></svg>
+                <div class="flex min-w-0 flex-col items-start rounded-lg bg-card px-3 py-1 max-lg:order-first max-lg:col-start-2 max-lg:row-start-1 lg:hidden" data-test="player-bottom">
+                    <span class="max-w-full min-w-0 truncate text-xs leading-4"><span x-text="t.names[bottomSide]"></span></span>
+                    <span class="flex shrink-0 items-baseline gap-1.5"><span class="text-[11px] text-ink-3" x-text="bottomSide === 'w' ? t.white : t.black"></span><span role="timer" class="shrink-0 font-display text-lg font-bold whitespace-nowrap tabular-nums max-lg:leading-6" :class="state.clock.running === bottomSide ? 'text-btc-hi' : 'text-ink-2'" x-text="clock(bottomSide)" data-test="clock-bottom"></span></span>
                 </div>
+
+                {{-- Under the board, as on daily chess: the draw offer to answer, then abort or draw and resign. --}}
+                <template x-if="color && state.status === 'active' && state.drawOffer && state.drawOffer !== color">
+                    <div class="col-span-2 flex flex-col gap-3 rounded-lg bg-card p-4" data-fit-skip data-test="draw-offer">
+                        <span class="text-sm font-bold" x-text="t.drawOffer"></span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <x-button variant="quiet" x-on:click="call('declineDraw')" data-test="decline-draw">{{ __('Decline') }}</x-button>
+                            <x-button x-on:click="call('acceptDraw')" data-test="accept-draw">{{ __('Accept draw') }}</x-button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="color && state.status === 'active'">
+                    <div class="col-span-2 flex flex-wrap items-center justify-end gap-2" data-fit-skip data-test="board-actions">
+                        <span class="mr-auto text-[13px] text-ink-2 max-lg:hidden" x-text="state.moves.length ? (Math.ceil(state.moves.length / 2) + (state.moves.length % 2 ? '. ' : '… ') + state.moves[state.moves.length - 1].notation) : ''"></span>
+                        {{-- A tournament game cannot be aborted: a missed first move is the league's to decide (P5). --}}
+                        @if ($boardGame->tournament_match_id === null)
+                            <template x-if="state.ply < 2">
+                                <x-button variant="quiet" x-on:click="call('abort')" data-test="abort">{{ __('Abort game') }}</x-button>
+                            </template>
+                        @endif
+                        <template x-if="state.ply >= 2">
+                            <x-button variant="quiet" x-on:click="call('offerDraw')" x-bind:disabled="state.drawOffer === color" data-test="offer-draw">
+                                <span x-text="state.drawOffer === color ? @js(__('Draw offered')) : @js(__('Offer draw'))"></span>
+                            </x-button>
+                        </template>
+                        <x-button variant="secondary" x-on:click="resign()" class="text-loss! border-[#5A2A2E]!" data-test="resign">
+                            <span x-text="confirmResign ? @js(__('Resign this game?')) : @js(__('Resign'))"></span>
+                        </x-button>
+                    </div>
+                </template>
             </div>
 
-            {{-- Status, actions, moves --}}
+            {{-- The middle column: opponent, who is to move, the game's input, moves, the player. --}}
             <div @class(['flex min-w-0 flex-col gap-3', 'min-[87.5rem]:h-0 min-[87.5rem]:min-h-full' => $chat])>
+                {{-- The opponent (from lg; on a phone the two cards above the board). --}}
+                <div class="flex min-w-0 items-center gap-3 max-lg:hidden" data-test="side-card-top">
+                    <span class="grid size-11 shrink-0 place-items-center rounded-[4px] bg-btc-press font-display text-sm font-bold text-btc" aria-hidden="true" x-text="(t.names[topSide] || '?').slice(0, 1).toUpperCase()"></span>
+                    <span class="flex min-w-0 grow flex-col">
+                        <b class="truncate text-[15px]" x-text="t.names[topSide]"></b>
+                        <span class="text-[13px] text-ink-2" x-text="topSide === 'w' ? t.white : t.black"></span>
+                    </span>
+                    <span role="timer" class="shrink-0 font-display text-base font-bold whitespace-nowrap tabular-nums" :class="state.clock.running === topSide ? 'text-btc-hi' : 'text-ink-3'" x-text="clock(topSide)"></span>
+                </div>
+
+                {{-- Who is to move, with the clock of that side (the chess turn card). --}}
+                <template x-if="state.status === 'active'">
+                    <div class="flex items-center gap-4 rounded-[4px] border border-btc-ring bg-feature px-4 py-3 max-lg:hidden" role="status" data-test="turn-card">
+                        <span class="flex min-w-0 grow flex-col gap-1">
+                            <b class="text-[15px]" x-text="color && color === state.turn ? t.yourMove : t.toMove.replace(':name', t.names[state.turn])"></b>
+                            <span class="text-[13px] leading-normal text-ink-2" x-show="deadlineLine" x-text="deadlineLine"></span>
+                        </span>
+                        <span role="timer" class="shrink-0 rounded-[4px] bg-btc px-3 py-2 font-display text-[26px] leading-none font-bold whitespace-nowrap text-on-btc tabular-nums" x-text="clock(state.turn)"></span>
+                    </div>
+                </template>
+
                 {{-- The block input (Blockli): move, or set a block shown first, as in the Blockli prototype. On a phone a bar
-                     fixed above the chat sheet, as daily chess's bottom bar (P2); on a desktop the head of this column, beside
-                     the board, so the board column needs no room for it: the switch and Confirm never need a scroll. --}}
+                     fixed above the chat sheet, as daily chess's bottom bar (P2); on a desktop under the turn card, so the
+                     board column needs no room for it: the switch and Confirm never need a scroll. --}}
                 <template x-if="layout.input === 'blocks' && color && state.status === 'active'">
                     <div class="flex flex-col gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[72px] max-lg:z-20 max-lg:gap-1 max-lg:border-t max-lg:border-line max-lg:bg-bar max-lg:px-4 max-lg:pt-1 max-lg:pb-1.5 max-lg:shadow-[0_-16px_32px_rgba(10,10,11,.8)]" x-ref="dock" data-page-bar data-test="block-input">
                         <div class="grid grid-cols-2 gap-2 max-lg:order-2 max-lg:gap-1" role="group" aria-label="{{ __('Move or set a block') }}">
@@ -390,7 +446,8 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 @else
                     <p class="m-0 text-[13px] text-ink-2" x-show="firstMoveLine" x-text="firstMoveLine" data-test="first-move"></p>
                 @endif
-                <p class="m-0 text-[13px] text-ink-2" x-show="deadlineLine" x-text="deadlineLine" data-test="deadline"></p>
+                {{-- From lg the deadline sits in the turn card. --}}
+                <p class="m-0 text-[13px] text-ink-2 lg:hidden" x-show="deadlineLine" x-text="deadlineLine" data-test="deadline"></p>
                 <p role="alert" class="m-0 text-[13px] text-loss" x-show="error" x-text="error" data-test="board-error"></p>
 
                 <template x-if="state.status !== 'active'">
@@ -405,38 +462,10 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                     </div>
                 </template>
 
-                <template x-if="color && state.status === 'active' && state.drawOffer && state.drawOffer !== color">
-                    <div class="flex flex-col gap-3 rounded-lg bg-card p-4" data-test="draw-offer">
-                        <span class="text-sm font-bold" x-text="t.drawOffer"></span>
-                        <div class="grid grid-cols-2 gap-2">
-                            <x-button variant="quiet" x-on:click="call('declineDraw')" data-test="decline-draw">{{ __('Decline') }}</x-button>
-                            <x-button x-on:click="call('acceptDraw')" data-test="accept-draw">{{ __('Accept draw') }}</x-button>
-                        </div>
-                    </div>
-                </template>
-
-                <template x-if="color && state.status === 'active'">
-                    <div class="grid grid-cols-2 gap-2">
-                        {{-- A tournament game cannot be aborted: a missed first move is the league's to decide (P5). --}}
-                        @if ($boardGame->tournament_match_id === null)
-                            <template x-if="state.ply < 2">
-                                <x-button variant="quiet" x-on:click="call('abort')" data-test="abort">{{ __('Abort game') }}</x-button>
-                            </template>
-                        @endif
-                        <template x-if="state.ply >= 2">
-                            <x-button variant="quiet" x-on:click="call('offerDraw')" x-bind:disabled="state.drawOffer === color" data-test="offer-draw">
-                                <span x-text="state.drawOffer === color ? @js(__('Draw offered')) : @js(__('Offer draw'))"></span>
-                            </x-button>
-                        </template>
-                        <x-button variant="secondary" x-on:click="resign()" data-test="resign">
-                            <span x-text="confirmResign ? @js(__('Resign this game?')) : @js(__('Resign'))"></span>
-                        </x-button>
-                    </div>
-                </template>
-
-                <div class="flex min-h-0 flex-col gap-2 rounded-lg bg-card p-4 lg:max-h-60 min-[87.5rem]:max-h-none min-[87.5rem]:shrink">
+                {{-- The moves, two columns per move number as on daily chess; browsing steps through them. --}}
+                <div class="flex min-h-0 flex-col gap-2 rounded-lg bg-card p-4 lg:grow min-[87.5rem]:shrink" data-test="moves-card">
                     <div class="flex items-center justify-between gap-2">
-                        <h2 class="m-0 text-sm font-bold">{{ __('Moves') }}</h2>
+                        <h2 class="m-0 text-[15px] font-bold">{{ __('Moves') }}</h2>
                         {{-- Browse the game (P8): start, back, forward, newest; the arrow keys do the same. --}}
                         <div class="flex items-center gap-1" data-test="history-nav">
                             @foreach ([['0', 'first', '«', __('First position')], ['shownPly - 1', 'back', '‹', __('Previous move')], ['shownPly + 1', 'forward', '›', __('Next move')], ['state.moves.length', 'last', '»', __('Latest move')]] as [$target, $key, $glyph, $label])
@@ -449,14 +478,23 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                         <span x-text="@js(__('Showing move :n of :total')).replace(':n', shownPly).replace(':total', state.moves.length)"></span>
                         <button type="button" class="cursor-pointer text-ink underline decoration-edge underline-offset-4" x-on:click="browse(state.moves.length)" data-test="history-back-to-game">{{ __('Back to the game') }}</button>
                     </p>
-                    <ol class="m-0 flex min-h-0 list-none flex-wrap content-start gap-x-1 gap-y-1 overflow-y-auto p-0 text-[13px] tabular-nums" data-test="moves">
+                    <ol class="m-0 grid max-h-60 min-h-0 list-none grid-cols-2 content-start gap-x-2 overflow-y-auto p-0 text-[13px] tabular-nums lg:max-h-none lg:grow" data-test="moves">
                         <template x-for="m in state.moves" :key="m.ply">
-                            <li><button type="button" x-on:click="browse(m.ply)" :aria-current="shownPly === m.ply ? 'step' : null" data-test="move"
-                                        class="cursor-pointer rounded-sm px-1.5 py-0.5 text-ink" :class="shownPly === m.ply ? 'bg-btc-press text-btc-hi' : 'hover:bg-row-hover'"><span class="text-ink-3" x-text="m.ply + '.'"></span> <span x-text="m.notation"></span></button></li>
+                            <li class="min-w-0 border-b border-hairline"><button type="button" x-on:click="browse(m.ply)" :aria-current="shownPly === m.ply ? 'step' : null" data-test="move"
+                                        class="flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-ink" :class="shownPly === m.ply ? 'bg-btc-press font-bold text-btc-hi' : 'hover:bg-row-hover'"><span class="w-7 shrink-0 text-ink-3" x-text="m.ply % 2 ? Math.ceil(m.ply / 2) + '.' : ''"></span><b class="truncate font-bold" x-text="m.notation"></b></button></li>
                         </template>
                     </ol>
                 </div>
 
+                {{-- The player (from lg). --}}
+                <div class="flex min-w-0 items-center gap-3 max-lg:hidden" data-test="side-card-bottom">
+                    <span class="grid size-11 shrink-0 place-items-center rounded-[4px] bg-btc-press font-display text-sm font-bold text-btc" aria-hidden="true" x-text="(t.names[bottomSide] || '?').slice(0, 1).toUpperCase()"></span>
+                    <span class="flex min-w-0 grow flex-col">
+                        <b class="truncate text-[15px]"><span x-text="t.names[bottomSide]"></span> <span class="font-normal text-ink-2" x-show="color === bottomSide">({{ __('you') }})</span></b>
+                        <span class="text-[13px] text-ink-2" x-text="bottomSide === 'w' ? t.white : t.black"></span>
+                    </span>
+                    <span role="timer" class="shrink-0 font-display text-base font-bold whitespace-nowrap tabular-nums" :class="state.clock.running === bottomSide ? 'text-btc-hi' : 'text-ink-3'" x-text="clock(bottomSide)"></span>
+                </div>
             </div>
 
             {{-- The players' chat (P1), placed as on daily chess: under both columns from lg, its own column as tall as the
