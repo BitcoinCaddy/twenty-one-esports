@@ -1,0 +1,209 @@
+<?php
+
+use App\Models\CasterClip;
+use App\Models\CasterScript;
+use App\Support\Caster\ClipSpool;
+use App\Support\Caster\CommentaryTimeline;
+use App\Support\Caster\SceneDirector;
+use App\Support\Caster\ScenePhase;
+use App\Support\Caster\VoiceFeed;
+use App\Support\TwentyOne\Stream\FfmpegCommands;
+use App\Support\TwentyOne\Stream\RotationPlanner;
+use App\Support\TwentyOne\Stream\SceneRenderer;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
+
+/*
+|--------------------------------------------------------------------------
+| TWENTY ONE TV: scene and commentary as one unit (P6)
+|--------------------------------------------------------------------------
+|
+| User 2026-10-11: the slide stays until its commentary has been spoken
+| completely. The director holds every slot until its clip ended plus the
+| tail, never switches mid-sentence (a takeover waits for the end of the
+| sentence on air), deletes a clip right after it played, and shows the
+| script as a lower third only while the workstation is off. The voice goes
+| into ffmpeg through a named pipe, gapless and ahead of the clock, and is
+| mixed at TV levels.
+|
+*/
+
+beforeEach(function () {
+    Storage::fake('local');
+    config(['tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10]);
+});
+
+/** A spooled clip of `$seconds` whose sentences end every five seconds; its decode is faked to that much PCM. */
+function casterSpooledClip(float $seconds, string $phase = ScenePhase::BREAK, string $kind = CasterScript::SCENE): CasterClip
+{
+    $ends = range(5.0, $seconds, 5.0);
+    $clip = app(ClipSpool::class)->store(casterScript($kind, $phase), casterOpus(), $seconds, $ends, CarbonImmutable::now());
+    Process::fake(['*' => Process::result(output: str_repeat("\1\0", (int) (24000 * $seconds)))]);
+
+    return $clip;
+}
+
+function casterDirector(): SceneDirector
+{
+    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
+    ]);
+}
+
+function casterPlanner(): RotationPlanner
+{
+    return new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
+}
+
+it('never changes the scene before its clip has been spoken, plus the tail', function () {
+    casterSpooledClip(30.0);
+    $planner = casterPlanner();
+    $director = casterDirector();
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $changes = [];
+    $last = null;
+
+    for ($t = $start; $t <= $start + 45; $t += 0.25) {
+        $slot = $planner->at($t, []);
+        $director->tick($planner, $slot, $t);
+
+        if ($planner->slotNumber() !== $last) {
+            $changes[] = $t - $start;
+            $last = $planner->slotNumber();
+        }
+    }
+
+    // The loop slot would have ended after 5 s; it stands until 0.5 + 30 + 1.5 s.
+    expect($changes[0])->toBe(0.0)
+        ->and($changes[1])->toBeGreaterThanOrEqual(32.0)
+        ->and($changes[1])->toBeLessThan(32.5)
+        ->and(CasterClip::query()->count())->toBe(0);
+    Storage::disk('local')->assertDirectoryEmpty('caster/spool');
+});
+
+it('holds a slot without a clip for the calmer minimum', function () {
+    $planner = casterPlanner();
+    $director = casterDirector();
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+
+    $planner->at($start, []);
+    $director->tick($planner, $planner->at($start, []), $start);
+
+    expect($planner->at($start + 14, [])['until'])->toBe($start + 15.0)
+        ->and($planner->slotNumber())->toBe(1);
+});
+
+it('lets a champion moment in at the end of the sentence on air, never mid-sentence', function () {
+    casterSpooledClip(30.0);
+    $planner = casterPlanner();
+    $director = casterDirector();
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $champion = [['id' => 9, 'phase' => 'finished', 'fomo' => false, 'moment' => true]];
+    $switch = null;
+
+    for ($t = $start; $t <= $start + 20 && $switch === null; $t += 0.25) {
+        $slot = $planner->at($t, [], [], 'off', $t >= $start + 7 ? $champion : []);
+        $director->tick($planner, $slot, $t);
+
+        if ($planner->slotNumber() > 1) {
+            $switch = $t - $start;
+        }
+    }
+
+    // Sentences end at 5, 10, … s into the clip, which starts 0.5 s in: the one on air at 7 s ends at 10.5 s.
+    expect($switch)->toBeGreaterThanOrEqual(10.8)
+        ->and($switch)->toBeLessThan(11.5)
+        ->and($planner->at($start + 12, [], [], 'off', $champion)['scene'])->toBe(RotationPlanner::CHAMPION_SCENE);
+});
+
+it('shows the script as a lower third while the workstation is off', function () {
+    $now = CarbonImmutable::now();
+    CasterScript::query()->create([
+        'kind' => CasterScript::SCENE, 'phase' => ScenePhase::forSlot(['kind' => RotationPlanner::LOOP, 'scene' => null], $now), 'priority' => 0,
+        'text' => "Hey.\nHier ist die Liga.", 'facts_hash' => 'h', 'status' => CasterScript::QUEUED, 'estimated_seconds' => 3, 'expires_at' => $now->addMinutes(10),
+    ]);
+    $planner = casterPlanner();
+
+    $caption = casterDirector()->tick($planner, $planner->at((float) $now->getTimestamp(), []), (float) $now->getTimestamp());
+
+    expect($caption)->toBe('Hey. Hier ist die Liga.');
+});
+
+it('appends the lower third to a rotation scene only when a caption is set', function () {
+    $renderer = new SceneRenderer('rsvg-convert', resource_path('fonts/stream'), storage_path('framework/testing/scene'));
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"><rect width="1280" height="720"/></svg>';
+    view()->addNamespace('castertest', storage_path('framework/testing/caster-views'));
+    File::ensureDirectoryExists(storage_path('framework/testing/caster-views'));
+    file_put_contents(storage_path('framework/testing/caster-views/plain.blade.php'), $svg);
+
+    $plain = $renderer->svg([], 'castertest::plain');
+    $captioned = $renderer->svg(['voice_caption' => 'Hey. Hier ist die Liga.'], 'castertest::plain');
+
+    expect($plain)->toBe($svg)
+        ->and($captioned)->toContain('data-unit="voice-caption"')
+        ->and($captioned)->toContain('Hey. Hier ist die Liga.')
+        ->and($captioned)->not->toContain('KI')
+        ->and(strrpos($captioned, '</svg>'))->toBe(strlen($captioned) - 6);
+});
+
+it('hands out the wall clock as gapless PCM, silence around the clip and after a cut', function () {
+    $timeline = new CommentaryTimeline(10);
+    $timeline->start(str_repeat("\1\0", 20), [1.0, 2.0], 100.0);
+
+    $before = $timeline->samples(995, 1000);
+    $across = $timeline->samples(998, 1003);
+
+    expect($before)->toBe(str_repeat("\0\0", 5))
+        ->and($across)->toBe("\0\0\0\0\1\0\1\0\1\0")
+        ->and($timeline->endsAt())->toBe(102.0)
+        ->and($timeline->nextSentenceEnd(100.4))->toBe(101.0);
+
+    $timeline->cutAt(101.0);
+
+    expect($timeline->samples(1009, 1012))->toBe("\1\0\0\0\0\0")
+        ->and($timeline->isPlaying(101.0))->toBeFalse();
+});
+
+it('writes the voice into a named pipe ahead of the clock without blocking', function () {
+    $path = storage_path('framework/testing/caster-'.getmypid().'.pcm');
+    $feed = VoiceFeed::create($path, 100, 1.0);
+    expect($feed)->not->toBeNull()->and(filetype($path))->toBe('fifo');
+
+    $reader = fopen($path, 'r+');
+    stream_set_blocking($reader, false);
+    $timeline = new CommentaryTimeline(100);
+    $timeline->start(str_repeat("\7\0", 50), [0.5], 10.0);
+
+    $feed->pump($timeline, 10.0);
+    $feed->pump($timeline, 10.5);
+    $read = (string) fread($reader, 10_000);
+
+    // 1.5 s of samples (0..150): the clip's 50 samples first, then silence; nothing twice, nothing missing.
+    expect(strlen($read))->toBe(150 * 2)
+        ->and(substr($read, 0, 100))->toBe(str_repeat("\7\0", 50))
+        ->and(substr($read, 100))->toBe(str_repeat("\0\0", 100));
+
+    fclose($reader);
+    $feed->close();
+    expect(file_exists($path))->toBeFalse();
+});
+
+it('mixes the voice at TV levels and leaves the commands as they were without it', function () {
+    config(['tv.commentary.mix.music_gain_db' => -14.0]);
+    $ffmpeg = new FfmpegCommands('ffmpeg');
+
+    $plain = $ffmpeg->scene('/hls/scene', 'run', '/music.txt', 35);
+    $mixed = $ffmpeg->scene('/hls/scene', 'run', '/music.txt', 35, '/voice.pcm');
+    $loop = $ffmpeg->hls('/promo.mp4', '/hls/loop', 'run', '/music.txt', '/voice.pcm');
+    $filter = $mixed[array_search('-filter_complex', $mixed, true) + 1];
+
+    expect($plain)->toContain('copy')->not->toContain('/voice.pcm')
+        ->and($ffmpeg->hls('/promo.mp4', '/hls/loop', 'run', '/music.txt'))->toContain('-c')
+        ->and($mixed)->toContain('/voice.pcm')->toContain('[aout]')->toContain('aac')
+        ->and($filter)->toContain('volume=-14.0dB')
+        ->and($filter)->toContain('sidechaincompress')
+        ->and($filter)->toContain('alimiter=limit=0.891')
+        ->and($loop)->toContain('-c:v')->not->toContain('-c');
+});

@@ -87,8 +87,20 @@ final class FfmpegCommands
      *
      * @return list<string>
      */
-    public function hls(string $input, string $encoderDir, string $runId, string $musicList): array
+    public function hls(string $input, string $encoderDir, string $runId, string $musicList, ?string $voicePipe = null): array
     {
+        if ($voicePipe !== null) {
+            return [
+                $this->ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
+                '-re', '-stream_loop', '-1', '-i', $input,
+                ...$this->musicInput($musicList),
+                ...$this->voiceMix($voicePipe),
+                '-map', '0:v', '-map', '[aout]', '-c:v', 'copy',
+                ...$this->mixedAudio(),
+                ...$this->hlsOutput($encoderDir, $runId),
+            ];
+        }
+
         return [
             $this->ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
             '-re', '-stream_loop', '-1', '-i', $input,
@@ -99,6 +111,43 @@ final class FfmpegCommands
     }
 
     /**
+     * The commentary over the music at TV levels (plan "KI-Stimme der Liga",
+     * P6, "Pegel wie im TV"): input 2 is the voice as raw PCM from a named
+     * pipe (App\Support\Caster\VoiceFeed, already at -16 LUFS from the
+     * workstation); the music bed is turned down `music_gain_db` (towards -28
+     * LUFS) and ducked under the voice by a sidechain compressor; the sum goes
+     * through a limiter at `limit` (linear, 0.891 = -1 dBFS sample peak; a true
+     * peak limiter would need oversampling). The audio is encoded again (AAC),
+     * the video stays as it was.
+     *
+     * @return list<string>
+     */
+    private function voiceMix(string $voicePipe): array
+    {
+        $mix = (array) config('tv.commentary.mix', []);
+        $duck = (array) ($mix['duck'] ?? []);
+        $stereo = 'aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo';
+        $filter = sprintf('[1:a]volume=%.1FdB,%s[bed];', (float) ($mix['music_gain_db'] ?? -14), $stereo)
+            .sprintf('[2:a]aresample=44100,%s,asplit=2[voice][key];', $stereo)
+            .sprintf('[bed][key]sidechaincompress=threshold=%.3F:ratio=%d:attack=%d:release=%d[ducked];',
+                (float) ($duck['threshold'] ?? 0.02), (int) ($duck['ratio'] ?? 12), (int) ($duck['attack_ms'] ?? 20), (int) ($duck['release_ms'] ?? 600))
+            .sprintf('[ducked][voice]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,alimiter=limit=%.3F:level=disabled[aout]', (float) ($mix['limit'] ?? 0.891));
+
+        return [
+            '-thread_queue_size', '512', '-f', 's16le', '-ar', (string) (int) ($mix['sample_rate'] ?? 24000), '-ac', '1', '-i', $voicePipe,
+            '-filter_complex', $filter,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function mixedAudio(): array
+    {
+        return ['-c:a', 'aac', '-b:a', ((int) config('tv.commentary.mix.audio_kbps', 128)).'k', '-ar', '44100', '-ac', '2'];
+    }
+
+    /**
      * The still-image scene: PNG frames written to stdin by the supervisor,
      * one per second, timestamped on arrival (no drift against the real-time
      * music), x264 stillimage with one IDR per 6 s segment, and the music
@@ -106,7 +155,7 @@ final class FfmpegCommands
      *
      * @return list<string>
      */
-    public function scene(string $encoderDir, string $runId, string $musicList, int $crf): array
+    public function scene(string $encoderDir, string $runId, string $musicList, int $crf, ?string $voicePipe = null): array
     {
         return [
             $this->ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
@@ -116,7 +165,7 @@ final class FfmpegCommands
             '-probesize', '200000', '-analyzeduration', '0', '-threads', '1',
             '-use_wallclock_as_timestamps', '1', '-f', 'image2pipe', '-c:v', 'png', '-i', 'pipe:0',
             ...$this->musicInput($musicList),
-            '-map', '0:v', '-map', '1:a',
+            ...($voicePipe === null ? ['-map', '0:v', '-map', '1:a'] : [...$this->voiceMix($voicePipe), '-map', '0:v', '-map', '[aout]']),
             '-fps_mode', 'cfr', '-r', '1',
             // veryfast, not ultrafast: every segment starts with an IDR of the
             // whole scene, and ultrafast's IDRs cost 2.5x the bits. No B-frames,
@@ -127,7 +176,7 @@ final class FfmpegCommands
             '-x264-params', 'rc-lookahead=0:sync-lookahead=0', '-pix_fmt', 'yuv420p',
             '-crf', (string) $crf,
             '-g', (string) self::SEGMENT_SECONDS, '-keyint_min', (string) self::SEGMENT_SECONDS, '-sc_threshold', '0',
-            '-c:a', 'copy',
+            ...($voicePipe === null ? ['-c:a', 'copy'] : $this->mixedAudio()),
             ...$this->hlsOutput($encoderDir, $runId),
         ];
     }

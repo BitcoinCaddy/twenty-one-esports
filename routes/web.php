@@ -3,6 +3,7 @@
 use App\Games\GameRegistry;
 use App\Http\Controllers\BadgeImageController;
 use App\Http\Controllers\BroadcastOverlayController;
+use App\Http\Controllers\CasterFetchController;
 use App\Http\Controllers\GeneratedAvatarController;
 use App\Http\Controllers\InviteCardController;
 use App\Http\Controllers\LiveStatusController;
@@ -144,6 +145,14 @@ Route::get('stream/status', LiveStatusController::class)->withoutMiddleware('web
 Route::get('stream/cover.png', StreamCoverController::class)->withoutMiddleware('web')->name('stream.cover');
 // The slides the stream bot's pride notes carry (PrideNotes), by their content hash; public, no session.
 Route::get('stream/pride/{hash}.png', StreamPrideImageController::class)->where('hash', '[0-9a-f]{64}')->withoutMiddleware('web')->name('stream.pride-image');
+
+// TWENTY ONE TV commentary (plan "KI-Stimme der Liga", P6): the workstation fetcher claims scripts and uploads their
+// clips with its bearer token (CasterFetchController, fail closed without a token). No session, no cookie, no CSRF.
+Route::post('api/caster/claim', [CasterFetchController::class, 'claim'])->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.claim');
+Route::post('api/caster/scripts/{id}/clip', [CasterFetchController::class, 'clip'])->whereNumber('id')
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.clip');
+Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
 
 // OBS overlays (plan "OBS-Broadcast-Overlays", P2): an admin's preset by its secret token, and its data. No session,
 // no cookie, no CSRF: OBS keeps no login; a wrong or rotated token is 404 (BroadcastOverlayController).

@@ -183,11 +183,12 @@ final class TrustJob
 
     /**
      * The paid members of this and the previous year, and the league admins;
-     * null when a member list cannot be read.
+     * null when a member list cannot be read. Public for the TV commentary's
+     * web of trust (App\Support\Caster\WebOfTrust), which starts from the same anchors.
      *
      * @return list<string>|null
      */
-    private function anchors(): ?array
+    public function anchors(): ?array
     {
         $year = now()->year;
         $anchors = [];
