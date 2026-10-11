@@ -107,6 +107,11 @@ final class TournamentModeSwitch
      */
     public function lastSwitch(Tournament $tournament): ?array
     {
+        // Only a published board game with more than one time control can have switched: no query for every other page.
+        if ($tournament->published_at === null || count($this->modes($tournament)) < 2) {
+            return null;
+        }
+
         $entry = TournamentModerationEntry::query()->where('tournament_id', $tournament->id)->where('action', 'edited')
             ->latest('id')->limit(100)->get()
             ->first(fn (TournamentModerationEntry $entry): bool => is_array($entry->details['mode'] ?? null) && is_string($entry->details['mode'][0] ?? null) && is_string($entry->details['mode'][1] ?? null));
