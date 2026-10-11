@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\SeriesStatus;
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
@@ -241,4 +242,59 @@ test('the old cup match card is gone: one action, shown once', function () {
     expect($html)->not->toContain('data-test="cup-match"')
         ->and(substr_count($html, 'wire:click="playCupMatch"'))->toBe(1)
         ->and(nowHero($html))->toContain('data-state="start"')->toContain('Invite your opponent');
+});
+
+/** The result of `$match` as its players report it: slot `$winner` wins (TournamentRunner::store()), its series confirmed. */
+function nowDecide(TournamentMatch $match, int $winner = 0): void
+{
+    SeriesMatch::query()->where('tournament_match_id', $match->id)->update(['status' => SeriesStatus::Confirmed]);
+    app(TournamentRunner::class)->store($match->refresh(), ['winner' => $winner, 'games_won' => $winner === 0 ? [1.0, 0.0] : [0.0, 1.0], 'points' => [], 'forfeit' => false, 'label' => '-', 'by' => 'players']);
+}
+
+test('a paired match whose round is not open yet waits: the opponent, the round it waits for and how many are still open (user, 2026-10-10: "Spiel dein Match" while round 2 still played)', function () {
+    Queue::fake();
+    $cup = runningCup(4, TournamentFormat::RoundRobin, ['rankBy' => 'points'], 'rocket-league', '1v1');
+    cupTick();
+    $roundOf = fn (int $number) => TournamentMatch::query()->where('tournament_id', $cup->id)->where('bracket', '!=', 'bye')
+        ->whereHas('round', fn ($query) => $query->where('number', $number))->with(['slots.participant', 'round'])->orderBy('id')->get();
+
+    // Round 1 done, round 2 opens after the evening's break.
+    $roundOf(1)->each(fn (TournamentMatch $match) => nowDecide($match));
+    cupTick();
+    $this->travel(10)->minutes();
+    cupTick();
+    [$mine, $other] = $roundOf(2)->all();
+    expect($mine->round->refresh()->window_ends_at)->not->toBeNull();
+
+    // The viewer's round 2 match is decided, the other one of round 2 still plays: the round 3 match is paired, but its round is closed.
+    $viewer = User::query()->findOrFail($mine->slots[0]->participant->user_id);
+    nowDecide($mine);
+    cupTick();
+    $next = $roundOf(3)->first(fn (TournamentMatch $match) => $match->slots->contains(fn ($slot) => $slot->participant?->user_id === $viewer->id));
+    $opponent = $next->slots->first(fn ($slot) => $slot->participant->user_id !== $viewer->id)->participant->name;
+    expect($next->status)->toBe('ready')->and($next->round->window_ends_at)->toBeNull();
+
+    $hero = nowHero(nowPage($cup, $viewer));
+
+    expect($hero)->toContain('data-state="wait"')->toContain('data-tone="wait"')
+        ->toContain('Round 3 against '.$opponent)
+        ->toContain('Your opponent is set: '.$opponent.'.')
+        ->toContain('Your match starts as soon as the other matches of round 2 are done: 1 still open.')
+        ->not->toContain('Play your match')
+        ->not->toContain('data-test="now-action"');
+
+    // Round 2 done: round 3 opens after the evening's break, at a time the hero names.
+    nowDecide($other);
+    cupTick();
+    expect(nowHero(nowPage($cup, $viewer)))->toContain('data-state="wait"')->toContain('Your match starts at ');
+});
+
+test('a match the directors enter can be played now: "Play your match", the directors enter the result', function () {
+    $tournament = runningChess(TournamentFormat::RoundRobin, 4);
+    $match = TournamentMatch::query()->where('tournament_id', $tournament->id)->where('status', 'ready')->where('bracket', '!=', 'bye')
+        ->whereHas('round', fn ($query) => $query->where('number', 1))->with('slots.participant')->orderBy('id')->firstOrFail();
+    [$white] = matchPlayers($match);
+
+    expect(nowHero(nowPage($tournament, $white)))->toContain('data-state="match"')->toContain('Play your match')
+        ->toContain('The tournament directors enter the result.');
 });
