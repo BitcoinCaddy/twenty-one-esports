@@ -4,6 +4,7 @@ use App\Enums\SeriesStatus;
 use App\Enums\TournamentFormat;
 use App\Games\GameRegistry;
 use App\Models\Admin;
+use App\Models\OverlayPreset;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Models\TournamentOrganizer;
@@ -229,6 +230,44 @@ test('the system pages (SystemPages.dc.html) open on one card with the code, the
             if ($panel === null || ! $panel['action'] || $panel['left'] < 16 || $panel['right'] > $width - 16 || $loud !== []) {
                 $problems["{$name} {$width}"] = [$panel, $loud];
             }
+        }
+    }
+
+    expect($problems)->toBe([]);
+});
+
+test('every overlay preset row shows its URL with a working copy button, also after a round trip and when the clipboard refuses, at 390 and 1440', function () {
+    [$admin] = adminRevampLeague();
+    $token = OverlayPreset::newToken();
+    OverlayPreset::factory()->withToken($token)->create(['name' => 'Stream PC']);
+    OverlayPreset::factory()->create(['name' => 'Old laptop']);
+    $url = OverlayPreset::url($token);
+    // A clipboard stub: writeText resolves and keeps the text, or refuses while window.__clipRefuse is set.
+    $stub = '() => { window.__clip = null; Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: (t) => window.__clipRefuse ? Promise.reject(new Error("denied")) : (window.__clip = t, Promise.resolve()) } }); }';
+    $problems = [];
+
+    foreach ([1440, 390] as $width) {
+        $page = adminRevampPage($admin, route('admin.overlays', absolute: false), $width);
+        $page->evaluate($stub);
+        if (getenv('DESIGN_SHOTS')) {
+            $page->screenshot(true, "admin-overlays-urls-{$width}");
+        }
+        $page->locator('[data-test=overlay-row-copy]')->click();
+        BrowserWait::until($page, '() => window.__clip !== null', 5_000);
+        BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=overlay-row-copy] span")].some((s) => s.checkVisibility() && s.innerText === "Kopiert")', 5_000);
+        $state = $page->evaluate('() => ({ clip: window.__clip, copied: [...document.querySelectorAll("[data-test=overlay-row-copy] span")].filter((s) => s.checkVisibility()).map((s) => s.innerText), text: document.querySelector("[data-test=overlay-row-url-text]").innerText, legacy: !!document.querySelector("[data-test=overlay-row-legacy]"), copies: document.querySelectorAll("[data-test=overlay-row-copy]").length })');
+
+        // A Livewire round trip (Edit), then the clipboard refuses: the URL is selected instead.
+        $page->locator('[data-test=overlay-edit] >> nth=0')->click();
+        BrowserWait::until($page, '() => document.querySelector("[data-test=overlay-cancel]") !== null', 10_000);
+        $page->evaluate('() => { window.__clipRefuse = true; }');
+        $page->locator('[data-test=overlay-row-copy]')->click();
+        BrowserWait::until($page, '() => window.getSelection().toString().length > 0', 5_000);
+        $selected = $page->evaluate('() => window.getSelection().toString().trim()');
+
+        $loud = adminRevampLoud($page);
+        if ($state['clip'] !== $url || $state['copied'] !== ['Kopiert'] || $state['text'] !== $url || ! $state['legacy'] || $state['copies'] !== 1 || $selected !== $url || $loud !== []) {
+            $problems[$width] = [$state, $selected, $loud];
         }
     }
 

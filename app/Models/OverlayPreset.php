@@ -14,9 +14,10 @@ use Illuminate\Support\Str;
 
 /**
  * An OBS overlay preset (plan "OBS-Broadcast-Overlays", P2): what one browser source shows, set up once by an admin
- * (pages::admin.overlays) and then running on its own. Its URL `/broadcast/{token}` is the only key: the token is
- * shown once, when the preset is created or rotated, and only its SHA-256 is stored, so a leaked database gives no
- * overlay away. Rotating issues a new token; the old URL answers 404 from then on.
+ * (pages::admin.overlays) and then running on its own. Its URL `/broadcast/{token}` is the only key. The lookup goes
+ * by the token's SHA-256 (`token_hash`); the token itself is kept encrypted with APP_KEY (`token`), so the admin page
+ * shows every URL for copying again (user, 2026-10-11) while a database dump without the key gives none away. A preset
+ * made before carries no token until it is rotated. Rotating issues a new token; the old URL answers 404 from then on.
  *
  * @property int $id
  * @property string $name
@@ -26,6 +27,7 @@ use Illuminate\Support\Str;
  * @property array<string, bool> $modules module => on, see MODULES
  * @property string|null $scene the break scene's state: null follows the tournament and the clock, else one of SCENES
  * @property string $token_hash
+ * @property string|null $token the URL token, encrypted at rest; null for a preset made before it was stored
  * @property Carbon|null $rotated_at
  * @property int|null $created_by_id
  * @property Carbon|null $created_at
@@ -33,8 +35,8 @@ use Illuminate\Support\Str;
  * @property-read Tournament|null $tournament
  * @property-read User|null $creator
  */
-#[Fillable(['name', 'variant', 'tournament_id', 'locale', 'modules', 'scene', 'token_hash', 'rotated_at', 'created_by_id'])]
-#[Hidden(['token_hash'])]
+#[Fillable(['name', 'variant', 'tournament_id', 'locale', 'modules', 'scene', 'token_hash', 'token', 'rotated_at', 'created_by_id'])]
+#[Hidden(['token_hash', 'token'])]
 class OverlayPreset extends Model
 {
     /** @use HasFactory<OverlayPresetFactory> */
@@ -67,7 +69,7 @@ class OverlayPreset extends Model
 
     protected function casts(): array
     {
-        return ['variant' => OverlayVariant::class, 'modules' => 'array', 'rotated_at' => 'datetime'];
+        return ['variant' => OverlayVariant::class, 'modules' => 'array', 'rotated_at' => 'datetime', 'token' => 'encrypted'];
     }
 
     /**
@@ -104,13 +106,29 @@ class OverlayPreset extends Model
             : null;
     }
 
-    /** A new token for this preset: the old URL stops working. Returns the token, the only time it is readable. */
+    /** A new token for this preset: the old URL stops working. Returns the token, also kept encrypted for the admin page. */
     public function rotate(): string
     {
         $token = self::newToken();
-        $this->forceFill(['token_hash' => self::hashToken($token), 'rotated_at' => now()])->save();
+        $this->forceFill(['token_hash' => self::hashToken($token), 'token' => $token, 'rotated_at' => now()])->save();
 
         return $token;
+    }
+
+    /**
+     * The attributes that store a token: its hash for the lookup, the token itself encrypted.
+     *
+     * @return array{token_hash: string, token: string}
+     */
+    public static function tokenAttributes(string $token): array
+    {
+        return ['token_hash' => self::hashToken($token), 'token' => $token];
+    }
+
+    /** This preset's overlay URL, or null for a preset made before tokens were kept (rotate it once). */
+    public function storedUrl(): ?string
+    {
+        return is_string($this->token) && $this->token !== '' ? self::url($this->token) : null;
     }
 
     /** Whether a module is on; a module the preset predates takes its default. */

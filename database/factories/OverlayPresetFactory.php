@@ -29,9 +29,9 @@ class OverlayPresetFactory extends Factory
         ];
     }
 
-    /** The preset answers to `$token`. */
+    /** The preset answers to `$token`, and keeps it (encrypted) for the admin page like a preset made or rotated now. */
     public function withToken(string $token): static
     {
-        return $this->state(['token_hash' => OverlayPreset::hashToken($token)]);
+        return $this->state(OverlayPreset::tokenAttributes($token));
     }
 }
