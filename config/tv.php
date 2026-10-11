@@ -63,6 +63,21 @@ return [
     | the database, capped, pruned). Both stay off until the association has
     | decided the data protection question (profiling, GDPR).
     |
+    | news (App\Support\Caster\NewsFeeds, NewsScripts; `caster:news` every 15
+    | minutes): headlines from the public `feeds` (checked 2026-10-11), kept
+    | `keep_hours`, at most `max_rows`; a headline about death, disaster,
+    | war, terror, violence against people, abuse or suicide is never spoken
+    | (keyword filter, then the model's own check). A news segment (intro,
+    | the headline word for word with its source, one to three sentences of
+    | opinion by the league voice, pattern reactions when it fails) at most
+    | every `every_minutes`, one model call per headline.
+    |
+    | history (App\Support\Caster\HistoryScripts): "Markus erzählt vom
+    | Bauernkrieg", a long segment built from resources/data/voice/bauernkrieg.json
+    | (facts with sources, no model), every `every_minutes` (random within the
+    | range), no episode again within `repeat_hours`. Segments play only on
+    | calm slots, never two within `spool.segment_spacing_minutes`.
+    |
     */
 
     'commentary' => [
@@ -123,6 +138,10 @@ return [
             'max_seconds' => 600,
             'max_clip_bytes' => 2 * 1024 * 1024,
             'max_clip_seconds' => 90,
+            // A news or history segment (the Bauernkrieg runs 60 to 120 s spoken) may be this long.
+            'segment_max_clip_seconds' => 150,
+            // At most one news or history segment on air within this many minutes.
+            'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
             // airtime it did before the gap (180 and 60), and the queue writes half as much ahead (ahead_seconds).
             'target_seconds' => 90,
@@ -171,6 +190,53 @@ return [
             'tail_seconds' => 1.5,
             'lead_in_seconds' => 0.5,
             'max_hold_seconds' => 100,
+            // A news or history segment holds its slot until it has been spoken, up to this long.
+            'segment_max_hold_seconds' => 160,
+        ],
+
+        'news' => [
+            'enabled' => (bool) env('TV_COMMENTARY_NEWS', true),
+            'every_minutes' => 10,
+            // A headline older than this is not spoken any more; rows older than `keep_hours` are deleted.
+            'fresh_hours' => 12,
+            'keep_hours' => 48,
+            'max_rows' => 600,
+            'per_feed' => 20,
+            'max_title_chars' => 160,
+            'max_age_minutes' => 30,
+            'sentences' => ['min' => 1, 'max' => 3],
+            'daily_cap' => (int) env('TV_COMMENTARY_NEWS_DAILY_CAP', 150),
+            'timeout_seconds' => 8,
+            'connect_timeout_seconds' => 4,
+            'max_feed_bytes' => 2 * 1024 * 1024,
+            // section bitcoin or germany; source as spoken ("laut tagesschau"); language of the headline.
+            'feeds' => [
+                'btc-echo' => ['url' => 'https://www.btc-echo.de/feed/', 'source' => 'BTC-Echo', 'section' => 'bitcoin', 'language' => 'de'],
+                'blocktrainer' => ['url' => 'https://www.blocktrainer.de/feed/', 'source' => 'Blocktrainer', 'section' => 'bitcoin', 'language' => 'de'],
+                'bitcoin-magazine' => ['url' => 'https://bitcoinmagazine.com/feed', 'source' => 'Bitcoin Magazine', 'section' => 'bitcoin', 'language' => 'en'],
+                'coindesk' => ['url' => 'https://www.coindesk.com/arc/outboundfeeds/rss/', 'source' => 'CoinDesk', 'section' => 'bitcoin', 'language' => 'en'],
+                'cointelegraph' => ['url' => 'https://cointelegraph.com/rss/tag/bitcoin', 'source' => 'Cointelegraph', 'section' => 'bitcoin', 'language' => 'en'],
+                'tagesschau-inland' => ['url' => 'https://www.tagesschau.de/inland/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
+                'tagesschau-wirtschaft' => ['url' => 'https://www.tagesschau.de/wirtschaft/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
+                'spiegel-deutschland' => ['url' => 'https://www.spiegel.de/politik/deutschland/index.rss', 'source' => 'Spiegel', 'section' => 'germany', 'language' => 'de'],
+                'spiegel-wirtschaft' => ['url' => 'https://www.spiegel.de/wirtschaft/index.rss', 'source' => 'Spiegel', 'section' => 'germany', 'language' => 'de'],
+                'welt-deutschland' => ['url' => 'https://www.welt.de/feeds/section/politik/deutschland.rss', 'source' => 'Welt', 'section' => 'germany', 'language' => 'de'],
+                'welt-wirtschaft' => ['url' => 'https://www.welt.de/feeds/section/wirtschaft.rss', 'source' => 'Welt', 'section' => 'germany', 'language' => 'de'],
+                'faz-inland' => ['url' => 'https://www.faz.net/rss/aktuell/politik/inland/', 'source' => 'FAZ', 'section' => 'germany', 'language' => 'de'],
+                'faz-wirtschaft' => ['url' => 'https://www.faz.net/rss/aktuell/wirtschaft/', 'source' => 'FAZ', 'section' => 'germany', 'language' => 'de'],
+                'handelsblatt-politik' => ['url' => 'https://www.handelsblatt.com/contentexport/feed/politik', 'source' => 'Handelsblatt', 'section' => 'germany', 'language' => 'de'],
+                'handelsblatt-finanzen' => ['url' => 'https://www.handelsblatt.com/contentexport/feed/finanzen', 'source' => 'Handelsblatt', 'section' => 'germany', 'language' => 'de'],
+                'ntv-politik' => ['url' => 'https://www.n-tv.de/politik/rss', 'source' => 'n-tv', 'section' => 'germany', 'language' => 'de'],
+                'ntv-wirtschaft' => ['url' => 'https://www.n-tv.de/wirtschaft/rss', 'source' => 'n-tv', 'section' => 'germany', 'language' => 'de'],
+            ],
+        ],
+
+        'history' => [
+            'enabled' => (bool) env('TV_COMMENTARY_HISTORY', true),
+            'every_minutes' => ['min' => 45, 'max' => 90],
+            'repeat_hours' => 24,
+            'max_age_minutes' => 120,
+            'sentences' => ['min' => 6, 'max' => 12],
         ],
 
         'chat' => [

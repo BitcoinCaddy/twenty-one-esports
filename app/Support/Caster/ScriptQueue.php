@@ -18,6 +18,11 @@ use Illuminate\Support\Facades\DB;
  * the facts of its topic changed. The workstation fetcher claims the next
  * script, voices it and uploads the clip (ClipSpool), or releases it.
  *
+ * The long segments (news, "Markus erzählt vom Bauernkrieg") are written
+ * here too, each when it is due (NewsScripts, HistoryScripts): normal
+ * priority, so live moments and reactions still jump ahead of them, and
+ * ClipSpool plays them on calm slots only.
+ *
  * Bounded: expired and voiced rows older than a day are deleted, so the table
  * holds at most a day of scripts.
  */
@@ -28,12 +33,20 @@ class ScriptQueue
 
     private PatternScripts $patterns;
 
+    private NewsScripts $news;
+
+    private HistoryScripts $history;
+
     public function __construct(
         private CasterVoice $voice,
         private SceneFacts $facts,
         ?PatternScripts $patterns = null,
+        ?NewsScripts $news = null,
+        ?HistoryScripts $history = null,
     ) {
         $this->patterns = $patterns ?? app(PatternScripts::class);
+        $this->news = $news ?? app(NewsScripts::class);
+        $this->history = $history ?? app(HistoryScripts::class);
     }
 
     /** Whether the league voice writes scene scripts (TV_COMMENTARY_AI); off, the patterns fill the airtime alone. */
@@ -69,6 +82,7 @@ class ScriptQueue
 
         $this->expire($now);
         $this->seedFillers($now);
+        $written = $this->fillSegments($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -84,7 +98,6 @@ class ScriptQueue
             }
         }
 
-        $written = 0;
         $aiLeft = self::aiEnabled() ? max(0, (int) ($settings['per_run_ai'] ?? 1)) : 0;
         $patternsLeft = max(0, (int) config('tv.commentary.patterns.per_run', 40));
         $exhausted = [];
@@ -127,6 +140,44 @@ class ScriptQueue
     }
 
     /**
+     * The long segments, each when it is due: a history segment every
+     * `history.every_minutes`, a news segment at most every
+     * `news.every_minutes` (the headline's comment by the league voice while
+     * `tv.commentary.ai` is on, else a pattern reaction).
+     *
+     * @return int segments written
+     */
+    public function fillSegments(CarbonImmutable $now): int
+    {
+        $written = 0;
+
+        if (config('tv.commentary.history.enabled') === true && $this->history->due($now)) {
+            $segment = $this->history->write($now);
+
+            if ($segment !== null) {
+                $this->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, $segment['text'], HistoryScripts::HASH_PREFIX.$segment['episode'], 0, $now,
+                    source: CasterScript::SOURCE_PATTERN, maxAgeMinutes: (int) config('tv.commentary.history.max_age_minutes', 120));
+                $written++;
+            }
+        }
+
+        $since = $now->subMinutes((int) config('tv.commentary.news.every_minutes', 10));
+
+        if (config('tv.commentary.news.enabled') === true && ! CasterScript::query()->where('kind', CasterScript::NEWS)->where('created_at', '>', $since)->exists()) {
+            $item = $this->news->next($now);
+            $segment = $item === null ? null : $this->news->write($item, $now, self::aiEnabled());
+
+            if ($item !== null && $segment !== null) {
+                $this->enqueue(CasterScript::NEWS, ScenePhase::BREAK, $segment['text'], 'news:'.$item->id, 0, $now,
+                    source: $segment['source'], topic: $item->section, maxAgeMinutes: (int) config('tv.commentary.news.max_age_minutes', 30));
+                $written++;
+            }
+        }
+
+        return $written;
+    }
+
+    /**
      * A live moment (a result, a champion, a chat reaction): written now and
      * put at the front of the queue.
      *
@@ -145,9 +196,9 @@ class ScriptQueue
         return $script === null ? null : $this->enqueue($kind, $phase, $script['text'], SceneFacts::hash($facts), $priority, $now, $scene);
     }
 
-    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null): CasterScript
+    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null): CasterScript
     {
-        $maxAge = (int) config('tv.commentary.scripts.max_age_minutes', 10);
+        $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
 
         return CasterScript::query()->create([
             'kind' => $kind,

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+ <title>Bitcoin News</title>
+ <entry>
+  <title type="html">Bitcoin-Hashrate erreicht neues Allzeithoch</title>
+  <link rel="alternate" href="https://example.org/hashrate"/>
+  <link rel="enclosure" href="https://example.org/hashrate.jpg"/>
+  <updated>2026-10-11T12:00:00Z</updated>
+ </entry>
+ <entry>
+  <title>Bank warnt vor Bitcoin, Kunden kaufen trotzdem</title>
+  <link href="https://example.org/bank"/>
+  <published>2026-10-11T11:00:00Z</published>
+  <updated>2026-10-11T11:30:00Z</updated>
+ </entry>
+</feed>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+ <channel>
+  <title>tagesschau.de - Inland</title>
+  <link>https://www.tagesschau.de/inland</link>
+  <item>
+   <title><![CDATA[Bundestag beschließt neue &quot;Bürokratie-Entlastung&quot; mit 400 Seiten]]></title>
+   <link>https://www.tagesschau.de/inland/buerokratie-100.html</link>
+   <pubDate>Sun, 11 Oct 2026 18:05:00 +0200</pubDate>
+  </item>
+  <item>
+   <title>Unglück auf der A7: Drei Tote nach Unfall</title>
+   <link>https://www.tagesschau.de/inland/unfall-100.html</link>
+   <pubDate>Sun, 11 Oct 2026 17:00:00 +0200</pubDate>
+  </item>
+  <item>
+   <title>Stromsteuer &amp; Netzentgelte: Koalition streitet weiter   - tagesschau.de</title>
+   <link>https://www.tagesschau.de/inland/strom-100.html</link>
+   <dc:date>2026-10-11T14:00:00+02:00</dc:date>
+  </item>
+  <item>
+   <title>&xxe;</title>
+   <link>javascript:alert(1)</link>
+  </item>
+ </channel>
+</rss>

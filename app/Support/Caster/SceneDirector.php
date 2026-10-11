@@ -3,6 +3,7 @@
 namespace App\Support\Caster;
 
 use App\Models\CasterClip;
+use App\Models\CasterScript;
 use App\Support\TwentyOne\Stream\RotationPlanner;
 use Carbon\CarbonImmutable;
 
@@ -29,6 +30,11 @@ use Carbon\CarbonImmutable;
  * starts with the next clip. A live moment (a result, a champion, a chat
  * reaction, a zap thank-you) plays as soon as no clip is on air: it cuts the
  * gap short, also in the middle of such a quiet slot or a silent one.
+ *
+ * A long segment (news, "Markus erzählt vom Bauernkrieg") comes from the
+ * spool like a scene clip, after the gap and on a calm slot only, and holds
+ * its slot up to `segment_max_hold_seconds`; a takeover still cuts it at the
+ * end of the sentence on air.
  */
 final class SceneDirector
 {
@@ -42,7 +48,7 @@ final class SceneDirector
     private float $quietUntil = 0.0;
 
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int}  $settings
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, segment_max_hold_seconds?: float|int, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -52,7 +58,7 @@ final class SceneDirector
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int} $settings */
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, segment_max_hold_seconds?: float|int, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int} $settings */
         $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0)];
 
         return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings);
@@ -145,7 +151,7 @@ final class SceneDirector
         $spoken = (float) $this->timeline->endsAt() + (float) ($this->settings['tail_seconds'] ?? 1.5);
         $planner->hold(min(
             max($spoken, $now + (float) ($this->settings['min_scene_seconds'] ?? 20)),
-            $now + (float) ($this->settings['max_hold_seconds'] ?? 90),
+            $now + (float) (in_array($clip->kind, CasterScript::SEGMENTS, true) ? ($this->settings['segment_max_hold_seconds'] ?? 160) : ($this->settings['max_hold_seconds'] ?? 90)),
         ));
 
         return true;

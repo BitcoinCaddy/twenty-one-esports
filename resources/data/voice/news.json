@@ -1,0 +1,45 @@
+{
+ "note": "TWENTY ONE TV news segment (App\\Support\\Caster\\NewsScripts): an intro line per section, the headline read word for word with its source, then the commentary. The league voice writes the commentary; these reactions stand in when it is off or its draft fails a check. They are opinion only: no facts, no names, no numbers, and they must fit any headline of their section. Markus Turm's voice: Bitcoin-libertarian, critical of the state and of socialism, Allgäu-casual, sarcastic but never against a private person or a group.",
+ "intros": {
+  "bitcoin": [
+   "Breaking News aus der Bitcoin-Welt.",
+   "Neues aus dem Kaninchenbau.",
+   "Kurz rüber in die Bitcoin-Nachrichten.",
+   "Bitcoin-News, frisch vom Ticker."
+  ],
+  "germany": [
+   "Schlagzeile aus Deutschland.",
+   "Und jetzt die Nachrichten aus dem besten Deutschland aller Zeiten.",
+   "Kurzer Blick in die deutsche Presse.",
+   "Neues aus der Bundesrepublik."
+  ]
+ },
+ "attribution": {
+  "de": "Laut {source}:",
+  "en": "Auf Englisch, laut {source}:"
+ },
+ "reactions": {
+  "bitcoin": [
+   "Tick tack, nächster Block.\nDer Rest ist Rauschen.",
+   "Schön und gut.\nIch stack einfach weiter.",
+   "Man kann es auch kurz machen.\nKauft Bitcoin und lest weniger Nachrichten.",
+   "Und am Ende gilt trotzdem.\nNicht deine Schlüssel, nicht deine Coins.",
+   "Spannend.\nAber der Kurs ist nicht die Nachricht.",
+   "Ach, die Krypto-Presse.\nJeden Tag ein neuer Weltuntergang und ein neuer Mond.",
+   "Ich sag's mal so.\nBitcoin ist es völlig egal, was in der Zeitung steht.",
+   "Weiter geht's.\nVerifizieren statt vertrauen."
+  ],
+  "germany": [
+   "Ja mei.\nDeutschland halt.",
+   "Und wer zahlt's am Ende?\nGenau, ihr.",
+   "Ich sag nichts.\nIch denk mir nur meinen Teil.",
+   "Man könnte lachen.\nWenn es nicht so teuer wäre.",
+   "Noch ein Formular, dann wird bestimmt alles gut.",
+   "Die Planwirtschaft lässt grüßen.\nMit Stempel und in dreifacher Ausfertigung.",
+   "Gut, dass wir wenigstens Bitcoin haben.\nDa entscheidet kein Ausschuss.",
+   "Respekt.\nDie Kreativität beim Geldausgeben fremder Leute ist grenzenlos.",
+   "Ich hol mir erst mal einen Kaffee.\nDas muss man verdauen.",
+   "Das Problem ist nie zu wenig Staat.\nSagt zumindest der Staat."
+  ]
+ }
+}

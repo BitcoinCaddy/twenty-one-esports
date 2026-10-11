@@ -327,3 +327,26 @@ it('never cuts the clip on air for a reaction, and plays it as soon as that clip
     // The scene clip is spoken 0.5 to 10.5 s; the reaction follows at its end, not after the 25 s gap.
     expect($liveAt)->toBeGreaterThanOrEqual(10.5)->toBeLessThan(11.0);
 });
+
+it('holds the slot through a long history segment, beyond max_hold_seconds up to segment_max_hold_seconds', function () {
+    casterSpooledClip(120.0, ScenePhase::BREAK, CasterScript::HISTORY);
+    $planner = casterPlanner();
+    $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100, 'segment_max_hold_seconds' => 160,
+    ]);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $changes = [];
+    $last = null;
+
+    for ($t = $start; $t <= $start + 130; $t += 0.5) {
+        $director->tick($planner, $planner->at($t, []), $t);
+
+        if ($planner->slotNumber() !== $last) {
+            $changes[] = $t - $start;
+            $last = $planner->slotNumber();
+        }
+    }
+
+    // Spoken 0.5 to 120.5 s, plus the 1.5 s tail: the slot changes at 122 s, not at the 100 s scene cap.
+    expect($changes[1] ?? null)->toBeGreaterThanOrEqual(122.0)->toBeLessThan(123.0);
+});

@@ -1,0 +1,258 @@
+{
+ "note": "TWENTY ONE TV, segment \"Markus erzählt vom Bauernkrieg\" (App\\Support\\Caster\\HistoryScripts). Every fact is one or two spoken German sentences (one per line, at most 16 words each, numbers as words for the voice), checked against the source URL beside it (German Wikipedia, read 2026-10-11). A segment is one episode: an intro, the episode's facts in order, one twist (a joke, always announced as one) and an outro, 6 to 12 sentences, about 60 to 90 seconds. Twists are opinion and jokes, never facts. Add a fact only with its source.",
+ "intros": [
+  "Und jetzt mal was ganz anderes, Markus erzählt euch heute ein Stück vom Bauernkrieg.",
+  "Kleine Geschichtsstunde zwischendurch, diesmal aus dem Bauernkrieg von fünfzehnhundertfünfundzwanzig.",
+  "Zeit für ein bisschen Heimatkunde aus dem Allgäu, heute wieder mit dem Bauernkrieg.",
+  "Lehnt euch zurück, der Onkel Markus erzählt jetzt ein bisschen was vom Bauernkrieg.",
+  "Gerade ist Pause im Spielbetrieb, also reden wir zwischendurch einfach mal über den Bauernkrieg."
+ ],
+ "outros": [
+  "Das war die Geschichtsstunde für heute, und gleich geht's weiter mit der Liga.",
+  "So viel zum Bauernkrieg für heute, beim nächsten Mal erzähl ich euch mehr davon.",
+  "Ende der Geschichtsstunde, bleibt frei, bleibt neugierig und bleibt dran bei TWENTY ONE TV.",
+  "Mehr Bauernkrieg gibt's beim nächsten Mal, jetzt geht es wieder weiter mit der Liga."
+ ],
+ "episodes": [
+  {
+  "id": "memmingen",
+  "title": "Die Zwölf Artikel von Memmingen",
+  "facts": [
+   {
+    "text": "Am sechsten März fünfzehnhundertfünfundzwanzig trafen sich etwa fünfzig Vertreter der Bauern in Memmingen.\nSie kamen vom Baltringer Haufen, vom Allgäuer Haufen und vom Seehaufen aus Oberschwaben.",
+    "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
+   },
+   {
+    "text": "Beraten wurde im Haus der Kramerzunft, und am siebten März gründeten sie die Christliche Vereinigung.",
+    "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
+   },
+   {
+    "text": "Am zwanzigsten März fünfzehnhundertfünfundzwanzig verabschiedeten die Bauern in Memmingen dann die Zwölf Artikel.\nSie forderten freie Pfarrerwahl, das Ende der Leibeigenschaft und freie Jagd und Fischerei.",
+    "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
+   },
+   {
+    "text": "Im dritten Artikel steht sinngemäß ein starker Satz: Wir sind frei und wollen frei sein.",
+    "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
+   },
+   {
+    "text": "Dank Buchdruck gab es innerhalb von zwei Monaten fünfundzwanzigtausend Exemplare im ganzen Reich.\nNach der Magna Carta gelten sie als eine der ersten Forderungen nach Freiheitsrechten in Europa.",
+    "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Heute hätten die bestimmt noch einen dreizehnten Artikel geschrieben.\nUnd der hätte natürlich einen Bitcoin-Standard für die ganze Christliche Vereinigung gefordert.",
+   "Nur so als Witz gemeint: Fünfundzwanzigtausend Exemplare in zwei Monaten und das ganz ohne Internet.\nDas war damals viral, ganz ohne Algorithmus und ohne Faktenchecker vom Ministerium."
+  ]
+  },
+  {
+  "id": "haufen",
+  "title": "Die drei Haufen in Oberschwaben",
+  "facts": [
+   {
+    "text": "Im Februar und März fünfzehnhundertfünfundzwanzig bildeten sich in Oberschwaben innerhalb kurzer Zeit drei bewaffnete Bauernhaufen.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Der größte davon war der Baltringer Haufen aus der Gegend bei Biberach.\nMehr als zwölftausend Bauern, Bürger und Geistliche sammelten sich dort im Baltringer Ried.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Der Seehaufen hatte fast genauso viele Männer, darunter viele einfache Geistliche und ehemalige Landsknechte.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Siebentausend Allgäuer Bauern lagerten bei Leubas in der Nähe von Kempten.\nSie wehrten sich vor allem gegen den Fürstabt von Kempten und seine Herrschaft.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Die drei Haufen wollten vor allem bessere Lebensverhältnisse erreichen und eigentlich gar keinen Krieg anfangen.\nDeshalb setzten sie zuerst auf Verhandlungen mit dem Schwäbischen Bund.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   }
+  ],
+  "twists": [
+   "Mal mit einem Augenzwinkern: Die Allgäuer hatten also schon damals keinen Bock auf Obrigkeit.\nDas hat sich bei uns daheim bis heute ziemlich gut gehalten, kann ich euch sagen.",
+   "Kleiner Scherz am Rande: Erst verhandeln statt gleich draufhauen, das klingt doch vernünftig.\nDas würde man manchem Ministerium in Berlin heute auch mal wünschen."
+  ]
+  },
+  {
+  "id": "lotzer",
+  "title": "Sebastian Lotzer und Christoph Schappeler",
+  "facts": [
+   {
+    "text": "Sebastian Lotzer war ein Kürschner aus Horb am Neckar, also ein ganz normaler Handwerker.\nAuf seiner Wanderschaft als Geselle kam er irgendwann nach Memmingen.",
+    "source": "https://de.wikipedia.org/wiki/Sebastian_Lotzer"
+   },
+   {
+    "text": "Dort schrieb er zwischen fünfzehnhundertdreiundzwanzig und fünfzehnhundertfünfundzwanzig fünf reformatorische Schriften als Laientheologe.",
+    "source": "https://de.wikipedia.org/wiki/Sebastian_Lotzer"
+   },
+   {
+    "text": "Meistens rechnet man ihm die Zwölf Artikel zu, wahrscheinlich zusammen mit dem Prediger Christoph Schappeler.",
+    "source": "https://de.wikipedia.org/wiki/Zw%C3%B6lf_Artikel"
+   },
+   {
+    "text": "Schappeler stammte aus Sankt Gallen und predigte ab fünfzehnhundertdreizehn in der Memminger Sankt Martins Kirche.\nEr war mit dem Reformator Zwingli befreundet und predigte sehr volkstümlich.",
+    "source": "https://de.wikipedia.org/wiki/Christoph_Schappeler"
+   },
+   {
+    "text": "Nach der Niederlage der Bauern flohen beide aus Memmingen nach Sankt Gallen in die Schweiz.\nVon Sebastian Lotzer verliert sich dort die Spur, sein Todesjahr kennt bis heute niemand.",
+    "source": "https://de.wikipedia.org/wiki/Sebastian_Lotzer"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Damals schreibt ein Kürschner mal eben ein Freiheitsmanifest für halb Europa.\nUnd heute braucht man für jeden Flyer im Dorf drei Formulare und einen Stempel.",
+   "Nur als Witz gemeint: Ab in die Schweiz, sobald die Obrigkeit vor der Tür steht.\nManche Dinge ändern sich in fünfhundert Jahren offenbar überhaupt nicht."
+  ]
+  },
+  {
+  "id": "leipheim",
+  "title": "Der Bauernjörg und Leipheim",
+  "facts": [
+   {
+    "text": "Der Schwäbische Bund schickte den Truchsess Georg von Waldburg, den man später Bauernjörg nannte.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Unterstützt von den Fuggern aus Augsburg führte er neuntausend Landsknechte und fünfzehnhundert gepanzerte Reiter.\nDie Bauern dagegen hatten meistens nur Sensen und Dreschflegel dabei.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Ende März sammelte sich sein Heer in Ulm.\nEin Stück donauabwärts bei Leipheim standen fünftausend Bauern um den Prediger Jakob Wehe.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Am vierten April fünfzehnhundertfünfundzwanzig wurde der Baltringer Haufen bei Leipheim in der ersten großen Schlacht niedergeschlagen.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Der Seehaufen und die Allgäuer kamen ihnen dabei nicht zu Hilfe.\nDabei hatten sie sich in der Christlichen Vereinigung eigentlich gegenseitigen Beistand versprochen.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Die großen Bankiers finanzieren die Armee gegen die eigenen Bauern.\nKommt euch das irgendwie bekannt vor, liebe Freunde des Fiatgelds?",
+   "Mal mit einem Augenzwinkern: Erst feierlich Beistand versprechen und dann einfach nicht kommen.\nDas nennt man heute in Berlin wohl eine ganz normale Koalition."
+  ]
+  },
+  {
+  "id": "weingarten",
+  "title": "Der Vertrag von Weingarten",
+  "facts": [
+   {
+    "text": "An Ostern fünfzehnhundertfünfundzwanzig standen sich bei Weingarten in Oberschwaben zwei Heere gegenüber.\nRund zwanzigtausend gut gerüstete Bauern standen gegen achttausend Mann des Schwäbischen Bundes.",
+    "source": "https://de.wikipedia.org/wiki/Vertrag_von_Weingarten"
+   },
+   {
+    "text": "Der unterlegene Truchsess verhandelte lieber, für den Seehaufen sprach der Hauptmann Eitelhans Ziegelmüller.",
+    "source": "https://de.wikipedia.org/wiki/Vertrag_von_Weingarten"
+   },
+   {
+    "text": "Am siebzehnten April nahmen die Bauernführer den Vertrag an.\nVersprochen wurden ihnen freier Abzug und unabhängige Schiedsgerichte für Streit mit der Obrigkeit.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Dafür sollten die Bauern weiter ihre Abgaben leisten und ihren Herren wieder die Treue schwören.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Die versprochenen Schiedsgerichte wurden danach allerdings nie einberufen.\nDer Truchsess bekam seine Atempause, stockte sein Heer auf und zog weiter gegen andere Haufen.",
+    "source": "https://de.wikipedia.org/wiki/Vertrag_von_Weingarten"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Schiedsgerichte fest versprochen und dann nie einberufen.\nDas klingt fast genauso wie die Digitalisierung der deutschen Verwaltung.",
+   "Mal mit einem Augenzwinkern: Ihr zahlt brav eure Abgaben und kriegt dafür ein schönes Versprechen.\nDieses Geschäftsmodell läuft beim Staat bis heute erstaunlich gut."
+  ]
+  },
+  {
+  "id": "wuerttemberg",
+  "title": "Böblingen und der Feldzug des Truchsess",
+  "facts": [
+   {
+    "text": "In Württemberg begann der Aufstand Mitte April fünfzehnhundertfünfundzwanzig.\nEin großer Bauernhaufen zog unter Matern Feuerbacher durchs württembergische Kernland.",
+    "source": "https://de.wikipedia.org/wiki/Schlacht_bei_B%C3%B6blingen"
+   },
+   {
+    "text": "Die Bauern rückten sogar in Stuttgart ein und zogen im Mai weiter Richtung Böblingen.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Am zwölften Mai wurden sie am Goldberg zwischen Böblingen und Sindelfingen vom Heer des Truchsess geschlagen.",
+    "source": "https://de.wikipedia.org/wiki/Schlacht_bei_B%C3%B6blingen"
+   },
+   {
+    "text": "Anfang Juni traf der Truchsess bei Würzburg auf den Hellen Lichten Haufen der fränkischen Bauern.\nGötz von Berlichingen hatte diese Bauern am Vortag unter einem Vorwand verlassen.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "In nur vier Monaten legte das Heer des Truchsess mehr als tausend Kilometer zurück.\nEnde Juli besiegte es schließlich auch die letzten Aufständischen im Allgäu.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Tausend Kilometer in vier Monaten und das ganz ohne Deutsche Bahn.\nDa kann man ehrlich gesagt nur den Hut ziehen.",
+   "Mal mit einem Augenzwinkern: Ausgerechnet Götz von Berlichingen geht vor dem großen Tag einfach heim.\nSein bekanntestes Zitat lassen wir hier im Programm heute lieber weg."
+  ]
+  },
+  {
+  "id": "muentzer",
+  "title": "Thomas Müntzer und Frankenhausen",
+  "facts": [
+   {
+    "text": "Thomas Müntzer, um vierzehnhundertneunundachtzig in Stolberg geboren, war anfangs ein Anhänger von Martin Luther.",
+    "source": "https://de.wikipedia.org/wiki/Thomas_M%C3%BCntzer"
+   },
+   {
+    "text": "In Allstedt hielt er im Juli fünfzehnhundertvierundzwanzig seine berühmte Fürstenpredigt.\nIm August floh er dann vor der Obrigkeit nach Mühlhausen in Thüringen.",
+    "source": "https://de.wikipedia.org/wiki/Thomas_M%C3%BCntzer"
+   },
+   {
+    "text": "Müntzer forderte die Gemeinschaft aller Güter und die Abschaffung aller Obrigkeit.\nAnders als Luther stand er offen für die gewaltsame Befreiung der Bauern.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Am fünfzehnten Mai fünfzehnhundertfünfundzwanzig wurde sein Haufen bei Frankenhausen von einem Fürstenheer vollständig besiegt.",
+    "source": "https://de.wikipedia.org/wiki/Schlacht_bei_Frankenhausen"
+   },
+   {
+    "text": "Müntzer wurde gefangen genommen und am siebenundzwanzigsten Mai in Mühlhausen hingerichtet.\nViel später landete er auf dem Fünf-Mark-Schein der DDR.",
+    "source": "https://de.wikipedia.org/wiki/Thomas_M%C3%BCntzer"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Erst die Gemeinschaft aller Güter fordern und dann auf dem Geld landen.\nAusgerechnet auf einem Geldschein, den am Ende wirklich keiner mehr haben wollte.",
+   "Mal mit einem Augenzwinkern: Alles gehört allen, das klingt am Anfang immer richtig gut.\nBis dann jemand fragt, wer morgen früh eigentlich die Kühe melkt."
+  ]
+  },
+  {
+  "id": "folgen",
+  "title": "Was vom Bauernkrieg blieb",
+  "facts": [
+   {
+    "text": "Bis September fünfzehnhundertfünfundzwanzig waren fast alle Gefechte und Strafaktionen des Bauernkriegs vorbei.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Die überlebenden Aufständischen fielen danach automatisch in die Reichsacht.\nSie verloren damit alle Rechte und Privilegien und waren vogelfrei.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Rund tausend Burgen und Klöster wurden in diesen zwei Jahren beschädigt oder ganz zerstört.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Für das Fürststift Kempten gab es fünfzehnhundertsechsundzwanzig auf dem Reichstag zu Speyer den Memminger Vertrag.\nDort wurden Missstände tatsächlich per Vertrag beseitigt.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   },
+   {
+    "text": "Später öffnete der Untertanenprozess den Bauern und Bürgern den Rechtsweg zu den Reichsgerichten.\nIn den folgenden dreihundert Jahren begehrten die Bauern kaum noch auf.",
+    "source": "https://de.wikipedia.org/wiki/Deutscher_Bauernkrieg"
+   }
+  ],
+  "twists": [
+   "Kleiner Scherz am Rande: Danach zahlten viele Bauern ihre Steuern auch direkt an die Fürsten.\nDas nennt man dann wohl Fortschritt auf gut Deutsch.",
+   "Mal mit einem Augenzwinkern: Statt Aufstand gab es danach eben den Rechtsweg.\nDreihundert Jahre Formulare statt Mistgabeln, auch eine Form von Frieden."
+  ]
+  }
+ ]
+}

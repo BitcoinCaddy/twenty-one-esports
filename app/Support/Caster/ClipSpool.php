@@ -32,7 +32,9 @@ use Illuminate\Support\Str;
  * at least `filler_below_seconds` are ready (the clip about the slide's
  * topic first, SceneTopic), else a filler, else nothing; with the
  * workstation offline and no clip, the next queued script of the phase as a
- * text lower third.
+ * text lower third. A long segment (news, history) comes right after the
+ * live clips, on a calm slot only (never over a live match or a result),
+ * and never within `segment_spacing_minutes` of the last one.
  */
 class ClipSpool
 {
@@ -40,6 +42,9 @@ class ClipSpool
     private const PLAYING_STALE_MINUTES = 10;
 
     public const FETCHER_SEEN = 'caster:fetcher_seen_at';
+
+    /** When the last news or history segment started playing (a timestamp). */
+    public const SEGMENT_PLAYED = 'caster:segment_played_at';
 
     /**
      * Live moments and reactions (a result, a chat reaction, a zap thank-you):
@@ -73,7 +78,9 @@ class ClipSpool
             throw new InvalidClip('format');
         }
 
-        if (strlen($opus) > (int) ($settings['max_clip_bytes'] ?? 0) || $durationSeconds <= 0 || $durationSeconds > (float) ($settings['max_clip_seconds'] ?? 0)) {
+        $maxSeconds = in_array($script->kind, CasterScript::SEGMENTS, true) ? (float) ($settings['segment_max_clip_seconds'] ?? 0) : (float) ($settings['max_clip_seconds'] ?? 0);
+
+        if (strlen($opus) > (int) ($settings['max_clip_bytes'] ?? 0) || $durationSeconds <= 0 || $durationSeconds > $maxSeconds) {
             throw new InvalidClip('size');
         }
 
@@ -140,6 +147,11 @@ class ClipSpool
             return ['clip' => $live, 'caption' => null, 'source' => 'live'];
         }
 
+        $segment = in_array($phase, ScenePhase::CALM, true) ? $this->nextSegment($now) : null;
+        if ($segment !== null) {
+            return ['clip' => $segment, 'caption' => null, 'source' => 'segment'];
+        }
+
         if ($this->readySeconds() >= (float) config('tv.commentary.spool.filler_below_seconds', 60)) {
             $phases = in_array($phase, ScenePhase::CALM, true) ? [$phase, ...array_diff(ScenePhase::CALM, [$phase])] : [$phase];
 
@@ -180,9 +192,26 @@ class ClipSpool
             ->whereIn('kind', self::LIVE_KINDS)->orderBy('id')->first();
     }
 
+    /** The oldest ready news or history segment, unless one started within `segment_spacing_minutes`. */
+    public function nextSegment(CarbonImmutable $now): ?CasterClip
+    {
+        $last = Cache::get(self::SEGMENT_PLAYED);
+
+        if (is_int($last) && $now->getTimestamp() - $last < 60 * (int) config('tv.commentary.spool.segment_spacing_minutes', 5)) {
+            return null;
+        }
+
+        return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->whereIn('kind', CasterScript::SEGMENTS)->orderBy('id')->first();
+    }
+
     public function playing(CasterClip $clip): void
     {
         $clip->update(['status' => CasterClip::PLAYING]);
+
+        if (in_array($clip->kind, CasterScript::SEGMENTS, true)) {
+            Cache::put(self::SEGMENT_PLAYED, now()->getTimestamp(), now()->addDay());
+        }
     }
 
     /** A clip that played is gone at once; a filler goes back to the end of the fillers' turn. */
