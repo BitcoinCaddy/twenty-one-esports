@@ -77,7 +77,7 @@ new #[Title('Tournament archive')] #[Layout('layouts::app', ['section' => 'tourn
                                     @else
                                         <span class="rv-av size-10 flex-none"><x-icon name="clans" :size="18" /></span>
                                     @endif
-                                    <b class="truncate text-xl" data-test="hof-champion">{{ $card['champion']['name'] }}</b>
+                                    <b class="min-w-0 text-xl [overflow-wrap:anywhere]" data-test="hof-champion">{{ $card['champion']['name'] }}</b>
                                 </span>
                                 <span class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                                     <span class="rv-m">{{ $card['date'] }}</span>
@@ -144,9 +144,9 @@ new #[Title('Tournament archive')] #[Layout('layouts::app', ['section' => 'tourn
                     <li wire:key="done-p-{{ $row['tournament']->id }}" class="border-b border-hairline" data-test="archive-row-phone">
                         <a href="{{ $row['href'] }}" @class(['flex min-h-[60px] items-center gap-3 py-2.5 text-ink hover:text-ink', 'border-l-4 border-btc pl-2' => $row['pot'] !== null])>
                             <x-game-cover :game="$row['tournament']->game" size="thumb" class="h-9 w-16 flex-none rounded-[2px] [&_img]:object-cover" />
-                            <span class="flex min-w-0 flex-col">
+                            <span class="flex min-w-0 grow flex-col">
                                 <b class="text-sm leading-tight [overflow-wrap:anywhere]">{{ $row['name'] }}</b>
-                                <span class="rv-m">{{ implode(', ', array_filter([$row['date'], $row['pot'] !== null ? $sats($row['pot']).' Sats' : null, $row['champion']['name'] ?? null])) }}</span>
+                                <span class="rv-m [overflow-wrap:anywhere]">{{ implode(', ', array_filter([$row['date'], $row['pot'] !== null ? $sats($row['pot']).' Sats' : null, $row['champion']['name'] ?? null])) }}</span>
                             </span>
                         </a>
                     </li>

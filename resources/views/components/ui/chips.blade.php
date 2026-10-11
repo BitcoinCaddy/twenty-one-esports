@@ -15,7 +15,7 @@
         @foreach ($items as $index => $item)
             <a href="{{ $item['href'] }}" data-chip="{{ $index }}" @if ($item['active']) aria-current="page" @endif
                @class(['rv-chip', 'is-zero' => $item['count'] === 0 && ! $item['active']]) data-test="{{ $test }}-{{ $item['key'] }}">
-                {{ $item['label'] }}@if ($item['count'] !== null)<span class="rv-m">{{ $item['count'] }}</span>@endif
+                {{ $item['label'] }}@if ($item['count'] !== null) <span class="rv-m">{{ $item['count'] }}</span>@endif
             </a>
         @endforeach
     </div>
@@ -26,7 +26,7 @@
         <div class="rv-chips-menu" x-show="open" x-cloak>
             @foreach ($items as $index => $item)
                 <a href="{{ $item['href'] }}" data-chip-menu="{{ $index }}" hidden @if ($item['active']) aria-current="page" @endif>
-                    <span>{{ $item['label'] }}</span>@if ($item['count'] !== null)<span class="rv-m">{{ $item['count'] }}</span>@endif
+                    <span>{{ $item['label'] }}</span>@if ($item['count'] !== null) <span class="rv-m">{{ $item['count'] }}</span>@endif
                 </a>
             @endforeach
         </div>
