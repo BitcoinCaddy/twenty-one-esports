@@ -17,15 +17,20 @@ use Illuminate\Support\Carbon;
  * @property bool|null $accepted
  * @property string|null $message
  * @property Carbon $attempted_at
+ * @property int $attempts how often it was sent to this relay (RelayRetries caps the retries)
  */
-#[Fillable(['nostr_event_id', 'relay', 'accepted', 'message', 'attempted_at'])]
+#[Fillable(['nostr_event_id', 'relay', 'accepted', 'message', 'attempted_at', 'attempts'])]
 class RelayDelivery extends Model
 {
+    /** @var array<string, mixed> the column default, so a new row reads the same before and after saving */
+    protected $attributes = ['attempts' => 1];
+
     protected function casts(): array
     {
         return [
             'accepted' => 'boolean',
             'attempted_at' => 'datetime',
+            'attempts' => 'integer',
         ];
     }
 

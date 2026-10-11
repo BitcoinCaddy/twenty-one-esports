@@ -612,9 +612,12 @@ test('F2: switched off, nostr:republish leaves the league\'s mute list home and 
     expect(RelayDelivery::query()->pluck('nostr_event_id')->map(fn (int $id): int => NostrEvent::query()->findOrFail($id)->kind)->all())->toBe([0]);
 
     // Without the league key it cannot tell whose list it is: only the league signs kind 10000, so none goes out.
+    // Each run waits out the profile's backoff (RelayRetries), so it is due again.
+    $this->travel(5)->minutes();
     config(['esports.league.nsec' => null]);
     $this->artisan('nostr:republish')->expectsOutput('Republished 1 event(s).')->assertSuccessful();
 
+    $this->travel(10)->minutes();
     config(['esports.league.mute_list' => true, 'esports.league.nsec' => $this->league->secret]);
     $this->artisan('nostr:republish')->expectsOutput('Republished 2 event(s).')->assertSuccessful();
 });

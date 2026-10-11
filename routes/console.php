@@ -26,6 +26,7 @@ use App\Support\Moderation\LeagueMuteList;
 use App\Support\Moderation\MuteListUnreadable;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Nostr\RelayPublisher;
+use App\Support\Nostr\RelayRetries;
 use App\Support\Nostr\SignedEvent;
 use App\Support\Notifications\BlockZeroNotifications;
 use App\Support\Notifications\BoardNotifications;
@@ -364,6 +365,11 @@ Artisan::command('esports:notification-profile', function (RelayPublisher $publi
  * list (kind 10000) is left alone while ESPORTS_PUBLISH_MUTE_LIST=false: the
  * kill switch stops every send of it, and once it is back on, the writer
  * reads the relays and queues its versions itself (LeagueMuteList).
+ *
+ * Bounded (RelayRetries): a relay gets another try only after its backoff and
+ * at most RelayRetries::MAX_ATTEMPTS in all; the game page then says the copy
+ * stays with the league instead of "retrying" for good. A regular event the
+ * relays never saw past the window is sent by `nostr:heal-unsent`.
  */
 Artisan::command('nostr:republish', function (RelayPublisher $publisher) {
     $relays = config('esports.relays', []);
@@ -384,7 +390,9 @@ Artisan::command('nostr:republish', function (RelayPublisher $publisher) {
         ->where(fn ($query) => $query->whereNotNull('queued_at')->orWhereHas('deliveries'))
         ->whereNotIn('kind', [1059, TournamentSignups::CONSENT])
         ->when($muteListOff, $withoutMuteList)
-        ->whereBetween('created_at', [now()->subDay(), now()->subMinute()])
+        ->whereBetween('created_at', [now()->subHours(RelayRetries::WINDOW_HOURS), now()->subMinute()])
+        // Not settled yet: some configured relay neither accepted it nor ran out of attempts (keeps the limit for open work).
+        ->whereHas('deliveries', fn ($settled) => $settled->whereIn('relay', $relays)->where(fn ($done) => $done->where('accepted', true)->orWhere('attempts', '>=', RelayRetries::MAX_ATTEMPTS)), '<', count($relays))
         ->with('deliveries')
         ->oldest('id')
         ->limit(100)
@@ -407,10 +415,11 @@ Artisan::command('nostr:republish', function (RelayPublisher $publisher) {
         ->get()
         ->unique(fn (NostrEvent $event): string => $event->kind.':'.$event->pubkey.':'.($event->kind >= 30000 ? (string) $event->d : ''))
         ->reverse()
+        ->filter(fn (NostrEvent $event): bool => RelayRetries::dueRelays($event->deliveries, $relays, now()) !== [])
         ->take(100);
 
     foreach ($events->concat($current) as $event) {
-        $missing = array_values(array_filter($relays, fn (string $relay) => $event->deliveries->firstWhere('relay', $relay)?->accepted !== true));
+        $missing = RelayRetries::dueRelays($event->deliveries, $relays, now());
 
         if ($missing !== []) {
             $publisher->publish($event, $missing);
