@@ -28,6 +28,7 @@ use App\Support\Chess\ChessTeamMatches;
 use App\Support\Hyper\HyperMoments;
 use App\Support\Invites\InviteLinkRefused;
 use App\Support\Invites\InviteLinks;
+use App\Support\Memes\MemeShares;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Nostr\RejectedEvent;
 use App\Support\Nostr\SignedEventGate;
@@ -73,7 +74,9 @@ use Illuminate\Support\Facades\Route;
  * - an invite to the player's own open Hyperbitcoinization correspondence table (user 2026-10-09; a live
  *   table fills within minutes, a note would come too late), with the lobby's card and the table's link;
  * - a won live Proof of Pong match (plan "Proof of Pong", P4), with the match's page card and the match as the
- *   link; it mentions nobody.
+ *   link; it mentions nobody;
+ * - the meme of such a win (plan "KI-Stimme der Liga", P5, {@see MemeShares}): an upset, a comeback, a deuce, a
+ *   first or a close win, with its meme card; it mentions nobody.
  *
  * At most `esports.badges.shares_per_hour` per player: the league relays carry them.
  */
@@ -84,7 +87,7 @@ final class SharePosts
     public const FORMAT = 'wide';
 
     /** The moments a share post can be about. */
-    public const TYPES = ['rank-up', 'block', 'tournament', 'wrapped', 'game', 'series', 'signup', 'blockfill', 'tmnf', 'hyper', 'hyper-table', 'pong'];
+    public const TYPES = ['rank-up', 'block', 'tournament', 'wrapped', 'game', 'series', 'signup', 'blockfill', 'tmnf', 'hyper', 'hyper-table', 'pong', 'meme'];
 
     /** Opponents one post mentions at most: a team of five, never a whole bracket. */
     public const MAX_MENTIONS = 5;
@@ -108,6 +111,7 @@ final class SharePosts
             'hyper' => $this->hyper($user, $id),
             'hyper-table' => $this->hyperTable($user, $id),
             'pong' => $this->pong($user, $id),
+            'meme' => app(MemeShares::class)->post($user, $id),
             default => null,
         };
 

@@ -11,6 +11,7 @@ use App\Models\Clan;
 use App\Models\ClanInvite;
 use App\Models\DisputeEvidence;
 use App\Models\Lineup;
+use App\Models\PongMatch;
 use App\Models\RankBadge;
 use App\Models\Rating;
 use App\Models\ScoreRun;
@@ -250,6 +251,8 @@ function sweepFixtures(): array
         'finished' => fn (?User $user, array $made): Model => shareTournament($made['npub'], User::factory()->create()),
         // A Blockfill moment's card: the `npub` player's verified personal best (the card stays while Blockfill is off).
         'run' => fn (?User $user, array $made): Model => StackerRun::factory()->for($made['npub'])->verified(2400)->create(),
+        // A meme card (plan "KI-Stimme der Liga", P5): a first live Proof of Pong win in overtime, 22:20.
+        'meme' => fn (?User $user, array $made): Model => PongMatch::factory()->finished(0, [22, 20])->create(),
 
         // A dispute screenshot of that series, served to admins only.
         'evidence' => function (?User $user, array $made): Model {
@@ -545,7 +548,7 @@ const SWEEP_FLUSH_PATTERNS = ['#^/tournaments/\d+$#', '#^/players/npub1[02-9ac-h
 
 /** @var list<string> Routes that answer without the app shell (JSON, images, the player card fragment, the full-screen tournament TV, the broadcast styleguide). */
 const SWEEP_NO_HEADER_ROUTES = ['tournaments.tv', 'broadcast.styleguide', 'nostr.nip05', 'admin.disputes.evidence', 'players.card', 'avatars.generated', 'invites.card',
-    'badges.rank', 'badges.rank.thumb', 'cards.rank-up', 'cards.block', 'cards.tournament', 'cards.tournament-invite', 'cards.wrapped', 'cards.blockfill', 'cards.page', 'stream.cover', 'stream.pride-image'];
+    'badges.rank', 'badges.rank.thumb', 'cards.rank-up', 'cards.block', 'cards.tournament', 'cards.tournament-invite', 'cards.wrapped', 'cards.blockfill', 'cards.meme', 'cards.page', 'stream.cover', 'stream.pride-image'];
 
 const SWEEP_GAP_SCRIPT = <<<'JS'
     async () => {

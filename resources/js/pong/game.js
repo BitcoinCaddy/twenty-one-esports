@@ -14,6 +14,7 @@
  * `autoplay` lets a bot of that level play the player's paddle, `eventEvery` sets the block of rallies that holds the events (1: every rally an event). With both, a game is the one PongGame::bots() plays
  * for the same seed and levels, tick for tick.
  */
+import { createBanter } from './banter.js';
 import { botSpeed, createBot } from './bot.js';
 import './picker.js';
 import { createStage, readConfig, readSettings } from './page.js';
@@ -44,6 +45,9 @@ function boot() {
     const rallyLabel = $('rally');
     const banner = $('banner');
     const toast = $('toast');
+    // The bot's lines in the game chat (plan "KI-Stimme der Liga", P5; muted in the settings).
+    const banter = createBanter(config.banter, { speed: settings.speed });
+    let deuceSaid = false;
 
     const showScore = () => {
         scoreMe.textContent = String(game.score[0]);
@@ -81,6 +85,7 @@ function boot() {
         $('end').hidden = false;
         document.body.dataset.result = won ? 'win' : 'loss';
         show.end(game.winner, won);
+        banter.say(won ? 'player_win' : 'bot_win');
     };
 
     const playerTarget = () => (bots[0] ? bots[0].target(rally) : input.target(rally.paddles[0]));
@@ -127,6 +132,15 @@ function boot() {
             show.goal(scorer, rally.points);
             toast.textContent = scorer === 0 ? t('Point for you') : t('Point for :name', { name: config.bot });
             toast.hidden = false;
+            if (!won) {
+                const deuce = Math.min(...game.score) >= config.rules.points_to_win - 1;
+                if (deuce && !deuceSaid) {
+                    deuceSaid = true;
+                    banter.say('deuce');
+                } else {
+                    banter.say(scorer === 1 ? 'bot_point' : 'player_point');
+                }
+            }
             if (won) {
                 counted++;
                 break;
@@ -167,6 +181,7 @@ function boot() {
         if (phase !== 'ready') return;
         $('start').hidden = true;
         serve();
+        banter.say('start');
     };
     $('start-btn').addEventListener('click', start);
 
@@ -189,6 +204,7 @@ function boot() {
 
     // The browser test's handles: where the game stands, and the show (to stage a moment for a picture).
     window.pongShow = show;
+    window.pongBanter = banter;
     window.pongGame = {
         state: () => ({ phase, score: [...game.score], rally: game.rally, winner: game.winner, ticks, event: rally?.event ?? null, halves: rally ? [rallyHalf(rally, 0), rallyHalf(rally, 1)] : null, waiting: rally ? rally.balls.some((ball) => ball.length > 5) : false, waitingAt: rally?.balls.find((ball) => ball.length > 5)?.slice(0, 2) ?? null, sideHits: rally ? [...rally.sideHits] : null, lastScorer, renderer: arena.kind, quality: arena.quality, gpu: arena.gpu ?? null, draws: arena.stats ? arena.stats() : null, drawn: arena.drawn ? arena.drawn() : null, figures: show.figures().map((f) => f.id), portrait: isPortrait(), music: musicState() }),
     };
