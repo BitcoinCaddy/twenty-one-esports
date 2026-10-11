@@ -83,6 +83,87 @@ it('never changes the scene before its clip has been spoken, plus the tail', fun
     Storage::disk('local')->assertDirectoryEmpty('caster/spool');
 });
 
+/** A director with a fixed gap of music between two clips. */
+function casterGapDirector(float $gap): SceneDirector
+{
+    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
+        'gap_seconds' => ['min' => $gap, 'max' => $gap],
+    ]);
+}
+
+it('leaves a gap of music between two clips, the next scene change starting with the next clip', function () {
+    casterSpooledClip(10.0);
+    casterSpooledClip(10.0);
+    $planner = casterPlanner();
+    $director = casterGapDirector(25.0);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $starts = [];
+    $playing = null;
+    $changes = [];
+    $last = null;
+
+    for ($t = $start; $t <= $start + 60; $t += 0.25) {
+        $director->tick($planner, $planner->at($t, []), $t);
+
+        if ($director->clip()?->id !== $playing) {
+            $playing = $director->clip()?->id;
+            if ($playing !== null) {
+                $starts[] = $t - $start;
+            }
+        }
+        if ($planner->slotNumber() !== $last) {
+            $changes[] = $t - $start;
+            $last = $planner->slotNumber();
+        }
+    }
+
+    // Clip one is spoken 0.5 to 10.5 s; 25 s of music follow, so clip two starts at 35.5 s, with a new scene.
+    expect($starts)->toHaveCount(2)
+        ->and($starts[0])->toBe(0.0)
+        ->and($starts[1])->toBeGreaterThanOrEqual(35.4)->toBeLessThan(36.0)
+        ->and($changes)->toContain($starts[1]);
+});
+
+it('lets a live moment cut the gap short, also in the middle of a quiet slot', function () {
+    casterSpooledClip(10.0);
+    $planner = casterPlanner();
+    $director = casterGapDirector(25.0);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $liveAt = null;
+
+    for ($t = $start; $t <= $start + 40 && $liveAt === null; $t += 0.25) {
+        if (abs($t - $start - 24.0) < 0.01) {
+            casterSpooledClip(5.0, ScenePhase::BREAK, CasterScript::LIVE);
+        }
+
+        $director->tick($planner, $planner->at($t, []), $t);
+
+        if ($director->clip()?->kind === CasterScript::LIVE) {
+            $liveAt = $t - $start;
+        }
+    }
+
+    expect($liveAt)->toBeGreaterThanOrEqual(24.0)->toBeLessThan(24.5);
+});
+
+it('starts a clip after the silence the voice feed already wrote, so its first syllable is never cut', function () {
+    casterSpooledClip(10.0);
+    $planner = casterPlanner();
+    $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100, 'feed_lead_seconds' => 1.0,
+    ]);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+
+    // The feed pumps before the director's tick: silence is written up to one second ahead.
+    $written = (int) round(($start + 1.0) * 24000);
+    $director->tick($planner, $planner->at($start, []), $start);
+    $handed = $director->timeline->samples($written, (int) round(($start + 15.0) * 24000));
+
+    // Every sample of the clip (the faked decode is "\1\0" throughout) reaches the feed, the head included.
+    expect(substr_count($handed, "\1\0"))->toBe(240000);
+});
+
 it('holds a slot without a clip for the calmer minimum', function () {
     $planner = casterPlanner();
     $director = casterDirector();

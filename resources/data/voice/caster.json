@@ -2853,7 +2853,7 @@
   }
  ],
  "pattern_scripts": {
-  "note": "Deterministic scene scripts (App\\Support\\Caster\\PatternScripts), the fallback when the league voice writes nothing. Every {slot} is filled only from the scene's facts (SceneFacts::forTopic()); a line with a slot the facts cannot fill is not used. Lines carry no claim beyond their slots: no move, no mistake, no favourite, no mood of a player. `use_patterns` and `use_topics` name the cast research lines above that pass the same rule. `canon` lists, per phase, the canon entries whose usage fits any moment of that phase (no knapp, no upset, no last free place).",
+  "note": "Deterministic scene scripts (App\\Support\\Caster\\PatternScripts), the fallback when the league voice writes nothing. A script carries at most one fact line (two in a result or champion moment); the rest is flavour: a joke from the verified meme canon (`flavour.jokes`, canon ids, quoted word for word), an invitation (`flavour.invite` and the promo lines of `invite_when`), league pride, a chat call and an emotion line with an OmniVoice marker. Every {slot} is filled only from the scene's facts (SceneFacts::forTopic()); {?slot} requires the fact without saying it. A fact line with a person slot is used only in a result or champion moment, one name at most. Lines carry no claim beyond their slots: no move, no mistake, no favourite, no mood of a player.",
   "openings": [
    {
     "id": "op-live-1",
@@ -3538,7 +3538,7 @@
     "topics": [
      "league"
     ],
-    "text": "Dazu kommen {clans} Clans."
+    "text": "In der Liga gibt es {clans} Clans."
    },
    {
     "id": "f-lg-3",
@@ -3553,6 +3553,185 @@
      "league"
     ],
     "text": "Heute stehen schon {games_today} Partien auf der Tafel."
+   },
+   {
+    "id": "f-live-7",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Live auf dem Brett: eine Partie {mode}.{?white}"
+   },
+   {
+    "id": "f-live-8",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Bei {game} läuft gerade eine Partie.{?a}"
+   },
+   {
+    "id": "f-live-9",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Die Partie im {mode} steht bei Zug {move}."
+   },
+   {
+    "id": "f-live-10",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Zwei Leute sitzen gerade am Brett und spielen {mode}.{?white}"
+   },
+   {
+    "id": "f-res-9",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Gerade ist eine Partie {mode} zu Ende gegangen.{?winner}"
+   },
+   {
+    "id": "f-res-10",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Bei {game} steht ein Ergebnis: {score}.{?winner}"
+   },
+   {
+    "id": "f-res-11",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Nach {moves} Zügen ist eine Partie entschieden.{?winner}"
+   },
+   {
+    "id": "f-res-12",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Eine Partie endet gerade durch {how}.{?winner}"
+   },
+   {
+    "id": "f-res-13",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Ein Remis im {mode}, der Punkt wird geteilt.{?draw_a}"
+   },
+   {
+    "id": "f-res-14",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "{winner} holt sich den Sieg im {mode}."
+   },
+   {
+    "id": "f-res-15",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "{winner} gewinnt bei {game}."
+   },
+   {
+    "id": "f-tour-11",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Für {tournament} hat sich schon jemand angemeldet.{?first_entrant}"
+   },
+   {
+    "id": "f-lt-8",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Bei {tournament} führt die Nummer eins mit {leader_points} Punkten.{?leader}"
+   },
+   {
+    "id": "f-lt-9",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Runde {round} bei {tournament} ist gespielt. Ergebnis: {score}.{?winner}"
+   },
+   {
+    "id": "f-lad-7",
+    "topics": [
+     "ladders"
+    ],
+    "text": "In der Ladder {ladder} steht die Nummer eins bei {leader_elo} Elo."
+   },
+   {
+    "id": "f-lad-8",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Platz zwei in der Ladder {ladder} hat {second_elo} Elo."
+   },
+   {
+    "id": "f-lad-9",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Nur {gap} Elo trennen die ersten zwei der Ladder {ladder}."
+   },
+   {
+    "id": "f-lad-10",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Die ersten zwei der Ladder {ladder} stehen gleichauf bei {tied_elo} Elo."
+   },
+   {
+    "id": "f-lad-11",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Die Nummer eins der Ladder {ladder} hat {leader_wins} Siege auf dem Konto."
+   },
+   {
+    "id": "f-tm-7",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Die schnellste Zeit auf {track} liegt bei {leader_time}."
+   },
+   {
+    "id": "f-tm-8",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Platz zwei auf {track} fährt {second_time}."
+   },
+   {
+    "id": "f-tm-9",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Auf {track} ist schon jemand schneller als die Autorenzeit.{?leader_under}"
+   },
+   {
+    "id": "f-bf-4",
+    "topics": [
+     "blockfill"
+    ],
+    "text": "Die beste Zeit der Blockfill-Woche liegt bei {bf_leader_time}."
+   },
+   {
+    "id": "f-bf-5",
+    "topics": [
+     "blockfill"
+    ],
+    "text": "Platz zwei in der Blockfill-Woche hat {bf_second_time}."
    }
   ],
   "use_patterns": [
@@ -3628,10 +3807,12 @@
   ],
   "invite_when": {
    "live_match": [
-    "between"
+    "between",
+    "break"
    ],
    "after_result": [
-    "between"
+    "between",
+    "break"
    ],
    "pre_show": [
     "between",
@@ -3644,22 +3825,696 @@
     "night"
    ]
   },
-  "canon": {
-   "break": [
-    "e21-gruesse-gehen-raus",
-    "derweg-das-geilste-sind-die-leute"
+  "flavour": {
+   "pride": [
+    {
+     "id": "pr-01",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Das hier ist unsere Liga. Von Bitcoinern für Bitcoiner."
+    },
+    {
+     "id": "pr-02",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Hier spielen Bitcoiner gegen Bitcoiner. Und das rund um die Uhr."
+    },
+    {
+     "id": "pr-03",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Eine Community, die Bock auf Spiele hat. Mehr braucht's nicht."
+    },
+    {
+     "id": "pr-04",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Ich sag's, wie's ist: Ich bin stolz auf diese Liga."
+    },
+    {
+     "id": "pr-05",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Jede Partie hier ist echt. Echte Leute, echte Züge."
+    },
+    {
+     "id": "pr-06",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Hier loggt man sich mit Nostr ein. Das find ich schon ziemlich cool."
+    },
+    {
+     "id": "pr-07",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Wir haben hier echt was Schönes aufgebaut, Leute."
+    },
+    {
+     "id": "pr-08",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Bitcoin, Nostr und Spiele. Für mich die perfekte Mischung."
+    },
+    {
+     "id": "pr-09",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Hier zocken keine Profis. Hier zocken Leute wie du und ich."
+    },
+    {
+     "id": "pr-10",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Ein eigener Sender nur für unsere Liga. Wer hätte das gedacht?"
+    },
+    {
+     "id": "pr-11",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Ganz ehrlich: Ich mag diese Liga einfach."
+    },
+    {
+     "id": "pr-12",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Gewonnen wird hier am Brett. Nicht im Marketing."
+    },
+    {
+     "id": "pr-13",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Gewertete Siege schürfen hier Blöcke. Wie geil ist das denn?"
+    },
+    {
+     "id": "pr-14",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Die Community macht den Unterschied. Ohne euch wär hier nix los."
+    },
+    {
+     "id": "pr-15",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Aus dem EINUNDZWANZIG-Kosmos direkt aufs Brett. Das ist unser Ding."
+    },
+    {
+     "id": "pr-16",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Ich find's großartig, dass ihr hier seid."
+    },
+    {
+     "id": "pr-17",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Unsere Liga, unser Sender. Das fühlt sich gut an."
+    },
+    {
+     "id": "pr-18",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Was Bitcoiner in ihrer Freizeit machen? Genau das hier."
+    }
    ],
-   "night": [
+   "engage": [
+    {
+     "id": "en-01",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Schreibt mal in den Chat, wo ihr gerade zuschaut.",
+     "canon": "e21-schreibt-in-den-chat"
+    },
+    {
+     "id": "en-02",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Wer von euch hat heute schon eine Partie gespielt? Ab in den Chat damit."
+    },
+    {
+     "id": "en-03",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Grüße gehen raus an alle, die gerade eingeschaltet haben.",
+     "canon": "e21-gruesse-gehen-raus"
+    },
+    {
+     "id": "en-04",
+     "phases": [
+      "night"
+     ],
+     "text": "Grüße gehen raus an die Nachteulen da draußen.",
+     "canon": "e21-gruesse-gehen-raus"
+    },
+    {
+     "id": "en-05",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Wer von euch ist Team Schach und wer Team Pong? Schreibt's in den Chat."
+    },
+    {
+     "id": "en-06",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Erzählt mal im Chat: Was war euer bester Zug diese Woche?"
+    },
+    {
+     "id": "en-07",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Wer ist zum ersten Mal hier? Ein kurzes Hallo in den Chat!"
+    },
+    {
+     "id": "en-08",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Grüße gehen raus an alle Meetups, die gerade zuschauen.",
+     "canon": "e21-gruesse-gehen-raus"
+    },
+    {
+     "id": "en-09",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Welches Spiel ist euer Liebling hier? Ab in den Chat damit."
+    },
+    {
+     "id": "en-10",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Wer von euch traut sich ans nächste Turnier? Hand hoch im Chat."
+    },
+    {
+     "id": "en-11",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Schreibt in den Chat, wer euer Lieblingsgegner ist."
+    },
+    {
+     "id": "en-12",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Wer hört gerade mit Kopfhörern zu? Kurz ein Ja in den Chat."
+    },
+    {
+     "id": "en-13",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Grüße gehen raus an alle, die gerade heimlich bei der Arbeit zuschauen.",
+     "canon": "e21-gruesse-gehen-raus"
+    },
+    {
+     "id": "en-14",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Wer von euch hat schon mal gegen den Pong-Bot verloren? Ehrlich sein."
+    },
+    {
+     "id": "en-15",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Kaffee oder Bier gerade? Schreibt's in den Chat."
+    },
+    {
+     "id": "en-16",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Grüße gehen raus ins Allgäu. Und überallhin, wo ihr gerade sitzt.",
+     "canon": "e21-gruesse-gehen-raus"
+    },
+    {
+     "id": "en-17",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Fragen zur Liga? Ab damit in den Chat, hier liest jemand mit."
+    },
+    {
+     "id": "en-18",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Wer spielt lieber Blitz und wer lieber Fernschach? Ich will's wissen."
+    }
+   ],
+   "emotion": [
+    {
+     "id": "em-01",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[laughter] Ich lieb diesen Sender."
+    },
+    {
+     "id": "em-02",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[surprise-wa] Na, schau einer an."
+    },
+    {
+     "id": "em-03",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "[sigh] Herrlich. Einfach mal zurücklehnen."
+    },
+    {
+     "id": "em-04",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[surprise-oh] Oh, das gefällt mir."
+    },
+    {
+     "id": "em-05",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "[question-ah] Na, wer hat Lust auf eine Runde?"
+    },
+    {
+     "id": "em-06",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Boah, macht das heute Spaß. [laughter]"
+    },
+    {
+     "id": "em-07",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[sigh] Was für ein schöner Tag für ein paar Partien."
+    },
+    {
+     "id": "em-08",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[laughter] Ich krieg mich gleich nicht mehr ein."
+    },
+    {
+     "id": "em-09",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "[question-oh] Seid ihr noch dabei? Ich schon."
+    },
+    {
+     "id": "em-10",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "[sigh] Ach, ich könnt hier stundenlang zuschauen."
+    },
+    {
+     "id": "em-11",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Ganz ehrlich, das hier macht einfach gute Laune. [laughter]"
+    },
+    {
+     "id": "em-12",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[surprise-yo] Jo, weiter geht's!"
+    },
+    {
+     "id": "em-13",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "[question-ei] Hey, ihr da draußen. Alles gut bei euch?"
+    },
+    {
+     "id": "em-14",
+     "phases": [
+      "night"
+     ],
+     "text": "[sigh] Nachts ist es hier so schön ruhig."
+    },
+    {
+     "id": "em-15",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Ich freu mich einfach, dass ihr da seid. [laughter]"
+    },
+    {
+     "id": "em-16",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "[surprise-ah] Ah, da kommt Stimmung auf."
+    }
+   ],
+   "invite": [
+    {
+     "id": "in-01",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Mit Nostr einloggen, Brett nehmen und loslegen."
+    },
+    {
+     "id": "in-02",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Bringt eure Freunde mit. Zu zweit macht's doppelt Spaß."
+    },
+    {
+     "id": "in-03",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Die Lobby ist offen. Schnappt euch einen Gegner."
+    },
+    {
+     "id": "in-04",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Turniere findet ihr auf der Seite. Anmelden geht ganz schnell."
+    },
+    {
+     "id": "in-05",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Noch kein Nostr? Das ist schnell erledigt, und dann seid ihr drin."
+    },
+    {
+     "id": "in-06",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Schickt den Stream an einen Kumpel, der gern zockt."
+    },
+    {
+     "id": "in-07",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break",
+      "night"
+     ],
+     "text": "Wer mitspielen will: {website_spoken}."
+    },
+    {
+     "id": "in-08",
+     "phases": [
+      "live_match",
+      "after_result",
+      "pre_show",
+      "break"
+     ],
+     "text": "Holt eure Leute aus dem Meetup dazu. Dann wird's erst richtig lustig."
+    }
+   ],
+   "jokes": [
+    "e21-sats-stapeln",
+    "e21-besseres-geld",
+    "e21-auto-pferd",
+    "e21-schoenes-wetter",
+    "e21-mal-verlierste",
+    "e21-miteinander-bullish",
+    "e21-hol-das-popcorn",
+    "e21-ich-habe-fertig",
+    "btc-tick-tock-next-block",
+    "btc-not-your-keys",
+    "btc-wen-lambo",
+    "btc-number-go-up",
+    "btc-bitcoin-fixes-this",
+    "btc-few-understand",
+    "btc-running-bitcoin",
+    "nostr-keep-the-nostr-weird",
+    "title-meine-coins-sind-aelter-als-deine-freund",
+    "title-wir-drehen-uns-im-kreis",
+    "title-zu-zweit-ist-es-doch-am-schoensten",
+    "title-ab-in-den-keller",
+    "title-mir-verbrennen-die-shrimps",
+    "title-macht-eure-hausaufgaben",
+    "title-lecko-mio",
+    "title-jodeln-hodln",
+    "title-hup-hup",
+    "title-tschill-den-tshit",
+    "title-spieltheorie-in-aktion",
+    "title-ich-bin-bitcoiner",
+    "title-das-unendliche-gulasch",
+    "derweg-das-geilste-sind-die-leute",
+    "derweg-lachen-ist-gesund",
+    "derweg-proof-of-sellerie",
+    "derweg-bitcoin-ist-batman",
+    "title-sternzeichen-bulle",
+    "title-noch-etwas-sahne-oben-drauf",
+    "title-endlich-normale-leute",
+    "title-schmeckt-das-nach-freiheit-hier",
+    "nostr-keys",
+    "e21-live-und-in-farbe",
+    "e21-lets-go",
+    "e21-time-to-be-alive",
+    "e21-bitcoin-nicht-krypto",
+    "e21-komm-in-die-gruppe",
     "title-alles-andere-gehoert-anderen-nur-die-zei",
-    "derweg-das-geilste-sind-die-leute"
-   ],
-   "pre_show": [
-    "title-macht-eure-hausaufgaben"
-   ],
-   "after_result": [
-    "clip-gruppe-bester-mann"
-   ],
-   "live_match": []
+    "e21-ultra-geil",
+    "e21-ohne-witz"
+   ]
   }
  },
  "moment_lines": [

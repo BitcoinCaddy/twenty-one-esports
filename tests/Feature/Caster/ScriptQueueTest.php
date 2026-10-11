@@ -165,7 +165,7 @@ it('asks the league voice about no topic whose slides have no data', function ()
 
 it('gives the one league-voice script to a topic with data and its slide facts', function () {
     config(['tv.commentary.scripts.ahead_seconds' => 5]);
-    VoiceAgent::fake([['text' => "Live auf dem Brett: Ada gegen Bob.\nBleibt dran.", 'canon_id' => null, 'mood' => 'fakten']]);
+    VoiceAgent::fake([['text' => "Live auf dem Brett: eine Partie Blitz.\nBleibt dran.", 'canon_id' => null, 'mood' => 'fakten']]);
 
     casterQueue(casterFactsWith(['liveGames' => [['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'mode' => 'Blitz', 'move' => 14]]]))->fill(CarbonImmutable::now());
 

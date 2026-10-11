@@ -204,3 +204,51 @@ it('lets a spoken sentence run to sixteen words and two commas, a decimal comma 
         ->and($guard->check("Hey.\nEins, zwei, drei, vier.", 2, 8, 16))->toContain(ScriptGuard::COMMAS)
         ->and((new VoiceHygiene)->check('Die Autorenzeit liegt bei 16,25 Sekunden. Platz zwei fährt 16,25 Sekunden.', 'de'))->not->toContain(VoiceHygiene::REPEATED);
 });
+
+it('drops a sentence that names a player outside a result moment, and rejects the draft when too few stay', function () {
+    $facts = [...casterVoiceQuietFacts(), 'live_games' => [['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'mode' => 'Blitz', 'move' => 14]]];
+    VoiceAgent::fake([
+        ['text' => "Live im Blitz.\nAda spielt gegen Bob.\nDie Lobby ist offen.\nSchreibt in den Chat, wer gewinnt.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Ada spielt.\nBob auch.\nSchaut rein.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Ada spielt.\nBob auch.\nSchaut rein.", 'canon_id' => null, 'mood' => 'hype'],
+    ]);
+    VoiceFactCheck::fake([['claims' => []]]);
+
+    expect(app(CasterVoice::class)->write('scene', ScenePhase::LIVE_MATCH, $facts, 3, 8)['text'] ?? null)->toBe("Live im Blitz.\nDie Lobby ist offen.\nSchreibt in den Chat, wer gewinnt.")
+        ->and(app(CasterVoice::class)->write('scene', ScenePhase::LIVE_MATCH, $facts, 3, 8))->toBeNull()
+        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->where('reason', ScriptGuard::NAME_COUNT)->value('count'))->toBe(2);
+});
+
+it('lets one name through in a result moment, and not the same person again within thirty minutes', function () {
+    $facts = [...casterVoiceQuietFacts(), 'results' => [['winner' => 'Ada', 'loser' => 'Bob', 'game' => 'Schach', 'mode' => 'Blitz']]];
+    $draft = ['text' => "Ada gewinnt im Blitz.\nDie Lobby ist offen.\nSchreibt in den Chat, wer als Nächstes dran ist.", 'canon_id' => null, 'mood' => 'hype'];
+    $again = ['text' => "Ada holt sich den Sieg.\nWer ist zum ersten Mal hier? Ein kurzes Hallo in den Chat!\nMit Nostr einloggen und loslegen.", 'canon_id' => null, 'mood' => 'hype'];
+    VoiceAgent::fake([$draft, $again]);
+    VoiceFactCheck::fake([['claims' => []], ['claims' => []]]);
+
+    expect(app(CasterVoice::class)->write('scene', ScenePhase::AFTER_RESULT, $facts, 2, 8)['text'] ?? null)->toBe($draft['text']);
+
+    $this->travel(10)->minutes();
+    expect(app(CasterVoice::class)->write('scene', ScenePhase::AFTER_RESULT, $facts, 2, 8)['text'] ?? null)->toBe("Wer ist zum ersten Mal hier?\nEin kurzes Hallo in den Chat!\nMit Nostr einloggen und loslegen.");
+});
+
+it('says a tournament name once in a league-voice script, the repeat as the noun', function () {
+    $facts = [...casterVoiceQuietFacts(), 'tournaments_open' => [['name' => 'Chess Cup', 'game' => 'Schach', 'start' => 'am Samstag']]];
+    VoiceAgent::fake([['text' => "Chess Cup startet am Samstag.\nBei Chess Cup ist noch Platz.\nSchreibt in den Chat, wer mitspielt.", 'canon_id' => null, 'mood' => 'werbung']]);
+    VoiceFactCheck::fake([['claims' => []]]);
+
+    expect(app(CasterVoice::class)->write('scene', ScenePhase::PRE_SHOW, $facts, 3, 8)['text'] ?? null)
+        ->toBe("Chess Cup startet am Samstag.\nBeim Turnier ist noch Platz.\nSchreibt in den Chat, wer mitspielt.");
+});
+
+it('asks for one fact and few names, and lets the fact check take jokes, invitations and chat questions as no claims', function () {
+    VoiceAgent::fake([['text' => "Number go up. [laughter]\nWer von euch ist Team Schach? Ab in den Chat damit.\nDie Lobby ist offen.", 'canon_id' => 'btc-number-go-up', 'mood' => 'witz']]);
+    VoiceFactCheck::fake([['claims' => []]]);
+
+    casterVoiceWrite();
+
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Höchstens EIN Fakt') && str_contains($prompt->prompt, 'Keine Spielernamen'));
+    VoiceFactCheck::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Das hier ist unsere Liga. Von Bitcoinern für Bitcoiner.') && str_contains($prompt->prompt, 'Mit Nostr einloggen, Brett nehmen und loslegen.'));
+    expect((new VoiceFactCheck)->instructions())->toContain('jokes and sayings')->toContain('calls to write in the chat')->toContain('invitations to play, watch, log in, sign up or bring friends')->toContain('league_basics')
+        ->and(app(CasterVoice::class)->fixedPart())->toContain('Ich lieb diesen Sender.');
+});

@@ -21,6 +21,13 @@ use Carbon\CarbonImmutable;
  * A takeover (a champion moment, a running tournament) never cuts a
  * sentence: the clip is cut at the end of the sentence on air and the hold
  * shortened to it. A clip is deleted from the spool right after it played.
+ *
+ * Between two clips only the music plays for a random `gap_seconds` (user
+ * 2026-10-11: "Es darf durchaus zwischen längeren Sätzen eine Pause von 20
+ * bis 30 Sekunden da sein."): a slot that starts within the gap gets no
+ * scene clip and holds until the gap is over, so the next scene change
+ * starts with the next clip. A live moment (a result, a champion, a chat
+ * reaction) cuts the gap short, also in the middle of such a quiet slot.
  */
 final class SceneDirector
 {
@@ -30,8 +37,11 @@ final class SceneDirector
 
     private ?string $caption = null;
 
+    /** Until when only the music plays (the gap after a clip). */
+    private float $quietUntil = 0.0;
+
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int}  $settings
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -41,8 +51,8 @@ final class SceneDirector
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int} $settings */
-        $settings = (array) config('tv.commentary.scenes', []);
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int} $settings */
+        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0)];
 
         return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings);
     }
@@ -59,6 +69,16 @@ final class SceneDirector
             $this->spool->played($this->clip);
             $this->clip = null;
             $this->timeline->clear();
+            $this->quietUntil = $now + $this->gap();
+        }
+
+        // A live moment cuts the gap short, also in the middle of a quiet slot.
+        if ($this->clip === null && $now < $this->quietUntil && $planner->slotNumber() === $this->slotNumber) {
+            $live = $this->spool->nextLive(CarbonImmutable::createFromTimestamp($now));
+
+            if ($live !== null && $this->play($planner, $live, $now)) {
+                return null;
+            }
         }
 
         // A takeover waits for the end of the sentence on air, never longer.
@@ -81,24 +101,44 @@ final class SceneDirector
         }
 
         $decision = $this->spool->next(ScenePhase::forSlot($slot, CarbonImmutable::createFromTimestamp($now)), CarbonImmutable::createFromTimestamp($now), SceneTopic::forSlot($slot));
-        $pcm = $decision['clip'] === null ? null : $this->spool->pcm($decision['clip']);
 
-        if ($decision['clip'] !== null && $pcm === null) {
-            // A clip that cannot be decoded is dropped, never retried on every slot.
-            $this->spool->played($decision['clip']);
+        // Within the gap only a live moment speaks; the slot holds until the gap is over.
+        if ($now < $this->quietUntil && $decision['source'] !== 'live') {
+            $planner->hold($this->quietUntil);
+
+            return null;
         }
 
-        if ($decision['clip'] === null || $pcm === null) {
+        if ($decision['clip'] === null || ! $this->play($planner, $decision['clip'], $now)) {
             $planner->hold($now + (float) ($this->settings['silent_min_scene_seconds'] ?? 15));
             $this->caption = $decision['caption'];
 
             return $this->caption;
         }
 
-        $start = $now + (float) ($this->settings['lead_in_seconds'] ?? 0.5);
-        $this->timeline->start($pcm, $decision['clip']->sentence_ends, $start);
-        $this->spool->playing($decision['clip']);
-        $this->clip = $decision['clip'];
+        return null;
+    }
+
+    /** Puts a clip on the timeline and holds the slot until it has been spoken; false when it cannot be decoded (then dropped). */
+    private function play(RotationPlanner $planner, CasterClip $clip, float $now): bool
+    {
+        $pcm = $this->spool->pcm($clip);
+
+        if ($pcm === null) {
+            // A clip that cannot be decoded is dropped, never retried on every slot.
+            $this->spool->played($clip);
+
+            return false;
+        }
+
+        // The voice feed has already written silence up to `feed_lead_seconds` ahead of the clock: a clip starting
+        // earlier lost its first syllables to it (user 2026-10-11: "Der Start des Audios scheint beim Start immer
+        // etwas abgeschnitten zu sein"; lead-in 0.5 s against a 1.0 s feed lead cut half a second).
+        $start = $now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
+        $this->timeline->start($pcm, $clip->sentence_ends, $start);
+        $this->spool->playing($clip);
+        $this->clip = $clip;
+        $this->quietUntil = 0.0;
 
         $spoken = (float) $this->timeline->endsAt() + (float) ($this->settings['tail_seconds'] ?? 1.5);
         $planner->hold(min(
@@ -106,7 +146,17 @@ final class SceneDirector
             $now + (float) ($this->settings['max_hold_seconds'] ?? 90),
         ));
 
-        return null;
+        return true;
+    }
+
+    /** A random gap within `gap_seconds` (none when unset). */
+    private function gap(): float
+    {
+        $gap = (array) ($this->settings['gap_seconds'] ?? []);
+        $min = max(0.0, (float) ($gap['min'] ?? 0));
+        $max = max($min, (float) ($gap['max'] ?? $min));
+
+        return $min + ($max - $min) * mt_rand(0, 1000) / 1000;
     }
 
     /** The clip on air (tests, logging). */

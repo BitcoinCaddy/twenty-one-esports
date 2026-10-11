@@ -125,7 +125,7 @@ class ClipSpool
     {
         $ready = CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now);
 
-        $live = (clone $ready)->whereIn('kind', [CasterScript::LIVE, CasterScript::CHAT])->orderBy('id')->first();
+        $live = $this->nextLive($now);
         if ($live !== null) {
             return ['clip' => $live, 'caption' => null, 'source' => 'live'];
         }
@@ -161,6 +161,13 @@ class ClipSpool
 
         // No text lower third, ever (user 2026-10-11: "diese Banner wollten wir nicht"): the spoken commentary is never shown as text.
         return ['clip' => null, 'caption' => null, 'source' => 'none'];
+    }
+
+    /** The oldest ready live moment or chat reaction, which may cut the gap between clips short. */
+    public function nextLive(CarbonImmutable $now): ?CasterClip
+    {
+        return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->whereIn('kind', [CasterScript::LIVE, CasterScript::CHAT])->orderBy('id')->first();
     }
 
     public function playing(CasterClip $clip): void
