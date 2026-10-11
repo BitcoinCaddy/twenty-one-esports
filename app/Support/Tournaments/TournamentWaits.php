@@ -12,6 +12,7 @@ use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Models\TournamentMatchSlot;
+use App\Models\TournamentRound;
 use App\Models\User;
 use App\Support\LeagueTime;
 use Carbon\CarbonImmutable;
@@ -303,7 +304,9 @@ final class TournamentWaits
         $endsAt = $match->round->window_ends_at;
 
         if (! $tournament->isCasualCup() || $endsAt === null || CasualCups::isEvening($tournament)) {
-            return $base->make('not_started', consequence: $tournament->isPaused() ? 'Starts when the tournament resumes' : 'The league starts it shortly');
+            [$consequence, $params] = $tournament->isPaused() ? ['Starts when the tournament resumes', []] : self::heldBack($tournament, $match);
+
+            return $base->make('not_started', consequence: $consequence, params: $params);
         }
 
         $slot = CasualCups::autoSlot($endsAt, CasualCups::timezoneOf($tournament));
@@ -330,6 +333,35 @@ final class TournamentWaits
         }
 
         return $base->make('cup_time', decidesAt: $slot, consequence: 'The league starts it at :time', action: 'Agree on a time with your opponent, or the league starts it at :time.', params: $params, timeAt: $slot);
+    }
+
+    /**
+     * Why the league has not started a paired match (2026-10-10, the same reason the player's hero gives): a cup
+     * round not open while the round before still plays (CasualCups::openRounds()), or a round-robin match whose
+     * sides still play an earlier round (TournamentMatchMaker::waitsForEarlierRound()); else it starts shortly.
+     *
+     * @return array{0: string, 1: array<string, string>}
+     */
+    private static function heldBack(Tournament $tournament, TournamentMatch $match): array
+    {
+        $open = fn ($query): int => $query->where('tournament_id', $tournament->id)->where('bracket', '!=', 'bye')->whereNotIn('status', ['done', 'skipped'])->whereNull('result')->count();
+
+        if ($tournament->isCasualCup() && $match->round->window_ends_at === null) {
+            $previous = TournamentRound::query()->where('tournament_stage_id', $match->round->tournament_stage_id)->where('number', '<', $match->round->number)->orderByDesc('number')->first();
+            $count = $previous === null ? 0 : $open(TournamentMatch::query()->where('tournament_round_id', $previous->id));
+
+            if ($count > 0) {
+                return ['Starts once round :round is done: :count still open', ['round' => (string) $previous->number, 'count' => (string) $count]];
+            }
+        } elseif (TournamentMatchMaker::waitsForEarlierRound($tournament, $match->loadMissing('round.stage'))) {
+            $count = $open(TournamentMatch::query()
+                ->whereHas('round', fn ($round) => $round->where('tournament_stage_id', $match->round->tournament_stage_id)->where('number', '<', $match->round->number))
+                ->whereHas('slots', fn ($slot) => $slot->whereIn('tournament_participant_id', $match->slots->pluck('tournament_participant_id')->filter()->all())));
+
+            return ['Starts once its players finished their earlier matches: :count still open', ['count' => (string) $count]];
+        }
+
+        return ['The league starts it shortly', []];
     }
 
     /**

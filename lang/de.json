@@ -8101,5 +8101,19 @@
     "Back to the present": "Zur Gegenwart",
     "Search the site": "Suchen",
     "are playing now": "laufen jetzt",
-    "Prize pot in sats": "Preistopf"
+    "Prize pot in sats": "Preistopf",
+    "Wait for your match": "Warte auf dein Match",
+    "Your opponent is set: :name.": "Dein Gegner steht fest: :name.",
+    "This page tells you as soon as your match starts.": "Diese Seite sagt dir Bescheid, sobald dein Match startet.",
+    "The organizers are checking this match. It goes on after their decision.": "Die Turnierleitung prüft dieses Match. Es geht nach ihrer Entscheidung weiter.",
+    "Your match starts when the tournament goes on.": "Euer Match startet, sobald das Turnier weitergeht.",
+    "Your match starts at :time.": "Euer Match startet um :time.",
+    "The tournament directors open it after round :number.": "Die Turnierleitung gibt es nach Runde :number frei.",
+    "Your match starts in a moment.": "Euer Match startet gleich.",
+    "Your match starts as soon as the other matches of round :round are done: :count still open.": "Euer Match startet, sobald die übrigen Matches der Runde :round fertig sind – noch :count offen.",
+    "Your match starts as soon as both of you finished your earlier matches: :count still open.": "Euer Match startet, sobald ihr beide eure früheren Matches beendet habt – noch :count offen.",
+    "Your match starts soon": "Dein Match startet gleich",
+    "The league starts your match within a minute. This page tells you as soon as it is ready.": "Die Liga startet euer Match innerhalb einer Minute. Diese Seite sagt dir Bescheid, sobald es bereit ist.",
+    "Starts once round :round is done: :count still open": "Startet, sobald Runde :round fertig ist – noch :count offen",
+    "Starts once its players finished their earlier matches: :count still open": "Startet, sobald beide Seiten ihre früheren Matches beendet haben – noch :count offen"
 }

@@ -43,7 +43,10 @@ use Illuminate\Support\Facades\Route;
  *   lobby name and password once a player set them;
  * - lobby: a lobby tournament's own lobby (name and password);
  * - lineup: a Hyperbitcoinization clan bracket's match (P5b) whose players the viewer, a captain, names now;
- * - starting / match: a match without a game here yet;
+ * - starting: a match the league starts by itself within a minute;
+ * - match: a match the directors enter, played away from the league;
+ * - wait: a paired match the league may not start yet (its round is not
+ *   open, an earlier round still plays, a pause), with who or what it waits for;
  * - wait / done / bye: the viewer's match is decided or has no game this
  *   round, with the round's live count and, in a cup, its deadline;
  * - out / won / over: the viewer's tournament has ended;
@@ -207,6 +210,20 @@ final class TournamentNow
                 'lobby' => ['name' => $series->lobby_name, 'password' => $series->lobby_password, 'chat' => $series->isCasualPairing()]];
         }
 
+        // Paired, but the league may not start it yet (user, 2026-10-10: "Spiel dein Match" stood there while round 2 still played).
+        $waiting = fn (string $why): array => [...$face, 'state' => 'wait', 'title' => (string) __('Wait for your match'), 'context' => $context,
+            'line' => trim(($opponent === null ? '' : __('Your opponent is set: :name.', ['name' => $name])).' '.$why.' '.__('This page tells you as soon as your match starts.'))];
+        $notYet = self::notYet($tournament, $match, $viewer);
+
+        if ($notYet !== null) {
+            return $waiting($notYet);
+        }
+
+        // Played away from the league: the directors enter the result, so the match is the players' to play now.
+        if ($tournament->isDirectorMode()) {
+            return [...$face, 'state' => 'match', 'title' => (string) __('Play your match'), 'context' => $context, 'line' => (string) __('The tournament directors enter the result.')];
+        }
+
         if ($cup !== null && ($cup['series'] ?? false)) {
             return [...$face, 'state' => 'schedule', 'title' => (string) __('Agree on a time'), 'context' => $context];
         }
@@ -231,6 +248,13 @@ final class TournamentNow
                 'line' => (string) __('You are in another game right now. This one starts once it is over.')];
         }
 
+        // A live game of an earlier round is said above, by name; one not under way yet is counted here.
+        $earlier = self::earlierRound($tournament, $match);
+
+        if ($earlier !== null) {
+            return $waiting($earlier);
+        }
+
         if ($cup !== null) {
             return [...$face, ...match (true) {
                 $cup['incoming'] !== null => ['state' => 'ready', 'title' => (string) __('Your opponent is ready'), 'context' => $context, 'line' => (string) __(':name invited you to your cup game.', ['name' => $name]),
@@ -246,11 +270,93 @@ final class TournamentNow
             return [...$face, 'state' => 'starting', 'title' => (string) __('Your game starts soon'), 'context' => $context, 'line' => (string) __('Stay here: this page tells you as soon as your game is ready.')];
         }
 
-        $wait = $viewer === null ? null : collect(TournamentWaits::ofPlayer($tournament, $viewer))->first(fn (MatchWait $wait): bool => $wait->matchId === $match->id);
+        // Nothing holds it, but the league has not opened its match room yet: startReady() does with its next run.
+        return [...$face, 'state' => 'starting', 'title' => (string) __('Your match starts soon'), 'context' => $context,
+            'line' => (string) __('The league starts your match within a minute. This page tells you as soon as it is ready.')];
+    }
 
-        return [...$face, 'state' => 'match', 'title' => (string) __('Play your match'), 'context' => $context,
-            'line' => $tournament->isDirectorMode() ? (string) __('The tournament directors enter the result.') : null,
-            'action' => $wait === null || $wait->url === route('tournaments.show', $tournament) ? null : ['label' => (string) __('Open your match'), 'href' => $wait->url, 'icon' => 'next']];
+    /**
+     * Why the league may not start the viewer's paired match yet, said to the player; null when nothing holds it.
+     * The same gates as TournamentMatchMaker::startReady() and startLocked(): a held match, a pause, the start
+     * still ahead, the directors' current round, and a casual cup's round that is not open (CasualCups::openRounds()
+     * opens it once the round before is closed). An earlier round still played is earlierRound().
+     */
+    private static function notYet(Tournament $tournament, TournamentMatch $match, ?User $viewer): ?string
+    {
+        $zone = self::zone($viewer);
+        $time = fn (CarbonInterface $at): string => $at->copy()->setTimezone($zone)->translatedFormat($at->copy()->setTimezone($zone)->isSameDay(now($zone)) ? 'H:i' : 'D j M, H:i');
+
+        if ($match->held !== null) {
+            return (string) __('The organizers are checking this match. It goes on after their decision.');
+        }
+
+        if ($tournament->isPaused()) {
+            return (string) __('Your match starts when the tournament goes on.');
+        }
+
+        if (! $tournament->isCasualCup() && $tournament->draw_committed_at !== null && $tournament->starts_at->isFuture()) {
+            return (string) __('Your match starts at :time.', ['time' => $time($tournament->starts_at)]);
+        }
+
+        if ($tournament->isDirectorMode()) {
+            $current = TournamentRunner::currentRound($tournament);
+
+            return $current === null || $current->id === $match->tournament_round_id ? null
+                : (string) __('The tournament directors open it after round :number.', ['number' => $current->number]);
+        }
+
+        return $tournament->isCasualCup() && $match->round->window_ends_at === null ? self::roundNotOpen($tournament, $match, $time) : null;
+    }
+
+    /**
+     * A round-robin match whose sides still play an earlier round (TournamentMatchMaker::waitsForEarlierRound()):
+     * how many of those matches are still open; null when nothing earlier holds it.
+     */
+    private static function earlierRound(Tournament $tournament, TournamentMatch $match): ?string
+    {
+        if (! TournamentMatchMaker::waitsForEarlierRound($tournament, $match->loadMissing('round.stage'))) {
+            return null;
+        }
+
+        $earlier = TournamentMatch::query()->where('tournament_id', $tournament->id)
+            ->whereNotIn('status', ['done', 'skipped'])->where('bracket', '!=', 'bye')
+            ->whereHas('round', fn ($round) => $round->where('tournament_stage_id', $match->round->tournament_stage_id)->where('number', '<', $match->round->number))
+            ->whereHas('slots', fn ($slot) => $slot->whereIn('tournament_participant_id', $match->slots->pluck('tournament_participant_id')->filter()->all()))
+            ->count();
+
+        return (string) __('Your match starts as soon as both of you finished your earlier matches: :count still open.', ['count' => $earlier]);
+    }
+
+    /**
+     * A casual cup's round that is not open yet: the round before still plays, or its break runs (a live evening).
+     *
+     * @param  \Closure(CarbonInterface): string  $time
+     */
+    private static function roundNotOpen(Tournament $tournament, TournamentMatch $match, \Closure $time): string
+    {
+        $rounds = TournamentRound::query()->whereHas('stage', fn ($query) => $query->where('tournament_id', $tournament->id))->with('stage')->get()
+            ->sortBy(fn (TournamentRound $round): array => [$round->stage->number, $round->number])->values();
+        $index = $rounds->search(fn (TournamentRound $round): bool => $round->id === $match->tournament_round_id);
+        $previous = $index === false || $index === 0 ? null : $rounds[$index - 1];
+        $soon = (string) __('Your match starts in a moment.');
+
+        if ($previous === null) {
+            return $tournament->starts_at->isFuture() ? (string) __('Your match starts at :time.', ['time' => $time($tournament->starts_at)]) : $soon;
+        }
+
+        $open = TournamentMatch::query()->where('tournament_round_id', $previous->id)->where('bracket', '!=', 'bye')
+            ->whereNotIn('status', ['done', 'skipped'])->whereNull('result')->count();
+
+        if ($open > 0) {
+            return (string) __('Your match starts as soon as the other matches of round :round are done: :count still open.', ['round' => $previous->number, 'count' => $open]);
+        }
+
+        // A live evening breaks between its rounds (CasualCups::eveningRoundDue()); a cup over days opens the next round with the league's next run.
+        $due = CasualCups::isEvening($tournament) && $previous->closed_at !== null
+            ? $previous->closed_at->copy()->addMinutes(max(0, (int) config('esports.casual_cups.evening.break_minutes', 3)))
+            : null;
+
+        return $due !== null && $due->isFuture() ? (string) __('Your match starts at :time.', ['time' => $time($due)]) : $soon;
     }
 
     /**
