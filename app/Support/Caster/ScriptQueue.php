@@ -167,9 +167,12 @@ class ScriptQueue
 
     /**
      * The next script for the fetcher: the highest priority first, then the
-     * oldest; claims that never came back are free again.
+     * oldest; claims that never came back are free again. `$kinds` limits it
+     * to those kinds (the live moments and reactions while the spool is full).
+     *
+     * @param  list<string>|null  $kinds
      */
-    public function claim(CarbonImmutable $now): ?CasterScript
+    public function claim(CarbonImmutable $now, ?array $kinds = null): ?CasterScript
     {
         $this->expire($now);
 
@@ -177,8 +180,9 @@ class ScriptQueue
             ->where('claimed_at', '<', $now->subSeconds((int) config('tv.commentary.fetch.claim_seconds', 180)))
             ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
 
-        return DB::transaction(function () use ($now): ?CasterScript {
+        return DB::transaction(function () use ($now, $kinds): ?CasterScript {
             $script = CasterScript::query()->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
+                ->when($kinds !== null, fn ($query) => $query->whereIn('kind', (array) $kinds))
                 ->orderByDesc('priority')->orderBy('id')->lockForUpdate()->first();
 
             $script?->update(['status' => CasterScript::CLAIMED, 'claimed_at' => $now]);

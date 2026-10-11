@@ -9,12 +9,13 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Sleep;
 
 /**
  * Spoken reactions to the stream chat (plan "KI-Stimme der Liga", P6): with
  * `--wot`, recompute the web of trust of the league's trust anchors (daily);
- * otherwise read the new chat messages and queue a reaction for each trusted
- * author within the limits (every minute). Both only while
+ * otherwise read the new chat messages and zaps and queue the reactions
+ * (every minute, reading every `poll_seconds` within it). Both only while
  * `tv.commentary.chat.reactions` is on.
  */
 #[Signature('caster:chat {--wot : Recompute the web-of-trust levels instead}')]
@@ -37,7 +38,25 @@ class CasterChatCommand extends Command
             return self::SUCCESS;
         }
 
-        $this->line('Queued '.$reactions->poll(CarbonImmutable::now()).' chat reaction(s).');
+        // Several reads within the minute of the schedule (`poll_seconds`), so a reaction is written seconds after
+        // the message or zap, not up to a minute later; the last one starts in time for the next run.
+        $interval = max(5, (int) config('tv.commentary.chat.poll_seconds', 60));
+        $polls = max(1, intdiv(60, $interval));
+        $start = microtime(true);
+        $queued = 0;
+
+        for ($i = 0; $i < $polls; $i++) {
+            if ($i > 0) {
+                $wait = $start + $i * $interval - microtime(true);
+                if ($wait > 0) {
+                    Sleep::for((int) round($wait * 1000))->milliseconds();
+                }
+            }
+
+            $queued += $reactions->poll(CarbonImmutable::now());
+        }
+
+        $this->line("Queued {$queued} chat reaction(s) in {$polls} read(s).");
 
         return self::SUCCESS;
     }

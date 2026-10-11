@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Cache;
 /**
  * The workstation fetcher's side of TWENTY ONE TV (plan "KI-Stimme der Liga",
  * P6): `POST api/caster/claim` hands out the next script (or none, with how
- * full the spool is), `POST api/caster/scripts/{id}/clip` takes its Opus
+ * full the spool is; a full spool still hands out live moments and chat
+ * reactions, only the byte cap stops those), `POST api/caster/scripts/{id}/clip` takes its Opus
  * clip as the raw body, `POST api/caster/scripts/{id}/release` gives a
  * script back when VoiceStudio failed.
  *
@@ -37,8 +38,15 @@ final class CasterFetchController
 
         $ready = $spool->readySeconds();
         $target = (float) config('tv.commentary.spool.target_seconds', 180);
-        $full = $ready >= $target || $spool->bytes() >= (int) config('tv.commentary.spool.max_bytes', 0);
-        $script = $full || config('tv.commentary.enabled') !== true ? null : $queue->claim($now);
+        $atByteCap = $spool->bytes() >= (int) config('tv.commentary.spool.max_bytes', 0);
+        $full = $ready >= $target || $atByteCap;
+
+        // A full spool still takes live moments and reactions (they play next); only the byte cap stops them too.
+        $script = match (true) {
+            config('tv.commentary.enabled') !== true, $atByteCap => null,
+            $full => $queue->claim($now, ClipSpool::LIVE_KINDS),
+            default => $queue->claim($now),
+        };
 
         return response()->json([
             'script' => $script === null ? null : [
