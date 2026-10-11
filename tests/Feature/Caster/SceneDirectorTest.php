@@ -288,3 +288,42 @@ it('mixes the voice at TV levels and leaves the commands as they were without it
         ->and($filter)->toContain('alimiter=limit=0.891')
         ->and($loop)->toContain('-c:v')->not->toContain('-c');
 });
+
+it('plays a reaction at the next clip boundary: at once in a silent slot, right after the clip on air otherwise', function () {
+    $planner = casterPlanner();
+    $director = casterGapDirector(25.0);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $liveAt = null;
+
+    // A slot without a clip (it holds 15 s, no gap running): the reaction arrives at 5 s.
+    for ($t = $start; $t <= $start + 14 && $liveAt === null; $t += 0.25) {
+        if (abs($t - $start - 5.0) < 0.01) {
+            casterSpooledClip(5.0, ScenePhase::BREAK, CasterScript::CHAT);
+        }
+
+        $director->tick($planner, $planner->at($t, []), $t);
+        $liveAt = $director->clip()?->kind === CasterScript::CHAT ? $t - $start : null;
+    }
+
+    expect($liveAt)->toBeGreaterThanOrEqual(5.0)->toBeLessThan(5.5);
+});
+
+it('never cuts the clip on air for a reaction, and plays it as soon as that clip ended', function () {
+    casterSpooledClip(10.0);
+    $planner = casterPlanner();
+    $director = casterGapDirector(25.0);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $liveAt = null;
+
+    for ($t = $start; $t <= $start + 30 && $liveAt === null; $t += 0.25) {
+        if (abs($t - $start - 3.0) < 0.01) {
+            casterSpooledClip(5.0, ScenePhase::BREAK, CasterScript::CHAT);
+        }
+
+        $director->tick($planner, $planner->at($t, []), $t);
+        $liveAt = $director->clip()?->kind === CasterScript::CHAT ? $t - $start : null;
+    }
+
+    // The scene clip is spoken 0.5 to 10.5 s; the reaction follows at its end, not after the 25 s gap.
+    expect($liveAt)->toBeGreaterThanOrEqual(10.5)->toBeLessThan(11.0);
+});

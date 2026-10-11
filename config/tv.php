@@ -151,6 +151,8 @@ return [
             'ffmpeg' => env('TV_COMMENTARY_FFMPEG', 'ffmpeg'),
             'server' => env('TV_COMMENTARY_SERVER', 'https://esports.einundzwanzig.space'),
             'idle_seconds' => 10,
+            // While the server's spool is full: ask again this soon, so a new chat reaction or zap thank-you is voiced within seconds.
+            'full_seconds' => 5,
         ],
 
         'mix' => [
@@ -190,6 +192,8 @@ return [
             'zaps' => (bool) env('TV_COMMENTARY_CHAT_ZAPS', true),
             'zap_bundle_seconds' => 60,
             'zap_big_sats' => (int) env('TV_COMMENTARY_ZAP_BIG_SATS', 10_000),
+            // `caster:chat` runs every minute and reads the chat and zaps this often within it (a reaction is written sooner).
+            'poll_seconds' => 15,
         ],
     ],
 

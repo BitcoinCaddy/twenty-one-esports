@@ -173,3 +173,13 @@ it('never shows a script as a text lower third, with the workstation off or on',
 
     expect(casterSpool()->next(ScenePhase::BREAK, $now))->toBe(['clip' => null, 'caption' => null, 'source' => 'none']);
 });
+
+it('takes a live moment or reaction over the seconds cap, never over the byte cap', function () {
+    config(['tv.commentary.spool.max_seconds' => 50, 'tv.commentary.spool.max_bytes' => 12_500]);
+    casterSpool()->store(casterScript(), casterOpus(), 45, [], CarbonImmutable::now());
+
+    expect(casterSpool()->store(casterScript(CasterScript::CHAT), casterOpus(), 10, [], CarbonImmutable::now())->kind)->toBe(CasterScript::CHAT)
+        ->and(casterSpool()->store(casterScript(CasterScript::LIVE), casterOpus(), 10, [], CarbonImmutable::now())->kind)->toBe(CasterScript::LIVE)
+        ->and(fn () => casterSpool()->store(casterScript(), casterOpus(), 1, [], CarbonImmutable::now()))->toThrow(SpoolFull::class)
+        ->and(fn () => casterSpool()->store(casterScript(CasterScript::LIVE), casterOpus(), 1, [], CarbonImmutable::now()))->toThrow(SpoolFull::class);
+});

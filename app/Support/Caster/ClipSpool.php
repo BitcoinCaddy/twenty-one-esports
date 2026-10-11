@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  *
  * Bounded three ways: store() refuses a clip over `max_clip_bytes` or
  * `max_clip_seconds`, and any clip that would take the spool over
- * `max_bytes` or `max_seconds` of unplayed audio (SpoolFull, the endpoint
+ * `max_bytes` or (a scene clip) `max_seconds` of unplayed audio (SpoolFull, the endpoint
  * answers 507 and the fetcher backs off); played() deletes a clip right after
  * it played (fillers excepted, they are a fixed small set that plays in
  * turn); prune() deletes expired clips, clips whose script expired, clips
@@ -40,6 +40,14 @@ class ClipSpool
     private const PLAYING_STALE_MINUTES = 10;
 
     public const FETCHER_SEEN = 'caster:fetcher_seen_at';
+
+    /**
+     * Live moments and reactions (a result, a chat reaction, a zap thank-you):
+     * played at the next clip boundary, and never kept out by the airtime
+     * caps (`target_seconds`, `max_seconds`), only by `max_bytes` (user
+     * 2026-10-11: reactions are played next, as fast as possible).
+     */
+    public const LIVE_KINDS = [CasterScript::LIVE, CasterScript::CHAT];
 
     public function disk(): Filesystem
     {
@@ -69,8 +77,10 @@ class ClipSpool
             throw new InvalidClip('size');
         }
 
+        $airtimeCapped = $script->kind !== CasterScript::FILLER && ! in_array($script->kind, self::LIVE_KINDS, true);
+
         if ($this->bytes() + strlen($opus) > (int) ($settings['max_bytes'] ?? 0)
-            || ($script->kind !== CasterScript::FILLER && $this->readySeconds() + $durationSeconds > (float) ($settings['max_seconds'] ?? 0))) {
+            || ($airtimeCapped && $this->readySeconds() + $durationSeconds > (float) ($settings['max_seconds'] ?? 0))) {
             throw new SpoolFull;
         }
 
@@ -167,7 +177,7 @@ class ClipSpool
     public function nextLive(CarbonImmutable $now): ?CasterClip
     {
         return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
-            ->whereIn('kind', [CasterScript::LIVE, CasterScript::CHAT])->orderBy('id')->first();
+            ->whereIn('kind', self::LIVE_KINDS)->orderBy('id')->first();
     }
 
     public function playing(CasterClip $clip): void

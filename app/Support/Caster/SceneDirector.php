@@ -27,7 +27,8 @@ use Carbon\CarbonImmutable;
  * bis 30 Sekunden da sein."): a slot that starts within the gap gets no
  * scene clip and holds until the gap is over, so the next scene change
  * starts with the next clip. A live moment (a result, a champion, a chat
- * reaction) cuts the gap short, also in the middle of such a quiet slot.
+ * reaction, a zap thank-you) plays as soon as no clip is on air: it cuts the
+ * gap short, also in the middle of such a quiet slot or a silent one.
  */
 final class SceneDirector
 {
@@ -72,8 +73,9 @@ final class SceneDirector
             $this->quietUntil = $now + $this->gap();
         }
 
-        // A live moment cuts the gap short, also in the middle of a quiet slot.
-        if ($this->clip === null && $now < $this->quietUntil && $planner->slotNumber() === $this->slotNumber) {
+        // A live moment or reaction plays at the next clip boundary: it cuts the gap short, also in the middle of
+        // a quiet slot or a long silent one, and never waits for the next slot (user 2026-10-11: "as fast as possible").
+        if ($this->clip === null && $planner->slotNumber() === $this->slotNumber) {
             $live = $this->spool->nextLive(CarbonImmutable::createFromTimestamp($now));
 
             if ($live !== null && $this->play($planner, $live, $now)) {

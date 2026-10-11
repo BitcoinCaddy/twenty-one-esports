@@ -25,6 +25,7 @@ use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceFactCheck;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Sleep;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\Bolt11Fixture;
 use Tests\Support\TestSigner;
@@ -454,6 +455,15 @@ it('says hello to a trusted chatter by name from the pattern lines while the AI 
 
     expect($script->source)->toBe(CasterScript::SOURCE_PATTERN)->and($script->text)->toContain('Anna');
     VoiceAgent::assertNeverPrompted();
+});
+
+it('reads the chat and zaps every fifteen seconds within the minute of the schedule', function () {
+    Sleep::fake();
+
+    $this->artisan('caster:chat')->expectsOutputToContain('in 4 read(s)')->assertSuccessful();
+
+    expect($this->reader->asked)->toHaveCount(4);
+    Sleep::assertSleptTimes(3);
 });
 
 it('spells amounts in German words', function (int $number, string $spoken) {

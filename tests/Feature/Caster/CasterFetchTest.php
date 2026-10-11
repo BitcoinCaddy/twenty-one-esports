@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\CasterFetchCommand;
 use App\Models\CasterClip;
 use App\Models\CasterScript;
 use App\Support\Caster\CasterFetcher;
@@ -289,4 +290,29 @@ it('keeps the fetcher online only while it asked recently', function () {
     Cache::put(ClipSpool::FETCHER_SEEN, $now->subSeconds(121)->getTimestamp(), 600);
 
     expect(app(ClipSpool::class)->fetcherOnline($now))->toBeFalse();
+});
+
+it('hands out a chat reaction or live moment while the spool holds its target, but no scene script, and nothing at the byte cap', function () {
+    config(['tv.commentary.spool.target_seconds' => 10]);
+    $voiced = casterQueuedScript();
+    $voiced->update(['status' => CasterScript::CLAIMED]);
+    app(ClipSpool::class)->store($voiced, casterOpus(), 12, [], CarbonImmutable::now());
+    casterQueuedScript("Eins.\nZwei.\nDrei.");
+    $reaction = app(ScriptQueue::class)->enqueue(CasterScript::CHAT, ScenePhase::BREAK, "Danke für die Sats!\nTausend Dank!", 'h', 0, CarbonImmutable::now());
+    $headers = ['Authorization' => 'Bearer '.CASTER_TOKEN];
+
+    $this->postJson('/api/caster/claim', [], $headers)->assertOk()->assertJsonPath('script.id', $reaction->id)->assertJsonPath('full', true);
+    $this->postJson('/api/caster/claim', [], $headers)->assertOk()->assertJsonPath('script', null);
+
+    $live = app(ScriptQueue::class)->enqueue(CasterScript::LIVE, ScenePhase::BREAK, 'Tor!', 'h', 0, CarbonImmutable::now());
+    config(['tv.commentary.spool.max_bytes' => 4000]);
+    $this->postJson('/api/caster/claim', [], $headers)->assertOk()->assertJsonPath('script', null);
+    expect($live->fresh()->status)->toBe(CasterScript::QUEUED);
+});
+
+it('asks a full server again after five seconds, an idle one after the idle wait', function () {
+    expect(CasterFetchCommand::waitSeconds(CasterFetcher::FULL, 10))->toBe(5)
+        ->and(CasterFetchCommand::waitSeconds(CasterFetcher::IDLE, 10))->toBe(10)
+        ->and(CasterFetchCommand::waitSeconds(CasterFetcher::VOICED, 10))->toBe(0)
+        ->and(CasterFetchCommand::waitSeconds(CasterFetcher::OFFLINE, 10))->toBe(60);
 });
