@@ -272,10 +272,10 @@ it('remembers the canon entry a post used so the next selection skips it', funct
     expect(leagueVoice()->recent('stream_chat', 'canon'))->toBe(['e21-sats-stapeln']);
 });
 
-it('loads all 1,311 canon entries with an index by context', function () {
+it('loads all 1,811 canon entries with an index by context', function () {
     $canon = new VoiceCanon;
 
-    expect($canon->entries())->toHaveCount(1311)
+    expect($canon->entries())->toHaveCount(1811)
         ->and($canon->idsFor('allgemein'))->not->toBeEmpty()
         ->and(array_sum(array_map('count', $canon->allExamples())))->toBe(304);
 });
