@@ -38,7 +38,7 @@ test('the chat rules hold in the client: messages, polls, one vote per pubkey, c
     $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/channelChat.test.mjs']);
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 10')->toContain('ℹ skipped 0');
+        ->and($run->output())->toContain('ℹ pass 11')->toContain('ℹ skipped 0');
 });
 
 test('the component stays cheap under a flood: no redraw for votes nobody counts, polls shown only once their author counts, lookups by priority and pace', function () {

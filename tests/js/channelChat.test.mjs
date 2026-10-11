@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { finalizeEvent, generateSecretKey, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import {
-    MAX_TAGS, MAX_VOTERS, addVote, inChannel, isChannelMessage, isClosed, messageTemplate, moderation, optionId, parsePoll, parseVote, pollBlocker, pollTemplate, tally, timeLeft, voteTemplate,
+    MAX_TAGS, MAX_VOTERS, addVote, fileSize, inChannel, isChannelMessage, isClosed, messageTemplate, moderation, optionId, parsePoll, parseRoomFile, parseVote, pollBlocker, pollTemplate, tally, timeLeft, voteTemplate,
 } from '../../resources/js/channelChat.js';
 
 const CHANNEL = 'c'.repeat(64);
@@ -181,4 +181,31 @@ test('only the creator moderates: hides by e, mutes by p', () => {
     const { hidden, muted } = moderation(events, creator);
     assert.deepEqual([...hidden], [hex(1)]);
     assert.deepEqual([...muted], [B]);
+});
+
+test('a room-file message from another client is an attachment, never raw JSON; an encrypted or odd one is hidden', () => {
+    // The event seen in the Proof of Pong channel on 2026-10-10 (8acc0f9d…), verbatim content.
+    const seen = '{"__w":3,"type":"room-file","file":{"url":"https://blossom.jumble.social/62a89ca3ae212a7589f5bf901c81dfa948fe0fb856d56d89a832f245ae33646d","sha256":"62a89ca3ae212a7589f5bf901c81dfa948fe0fb856d56d89a832f245ae33646d","key":"","iv":"","mime":"video/mp4","name":"1000023768.mp4","size":352364}}';
+
+    assert.deepEqual(parseRoomFile(seen), {
+        url: 'https://blossom.jumble.social/62a89ca3ae212a7589f5bf901c81dfa948fe0fb856d56d89a832f245ae33646d',
+        name: '1000023768.mp4', mime: 'video/mp4', size: 352364, kind: 'video',
+    });
+    assert.equal(fileSize(352364), '344 KB');
+    assert.equal(fileSize(5 * 1024 * 1024), '5.0 MB');
+
+    const file = (patch) => JSON.stringify({ type: 'room-file', file: { url: 'https://example.org/a.png', mime: 'image/png', name: 'a.png', size: 10, key: '', iv: '', ...patch } });
+    assert.equal(parseRoomFile(file({})).kind, 'image');
+    // Encrypted for its room: unreadable here.
+    assert.equal(parseRoomFile(file({ key: 'abc', iv: 'def' })), 'hidden');
+    // Never a link to anything but https.
+    assert.equal(parseRoomFile(file({ url: 'javascript:alert(1)' })), 'hidden');
+    assert.equal(parseRoomFile(file({ url: 'http://example.org/a.png' })), 'hidden');
+    assert.equal(parseRoomFile(JSON.stringify({ type: 'room-file' })), 'hidden');
+    // A name with a line break is not shown as given.
+    assert.equal(parseRoomFile(file({ name: 'a\nb' })).name, 'a.png');
+    // Ordinary text, and text that only talks about it, stays text.
+    assert.equal(parseRoomFile('gg, see the room-file above'), null);
+    assert.equal(parseRoomFile('{"type":"other"}'), null);
+    assert.equal(parseRoomFile('{not json room-file'), null);
 });

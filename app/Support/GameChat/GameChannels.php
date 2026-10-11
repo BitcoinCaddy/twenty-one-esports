@@ -316,6 +316,8 @@ final class GameChannels
                 'bot' => __('bot'),
                 'league' => __('league'),
                 'notPlayer' => __('not in the league'),
+                // A file another client posted into the channel (gameChannel.js parseRoomFile), named by its kind.
+                'fileKinds' => ['image' => __('Image'), 'video' => __('Video'), 'audio' => __('Audio'), 'file' => __('File')],
                 'quoted' => __('Quoted message'),
                 'mute' => __('Mute :name'),
                 'unmute' => __('Unmute :name'),
