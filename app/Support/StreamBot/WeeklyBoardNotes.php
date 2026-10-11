@@ -132,7 +132,7 @@ abstract class WeeklyBoardNotes
     abstract protected function subject(): string;
 
     /** The game's name in the log lines ("Blockfill"). */
-    abstract protected function label(): string;
+    abstract public function label(): string;
 
     /** The minutes between first-place notes, configured per game. */
     abstract protected function topMinutes(): int;
@@ -233,6 +233,44 @@ abstract class WeeklyBoardNotes
     }
 
     /**
+     * The game's finished league weeks with a placed player, newest first,
+     * at most `$limit`, whether or not their winner note went out (the
+     * voice preview, `voice:preview`). Empty while the game is off.
+     *
+     * @return list<Tournament>
+     */
+    public function finishedWeeks(int $limit): array
+    {
+        if (! $this->enabled() || $limit <= 0) {
+            return [];
+        }
+
+        $weeks = [];
+
+        foreach (Tournament::query()->where(['game' => $this->slug(), 'status' => TournamentStatus::Finished])->orderByDesc('starts_at')->orderByDesc('id')->limit(4 * $limit)->get() as $week) {
+            if ($this->isWeek($week) && $this->runs->standings($week) !== []) {
+                $weeks[] = $week;
+            }
+
+            if (count($weeks) >= $limit) {
+                break;
+            }
+        }
+
+        return $weeks;
+    }
+
+    /**
+     * The game's ScoreRuns standings of a week (the rows the winner note and the weekly report are read from).
+     *
+     * @return list<ScoreStanding>
+     */
+    public function standings(Tournament $week): array
+    {
+        return $this->runs->standings($week);
+    }
+
+    /**
      * The note's text, in English: the week and how to play it, its new
      * first place, or its winner and top 3; then the week's calendar event as `nostr:naddr1…`
      * after a blank line, once it is published.
@@ -248,7 +286,7 @@ abstract class WeeklyBoardNotes
      *
      * @return array{content: string, tags: list<list<string>>, type: string, variant: int, template: string, values: array<string, string|int|null>}
      */
-    private function compose(Tournament $week, string $slot): array
+    public function compose(Tournament $week, string $slot): array
     {
         $previous = app()->getLocale();
         app()->setLocale(self::LOCALE);

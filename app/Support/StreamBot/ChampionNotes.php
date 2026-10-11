@@ -174,6 +174,39 @@ class ChampionNotes
      */
     public function compose(Tournament $tournament, int $variant, ?CarbonImmutable $voiceAt = null): ?array
     {
+        $draft = $this->draft($tournament);
+
+        if ($draft === null) {
+            return null;
+        }
+
+        ['values' => $values, 'tags' => $tags] = $draft;
+        $body = StreamBotCopy::render(self::TEMPLATE, $variant, $values);
+
+        if ($voiceAt !== null) {
+            $composed = $this->voice->compose('note_champion', self::TEMPLATE, $variant, $values, $tags, $voiceAt, ['hold_template' => true, 'link_optional' => true])
+                ?? throw new HeldBack;
+            [$body, $tags] = [$composed['content'], $composed['tags']];
+        }
+
+        $problems = StreamBotCopy::violations($body, $tags, linkRequired: $voiceAt === null);
+
+        if ($problems !== []) {
+            throw new LogicException('The stream bot refused its own champion note: '.implode(', ', $problems));
+        }
+
+        return ['content' => $body."\n\nnostr:".$this->notes->naddr($tournament), 'tags' => $tags];
+    }
+
+    /**
+     * The template's values and the note's tags (the champion's `p` tags and
+     * the `q` tag on the calendar event), as BotVoice::compose() gets them;
+     * null without a single champion or without the calendar event.
+     *
+     * @return array{values: array<string, string|null>, tags: list<list<string>>}|null
+     */
+    public function draft(Tournament $tournament): ?array
+    {
         $champion = $this->champions->of($tournament);
         $address = $tournament->address();
 
@@ -198,21 +231,8 @@ class ChampionNotes
         }
 
         $tags[] = ['q', $address, $this->notes->relayHint() ?? ''];
-        $body = StreamBotCopy::render(self::TEMPLATE, $variant, $values);
 
-        if ($voiceAt !== null) {
-            $composed = $this->voice->compose('note_champion', self::TEMPLATE, $variant, $values, $tags, $voiceAt, ['hold_template' => true, 'link_optional' => true])
-                ?? throw new HeldBack;
-            [$body, $tags] = [$composed['content'], $composed['tags']];
-        }
-
-        $problems = StreamBotCopy::violations($body, $tags, linkRequired: $voiceAt === null);
-
-        if ($problems !== []) {
-            throw new LogicException('The stream bot refused its own champion note: '.implode(', ', $problems));
-        }
-
-        return ['content' => $body."\n\nnostr:".$this->notes->naddr($tournament), 'tags' => $tags];
+        return ['values' => $values, 'tags' => $tags];
     }
 
     /**

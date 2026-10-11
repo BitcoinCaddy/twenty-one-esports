@@ -559,7 +559,7 @@ class TournamentNotes
      *
      * @return array<string, string|null>
      */
-    private function values(Tournament $tournament): array
+    public function values(Tournament $tournament): array
     {
         $previous = app()->getLocale();
         app()->setLocale(self::LOCALE);
@@ -578,7 +578,7 @@ class TournamentNotes
     }
 
     /** The template of a tournament's note, by its status when the note goes out. */
-    private function template(Tournament $tournament): string
+    public function template(Tournament $tournament): string
     {
         return match ($tournament->status) {
             TournamentStatus::Signup => 'tournament_note_open',
@@ -588,7 +588,7 @@ class TournamentNotes
     }
 
     /** The wording the next tournament note takes (ProfileNotes). */
-    private function nextVariant(Tournament $tournament): int
+    public function nextVariant(Tournament $tournament): int
     {
         return ProfileNotes::nextVariant(self::NOTE_TYPE, StreamBotCopy::variants($this->template($tournament)));
     }
