@@ -569,15 +569,6 @@
     }
 }
 
-/*
- * A match room's score bar carries the dock's 44 px tab on its top edge (phones): the room chat ends above both,
- * so its field is never under the tab (tests/Browser/UpcomingEventsTest.php "nothing covers the field", P7).
- */
-@media (width < 64rem) {
-    :root:has([data-room-bar]):has([data-test="dock-bar-tab"]) {
-        --dock-h: 10.5rem;
-    }
-}
 
 /*
  * The settings pages (Settings.dc.html, template T-Settings, P7): from lg two columns, the rail of

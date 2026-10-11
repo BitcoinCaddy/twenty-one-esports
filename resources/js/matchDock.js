@@ -59,6 +59,8 @@ export default function matchDock(config) {
     let rowTab = null;
     let rowObserver = null;
     let rowWidth = null;
+    // The --dock-h this dock set for its tab on a page bar (reserveFloor), null while it set none.
+    let reservedFloor = null;
 
     return {
         open: null,
@@ -126,6 +128,7 @@ export default function matchDock(config) {
             this.teardown?.abort();
             rowObserver?.disconnect();
             document.documentElement.style.removeProperty('--dock-row-w');
+            document.documentElement.style.removeProperty('--dock-h');
             // Stop listening, never leave: the next page's dock (or the page itself) may watch the same game.
             this.listened.forEach((handler, id) => window.Echo?.channel('game.' + id + '.watch').stopListening('.game.updated', handler));
             this.listened.clear();
@@ -244,9 +247,26 @@ export default function matchDock(config) {
             // Whether the chat sheet is open, from its bar: a refresh of the dock runs init() anew, and the event is gone by then.
             if (bar) this.chatOpen = bar.getAttribute('aria-expanded') === 'true';
             this.reserveRow();
+            this.reserveFloor();
 
             const viewport = window.visualViewport;
             this.keyboard = !!viewport && viewport.height < window.innerHeight * 0.7;
+        },
+
+        /**
+         * The tab on a page bar (the match room's score bar, the daily move bar) stands 44 px above the bar's top edge, so
+         * whatever ends above the bars (the room chat: --dock-h, app.css) ends above the tab too, measured, not guessed:
+         * a taller score bar (2026-10-11, the draw decider) put the tab on the room chat's field. Unset without that tab.
+         */
+        reserveFloor() {
+            const tab = this.$root.querySelector('[data-test=dock-bar-tab]');
+            const shows = !!tab && this.pageBar !== null && !this.row && !this.keyboard && !this.chatOpen;
+            const tabbar = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+            const floor = shows ? Math.max(0, this.pageBar + 44 - tabbar) : null;
+            if (floor === reservedFloor) return;
+            reservedFloor = floor;
+            if (floor === null) document.documentElement.style.removeProperty('--dock-h');
+            else document.documentElement.style.setProperty('--dock-h', floor + 'px');
         },
 
         /**
