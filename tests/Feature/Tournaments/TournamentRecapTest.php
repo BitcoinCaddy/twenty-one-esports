@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Nostr\SignedEvent;
 use App\Support\Scores\ScoreLeaderboards;
+use App\Support\SeasonChain\LeagueKey;
 use App\Support\Stacker\BlockfillWeeks;
 use App\Support\Stacker\Verifier;
 use App\Support\StreamBot\BlockfillNotes;
@@ -325,4 +326,23 @@ test('the weekly winner note takes the voice\'s report with the podium tagged, a
         ->and($text)->toContain("\n👉 ")
         ->and(StreamBotCopy::violations($text))->toBe([]);
     VoiceAgent::assertPrompted(fn ($prompt): bool => str_contains($prompt->prompt, 'Blockfill Week 41, 2026') && ! str_contains($prompt->prompt, $users['Ada']->pubkey));
+});
+
+test('the signed weekly winner note is the voice\'s report, its p tags exactly the players it mentions', function () {
+    [$week, $users] = recapBlockfillWeek(['Ada' => 2900, 'Ben' => 3000, 'Cy' => 3100]);
+    config(['esports.stream_bot.nsec' => (new TestSigner)->secret, 'esports.voice.channels.weekly.enabled' => true]);
+    VoiceAgent::fake([['text' => '{@winner} takes the week, {@second} and {@third} right behind.', 'canon_id' => null, 'mood' => 'hype']]);
+
+    $event = app(BlockfillNotes::class)->event(LeagueKey::streamBot(), $week, BlockfillNotes::SLOT_WINNER, now()->getTimestamp());
+    [$text] = explode("\n\nnostr:", $event->content, 2);
+    $npub = fn (string $name): string => 'nostr:'.NostrKeys::hexToNpub($users[$name]->pubkey);
+    $mentioned = [];
+    preg_match_all('/nostr:(npub1[0-9a-z]+)/', $text, $mentioned);
+    $pTags = array_values(array_map(fn (array $tag): string => $tag[1], array_filter($event->tags, fn (array $tag): bool => $tag[0] === 'p')));
+
+    expect($text)->toStartWith($npub('Ada').' takes the week, '.$npub('Ben').' and '.$npub('Cy').' right behind.')
+        ->and($text)->toContain("\n👉 ")
+        ->and($pTags)->toBe([$users['Ada']->pubkey, $users['Ben']->pubkey, $users['Cy']->pubkey])
+        ->and(array_map(fn (string $npub): string => NostrKeys::npubToHex($npub), $mentioned[1]))->toBe($pTags)
+        ->and($event->hasValidSignature())->toBeTrue();
 });
