@@ -14,10 +14,11 @@ use Throwable;
 
 /**
  * The workstation side of TWENTY ONE TV (`php artisan caster:fetch` on Markus
- * Turm's machine): claims the next script from the server, voices it sentence
- * by sentence with the local VoiceStudio (profile `ee7a2a18`, tempo 1.0),
- * trims each sentence's quiet tail (+70 ms fade), puts real pauses between
- * the sentences (≈0.3 s, ≈0.5 s after ! ? : or a marker, slightly random),
+ * Turm's machine): claims the next script from the server, voices it in
+ * chunks of two or three sentences (chunks()) with the local VoiceStudio
+ * (profile `ee7a2a18`, tempo 1.0), trims each chunk's quiet tail (+70 ms
+ * fade), puts real pauses between the chunks (≈0.2 s, ≈0.35 s after ! ? : or
+ * a marker, slightly random),
  * normalises to -16 LUFS and encodes Opus with ffmpeg (stdin to stdout), and
  * uploads the clip.
  *
@@ -114,7 +115,52 @@ class CasterFetcher
     }
 
     /**
-     * The sentences voiced one by one, joined with pauses, in memory.
+     * The sentences in chunks of one thought for one /generate call each: at
+     * most `chunk.max_sentences` sentences and `chunk.max_words` spoken words.
+     * A sentence led by a marker ("[laughter] …") starts a chunk, and one that
+     * ends on a marker ("… [laughter]") ends it, so the sound sits at the
+     * chunk's edge. One sentence per call made the voice choppy (user
+     * 2026-10-11: "Und er spricht zu abgehackt"): every call trimmed its tail
+     * and got a pause, the model's own prosody never carried a sentence into
+     * the next.
+     *
+     * @param  list<string>  $sentences
+     * @return list<list<string>>
+     */
+    public static function chunks(array $sentences, int $maxSentences, int $maxWords): array
+    {
+        $chunks = [];
+        $current = [];
+        $words = 0;
+        $markerLed = '/^\s*\[[a-z-]+\]/u';
+
+        foreach ($sentences as $sentence) {
+            $count = count(preg_split('/\s+/u', ScriptGuard::withoutMarkers($sentence), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+
+            if ($current !== [] && (preg_match($markerLed, $sentence) === 1 || count($current) >= $maxSentences || $words + $count > $maxWords)) {
+                $chunks[] = $current;
+                [$current, $words] = [[], 0];
+            }
+
+            $current[] = $sentence;
+            $words += $count;
+
+            if (preg_match('/\[[a-z-]+\]\s*$/u', $sentence) === 1) {
+                $chunks[] = $current;
+                [$current, $words] = [[], 0];
+            }
+        }
+
+        if ($current !== []) {
+            $chunks[] = $current;
+        }
+
+        return $chunks;
+    }
+
+    /**
+     * The sentences voiced chunk by chunk (chunks()), joined with pauses
+     * between the chunks only, in memory. `ends` are the chunk ends.
      *
      * @param  list<string>  $sentences
      * @param  array<string, string>  $terms  the pronunciation dictionary
@@ -124,12 +170,15 @@ class CasterFetcher
     {
         $settings = $this->settings();
         $pause = (array) $settings['pause'];
+        $chunk = (array) ($settings['chunk'] ?? []);
+        $chunks = self::chunks($sentences, max(1, (int) ($chunk['max_sentences'] ?? 3)), max(1, (int) ($chunk['max_words'] ?? 25)));
         $pcm = '';
         $rate = null;
         $ends = [];
 
-        foreach ($sentences as $index => $sentence) {
-            $wav = $this->generate(Pronunciation::spoken($sentence, $terms));
+        foreach ($chunks as $index => $lines) {
+            $sentence = (string) end($lines);
+            $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms));
 
             if ($wav === null) {
                 return null;
@@ -149,8 +198,8 @@ class CasterFetcher
             $pcm .= Pcm::trimTail($part, $rate, (int) $settings['silence_threshold'], (int) $settings['fade_ms']);
             $ends[] = round(Pcm::seconds($pcm, $rate), 3);
 
-            if ($index < count($sentences) - 1) {
-                $base = ScriptGuard::accented($sentence) ? (float) ($pause['accent'] ?? 0.5) : (float) ($pause['sentence'] ?? 0.3);
+            if ($index < count($chunks) - 1) {
+                $base = ScriptGuard::accented($sentence) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
                 $jitter = (float) ($pause['jitter'] ?? 0.0);
                 $pcm .= Pcm::silence(max(0.1, $base + $jitter * (mt_rand(-1000, 1000) / 1000)), $rate);
             }

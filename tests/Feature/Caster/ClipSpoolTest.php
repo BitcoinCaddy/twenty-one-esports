@@ -139,14 +139,14 @@ it('plays the clip about the slide on air first, and any clip of the phase witho
 it('lets the calm phases stand in for each other', function () {
     config(['tv.commentary.spool.filler_below_seconds' => 10]);
     $now = CarbonImmutable::now();
-    $break = casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 30, [], $now);
+    $break = casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 20, [], $now);
 
     expect(casterSpool()->next(ScenePhase::PRE_SHOW, $now)['clip']?->id)->toBe($break->id);
 });
 
-it('plays fillers in turn while less than a minute of commentary is ready', function () {
+it('plays fillers in turn while less than half a minute of commentary is ready', function () {
     $now = CarbonImmutable::now();
-    casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 30, [], $now);
+    casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 20, [], $now);
     $first = casterSpool()->store(casterScript(CasterScript::FILLER), casterOpus(), 2, [], $now);
     $second = casterSpool()->store(casterScript(CasterScript::FILLER), casterOpus(), 2, [], $now);
     DB::table('caster_clips')->where('id', $second->id)->update(['updated_at' => $now->addSecond()]);

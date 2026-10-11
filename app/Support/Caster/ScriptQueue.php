@@ -111,7 +111,7 @@ class ScriptQueue
             }
 
             $patternsLeft--;
-            $script = $this->patterns->write($topic, $phase, $facts);
+            $script = $this->patterns->write($topic, $phase, $facts, $now);
 
             if ($script === null) {
                 $exhausted[] = $topic;

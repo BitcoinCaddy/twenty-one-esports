@@ -38,6 +38,16 @@ final class ScriptGuard
 
     public const OPENING_REPEAT = 'opening_repeat';
 
+    public const NAME_COUNT = 'name_count';
+
+    public const NAME_REPEAT = 'name_repeat';
+
+    /** Fact keys whose value is a person (SceneFacts, ChatReactions). */
+    private const PERSON_KEYS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw', 'champion', 'roster', 'chatter_name'];
+
+    /** Lists whose rows' `name` is a person. */
+    private const PERSON_ROWS = ['table', 'top', 'board'];
+
     /** The OmniVoice markers VoiceStudio turns into sound (plan, "Stimmprofile + Ausdruck"). */
     public const MARKERS = [
         'laughter', 'sigh', 'confirmation-en',
@@ -350,6 +360,209 @@ final class ScriptGuard
     private static function spokenWords(string $text): array
     {
         return preg_split('/\s+/u', trim(self::withoutMarkers($text)), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    }
+
+    /**
+     * The person names in a scene's or moment's facts: players of a live game
+     * or result, a champion, the rows of a table, ladder or board, a roster,
+     * the chatter of a chat greeting. Tournament, clan, track and ladder
+     * names are no persons.
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @return list<string>
+     */
+    public static function personNames(array $facts): array
+    {
+        $names = [];
+        $walk = function (mixed $value, string|int|null $key, string|int|null $parent) use (&$walk, &$names): void {
+            if (is_array($value)) {
+                // The nearest named key above: a list (roster, draw) hands its own down, a row of a table the table's.
+                foreach ($value as $childKey => $child) {
+                    $walk($child, $childKey, is_string($key) ? $key : $parent);
+                }
+
+                return;
+            }
+
+            if (! is_string($value) || trim($value) === '') {
+                return;
+            }
+
+            $own = is_string($key) ? $key : $parent;
+            if (in_array($own, self::PERSON_KEYS, true) || ($key === 'name' && in_array($parent, self::PERSON_ROWS, true))) {
+                $names[RecentlySaid::normalize($value)] = trim($value);
+            }
+        };
+        $walk($facts, null, null);
+
+        return array_values($names);
+    }
+
+    /**
+     * The person names a text says, in order, a name said twice listed twice.
+     *
+     * @param  list<string>  $names
+     * @return list<string>
+     */
+    public static function namesIn(string $text, array $names): array
+    {
+        $found = [];
+
+        foreach ($names as $name) {
+            if (mb_strlen($name) < 2) {
+                continue;
+            }
+
+            preg_match_all('/(?<![\p{L}\p{N}])'.preg_quote($name, '/').'(?![\p{L}\p{N}])/iu', self::withoutMarkers($text), $matches, PREG_OFFSET_CAPTURE);
+            foreach ($matches[0] as [$match, $offset]) {
+                $found[(int) $offset] = $name;
+            }
+        }
+
+        ksort($found);
+
+        return array_values($found);
+    }
+
+    /**
+     * The script with at most `$allowed` person name mentions (a name said
+     * twice counts twice) and none of `$blocked` (named in the last
+     * `name_memory_minutes`): a sentence that would go over is dropped. Null
+     * when fewer than `$minSentences` sentences stay (rejected, fail closed).
+     *
+     * @param  list<string>  $names  ScriptGuard::personNames() of the facts
+     * @param  array<string, true>  $blocked  normalised names
+     */
+    public static function limitNames(string $text, array $names, int $allowed, array $blocked, int $minSentences): ?string
+    {
+        $kept = [];
+        $mentions = 0;
+
+        foreach (self::lines($text) as $line) {
+            $here = self::namesIn($line, $names);
+            $isBlocked = array_filter($here, fn (string $name): bool => isset($blocked[RecentlySaid::normalize($name)])) !== [];
+
+            if ($here !== [] && ($isBlocked || $mentions + count($here) > $allowed)) {
+                continue;
+            }
+
+            $mentions += count($here);
+            $kept[] = $line;
+        }
+
+        return count($kept) < $minSentences ? null : implode("\n", $kept);
+    }
+
+    /**
+     * The tournament, track, clan and ladder names of the facts, with the
+     * noun a later mention becomes: name => [noun, gender (n, m, f)].
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function entityNames(array $facts): array
+    {
+        $names = [];
+        $add = function (mixed $name, string $noun, string $gender) use (&$names): void {
+            if (is_string($name) && mb_strlen(trim($name)) >= 2) {
+                $names[trim($name)] = [$noun, $gender];
+            }
+        };
+
+        foreach (['tournaments_open', 'tournaments_under_way'] as $key) {
+            foreach (is_array($facts[$key] ?? null) ? $facts[$key] : [] as $tournament) {
+                $add(is_array($tournament) ? ($tournament['name'] ?? null) : null, 'Turnier', 'n');
+            }
+        }
+
+        foreach (is_array($facts['ladders'] ?? null) ? $facts['ladders'] : [] as $ladder) {
+            $add(is_array($ladder) ? ($ladder['ladder'] ?? null) : null, 'Ladder', 'f');
+        }
+
+        $add(is_array($facts['clan_spotlight'] ?? null) ? ($facts['clan_spotlight']['name'] ?? null) : null, 'Clan', 'm');
+        $add(is_array($facts['tmnf_week'] ?? null) ? ($facts['tmnf_week']['track'] ?? null) : null, 'Strecke', 'f');
+
+        return $names;
+    }
+
+    /**
+     * The script with each tournament, track, clan or ladder name said once
+     * (the user, 2026-10-11: "Die Turniernamen z. B. 3 bis 4 Mal
+     * hintereinander … Das nervt."), none of `$blocked` (named in the last
+     * `entity_memory_minutes`): a later or blocked mention becomes the noun
+     * where a preposition or the sentence start makes that grammatical ("bei
+     * X" → "beim Turnier", "X startet" → "Das Turnier startet", "der Ladder X"
+     * → "der Ladder"); a sentence where it cannot is dropped. Null when fewer
+     * than `$minSentences` stay.
+     *
+     * @param  array<string, array{0: string, 1: string}>  $names  entityNames()
+     * @param  array<string, true>  $blocked  normalised names
+     */
+    public static function dedupeEntities(string $text, array $names, array $blocked, int $minSentences): ?string
+    {
+        $seen = [];
+        $kept = [];
+        $articles = ['n' => 'Das', 'm' => 'Der', 'f' => 'Die'];
+        $prepositions = [
+            'n' => ['bei' => 'beim', 'von' => 'vom', 'in' => 'im', 'im' => 'im', 'für' => 'fürs', 'auf' => 'auf dem'],
+            'm' => ['bei' => 'beim', 'von' => 'vom', 'in' => 'im', 'im' => 'im', 'für' => 'für den', 'auf' => 'auf dem'],
+            'f' => ['bei' => 'bei der', 'von' => 'von der', 'in' => 'in der', 'für' => 'für die', 'auf' => 'auf der'],
+        ];
+        uksort($names, fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+
+        foreach (self::lines($text) as $line) {
+            $drop = false;
+
+            foreach ($names as $name => [$noun, $gender]) {
+                $pattern = '/(?<![\p{L}\p{N}])'.preg_quote($name, '/').'(?![\p{L}\p{N}])/iu';
+                $key = RecentlySaid::normalize($name);
+                $first = ! isset($seen[$key]) && ! isset($blocked[$key]);
+
+                if (preg_match_all($pattern, $line, $matches, PREG_OFFSET_CAPTURE) === 0) {
+                    continue;
+                }
+
+                // Mentions in order: the first fresh one stays, every other becomes the noun or drops the sentence.
+                $offset = 0;
+                $out = '';
+                foreach ($matches[0] as [$match, $position]) {
+                    $before = substr($line, $offset, $position - $offset);
+                    $offset = $position + strlen($match);
+
+                    if ($first) {
+                        $out .= $before.$match;
+                        $first = false;
+                        $seen[$key] = true;
+
+                        continue;
+                    }
+
+                    if (preg_match('/(?:^|\s)((?:[Dd]er )?Ladder)\s*$/u', $before) === 1 && $noun === 'Ladder') {
+                        $out .= rtrim($before);
+                    } elseif (preg_match('/(?:^|\s)(\p{L}+)\s+$/u', $before, $prep) === 1 && isset($prepositions[$gender][mb_strtolower($prep[1])])) {
+                        $word = $prepositions[$gender][mb_strtolower($prep[1])];
+                        $out .= substr($before, 0, -strlen($prep[0])).($prep[0][0] === ' ' ? ' ' : '').(preg_match('/^\p{Lu}/u', $prep[1]) === 1 ? mb_ucfirst($word) : $word).' '.$noun;
+                    } elseif (trim(self::withoutMarkers($before)) === '') {
+                        $out .= $before.$articles[$gender].' '.$noun;
+                    } else {
+                        $drop = true;
+                        break;
+                    }
+                }
+
+                if ($drop) {
+                    break;
+                }
+
+                $line = $out.substr($line, $offset);
+            }
+
+            if (! $drop) {
+                $kept[] = $line;
+            }
+        }
+
+        return count($kept) < $minSentences ? null : implode("\n", $kept);
     }
 
     /** Whether a sentence ends on an accent (! ? :) or carries a marker: a longer pause follows it. */
