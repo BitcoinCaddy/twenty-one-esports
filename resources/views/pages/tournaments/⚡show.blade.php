@@ -1328,7 +1328,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
 
         {{-- The rules of this tournament: the steps, the facts, the questions and the proof (rule: explanations live here, not in the views above). --}}
         @unless ($blockfillWeek)
-            <section id="rules" aria-labelledby="how-h" class="grid scroll-mt-24 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+            <section id="rules" aria-labelledby="how-h" class="grid scroll-mt-24 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
                 <div class="flex flex-col gap-4">
                     <h2 id="how-h" class="rv-h3">{{ __('How it works') }}</h2>
                     <ol class="m-0 flex list-none flex-col gap-4 p-0" data-test="how-it-works">
@@ -1371,7 +1371,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                         <p class="m-0 text-xs leading-normal text-ink-2" data-test="director-notice">{{ __('Results are entered by the tournament directors.') }}</p>
                     @endif
                     @if (filled($tournament->description))
-                        <p class="m-0 max-w-[65ch] text-[13px] leading-relaxed whitespace-pre-line text-ink-2" data-test="tournament-description">{{ $tournament->description }}</p>
+                        <p class="m-0 max-w-[65ch] text-[13px] leading-relaxed whitespace-pre-line text-ink-2 [overflow-wrap:anywhere]" data-test="tournament-description">{{ $tournament->description }}</p>
                     @endif
                     @if ($published && $status !== TournamentStatus::Cancelled && ! $week)
                         @include('pages.tournaments.partials.share', ['tournament' => $tournament, 'text' => $shareText, 'label' => $cta === 'open' || $cta === 'entered' ? __('Bring your friends') : __('Share this tournament')])
