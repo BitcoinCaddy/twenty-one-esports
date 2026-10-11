@@ -536,11 +536,12 @@ const SWEEP_FLUSH_PATHS = ['/', '/login'];
 
 /**
  * Flush pages whose path carries an id: the tournament detail opens with its hero band directly under the header and
- * its cover running to the right edge (TournamentDetail.dc.html, revamp P6).
+ * its cover running to the right edge (TournamentDetail.dc.html, revamp P6); the player page opens with its head band
+ * directly under the header, edge to edge (PlayerPublic.dc.html, revamp P7).
  *
  * @var list<string>
  */
-const SWEEP_FLUSH_PATTERNS = ['#^/tournaments/\d+$#'];
+const SWEEP_FLUSH_PATTERNS = ['#^/tournaments/\d+$#', '#^/players/npub1[02-9ac-hj-np-z]+$#'];
 
 /** @var list<string> Routes that answer without the app shell (JSON, images, the player card fragment, the full-screen tournament TV, the broadcast styleguide). */
 const SWEEP_NO_HEADER_ROUTES = ['tournaments.tv', 'broadcast.styleguide', 'nostr.nip05', 'admin.disputes.evidence', 'players.card', 'avatars.generated', 'invites.card',

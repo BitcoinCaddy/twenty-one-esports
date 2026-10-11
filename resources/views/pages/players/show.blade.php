@@ -35,12 +35,13 @@
     $tournaments = $stats->tournaments();
     $honours = app(\App\Support\Players\PlayerTrophies::class)->of($user);
 @endphp
-<x-layouts::app :title="$name">
+<x-layouts::app :title="$name" flush>
     <div class="flex flex-col gap-6 pb-6 lg:px-12 lg:pb-8">
         {{--
             The head band (PlayerPublic.dc.html, template T7, P7): picture, name, address, honours and the ways to play on
             the left, on the right the player's Nostr banner (or the drawn one) as the band's picture. The band is the page's
-            key art (R1): from lg it runs edge to edge and its picture touches the right edge (data-bleed), as on the board.
+            key art (R1): it starts right under the header (flush) and from lg runs edge to edge, its picture touching the
+            right edge (data-bleed), as on the board.
         --}}
         <section aria-labelledby="ph-name" class="relative flex flex-col" data-test="player-header">
             <div class="grid grid-cols-1 overflow-hidden border-b border-hairline bg-[linear-gradient(90deg,#14110C,var(--color-ground)_70%)] lg:-mx-12 lg:min-h-60 lg:grid-cols-[minmax(0,1fr)_minmax(0,30%)]" data-bleed data-test="player-band">
