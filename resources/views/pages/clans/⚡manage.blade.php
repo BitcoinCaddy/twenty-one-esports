@@ -1038,20 +1038,17 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
 
             <div class="flex flex-col gap-3 border-t border-hairline pt-4" data-test="join-link">
                 <span class="flex flex-col gap-1"><b class="text-[13px]">{{ __('Invite by link') }}</b><span class="text-xs leading-normal text-ink-2">{{ __('A join link for the roster. Everyone who uses it sends a request; a captain confirms each one. Lineups are set later, here.') }}</span></span>
-                <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                    <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Who can use it') }}</span>
-                        <select wire:model="joinLinkUses" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                            <option value="several">{{ __('Several players, one request each') }}</option>
-                            <option value="once">{{ __('One player') }}</option>
-                        </select>
-                    </label>
-                    <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Link works for') }}</span>
-                        <select wire:model.number="joinLinkHours" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                            @foreach (InviteLinkType::Clan->expiryChoices() as $hours)
-                                <option value="{{ $hours }}">{{ trans_choice(':count day|:count days', intdiv($hours, 24)) }}</option>
-                            @endforeach
-                        </select>
-                    </label>
+                {{-- The board's dropdowns (x-ui.select-menu, no native select). "Who can use it" takes the whole row, so its longest
+                     choice ("Several players, one request each") is never cut off in the half-width card; the time and the button share the next. --}}
+                <div class="grid grid-cols-1 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <div class="flex min-w-0 flex-col gap-2 sm:col-span-2"><span id="join-link-uses-label" class="text-xs text-ink-2">{{ __('Who can use it') }}</span>
+                        <x-ui.select-menu model="joinLinkUses" labelledby="join-link-uses-label" :value="$joinLinkUses"
+                                          :options="['several' => __('Several players, one request each'), 'once' => __('One player')]" data-test="join-link-uses" />
+                    </div>
+                    <div class="flex min-w-0 flex-col gap-2"><span id="join-link-hours-label" class="text-xs text-ink-2">{{ __('Link works for') }}</span>
+                        <x-ui.select-menu model="joinLinkHours" labelledby="join-link-hours-label" :value="$joinLinkHours"
+                                          :options="collect(InviteLinkType::Clan->expiryChoices())->mapWithKeys(fn (int $hours): array => [$hours => trans_choice(':count day|:count days', intdiv($hours, 24))])->all()" data-test="join-link-hours" />
+                    </div>
                     <button type="button" wire:click="createJoinLink" data-test="create-join-link"
                             class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold whitespace-nowrap text-on-btc">
                         <x-icon name="link" :size="16" />{{ __('Create join link') }}

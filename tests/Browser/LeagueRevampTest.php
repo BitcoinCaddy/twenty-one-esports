@@ -4,6 +4,7 @@ use App\Games\Blockfill;
 use App\Games\GameRegistry;
 use App\Models\Admin;
 use App\Models\Clan;
+use App\Models\InviteLink;
 use App\Models\Lineup;
 use App\Models\StackerRun;
 use App\Models\User;
@@ -398,4 +399,36 @@ test('positive control: the collector of this file sees a thrown error and a 500
     expect($page->evaluate('() => window.__errors'))->not->toBe([])
         ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->not->toBe([])
         ->and(implode(' | ', $page->evaluate(LEAGUE_REVAMP_SQUEEZE)))->toContain('spill probe-spill')->toContain('probe-wide');
+});
+
+test('the join link on clan management picks with the board dropdowns, whole labels at 390 and 1440, and a link is made with the pick', function () {
+    ['me' => $me, 'clan' => $clan] = leagueRevampWorld();
+    $rows = [];
+
+    foreach ([390, 1440] as $width) {
+        $page = leagueRevampOpen($me, route('clans.manage', $clan, false), $width);
+        $measure = '() => ["join-link-uses", "join-link-hours", "create-join-link"].map((t) => { const el = document.querySelector("[data-test=" + t + "]"); el.scrollIntoView({ block: "center" }); const r = el.getBoundingClientRect(); const label = el.querySelector("span") ?? el; return { t, h: Math.round(r.height), left: Math.round(r.left), right: Math.round(r.right), cut: label.scrollWidth > label.clientWidth + 1, text: el.innerText.trim() }; })';
+        $before = $page->evaluate($measure);
+        // Open the first dropdown, pick "One player", and make the link with it.
+        $page->locator('[data-test=join-link-uses]')->click();
+        $page->locator('[role=listbox] [role=option]:has-text("'.__('One player').'")')->click();
+        $after = $page->evaluate($measure);
+        leagueRevampQuiet($page, "join link {$width}");
+        $page->locator('[data-test=create-join-link]')->click();
+        // The new link opens on its own page (/i/<code>).
+        BrowserWait::until($page, '() => location.pathname.startsWith("/i/")', 10_000);
+        $rows[$width] = compact('before', 'after');
+
+        foreach ($before as $control) {
+            expect($control['h'])->toBeGreaterThanOrEqual(44, "{$width}: {$control['t']}")
+                ->and($control['cut'])->toBeFalse("{$width}: {$control['t']} label whole")
+                ->and($control['left'])->toBeGreaterThanOrEqual(0)
+                ->and($control['right'])->toBeLessThanOrEqual($width);
+        }
+        expect($after[0]['text'])->toBe(__('One player'));
+    }
+    fwrite(STDERR, '[join link] '.json_encode($rows, JSON_UNESCAPED_UNICODE).PHP_EOL);
+
+    $link = InviteLink::query()->latest('id')->first();
+    expect($link)->not->toBeNull()->and($link->max_uses)->toBe(1);
 });
