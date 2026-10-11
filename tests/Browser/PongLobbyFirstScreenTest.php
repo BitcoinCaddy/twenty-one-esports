@@ -50,7 +50,9 @@ const PONG_FIRST_SCREEN = <<<'JS'
     () => {
         // The fold: the window above the tab bar (the body's padding-bottom), and above the dock where it lies over the element.
         const base = innerHeight - parseFloat(getComputedStyle(document.body).paddingBottom || '0');
-        const floors = [...document.querySelectorAll('[data-live-floor]')].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect()).filter((r) => r.height > 0);
+        // The phone's chat handle (template T1, T12) is fixed above the tab bar: a floor like the dock.
+        const handle = [...document.querySelectorAll('[data-test=game-chat]')].filter((el) => getComputedStyle(el).position === 'fixed');
+        const floors = [...document.querySelectorAll('[data-live-floor]'), ...handle].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect()).filter((r) => r.height > 0);
         const edge = (sel) => {
             const el = document.querySelector(sel);
             if (! el || ! el.checkVisibility()) return null;
@@ -58,10 +60,10 @@ const PONG_FIRST_SCREEN = <<<'JS'
             const fold = Math.min(base, ...floors.filter((f) => f.left < r.right && f.right > r.left).map((f) => f.top));
             return { bottom: Math.round(r.bottom + scrollY), fold: Math.round(fold) };
         };
-        const host = document.querySelector('.chat-rail-host');
+        const host = document.querySelector('.chat-rail-host, .gp-grid');
         const visible = (el) => el.checkVisibility() && el.getBoundingClientRect().width > 0 && ! el.closest('.sr-only');
         const small = [...host.querySelectorAll('button, a[href], label:has(input), summary')]
-            .filter((el) => visible(el) && ! el.closest('.chat-rail') && ! el.closest('p'))
+            .filter((el) => visible(el) && ! el.closest('.chat-rail, [data-test=game-chat]') && ! el.closest('p'))
             .map((el) => ({ el, r: el.getBoundingClientRect() }))
             .filter(({ r }) => Math.min(r.height, r.width) < 44)
             .map(({ el, r }) => (el.dataset.test || el.tagName.toLowerCase()) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
@@ -72,7 +74,7 @@ const PONG_FIRST_SCREEN = <<<'JS'
             live: edge('[data-test=pong-lobby]'), invite: edge('[data-test=pong-accept-invite]'), looking: edge('[data-test=looking-toggle]'),
             bot: edge('[data-test=pong-play-bot]'), ways: edge('[data-test=pong-ways]'),
             picker: Math.round(document.querySelector('[data-test=pong-picker]').getBoundingClientRect().height),
-            chatLeft: Math.round(chat.getBoundingClientRect().left), liveRight: Math.round(live.right), chatPosition: getComputedStyle(chat).position,
+            chatLeft: Math.round(chat.getBoundingClientRect().left), liveRight: Math.round(live.right), chatPosition: getComputedStyle(chat.closest('.gp-rail') ?? chat).position,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             small, lang: document.documentElement.lang,
         };
@@ -92,7 +94,7 @@ function pongLobbyShot(Page $page, string $name): void
     File::move(base_path('tests/Browser/Screenshots/'.$name.'.png'), $dir.'/'.$name.'.png');
 }
 
-test('the live 1v1 card and the bot start end above the fold at 1280x720, 1366x768, 1440x900, 1920x1080, 390x844 and 360x740, as an admin in German with an invite waiting', function () {
+test('with an invite waiting the live 1v1 leads the ways to play: Accept and Looking to play above the fold at 1280x720, 1366x768, 1440x900, 1920x1080, 390x844 and 360x740, as an admin in German', function () {
     expect(config('broadcasting.default'))->toBe('reverb', 'Run this through scripts/test-browser.sh, which starts Reverb.');
 
     $admin = User::factory()->create(['name' => 'Anna Admin', 'looking_to_play' => PongInvites::LOOKING]);
@@ -128,15 +130,6 @@ test('the live 1v1 card and the bot start end above the fold at 1280x720, 1366x7
             expect($row['roster'])->toBe(0)->and($row['rosterOpen'])->toBeFalse()->and($row['picked'])->toBe('Michael Saylor');
         }
 
-        if ($width < 768) {
-            // On a phone the segmented control starts on the live 1v1 (an invite waits); the bot is one tap away.
-            expect($row['bot'])->toBeNull("bot hidden behind its segment {$width}");
-            $page->locator('[data-test=pong-way-bot]')->click();
-            usleep(200_000);
-            $row['bot'] = $page->evaluate(PONG_FIRST_SCREEN)['bot'];
-            pongLobbyShot($page, "pong-p9-{$width}x{$height}-bot");
-            $page->locator('[data-test=pong-way-live]')->click();
-        }
         $rows["{$width}x{$height}"] = $row;
     }
     fwrite(STDERR, "\n[p9 first screen] ".json_encode($rows)."\n");
@@ -144,22 +137,18 @@ test('the live 1v1 card and the bot start end above the fold at 1280x720, 1366x7
     foreach ($rows as $size => $row) {
         $desktop = (int) $size >= 1280;
         expect($row['lang'])->toBe('de')
-            ->and($row['bot']['bottom'])->toBeLessThanOrEqual($row['bot']['fold'], "bot start {$size}")
+            // The live 1v1 leads (an invite waits for the viewer, P9), the bot row follows it.
+            ->and($row['live']['bottom'])->toBeLessThanOrEqual($row['bot']['bottom'] ?? PHP_INT_MAX, "live before the bot {$size}")
+            ->and($row['invite']['bottom'])->toBeLessThanOrEqual($row['invite']['fold'], "accept {$size}")
+            ->and($row['looking']['bottom'])->toBeLessThanOrEqual($row['looking']['fold'], "looking {$size}")
             ->and($row['overflow'])->toBe(0, "overflow {$size}")
             ->and($row['small'])->toBe([], "small targets {$size}")
             // One row: the figure choice opens over the page and never lengthens it.
             ->and($row['picker'])->toBeLessThanOrEqual(80, "picker {$size}");
 
         if ($desktop) {
-            expect($row['live']['bottom'])->toBeLessThanOrEqual($row['live']['fold'], "live card {$size}")
-                ->and($row['ways'])->toBeNull()
-                ->and($row['chatPosition'])->toBe('sticky')
+            expect($row['chatPosition'])->toBe('sticky')
                 ->and($row['chatLeft'])->toBeGreaterThanOrEqual($row['liveRight'] + 24, "chat column {$size}");
-        } else {
-            // On a phone the live path's own controls are in the first screen: the segments, Looking to play and Accept.
-            expect($row['ways']['bottom'])->toBeLessThanOrEqual($row['ways']['fold'], "segments {$size}")
-                ->and($row['looking']['bottom'])->toBeLessThanOrEqual($row['looking']['fold'], "looking {$size}")
-                ->and($row['invite']['bottom'])->toBeLessThanOrEqual($row['invite']['fold'], "accept {$size}");
         }
     }
 

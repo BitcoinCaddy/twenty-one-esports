@@ -22,6 +22,7 @@
             <button type="submit" form="pong-play-form" class="rv-b" data-test="game-primary">{{ __('Play') }}<x-icon name="expand" :size="14" /></button>
         </x-slot:primary>
 
+        <x-slot:lead>
         <section class="gp-panel gp-modes" aria-labelledby="pong-play-h" data-test="pong-play">
             <h2 id="pong-play-h" class="gp-h">{{ __('Ways to play') }}</h2>
             @if ($liveFirst)
@@ -54,7 +55,7 @@
                         </label>
                     @endforeach
                 </fieldset>
-                <button type="submit" class="gp-mode-a rv-b2 is-sm" title="{{ auth()->check() ? __('Opens in a new tab, full-screen.') : __('You log in first, then the game opens in a new tab.') }}" data-test="pong-play-bot">{{ __('Play vs bot') }}</button>
+                <button type="submit" class="gp-mode-a rv-b2" title="{{ auth()->check() ? __('Opens in a new tab, full-screen.') : __('You log in first, then the game opens in a new tab.') }}" data-test="pong-play-bot">{{ __('Play vs bot') }}</button>
             </form>
 
             @unless ($liveFirst)
@@ -64,6 +65,7 @@
                 </div>
             @endunless
         </section>
+        </x-slot:lead>
 
         <section class="flex flex-col gap-3" aria-labelledby="pong-win-h" data-test="pong-yours">
             <div class="gp-head"><h2 id="pong-win-h" class="gp-h">{{ __('Your running games') }}</h2></div>
@@ -78,7 +80,7 @@
                 </div>
             @else
                 <x-empty-state :heading="__('No win yet. Your latest win shows here, with a card to share.')" data-test="pong-yours-empty">
-                    <button type="submit" form="pong-play-form" class="rv-b2 is-sm">{{ __('Practise against the bot') }}</button>
+                    <button type="submit" form="pong-play-form" class="rv-b2">{{ __('Practise against the bot') }}</button>
                 </x-empty-state>
             @endif
         </section>
@@ -86,10 +88,10 @@
         <section class="flex flex-col gap-3" aria-labelledby="pong-ladder-h" data-test="pong-about">
             <div class="gp-head">
                 <h2 id="pong-ladder-h" class="gp-h">{{ __('Elo ladder') }}</h2>
-                <a href="{{ route('pong.ladder') }}" @navigate(route('pong.ladder')) class="rv-lk" data-test="pong-ladder-link">{{ __('Full ladder') }}</a>
+                <a href="{{ route('pong.ladder') }}" @navigate(route('pong.ladder')) class="rv-lk inline-flex min-h-11 items-center" data-test="pong-ladder-link">{{ __('Full ladder') }}</a>
             </div>
             @if ($standings === [])
-                <x-empty-state :heading="__('Nobody on the Pong ladder yet. The first live match starts it.')" data-test="pong-ladder-empty"><a href="#pong-way-live" class="rv-b2 is-sm">{{ __('Find opponent') }}</a></x-empty-state>
+                <x-empty-state :heading="__('Nobody on the Pong ladder yet. The first live match starts it.')" data-test="pong-ladder-empty"><a href="#pong-way-live" class="rv-b2">{{ __('Find opponent') }}</a></x-empty-state>
             @else
                 <div class="gp-panel p-2">
                     <x-ladder.table row-test="pong-lobby-ladder-row" :rows="array_map(fn (array $row): array => ['rank' => $row['rank'], 'user' => $row['user'], 'value' => (int) $row['rating'], 'key' => $row['rank'],

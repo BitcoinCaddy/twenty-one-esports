@@ -146,7 +146,8 @@ test('every way to play is in the first viewport, and each tile does its job at 
 
         // The tile row and each tile: in the first viewport, above the chrome at the bottom.
         lobbyAboveFloor($page, '[data-test=play-grid]', "grid {$width}");
-        foreach (['play-rapid', 'play-blitz', 'play-daily', 'play-challenge', 'play-invite', 'play-tournaments'] as $tile) {
+        // Tournaments are the game bar's tab and the next tournament under the ladder (template T1), no longer a tile.
+        foreach (['play-rapid', 'play-blitz', 'play-daily', 'play-challenge', 'play-invite'] as $tile) {
             lobbyAboveFloor($page, "[data-test={$tile}]", "{$tile} {$width}");
         }
         // The Team match teaser (not playable yet) shows only in the wide grid: a fourth row of tiles pushed "Find opponent" under the tab bar.
@@ -232,6 +233,6 @@ test('the lobby collector sees a thrown error and a missing asset (positive cont
 
     // The cut-text probe sees a line that does not fit.
     expect($page->evaluate(LOBBY_CUT))->toBe([]);
-    $page->evaluate('() => { document.querySelector("[data-test=play-invite] .truncate").textContent = "a line far too long for any tile of the lobby"; }');
-    expect($page->evaluate(LOBBY_CUT))->toBe(['a line far too long for any tile of the lobby']);
+    $page->evaluate('() => { const el = document.querySelector("[data-test=play-invite] .gp-mode-l b"); el.classList.add("truncate"); el.textContent = "a line far too long for any tile of the lobby, longer than any row"; }');
+    expect($page->evaluate(LOBBY_CUT))->toBe(['a line far too long for any tile of the lobby, longer than any row']);
 });

@@ -39,8 +39,19 @@ const SHELL_MEASURE = <<<'JS'
         // Squeezed, not scrolled: a row whose content is wider than its box, a label cut short.
         // Not a `.sr-only` span: it is a 1 px clipped box by design (the More tab's ", 1 upcoming match", 93653e8a), its text is for the screen reader.
         const squeezed = [...document.querySelectorAll('[data-test=main-nav], [data-test=context-bar], [data-test=tab-bar] .rv-pb, [data-test=tab-bar] .rv-pb-item span, .rv-nv, .ctx-link')]
-            .filter((el) => el.checkVisibility({ checkVisibilityCSS: true }) && !el.closest('.sr-only') && el.scrollWidth > el.clientWidth + 1)
+            // The game bar of the templates (T1/T5, rule R5) scrolls its tabs sideways on a phone by design: measured below.
+            .filter((el) => el.checkVisibility({ checkVisibilityCSS: true }) && !el.closest('.sr-only') && !el.closest('.gs-bar') && el.scrollWidth > el.clientWidth + 1)
             .map((el) => `${el.dataset.test || el.className.split(' ')[0] || el.tagName} ${el.scrollWidth}>${el.clientWidth}`);
+        // The game bar: no tab label cut inside its tab, and the current tab whole inside the bar's visible part.
+        const gameBar = document.querySelector('.gs-bar .gs-tabs');
+        if (gameBar && gameBar.checkVisibility()) {
+            const bar = gameBar.getBoundingClientRect();
+            for (const tab of gameBar.querySelectorAll('.gs-tab')) {
+                if (tab.scrollWidth > tab.clientWidth + 1) squeezed.push(`game tab ${tab.textContent.trim()} ${tab.scrollWidth}>${tab.clientWidth}`);
+                const r = tab.getBoundingClientRect();
+                if (tab.hasAttribute('aria-current') && (r.left < bar.left - 1 || r.right > bar.right + 1)) squeezed.push(`current game tab ${tab.textContent.trim()} outside the bar`);
+            }
+        }
         // The phone's game chips: no label cut inside its chip, no chip wider than the row, the active one whole inside the row's visible part.
         const chipRow = document.getElementById('game-chips');
         if (chipRow && chipRow.checkVisibility()) {

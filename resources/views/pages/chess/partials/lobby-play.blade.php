@@ -49,7 +49,7 @@
 <section aria-labelledby="play-h" class="@container flex flex-col gap-3" data-test="play"
          x-data="{ stage: @js($busy ? 'quick' : null), help: false, rated: false, either: false, refusals: @js($ratedRefusals) }"
          {{-- The search's own mode comes in here, never in the page's x-data: a changed root x-data restarts chessLobby and drops its notification question. --}}
-         x-init="if (@js($entry?->mode) !== null) liveMode = @js($entry?->mode); if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' }"
+         x-init="if (@js($entry?->mode) !== null) liveMode = @js($entry?->mode); if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' }; $watch('stage', (open) => open && $nextTick(() => document.getElementById(open === 'quick' ? 'lobby-quick' : 'lobby-invite')?.scrollIntoView({ block: 'nearest' })))"
          x-effect="if (refusals[liveMode] !== null) rated = false">
     {{-- "Spielarten" (template T1, GameLobby.dc.html): one row per way to play, rapid first (user, 2026-10-05). --}}
     <div class="gp-panel gp-modes">
@@ -108,7 +108,8 @@
                     </x-slot:meta>
                 </x-chess.lobby-tile>
             </li>
-            <li>
+            {{-- Below lg the team match is one slim line under the list, so the ways to play stay above the tab bar at 375 x 667. --}}
+            <li class="max-lg:hidden">
                 <x-chess.lobby-tile :label="__('Team match')" :action="__('Challenge a clan')" :href="$teamHref" data-test="play-team">
                     <x-slot:detail>{{ __('Rapid · 2 or 3 boards') }}, {{ __('Clan against clan') }}</x-slot:detail>
                 </x-chess.lobby-tile>
@@ -258,4 +259,9 @@
         <livewire:invite-link place="lobby" />
     </div>
 
+    <a href="{{ $teamHref }}" class="flex min-h-11 items-center gap-2 rounded-[4px] border border-line px-3 text-[13px] text-ink hover:text-ink lg:hidden" data-test="play-team-link">
+        <x-icon name="clans" :size="16" class="shrink-0 text-ink-2" />
+        <b class="shrink-0">{{ __('Team match') }}</b>
+        <span class="min-w-0 truncate text-ink-2">{{ __('Clan against clan') }}</span>
+    </a>
 </section>

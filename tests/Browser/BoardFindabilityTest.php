@@ -73,8 +73,8 @@ test('the board games are a group at the end of /play, in the casual block and a
     $boards = [NineMensMorris::SLUG, Checkers::SLUG];
 
     expect($play['lang'])->toBe($locale)
-        // At the end, as one group with its own heading; the cards' names one level below it.
-        ->and(array_slice($play['order'], -2))->toBe($boards)
+        // Right after chess, the browser games before the own-copy games (rule R19), as one group with its own heading.
+        ->and(array_slice($play['order'], 1, 2))->toBe($boards)
         ->and($play['grouped'])->toBe($boards)
         ->and($play['groupHeading'])->toBe($locale === 'de' ? 'Brettspiele' : 'Board games')
         ->and($play['cardHeadings'])->toBe($locale === 'de' ? ['Mühle', 'Dame'] : ["Nine Men's Morris", 'Checkers'])

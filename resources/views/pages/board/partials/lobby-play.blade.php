@@ -42,7 +42,7 @@
 
 <section aria-labelledby="play-h" class="flex flex-col gap-2 lg:gap-3" data-test="play"
          x-data="{ stage: @js($busy ? 'blitz' : null), help: false, rated: false }"
-         x-init="if (stage === null && location.hash === '#blitz') stage = 'blitz'">
+         x-init="if (stage === null && location.hash === '#blitz') stage = 'blitz'; $watch('stage', (open) => open && $nextTick(() => document.getElementById('lobby-' + open)?.scrollIntoView({ block: 'nearest' })))">
     {{-- "Spielarten" (template T1, GameLobby.dc.html "Brettspiel-Lobby"): one row per way to play, as in chess. --}}
     <div class="gp-panel gp-modes">
         <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>

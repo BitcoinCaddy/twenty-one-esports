@@ -83,8 +83,8 @@
         {{-- How a run reaches the board: a real sequence, so it reads left to right (StackerRuns, the verifier, ScoreRuns). --}}
         <ol class="m-0 flex list-none flex-wrap items-center gap-x-2 gap-y-2 p-0" aria-label="{{ __('How a run counts') }}" data-test="blockfill-steps">
             @foreach ([__('Play, ranked, logged in'), __('The server replays it'), __('Verified'), __('Your best time counts on the leaderboard')] as $step)
-                <li class="flex items-center gap-2">
-                    <span class="rv-tag">{{ $step }}</span>
+                <li class="flex max-w-full min-w-0 items-center gap-2">
+                    <span class="rv-tag h-auto min-h-5 py-0.5 whitespace-normal">{{ $step }}</span>
                     @unless ($loop->last)<x-icon name="next" :size="12" class="text-ink-3" />@endunless
                 </li>
             @endforeach

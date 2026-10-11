@@ -169,7 +169,7 @@ test('the lobby shows the five bots and, opened, the 25 figures without overflow
         ->and(min(array_column($labels, 'size')))->toBeGreaterThanOrEqual(44)
         ->and($shown = $page->evaluate($detail))->toHaveCount(1)
         ->and($shown[0]['cut'])->toBeFalse()
-        ->and($shown[0]['text'])->toStartWith(PongCast::bots()[0]['name'])
+        ->and($shown[0]['text'])->toContain(PongCast::bots()[0]['name'])
         ->and(count($faces))->toBe(25)
         // Every portrait is a target of at least 44 px.
         ->and(min($faces))->toBeGreaterThanOrEqual(44);
@@ -181,11 +181,11 @@ test('the lobby shows the five bots and, opened, the 25 figures without overflow
     $page->locator('[data-test=pong-figure-saylor]')->click();
     $page->locator('[data-test=pong-bot-schiff]')->click();
     // Alpine shows the picked bot's line on its next flush.
-    BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=pong-bot-detail]")].some((el) => el.checkVisibility() && el.innerText.startsWith('.json_encode(PongCast::bot('schiff')['name']).'))', 5_000);
+    BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=pong-bot-detail]")].some((el) => el.checkVisibility() && el.innerText.includes('.json_encode(PongCast::bot('schiff')['name']).'))', 5_000);
     expect($page->evaluate('() => { const f = document.querySelector("[data-test=pong-play-form]"); return f.action + "?" + new URLSearchParams(new FormData(f)).toString(); }'))
         ->toEndWith('/proof-of-pong/bot?figure=saylor&bot=schiff')
         ->and($page->evaluate('() => document.querySelector("[data-test=pong-picked-name]").textContent'))->toBe('Michael Saylor')
-        ->and($page->evaluate($detail)[0]['text'])->toStartWith(PongCast::bot('schiff')['name'])
+        ->and($page->evaluate($detail)[0]['text'])->toContain(PongCast::bot('schiff')['name'])
         ->and([...$page->evaluate('() => window.__errors ?? ["collector missing"]'), ...$page->evaluate(BrowserConsole::BAD_RESPONSES)])->toBe([]);
 })->with([
     'phone 390x844' => [390, 844],

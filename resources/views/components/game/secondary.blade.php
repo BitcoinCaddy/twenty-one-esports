@@ -6,7 +6,8 @@
     when it is opened (Livewire `lazy` inside a closed <details> is not in view until then). Fixed height while
     closed, never above the page's primary content.
 --}}
-<details {{ $attributes->class('gp-sec') }} data-test="game-secondary">
+{{-- wire:ignore.self: a Livewire round trip of the page (an invite from a follow row) keeps it open; its content still updates. --}}
+<details {{ $attributes->class('gp-sec') }} wire:ignore.self data-test="game-secondary">
     <summary>
         <x-icon name="link" :size="16" class="shrink-0 text-ink-2" />
         <x-icon name="bolt" :size="16" class="shrink-0 text-bolt" />

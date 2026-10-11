@@ -133,15 +133,14 @@ test('rapid is the first tile with the searching counts, and "either" pairs with
 
         $page = rapidPage($anna, $width, $height);
 
-        // Rapid first (from a 48rem grid twice as wide), Blitz beside it; both counts are the queue's.
+        // Rapid the first row of the ways to play (template T1, GameLobby.dc.html), Blitz the row under it; both counts are the queue's.
         $grid = rapidBox($page, '[data-test=play-grid]', "grid {$width}");
-        $rapid = rapidBox($page, '[data-test=play-rapid]', "rapid tile {$width}");
-        $blitz = rapidBox($page, '[data-test=play-blitz]', "blitz tile {$width}");
+        $rapid = rapidBox($page, '[data-test=play-rapid]', "rapid row {$width}");
+        $blitz = rapidBox($page, '[data-test=play-blitz]', "blitz row {$width}");
         expect($rapid['left'])->toBe($grid['left'])
-            ->and($rapid['top'])->toBe($blitz['top'])
-            ->and($rapid['right'])->toBeLessThan($blitz['left'])
-            ->and($width < 1024 || $rapid['width'] > $blitz['width'] * 1.8)->toBeTrue()
-            ->and($rapid['bottom'])->toBeLessThanOrEqual($height)
+            ->and($rapid['top'])->toBe($grid['top'])
+            ->and($rapid['bottom'])->toBeLessThanOrEqual($blitz['top'])
+            ->and($blitz['bottom'])->toBeLessThanOrEqual($height)
             ->and($page->evaluate('() => document.querySelector("[data-test=play-rapid-searching]").textContent.trim()'))->toBe('2')
             ->and($page->evaluate('() => document.querySelector("[data-test=play-blitz-searching]").textContent.trim()'))->toBe('1');
         rapidShot($page, "rapid-lobby-{$width}");
@@ -216,6 +215,6 @@ test('the rapid lobby collector sees a thrown error and a missing asset (positiv
 
     // The cut-text probe sees a tile line that does not fit.
     expect($page->evaluate(RAPID_CUT))->toBe([]);
-    $page->evaluate('() => { document.querySelector("[data-test=play-blitz] .truncate").textContent = "a line far too long for any tile of the lobby"; }');
-    expect($page->evaluate(RAPID_CUT))->toBe(['a line far too long for any tile of the lobby']);
+    $page->evaluate('() => { const el = document.querySelector("[data-test=play-blitz] .gp-mode-l b"); el.classList.add("truncate"); el.textContent = "a line far too long for any tile of the lobby, longer than any row"; }');
+    expect($page->evaluate(RAPID_CUT))->toBe(['a line far too long for any tile of the lobby, longer than any row']);
 });

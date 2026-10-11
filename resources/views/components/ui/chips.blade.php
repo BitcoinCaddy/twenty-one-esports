@@ -10,28 +10,40 @@
 <div {{ $attributes->class('flex min-w-0 items-center gap-3') }}
      x-data="{
          hidden: [], open: false,
-         fit() {
-             const row = this.$refs.row; const chips = [...row.querySelectorAll('[data-chip]')];
-             chips.forEach((chip) => { chip.hidden = false; });
-             const hidden = [];
-             if (matchMedia('(min-width: 64rem)').matches && row.scrollWidth > row.clientWidth) {
-                 const room = row.clientWidth - 150;
-                 let used = 0;
-                 chips.forEach((chip, index) => {
-                     used += chip.offsetWidth + 8;
-                     if (used > room && index > 0) { chip.hidden = true; hidden.push(index); }
-                 });
-             }
-             this.hidden = hidden;
+         unhook: null,
+         init() {
+             this.$nextTick(() => this.fit());
+             new ResizeObserver(() => this.fit()).observe(this.$refs.row);
+             // A Livewire round trip morphs the chips back to the server's markup (all shown): fold them again.
+             this.unhook = window.Livewire?.hook('morphed', () => this.fit()) ?? null;
          },
-     }"
-     x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.row)" x-on:keydown.escape="open = false" data-test="chip-row">
+         destroy() {
+             if (typeof this.unhook === 'function') this.unhook();
+         },
+         fit() {
+             // Every chip shown first, then measured; the folded ones are a binding (x-bind:hidden on each chip).
+             this.hidden = [];
+             this.$nextTick(() => {
+                 const row = this.$refs.row; const chips = [...row.querySelectorAll('[data-chip]')];
+                 const hidden = [];
+                 if (matchMedia('(min-width: 64rem)').matches && row.scrollWidth > row.clientWidth) {
+                     const room = row.clientWidth - 150;
+                     let used = 0;
+                     chips.forEach((chip, index) => {
+                         used += chip.offsetWidth + 8;
+                         if (used > room && index > 0) { hidden.push(index); }
+                     });
+                 }
+                 this.hidden = hidden;
+             });
+         },
+     }" x-on:keydown.escape="open = false" data-test="chip-row">
     @if ($caption)
         <span class="rv-m shrink-0 max-lg:hidden">{{ $caption }}</span>
     @endif
-    <nav class="relative flex min-w-0 grow items-center gap-2 max-lg:overflow-x-auto max-lg:[mask-image:linear-gradient(90deg,#000_85%,transparent)]" aria-label="{{ $label }}" x-ref="row">
+    <nav class="relative flex min-w-0 grow items-center gap-2 lg:[overflow-x:clip] max-lg:overflow-x-auto max-lg:[mask-image:linear-gradient(90deg,#000_85%,transparent)]" aria-label="{{ $label }}" x-ref="row">
         @foreach ($items as $item)
-            <a href="{{ $item['href'] }}" @navigate($item['href']) data-chip @if ($item['current'] ?? false) aria-current="page" @endif
+            <a href="{{ $item['href'] }}" @navigate($item['href']) data-chip x-bind:hidden="hidden.includes({{ $loop->index }})" @if ($item['current'] ?? false) aria-current="page" @endif
                @class(['gm-chip h-11', 'is-dim' => $item['dim'] ?? false]) @if ($item['test'] ?? null) data-test="{{ $item['test'] }}" @endif
                >{{ $item['label'] }}</a>
         @endforeach

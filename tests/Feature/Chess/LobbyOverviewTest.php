@@ -12,6 +12,7 @@
  */
 
 use App\Enums\ChessInviteStatus;
+use App\Games\NineMensMorris;
 use App\Models\ChessGame;
 use App\Models\ChessInvite;
 use App\Models\ChessQueueEntry;
@@ -24,6 +25,8 @@ use App\Support\Chess\ChessRuleViolation;
 use App\Support\Series\Ladders;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
+use Tests\Support\HyperOn;
+use Tests\Support\NineMensMorrisOn;
 
 beforeEach(function () {
     Http::fake(fn () => Http::response([]));
@@ -283,3 +286,13 @@ function textOf(string $html, string $hook): string
 
     return trim(preg_replace('/\s+/', ' ', strip_tags($match[1] ?? '')));
 }
+
+test('in a live season the chess, board and Hyperbitcoinization heroes name the season, never the season record', function () {
+    openSeason(['slug' => 'season-1']);
+    NineMensMorrisOn::play();
+    HyperOn::play();
+
+    foreach ([route('chess.lobby'), route('board.lobby', NineMensMorris::SLUG), route('hyper.index')] as $url) {
+        $this->get($url)->assertOk()->assertSee('Season 1 is live')->assertDontSee('Season {', false);
+    }
+});

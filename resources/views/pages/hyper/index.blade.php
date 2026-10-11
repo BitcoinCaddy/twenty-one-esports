@@ -33,9 +33,11 @@
         </x-slot:heroAside>
 
         {{-- A new table and the open tables (components/⚡hyper-lobby carries its own "Offene Tische" heading). --}}
-        <section class="gp-panel flex flex-col gap-3 p-4" aria-label="{{ __('Open tables') }}" data-test="hyper-tables">
-            <livewire:hyper-lobby :focus="$focus" />
-        </section>
+        <x-slot:lead>
+            <section class="gp-panel flex flex-col gap-3 p-4" aria-label="{{ __('Open tables') }}" data-test="hyper-tables">
+                <livewire:hyper-lobby :focus="$focus" />
+            </section>
+        </x-slot:lead>
 
         @if ($viewer !== null)
             <section class="flex flex-col gap-3" aria-labelledby="hyper-running-h" data-test="hyper-running">
@@ -165,7 +167,7 @@
                 @if ($cup !== null)
                     <a href="{{ route('tournaments.show', $cup) }}" @navigate(route('tournaments.show', $cup)) class="rv-lk self-start text-[14px]" data-test="hyper-index-cup">{{ $cup->name }}</a>
                 @endif
-                <span class="rv-m">{{ \App\Support\SeasonChain\Seasons::live() === null ? __('Rated matches start with Block 0') : __('Season :season is live', ['season' => \App\Support\SeasonChain\Seasons::live()]) }}</span>
+                <span class="rv-m">{{ \App\Support\SeasonChain\Seasons::live() === null ? __('Rated matches start with Block 0') : __(':season is live', ['season' => \App\Support\Badges\BadgeCopy::season(\App\Support\SeasonChain\Seasons::live()->slug)]) }}</span>
             </nav>
 
             {{--

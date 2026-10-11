@@ -665,7 +665,7 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
         $season = \App\Support\SeasonChain\Seasons::live();
     @endphp
     <x-game.page :game="$slug" :mode="$modeName"
-                 :lede="__(':mode, 1 move a day. :season', ['mode' => $modeName, 'season' => $season === null ? __('Rated from Block 0.') : __('Season :season is live', ['season' => $season])])"
+                 :lede="__(':mode, 1 move a day. :season', ['mode' => $modeName, 'season' => $season === null ? __('Rated from Block 0.') : __(':season is live', ['season' => \App\Support\Badges\BadgeCopy::season($season->slug)])])"
                  :stat="$seats !== null ? $seats.'/'.$next->capacity : $this->correspondence['running']"
                  :stat-label="$seats !== null ? __('in :tournament', ['tournament' => \App\Support\Engagement\HomeBoard::shortName($next)]) : trans_choice('game running|games running', $this->correspondence['running'])">
         <x-slot:primary>
@@ -698,7 +698,9 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
             @endforeach
         </x-slot:top>
 
-        @include('pages.board.partials.lobby-play', ['user' => $user, 'entry' => $entry, 'outgoing' => $outgoing, 'name' => $name])
+        <x-slot:lead>
+            @include('pages.board.partials.lobby-play', ['user' => $user, 'entry' => $entry, 'outgoing' => $outgoing, 'name' => $name])
+        </x-slot:lead>
 
         @include('pages.board.partials.lobby-games', ['user' => $user, 'active' => $active, 'name' => $name])
         @include('pages.board.partials.lobby-live', ['user' => $user, 'active' => $active, 'name' => $name])

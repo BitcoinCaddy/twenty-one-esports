@@ -167,12 +167,14 @@ test('/blockfill and scores/blockfill share Blockfill\'s context bar and the Mor
     $expectedCtx = [['ctx-play', route('stacker.play')], ['ctx-leaderboard', route('scores.show', 'blockfill')], ['ctx-replays', route('stacker.replays')], ['ctx-rules', route('rules').'#blockfill']];
     $expectedTabs = [['more-play', route('stacker.play')], ['more-leaderboard', route('scores.show', 'blockfill')], ['more-replays', route('stacker.replays')], ['more-rules', route('rules').'#blockfill']];
 
-    foreach ($bars as $bar) {
+    foreach ($bars as $key => $bar) {
+        // scores/blockfill renders the lobby template's game bar (rule R5): the same links plus the fixed Tournaments tab.
+        $ctx = $key === 'scores' ? [...array_slice($expectedCtx, 0, 3), ['ctx-tournaments', route('tournaments.index', ['game' => 'blockfill'])], $expectedCtx[3]] : $expectedCtx;
         expect($bar['ctxGame'])->toBe('blockfill')
-            ->and($bar['ctx'])->toBe($expectedCtx)
+            ->and($bar['ctx'])->toBe($ctx)
             ->and($bar['tabs'])->toBe($expectedTabs)
             // The context bar from lg; the More sheet's section is there at every width, shown when the sheet opens.
-            ->and($bar['ctxVisible'])->toBe($width >= 1024);
+            ->and($bar['ctxVisible'])->toBe($key === 'scores' || $width >= 1024);
         if ($width >= 1024) {
             expect($bar['ctxBox'][0])->toBeGreaterThanOrEqual(0)->and($bar['ctxBox'][1])->toBeLessThanOrEqual($width);
         }

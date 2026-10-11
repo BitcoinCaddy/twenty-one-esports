@@ -24,7 +24,6 @@ use App\Support\GameNames;
 use App\Support\Matches\MempoolStrip;
 use App\Support\RequestMemo;
 use App\Support\SeasonChain\Seasons;
-use App\Support\Stacker\BlockfillWeeks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -153,16 +152,6 @@ final class ShellNavigation
         $actions = [];
         foreach ($this->actions($game) as $link) {
             $actions[$link['key']] = $link;
-        }
-
-        // Blockfill (GameScore.dc.html): "Spielen" is its game page with the ways to play, "Leaderboard" the running
-        // week's full table; the play field itself is the primary action on the game page.
-        if ($slug === Blockfill::SLUG && isset($actions['play'])) {
-            $actions['play']['href'] = GameNames::page($slug);
-            $week = Route::has('tournaments.scores') ? app(BlockfillWeeks::class)->current() : null;
-            if ($week !== null && isset($actions['leaderboard'])) {
-                $actions['leaderboard']['href'] = route('tournaments.scores', $week);
-            }
         }
 
         $tabs = [];

@@ -151,7 +151,8 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
     $chatRail = \App\Support\GameChat\GameChannels::has($this->game);
 @endphp
 {{-- The lobby template T1 (x-game.page; GameScore.dc.html for Blockfill): game bar, hero, Spielarten, this week's board, the leaderboards and the points ladder; the chat on the right. --}}
-<x-game.page :game="$this->game" data-test="score-game" :mode="$blockfill && $week !== null ? __('Week :week', ['week' => (int) $week->starts_at->copy()->timezone(\App\Support\Stacker\BlockfillWeeks::TIMEZONE)->format('W')]) : null"
+{{-- Blockfill's play field is its own page (stacker.play, the "Spielen" tab); this page is its leaderboard tab. --}}
+<x-game.page :game="$this->game" :active="$blockfill ? 'leaderboard' : 'play'" data-test="score-game" :mode="$blockfill && $week !== null ? __('Week :week', ['week' => (int) $week->starts_at->copy()->timezone(\App\Support\Stacker\BlockfillWeeks::TIMEZONE)->format('W')]) : null"
              :lede="__('Everyone plays alone, as often as they like, for the best value on the course inside the window. No lobby, no opponent to wait for. Each leaderboard\'s places score points on the ladder below.')">
     @if ($blockfill)
         <x-slot:primary>
@@ -168,6 +169,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
 
     @if ($blockfill)
         {{-- Spielarten (GameScore.dc.html): the ranked run of the week and the practice run, both on the play field. --}}
+        <x-slot:lead>
         <section class="gp-panel gp-modes" aria-labelledby="play-h" data-test="play">
             <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
             <ul role="list" class="m-0 flex list-none flex-col p-0">
@@ -184,6 +186,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'scripts' => ['resourc
                 </li>
             </ul>
         </section>
+        </x-slot:lead>
 
         <section aria-labelledby="week-h" class="gp-panel flex flex-col gap-3 px-2 py-4 lg:px-4" @if ($week) wire:key="running-{{ $week->id }}" @endif data-test="score-running">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-2 lg:px-0">

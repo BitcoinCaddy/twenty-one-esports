@@ -126,7 +126,7 @@ test('the start page plays its theme with a music switch and a volume as on Bloc
     $state = '() => { const d = Alpine.$data(document.querySelector("[data-test=hyper-index-sound]")); return { on: d.on, playing: d.playing, volume: d.volume, gain: d.audio ? Math.round(d.audio.volume * 100) / 100 : null, paused: d.audio ? d.audio.paused : null, loop: d.audio ? d.audio.loop : null }; }';
 
     // On load where the browser lets it, else from the first tap anywhere but the controls.
-    $page->locator('#hyper-h')->click();
+    $page->locator('[data-test=lobby-title] h1')->click();
     BrowserWait::until($page, '() => Alpine.$data(document.querySelector("[data-test=hyper-index-sound]")).playing', 5_000);
     expect($page->evaluate($state))->toMatchArray(['on' => true, 'playing' => true, 'volume' => 50, 'paused' => false, 'loop' => true]);
 
@@ -142,7 +142,7 @@ test('the start page plays its theme with a music switch and a volume as on Bloc
     expect($page->evaluate('() => JSON.parse(localStorage.getItem("hb-settings"))'))->toMatchArray(['music' => false, 'startVolume' => 80]);
     $page->reload();
     BrowserWait::until($page, '() => document.readyState === "complete" && window.Alpine !== undefined', 10_000);
-    $page->locator('#hyper-h')->click();
+    $page->locator('[data-test=lobby-title] h1')->click();
     $page->evaluate('() => new Promise((r) => setTimeout(r, 500))');
 
     if (is_string($dir = getenv('HYPER_SHOTS')) && $dir !== '') {

@@ -32,9 +32,10 @@
             @endphp
             <tr wire:key="ladder-{{ $row['key'] ?? $row['rank'] }}" @class(['lp-row-'.$row['rank'] => $row['rank'] <= 3, 'is-me' => $me]) data-test="{{ $rowTest }}" @if ($me) data-me @endif>
                 <td><b @class(['lp-rank', 'text-btc' => in_array($row['rank'], [1, 3], true), 'text-ink-2' => $row['rank'] > 3])>{{ $row['rank'] }}</b></td>
-                <td>
+                {{-- w-full + max-w-0: the name cell takes the rest and truncates instead of widening the table (320 px). --}}
+                <td class="w-full max-w-0">
                     @if ($row['user'] !== null)
-                        <x-player-link :user="$row['user']" class="flex min-w-0 items-center gap-2 text-ink hover:text-ink">
+                        <x-player-link :user="$row['user']" class="-my-1.5 flex min-h-11 min-w-0 items-center gap-2 text-ink hover:text-ink">
                             <x-avatar :user="$row['user']" :size="24" class="shrink-0 rounded-full" />
                             <b class="truncate">{{ $row['user']->displayName() }}</b>
                             @if ($me)<span class="rv-m">({{ __('you') }})</span>@endif

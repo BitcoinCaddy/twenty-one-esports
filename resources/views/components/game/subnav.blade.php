@@ -23,7 +23,9 @@
         {{-- A community game's credit stands wherever its name does (plan "Blockli", P3). --}}
         <x-game-credit :game="$game" :link="false" class="font-normal" />
     </a>
-    <div class="gs-tabs" data-test="context-bar" data-game="{{ $game }}">
+    {{-- On a phone the tabs scroll sideways: the current one is scrolled into the bar's visible part on load. --}}
+    <div class="gs-tabs" data-test="context-bar" data-game="{{ $game }}"
+         x-data x-init="const tab = $el.querySelector('[aria-current]'); if (tab && $el.scrollWidth > $el.clientWidth) { const gap = tab.getBoundingClientRect().right - $el.getBoundingClientRect().right + 24; if (gap > 0) $el.scrollLeft += gap }">
         @foreach ($tabs as $tab)
             <a href="{{ $tab['href'] }}" @navigate($tab['href']) class="gs-tab" @if ($tab['key'] === $active || ($active === 'ladder' && $tab['key'] === 'leaderboard')) aria-current="page" @endif data-test="ctx-{{ $tab['key'] }}">{{ $tab['label'] }}</a>
         @endforeach

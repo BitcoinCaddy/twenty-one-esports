@@ -27,7 +27,7 @@
     {{ $attributes->class(['gp-mode w-full', 'cursor-pointer' => $tag !== 'div', 'hover:bg-row-hover' => $tag !== 'div']) }}>
     <span class="gp-mode-l">
         <b>{{ $label }}</b>
-        @isset($detail)<span class="truncate">{{ $detail }}</span>@endisset
+        @isset($detail)<span class="max-sm:sr-only">{{ $detail }}</span>@endisset
     </span>
     <span class="gp-mode-m">@isset($meta){{ $meta }}@endisset</span>
     <span class="gp-mode-a {{ $actionClass }} relative">

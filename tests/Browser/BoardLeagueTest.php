@@ -224,25 +224,19 @@ const BOARD_PARITY_SECTIONS = <<<'JS'
     JS;
 
 /**
- * The expected section order with the game chat in its place (2026-10-03, user: "weiter oben"): below xl right
- * after "play"; from xl (1280 px) the chat is the side column, so it leaves the reading order and must stand
- * right of every other section instead.
+ * The expected section order with the game chat in its place (template T1, GameLobby.dc.html, rule R6; 2026-10-03,
+ * user: "weiter oben"): below lg right after "play", the lobby's `lead`; from lg (1024 px) the chat is the right
+ * column, so it leaves the reading order and must stand right of every other section.
  *
  * @param  list<string>  $expected
  * @return array{0: list<string>, 1: Closure(list<array{0: string, 1: int, 2: int}>): list<string>}
  */
 function boardLeagueChatOrder(array $expected, int $width, Closure $order): array
 {
-    if ($width < 1280) {
+    if ($width < 1024) {
         $at = (int) array_search('play', $expected, true) + 1;
 
         return [[...array_slice($expected, 0, $at), 'chat', ...array_slice($expected, $at)], $order];
-    }
-
-    // From xl to 2xl the lobby row is 5 | 7 beside the chat column, with the ladder under both: after "online".
-    if ($width < 1536 && in_array('ladder', $expected, true) && in_array('online', $expected, true)) {
-        $expected = array_values(array_diff($expected, ['ladder']));
-        array_splice($expected, (int) array_search('online', $expected, true) + 1, 0, ['ladder']);
     }
 
     return [$expected, function (array $rows) use ($order): array {
@@ -382,14 +376,9 @@ test('the board lobby has the chess lobby\'s arrangement, shows who is online an
     fwrite(STDERR, "board parity {$locale} {$width}x{$height}: ".json_encode(compact('measured', 'online', 'rows', 'waiting')).PHP_EOL);
 
     $order = fn (array $rows): array => array_column($rows, 0);
-    // Below lg one column; from lg Your games | Live now | ladder share a row, "Online now" sits in Live now under the boards.
-    // Then "Your follows here" (P2) and the game chat (P1 of plan brettspiel-chat-und-follows), as in chess.
-    $expected = $width >= 1024 ? ['title', 'play', 'next', 'cups', 'games', 'live', 'ladder', 'online'] : ['title', 'play', 'next', 'cups', 'games', 'live', 'online', 'ladder'];
-    // From lg the title is the header's context bar: the lobby's own title row is hidden on both.
-    $expected = $width >= 1024 ? array_values(array_diff($expected, ['title'])) : $expected;
-    $expected[] = 'follows';
-    // The game chat (2026-10-03, "weiter oben"): right under the way to play below xl; from xl the side column beside all.
-    [$expected, $order] = boardLeagueChatOrder($expected, $width, $order);
+    // The lobby template T1 (GameLobby.dc.html) at every width: hero, ways to play, your games, Live now with "Online now"
+    // in it, the ladder, the next tournament and its cups; "Your follows here" waits closed in the secondary slot (rule R7).
+    [$expected, $order] = boardLeagueChatOrder(['title', 'play', 'games', 'live', 'online', 'ladder', 'next', 'cups'], $width, $order);
 
     expect($order($measured['board']['sections']))->toBe(array_values(array_diff($expected, ['cups'])))
         ->and($order($measured['chess']['sections']))->toBe($expected)
@@ -552,7 +541,7 @@ test('each board game chat sits in chess\'s slot and holds long names, long word
 
         fwrite(STDERR, 'board chat '.$locale.' '.$width.' '.($signedIn ? 'player' : 'guest').': '.json_encode(compact('sections', 'filled', 'after', 'collected')).PHP_EOL);
 
-        [$expected, $order] = boardLeagueChatOrder([...($width >= 1024 ? ['play', 'next', 'cups', 'games', 'live', 'ladder', 'online'] : ['title', 'play', 'next', 'cups', 'games', 'live', 'online', 'ladder']), ...($signedIn ? ['follows'] : [])], $width, fn (array $rows): array => array_column($rows, 0));
+        [$expected, $order] = boardLeagueChatOrder(['title', 'play', 'games', 'live', 'online', 'ladder', 'next', 'cups'], $width, fn (array $rows): array => array_column($rows, 0));
         // No casual cup for a board game since 2026-10-07.
         expect($order($sections['board']))->toBe(array_values(array_diff($expected, ['cups'])))
             ->and($order($sections['chess']))->toBe($expected)

@@ -31,6 +31,7 @@
     .gs-name {
         display: flex;
         flex: none;
+        align-self: stretch;
         align-items: center;
         gap: 8px;
         margin-right: 16px;
@@ -66,6 +67,15 @@
         scrollbar-width: none;
     }
 
+    /* Phones: the tabs scroll sideways; the fade at the right edge says there is more (24 px of end padding lets the
+       last tab leave the fade). */
+    @media (width < 48rem) {
+        .gs-tabs {
+            padding-inline-end: 24px;
+            mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+        }
+    }
+
     .gs-tab {
         display: inline-flex;
         flex: none;
@@ -97,9 +107,10 @@
         padding-left: 12px;
     }
 
+    /* 44 px targets (rule R16) inside the 48 px bar. */
     .gs-act .rv-b,
     .gs-act .rv-b2 {
-        height: 36px;
+        height: 44px;
         padding: 0 12px;
         font-size: 13px;
     }
@@ -109,25 +120,58 @@
         width: 100%;
         max-width: calc(1344px + 96px);
         margin: 0 auto;
-        padding: 16px 16px 40px;
+        /* 20 px under the bar on a phone, 32 px from lg: the league's page-top rule (RouteSweepTest SWEEP_PAGE_TOP). */
+        padding: 20px 16px 40px;
     }
 
     @media (width >= 64rem) {
         .gp {
-            padding: 24px 48px 48px;
+            padding: 32px 48px 48px;
         }
     }
 
+    /*
+     * Reading order hero + lead, chat, rest (x-game.page): one column below lg, the chat a bar under the primary
+     * block; from lg 8 | 4 with the chat beside both rows. The rest's row takes what a taller chat column adds.
+     */
     .gp-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
-        gap: 24px;
+        gap: 16px;
         align-items: start;
+    }
+
+    .gp-lead:not(:has(*)) {
+        display: none;
+    }
+
+    /* Phones: 12 px between the hero and the ways to play, so the rows stay above the tab bar at 375 x 667 (R3). */
+    @media (width < 64rem) {
+        .gp-main.gp-lead {
+            gap: 12px;
+        }
     }
 
     @media (width >= 64rem) {
         .gp-grid {
             grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+            grid-template-rows: auto 1fr;
+            gap: 24px;
+        }
+
+        .gp-grid > .gp-lead {
+            grid-row: 1;
+            grid-column: 1;
+        }
+
+        .gp-grid > .gp-rest {
+            grid-row: 2;
+            grid-column: 1;
+        }
+
+        .gp-grid > .gp-rail {
+            grid-row: 1 / span 2;
+            grid-column: 2;
         }
     }
 
@@ -135,7 +179,13 @@
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: 24px;
+        gap: 16px;
+    }
+
+    @media (width >= 64rem) {
+        .gp-main {
+            gap: 24px;
+        }
     }
 
     /* The right column: the chat fills it down to the end of the first screen (rule R6), sticky under the bar. */
@@ -149,21 +199,26 @@
     @media (width >= 64rem) {
         .gp-rail {
             position: sticky;
-            top: calc(var(--shell-h) + 48px + 24px);
-        }
-
-        .gp-rail > [data-test="game-chat"] {
-            height: max(480px, calc(100svh - var(--shell-h) - 48px - 48px - var(--dock-h)));
+            top: calc(var(--shell-h) + 48px + 32px);
         }
 
         .gp-rail.is-loose {
             position: static;
+        }
+    }
+
+    /* From xl the chat component is the open side column (game-channel); below it a bar that opens in place. */
+    @media (width >= 80rem) {
+        .gp-rail > [data-test="game-chat"] {
+            /* Bar 48, the page top 32, 24 above the dock: the chat ends where the dock starts (GameChannelTest). */
+            height: max(480px, calc(100svh - var(--shell-h) - 48px - 32px - 24px - var(--dock-h)));
         }
 
         .gp-rail.is-loose > [data-test="game-chat"] {
             height: 480px;
         }
     }
+
 
     /* The hero card (GameLobby.dc.html): cover 240 × 135, name, one data line, one big number. */
     .gp-hero {
@@ -180,9 +235,38 @@
 
     @media (width >= 40rem) {
         .gp-hero {
-            grid-template-columns: 240px minmax(0, 1fr) auto;
+            /* 240 px from a wide main column (GameLobby.dc.html); narrower at 1024, where a 240 px cover left the line 200 px. */
+            grid-template-columns: clamp(140px, 26%, 240px) minmax(0, 1fr) auto;
             gap: 24px;
         }
+    }
+
+    /* Phones: the hero is one compact row (cover thumbnail beside the name), so the ways to play stay in the first
+       screen above the tab bar (rule R3; 375 x 667 measured by tests/Browser/ChessLobbyTest.php). */
+    @media (width < 40rem) {
+        .gp-hero {
+            grid-template-columns: 88px minmax(0, 1fr);
+            gap: 12px;
+            padding: 8px;
+        }
+
+        .gp-hero > .gp-stat {
+            display: none;
+        }
+
+        .gp-hero .gp-lede {
+            display: -webkit-box;
+            margin-top: 4px;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 1;
+        }
+    }
+
+    /* The top slot (cup banner, errors, invites) leaves no gap when nothing is in it: Livewire's block comments and
+       whitespace keep :empty from matching. */
+    .gp-top:not(:has(*)) {
+        display: none;
     }
 
     .gp-hero-cover {
@@ -221,6 +305,7 @@
         color: var(--color-ink-2);
         font-size: 13px;
         line-height: 1.5;
+        overflow-wrap: anywhere;
     }
 
     .gp-stat {
@@ -287,7 +372,13 @@
     }
 
     .gp-modes > .gp-h {
-        padding: 0 4px 12px;
+        padding: 0 4px 8px;
+    }
+
+    @media (width >= 40rem) {
+        .gp-modes > .gp-h {
+            padding-bottom: 12px;
+        }
     }
 
     .gp-mode {
@@ -295,9 +386,9 @@
         grid-template-columns: minmax(0, 1fr) auto;
         gap: 4px 16px;
         align-items: center;
-        min-height: 50px;
+        min-height: 44px;
         /* 12 px on the right: the action's count badge sits 8 px past its corner and stays inside the row. */
-        padding: 8px 12px 8px 4px;
+        padding: 6px 12px 6px 4px;
         border-radius: 4px;
         color: var(--color-ink);
         text-align: left;
@@ -305,6 +396,7 @@
 
     @media (width >= 48rem) {
         .gp-mode {
+            min-height: 50px;
             grid-template-columns: minmax(0, 1fr) 140px auto;
         }
     }
@@ -355,6 +447,26 @@
         justify-self: end;
     }
 
+    /* Phones: 8 px between name and action, so a German action ("Spieler herausfordern") leaves the name whole at 375. */
+    @media (width < 30rem) {
+        .gp-mode {
+            column-gap: 8px;
+        }
+    }
+
+    /* Below 360 px (WCAG 1.4.10 reflow at 320) the action moves under the name instead of squeezing it. */
+    @media (width < 22.5rem) {
+        .gp-mode {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .gp-mode > .gp-mode-a {
+            grid-row: auto;
+            grid-column: 1;
+            justify-self: start;
+        }
+    }
+
     .gp-mode[aria-expanded="true"] .gp-mode-a {
         border-color: var(--color-btc);
     }
@@ -397,11 +509,19 @@
         transform: rotate(180deg);
     }
 
+    /* No side padding on a phone: its panels (follows, weekly events) bring their own, and a 320 px screen needs
+       every pixel for a follow row's name (BoardFollowsTest: "Follow 01" whole, a 41-letter name at least 48 px). */
     .gp-sec-body {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        padding: 0 16px 16px;
+        padding: 0 0 4px;
+    }
+
+    @media (width >= 40rem) {
+        .gp-sec-body {
+            padding: 0 16px 16px;
+        }
     }
 
     /* The games menu (GamesMenu.dc.html): browser games | own-copy games, one row per game. */

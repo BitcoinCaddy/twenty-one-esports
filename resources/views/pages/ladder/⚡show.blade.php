@@ -520,14 +520,16 @@ new #[Layout('layouts::app', ['section' => 'ladder'])] class extends Component
         </x-proof>
     @endif
 
-    <x-slot:aside>
-        {{-- The cross-game list (P40): every rated ladder feeds it (LadderPage.dc.html "Die stärksten Spieler"). --}}
-        <section class="gp-panel flex flex-col gap-3 p-4" aria-labelledby="ladder-strongest-h" data-test="ladder-strongest-panel">
-            <h2 id="ladder-strongest-h" class="gp-h">{{ __('Strongest players') }}</h2>
-            <a href="{{ route('ladder.strongest') }}" @navigate(route('ladder.strongest')) class="flex flex-col gap-1 rounded-[4px] border border-dashed border-line p-4 text-ink hover:text-ink" data-test="ladder-strongest-link-aside">
-                <b class="text-[14px]">{{ \App\Support\SeasonChain\Seasons::live() === null ? __('The list opens at Block 0') : __('Strongest players across all games') }}</b>
-                <span class="rv-m">{{ __('Global Rating across all games') }}</span>
-            </a>
-        </section>
-    </x-slot:aside>
+    {{--
+        The cross-game list (P40): every rated ladder feeds it (LadderPage.dc.html "Die stärksten Spieler"). Under the
+        table, not in a right column: this ladder's table (tiers, form, Global, clan view) needs the full 1344 px; in
+        8 of 12 columns the names were cut to 36 px and the clan view ran 147 px past the window (LadderDefaultTest).
+    --}}
+    <section class="gp-panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between" aria-labelledby="ladder-strongest-h" data-test="ladder-strongest-panel">
+        <h2 id="ladder-strongest-h" class="gp-h">{{ __('Strongest players') }}</h2>
+        <a href="{{ route('ladder.strongest') }}" @navigate(route('ladder.strongest')) class="flex flex-col gap-1 rounded-[4px] border border-dashed border-line p-4 text-ink hover:text-ink" data-test="ladder-strongest-link-aside">
+            <b class="text-[14px]">{{ \App\Support\SeasonChain\Seasons::live() === null ? __('The list opens at Block 0') : __('Strongest players across all games') }}</b>
+            <span class="rv-m">{{ __('Global Rating across all games') }}</span>
+        </a>
+    </section>
 </x-ladder.page>

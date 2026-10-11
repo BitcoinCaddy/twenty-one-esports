@@ -8,18 +8,24 @@
         bar        the game bar (x-game.subnav): name, fixed tabs, `primary` on the right, `mode` beside it
         hero       cover, `title` (the page's h1), `lede` (one data line), `stat` + `statLabel` (one big number);
                    a page may replace the whole card with its own `hero` slot
-        main       the default slot: the main column, 8 of 12 columns (Spielarten, your games, the ladder …)
+        lead       the page's primary block under the hero ("Spielarten"); the chat follows it in the reading order
+        main       the default slot: the rest of the main column, 8 of 12 columns (your games, the ladder …)
         foot       `next` (the next tournament) | `secondary` (the secondary slot, x-game.secondary), the main
                    column's last row
-        rail       `chat`: the right column, 4 of 12, sticky (R6); below lg it follows the main column. A page whose
-                   column holds more than the chat (Hyperbitcoinization's quick match) passes :sticky-rail="false"
+        rail       `chat`: the right column, 4 of 12, sticky (R6). A page whose column holds more than the chat
+                   (Hyperbitcoinization's quick match) passes :sticky-rail="false"
         heroAside  replaces the big number with an action (HyperIndex.dc.html: "Gegen Bots spielen")
+
+    Reading order: hero, lead, chat, the rest. From lg the grid puts the chat into the right column beside all of it
+    (revamp-games.css `.gp-grid.has-rail`); below lg the chat is a bar right under the primary block, where a player
+    asked for it (2026-10-03, "weiter oben"), not at the end of a long page. Without `lead` the chat closes the page.
 
     `template`: T1 for a lobby; a game page of another kind keeps the same frame and names itself.
 --}}
 @php
     $colour = app(\App\Games\GameRegistry::class)->find((string) $game)?->assets()->colour;
     $heroAbove = isset($heroAside) && ! isset($hero);
+    $hasLead = isset($lead);
 @endphp
 
 <div {{ $attributes->class('flex grow flex-col') }} style="--game: {{ $colour }}" data-template="{{ $template }}" data-game="{{ $game }}">
@@ -27,20 +33,28 @@
 
     <div class="gp">
         @isset($top)
-            <div class="mb-6 flex flex-col gap-3 empty:hidden">{{ $top }}</div>
+            <div class="gp-top mb-4 flex flex-col gap-3 lg:mb-6">{{ $top }}</div>
         @endisset
         @if ($heroAbove)
             {{-- With an action instead of a number the hero spans both columns (HyperIndex.dc.html), so a long name keeps one line. --}}
             <div class="mb-6"><x-game.hero-card :game="$game" :title="$title" :lede="$lede" :stat="$stat" :stat-label="$statLabel" :stat-live="$statLive">{{ $heroAside ?? '' }}</x-game.hero-card></div>
         @endif
-        <div class="gp-grid">
-            <div class="gp-main">
+        <div @class(['gp-grid', 'has-rail' => isset($chat)])>
+            <div class="gp-main gp-lead">
                 @isset($hero)
                     {{ $hero }}
                 @elseif (! $heroAbove)
                     <x-game.hero-card :game="$game" :title="$title" :lede="$lede" :stat="$stat" :stat-label="$statLabel" :stat-live="$statLive">{{ $heroAside ?? '' }}</x-game.hero-card>
                 @endisset
 
+                {{ $lead ?? '' }}
+            </div>
+
+            @if (isset($chat) && $hasLead)
+                <aside @class(['gp-rail', 'is-loose' => ! $stickyRail]) aria-label="{{ __('Chat') }}" data-test="game-rail">{{ $chat }}</aside>
+            @endif
+
+            <div class="gp-main gp-rest">
                 {{ $slot }}
 
                 @if (isset($next) || isset($secondary))
@@ -51,9 +65,9 @@
                 @endif
             </div>
 
-            @isset($chat)
+            @if (isset($chat) && ! $hasLead)
                 <aside @class(['gp-rail', 'is-loose' => ! $stickyRail]) aria-label="{{ __('Chat') }}" data-test="game-rail">{{ $chat }}</aside>
-            @endisset
+            @endif
         </div>
     </div>
 </div>

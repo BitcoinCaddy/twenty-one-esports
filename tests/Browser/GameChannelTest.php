@@ -286,8 +286,8 @@ const P21_RAIL = <<<'JS'
     () => {
         const box = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), height: Math.round(r.height) }; };
         const chat = document.querySelector('[data-test=game-chat]');
-        const host = chat.closest('.chat-rail-host');
-        const rail = chat.closest('.chat-rail');
+        const host = chat.closest('.chat-rail-host, .gp-grid');
+        const rail = chat.closest('.chat-rail, .gp-rail');
         // The content: every visible leaf of the host's subtree outside the column (a wrapper's box includes its padding).
         const content = [...host.querySelectorAll('*')].filter((el) => ! rail.contains(el) && el.children.length === 0 && el.checkVisibility() && el.getBoundingClientRect().width > 0);
         const dock = [document.querySelector('[data-test=match-dock]'), document.querySelector('[data-test=dock-cup]')].filter((el) => el && el.checkVisibility());
@@ -299,7 +299,11 @@ const P21_RAIL = <<<'JS'
             rail: box(rail),
             // Every ancestor that clips or scrolls: one between the column and the page makes sticky a no-op.
             scrollers: (() => { const out = []; for (let el = chat.parentElement; el; el = el.parentElement) { const s = getComputedStyle(el); if (s.overflowX !== 'visible' || s.overflowY !== 'visible') out.push(el.tagName + '.' + String(el.className).slice(0, 40) + ' ' + s.overflowX + '/' + s.overflowY); } return out; })(),
-            position: getComputedStyle(chat).position, toggle: chat.querySelector('[data-test=game-chat-toggle]').checkVisibility(),
+            // The lobby template (T1) makes its whole right column sticky; the older pages the chat itself.
+            position: getComputedStyle(rail.classList.contains('gp-rail') ? rail : chat).position, toggle: chat.querySelector('[data-test=game-chat-toggle]').checkVisibility(),
+            template: rail.classList.contains('gp-rail'),
+            // A right column that holds more than the chat (Hyperbitcoinization's quick match, season, music) scrolls with the page.
+            loose: rail.classList.contains('is-loose'),
             list: box(chat.querySelector('[data-test=game-chat-list]')), messages: [...chat.querySelectorAll('[data-test=game-chat-message]')].filter((el) => el.checkVisibility()).length,
             composer: chat.querySelector('[data-test=game-chat-form]')?.checkVisibility() ? box(chat.querySelector('[data-test=game-chat-form]')) : null,
             polls: chat.querySelector('[data-test=game-chat-polls]').checkVisibility(),
@@ -344,7 +348,7 @@ test('the chat sits right under the head at 375, a bar opened in place, and in a
             $top = $page->evaluate(P21_RAIL);
             p21Shot($page, "p21-place-{$game}-{$width}");
             // Down the page, halfway along the column's travel (its box minus the chat): the chat holds its place under the header.
-            $page->evaluate('() => { const chat = document.querySelector("[data-test=game-chat]"); const travel = chat.closest(".chat-rail").getBoundingClientRect().height - chat.getBoundingClientRect().height; scrollTo(0, Math.max(0, Math.round(travel / 2)) + 8); }');
+            $page->evaluate('() => { const chat = document.querySelector("[data-test=game-chat]"); const travel = chat.closest(".chat-rail, .gp-rail").getBoundingClientRect().height - chat.getBoundingClientRect().height; scrollTo(0, Math.max(0, Math.round(travel / 2)) + 8); }');
             Execution::instance()->wait(0.4);
             $rails[$width] = ['top' => $top, 'scrolled' => $page->evaluate(P21_RAIL)];
             p21Shot($page, "p21-place-{$game}-{$width}-scrolled");
@@ -384,7 +388,8 @@ test('the chat sits right under the head at 375, a bar opened in place, and in a
                     // Beside the content, never over it, inside the window.
                     ->and($m['chat']['left'])->toBeGreaterThanOrEqual($m['contentRight'] + 24, $label)
                     ->and($m['chat']['right'])->toBeLessThanOrEqual($m['vw'] - 24, $label)
-                    ->and($m['chat']['width'])->toBe($width >= 1536 ? 400 : 360, $label)
+                    // The lobby template's 4 of 12 columns (R1): at least the old column's 360 px.
+                    ->and($m['template'] ? $m['chat']['width'] >= 360 : $m['chat']['width'] === ($width >= 1536 ? 400 : 360))->toBeTrue($label)
                     // Under the header; scrolled on a page no longer than the chat it goes along with the content.
                     ->and($where === 'top' || $top['rail']['height'] > $top['chat']['height'] + 16 ? $m['chat']['top'] >= $m['header'] : true)->toBeTrue($label)
                     // Ends above the dock where the dock reaches into the column, and above the window's edge.
@@ -417,8 +422,8 @@ test('the chat sits right under the head at 375, a bar opened in place, and in a
     }
 })->with([
     'chess' => ['/chess', 'chess', '[data-test=play]', []],
-    // A series page: the invite keeps its first-screen place between the head (with "Play now") and the chat.
-    'rocket league' => ['/games/rocket-league', 'rocket-league', '[data-test=game-cta]', ['game-page-challenge', 'game-pulse', 'game-start', 'invite-module']],
+    // A series page (template T1): the chat bar right under its ways to play, as on the chess lobby.
+    'rocket league' => ['/games/rocket-league', 'rocket-league', '[data-test=play]', []],
 ]);
 
 test('TMNF and Blockfill have their chat too: a bar after the hero or the game at 375, the side column at 1440', function (string $game, string $path, string $after) {
@@ -431,7 +436,7 @@ test('TMNF and Blockfill have their chat too: a bar after the hero or the game a
     try {
         $page = p21Page($player, $path, 375, 812);
         BrowserWait::until($page, '() => Alpine.$data(document.querySelector("[data-test=game-chat]")).items.length === 1 && document.fonts.status === "loaded"', 10_000);
-        $phone = $page->evaluate('(after) => { const chat = document.querySelector("[data-test=game-chat]"); const rail = chat.closest(".chat-rail"); return { after: rail.previousElementSibling?.matches(after) || rail.previousElementSibling?.querySelector(after) !== null, height: Math.round(chat.getBoundingClientRect().height), preview: chat.querySelector("[data-test=game-chat-preview]").innerText, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }', $after);
+        $phone = $page->evaluate('(after) => { const chat = document.querySelector("[data-test=game-chat]"); const rail = chat.closest(".chat-rail, .gp-rail"); return { after: rail.previousElementSibling?.matches(after) || rail.previousElementSibling?.querySelector(after) !== null, height: Math.round(chat.getBoundingClientRect().height), preview: chat.querySelector("[data-test=game-chat-preview]").innerText, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }', $after);
         $page->evaluate('() => document.querySelector("[data-test=game-chat]").scrollIntoView({ block: "center" })');
         p21Shot($page, "p21-place-{$game}-375");
 
@@ -447,7 +452,7 @@ test('TMNF and Blockfill have their chat too: a bar after the hero or the game a
             ->and($phone['preview'])->toContain('anyone on the server tonight?')
             ->and($desk['position'])->toBe('sticky')
             ->and($desk['chat']['left'])->toBeGreaterThanOrEqual($desk['contentRight'] + 24)
-            ->and($desk['chat']['width'])->toBe(360)
+            ->and($desk['template'] ? $desk['chat']['width'] >= 360 : $desk['chat']['width'] === 360)->toBeTrue()
             ->and($desk['chat']['top'])->toBeGreaterThanOrEqual($desk['header'])
             ->and($desk['chat']['bottom'])->toBeLessThanOrEqual($desk['vh'])
             ->and($desk['messages'])->toBe(1)
@@ -458,7 +463,8 @@ test('TMNF and Blockfill have their chat too: a bar after the hero or the game a
         @unlink($seed);
     }
 })->with([
-    'tmnf' => ['tmnf', '/scores/tmnf', '[data-test=tmnf-hero]'],
+    // TMNF's page is the lobby template without a `lead` block: its chat bar closes the main column.
+    'tmnf' => ['tmnf', '/scores/tmnf', '.gp-rest'],
     'blockfill' => ['blockfill', '/blockfill', '[data-test=stacker]'],
 ]);
 
@@ -475,8 +481,8 @@ function p5Game(string $game): array
     $game === 'hyperbitcoinization' ? HyperOn::play() : PongOn::play();
 
     return $game === 'hyperbitcoinization'
-        ? ['/hyperbitcoinization', 'section[aria-labelledby=hyper-h]', '[data-test=hyper-lobby-open]']
-        : ['/proof-of-pong', 'section[aria-labelledby=pong-h]', '[data-test=pong-play-bot]'];
+        ? ['/hyperbitcoinization', '.gp-lead', '[data-test=hyper-lobby-open]']
+        : ['/proof-of-pong', '.gp-lead', '[data-test=pong-play-bot]'];
 }
 
 test('Hyperbitcoinization and Proof of Pong have their chat: a message posted on the page reaches a second viewer in the game\'s own channel, a bar under the hero at 390, the side column at 1440 and 1920', function (string $game, string $other) {
@@ -519,7 +525,7 @@ test('Hyperbitcoinization and Proof of Pong have their chat: a message posted on
         $pageB->setViewportSize(390, 844);
         $pageB->evaluate('() => scrollTo(0, 0)');
         Execution::instance()->wait(0.4);
-        $phone = $pageB->evaluate('(hero) => { const chat = document.querySelector("[data-test=game-chat]"); const rail = chat.closest(".chat-rail"); return { after: rail.previousElementSibling?.matches(hero) === true, height: Math.round(chat.getBoundingClientRect().height), toggle: Math.round(chat.querySelector("[data-test=game-chat-toggle]").getBoundingClientRect().height), preview: chat.querySelector("[data-test=game-chat-preview]").innerText, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }', $hero);
+        $phone = $pageB->evaluate('(hero) => { const chat = document.querySelector("[data-test=game-chat]"); const rail = chat.closest(".chat-rail, .gp-rail"); return { after: rail.previousElementSibling?.matches(hero) === true, height: Math.round(chat.getBoundingClientRect().height), toggle: Math.round(chat.querySelector("[data-test=game-chat-toggle]").getBoundingClientRect().height), preview: chat.querySelector("[data-test=game-chat-preview]").innerText, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }', $hero);
 
         $rails = [];
         foreach ([[1440, 900], [1920, 1080]] as [$width, $height]) {
@@ -536,11 +542,11 @@ test('Hyperbitcoinization and Proof of Pong have their chat: a message posted on
             ->and($phone['preview'])->toContain('rematch in five');
 
         foreach ($rails as $width => $m) {
-            expect($m['position'])->toBe('sticky', "{$game} {$width}")
+            expect($m['position'])->toBe($m['loose'] ? 'static' : 'sticky', "{$game} {$width}")
                 ->and($m['toggle'])->toBeFalse()
                 ->and($m['chat']['left'])->toBeGreaterThanOrEqual($m['contentRight'] + 24, "{$game} {$width}")
                 ->and($m['chat']['right'])->toBeLessThanOrEqual($m['vw'] - 24)
-                ->and($m['chat']['width'])->toBe($width >= 1536 ? 400 : 360)
+                ->and($m['template'] ? $m['chat']['width'] >= 360 : $m['chat']['width'] === ($width >= 1536 ? 400 : 360))->toBeTrue()
                 ->and($m['chat']['top'])->toBeGreaterThanOrEqual($m['header'])
                 ->and($m['chat']['bottom'])->toBeLessThanOrEqual($m['vh'])
                 ->and($m['messages'])->toBe(2)
@@ -566,7 +572,7 @@ test('Hyperbitcoinization and Proof of Pong have their chat: a message posted on
  */
 const P5_MEASURE = <<<'JS'
     (primary) => {
-        const host = document.querySelector('.chat-rail-host');
+        const host = document.querySelector('.chat-rail-host, .gp-grid');
         // Visually hidden: .sr-only, or a breakpoint's sr-only (max-md:sr-only) on the element or an ancestor.
         const hidden = (el) => { for (let p = el; p && p !== host; p = p.parentElement) { const s = getComputedStyle(p); if (s.position === 'absolute' && s.width === '1px' && s.height === '1px' && s.overflow === 'hidden') return true; } return false; };
         const visible = (el) => el.checkVisibility() && el.getBoundingClientRect().width > 0 && ! el.closest('.sr-only') && ! hidden(el);
@@ -580,7 +586,7 @@ const P5_MEASURE = <<<'JS'
             if (box && el.children.length === 0 && el.innerText.trim() !== '') { const r = el.getBoundingClientRect(); const b = box.getBoundingClientRect(); if (r.right > b.right + 1 || r.left < b.left - 1) cut.push('clipped ' + label(el)); }
         }
         const small = [...host.querySelectorAll('button, [role=button], input[type=range], input[type=submit], select, textarea, input[type=text]')]
-            .filter((el) => visible(el) && ! el.closest('.chat-rail')).map((el) => ({ el, r: el.getBoundingClientRect() })).filter(({ r }) => r.height < 44).map(({ el, r }) => label(el) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
+            .filter((el) => visible(el) && ! el.closest('.chat-rail, [data-test=game-chat]')).map((el) => ({ el, r: el.getBoundingClientRect() })).filter(({ r }) => r.height < 44).map(({ el, r }) => label(el) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
         const action = document.querySelector(primary);
         const chat = document.querySelector('[data-test=game-chat]').getBoundingClientRect();
         return {

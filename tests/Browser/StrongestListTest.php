@@ -184,14 +184,14 @@ test('the strongest list, its link in the game hub and the ladder Proof links ho
 
     expect($failures)->toBe([]);
 
-    // A game's context bar (on its pages only since the revamp, Header.dc.html) keeps the link inside the narrowest desktop width, in both languages.
+    // A game's ladder (template T5, LadderPage.dc.html) links the list in its right column, inside the narrowest desktop width, in both languages.
     foreach (['en', 'de'] as $locale) {
         $page = p40Page($user, '/ladder/chess/blitz', 1024, 768, $locale);
         BrowserWait::until($page, '() => document.readyState === "complete"', 10_000);
-        $bar = $page->evaluate('() => { const bar = document.querySelector("[data-test=context-bar]"); const link = bar.querySelector("[data-test=ctx-strongest]").getBoundingClientRect(); return [bar.scrollWidth, bar.clientWidth, Math.round(link.right), Math.round(bar.getBoundingClientRect().right), document.documentElement.scrollWidth, document.documentElement.clientWidth]; }');
-        fwrite(STDERR, "[p40] {$locale} 1024 context bar ".json_encode($bar)."\n");
+        $bar = $page->evaluate('() => { const link = document.querySelector("[data-test=ladder-strongest-link-aside]").getBoundingClientRect(); return [Math.round(link.height), Math.round(link.right), innerWidth, document.documentElement.scrollWidth, document.documentElement.clientWidth]; }');
+        fwrite(STDERR, "[p40] {$locale} 1024 ladder aside ".json_encode($bar)."\n");
         p40Shot($page, "p40-ctx-{$locale}-1024");
-        expect($bar[0])->toBeLessThanOrEqual($bar[1])->and($bar[2])->toBeLessThanOrEqual($bar[3])->and($bar[4])->toBeLessThanOrEqual($bar[5]);
+        expect($bar[0])->toBeGreaterThanOrEqual(44)->and($bar[1])->toBeLessThanOrEqual($bar[2])->and($bar[3])->toBeLessThanOrEqual($bar[4]);
     }
 
     // Positive control: the same collectors see a thrown error, a failed fetch and a missing image on this page.

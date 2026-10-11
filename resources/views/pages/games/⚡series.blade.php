@@ -429,6 +429,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
         </section>
     </x-slot:hero>
 
+    <x-slot:lead>
     {{-- "Spielarten" (GameSeries.dc.html): one row per way to play, the one that gets a player into a game soonest first. --}}
     <section class="gp-panel gp-modes" aria-labelledby="play-h" data-test="play">
         <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
@@ -461,6 +462,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
             </li>
         </ul>
     </section>
+    </x-slot:lead>
 
     {{-- A player's next step on this game; a guest has "Log in to play" in the game bar. --}}
     @auth

@@ -301,7 +301,8 @@ test('a Blockfill player gets a score card next to the ladders, measured at 1440
     expect($card['best'])->toBe(ScoreMetric::time()->format(Blockfill::milliseconds(1200)))
         ->and($card['board'])->toBe(ScoreMetric::time()->format(Blockfill::milliseconds(1200)).' · #2 of 2')
         ->and($card['attempts'])->toBe(2)
-        ->and($card['order'])->toBe(['chess', 'rocket-league', 'rocket-league', 'blockfill'])
+        // The registry's order (rule R19): the browser games (chess, Blockfill) before the own-copy games.
+        ->and($card['order'])->toBe(['chess', 'blockfill', 'rocket-league', 'rocket-league'])
         ->and($desk)->toMatchArray(['overflow' => 0, 'inside' => true, 'small' => [], 'clipped' => [], 'hiddenWhen' => 0])
         ->and(abs($desk['sideOffset']))->toBeLessThanOrEqual(1)
         ->and($phone)->toMatchArray(['overflow' => 0, 'inside' => true, 'small' => [], 'clipped' => [], 'hiddenWhen' => 0])
