@@ -20,8 +20,8 @@
     "Add a sponsor" leads to the sponsor form of the prize pool page.
 --}}
 @php
-    $sats = fn (int $amount): string => \App\Support\Engagement\HomeBoard::sats($amount);
-        $poolLeft = $pool['left'] ?? $pool['sats'];
+    $sats = fn (int $amount): string => \App\Support\Cards\ShareCard::sats($amount);
+    $poolLeft = $pool['left'] ?? $pool['sats'];
     $podium = array_slice($pool['split'], 0, 3);
     $rest = array_slice($pool['split'], 3);
     // The places 1 to 3 of a finished tournament (TournamentChampionMoment::of()['podium']), or none.
@@ -48,7 +48,7 @@
             @foreach ([...$podium, ...$rest] as $share)
                 <li class="flex h-10 items-center justify-between gap-3 border-b border-hairline px-3 text-sm" wire:key="pool-{{ $share['place'] }}" data-test="pool-place">
                     <span>{{ __('Place :place', ['place' => $share['place']]) }}@if ($share['percent'] !== null), {{ $share['percent'] }} %@endif</span>
-                    <span class="tabular-nums"><b>{{ $sats($share['sats']) }}</b> <span class="text-ink-2">Sats</span></span>
+                    <span class="tabular-nums"><b data-test="pool-place-sats">{{ $sats($share['sats']) }}</b> <span class="text-ink-2">Sats</span></span>
                 </li>
             @endforeach
         </ol>

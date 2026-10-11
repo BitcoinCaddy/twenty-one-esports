@@ -293,9 +293,20 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends PrizeP
     $paidOut = $tournament->payouts_approved_at !== null;
     $outside = PrizePool::paidOutsideSats($tournament);
     $releasable = auth()->user()?->can('admin') ? app(PotRelease::class)->releasableSats($tournament) : 0;
+    // The admin frame (P17): the admin map for an admin, the breadcrumbs for an organizer too.
+    $adminNav = \App\Support\Navigation\AdminNavigation::forCurrentUser();
 @endphp
 
-<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-10 lg:px-12" data-test="pool-settings">
+<div class="flex grow flex-col">
+<x-admin.nav active="tournaments" :groups="$adminNav->groups()" />
+<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pt-6 pb-10 lg:px-12 lg:pt-8" data-test="pool-settings">
+<nav aria-label="{{ __('Breadcrumb') }}" data-test="admin-crumbs">
+    <ol class="m-0 flex list-none flex-wrap items-center gap-x-2 p-0 text-xs text-ink-3">
+        <li><a href="{{ $adminNav->homeHref() }}" class="inline-flex min-h-6 items-center text-ink-2 hover:text-ink">{{ __('Admin') }}</a></li>
+        <li class="flex items-center gap-2"><span aria-hidden="true">/</span><a href="{{ route('admin.tournaments') }}" class="inline-flex min-h-6 items-center text-ink-2 hover:text-ink">{{ __('Tournaments') }}</a></li>
+        <li class="flex min-w-0 items-center gap-2"><span aria-hidden="true">/</span><a href="{{ route('tournaments.show', $tournament) }}" class="inline-flex min-h-6 min-w-0 items-center text-ink-2 [overflow-wrap:anywhere] hover:text-ink">{{ $tournament->name }}</a></li>
+    </ol>
+</nav>
 <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start">
 <aside class="rv-card flex flex-col gap-4 p-4 lg:order-last" aria-label="{{ __('Prize pool') }}" data-test="pool-aside">
     <h2 class="rv-h3">{{ __('Prize pool') }}</h2>
@@ -492,6 +503,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends PrizeP
         @endunless
     </section>
     @endif
+</div>
 </div>
 </div>
 </div>

@@ -206,7 +206,9 @@ const PAGE_BUDGETS = [
     // +1 (P6): the chess team matches being played now (HomeHub::liveTeamMatches()), one query whatever the count.
     'home' => [31, 73],
     'play' => [3, 40],
-    'tournaments.show' => [30, 82],
+    // +4 for the player (plan "Refactor und Design-Revamp", P6): the game's chat in the right rail (TournamentDetail.dc.html,
+    // <livewire:game-channel>): the viewer's account by key, whether they played rated (ratings, lineup seats), their mutes.
+    'tournaments.show' => [30, 86],
     'matches.room' => [null, 55],
     'live' => [14, 46],
     'clans.index' => [8, 43],
