@@ -10,9 +10,9 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 /**
- * Reads the new kind 1 notes of the profiles the TWENTY ONE TV commentary
- * follows (`tv.commentary.followed_profiles`, FollowedNotes) and prunes the
- * old ones. Scheduled every five minutes while `tv.commentary.enabled` and
+ * Reads the kind 1 notes of the profiles the TWENTY ONE TV commentary
+ * follows (`tv.commentary.followed_profiles`, FollowedNotes): the new ones,
+ * and a bounded stretch further back into the history each run. Scheduled every five minutes while `tv.commentary.enabled` and
  * `tv.commentary.followed.enabled`; off, it does nothing.
  */
 #[Signature('caster:followed')]
@@ -28,7 +28,7 @@ class CasterFollowedCommand extends Command
         }
 
         $counts = $notes->fetch(CarbonImmutable::now());
-        $this->line(sprintf('%d profile(s); %d new note(s), %d filtered, %d pruned.', $counts['profiles'], $counts['stored'], $counts['filtered'], $counts['pruned']));
+        $this->line(sprintf('%d profile(s); %d note(s) read, %d new, %d filtered, %d pruned; %d history(ies) read to the first note.', $counts['profiles'], $counts['read'], $counts['stored'], $counts['filtered'], $counts['pruned'], $counts['exhausted']));
 
         return self::SUCCESS;
     }

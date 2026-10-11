@@ -15,6 +15,7 @@ use App\Support\Voice\NoteFactCheck;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceGuard;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
@@ -61,14 +62,14 @@ beforeEach(function () {
         /** @var list<array{filters: list<array<string, mixed>>, relays: list<string>|null}> */
         public array $asked = [];
 
-        public function fetch(array $filters, ?array $relays = null, array $known = [], int $perAuthor = 1): array
+        public function fetchCounted(array $filters, ?array $relays = null, array $known = [], int $perAuthor = 1, ?float $until = null): array
         {
             $this->asked[] = ['filters' => $filters, 'relays' => $relays];
 
-            // Like a relay that ignores `since`: the reader's own checks must hold without it.
+            // Like a relay that ignores `since` and `until`: the reader's own checks must hold without them.
             $kinds = array_merge(...array_map(fn (array $filter): array => $filter['kinds'], $filters));
 
-            return array_values(array_filter($this->events, fn (SignedEvent $event): bool => in_array($event->kind, $kinds, true)));
+            return ['events' => array_values(array_filter($this->events, fn (SignedEvent $event): bool => in_array($event->kind, $kinds, true))), 'answered' => 1];
         }
     };
     $this->app->instance(RelayReader::class, $this->reader);
@@ -140,7 +141,7 @@ it('reads the followed profiles from the config once per pubkey, hints merged, u
 });
 
 it('reads the notes from the hints and the stream relays, stores each once and turns down replies, links, short, explicit and tragic ones', function () {
-    config(['tv.commentary.followed_profiles' => [followedNprofile($this->author->pubkey, ['wss://hint.test'])]]);
+    config(['tv.commentary.followed_profiles' => [followedNprofile($this->author->pubkey, ['wss://hint.test'])], 'tv.commentary.followed.fresh_hours' => 24]);
     $stranger = new TestSigner;
     $this->reader->events = [
         followedName($this->author, 'Markus'),
@@ -312,8 +313,8 @@ it('asks the voice for a German retelling and no quote when the note is not Germ
         ->and(CasterVoice::followedPrompt('Hallo Welt', 'Markus', true, 3, 7))->toContain('höchstens zwanzig Wörter');
 });
 
-it('never speaks a note older than fresh_hours, of a profile no longer followed, or while the switch is off', function () {
-    config(['tv.commentary.ai' => false]);
+it('never speaks a note older than fresh_hours (when set), of a profile no longer followed, or while the switch is off', function () {
+    config(['tv.commentary.ai' => false, 'tv.commentary.followed.fresh_hours' => 24]);
     $this->reader->events = [followedNote($this->author, 'Dieses Halloween verkleide ich mich als Deutscher', 30)];
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
 
@@ -363,12 +364,17 @@ it('keeps the pattern lines free of numbers and within the spoken limits, enough
     }
 });
 
-it('prunes notes past keep_days and keeps at most max_rows', function () {
-    config(['tv.commentary.followed.keep_days' => 7, 'tv.commentary.followed.max_rows' => 2]);
+it('prunes notes past keep_days and keeps at most max_rows while fresh_hours is set, and never without it', function () {
+    config(['tv.commentary.followed.fresh_hours' => 0, 'tv.commentary.followed.keep_days' => 7, 'tv.commentary.followed.max_rows' => 2]);
     foreach ([8 * 24 * 60, 30, 20, 10] as $i => $minutesAgo) {
         CasterFollowedNote::query()->create(['event_id' => str_repeat((string) $i, 64), 'pubkey' => $this->author->pubkey, 'note_created_at' => now()->subMinutes($minutesAgo), 'content' => "Notiz {$i}"]);
     }
 
+    // The whole history: a deleted row would be read back by the backfill and spoken twice.
+    expect(app(FollowedNotes::class)->prune(CarbonImmutable::now()))->toBe(0)
+        ->and(CasterFollowedNote::query()->count())->toBe(4);
+
+    config(['tv.commentary.followed.fresh_hours' => 24]);
     expect(app(FollowedNotes::class)->prune(CarbonImmutable::now()))->toBe(2)
         ->and(CasterFollowedNote::query()->orderBy('note_created_at')->pluck('content')->all())->toBe(['Notiz 2', 'Notiz 3']);
 });
@@ -403,4 +409,247 @@ it('speaks of Markus\' own profile in the first person: the intro, the prompt an
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1)
         ->and(CasterScript::query()->orderByDesc('id')->first()->sentences()[0])->toBe('Auf Nostr hab ich geschrieben: Dieses Halloween verkleide ich mich als Deutscher.');
+});
+
+/*
+| The whole history (user 2026-10-12: "Die Kommentare für die Nostr-Posts des
+| npubs dürfen bis an den Anfang aller je geposteten kind-1-Events gehen.
+| Also ALL! … aber sortiert nach Zeit."): paged back with `until`, bounded
+| per run, spoken oldest first.
+*/
+
+/**
+ * A relay reader that honours `authors`, `since`, `until` (inclusive) and
+ * `limit` per relay, newest first, like a real relay; relays in `$down` do
+ * not answer.
+ */
+function followedPagingReader(): RelayReader
+{
+    return new class extends RelayReader
+    {
+        /** @var array<string, list<SignedEvent>> */
+        public array $relays = [];
+
+        /** @var list<string> */
+        public array $down = [];
+
+        /** @var list<array<string, mixed>> */
+        public array $asked = [];
+
+        public function fetchCounted(array $filters, ?array $relays = null, array $known = [], int $perAuthor = 1, ?float $until = null): array
+        {
+            $collected = [];
+            $answered = 0;
+
+            foreach ($relays ?? [] as $relay) {
+                if (in_array($relay, $this->down, true)) {
+                    continue;
+                }
+
+                $answered++;
+
+                foreach ($filters as $filter) {
+                    $this->asked[] = $filter;
+                    $matching = array_values(array_filter($this->relays[$relay] ?? [], fn (SignedEvent $event): bool => in_array($event->kind, $filter['kinds'], true)
+                        && in_array($event->pubkey, $filter['authors'] ?? [$event->pubkey], true)
+                        && $event->createdAt >= ($filter['since'] ?? 0) && $event->createdAt <= ($filter['until'] ?? PHP_INT_MAX)));
+                    usort($matching, fn (SignedEvent $a, SignedEvent $b): int => $b->createdAt <=> $a->createdAt);
+
+                    foreach (array_slice($matching, 0, $filter['limit'] ?? 500) as $event) {
+                        if (! isset($known[$event->id])) {
+                            $collected[$event->id] = $event;
+                        }
+                    }
+                }
+            }
+
+            $collected = array_values($collected);
+            usort($collected, fn (SignedEvent $a, SignedEvent $b): int => $b->createdAt <=> $a->createdAt);
+
+            return ['events' => array_slice($collected, 0, $perAuthor), 'answered' => $answered];
+        }
+    };
+}
+
+function followedNoteAt(TestSigner $author, string $content, int $timestamp): SignedEvent
+{
+    return SignedEvent::fromInput($author->sign(1, [], $content, $timestamp));
+}
+
+/**
+ * `$count` notes, one an hour back from `$newest`, every fifth sharing its
+ * second with the one before (a page may end inside such a second); the even
+ * ones on relay A, the odd ones on relay B, every third on both.
+ *
+ * @return list<SignedEvent>
+ */
+function followedHistory(RelayReader $reader, TestSigner $author, int $count, int $newest): array
+{
+    $notes = [];
+    foreach (range(0, $count - 1) as $i) {
+        $at = $newest - 3600 * ($i - intdiv($i, 5));
+        $notes[] = $note = followedNoteAt($author, "Gedanke Nummer {$i} über Bitcoin und die Freiheit", $at);
+        if ($i % 2 === 0 || $i % 3 === 0) {
+            $reader->relays['wss://a.test'][] = $note;
+        }
+        if ($i % 2 === 1 || $i % 3 === 0) {
+            $reader->relays['wss://b.test'][] = $note;
+        }
+    }
+
+    return $notes;
+}
+
+describe('the whole history', function () {
+    beforeEach(function () {
+        $this->paging = followedPagingReader();
+        $this->app->instance(RelayReader::class, $this->paging);
+        Cache::put('caster:followed:name:'.$this->author->pubkey, 'markusturm', 3600);
+        config([
+            'tv.commentary.followed_profiles' => [followedNprofile($this->author->pubkey, ['wss://a.test', 'wss://b.test'])],
+            'twentyone.stream.relays' => [],
+            'esports.stream_chat.relays' => [],
+            'tv.commentary.followed.fresh_hours' => 0,
+            'tv.commentary.followed.page_limit' => 40,
+            'tv.commentary.followed.per_run' => 1000,
+        ]);
+    });
+
+    it('pages back through both relays until nothing older comes, each note stored once', function () {
+        $notes = followedHistory($this->paging, $this->author, 130, now()->subDays(3)->getTimestamp());
+
+        $counts = app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+
+        expect($counts)->toMatchArray(['read' => 130, 'stored' => 130, 'filtered' => 0, 'exhausted' => 1])
+            ->and(CasterFollowedNote::query()->pluck('event_id')->sort()->values()->all())->toBe(collect($notes)->pluck('id')->sort()->values()->all())
+            ->and(collect($this->paging->asked)->every(fn (array $filter): bool => $filter['limit'] === 40 && ! isset($filter['since'])))->toBeTrue()
+            ->and(collect($this->paging->asked)->pluck('until')->filter()->unique()->count())->toBeGreaterThanOrEqual(3);
+
+        // Read to the first note: the next run asks only for what is new, and stores nothing twice.
+        $this->paging->asked = [];
+        $this->paging->relays['wss://b.test'][] = followedNoteAt($this->author, 'Ganz frisch aus der Druckerpresse geschrieben heute', now()->getTimestamp() - 60);
+        expect(app(FollowedNotes::class)->fetch(CarbonImmutable::now()))->toMatchArray(['stored' => 1, 'exhausted' => 0])
+            ->and(CasterFollowedNote::query()->count())->toBe(131)
+            ->and(collect($this->paging->asked)->every(fn (array $filter): bool => isset($filter['since'])))->toBeTrue();
+    });
+
+    it('reads at most per_run notes a run and resumes at the oldest one stored, until the first note', function () {
+        config(['tv.commentary.followed.per_run' => 50]);
+        followedHistory($this->paging, $this->author, 130, now()->subDays(3)->getTimestamp());
+
+        $runs = [];
+        foreach (range(1, 4) as $run) {
+            $counts = app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+            $runs[] = [$counts['stored'], $counts['exhausted'], CasterFollowedNote::query()->count()];
+        }
+
+        // 50 read a run: the tail starts AT the oldest note stored (`until` is inclusive), so it reads that one again
+        // (known, not stored twice): 50 + 49 + 31 new notes, and the third run reaches the first note.
+        expect($runs)->toBe([[50, 0, 50], [49, 0, 99], [31, 1, 130], [0, 0, 130]])
+            ->and(CasterFollowedNote::query()->distinct()->count('event_id'))->toBe(130);
+    });
+
+    it('never calls the history read to the end when no relay answered, and goes on next run', function () {
+        followedHistory($this->paging, $this->author, 60, now()->subDays(3)->getTimestamp());
+        $this->paging->down = ['wss://a.test', 'wss://b.test'];
+
+        expect(app(FollowedNotes::class)->fetch(CarbonImmutable::now()))->toMatchArray(['stored' => 0, 'exhausted' => 0]);
+
+        $this->paging->down = [];
+        expect(app(FollowedNotes::class)->fetch(CarbonImmutable::now()))->toMatchArray(['stored' => 60, 'exhausted' => 1]);
+    });
+
+    it('stops a run at run_seconds between pages, whatever is left', function () {
+        config(['tv.commentary.followed.run_seconds' => 0.05]);
+        $slow = new class extends RelayReader
+        {
+            public int $calls = 0;
+
+            /** @var list<float|null> */
+            public array $cutOff = [];
+
+            public function fetchCounted(array $filters, ?array $relays = null, array $known = [], int $perAuthor = 1, ?float $until = null): array
+            {
+                $this->calls++;
+                $this->cutOff[] = $until;
+                usleep(60_000);
+
+                return ['events' => [SignedEvent::fromInput((new TestSigner)->sign(1, [], 'irrelevant', now()->getTimestamp() - $this->calls))], 'answered' => 1];
+            }
+        };
+        $this->app->instance(RelayReader::class, $slow);
+
+        app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+
+        // Between pages, never inside one: a page cut after some relays would move the cursor past the others' notes.
+        expect($slow->calls)->toBe(1)
+            ->and($slow->cutOff)->toBe([null]);
+    });
+
+    it('speaks the backlog oldest first from the very first note, a note under an hour old ahead, each once, the old ones with month and year in words', function () {
+        config(['tv.commentary.ai' => false]);
+        $this->paging->relays['wss://a.test'] = [
+            followedNoteAt($this->author, 'Mein allererster Post auf Nostr, hallo zusammen', CarbonImmutable::parse('2023-03-15 12:00', 'Europe/Berlin')->getTimestamp()),
+            followedNoteAt($this->author, 'Sommer auf dem Berg und Bitcoin im Kopf', CarbonImmutable::parse('2024-07-01 09:00', 'Europe/Berlin')->getTimestamp()),
+            followedNoteAt($this->author, 'Vorgestern ging es um den Stream und die Liga', now()->subDays(2)->subHour()->getTimestamp()),
+            followedNoteAt($this->author, 'Gestern Abend noch ein Gedanke zu Nostr gehabt', now()->subHours(20)->getTimestamp()),
+        ];
+        app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+        expect(CasterFollowedNote::query()->whereNotNull('skipped')->count())->toBe(0);
+
+        $queue = app(ScriptQueue::class);
+        $spoken = [];
+        $fill = function () use ($queue, &$spoken): void {
+            if ($queue->fillSegments(CarbonImmutable::now()) === 1) {
+                $spoken[] = CasterScript::query()->where('kind', CasterScript::FOLLOWED)->orderByDesc('id')->first()->sentences()[0];
+            }
+            $this->travel(11)->minutes();
+        };
+
+        $fill();
+        // A brand-new note jumps the queue, once.
+        $this->paging->relays['wss://a.test'][] = followedNoteAt($this->author, 'Gerade eben geschrieben, frischer geht es nicht mehr', now()->subMinutes(5)->getTimestamp());
+        app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+        foreach (range(1, 6) as $round) {
+            $fill();
+        }
+
+        expect($spoken)->toBe([
+            'Im März zweitausenddreiundzwanzig hab ich auf Nostr geschrieben: Mein allererster Post auf Nostr, hallo zusammen.',
+            'Auf Nostr hab ich geschrieben: Gerade eben geschrieben, frischer geht es nicht mehr.',
+            'Im Juli zweitausendvierundzwanzig hab ich auf Nostr geschrieben: Sommer auf dem Berg und Bitcoin im Kopf.',
+            'Im Oktober zweitausendsechsundzwanzig hab ich auf Nostr geschrieben: Vorgestern ging es um den Stream und die Liga.',
+            'Auf Nostr hab ich geschrieben: Gestern Abend noch ein Gedanke zu Nostr gehabt.',
+        ])
+            ->and(CasterScript::query()->where('kind', CasterScript::FOLLOWED)->distinct()->count('facts_hash'))->toBe(5)
+            ->and(CasterFollowedNote::query()->whereNull('reacted_at')->count())->toBe(0);
+    });
+
+    it('puts the month and year in the intro of the voice\'s take, and tells the voice it is a look back without a date of its own', function () {
+        $this->paging->relays['wss://a.test'] = [followedNoteAt($this->author, 'Mein allererster Post auf Nostr, hallo zusammen', CarbonImmutable::parse('2023-03-15 12:00', 'Europe/Berlin')->getTimestamp())];
+        app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+        $take = "Ich hab damals meinen ersten Post auf Nostr abgesetzt.\nHallo zusammen, ganz brav.\nSo fängt jede große Geschichte an.";
+        VoiceAgent::fake([followedDraft($take)]);
+        NoteFactCheck::fake([['claims' => []]]);
+
+        expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
+
+        $first = CasterScript::query()->sole()->sentences()[0];
+        expect(CasterScript::query()->sole()->source)->toBe(CasterScript::SOURCE_AI)
+            ->and($first)->toStartWith('Im März zweitausenddreiundzwanzig ')
+            ->and(str_replace('Im März zweitausenddreiundzwanzig', '{when}', $first))->toBeIn(FollowedScripts::data()['self_dated_intros']);
+        VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Rückblick') && str_contains($prompt->prompt, 'nenn kein Datum') && ! str_contains($prompt->prompt, 'zweitausend'));
+    });
+
+    it('keeps the dated intros free of digits and within the spoken limits, for the longest month and year', function () {
+        $data = FollowedScripts::data();
+        $when = 'Im September zweitausendsiebenundsiebzig';
+
+        foreach ([...$data['dated_intros'], ...$data['self_dated_intros'], $data['dated_attribution'].' Kurz.', $data['self_dated_attribution'].' Kurz.'] as $line) {
+            $line = str_replace(['{when}', '{name}'], [$when, FollowedNotes::FALLBACK_NAME], $line);
+            expect(preg_match('/\d/', $line))->toBe(0)
+                ->and($line)->toStartWith($when)
+                ->and((new ScriptGuard)->check($line, 1, 3, 16))->toBe([]);
+        }
+    });
 });

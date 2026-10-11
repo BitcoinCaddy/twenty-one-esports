@@ -18,15 +18,20 @@ use Throwable;
  * five minutes; user 2026-10-11: "Für mehr Varianz kann er noch auf die
  * Nostr-Posts von nprofile1… reagieren, aber pro Post nur einmal"): for each
  * profile in `tv.commentary.followed_profiles` (npub, nprofile or hex) its
- * kind 1 notes since its cursor (the newest note stored, at most
- * `followed.fresh_hours` back), from the nprofile's relay hints and the
- * stream's relays, checked like any input from outside by RelayReader. The
- * display name (kind 0) is cached for `followed.name_hours`.
+ * kind 1 notes, from the nprofile's relay hints and the stream's relays,
+ * checked like any input from outside by RelayReader. With `fresh_hours` 0
+ * (the default; user 2026-10-12: "Die Kommentare für die Nostr-Posts des
+ * npubs dürfen bis an den Anfang aller je geposteten kind-1-Events gehen.
+ * Also ALL!") that is the whole history, paged back with `until` a bounded
+ * stretch per run; otherwise only the last `fresh_hours`. The display name
+ * (kind 0) is cached for `followed.name_hours`.
  *
  * Every note is stored once by its id; one this class turns down (a reply,
  * too short, only links or media, explicit, about suffering, too old) is
- * stored as reacted and skipped, so it never comes up again. Bounded: rows
- * older than `keep_days` are deleted, and beyond `max_rows` the oldest go.
+ * stored as reacted and skipped, so it never comes up again. With a
+ * `fresh_hours` limit, rows older than `keep_days` are deleted and beyond
+ * `max_rows` the oldest go; without one nothing is deleted, since the
+ * backfill would read a deleted note again and it would be spoken twice.
  */
 class FollowedNotes
 {
@@ -44,6 +49,11 @@ class FollowedNotes
     public const FALLBACK_NAME = 'ein Nostr-Kollege';
 
     private const NAME_CACHE = 'caster:followed:name:';
+
+    /** Set once the backfill of a pubkey found nothing older; asked again after BACKFILL_DONE_DAYS (a new relay hint may hold more). */
+    private const BACKFILL_DONE = 'caster:followed:backfill-done:';
+
+    private const BACKFILL_DONE_DAYS = 7;
 
     /** Whole words that mark explicit content, German and English. */
     private const NSFW_WORDS = [
@@ -83,44 +93,116 @@ class FollowedNotes
         return array_column(self::profiles(), 'pubkey');
     }
 
-    /** @return array{profiles: int, stored: int, filtered: int, pruned: int} */
+    /**
+     * Reads each profile's notes: the head (everything after the newest note
+     * stored; on the first run from now back to the floor), then, while
+     * `fresh_hours` is 0, the tail (back from the oldest note stored until
+     * the relays have nothing older). At most `per_run` notes per profile and
+     * `run_seconds` per run: the tail resumes at the oldest stored note.
+     *
+     * @return array{profiles: int, stored: int, filtered: int, pruned: int, read: int, exhausted: int}
+     */
     public function fetch(CarbonImmutable $now): array
     {
         $settings = (array) config('tv.commentary.followed', []);
-        $counts = ['profiles' => 0, 'stored' => 0, 'filtered' => 0, 'pruned' => 0];
-        $perProfile = max(1, (int) ($settings['per_profile'] ?? 20));
+        $counts = ['profiles' => 0, 'stored' => 0, 'filtered' => 0, 'pruned' => 0, 'read' => 0, 'exhausted' => 0];
+        $fresh = (int) ($settings['fresh_hours'] ?? 0);
+        $deadline = microtime(true) + max(0.01, (float) ($settings['run_seconds'] ?? 120));
 
         foreach (self::profiles() as $profile) {
             $counts['profiles']++;
             $pubkey = $profile['pubkey'];
             $relays = self::relaysFor($profile['relays']);
+            $budget = max(1, (int) ($settings['per_run'] ?? 1000));
 
             if (! Cache::has(self::NAME_CACHE.$pubkey)) {
                 $this->refreshName($pubkey, $relays, $settings);
             }
 
-            $cursor = CasterFollowedNote::query()->where('pubkey', $pubkey)->max('note_created_at');
-            $since = max(
-                $cursor === null ? 0 : CarbonImmutable::parse($cursor)->getTimestamp() + 1,
-                $now->subHours((int) ($settings['fresh_hours'] ?? 24))->getTimestamp(),
-            );
+            $newest = CasterFollowedNote::query()->where('pubkey', $pubkey)->max('note_created_at');
+            $oldest = CasterFollowedNote::query()->where('pubkey', $pubkey)->min('note_created_at');
+            $floor = $fresh > 0 ? $now->subHours($fresh)->getTimestamp() : 0;
 
-            $events = $this->reader->fetch([['kinds' => [1], 'authors' => [$pubkey], 'since' => $since, 'limit' => $perProfile]], $relays, perAuthor: $perProfile);
+            $since = max($newest === null ? 0 : CarbonImmutable::parse($newest)->getTimestamp() + 1, $floor);
+            $head = $this->page($pubkey, $relays, $since, null, $budget, $deadline, $now, $settings, $counts);
+            // On the first run the head is the whole walk back; after that only the tail can reach the first note.
+            $exhausted = $newest === null && $head['exhausted'];
 
-            foreach ($events as $event) {
-                if ($event->pubkey !== $pubkey || $event->kind !== 1) {
-                    continue;
-                }
+            if ($fresh === 0 && $oldest !== null && $budget > $head['read'] && ! Cache::has(self::BACKFILL_DONE.$pubkey)) {
+                $exhausted = $this->page($pubkey, $relays, 0, CarbonImmutable::parse($oldest)->getTimestamp(), $budget - $head['read'], $deadline, $now, $settings, $counts)['exhausted'];
+            }
 
-                $stored = $this->store($event, $now, $settings);
-                $counts['stored'] += $stored === 'stored' ? 1 : 0;
-                $counts['filtered'] += $stored === 'filtered' ? 1 : 0;
+            if ($fresh === 0 && $exhausted) {
+                Cache::put(self::BACKFILL_DONE.$pubkey, true, now()->addDays(self::BACKFILL_DONE_DAYS));
+                $counts['exhausted']++;
             }
         }
 
         $counts['pruned'] = $this->prune($now);
 
         return $counts;
+    }
+
+    /**
+     * Pages back through a profile's kind 1 notes (NIP-01 `until`, inclusive,
+     * `page_limit` per REQ) from `$until` (null: now) down to `$since`, and
+     * stores each note once. Stops when a page brings no note this walk has
+     * not seen (exhausted), when `$budget` notes are read, or at `$deadline`.
+     * The deadline is checked between pages, never inside one: a page cut
+     * short after some relays would move the cursor past the notes of the
+     * others, and they would never be read (each relay keeps its own
+     * `relay_fetch_budget_seconds`). A page no relay answered is no proof of
+     * the end: the walk stops without calling the history exhausted, and the
+     * next run asks again.
+     *
+     * @param  list<string>|null  $relays
+     * @param  array<array-key, mixed>  $settings
+     * @param  array{profiles: int, stored: int, filtered: int, pruned: int, read: int, exhausted: int}  $counts
+     * @return array{read: int, exhausted: bool}
+     */
+    private function page(string $pubkey, ?array $relays, int $since, ?int $until, int $budget, float $deadline, CarbonImmutable $now, array $settings, array &$counts): array
+    {
+        $limit = max(1, (int) ($settings['page_limit'] ?? 200));
+        $seen = [];
+        $read = 0;
+
+        while ($read < $budget && microtime(true) < $deadline) {
+            $filter = ['kinds' => [1], 'authors' => [$pubkey], 'limit' => min($limit, $budget - $read)];
+            $filter += $since > 0 ? ['since' => $since] : [];
+            $filter += $until !== null ? ['until' => $until] : [];
+            $result = $this->reader->fetchCounted([$filter], $relays, $seen, $filter['limit']);
+
+            if ($result['answered'] === 0) {
+                return ['read' => $read, 'exhausted' => false];
+            }
+
+            $oldest = null;
+
+            foreach ($result['events'] as $event) {
+                // A relay may ignore `until`: a newer note would keep the walk from going back. One that ignores `since`
+                // hands over older notes, stored like any other (skipReason() turns down one past `fresh_hours`).
+                if ($event->pubkey !== $pubkey || $event->kind !== 1 || isset($seen[$event->id]) || ($until !== null && $event->createdAt > $until)) {
+                    continue;
+                }
+
+                $seen[$event->id] = true;
+                $read++;
+                $counts['read']++;
+                $oldest = min($oldest ?? $event->createdAt, $event->createdAt);
+                $stored = $this->store($event, $now, $settings);
+                $counts['stored'] += $stored === 'stored' ? 1 : 0;
+                $counts['filtered'] += $stored === 'filtered' ? 1 : 0;
+            }
+
+            if ($oldest === null) {
+                return ['read' => $read, 'exhausted' => true];
+            }
+
+            // Inclusive: notes sharing the oldest second come again and are skipped as seen.
+            $until = $oldest;
+        }
+
+        return ['read' => $read, 'exhausted' => false];
     }
 
     /** The profile's name as spoken: its cached kind 0 display name when speakable, else FALLBACK_NAME. */
@@ -199,7 +281,9 @@ class FollowedNotes
      */
     public static function skipReason(SignedEvent $event, string $text, CarbonImmutable $now, array $settings): ?string
     {
-        if ($event->createdAt < $now->subHours((int) ($settings['fresh_hours'] ?? 24))->getTimestamp()) {
+        $fresh = (int) ($settings['fresh_hours'] ?? 0);
+
+        if ($fresh > 0 && $event->createdAt < $now->subHours($fresh)->getTimestamp()) {
             return self::OLD;
         }
 
@@ -222,11 +306,22 @@ class FollowedNotes
         return NewsFilter::unfit($text);
     }
 
-    /** Rows older than `keep_days` (never less than `fresh_hours`, so no note can be read again), then the oldest beyond `max_rows`. */
+    /**
+     * Rows older than `keep_days` (never less than `fresh_hours`, so no note
+     * can be read again), then the oldest beyond `max_rows`. Without a
+     * `fresh_hours` limit nothing: the backfill would read a deleted note
+     * again, and it would get a second reaction.
+     */
     public function prune(CarbonImmutable $now): int
     {
         $settings = (array) config('tv.commentary.followed', []);
-        $hours = max(24 * (int) ($settings['keep_days'] ?? 7), (int) ($settings['fresh_hours'] ?? 24) + 1);
+        $fresh = (int) ($settings['fresh_hours'] ?? 0);
+
+        if ($fresh <= 0) {
+            return 0;
+        }
+
+        $hours = max(24 * (int) ($settings['keep_days'] ?? 7), $fresh + 1);
         $deleted = CasterFollowedNote::query()->where('note_created_at', '<', $now->subHours($hours))->delete();
 
         $max = max(1, (int) ($settings['max_rows'] ?? 500));

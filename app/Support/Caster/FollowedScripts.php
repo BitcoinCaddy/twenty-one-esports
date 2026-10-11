@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Cache;
  * The followed-profile segment (user 2026-10-11: "Für mehr Varianz kann er
  * noch auf die Nostr-Posts von nprofile1… reagieren, aber pro Post nur
  * einmal"): an intro naming the profile, then Markus retells the note in
- * his own words and reacts to it. The newest fresh note comes first, and
- * each note is used once, whatever became of it: it is marked reacted
+ * his own words and reacts to it. The notes come in time order, oldest
+ * first, a note younger than `jump_ahead_minutes` ahead of the backlog
+ * (next()); an older one is announced with its month and year (when()).
+ * Each note is used once, whatever became of it: it is marked reacted
  * before the model is asked.
  *
  * The take is the league voice's (CasterVoice::followedNote(), one model call
@@ -36,9 +38,17 @@ class FollowedScripts
     /** The caster's own name: a followed profile of this name is Markus himself. */
     public const SELF_NAME = 'Markus Turm';
 
+    private const MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+
     public function __construct(private CasterVoice $voice) {}
 
-    /** The newest unused note of a profile still followed, created within `followed.fresh_hours`. */
+    /**
+     * The next unused note of a profile still followed: the newest one
+     * younger than `followed.jump_ahead_minutes` jumps ahead, else the oldest
+     * (user 2026-10-12: "… aber sortiert nach Zeit": a journey through the
+     * history from the first note on). With a `followed.fresh_hours` limit,
+     * only notes within it.
+     */
     public function next(CarbonImmutable $now): ?CasterFollowedNote
     {
         $pubkeys = FollowedNotes::pubkeys();
@@ -47,9 +57,29 @@ class FollowedScripts
             return null;
         }
 
-        return CasterFollowedNote::query()->whereIn('pubkey', $pubkeys)->whereNull('reacted_at')->whereNull('skipped')
-            ->where('note_created_at', '>=', $now->subHours((int) config('tv.commentary.followed.fresh_hours', 24)))
-            ->orderByDesc('note_created_at')->orderByDesc('id')->first();
+        $fresh = (int) config('tv.commentary.followed.fresh_hours', 0);
+        $unused = fn () => CasterFollowedNote::query()->whereIn('pubkey', $pubkeys)->whereNull('reacted_at')->whereNull('skipped')
+            ->when($fresh > 0, fn ($query) => $query->where('note_created_at', '>=', $now->subHours($fresh)));
+
+        return $unused()->where('note_created_at', '>=', $now->subMinutes((int) config('tv.commentary.followed.jump_ahead_minutes', 60)))
+            ->orderByDesc('note_created_at')->orderByDesc('id')->first()
+            ?? $unused()->orderBy('note_created_at')->orderBy('id')->first();
+    }
+
+    /**
+     * "Im März zweitausenddreiundzwanzig" for a note older than
+     * `followed.dated_after_hours` (month and year in words, the app's time
+     * zone), null for a recent one.
+     */
+    public static function when(CasterFollowedNote $note, CarbonImmutable $now): ?string
+    {
+        $created = CarbonImmutable::instance($note->note_created_at)->setTimezone((string) config('app.timezone'));
+
+        if ($created->greaterThan($now->subHours((int) config('tv.commentary.followed.dated_after_hours', 48)))) {
+            return null;
+        }
+
+        return 'Im '.self::MONTHS[$created->month - 1].' '.ReactionLines::spokenNumber($created->year);
     }
 
     /**
@@ -74,9 +104,11 @@ class FollowedScripts
         $self = self::isSelf($name);
         $german = NewsFilter::readsGerman($note->content);
         $data = self::data();
+        $when = self::when($note, $now);
+        $fill = fn (string $line): string => str_replace(['{name}', '{when}'], [$name, (string) $when], $line);
 
         if ($ai) {
-            $answer = $this->voice->followedNote($note->content, $name, $german, $self);
+            $answer = $this->voice->followedNote($note->content, $name, $german, $self, $when);
 
             if ($answer !== null && $answer['skip']) {
                 $note->update(['skipped' => 'model']);
@@ -85,10 +117,9 @@ class FollowedScripts
             }
 
             if ($answer !== null && $answer['text'] !== null) {
-                $intros = $self ? $data['self_intros'] : $data['intros'];
-                $intro = str_replace('{name}', $name, $intros[$note->id % count($intros)]);
+                $intros = $data[($self ? 'self_' : '').($when === null ? 'intros' : 'dated_intros')];
 
-                return ['text' => $intro."\n".$answer['text'], 'source' => CasterScript::SOURCE_AI];
+                return ['text' => $fill($intros[$note->id % count($intros)])."\n".$answer['text'], 'source' => CasterScript::SOURCE_AI];
             }
         }
 
@@ -100,7 +131,7 @@ class FollowedScripts
 
         return [
             'text' => implode("\n", [
-                str_replace('{name}', $name, $self ? $data['self_attribution'] : $data['attribution']).' '.self::quote($note->content, (int) config('tv.commentary.followed.quote_words', 20)),
+                $fill($data[($self ? 'self_' : '').($when === null ? 'attribution' : 'dated_attribution')]).' '.self::quote($note->content, (int) config('tv.commentary.followed.quote_words', 20)),
                 $this->reaction($data),
             ]),
             'source' => CasterScript::SOURCE_PATTERN,
@@ -159,11 +190,11 @@ class FollowedScripts
     }
 
     /**
-     * @return array{intros: list<string>, self_intros: list<string>, attribution: string, self_attribution: string, reactions: list<string>}
+     * @return array{intros: list<string>, self_intros: list<string>, dated_intros: list<string>, self_dated_intros: list<string>, attribution: string, self_attribution: string, dated_attribution: string, self_dated_attribution: string, reactions: list<string>}
      */
     public static function data(): array
     {
-        /** @var array{intros: list<string>, self_intros: list<string>, attribution: string, self_attribution: string, reactions: list<string>} $data */
+        /** @var array{intros: list<string>, self_intros: list<string>, dated_intros: list<string>, self_dated_intros: list<string>, attribution: string, self_attribution: string, dated_attribution: string, self_dated_attribution: string, reactions: list<string>} $data */
         $data = json_decode((string) file_get_contents(resource_path('data/voice/followed.json')), true, flags: JSON_THROW_ON_ERROR);
 
         return $data;

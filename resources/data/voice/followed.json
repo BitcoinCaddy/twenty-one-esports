@@ -1,5 +1,5 @@
 {
- "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note.",
+ "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own; the dated_ variants, with {when} = 'Im März zweitausenddreiundzwanzig', for a note older than followed.dated_after_hours), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note.",
  "intros": [
   "Kurzer Blick rüber auf Nostr, da hat {name} wieder was gepostet.",
   "Auf Nostr meldet sich {name} zu Wort.",
@@ -13,8 +13,22 @@
   "Auf Nostr hab ich mich mal wieder zu Wort gemeldet.",
   "Frisch von meinem eigenen Nostr-Profil."
  ],
+ "dated_intros": [
+  "{when} hat {name} auf Nostr was gepostet.",
+  "{when} hat sich {name} auf Nostr zu Wort gemeldet.",
+  "{when} hat {name} auf Nostr das hier getippt, ein Blick ins Archiv.",
+  "{when} schrieb {name} auf Nostr, wir blättern im Archiv."
+ ],
+ "self_dated_intros": [
+  "{when} hab ich auf Nostr geschrieben.",
+  "{when} hab ich auf Nostr mal was rausgehauen.",
+  "{when} hab ich das auf Nostr gepostet, ein Blick in mein Archiv.",
+  "{when} hab ich auf Nostr getippt, eine Reise durch meine Geschichte."
+ ],
  "attribution": "Auf Nostr schreibt {name}:",
  "self_attribution": "Auf Nostr hab ich geschrieben:",
+ "dated_attribution": "{when} schrieb {name} auf Nostr:",
+ "self_dated_attribution": "{when} hab ich auf Nostr geschrieben:",
  "reactions": [
   "Na, das lass ich mal so stehen.",
   "Kann man so sehen.\nMuss man aber nicht.",

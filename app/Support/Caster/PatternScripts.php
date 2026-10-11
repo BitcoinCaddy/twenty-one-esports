@@ -121,6 +121,9 @@ final class PatternScripts
     /** Canon lines per script at most (the user, 2026-10-11: more of the podcast's memes and sayings, not stats). */
     private const MAX_CANON = 2;
 
+    /** Canon lines tried for one joke slot before it stays empty (one that does not fit the room left passes on). */
+    private const JOKE_CANDIDATES = 4;
+
     /** A canon wording is spoken as a line of its own only up to this many words. */
     private const CANON_MAX_WORDS = 14;
 
@@ -536,7 +539,13 @@ final class PatternScripts
                     continue;
                 }
 
-                $joke = $this->jokeLine($used, $sequence + count($canonIds) * 101, $canonIds);
+                // A wording too long for the room left (several sentences) passes to the next one, a few at most:
+                // with the canon grown to 1,811 entries the stride landed on such a line and the script came out null.
+                $tried = [];
+                do {
+                    $joke = $this->jokeLine($used, $sequence + count($canonIds) * 101 + count($tried), [...$canonIds, ...$tried]);
+                    $tried[] = $joke['id'] ?? '';
+                } while ($joke !== null && ! $fits($joke['wording']) && count($tried) < self::JOKE_CANDIDATES);
                 $canonOffered = $canonOffered || $joke !== null;
 
                 if ($joke !== null && $fits($joke['wording'])) {
