@@ -4676,7 +4676,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{mood_dominance} zieht im Rennen davon."
+   "text": "{mood_dominance} zieht im Rennen davon.{?race_leader}"
   },
   {
    "id": "ml-race-6",
@@ -4684,7 +4684,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "Kopf an Kopf im Rennen, {mood_close} hat ganz knapp die Nase vorn."
+   "text": "Kopf an Kopf im Rennen, {mood_close} hat ganz knapp die Nase vorn.{?race_leader}"
   },
   {
    "id": "ml-race-level-1",
@@ -4788,7 +4788,7 @@
     "live_games",
     "mempool"
    ],
-   "text": "{mood_dominance} dominiert die Karte."
+   "text": "{mood_dominance} dominiert die Karte.{?hyper_leader}"
   },
   {
    "id": "ml-hyper-duel-1",
@@ -5002,6 +5002,331 @@
     "tmnf"
    ],
    "text": "Heute schon {attempts_today} bei {game}."
+  },
+  {
+   "id": "ml-chess-check-3",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "{check_color} gibt Schach, jetzt wird es heiß."
+  },
+  {
+   "id": "ml-chess-check-4",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Schach auf dem Brett, da muss jetzt jemand ganz genau hinschauen.{?check_to}"
+  },
+  {
+   "id": "ml-chess-capture-3",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "{capture_color} schlägt {captured}, das tut weh."
+  },
+  {
+   "id": "ml-chess-exchange-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Was für ein Schlagabtausch: {exchange} hintereinander."
+  },
+  {
+   "id": "ml-chess-comeback-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "{comeback_color} lag schon {comeback_from} Material zurück und hat das wieder aufgeholt."
+  },
+  {
+   "id": "ml-chess-material-5",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Mit {edge} mehr hat {ahead_color} ein dickes Polster.{?mood_dominance}"
+  },
+  {
+   "id": "ml-chess-material-6",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Knapp ist es: {ahead_color} hat nur {edge} mehr.{?mood_close}"
+  },
+  {
+   "id": "ml-chess-clock-3",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "{clock_color} gerät in Zeitnot."
+  },
+  {
+   "id": "ml-chess-clock-4",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Die Uhr tickt, da wird die Zeit knapp.{?clock_low}"
+  },
+  {
+   "id": "ml-chess-phase-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Wir sind {phase_in}, Zug {move}."
+  },
+  {
+   "id": "ml-chess-losses-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Weiß hat schon {white_lost} verloren."
+  },
+  {
+   "id": "ml-chess-losses-3",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Schwarz hat schon {black_lost} verloren."
+  },
+  {
+   "id": "ml-race-7",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Vorne im Rennen fehlen nur noch {leader_steps} bis zum Ziel.{?race_leader}"
+  },
+  {
+   "id": "ml-race-8",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Dahinter sind es noch {trailer_steps} bis zum Ziel.{?race_trailer}"
+  },
+  {
+   "id": "ml-race-9",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Kopf an Kopf im Rennen, ganz knapp.{?mood_close}{?race_leader}"
+  },
+  {
+   "id": "ml-race-10",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Da zieht jemand im Rennen richtig davon.{?mood_dominance}{?race_leader}"
+  },
+  {
+   "id": "ml-race-goal-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Nur noch ein Schritt bis zum Ziel, jetzt wird es spannend!{?one_step}"
+  },
+  {
+   "id": "ml-race-level-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Das Rennen ist offen: {level_a_steps} gegen {level_b_steps} bis zum Ziel."
+  },
+  {
+   "id": "ml-morris-3",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "In der Mühle steht es {leader_men} gegen {trailer_men}."
+  },
+  {
+   "id": "ml-mills-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Auf dem Brett: {mills}.{?mill_owner}"
+  },
+  {
+   "id": "ml-flying-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Nur noch drei Steine, jetzt darf gesprungen werden!{?flying}"
+  },
+  {
+   "id": "ml-checkers-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Bei der Dame steht es {leader_pieces} gegen {trailer_pieces}."
+  },
+  {
+   "id": "ml-kings-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Auf dem Brett: schon {kings}.{?king_owner}"
+  },
+  {
+   "id": "ml-hyper-leader-4",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Die Spitze bei Hyperbitcoinization hält {leader_territories}.{?hyper_leader}"
+  },
+  {
+   "id": "ml-hyper-leader-5",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Die Spitze hält {leader_banks}.{?hyper_leader}"
+  },
+  {
+   "id": "ml-hyper-leader-6",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Da dominiert jemand die Karte.{?mood_dominance}{?hyper_leader}"
+  },
+  {
+   "id": "ml-hyper-duel-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Enges Duell auf der Karte, da ist alles drin.{?duel_a}"
+  },
+  {
+   "id": "ml-hyper-bank-3",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Eine Zentralbank ist gefallen!{?bank_by}"
+  },
+  {
+   "id": "ml-hyper-bank-4",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Die {bank_name} ist gefallen!"
+  },
+  {
+   "id": "ml-hyper-conquests-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Da ist jemand im Eroberungsrausch: {conquests} in den letzten Zügen.{?conqueror}"
+  },
+  {
+   "id": "ml-series-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "In der Serie steht es {series_score}."
+  },
+  {
+   "id": "ml-series-level-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Ausgleich in der Serie: {series_level}."
+  },
+  {
+   "id": "ml-series-point-2",
+   "topics": [
+    "live_games",
+    "mempool"
+   ],
+   "text": "Da fehlt nur noch ein Sieg in dieser Serie.{?series_point}"
+  },
+  {
+   "id": "ml-pong-4",
+   "topics": [
+    "results"
+   ],
+   "text": "Proof of Pong endet {pong_score}."
+  },
+  {
+   "id": "ml-tour-final-2",
+   "topics": [
+    "live_tournament"
+   ],
+   "text": "Das Finale bei {tournament} steht.{?finalist_a}"
+  },
+  {
+   "id": "ml-tour-upset-3",
+   "topics": [
+    "live_tournament"
+   ],
+   "text": "Überraschung bei {tournament}: Nummer {winner_seed} der Setzliste schlägt Nummer {loser_seed}."
+  },
+  {
+   "id": "ml-score-4",
+   "topics": [
+    "blockfill",
+    "tmnf"
+   ],
+   "text": "Bei {game} trennen die Spitze nur {score_gap} von Platz zwei.{?score_leader}"
+  },
+  {
+   "id": "ml-score-5",
+   "topics": [
+    "blockfill",
+    "tmnf"
+   ],
+   "text": "Ganz eng bei {game}: nur {score_gap} zwischen den ersten beiden.{?mood_close}"
+  },
+  {
+   "id": "ml-score-tie-2",
+   "topics": [
+    "blockfill",
+    "tmnf"
+   ],
+   "text": "An der Spitze von {game} herrscht Gleichstand.{?tied_a}"
+  },
+  {
+   "id": "ml-score-new-top-3",
+   "topics": [
+    "blockfill",
+    "tmnf"
+   ],
+   "text": "Neue Bestzeit an der Spitze von {game}!{?new_top}"
+  },
+  {
+   "id": "ml-score-bests-2",
+   "topics": [
+    "blockfill",
+    "tmnf"
+   ],
+   "text": "Heute schon {bests_today} bei {game}."
   }
  ]
 }

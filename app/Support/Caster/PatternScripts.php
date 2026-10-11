@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use App\Support\Caster\GameMoments\GameMoments;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceUsage;
@@ -65,7 +66,7 @@ final class PatternScripts
     public const OPENING = 'opening';
 
     /** Slots whose value is a person: such a line is a name line. */
-    public const PERSON_SLOTS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw_a', 'draw_b', 'leader', 'second', 'first_entrant', 'champion', 'bf_leader', 'bf_second', 'leader_under'];
+    public const PERSON_SLOTS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw_a', 'draw_b', 'leader', 'second', 'first_entrant', 'champion', 'bf_leader', 'bf_second', 'leader_under', ...GameMoments::PERSON_SLOTS];
 
     /** Slots that only say which item a line is about; a fact's atoms leave them out when it has others. */
     private const CONTEXT_SLOTS = ['sender', 'website_spoken', 'game', 'mode', 'ladder', 'tournament', 'track', 'clan_name'];
@@ -411,7 +412,7 @@ final class PatternScripts
 
         foreach ((array) ($data['moment_lines'] ?? []) as $row) {
             if ($fits((array) ($row['topics'] ?? []))) {
-                $facts[(string) $row['id']] = (string) $row['text'];
+                $pool[self::FACT][(string) $row['id']] = (string) $row['text'];
             }
         }
 

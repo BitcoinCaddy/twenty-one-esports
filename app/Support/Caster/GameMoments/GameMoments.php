@@ -36,8 +36,35 @@ final class GameMoments
     /** Moments per topic. */
     public const MAX = 12;
 
-    /** Chess games read, as SceneFacts names them (the newest active ones with speakable names). */
+    /** Chess games said, as SceneFacts names them (rankedChess()). */
     public const CHESS_GAMES = 3;
+
+    /** Running chess games ranked, newest first (the snapshot of 2026-10-11 had 12). */
+    public const CHESS_CANDIDATES = 30;
+
+    /**
+     * What a chess moment is worth to the commentary (rankedChess()): a check, a comeback, a low clock and a
+     * material swing first, an endgame next; a game's worth is the sum of its moments'. Our weighting, no source.
+     */
+    public const CHESS_WEIGHTS = ['check' => 5, 'comeback' => 5, 'clock' => 4, 'exchange' => 4, 'capture' => 3, 'level' => 1];
+
+    /** A material moment's worth by its mood (dominance is the bigger swing). */
+    public const MATERIAL_WEIGHTS = [Mood::DOMINANCE => 4, Mood::TENSION => 3, Mood::CLOSE => 2];
+
+    /** An endgame (near the end) is worth this; the opening and the middlegame nothing. */
+    public const ENDGAME_WEIGHT = 3;
+
+    /**
+     * Moment slots whose value is a player (or a team): PatternScripts treats a line with one as a name line,
+     * said only where names are allowed. `lead` and every `mood_*` slot name the player the moment is about.
+     */
+    public const PERSON_SLOTS = [
+        'lead', 'mood_tension', 'mood_comeback', 'mood_dominance', 'mood_close', 'mood_upset',
+        'check_by', 'check_to', 'capture_by', 'comeback_by', 'ahead', 'behind', 'clock_low',
+        'race_leader', 'race_trailer', 'one_step', 'men_leader', 'men_trailer', 'mill_owner', 'flying', 'pieces_leader', 'pieces_trailer', 'king_owner',
+        'hyper_leader', 'duel_a', 'duel_b', 'bank_by', 'conqueror', 'series_leader', 'series_point', 'pong_winner', 'pong_loser', 'saver',
+        'finalist_a', 'finalist_b', 'upset_winner', 'upset_loser', 'score_leader', 'score_second', 'tied_a', 'tied_b', 'new_top', 'dethroned', 'best_by',
+    ];
 
     /** Hyperbitcoinization matches, Pong results, series and tournaments read per topic. */
     public const OTHERS = 2;
@@ -51,9 +78,10 @@ final class GameMoments
     ) {}
 
     /**
+     * @param  list<array{game: ChessGame, white: string, black: string, moments: list<array<string, string|int>>}>|null  $chess  rankedChess(), when the caller has it already
      * @return list<array<string, string|int>>
      */
-    public function forTopic(string $topic, bool $night = false): array
+    public function forTopic(string $topic, bool $night = false, ?array $chess = null): array
     {
         if ($night) {
             return [];
@@ -61,7 +89,7 @@ final class GameMoments
 
         $nowMs = (int) (microtime(true) * 1000);
         $sources = match ($topic) {
-            SceneTopic::LIVE_GAMES, SceneTopic::MEMPOOL => [fn (): array => $this->chessGames($nowMs), fn (): array => [$this->boardGame()], fn (): array => $this->hyperMatches($nowMs), fn (): array => $this->series()],
+            SceneTopic::LIVE_GAMES, SceneTopic::MEMPOOL => [fn (): array => array_map(fn (array $entry): array => $entry['moments'], $chess ?? $this->rankedChess($nowMs)), fn (): array => [$this->boardGame()], fn (): array => $this->hyperMatches($nowMs), fn (): array => $this->series()],
             SceneTopic::RESULTS => [fn (): array => $this->pongResults()],
             SceneTopic::LIVE_TOURNAMENT => [fn (): array => $this->tournaments($nowMs)],
             SceneTopic::BLOCKFILL => [fn (): array => [$this->scores->blockfill()]],
@@ -110,23 +138,53 @@ final class GameMoments
     }
 
     /**
-     * @return list<list<array<string, string|int>>>
+     * The running chess games most worth talking about (user 2026-10-11: the
+     * caster should call who is winning, not the move number), with their
+     * moments: of the CHESS_CANDIDATES newest active games whose players the
+     * voice can name, the CHESS_GAMES with the highest worth(), the newer
+     * first on a tie (so without any moment it is the newest, as before).
+     * A game whose moments cannot be read counts as worth nothing.
+     *
+     * @return list<array{game: ChessGame, white: string, black: string, moments: list<array<string, string|int>>}>
      */
-    private function chessGames(int $nowMs): array
+    public function rankedChess(?int $nowMs = null): array
     {
-        $games = [];
+        $nowMs ??= (int) (microtime(true) * 1000);
+        $entries = [];
 
         foreach (ChessGame::query()->with(['white', 'black'])->where('status', ChessGameStatus::Active)->whereNotNull('white_id')->whereNotNull('black_id')
-            ->orderByDesc('id')->limit(self::CHESS_GAMES * 2)->get() as $game) {
+            ->orderByDesc('id')->limit(self::CHESS_CANDIDATES)->get() as $game) {
             $white = SceneFacts::spoken($game->white->displayName());
             $black = SceneFacts::spoken($game->black->displayName());
 
-            if ($white !== null && $black !== null && count($games) < self::CHESS_GAMES) {
-                $games[] = self::safely(fn (): array => $this->chess->of($game, $white, $black, $nowMs));
+            if ($white !== null && $black !== null) {
+                $entries[] = ['game' => $game, 'white' => $white, 'black' => $black, 'moments' => self::safely(fn (): array => $this->chess->of($game, $white, $black, $nowMs))];
             }
         }
 
-        return $games;
+        usort($entries, fn (array $x, array $y): int => [self::worth($y['moments']), $y['game']->id] <=> [self::worth($x['moments']), $x['game']->id]);
+
+        return array_slice($entries, 0, self::CHESS_GAMES);
+    }
+
+    /**
+     * What a chess game's moments are worth to the commentary (CHESS_WEIGHTS, MATERIAL_WEIGHTS, ENDGAME_WEIGHT).
+     *
+     * @param  list<array<string, string|int>>  $moments
+     */
+    public static function worth(array $moments): int
+    {
+        $worth = 0;
+
+        foreach ($moments as $moment) {
+            $worth += match ($moment['kind']) {
+                'material' => self::MATERIAL_WEIGHTS[$moment['mood'] ?? ''] ?? 0,
+                'phase' => ($moment['phase'] ?? null) === 'Endspiel' ? self::ENDGAME_WEIGHT : 0,
+                default => self::CHESS_WEIGHTS[$moment['kind']] ?? 0,
+            };
+        }
+
+        return $worth;
     }
 
     /**

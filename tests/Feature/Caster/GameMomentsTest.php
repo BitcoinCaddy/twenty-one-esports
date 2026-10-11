@@ -348,7 +348,7 @@ it('has moment lines that pass the script and fact guards when filled from a mom
     // One value per slot, as the moment classes write them.
     $sample = [
         'game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'a' => 'Ada', 'b' => 'Bob', 'lead' => 'Ada', 'move' => '14', 'round' => '3',
-        'check_by' => 'Ada', 'check_to' => 'Bob', 'capture_by' => 'Ada', 'captured' => 'einen Springer', 'exchange' => 'drei Schlagzüge',
+        'check_by' => 'Ada', 'check_to' => 'Bob', 'check_color' => 'Weiß', 'capture_color' => 'Schwarz', 'comeback_color' => 'Weiß', 'clock_color' => 'Schwarz', 'capture_by' => 'Ada', 'captured' => 'einen Springer', 'exchange' => 'drei Schlagzüge',
         'comeback_by' => 'Ada', 'comeback_from' => 'drei Punkte', 'ahead' => 'Ada', 'ahead_color' => 'Weiß', 'behind' => 'Bob', 'edge' => 'eine Qualität',
         'level_off' => 'sechs Steine', 'clock_low' => 'Bob', 'phase_in' => 'im Endspiel', 'white_lost' => 'zwei Figuren und einen Bauern', 'black_lost' => 'eine Figur',
         'race_leader' => 'Ada', 'race_trailer' => 'Bob', 'leader_steps' => 'drei Schritte', 'trailer_steps' => 'fünf Schritte', 'leader_blocks_left' => 'vier Blöcke',
@@ -381,20 +381,75 @@ it('has moment lines that pass the script and fact guards when filled from a mom
     }
 });
 
-it('writes pattern scripts that call the game from the moments', function () {
+it('ranks the live chess games by what they give the commentary, the newest first on a tie', function () {
+    $quietOld = momentsChessGame(['e2e4', 'e7e5']);
+    // 1. e4 d5 2. exd5 Qxd5 3. Nc3 Qe5+: a check, a level trade.
+    $check = momentsChessGame(['e2e4', 'd7d5', 'e4d5', 'd8d5', 'b1c3', 'd5e5']);
+    $quietA = momentsChessGame(['d2d4', 'd7d5']);
+    $quietB = momentsChessGame(['c2c4', 'c7c5']);
+
+    $ranked = array_map(fn (array $entry): int => $entry['game']->id, app(GameMoments::class)->rankedChess());
+
+    expect($ranked)->toBe([$check->id, $quietB->id, $quietA->id])
+        ->and($ranked)->not->toContain($quietOld->id)
+        ->and(GameMoments::worth([['kind' => 'check'], ['kind' => 'material', 'mood' => Mood::DOMINANCE], ['kind' => 'phase', 'phase' => 'Endspiel'], ['kind' => 'losses']]))->toBe(5 + 4 + 3)
+        ->and(GameMoments::worth([['kind' => 'phase', 'phase' => 'Eröffnung']]))->toBe(0)
+        // The live games the facts name are the ranked ones, in that order.
+        ->and(array_slice(array_column(app(SceneFacts::class)->forTopic(SceneTopic::LIVE_GAMES)['live_games'], 'move'), 0, 3))->toBe([4, 2, 2]);
+});
+
+it('writes live pattern scripts that call the game from the moments without naming the players', function () {
     config(['tv.commentary.enabled' => true]);
     $facts = ['sender' => 'TWENTY ONE TV', 'website_spoken' => 'esports punkt einundzwanzig punkt space', 'players' => 34, 'clans' => 8,
         'live_games' => [['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'mode' => 'Fernschach', 'move' => 22]],
         'moments' => [
             ['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'kind' => 'material', 'mood' => Mood::DOMINANCE, 'lead' => 'Ada', 'ahead' => 'Ada', 'ahead_color' => 'Weiß', 'behind' => 'Bob', 'edge' => 'die Dame', 'edge_points' => 9],
+            ['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'kind' => 'check', 'mood' => Mood::TENSION, 'lead' => 'Bob', 'check_by' => 'Bob', 'check_color' => 'Schwarz', 'check_to' => 'Ada'],
             ['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'kind' => 'phase', 'mood' => Mood::TENSION, 'phase' => 'Endspiel', 'phase_in' => 'im Endspiel', 'move' => 22],
         ]];
     $lines = [];
 
-    for ($i = 0; $i < 8; $i++) {
+    for ($i = 0; $i < 10; $i++) {
         $script = app(PatternScripts::class)->write(SceneTopic::LIVE_GAMES, 'live_match', $facts);
-        $lines = [...$lines, ...($script['lines'] ?? [])];
+
+        if ($script !== null) {
+            $lines = [...$lines, ...$script['lines']];
+            expect($script['text'])->not->toContain('Ada')->not->toContain('Bob');
+        }
     }
 
     expect(array_filter($lines, fn (string $id): bool => str_starts_with($id, 'ml-')))->not->toBe([]);
+});
+
+it('ties every moment line to a slot of its own kind, so a mood of one game never fills a line about another', function () {
+    $data = json_decode((string) file_get_contents(resource_path('data/voice/caster.json')), true, flags: JSON_THROW_ON_ERROR);
+    // Slots every kind may carry: the game, the players, the mood and lead of any moment.
+    $shared = ['game', 'white', 'black', 'a', 'b', 'lead', 'move', 'round', 'tournament'];
+
+    foreach ($data['moment_lines'] as $row) {
+        preg_match_all('/\{\??([a-z0-9_]+)\}/', $row['text'], $slots);
+        $own = array_filter($slots[1], fn (string $slot): bool => ! in_array($slot, $shared, true) && ! str_starts_with($slot, 'mood_'));
+
+        expect($own)->not->toBe([], "{$row['id']}: {$row['text']}");
+    }
+
+    // Seen on the snapshot (2026-10-11): a chess game's dominance filled "Da zieht jemand im Rennen richtig davon."
+    $chess = PatternScripts::slots(['moments' => [['game' => 'Schach', 'kind' => 'material', 'mood' => Mood::DOMINANCE, 'lead' => 'Ada', 'ahead' => 'Ada', 'ahead_color' => 'Weiß', 'edge' => 'die Dame']]])['items'][0];
+    $race = collect($data['moment_lines'])->firstWhere('id', 'ml-race-10');
+
+    expect(PatternScripts::fill($race['text'], $chess))->toBeNull();
+});
+
+it('never names the player of a moment outside a result, also where the facts list no players (Hyperbitcoinization)', function () {
+    config(['tv.commentary.enabled' => true]);
+    $facts = ['sender' => 'TWENTY ONE TV', 'website_spoken' => 'esports punkt einundzwanzig punkt space', 'players' => 34, 'clans' => 8,
+        'moments' => [['game' => 'Hyperbitcoinization', 'round' => 7, 'kind' => 'hyper_leader', 'mood' => Mood::DOMINANCE, 'lead' => 'Zorro', 'hyper_leader' => 'Zorro', 'leader_territories' => '30 Gebiete', 'leader_banks' => 'drei Zentralbanken']]];
+    $texts = [];
+
+    for ($i = 0; $i < 10; $i++) {
+        $texts[] = app(PatternScripts::class)->write(SceneTopic::LIVE_GAMES, 'live_match', $facts)['text'] ?? '';
+    }
+
+    expect(implode("\n", $texts))->not->toContain('Zorro')
+        ->and(implode("\n", $texts))->toContain('Gebiete');
 });

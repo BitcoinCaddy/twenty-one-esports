@@ -86,7 +86,7 @@ final class ChessMoments
 
         $last = $history === [] ? null : $history[count($history) - 1];
         if ($last !== null && str_ends_with($last['san'], '+')) {
-            $moments[] = [...$base, 'kind' => 'check', 'mood' => Mood::TENSION, 'lead' => $names[$last['mover']], 'check_by' => $names[$last['mover']], 'check_to' => $names[self::other($last['mover'])]];
+            $moments[] = [...$base, 'kind' => 'check', 'mood' => Mood::TENSION, 'lead' => $names[$last['mover']], 'check_by' => $names[$last['mover']], 'check_color' => self::COLORS[$last['mover']], 'check_to' => $names[self::other($last['mover'])]];
         }
 
         $streak = 0;
@@ -96,7 +96,7 @@ final class ChessMoments
         if ($last !== null && $streak >= 2) {
             $moments[] = [...$base, 'kind' => 'exchange', 'mood' => Mood::TENSION, 'lead' => $names[$last['mover']], 'exchange_captures' => $streak, 'exchange' => Words::count($streak, 'ein Schlagzug', 'Schlagzüge')];
         } elseif ($last !== null && $last['captured'] !== null) {
-            $moments[] = [...$base, 'kind' => 'capture', 'mood' => Mood::TENSION, 'lead' => $names[$last['mover']], 'capture_by' => $names[$last['mover']], 'captured' => self::CAPTURED[$last['captured']]];
+            $moments[] = [...$base, 'kind' => 'capture', 'mood' => Mood::TENSION, 'lead' => $names[$last['mover']], 'capture_by' => $names[$last['mover']], 'capture_color' => self::COLORS[$last['mover']], 'captured' => self::CAPTURED[$last['captured']]];
         }
 
         $balance = self::material($pieces['w']) - self::material($pieces['b']);
@@ -104,7 +104,7 @@ final class ChessMoments
             $worst = -self::sustainedDeficit(array_map(fn (array $ply): int => $sign * $ply['balance'], $history));
 
             if ($sign * $balance >= 0 && -$worst >= self::MATERIAL_COMEBACK) {
-                $moments[] = [...$base, 'kind' => 'comeback', 'mood' => Mood::COMEBACK, 'lead' => $names[$side], 'comeback_by' => $names[$side], 'comeback_from' => Words::count(-$worst, 'einen Punkt', 'Punkte'), 'comeback_points' => -$worst];
+                $moments[] = [...$base, 'kind' => 'comeback', 'mood' => Mood::COMEBACK, 'lead' => $names[$side], 'comeback_by' => $names[$side], 'comeback_color' => self::COLORS[$side], 'comeback_from' => Words::count(-$worst, 'einen Punkt', 'Punkte'), 'comeback_points' => -$worst];
             }
         }
 
@@ -121,7 +121,7 @@ final class ChessMoments
 
         $low = $this->lowClock($game, $nowMs);
         if ($low !== null) {
-            $moments[] = [...$base, 'kind' => 'clock', 'mood' => Mood::TENSION, 'lead' => $names[$low], 'clock_low' => $names[$low]];
+            $moments[] = [...$base, 'kind' => 'clock', 'mood' => Mood::TENSION, 'lead' => $names[$low], 'clock_low' => $names[$low], 'clock_color' => self::COLORS[$low]];
         }
 
         $phase = self::phase($pieces, (int) $game->ply);
