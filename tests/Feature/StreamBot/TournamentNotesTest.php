@@ -10,6 +10,8 @@ use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\Tournaments\CasualCups;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
+use App\Support\Voice\VoiceGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
@@ -18,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
 
 use function BitWasp\Bech32\convertBits;
@@ -536,4 +539,32 @@ test('corrections no relay answered do not use up the resends of the deletion a 
     expect($this->held)->toBe(['wss://one.test' => [$new => true], 'wss://two.test' => [$new => true]])
         ->and(BotPost::query()->where('kind', 5)->sole()->published_at)->not->toBeNull();
     Log::shouldNotHaveReceived('warning', ['Stream bot deletion given up for the relays that did not take it', Mockery::any()]);
+});
+
+test('with its switches on, the league voice writes the note in English, the start word for word, the link and naddr kept', function () {
+    config(['esports.voice.functions.note_tournament' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => "Hey! Friday Blitz Cup starts Sat, 3 Oct 2026, 9:00 PM CEST. Who's in?", 'canon_id' => null, 'mood' => 'call']]);
+    $tournament = openTournament(['name' => 'Friday Blitz Cup']);
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+    $note = $this->published[0];
+
+    expect($note->content)->toBe("Hey! Friday Blitz Cup starts Sat, 3 Oct 2026, 9:00 PM CEST. Who's in?\n👉 ".route('tournaments.show', $tournament)."\n\nnostr:".app(TournamentNotes::class)->naddr($tournament))
+        ->and($note->tags)->toHaveCount(1)
+        ->and($note->tag('q'))->toBe($tournament->address())
+        // stale() still finds the start in it.
+        ->and(app(TournamentNotes::class)->announcesStart(json_encode($note->toArray()), $tournament->refresh()))->toBeTrue();
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Englisch'));
+});
+
+test('a voiced note that leaves out the start goes out as the template', function () {
+    config(['esports.voice.functions.note_tournament' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    $noStart = ['text' => 'Hey! Friday Blitz Cup is open. Who is in?', 'canon_id' => null, 'mood' => 'call'];
+    VoiceAgent::fake([$noStart, $noStart]);
+    openTournament(['name' => 'Friday Blitz Cup']);
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+
+    expect($this->published[0]->content)->toStartWith('🏆 New tournament: Friday Blitz Cup')
+        ->and(DB::table('voice_rejections')->where('reason', VoiceGuard::MISSING_FACT)->value('count'))->toBe(2);
 });

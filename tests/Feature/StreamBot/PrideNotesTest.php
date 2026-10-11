@@ -17,6 +17,7 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\StreamBot\PrideNotes;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -211,4 +212,23 @@ test('the climbers note links the ladder of the top climber\'s biggest gain, wha
 
     expect($body)->toContain(route('ladder.show', ['game' => 'rocket-league', 'mode' => '1v1']))
         ->and($body)->not->toContain(route('ladder.show', ['game' => 'chess', 'mode' => 'blitz']), route('ladder.strongest'));
+});
+
+test('with its switches on, the league voice writes the win note in English, and the same win the next day is still no news', function () {
+    config(['esports.voice.functions.note_pride' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Wow. {@winner} beats LightningInTheAlps.', 'canon_id' => null, 'mood' => 'hype']]);
+    $this->travelTo(Carbon::parse('2026-09-26 17:30:00', 'UTC'));
+    $game = ChessGame::factory()->finished('1-0')->create(['white_id' => $this->winner, 'black_id' => $this->loser, 'ended_at' => now()->subHour()]);
+
+    app(PrideNotes::class)->run(now()->toImmutable());
+    $note = $this->published[0];
+
+    expect($note->content)->toStartWith('Wow. nostr:'.NostrKeys::hexToNpub($this->winner->pubkey)." beats LightningInTheAlps.\n👉 ".route('games.show', $game)."\n\n")
+        ->and(collect($note->tags)->where(0, 'p')->pluck(1)->all())->toBe([$this->winner->pubkey])
+        // The template wording of the same facts stays beside the voiced note.
+        ->and(BotPost::query()->where(['subject_type' => PrideNotes::SUBJECT, 'subject_id' => 1])->value('template_content'))->toContain('LightningInTheAlps');
+
+    $this->travelTo(Carbon::parse('2026-09-27 17:30:00', 'UTC'));
+    expect(app(PrideNotes::class)->run(now()->toImmutable()))->toContain('win: unchanged since its last note')
+        ->and($this->published)->toHaveCount(1);
 });

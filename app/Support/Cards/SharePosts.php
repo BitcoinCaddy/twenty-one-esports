@@ -38,6 +38,7 @@ use App\Support\Tmnf\TmnfMoments;
 use App\Support\Tmnf\TmnfWeeks;
 use App\Support\Tournaments\TournamentChampion;
 use App\Support\Tournaments\TournamentSignups;
+use App\Support\Voice\BotVoice;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -76,6 +77,11 @@ use Illuminate\Support\Facades\Route;
  *   link; it mentions nobody.
  *
  * At most `esports.badges.shares_per_hour` per player: the league relays carry them.
+ *
+ * The sentence is the player's own, in the player's language. With its
+ * switch on, the league voice writes it from the same facts (BotVoice,
+ * `share_post`, plan "KI-Stimme der Liga", P2); the wording it chose is kept
+ * for an hour, so the note the page shows is the note the gate checks.
  */
 final class SharePosts
 {
@@ -89,7 +95,7 @@ final class SharePosts
     /** Opponents one post mentions at most: a team of five, never a whole bracket. */
     public const MAX_MENTIONS = 5;
 
-    public function __construct(private SignedEventGate $gate, private TournamentChampion $champions, private TournamentSignups $signups) {}
+    public function __construct(private SignedEventGate $gate, private TournamentChampion $champions, private TournamentSignups $signups, private BotVoice $voice) {}
 
     /**
      * The player's own post of a moment, or a refusal.
@@ -111,7 +117,13 @@ final class SharePosts
             default => null,
         };
 
-        return $post ?? throw new ShareRefused(__('There is nothing of yours to share here.'));
+        if ($post === null) {
+            throw new ShareRefused(__('There is nothing of yours to share here.'));
+        }
+
+        $language = app()->getLocale() === 'de' ? 'de' : 'en';
+
+        return $post->withSentence($this->voice->sentence($type, $post->sentence, $language, $user->id.':'.$type.':'.$id));
     }
 
     /**

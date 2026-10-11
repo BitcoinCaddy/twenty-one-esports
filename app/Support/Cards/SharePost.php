@@ -38,6 +38,12 @@ final readonly class SharePost
         public bool $linkInSentence = false,
     ) {}
 
+    /** The same post with another sentence (the league voice's wording, BotVoice::sentence()). */
+    public function withSentence(string $sentence): self
+    {
+        return new self($this->type, $sentence, $this->cardUrl, $this->dimensions, $this->storyPath, $this->link, $this->mentions, $this->quote, $this->linkInSentence);
+    }
+
     /** The card's path on this site, for the page's own preview and download. */
     public function cardPath(): string
     {

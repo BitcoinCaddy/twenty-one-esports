@@ -8,11 +8,13 @@ use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\Tournaments\TournamentPublisher;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
 
 /*
@@ -325,3 +327,21 @@ test('the dry run prints the due notes and stores nothing', function () {
         ->and($this->published)->toBe([])
         ->and(BotPost::query()->count())->toBe(0);
 });
+
+test('with its switches on, the league voice writes the reminder in English; off, the template goes out', function (bool $on) {
+    config(['esports.voice.functions.note_free_places' => $on, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Hey! 3 of 8 places left in Friday Blitz Cup. Who is in?', 'canon_id' => null, 'mood' => 'call']]);
+    $closes = CarbonImmutable::parse('2026-10-03 18:00:00', 'UTC');
+    $tournament = placesTournament($closes, ['name' => 'Friday Blitz Cup']);
+    signUpPlayers($tournament, 5);
+
+    $this->travelTo($closes->subHours(72));
+    runFreePlaces();
+    $body = explode("\n\nnostr:", $this->published[0]->content, 2)[0];
+
+    expect($body)->toBe($on
+        ? "Hey! 3 of 8 places left in Friday Blitz Cup. Who is in?\n👉 ".route('tournaments.show', $tournament)
+        : "🪑 3 of 8 places left: Friday Blitz Cup\n🎮 Chess Blitz 5+3 · starts Sat, 3 Oct 2026, 9:00 PM CEST\n⏳ Sign-up closes in 3 days\n👉 Grab a place: ".route('tournaments.show', $tournament))
+        ->and($this->published[0]->tags)->toHaveCount(1);
+    $on ? VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Englisch')) : VoiceAgent::assertNeverPrompted();
+})->with(['on' => true, 'off' => false]);

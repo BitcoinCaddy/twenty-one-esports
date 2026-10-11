@@ -16,6 +16,7 @@ use App\Support\Scores\ScoreStanding;
 use App\Support\Scores\ScoreWindow;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\TwentyOne\Stream\BlockfillSlides;
+use App\Support\Voice\BotVoice;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +106,7 @@ abstract class WeeklyBoardNotes
         protected TournamentNotes $notes,
         private StreamBotPublisher $publisher,
         protected ScoreRuns $runs,
+        private BotVoice $voice,
     ) {}
 
     /**
@@ -243,7 +245,7 @@ abstract class WeeklyBoardNotes
      * The note's content in the wording its type takes next, the `p` tags of
      * the players it names, its note type and that wording (ProfileNotes).
      *
-     * @return array{content: string, tags: list<list<string>>, type: string, variant: int}
+     * @return array{content: string, tags: list<list<string>>, type: string, variant: int, template: string, values: array<string, string|int|null>}
      */
     private function compose(Tournament $week, string $slot): array
     {
@@ -274,6 +276,8 @@ abstract class WeeklyBoardNotes
             'tags' => $tags,
             'type' => $type,
             'variant' => $variant,
+            'template' => $template,
+            'values' => $values,
         ];
     }
 
@@ -300,10 +304,15 @@ abstract class WeeklyBoardNotes
      */
     private function sign(LeagueKey $key, Tournament $week, string $slot, int $createdAt): array
     {
-        ['content' => $content, 'tags' => $tags, 'type' => $type, 'variant' => $variant] = $this->compose($week, $slot);
+        ['tags' => $tags, 'type' => $type, 'variant' => $variant, 'template' => $template, 'values' => $values] = $this->compose($week, $slot);
         $address = $week->address();
         $tags = $address === null ? $tags : [...$tags, ['q', $address, $this->notes->relayHint() ?? '']];
-        $problems = StreamBotCopy::violations(explode("\n\nnostr:", $content, 2)[0], $tags);
+        // With its switch on, the league voice writes the copy (BotVoice, `note_weekly`); mentions only as the players allow.
+        $composed = $this->voice->compose('note_weekly', $template, $variant, $values, $tags, CarbonImmutable::createFromTimestamp($createdAt))
+            ?? throw new LogicException('The voice returned no note.');
+        $tags = $composed['tags'];
+        $content = $address === null ? $composed['content'] : $composed['content']."\n\nnostr:".$this->notes->naddr($week);
+        $problems = StreamBotCopy::violations($composed['content'], $tags);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own '.$this->label().' note: '.implode(', ', $problems));
@@ -574,6 +583,15 @@ abstract class WeeklyBoardNotes
             'relays_total' => count($results),
             'published_at' => $accepted > 0 ? $now : null,
         ])->save();
+
+        if ($accepted > 0) {
+            $template = $this->prefix().match (true) {
+                $slot === self::SLOT_WINNER => '_winner',
+                str_starts_with($slot, self::SLOT_TOP) => '_top',
+                default => '_week',
+            };
+            $this->voice->delivered('note_weekly', $template, $event->content, $event->tags, $now, subjects: [$this->slug().':'.$week->id.':'.$slot]);
+        }
 
         Log::info('Stream bot '.$this->label().' note', [
             'week' => $week->id,

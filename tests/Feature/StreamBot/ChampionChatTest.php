@@ -13,15 +13,17 @@ use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\StreamCoordinates;
 use App\Support\Tournaments\TournamentChampion;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
 
 /*
  * The GG in the stream chat (user, 2026-10-03): the moment a tournament is
  * decided the bot says so in the 24/7 stream's chat, once, within a minute
- * or two: "🏆 GG! <mention> wins <tournament> 🎉 <url>". It skips the
+ * or two: "🏆 GG! <mention> gewinnt <tournament> 🎉 <url>". It skips the
  * rotation's interval and its never-twice rule, but not the switch, the key,
  * a live stream or the quiet hours. The relays and the chat are stood in for.
  */
@@ -122,7 +124,7 @@ test('a decided tournament gets one GG in the stream chat right away, past the r
         ->and($event->kind)->toBe(1311)
         ->and($event->pubkey)->toBe($this->botKey->pubkey)
         ->and($event->hasValidSignature())->toBeTrue()
-        ->and($event->content)->toBe('🏆 GG! nostr:'.NostrKeys::hexToNpub($winner->pubkey).' wins Friday Blitz Cup 🎉 '.route('tournaments.show', $tournament))
+        ->and($event->content)->toBe('🏆 GG! nostr:'.NostrKeys::hexToNpub($winner->pubkey).' gewinnt Friday Blitz Cup 🎉 '.route('tournaments.show', $tournament))
         ->and($event->tags)->toBe([['a', '30311:'.$this->streamKey->pubkey.':twentyone-247', 'wss://one.test', 'root'], ['p', $winner->pubkey]])
         ->and(StreamBotCopy::violations($event->content, $event->tags))->toBe([])
         ->and($this->published[0]['relays'])->toBe(['wss://one.test', 'wss://two.test'])
@@ -183,4 +185,47 @@ test('the control: the same tournament inside the window outside the quiet hours
     config(['esports.stream_bot.quiet_hours' => '15-17']);
 
     expect(ggTick())->toContain('GG posted')->and($this->published)->toHaveCount(1);
+});
+
+test('with its switches on, the league voice writes the GG in German, the winner tagged and the link last', function () {
+    config(['esports.voice.functions.chat_gg' => true, 'esports.voice.channels.gg.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Boah. {@winner} holt sich Friday Blitz Cup!', 'canon_id' => null, 'mood' => 'hype']]);
+    ggStreamIsLive();
+    $tournament = ggTournament();
+    $winner = app(TournamentChampion::class)->of($tournament)->user;
+
+    expect(ggTick())->toContain('GG posted');
+    $event = $this->published[0]['event'];
+
+    expect($event->content)->toBe('Boah. nostr:'.NostrKeys::hexToNpub($winner->pubkey)." holt sich Friday Blitz Cup!\n👉 ".route('tournaments.show', $tournament))
+        ->and($event->tags)->toBe([['a', '30311:'.$this->streamKey->pubkey.':twentyone-247', 'wss://one.test', 'root'], ['p', $winner->pubkey]])
+        ->and(StreamBotCopy::violations($event->content, $event->tags))->toBe([]);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Deutsch'));
+});
+
+test('the GG keeps its template when the voice is off or its text is rejected', function (bool $on) {
+    config(['esports.voice.functions.chat_gg' => $on, 'esports.voice.channels.gg.enabled' => true]);
+    $invented = ['text' => 'Boah. {@winner} gewinnt mit 7 Siegen in Folge!', 'canon_id' => null, 'mood' => 'hype'];
+    VoiceAgent::fake([$invented, $invented]);
+    ggStreamIsLive();
+    $tournament = ggTournament();
+    $winner = app(TournamentChampion::class)->of($tournament)->user;
+
+    ggTick();
+
+    expect($this->published[0]['event']->content)->toBe('🏆 GG! nostr:'.NostrKeys::hexToNpub($winner->pubkey).' gewinnt Friday Blitz Cup 🎉 '.route('tournaments.show', $tournament));
+    $on ? VoiceAgent::assertPromptedTimes(2) : VoiceAgent::assertNeverPrompted();
+})->with(['off' => false, 'rejected' => true]);
+
+test('a winner who switched mentions off is named in the GG, not tagged', function () {
+    ggStreamIsLive();
+    $tournament = ggTournament();
+    $winner = app(TournamentChampion::class)->of($tournament)->user;
+    $winner->forceFill(['nostr_mentions' => false])->save();
+
+    ggTick();
+    $event = $this->published[0]['event'];
+
+    expect($event->content)->toBe('🏆 GG! '.$winner->displayName().' gewinnt Friday Blitz Cup 🎉 '.route('tournaments.show', $tournament))
+        ->and($event->tags)->toBe([['a', '30311:'.$this->streamKey->pubkey.':twentyone-247', 'wss://one.test', 'root']]);
 });

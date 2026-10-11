@@ -5,7 +5,9 @@ use App\Models\User;
 use App\Support\Cards\SharePosts;
 use App\Support\Cards\ShareRefused;
 use App\Support\Nostr\RejectedEvent;
+use App\Support\Voice\VoiceAgent;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
 
 /**
@@ -93,3 +95,35 @@ test('the share limit counts before the signature check, so refused attempts use
     expect(fn () => $posts->submit($this->user, 'wrapped', 'pre-season', signShare($this->signer, $template)))->toThrow(ShareRefused::class, 'a lot')
         ->and(NostrEvent::query()->where('kind', 1)->count())->toBe(0);
 });
+
+test('with its switches on, the league voice words the sentence in the player\'s language, the same for the preview and the signed note', function (string $locale, string $text, string $language) {
+    config(['esports.voice.functions.share_post' => true, 'esports.voice.channels.share_post.enabled' => true]);
+    app()->setLocale($locale);
+    VoiceAgent::fake([['text' => $text, 'canon_id' => null, 'mood' => 'hype']]);
+    $posts = app(SharePosts::class);
+    $id = (string) $this->moments['tournament']->id;
+
+    $template = $posts->prepare($this->user, 'tournament', $id);
+    $stored = $posts->submit($this->user, 'tournament', $id, signShare($this->signer, $template));
+
+    expect($template['content'])->toStartWith($text."\n\n")
+        ->and($stored->payload()['content'])->toBe($template['content'])
+        ->and(collect($template['tags'])->firstWhere(0, 'imeta')[4])->toBe('alt '.$text);
+    // Asked once: the second call (the signed note) reads the kept wording.
+    VoiceAgent::assertPromptedTimes(1);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: '.$language));
+})->with([
+    'English' => ['en', 'Yes! I won Testnet Cup on TWENTY ONE Esports.', 'Englisch'],
+    'German' => ['de', 'Ja! Ich habe Testnet Cup bei TWENTY ONE Esports gewonnen.', 'Deutsch'],
+]);
+
+test('the share sentence stays the template when the voice is off or rejects its text', function (bool $on) {
+    config(['esports.voice.functions.share_post' => $on, 'esports.voice.channels.share_post.enabled' => true]);
+    $invented = ['text' => 'I won Testnet Cup with 9 straight wins!', 'canon_id' => null, 'mood' => 'hype'];
+    VoiceAgent::fake([$invented, $invented]);
+
+    $template = app(SharePosts::class)->prepare($this->user, 'tournament', (string) $this->moments['tournament']->id);
+
+    expect($template['content'])->toStartWith("Won Testnet Cup on TWENTY ONE Esports.\n\n");
+    $on ? VoiceAgent::assertPromptedTimes(2) : VoiceAgent::assertNeverPrompted();
+})->with(['off' => false, 'rejected' => true]);

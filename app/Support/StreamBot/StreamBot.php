@@ -5,7 +5,10 @@ namespace App\Support\StreamBot;
 use App\Models\StreamBotPost;
 use App\Support\Nostr\SignedEvent;
 use App\Support\SeasonChain\LeagueKey;
+use App\Support\Voice\BotVoice;
+use App\Support\Voice\SpamGate;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -29,6 +32,14 @@ use Throwable;
  * `builder_gap` posts' builders, no fact posted within `repeat_hours`, no
  * line whose exact text already went out (that block does not expire), and
  * no message that breaks StreamBotCopy's rules (a `#`, no link).
+ *
+ * The league voice and the spam gate (plan "KI-Stimme der Liga", P2): before
+ * a tick posts, the gate may hold the chat back (SpamGate::skip(): its
+ * backoff after unanswered posts on top of rules 3-5); the message the
+ * rotation picked is then written by the voice in its own words, or kept as
+ * the template (BotVoice::compose()). A template the gate turns down as a
+ * repetition is passed over for the next message, never posted. The voice
+ * replaces a message's wording, it never adds one.
  */
 class StreamBot
 {
@@ -39,6 +50,8 @@ class StreamBot
         private StreamLiveness $liveness,
         private StreamBotChat $chat,
         private StreamBotPublisher $publisher,
+        private BotVoice $voice,
+        private SpamGate $gate,
     ) {}
 
     /**
@@ -55,13 +68,34 @@ class StreamBot
         }
 
         assert($key !== null && $stream !== null);
-        $message = $this->next($now, $this->recentBuilders(), $this->recentFacts($now), $this->deliveredContents());
+        $held = $this->gate->skip(SpamGate::CHAT, 'rotation', [], $now);
+
+        if ($held !== null) {
+            return 'no post: the spam gate holds the chat back ('.$held.')';
+        }
+
+        $session = self::session($stream, $now);
+        $composed = null;
+        $message = $this->next($now, $this->recentBuilders(), $this->recentFacts($now), $this->deliveredContents(),
+            function (StreamBotMessage $candidate) use ($now, $session, &$composed): ?StreamBotMessage {
+                if ($candidate->template === null) {
+                    return $candidate;
+                }
+
+                $composed = $this->voice->compose('chat_rotation', $candidate->template, $candidate->variant, $candidate->values, $candidate->tags, $now, ['session' => $session, 'hold_template' => true]);
+
+                return $composed === null ? null : $candidate->withContent($composed['content'], $composed['tags']);
+            });
 
         if ($message === null) {
             return 'no post: nothing new to say';
         }
 
         $post = $this->post($key, $stream, $message, $now);
+
+        if ($post->relays_accepted > 0 && $message->template !== null) {
+            $this->voice->delivered('chat_rotation', $message->template, $post->content, $message->tags, $now, $composed['canon'] ?? null, $composed['form'] ?? null, [$message->factKey], $session);
+        }
 
         return sprintf('posted %s (%s) id=%s to %d/%d relays', $post->builder, $post->fact_key, $post->event_id, $post->relays_accepted, $post->relays_total);
     }
@@ -103,6 +137,9 @@ class StreamBot
             if ($this->chat->humansSince($stream, $key->pubkey(), $lastDelivered->posted_at->getTimestamp() + 1) === []) {
                 return 'no human wrote since the last post, and '.intdiv($alone, 60).' min have not passed';
             }
+
+            // Someone answered: the spam gate's backoff ends.
+            $this->gate->humanWrote();
         }
 
         return null;
@@ -151,8 +188,9 @@ class StreamBot
      * @param  list<string>  $recentBuilders
      * @param  list<string>  $recentFacts
      * @param  array<string, true>|null  $usedContents  delivered chat text; null reads the log
+     * @param  (Closure(StreamBotMessage): ?StreamBotMessage)|null  $compose  the message as it goes out, null to pass it over (the voice and the spam gate)
      */
-    public function next(CarbonImmutable $now, array $recentBuilders, array $recentFacts, ?array $usedContents = null): ?StreamBotMessage
+    public function next(CarbonImmutable $now, array $recentBuilders, array $recentFacts, ?array $usedContents = null, ?Closure $compose = null): ?StreamBotMessage
     {
         $used = $usedContents ?? $this->deliveredContents();
         $this->builders->skipPosted(fn (string $content): bool => isset($used[$content]));
@@ -179,6 +217,14 @@ class StreamBot
                         Log::warning('Stream bot message dropped', ['builder' => $message->builder, 'problems' => $problems]);
 
                         continue;
+                    }
+
+                    if ($compose !== null) {
+                        $message = $compose($message);
+
+                        if ($message === null) {
+                            continue;
+                        }
                     }
 
                     return $message;
@@ -263,6 +309,15 @@ class StreamBot
         ]);
 
         return $post;
+    }
+
+    /**
+     * The stream session the spam gate's mention pause counts by: the stream
+     * and its Berlin day (the 24/7 stream has no session of its own).
+     */
+    public static function session(StreamCoordinates $stream, CarbonImmutable $now): string
+    {
+        return $stream->address().'|'.$now->setTimezone((string) config('esports.stream_bot.timezone', 'Europe/Berlin'))->toDateString();
     }
 
     /**

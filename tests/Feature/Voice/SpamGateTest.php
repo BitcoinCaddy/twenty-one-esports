@@ -139,7 +139,7 @@ it('rejects a voice text over the surface length', function () {
 });
 
 it('rejects a voice text with more than two sentences', function () {
-    expect(spamGate()->textSkip(SpamGate::CHAT, 'Satoshi gewinnt. Hal verliert. Weiter geht es.', spamNow()))->toBe(SpamGate::TOO_MANY_SENTENCES);
+    expect(spamGate()->textSkip(SpamGate::CHAT, 'Satoshi gewinnt. Hal verliert. Weiter geht es. Wer spielt jetzt?', spamNow()))->toBe(SpamGate::TOO_MANY_SENTENCES);
 });
 
 it('does not hold a template back for its length', function () {

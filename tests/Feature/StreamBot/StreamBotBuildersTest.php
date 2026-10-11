@@ -103,7 +103,7 @@ test('the feature tips that depend on something stay silent without it', functio
 
     expect(botBuild('zap'))->toBe([])
         // No clan yet: the clan count line is left out, the tip stays.
-        ->and(botBuild('clans')[0]->content)->not->toContain('clans are already in');
+        ->and(botBuild('clans')[0]->content)->not->toContain('Clans sind schon dabei');
 });
 
 test('no builder ever writes a hashtag, and every message has a link and 1 to 4 lines', function (int $variant) {
@@ -152,10 +152,10 @@ test('an open tournament: name without hashtag, Berlin start, spots, a real pot 
     expect($messages)->toHaveCount(1)
         ->and($messages[0]->factKey)->toStartWith('tournament-signup:')
         ->and($messages[0]->content)->toBe(implode("\n", [
-            '🏆 Sign-up is open: Friday Blitz Cup 3',
-            '🎮 Chess Blitz 5+3 · starts Mon 28 Sep, 20:00 CEST',
-            '🪑 0 of 12 spots taken · 💰 21,000 sats in the pot',
-            '👉 Grab your spot: https://esports.test/tournaments/'.Tournament::query()->where('name', 'Friday Blitz Cup #3')->value('id'),
+            '🏆 Anmeldung offen: Friday Blitz Cup 3',
+            '🎮 Chess Blitz 5+3 · Start Mo, 28. Sep 2026, 20:00 MESZ',
+            '🪑 0 von 12 Plätzen belegt · 💰 21.000 Sats im Topf',
+            '👉 Platz sichern: https://esports.test/tournaments/'.Tournament::query()->where('name', 'Friday Blitz Cup #3')->value('id'),
         ]));
 });
 
@@ -164,7 +164,7 @@ test('a stale or empty pot is not mentioned', function () {
     Tournament::factory()->signup()->create(['signup_closes_at' => now()->addDays(2), 'pot_source' => Tournament::POT_WALLET, 'pot_balance_sats' => 0, 'pot_balance_at' => now()]);
 
     foreach (botBuild('tournament_signup') as $message) {
-        expect($message->content)->not->toContain('sats');
+        expect($message->content)->not->toContain('Sats');
     }
 });
 
@@ -173,19 +173,19 @@ test('the last call names the time left and the free spots', function () {
 
     $message = botBuild('tournament_last_call')[0];
 
-    expect($message->content)->toContain('Last call for Midnight Arena')
-        ->toContain('closes in 1 h 35 min, 12 spots still free')
+    expect($message->content)->toContain('Letzte Chance für Midnight Arena')
+        ->toContain('zu in 1 Std. 35 Min., 12 Plätze noch frei')
         ->toEndWith('/signup');
 });
 
 test('happening now: a running tournament on the TV view, live boards and a series under way', function () {
     botFacts();
 
-    expect(botBuild('tournament_live')[0]->content)->toContain('RL Sunday is running right now')->toEndWith('/tv')
+    expect(botBuild('tournament_live')[0]->content)->toContain('RL Sunday läuft gerade')->toEndWith('/tv')
         ->and(botBuild('live_game'))->toHaveCount(2)
-        ->and(collect(botBuild('live_game'))->pluck('content')->implode("\n"))->toContain('Live on the board: '.botNpub(User::query()->where('name', 'Alice')->sole()).' vs '.botNpub(User::query()->where('name', 'Bob')->sole()))
-        ->and(botBuild('live_games')[0]->content)->toStartWith('🔴 2 games are live right now')->toEndWith('https://esports.test/games')
-        ->and(botBuild('live_series')[0]->content)->toContain('Laser Eyes vs HODL Rockets');
+        ->and(collect(botBuild('live_game'))->pluck('content')->implode("\n"))->toContain('Live am Brett: '.botNpub(User::query()->where('name', 'Alice')->sole()).' gegen '.botNpub(User::query()->where('name', 'Bob')->sole()))
+        ->and(botBuild('live_games')[0]->content)->toStartWith('🔴 2 Partien laufen gerade')->toEndWith('https://esports.test/games')
+        ->and(botBuild('live_series')[0]->content)->toContain('Laser Eyes gegen HODL Rockets');
 });
 
 test('a daily game is not a live board, and one live game is not a list', function () {
@@ -200,9 +200,9 @@ test('pride: the latest winner, a rank up, a new clan and the top of the ladder,
     botFacts();
     $alice = User::query()->where('name', 'Alice')->sole();
 
-    expect(botBuild('tournament_winner')[0]->content)->toStartWith('🥇 '.botNpub($alice).' won Testnet Cup')
-        ->and(botBuild('rank_up')[0]->content)->toStartWith('📈 Rank up! '.botNpub($alice).' reached Gold II in Chess Blitz 5+3')
-        ->and(botBuild('new_clan')[0]->content)->toStartWith('🛡️ New clan: Stacking Sats [SATS]')
+    expect(botBuild('tournament_winner')[0]->content)->toStartWith('🥇 '.botNpub($alice).' hat Testnet Cup gewonnen')
+        ->and(botBuild('rank_up')[0]->content)->toStartWith('📈 Aufgestiegen! '.botNpub($alice).' ist jetzt Gold II in Chess Blitz 5+3')
+        ->and(botBuild('new_clan')[0]->content)->toStartWith('🛡️ Neuer Clan: Stacking Sats [SATS]')
         ->and(botBuild('ladder_top')[0]->content)->toContain('🥇 '.botNpub($alice).' 1612');
 
     foreach (['tournament_winner', 'rank_up', 'ladder_top'] as $builder) {
@@ -240,7 +240,7 @@ test('a tournament winner without an account (a team, a deleted player) keeps th
 
     $message = botBuild('tournament_winner')[0];
 
-    expect($message->content)->toStartWith('🥇 Alice won Testnet Cup')
+    expect($message->content)->toStartWith('🥇 Alice hat Testnet Cup gewonnen')
         ->and($message->content)->not->toContain('nostr:')
         ->and($message->tags)->toBe([]);
 });
@@ -263,7 +263,7 @@ test('the season: the Block 0 countdown before launch, nothing without a date', 
     expect(botBuild('season'))->toBe([]);
 
     planBlock0(now()->addDays(3)->addHours(4)->toIso8601String());
-    expect(botBuild('season')[0]->content)->toStartWith('⛏️ Block 0 in 3 days 4 h')->toEndWith('/mining');
+    expect(botBuild('season')[0]->content)->toStartWith('⛏️ Block 0 in 3 Tage 4 Std.')->toEndWith('/mining');
 });
 
 test('the feature tips link the exact page', function (string $builder, string $path) {
@@ -322,7 +322,7 @@ test('a live board tags both players, and a player without a key keeps the plain
 
     $message = botBuild('live_game')[0];
 
-    expect($message->content)->toContain('Live on the board: '.botNpub($alice).' vs Guest')
+    expect($message->content)->toContain('Live am Brett: '.botNpub($alice).' gegen Guest')
         ->and($message->tags)->toBe([['p', $alice->pubkey]]);
 });
 

@@ -1,0 +1,21 @@
+# Everyday English words the league voice may open a sentence with (VoiceGuard vocabulary, plan
+# "KI-Stimme der Liga", P2). The guard takes a capitalised word it does not know for an invented
+# name; English capitalises every sentence opener, so the common ones are listed here. One word per
+# line or several per line, lines starting with # are comments. Add a word when a real post was
+# turned down for it (voice:usage counts `name`), never a person's name.
+absolutely again ahead all almost already also always amazing and another any anyone anything are
+around back bad bang beat best better big bold boom both brave brilliant brutal busy but bye calm
+can check cheers clean clear close cold come congrats congratulations cool could count crazy
+dang dare dead deal done double down each early easy edge either else enough even every everyone
+exactly fair far fast few final finally fine first five for four free fresh from full fun game
+gg giant go good got great guess half hard has have he heads hell hello here hey hi high history
+hold honestly hot how huge if in insane is it its job just keep kind last late legend let lets
+level light like little live long look lots loud lovely lucky main make man many massive maybe
+mean meanwhile more most much must narrow neat never new next nice no nobody none not nothing now
+oh ok okay once one only oops or other our out over pace perfect plenty proper pure quick quiet
+rare ready real really remember respect right round run same saturday see seriously she short
+should show simple sir six slow small smooth so solid some someone something soon sorry spicy
+start steady still straight strong such sunday super sure sweet take talk tell ten thanks that
+the then there these they this those three tight time to today together tomorrow tonight too
+top tough true try two under up upset very wait walk want warm watch way we weekend well what
+whatever when where which while who whoa why wild win with wow yeah yep yes yet you your

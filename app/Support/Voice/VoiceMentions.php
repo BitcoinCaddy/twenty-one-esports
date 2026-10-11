@@ -12,7 +12,8 @@ use App\Support\Nostr\NostrKeys;
  * `nostr:npub1…` with a `p` tag once per person, the same pattern as
  * ChampionChat and PrideNotes.
  *
- * Rules (check()): only tokens of people in the facts, nobody twice, at most
+ * Rules (check()): only tokens of people in the facts, nobody twice (not as a
+ * token and by name as well), at most
  * MAX per post, a person whose mentions are off only by name (no token at
  * all), in a team match only the captains, and never a raw npub, nprofile,
  * `nostr:` URI or hex key written by the model.
@@ -115,6 +116,16 @@ final class VoiceMentions
 
         if (count($matches[1]) !== count(array_unique($matches[1]))) {
             $violations[] = self::REPEATED;
+        }
+
+        // A mentioned person also named in plain text is named twice ("Ada … nostr:npub1… läuft bei dir", first P2 eval run).
+        $withoutTokens = (string) preg_replace(self::TOKEN, ' ', $text);
+        foreach (array_unique($matches[1]) as $role) {
+            $name = $people[$role]['name'] ?? '';
+
+            if ($name !== '' && preg_match('/(?<![\p{L}\p{N}])'.preg_quote($name, '/').'(?![\p{L}\p{N}])/iu', $withoutTokens) === 1) {
+                $violations[] = self::REPEATED;
+            }
         }
 
         if (count(array_unique($matches[1])) > self::MAX) {

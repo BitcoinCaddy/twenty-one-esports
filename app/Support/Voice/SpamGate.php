@@ -24,6 +24,16 @@ use Illuminate\Support\Facades\Cache;
  *     withoutRepeatedLinks() on a template's lines first;
  *  5. record() after a post went out, humanWrote() when the chat answered.
  *
+ * Wired in P2 through BotVoice: the chat rotation asks skip() before a tick
+ * (StreamBot) and holds a repeated template back (textSkip(), the next
+ * message is tried instead); every post asks mentionAllowed() per person
+ * and textSkip() on the voice's text (turned down, the template goes out);
+ * every delivered post is record()ed, and a human in the chat calls
+ * humanWrote(). The profile notes keep their own pacing (ProfileNotes,
+ * the same config keys) and are not held back as a repetition: each is
+ * the one note of its subject. collapse() and withoutRepeatedLinks() have
+ * no caller yet.
+ *
  * Every skip counts its reason (VoiceUsage, channel `spam_<surface>`).
  * State lives in the cache as scalars and arrays of scalars only; when the
  * cache is lost, the gate forgets its history and the stream bot's own

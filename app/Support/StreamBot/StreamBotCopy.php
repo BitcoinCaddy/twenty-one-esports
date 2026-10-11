@@ -5,7 +5,12 @@ namespace App\Support\StreamBot;
 use LogicException;
 
 /**
- * Every word the stream chat bot says (P22), in one place, English only.
+ * Every word the stream chat bot says (P22), in one place. The language
+ * follows the channel (user 2026-10-11, plan "KI-Stimme der Liga"): the
+ * live chat templates (the rotation, the GG) are German, in the league's
+ * everyday tone, because the memes come from a German podcast; the notes on
+ * the bot's Nostr profile stay English for the international audience.
+ * These templates are also the league voice's fallback (BotVoice).
  *
  * Each template has one or more variants; a variant is a list of lines
  * (at most four). `:placeholder` values come from the builders
@@ -39,198 +44,198 @@ final class StreamBotCopy
     public const TEMPLATES = [
         // Upcoming tournaments, open for sign-up.
         'tournament_signup' => [
-            ['🏆 Sign-up is open: :name', '🎮 :game · starts :starts', '🪑 :spots:pot', '👉 Grab your spot: :url'],
-            ['📣 New on the board: :name', '🗓️ :starts · :game', '🪑 :spots:pot', '👉 :url'],
-            ['🆕 :name is taking names', '🎮 :game · starts :starts', '🪑 :spots:pot', '👉 Claim a seat: :url'],
-            ['📋 Open card: :name', '🗓️ Starts :starts · :game', '🪑 :spots:pot', '👉 :url'],
-            ['🎫 :name has room', '🎮 :game, first move :starts', '🪑 :spots:pot', '👉 Sign up: :url'],
-            ['🏟️ :name is on the board', '🗓️ :starts · :game', '🪑 :spots:pot', '👉 Take a look: :url'],
+            ['🏆 Anmeldung offen: :name', '🎮 :game · Start :starts', '🪑 :spots:pot', '👉 Platz sichern: :url'],
+            ['📣 Neu im Kalender: :name', '🗓️ :starts · :game', '🪑 :spots:pot', '👉 :url'],
+            ['🆕 :name sucht noch Leute', '🎮 :game · Start :starts', '🪑 :spots:pot', '👉 Rein da: :url'],
+            ['📋 Frisch angesetzt: :name', '🗓️ Start :starts · :game', '🪑 :spots:pot', '👉 :url'],
+            ['🎫 Bei :name ist noch Platz', '🎮 :game, los geht\'s :starts', '🪑 :spots:pot', '👉 Eintragen: :url'],
+            ['🏟️ :name steht an', '🗓️ :starts · :game', '🪑 :spots:pot', '👉 Mal reinschauen: :url'],
         ],
         'tournament_last_call' => [
-            ['⏳ Last call for :name', '🚪 Sign-up closes in :left, :open still free', '👉 :url'],
-            ['⏳ Only :left left to join :name', '🪑 :open still free · :game', '👉 Sign up: :url'],
-            ['🚨 :name closes in :left', '🪑 :open seats left · :game', '👉 Last seats: :url'],
-            ['⌛ :left until :name locks', '🚪 :open still open', '👉 :url'],
+            ['⏳ Letzte Chance für :name', '🚪 Anmeldung zu in :left, :open noch frei', '👉 :url'],
+            ['⏳ Nur noch :left bis :name dichtmacht', '🪑 :open noch frei · :game', '👉 Eintragen: :url'],
+            ['🚨 :name schließt in :left', '🪑 :open übrig · :game', '👉 Schnell noch: :url'],
+            ['⌛ Noch :left, dann ist :name zu', '🚪 :open noch offen', '👉 :url'],
         ],
 
         // Happening now.
         'tournament_live' => [
-            ['🔴 :name is running right now', '📺 Brackets, boards and results live on the big-screen view', '👉 :url'],
-            ['📺 :name is live: every match as it happens', '👉 :url'],
-            ['🔴 :name is on the TV view', '👀 Boards update as the games finish', '👉 :url'],
-            ['📡 :name, in progress', '👉 Follow the bracket: :url'],
+            ['🔴 :name läuft gerade', '📺 Bracket, Bretter und Ergebnisse live in der TV-Ansicht', '👉 :url'],
+            ['📺 :name ist live. Jedes Match, sobald es passiert', '👉 :url'],
+            ['🔴 :name in der TV-Ansicht', '👀 Die Bretter springen um, sobald was fertig ist', '👉 :url'],
+            ['📡 :name, mittendrin', '👉 Bracket verfolgen: :url'],
         ],
         'live_game' => [
-            ['♟️ Live on the board: :white vs :black', '⏱️ :mode, in progress', '👀 Watch: :url'],
-            ['👀 :white and :black are playing :mode right now', '👉 Spectate: :url'],
-            ['♟️ :white vs :black, :mode, clock running', '👀 Pull up a chair: :url'],
-            ['🔴 A board is live: :white against :black', '⏱️ :mode', '👉 :url'],
+            ['♟️ Live am Brett: :white gegen :black', '⏱️ :mode, läuft', '👀 Zuschauen: :url'],
+            ['👀 :white und :black spielen gerade :mode', '👉 Reinschauen: :url'],
+            ['♟️ :white gegen :black, :mode, die Uhr tickt', '👀 Stuhl ranziehen: :url'],
+            ['🔴 Ein Brett ist live: :white gegen :black', '⏱️ :mode', '👉 :url'],
         ],
         'live_games' => [
-            ['🔴 :count games are live right now', '👀 Pick a board and watch: :url'],
-            ['🔴 :count matches live this minute', '👉 Watch: :url'],
-            ['👀 :count boards are in progress', '👉 Choose one: :url'],
-            ['📡 :count live games, one page', '👉 :url'],
+            ['🔴 :count Partien laufen gerade', '👀 Brett aussuchen und zuschauen: :url'],
+            ['🔴 :count Matches live, genau jetzt', '👉 Zuschauen: :url'],
+            ['👀 :count Bretter sind am Laufen', '👉 Such dir eins aus: :url'],
+            ['📡 :count Live-Partien, eine Seite', '👉 :url'],
         ],
         'live_series' => [
-            ['🏁 :game: :home vs :away, best of :best_of', '👉 Follow the match: :url'],
-            ['🏁 :home vs :away in :game, best of :best_of', '👀 Catch it live: :url'],
-            ['⚔️ Series on: :home vs :away', '🎮 :game, best of :best_of', '👉 :url'],
-            ['📺 :home and :away are in a :game series', '🏁 Best of :best_of', '👉 Watch the page: :url'],
+            ['🏁 :game: :home gegen :away, Best of :best_of', '👉 Match verfolgen: :url'],
+            ['🏁 :home gegen :away in :game, Best of :best_of', '👀 Live dabei sein: :url'],
+            ['⚔️ Serie läuft: :home gegen :away', '🎮 :game, Best of :best_of', '👉 :url'],
+            ['📺 :home und :away spielen eine Serie in :game', '🏁 Best of :best_of', '👉 Zur Match-Seite: :url'],
         ],
         // A chess team match of two clans (plan "Schach Rapid und Clan", P6), posted by the live_series builder.
         'live_team_match' => [
-            ['♟️ Clan team match: :home vs :away, :boards boards of rapid at once', '👉 Watch every board: :url'],
-            ['♟️ :home vs :away: a chess team match over :boards boards is on', '👀 Follow the boards live: :url'],
-            ['🛡️ :home vs :away, :boards boards at once', '👀 Every board is on the match page', '👉 :url'],
-            ['♟️ Team rapid: :home against :away', '🏁 :boards boards, one match', '👉 :url'],
+            ['♟️ Clan-Teammatch: :home gegen :away, :boards Bretter Rapid gleichzeitig', '👉 Alle Bretter: :url'],
+            ['♟️ :home gegen :away. Schach im Team, :boards Bretter', '👀 Live verfolgen: :url'],
+            ['🛡️ :home gegen :away, :boards Bretter auf einmal', '👀 Alles auf der Match-Seite', '👉 :url'],
+            ['♟️ Team-Rapid: :home gegen :away', '🏁 :boards Bretter, ein Match', '👉 :url'],
         ],
 
         // Results and pride.
         // The GG the moment a tournament is decided (ChampionChat), outside the rotation: one winner, then a shared place 1.
         'tournament_gg' => [
-            ['🏆 GG! :winner wins :name 🎉 :url'],
-            ['🏆 GG! :winner win :name 🎉 :url'],
+            ['🏆 GG! :winner gewinnt :name 🎉 :url'],
+            ['🏆 GG! :winner gewinnen :name 🎉 :url'],
         ],
         'tournament_winner' => [
-            ['🥇 :winner won :name', '🎉 GG to everyone who played', '👉 Bracket and results: :url'],
-            ['🏆 Champion of :name: :winner', '👉 See how it went: :url'],
-            ['🥇 :name belongs to :winner', '🎉 Well played, the whole field', '👉 :url'],
-            ['🏆 Final of :name: :winner', '👉 The bracket: :url'],
+            ['🥇 :winner hat :name gewonnen', '🎉 GG an alle, die mitgespielt haben', '👉 Bracket und Ergebnisse: :url'],
+            ['🏆 Sieger von :name: :winner', '👉 So lief es: :url'],
+            ['🥇 :name geht an :winner', '🎉 Stark gespielt, das ganze Feld', '👉 :url'],
+            ['🏆 Finale von :name: :winner', '👉 Das Bracket: :url'],
         ],
         'rank_up' => [
-            ['📈 Rank up! :player reached :tier in :game', '👉 :url'],
-            ['🎖️ :player climbed to :tier (:game)', '👉 Profile and badges: :url'],
-            ['📈 :player just reached :tier in :game', '👉 :url'],
-            ['🎖️ :player has a new tier, :tier in :game', '👉 See the badge: :url'],
+            ['📈 Aufgestiegen! :player ist jetzt :tier in :game', '👉 :url'],
+            ['🎖️ :player klettert auf :tier (:game)', '👉 Profil und Abzeichen: :url'],
+            ['📈 :player hat gerade :tier erreicht, in :game', '👉 :url'],
+            ['🎖️ :player hat einen neuen Rang: :tier in :game', '👉 Zum Abzeichen: :url'],
         ],
         'new_clan' => [
-            ['🛡️ New clan: :name [:tag]', '🤝 Say hi and challenge them', '👉 :url'],
-            ['🛡️ Welcome to the league, :name [:tag]!', '👉 Meet the clan: :url'],
-            ['🆕 Clan founded: :name [:tag]', '🤝 The challenge page is open', '👉 :url'],
-            ['🛡️ [:tag] :name is in', '👉 Say hello: :url'],
+            ['🛡️ Neuer Clan: :name [:tag]', '🤝 Sag Hallo und fordere sie raus', '👉 :url'],
+            ['🛡️ Willkommen in der Liga, :name [:tag]!', '👉 Zum Clan: :url'],
+            ['🆕 Clan gegründet: :name [:tag]', '🤝 Die Herausforderung ist offen', '👉 :url'],
+            ['🛡️ [:tag] :name ist dabei', '👉 Hallo sagen: :url'],
         ],
         'ladder_top' => [
-            ['🪜 :ladder ladder right now', ':podium', '👉 Full ladder: :url'],
-            ['🪜 Where the :ladder ladder stands', ':podium', '👉 See it all: :url'],
-            ['🥇 :ladder podium today', ':podium', '👉 The rest of the ladder: :url'],
-            ['🪜 Top of :ladder', ':podium', '👉 :url'],
+            ['🪜 :ladder-Ladder gerade', ':podium', '👉 Ganze Ladder: :url'],
+            ['🪜 So steht die :ladder-Ladder', ':podium', '👉 Alles sehen: :url'],
+            ['🥇 :ladder-Podest heute', ':podium', '👉 Der Rest der Ladder: :url'],
+            ['🪜 Spitze in :ladder', ':podium', '👉 :url'],
         ],
         'season_live' => [
-            ['⛏️ The season is live: rated wins mine blocks on the league chain', '👉 Watch the chain grow: :url'],
-            ['⛏️ Season is on: every rated win mines a block', '👉 Watch it grow: :url'],
-            ['⛏️ Rated wins are mining. The chain is moving', '👉 Follow it: :url'],
-            ['⛓️ Season chain is live. A rated win is a block', '👉 :url'],
+            ['⛏️ Die Saison läuft: Gewertete Siege minen Blöcke auf der Liga-Chain', '👉 Der Chain beim Wachsen zusehen: :url'],
+            ['⛏️ Saison läuft. Jeder gewertete Sieg mint einen Block', '👉 Zuschauen: :url'],
+            ['⛏️ Gewertete Siege minen. Die Chain wächst', '👉 Verfolgen: :url'],
+            ['⛓️ Saison-Chain ist live. Ein gewerteter Sieg ist ein Block', '👉 :url'],
         ],
         'season_countdown' => [
-            ['⛏️ Block 0 in :left', '🔓 Then rated play and mining start, until then every game is casual', '👉 :url'],
-            ['⛏️ :left until Block 0 hits', '🔓 Rated play and mining kick in then, casual for now', '👉 :url'],
-            ['⏳ Block 0 in :left', '🎮 Casual until then, rated after', '👉 :url'],
-            ['⛏️ :left on the clock before mining starts', '👉 The chain: :url'],
+            ['⛏️ Block 0 in :left', '🔓 Dann starten Wertung und Mining, bis dahin ist alles Casual', '👉 :url'],
+            ['⛏️ Noch :left bis Block 0', '🔓 Dann geht\'s gewertet los, jetzt noch Casual', '👉 :url'],
+            ['⏳ Block 0 in :left', '🎮 Bis dahin Casual, danach gewertet', '👉 :url'],
+            ['⛏️ Noch :left, dann startet das Mining', '👉 Die Chain: :url'],
         ],
         'stats' => [
-            ['📊 So far: :players players, :clans clans, :games games played', '👉 Join them: :url'],
-            ['📊 :players players, :clans clans, :games games so far', '👉 Come join in: :url'],
-            ['📊 The league right now: :players players, :clans clans', '♟️ :games games already played', '👉 :url'],
-            ['👥 :players players in, :clans clans beside them', '📊 :games games on the board', '👉 :url'],
+            ['📊 Bisher: :players Spieler, :clans Clans, :games Partien gespielt', '👉 Mach mit: :url'],
+            ['📊 :players Spieler, :clans Clans, :games Partien bis jetzt', '👉 Komm dazu: :url'],
+            ['📊 Die Liga gerade: :players Spieler, :clans Clans', '♟️ :games Partien schon gespielt', '👉 :url'],
+            ['👥 :players Spieler dabei, :clans Clans daneben', '📊 :games Partien auf dem Brett', '👉 :url'],
         ],
 
         // What you can do.
         'play_blitz' => [
-            ['⚡ Fancy a game? Rapid 10+5 or blitz 5+3 in the lobby', '👉 :url'],
-            ['♟️ One rapid game before bed? 10+5, right in the browser', '👉 :url'],
-            ['⚡ Blitz 5+3 is open. The clock starts when both sit', '👉 :url'],
-            ['♟️ Rapid 10+5, in the browser, no install', '👉 Take a board: :url'],
-            ['🧠 One sharp game. The lobby is the whole path', '👉 :url'],
-            ['🌙 Late and awake? Rapid is one click', '👉 :url'],
-            ['🏁 Casual Elo moves when you play, not when you watch', '👉 Sit down: :url'],
-            ['🎯 Blitz or rapid, same lobby, same ladder', '👉 :url'],
+            ['⚡ Lust auf eine Partie? Rapid 10+5 oder Blitz 5+3 in der Lobby', '👉 :url'],
+            ['♟️ Noch eine Rapid vorm Schlafen? 10+5, direkt im Browser', '👉 :url'],
+            ['⚡ Blitz 5+3 ist offen. Die Uhr läuft, sobald beide sitzen', '👉 :url'],
+            ['♟️ Rapid 10+5, im Browser, nichts installieren', '👉 Brett schnappen: :url'],
+            ['🧠 Eine knackige Partie. Die Lobby reicht', '👉 :url'],
+            ['🌙 Spät und noch wach? Rapid ist ein Klick', '👉 :url'],
+            ['🏁 Casual-Elo bewegt sich beim Spielen, nicht beim Zuschauen', '👉 Hinsetzen: :url'],
+            ['🎯 Blitz oder Rapid, gleiche Lobby, gleiche Ladder', '👉 :url'],
         ],
         'daily_chess' => [
-            ['📬 No time for a live game? Daily chess: one move a day, whenever it suits you', '👉 Challenge someone: :url'],
-            ['📬 Short on time? Daily chess: one move a day, no rush', '👉 Start a game: :url'],
-            ['📬 One move today keeps a real game alive', '👉 Daily chess: :url'],
-            ['🌙 Daily chess waits. It does not expire at midnight', '👉 :url'],
-            ['♟️ No clock, one move a day, a real opponent', '👉 Open a game: :url'],
-            ['📬 Correspondence, not a chore: a move when you have one', '👉 :url'],
+            ['📬 Keine Zeit für live? Fernschach: ein Zug am Tag, wann es dir passt', '👉 Jemanden herausfordern: :url'],
+            ['📬 Wenig Zeit? Fernschach: ein Zug am Tag, ganz ohne Stress', '👉 Partie starten: :url'],
+            ['📬 Ein Zug heute hält eine echte Partie am Leben', '👉 Fernschach: :url'],
+            ['🌙 Fernschach wartet. Um Mitternacht verfällt nichts', '👉 :url'],
+            ['♟️ Keine Uhr, ein Zug am Tag, ein echter Gegner', '👉 Partie öffnen: :url'],
+            ['📬 Fernschach ohne Pflicht: ein Zug, wenn du einen hast', '👉 :url'],
         ],
         'clan_challenge' => [
-            ['🚗 :games: clans challenge clans in best-of series', '👉 Send a challenge: :url'],
-            ['🚗 Clans face off in best-of series across :games', '👉 Challenge one: :url'],
-            ['🛡️ Clan versus clan, best of series: :games', '👉 Throw it: :url'],
-            ['⚔️ A clan ladder is there to be used: :games', '👉 :url'],
-            ['🏁 Not a one-off: best of series in :games', '👉 Challenge a clan: :url'],
-            ['🤝 Call out another clan. :games', '👉 :url'],
+            ['🚗 :games: Clans fordern Clans in Best-of-Serien', '👉 Herausfordern: :url'],
+            ['🚗 Clans treten in Best-of-Serien gegeneinander an. :games', '👉 Fordere einen raus: :url'],
+            ['🛡️ Clan gegen Clan, Best of: :games', '👉 Ab dafür: :url'],
+            ['⚔️ Die Clan-Ladder will benutzt werden: :games', '👉 :url'],
+            ['🏁 Kein Einzelspiel. Best-of-Serie in :games', '👉 Clan herausfordern: :url'],
+            ['🤝 Ruf einen anderen Clan raus. :games', '👉 :url'],
         ],
         'invite_friend' => [
-            ['💌 Play a friend: make an invite link in the lobby and send it anywhere', '👉 :url'],
-            ['💌 Got a friend to play? Grab an invite link from the lobby', '👉 :url'],
-            ['🤝 A friend, a link, a board. That is the path', '👉 :url'],
-            ['📨 The lobby writes the link. You only send it', '👉 :url'],
-            ['🎮 No scavenger hunt: invite link in, friend plays', '👉 :url'],
-            ['🔗 One link from the lobby, one friend on the other side', '👉 :url'],
+            ['💌 Spiel gegen einen Freund: Einladungslink in der Lobby holen und verschicken', '👉 :url'],
+            ['💌 Kumpel zum Spielen da? Hol dir einen Einladungslink in der Lobby', '👉 :url'],
+            ['🤝 Ein Freund, ein Link, ein Brett. Mehr braucht\'s nicht', '👉 :url'],
+            ['📨 Die Lobby schreibt den Link. Du schickst ihn nur ab', '👉 :url'],
+            ['🎮 Keine Schnitzeljagd: Link rein, Freund spielt', '👉 :url'],
+            ['🔗 Ein Link aus der Lobby, ein Freund auf der anderen Seite', '👉 :url'],
         ],
         'clans' => [
-            ['🛡️ Better together: join a clan or start your own', '👥 :count clans are already in', '👉 :url'],
-            ['🛡️ Solo or squad: join a clan or start one up', '👥 :count clans already here', '👉 :url'],
-            ['🏴 A clan is a tag and people who show up', '👥 :count clans are already in', '👉 :url'],
-            ['🤝 Join one or found one. Both count', '👥 :count clans already here', '👉 :url'],
-            ['🛡️ The clan list is open', '👥 :count clans are already in', '👉 Find yours: :url'],
-            ['👥 Squads are how the long season gets played', '🛡️ :count clans already here', '👉 :url'],
+            ['🛡️ Zusammen geht\'s besser: Tritt einem Clan bei oder gründe einen', '👥 :count Clans sind schon dabei', '👉 :url'],
+            ['🛡️ Solo oder Squad? Clan beitreten oder selbst einen starten', '👥 :count Clans schon da', '👉 :url'],
+            ['🏴 Ein Clan ist ein Tag und Leute, die auftauchen', '👥 :count Clans sind schon dabei', '👉 :url'],
+            ['🤝 Beitreten oder gründen. Zählt beides', '👥 :count Clans schon da', '👉 :url'],
+            ['🛡️ Die Clan-Liste ist offen', '👥 :count Clans sind schon dabei', '👉 Finde deinen: :url'],
+            ['👥 Mit Squad spielt sich die lange Saison besser', '🛡️ :count Clans schon da', '👉 :url'],
         ],
         'badges' => [
-            ['🎖️ Every rank comes with a badge you can show on your Nostr profile', '👉 Start climbing: :url'],
-            ['🎖️ Climb the ranks, earn a badge for your Nostr profile', '👉 :url'],
-            ['🏅 A tier is a badge, not a private number', '👉 Climb: :url'],
-            ['🎖️ The ladder pays in badges you can pin to Nostr', '👉 :url'],
-            ['📈 Silver, gold, and on: each tier has a badge', '👉 Start: :url'],
-            ['🥇 Rank up here, show it on your Nostr profile', '👉 :url'],
+            ['🎖️ Jeder Rang hat ein Abzeichen für dein Nostr-Profil', '👉 Losklettern: :url'],
+            ['🎖️ Rang hoch, Abzeichen fürs Nostr-Profil', '👉 :url'],
+            ['🏅 Ein Rang ist ein Abzeichen, keine geheime Zahl', '👉 Klettern: :url'],
+            ['🎖️ Die Ladder zahlt in Abzeichen. Die pinnst du auf Nostr', '👉 :url'],
+            ['📈 Silber, Gold und weiter: Jeder Rang hat sein Abzeichen', '👉 Los: :url'],
+            ['🥇 Hier aufsteigen, auf Nostr zeigen', '👉 :url'],
         ],
         'all_games' => [
-            ['🎮 :games: every game and mode on one page', '👉 :url'],
-            ['🎮 One page, every game and mode: :games', '👉 Check it out: :url'],
-            ['🗂️ The whole league on one page: :games', '👉 :url'],
-            ['🎯 Pick a game, see the mode, sit down', '🎮 :games', '👉 :url'],
-            ['🧭 Not sure where to start? The games page', '🎮 :games', '👉 :url'],
-            ['🎮 Boards, lobbies, weeks: :games', '👉 All of it: :url'],
+            ['🎮 :games: alle Spiele und Modi auf einer Seite', '👉 :url'],
+            ['🎮 Eine Seite, alle Spiele und Modi: :games', '👉 Schau rein: :url'],
+            ['🗂️ Die ganze Liga auf einer Seite: :games', '👉 :url'],
+            ['🎯 Spiel aussuchen, Modus checken, hinsetzen', '🎮 :games', '👉 :url'],
+            ['🧭 Keine Ahnung, wo anfangen? Die Spiele-Seite', '🎮 :games', '👉 :url'],
+            ['🎮 Bretter, Lobbys, Wochen: :games', '👉 Alles: :url'],
         ],
         'login' => [
-            ['🔑 Log in with Nostr or Google and you are in', '👉 :url'],
-            ['🔑 Nostr or Google login, takes seconds', '👉 :url'],
-            ['🔐 Nostr or Google. Then you are a player, not a guest', '👉 :url'],
-            ['🪪 Login is the gate. The games are past it', '👉 :url'],
-            ['⚡ Sign in once. Rating, clan and invites stick', '👉 :url'],
-            ['🔑 Two doors: Nostr or Google', '👉 :url'],
+            ['🔑 Mit Nostr oder Google anmelden, und du bist drin', '👉 :url'],
+            ['🔑 Login mit Nostr oder Google, dauert Sekunden', '👉 :url'],
+            ['🔐 Nostr oder Google. Dann bist du Spieler, nicht Gast', '👉 :url'],
+            ['🪪 Der Login ist die Tür. Dahinter warten die Spiele', '👉 :url'],
+            ['⚡ Einmal anmelden. Wertung, Clan und Einladungen bleiben', '👉 :url'],
+            ['🔑 Zwei Türen: Nostr oder Google', '👉 :url'],
         ],
         'zap' => [
-            ['⚡ Enjoying the stream? Zap it right here, every sat says thanks', '🌐 More on the site: :url'],
-            ['⚡ Liking the stream? A zap goes a long way', '🌐 :url'],
-            ['🧡 A zap on the stream is a sat that landed', '🌐 :url'],
-            ['⚡ The stream runs all day. A zap is how you wave', '🌐 :url'],
-            ['💸 No speech needed: zap the stream', '🌐 More of the league: :url'],
-            ['🙏 If the overlay made you grin, zap it', '🌐 :url'],
+            ['⚡ Gefällt dir der Stream? Zap ihn direkt hier, jeder Sat sagt Danke', '🌐 Mehr auf der Seite: :url'],
+            ['⚡ Stream gefällt? Ein Zap bringt viel', '🌐 :url'],
+            ['🧡 Ein Zap auf den Stream ist ein Sat, der ankommt', '🌐 :url'],
+            ['⚡ Der Stream läuft den ganzen Tag. Ein Zap ist dein Winken', '🌐 :url'],
+            ['💸 Keine Rede nötig: Zap den Stream', '🌐 Mehr von der Liga: :url'],
+            ['🙏 Hat dich das Overlay grinsen lassen? Zap es', '🌐 :url'],
         ],
 
         // TMNF's weekly time attack (plan "Trackmania und Restposten"), in the chat only: the running week, a new
         // best time of it, the finished week's podium. Drivers by Nostr key or league name, never a TMNF login.
         // The favourite link (tmtp://#addfavourite=…) stays on the week page: zap.stream would render its `#` as a hashtag.
         'tmnf_week' => [
-            ['🏎️ TMNF time attack this week: :track', '🏁 Drive it on our server :server, your best finish until :ends counts', '👉 How to join: :url'],
-            ['🏁 :name runs on :track', '🏎️ Free to play: join :server in TMNF and set a time before :ends', '👉 Join in: :url'],
-            ['🏎️ This week\'s TMNF track is :track', '🏁 Server :server, best finish before :ends', '👉 How to join: :url'],
-            ['🏁 :name, track :track, open until :ends', '🏎️ Our server: :server', '👉 :url'],
+            ['🏎️ TMNF-Zeitfahren diese Woche: :track', '🏁 Fahr auf unserem Server :server, deine beste Zeit bis :ends zählt', '👉 So machst du mit: :url'],
+            ['🏁 :name läuft auf :track', '🏎️ Kostenlos: Rein auf :server in TMNF und Zeit setzen bis :ends', '👉 Mitmachen: :url'],
+            ['🏎️ Die TMNF-Strecke dieser Woche ist :track', '🏁 Server :server, beste Zeit bis :ends', '👉 So machst du mit: :url'],
+            ['🏁 :name, Strecke :track, offen bis :ends', '🏎️ Unser Server: :server', '👉 :url'],
         ],
         'tmnf_top' => [
-            ['🥇 New best time in :name: :player', '⏱️ :time on :track:gap', '👉 Beat it: :url'],
-            ['⚡ :player tops :name with :time on :track', '🏎️ Think you are faster?', '👉 Your turn: :url'],
-            ['🥇 :player just took :name', '⏱️ :time on :track:gap', '👉 The week page: :url'],
-            ['🏎️ New lead in :name: :player, :time', '🏁 :track:gap', '👉 Beat it: :url'],
+            ['🥇 Neue Bestzeit in :name: :player', '⏱️ :time auf :track:gap', '👉 Schlag das: :url'],
+            ['⚡ :player führt :name an, mit :time auf :track', '🏎️ Du bist schneller?', '👉 Dein Zug: :url'],
+            ['🥇 :player hat sich :name geschnappt', '⏱️ :time auf :track:gap', '👉 Zur Wochenseite: :url'],
+            ['🏎️ Neue Führung in :name: :player, :time', '🏁 :track:gap', '👉 Schlag das: :url'],
         ],
         'tmnf_podium' => [
-            ['🏆 :name is over: :winner wins on :track', ':podium', '👉 All weeks: :url'],
-            ['🏁 Final board of :name on :track', ':podium', '👉 :url'],
-            ['🏆 :track is settled. :winner takes :name', ':podium', '👉 Every week: :url'],
-            ['🥇 :name, final: :winner', ':podium', '👉 :url'],
+            ['🏆 :name ist vorbei: :winner gewinnt auf :track', ':podium', '👉 Alle Wochen: :url'],
+            ['🏁 Endstand von :name auf :track', ':podium', '👉 :url'],
+            ['🏆 :track ist entschieden. :winner holt sich :name', ':podium', '👉 Jede Woche: :url'],
+            ['🥇 :name, Endstand: :winner', ':podium', '👉 :url'],
         ],
 
         // Notes on the bot's own profile (kind 1, TournamentNotes), one per tournament, by its status
@@ -364,52 +369,52 @@ final class StreamBotCopy
 
         // Chat tips for games that had no line of their own. A builder offers one only while that game is registered.
         'proof_of_pong' => [
-            ['🏓 Proof of Pong: first to 21, in the browser', '🕹️ A bot, or a live 1v1 that moves Elo', '👉 :url'],
-            ['🏓 Pong, and the ball is a Bitcoin meme', '⚡ To 21, win by 2, right here', '👉 Play: :url'],
-            ['🕹️ Proof of Pong is on: paddle, arena, Elo', '👉 :url'],
-            ['🏓 No install. Proof of Pong to 21', '👀 Spectate a live match or take a paddle', '👉 :url'],
-            ['⚡ One more game of Pong. The ladder remembers it', '👉 :url'],
-            ['🏓 Classic Pong, league Elo, meme arena', '👉 Sit down: :url'],
+            ['🏓 Proof of Pong: bis 21, im Browser', '🕹️ Gegen den Bot oder live 1v1 um Elo', '👉 :url'],
+            ['🏓 Pong, und der Ball ist ein Bitcoin-Meme', '⚡ Bis 21, zwei Punkte Abstand, direkt hier', '👉 Spielen: :url'],
+            ['🕹️ Proof of Pong läuft: Schläger, Arena, Elo', '👉 :url'],
+            ['🏓 Nichts installieren. Proof of Pong bis 21', '👀 Live-Match gucken oder selbst ran', '👉 :url'],
+            ['⚡ Noch eine Runde Pong. Die Ladder merkt sich das', '👉 :url'],
+            ['🏓 Klassisches Pong, Liga-Elo, Meme-Arena', '👉 Hinsetzen: :url'],
         ],
         'hyperbitcoinization' => [
-            ['🗺️ Hyperbitcoinization: a map for 2 to 6', '⏱️ Live turns, or one move a day', '👉 :url'],
-            ['🌍 Take the map. Hyperbitcoinization is open', '🎲 Live or correspondence, your table', '👉 :url'],
-            ['🗺️ A table is waiting in Hyperbitcoinization', '👉 Open one: :url'],
-            ['⚔️ 2 to 6 seats, one map, factions with a point of view', '👉 Hyperbitcoinization: :url'],
-            ['🌙 No hour to sit? Correspondence Hyperbitcoinization, a day a turn', '👉 :url'],
-            ['🗺️ The season ladder tracks the map, not the chat', '👉 Play: :url'],
+            ['🗺️ Hyperbitcoinization: eine Karte für 2 bis 6', '⏱️ Live-Züge oder ein Zug am Tag', '👉 :url'],
+            ['🌍 Schnapp dir die Karte. Hyperbitcoinization ist offen', '🎲 Live oder Fernpartie, dein Tisch', '👉 :url'],
+            ['🗺️ In Hyperbitcoinization wartet ein Tisch', '👉 Einen aufmachen: :url'],
+            ['⚔️ 2 bis 6 Plätze, eine Karte, Fraktionen mit Haltung', '👉 Hyperbitcoinization: :url'],
+            ['🌙 Keine Stunde Zeit? Hyperbitcoinization als Fernpartie, ein Zug am Tag', '👉 :url'],
+            ['🗺️ Die Saison-Ladder zählt die Karte, nicht den Chat', '👉 Spielen: :url'],
         ],
         'blockfill_play' => [
-            ['🧱 Blockfill: clear the week\'s blocks, best time counts', '⏱️ Your run, your replay, your place', '👉 :url'],
-            ['⛏️ A Blockfill run starts from zero. The week does not', '👉 Play: :url'],
-            ['🧱 Stack, clear, submit. Blockfill ranks the verified time', '👉 :url'],
-            ['⏱️ First place this week is a time. Beat it in Blockfill', '👉 :url'],
-            ['🧱 Blockfill is in the browser. No account in another game', '👉 :url'],
-            ['🏁 One good run is the whole Blockfill week', '👉 Try it: :url'],
+            ['🧱 Blockfill: Räum die Blöcke der Woche ab, die beste Zeit zählt', '⏱️ Dein Lauf, dein Replay, dein Platz', '👉 :url'],
+            ['⛏️ Ein Blockfill-Lauf startet bei null. Die Woche nicht', '👉 Spielen: :url'],
+            ['🧱 Stapeln, abräumen, einreichen. Blockfill wertet die geprüfte Zeit', '👉 :url'],
+            ['⏱️ Platz 1 diese Woche ist eine Zeit. Schlag sie in Blockfill', '👉 :url'],
+            ['🧱 Blockfill läuft im Browser. Kein Konto bei einem anderen Spiel', '👉 :url'],
+            ['🏁 Ein guter Lauf reicht für die ganze Blockfill-Woche', '👉 Probier es: :url'],
         ],
         'board_game' => [
-            ['♟️ :game, one move a day, on our board', '👉 :url'],
-            ['🧩 :game is correspondence: a move when you have one', '👉 Open the lobby: :url'],
-            ['♟️ No clock. :game waits for your move', '👉 :url'],
-            ['🧩 :game sits next to chess. Same league, slower clock', '👉 :url'],
-            ['📬 A daily board: :game', '👉 :url'],
-            ['♟️ :game, played here, rated here', '👉 :url'],
+            ['♟️ :game, ein Zug am Tag, auf unserem Brett', '👉 :url'],
+            ['🧩 :game ist Fernpartie: ein Zug, wenn du einen hast', '👉 Zur Lobby: :url'],
+            ['♟️ Keine Uhr. :game wartet auf deinen Zug', '👉 :url'],
+            ['🧩 :game steht neben Schach. Gleiche Liga, langsamere Uhr', '👉 :url'],
+            ['📬 Ein Brett für jeden Tag: :game', '👉 :url'],
+            ['♟️ :game, hier gespielt, hier gewertet', '👉 :url'],
         ],
         'aoe2' => [
-            ['🏰 Age of Empires II: best of 1 or 3, on your own copy', '👉 How a match works: :url'],
-            ['🏰 AoE2 1v1 is a player ladder. 2v2 and 3v3 are clans', '👉 :url'],
-            ['⚔️ Age of Empires II is on the league board', '🏰 Host the lobby in the game, report the winner here', '👉 :url'],
-            ['🏰 One map, a winner, Elo. Age of Empires II', '👉 :url'],
-            ['🛡️ Clan lineups play AoE2 2v2 and 3v3', '👉 See the page: :url'],
-            ['🏰 Age of Empires II: Definitive Edition, best of series', '👉 :url'],
+            ['🏰 Age of Empires II: Best of 1 oder 3, auf deiner eigenen Kopie', '👉 So läuft ein Match: :url'],
+            ['🏰 AoE2 1v1 ist eine Spieler-Ladder. 2v2 und 3v3 sind Clans', '👉 :url'],
+            ['⚔️ Age of Empires II ist in der Liga', '🏰 Lobby im Spiel hosten, Sieger hier melden', '👉 :url'],
+            ['🏰 Eine Karte, ein Sieger, Elo. Age of Empires II', '👉 :url'],
+            ['🛡️ Clan-Aufstellungen spielen AoE2 2v2 und 3v3', '👉 Zur Seite: :url'],
+            ['🏰 Age of Empires II: Definitive Edition, Best-of-Serien', '👉 :url'],
         ],
         'ea_fc' => [
-            ['⚽ EA Sports FC: best of 1 or 3, goals count', '👉 :url'],
-            ['⚽ FC 1v1 is a player ladder. 2v2 is a clan lineup', '👉 :url'],
-            ['🏟️ EA Sports FC, on your copy, reported here', '👉 :url'],
-            ['⚽ A series, not a friendly: EA Sports FC', '👉 :url'],
-            ['🥅 A game won on penalties is still a win. Log the series', '👉 EA Sports FC: :url'],
-            ['⚽ Two editions, two ladders. Pick yours', '👉 :url'],
+            ['⚽ EA Sports FC: Best of 1 oder 3, Tore zählen', '👉 :url'],
+            ['⚽ FC 1v1 ist eine Spieler-Ladder. 2v2 ist eine Clan-Aufstellung', '👉 :url'],
+            ['🏟️ EA Sports FC, auf deiner Kopie, hier gemeldet', '👉 :url'],
+            ['⚽ Eine Serie, kein Freundschaftsspiel: EA Sports FC', '👉 :url'],
+            ['🥅 Ein Sieg im Elfmeterschießen ist auch ein Sieg. Trag die Serie ein', '👉 EA Sports FC: :url'],
+            ['⚽ Zwei Ausgaben, zwei Ladders. Nimm deine', '👉 :url'],
         ],
     ];
 
@@ -452,19 +457,26 @@ final class StreamBotCopy
         return implode("\n", $out);
     }
 
-    /** "3 days 4 h", "2 h 15 min", "40 min"; never less than a minute. */
-    public static function duration(int $seconds): string
+    /** "3 days 4 h", "2 h 15 min", "40 min" (German: "3 Tage 4 Std.", "2 Std. 15 Min."); never less than a minute. */
+    public static function duration(int $seconds, string $locale = 'en'): string
     {
         $seconds = max(60, $seconds);
         $days = intdiv($seconds, 86400);
         $hours = intdiv($seconds % 86400, 3600);
         $minutes = intdiv($seconds % 3600, 60);
+        [$day, $daysWord, $h, $min] = $locale === 'de' ? ['Tag', 'Tage', 'Std.', 'Min.'] : ['day', 'days', 'h', 'min'];
 
         if ($days > 0) {
-            return $days.' '.($days === 1 ? 'day' : 'days').($hours > 0 ? ' '.$hours.' h' : '');
+            return $days.' '.($days === 1 ? $day : $daysWord).($hours > 0 ? ' '.$hours.' '.$h : '');
         }
 
-        return $hours > 0 ? $hours.' h'.($minutes > 0 ? ' '.$minutes.' min' : '') : $minutes.' min';
+        return $hours > 0 ? $hours.' '.$h.($minutes > 0 ? ' '.$minutes.' '.$min : '') : $minutes.' '.$min;
+    }
+
+    /** A whole number as the chat writes it: "21.000" in German, "21,000" in English. */
+    public static function number(int|float $number, string $locale = 'en'): string
+    {
+        return $locale === 'de' ? number_format($number, 0, ',', '.') : number_format($number);
     }
 
     public static function variants(string $template): int

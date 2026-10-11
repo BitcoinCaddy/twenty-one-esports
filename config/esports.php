@@ -1885,16 +1885,41 @@ return [
             'Hosp', 'Kinski', 'Schnabel', 'Beppo', 'Kenobi', 'Roman Reher', 'Jack Mallers', 'Mises',
         ],
         'channels' => [
-            'stream_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_STREAM_CHAT', false), 'daily_cap' => 150, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
-            'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
-            'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
-            'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
+            // Languages per channel (user 2026-10-11, binding): the stream chat (kind 1311) German, the bot's Nostr profile
+            // notes (kind 1) English. A share post is the player's own note, in the player's language (BotVoice::sentence()).
+            // Three sentences (P2): short everyday sentences need one more than P1's two to say the same within the length.
+            'stream_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_STREAM_CHAT', false), 'daily_cap' => 150, 'max_chars' => 180, 'max_sentences' => 3, 'language' => 'de'],
+            'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 3, 'language' => 'de'],
+            'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 3, 'language' => 'en'],
+            'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 3, 'language' => 'en'],
+            'share_post' => ['enabled' => (bool) env('ESPORTS_VOICE_SHARE_POST', false), 'daily_cap' => 60, 'max_chars' => 200, 'max_sentences' => 3, 'language' => 'en',
+                'instruction' => 'The player posts this about their own moment, in the first person ("I", "ich"). No mention of other people.'],
             'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 1200, 'multiline' => true, 'language' => 'de'],
             'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 1500, 'multiline' => true, 'language' => 'de'],
             'card' => ['enabled' => (bool) env('ESPORTS_VOICE_CARD', false), 'daily_cap' => 50, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de'],
             'meme' => ['enabled' => (bool) env('ESPORTS_VOICE_MEME', false), 'daily_cap' => 30, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'de'],
             // The caster is the largest consumer: throttled hardest per call, capped per day.
             'caster' => ['enabled' => (bool) env('ESPORTS_VOICE_CASTER', false), 'daily_cap' => 300, 'max_chars' => 160, 'max_sentences' => 2, 'language' => 'de'],
+        ],
+        // The posts that may speak with the voice (App\Support\Voice\BotVoice, plan "KI-Stimme der Liga", P2), each with
+        // its own switch, all off until the user approved its tone (P7). Off, a post keeps its template; on, it also
+        // needs its channel above switched on. The voice only replaces the wording of a post that goes out anyway.
+        'functions' => [
+            'chat_rotation' => (bool) env('ESPORTS_VOICE_FN_CHAT_ROTATION', false),
+            'chat_gg' => (bool) env('ESPORTS_VOICE_FN_CHAT_GG', false),
+            'note_tournament' => (bool) env('ESPORTS_VOICE_FN_NOTE_TOURNAMENT', false),
+            'note_free_places' => (bool) env('ESPORTS_VOICE_FN_NOTE_FREE_PLACES', false),
+            'note_champion' => (bool) env('ESPORTS_VOICE_FN_NOTE_CHAMPION', false),
+            'note_pride' => (bool) env('ESPORTS_VOICE_FN_NOTE_PRIDE', false),
+            'note_weekly' => (bool) env('ESPORTS_VOICE_FN_NOTE_WEEKLY', false),
+            'share_post' => (bool) env('ESPORTS_VOICE_FN_SHARE_POST', false),
+        ],
+        // Everyday language (user 2026-10-11: "Ein Mensch redet im Alltag nicht in Schachtelsätzen"): words per sentence
+        // and commas per sentence (a list of short items is exempt), checked by VoiceHygiene; a text that breaks them
+        // is written once more, then the template goes out.
+        'style' => [
+            'max_words' => 14,
+            'max_commas' => 1,
         ],
         // The spam gate (App\Support\Voice\SpamGate, user 2026-10-11: "damit alles nicht zu bloaty und chatty wird
         // und zu muting führt"). It can only hold a post back, never add one: the stream bot's own cadence
@@ -1903,7 +1928,7 @@ return [
         'spam' => [
             'enabled' => (bool) env('ESPORTS_VOICE_SPAM_GATE', true),
             'max_chars' => ['chat' => 180, 'profile' => 280],
-            'max_sentences' => 2,
+            'max_sentences' => 3,
             // A person is mentioned at most once per `mention_hours` on the profile and once per stream session in
             // the chat; a champion or tournament-win moment may add one more.
             'mention_hours' => 24,

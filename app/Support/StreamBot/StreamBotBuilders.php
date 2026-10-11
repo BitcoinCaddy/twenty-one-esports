@@ -79,8 +79,8 @@ final class StreamBotBuilders
     /** A finished TMNF week's podium is told for this many hours after the week's end (its review time included). */
     public const TMNF_PODIUM_HOURS = 48;
 
-    /** Messages with numbers are read in this locale, whatever the process runs in. */
-    private const LOCALE = 'en';
+    /** The chat speaks German (user 2026-10-11, plan "KI-Stimme der Liga"): dates, numbers and words in this locale. */
+    private const LOCALE = 'de';
 
     /** @var (Closure(int): int)|null picks a variant; the first unused one by default */
     private ?Closure $variantPicker = null;
@@ -260,10 +260,10 @@ final class StreamBotBuilders
 
             $this->add($messages, $this->message('tournament_signup', 'tournament-signup:'.$tournament->id, [
                 'name' => $name,
-                'game' => Lobbies::isLobby($tournament) ? $this->games->name($tournament->game).', one lobby match' : $this->gameLine($tournament->game, $tournament->mode),
+                'game' => Lobbies::isLobby($tournament) ? $this->games->name($tournament->game).', ein Lobby-Match' : $this->gameLine($tournament->game, $tournament->mode),
                 'starts' => $this->berlin($tournament->starts_at),
-                'spots' => $places['taken'].' of '.$places['places'].' spots taken',
-                'pot' => $pot === null ? '' : ' · 💰 '.number_format($pot).' sats in the pot',
+                'spots' => $places['taken'].' von '.$places['places'].' Plätzen belegt',
+                'pot' => $pot === null ? '' : ' · 💰 '.StreamBotCopy::number($pot, self::LOCALE).' Sats im Topf',
                 'url' => route('tournaments.show', $tournament),
             ]));
         }
@@ -297,8 +297,8 @@ final class StreamBotBuilders
             $this->add($messages, $this->message('tournament_last_call', 'tournament-last-call:'.$tournament->id, [
                 'name' => $name,
                 'left' => $this->duration($closes->getTimestamp() - $now->getTimestamp()),
-                'open' => $open.' '.($open === 1 ? 'spot' : 'spots'),
-                'game' => Lobbies::isLobby($tournament) ? $this->games->name($tournament->game).', one lobby match' : $this->gameLine($tournament->game, $tournament->mode),
+                'open' => $open.' '.($open === 1 ? 'Platz' : 'Plätze'),
+                'game' => Lobbies::isLobby($tournament) ? $this->games->name($tournament->game).', ein Lobby-Match' : $this->gameLine($tournament->game, $tournament->mode),
                 'url' => route('tournaments.signup', $tournament),
             ]));
         }
@@ -608,9 +608,9 @@ final class StreamBotBuilders
         }
 
         return $this->one($this->message('stats', 'stats:'.$now->format('Y-m-d'), [
-            'players' => number_format($players),
-            'clans' => number_format(Clan::query()->count()),
-            'games' => number_format(ChessGame::query()->where('status', ChessGameStatus::Finished)->count()),
+            'players' => StreamBotCopy::number($players, self::LOCALE),
+            'clans' => StreamBotCopy::number(Clan::query()->count(), self::LOCALE),
+            'games' => StreamBotCopy::number(ChessGame::query()->where('status', ChessGameStatus::Finished)->count(), self::LOCALE),
             'url' => route('home'),
         ]));
     }
@@ -675,7 +675,7 @@ final class StreamBotBuilders
             'player' => $this->mention($first->participant->user, $name, $tags),
             'time' => ScoreMetric::time()->format((int) $run->value),
             'track' => TmnfNotes::track($week),
-            'gap' => $gap > 0 ? ', '.BlockfillSlides::seconds($gap).' faster' : '',
+            'gap' => $gap > 0 ? ', '.str_replace('.', ',', BlockfillSlides::seconds($gap)).' schneller' : '',
             'url' => route('tournaments.show', $week),
         ], tags: $tags));
     }
@@ -752,7 +752,7 @@ final class StreamBotBuilders
     {
         $count = Clan::query()->count();
 
-        return $this->feature('clans', route('clans.index'), ['count' => $count > 1 ? number_format($count) : null]);
+        return $this->feature('clans', route('clans.index'), ['count' => $count > 1 ? StreamBotCopy::number($count, self::LOCALE) : null]);
     }
 
     /**
@@ -867,7 +867,7 @@ final class StreamBotBuilders
                 continue;
             }
 
-            return new StreamBotMessage($builder ?? $template, $factKey, $content, $tags);
+            return new StreamBotMessage($builder ?? $template, $factKey, $content, $tags, $template, ($start + $i) % max(1, $variants), $values);
         }
 
         return null;
@@ -969,20 +969,20 @@ final class StreamBotBuilders
         return trim($this->games->name($game).' '.$modeName);
     }
 
-    /** "Sat 4 Oct, 20:00 CEST" in the bot's time zone (Berlin). */
+    /** "Sa, 4. Okt 2026, 20:00 MESZ" in the bot's time zone (Berlin). */
     private function berlin(\DateTimeInterface $moment): string
     {
-        return CarbonImmutable::instance($moment)->setTimezone((string) config('esports.stream_bot.timezone', 'Europe/Berlin'))->format('D j M, H:i T');
+        return LeagueTime::stamp(CarbonImmutable::instance($moment), (string) config('esports.stream_bot.timezone', 'Europe/Berlin'), self::LOCALE);
     }
 
-    /** "3 days 4 h", "2 h 15 min", "40 min". */
+    /** "3 Tage 4 Std.", "2 Std. 15 Min.", "40 Min.". */
     private function duration(int $seconds): string
     {
-        return StreamBotCopy::duration($seconds);
+        return StreamBotCopy::duration($seconds, self::LOCALE);
     }
 
     /**
-     * At most three names, then "and more", so a chat line stays a line.
+     * At most three names, then "und mehr", so a chat line stays a line.
      *
      * @param  list<string>  $names
      */
@@ -992,11 +992,11 @@ final class StreamBotBuilders
             return $this->list($names);
         }
 
-        return implode(', ', array_slice($names, 0, $max)).' and more';
+        return implode(', ', array_slice($names, 0, $max)).' und mehr';
     }
 
     /**
-     * "A", "A and B", "A, B and C".
+     * "A", "A und B", "A, B und C".
      *
      * @param  list<string>  $names
      */
@@ -1004,6 +1004,6 @@ final class StreamBotBuilders
     {
         $last = array_pop($names);
 
-        return $names === [] ? (string) $last : implode(', ', $names).' and '.$last;
+        return $names === [] ? (string) $last : implode(', ', $names).' und '.$last;
     }
 }

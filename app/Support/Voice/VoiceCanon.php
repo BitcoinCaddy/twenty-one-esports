@@ -11,10 +11,15 @@ use RuntimeException;
  * for. A prompt never carries the whole canon (about 250k tokens); select()
  * picks the entries that fit one moment.
  *
+ * `en_ok` (plan "KI-Stimme der Liga", P2): whether an entry makes sense to
+ * an English reader as a sense translation (false for puns, dialect, German
+ * media and politics). Marked once by `voice:mark-english`; an entry without
+ * the mark counts as German only, so the English channels never get it.
+ *
  * The example posts (resources/data/voice/examples.json, from the same
  * research) are grouped by moment; examplesFor() returns a moment's lines.
  *
- * @phpstan-type CanonEntry array{id: string, wording: string, meaning: string, usage: string, category: string, type: string, contexts: list<string>, speaker: ?string}
+ * @phpstan-type CanonEntry array{id: string, wording: string, meaning: string, usage: string, category: string, type: string, contexts: list<string>, speaker: ?string, en_ok: bool}
  * @phpstan-type Example array{line: string, canon_id: ?string, form: string}
  */
 final class VoiceCanon
@@ -98,6 +103,7 @@ final class VoiceCanon
                 'type' => (string) ($row['type'] ?? ''),
                 'contexts' => $contexts,
                 'speaker' => is_string($row['speaker'] ?? null) ? $row['speaker'] : null,
+                'en_ok' => ($row['en_ok'] ?? false) === true,
             ];
 
             foreach ($contexts as $context) {
@@ -135,22 +141,25 @@ final class VoiceCanon
      * contexts fit the moment (in the order of MOMENTS), then general ones,
      * then any other, each group shuffled, leaving out `$avoid` (the IDs a
      * channel's last posts used) as long as enough others remain. The rendered
-     * selection stays under `$tokenBudget` (estimated as chars/4).
+     * selection stays under `$tokenBudget` (estimated as chars/4). For an
+     * English channel (`$language` en) only the entries marked `en_ok`.
      *
      * @param  list<string>  $avoid
      * @return list<CanonEntry>
      */
-    public function select(string $moment, array $avoid = [], int $min = 50, int $max = 100, int $tokenBudget = 12_000): array
+    public function select(string $moment, array $avoid = [], int $min = 50, int $max = 100, int $tokenBudget = 12_000, string $language = 'de'): array
     {
-        $entries = $this->entries();
+        $entries = $language === 'en' ? array_filter($this->entries(), fn (array $entry): bool => $entry['en_ok']) : $this->entries();
         $avoided = array_flip($avoid);
         $contexts = self::MOMENTS[$moment]['contexts'] ?? [];
 
         $groups = [];
+        $usable = fn (array $ids): array => array_values(array_filter($ids, fn (string $id): bool => isset($entries[$id])));
+
         foreach ($contexts as $context) {
-            $groups[] = $this->idsFor($context);
+            $groups[] = $usable($this->idsFor($context));
         }
-        $groups[] = $this->idsFor(self::GENERAL);
+        $groups[] = $usable($this->idsFor(self::GENERAL));
         $groups[] = array_keys($entries);
 
         $picked = [];

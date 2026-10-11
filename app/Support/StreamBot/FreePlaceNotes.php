@@ -11,6 +11,7 @@ use App\Support\SeasonChain\LeagueKey;
 use App\Support\Settings\LeagueSettings;
 use App\Support\Tournaments\CasualCups;
 use App\Support\Tournaments\TournamentSignups;
+use App\Support\Voice\BotVoice;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -59,10 +60,13 @@ class FreePlaceNotes
     /** Notes are written in this locale, whatever the process runs in. */
     private const LOCALE = 'en';
 
+    private const TEMPLATE = 'tournament_note_places';
+
     public function __construct(
         private TournamentNotes $notes,
         private StreamBotPublisher $publisher,
         private TournamentSignups $signups,
+        private BotVoice $voice,
     ) {}
 
     /**
@@ -197,11 +201,22 @@ class FreePlaceNotes
      */
     public function content(Tournament $tournament, int $free, int $places, CarbonImmutable $now, ?int $variant = null): string
     {
+        return StreamBotCopy::render(self::TEMPLATE, $variant ?? self::nextVariant(), $this->values($tournament, $free, $places, $now))
+            ."\n\nnostr:".$this->notes->naddr($tournament);
+    }
+
+    /**
+     * The values of a reminder, in English.
+     *
+     * @return array<string, string|int>
+     */
+    private function values(Tournament $tournament, int $free, int $places, CarbonImmutable $now): array
+    {
         $previous = app()->getLocale();
         app()->setLocale(self::LOCALE);
 
         try {
-            $body = StreamBotCopy::render('tournament_note_places', $variant ?? self::nextVariant(), [
+            return [
                 'free' => $free,
                 'places' => $places,
                 'name' => StreamBotCopy::clean($tournament->name, self::NAME_LENGTH),
@@ -209,32 +224,31 @@ class FreePlaceNotes
                 'starts' => LeagueTime::stamp($tournament->starts_at, $tournament->isCasualCup() ? CasualCups::timezoneOf($tournament) : null),
                 'left' => StreamBotCopy::duration((int) $tournament->signup_closes_at?->getTimestamp() - $now->getTimestamp()),
                 'url' => route('tournaments.show', $tournament),
-            ]);
+            ];
         } finally {
             app()->setLocale($previous);
         }
-
-        return $body."\n\nnostr:".$this->notes->naddr($tournament);
     }
 
     /**
      * The kind-1 note in the wording `$variant` (null: the next one): the
      * content and one NIP-18 `q` tag on the calendar event's address with
-     * its relay hint. No `t` tag, no `#`.
+     * its relay hint. No `t` tag, no `#`. With its switch on, the league
+     * voice writes the text from the same facts (BotVoice, `note_free_places`).
      */
     public function event(LeagueKey $key, Tournament $tournament, int $free, int $places, CarbonImmutable $now, ?int $variant = null): SignedEvent
     {
         $address = $tournament->address() ?? throw new LogicException('An unpublished tournament has no free-places note.');
-        $content = $this->content($tournament, $free, $places, $now, $variant);
-        $tags = [['q', $address, $this->notes->relayHint() ?? '']];
-        $body = explode("\n\nnostr:", $content, 2)[0];
-        $problems = StreamBotCopy::violations($body, $tags);
+        $composed = $this->voice->compose('note_free_places', self::TEMPLATE, $variant ?? self::nextVariant(), $this->values($tournament, $free, $places, $now),
+            [['q', $address, $this->notes->relayHint() ?? '']], $now)
+            ?? throw new LogicException('The voice returned no note.');
+        $problems = StreamBotCopy::violations($composed['content'], $composed['tags']);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own free-places note: '.implode(', ', $problems));
         }
 
-        return $key->sign(TournamentNotes::KIND_NOTE, $tags, $content, $now->getTimestamp());
+        return $key->sign(TournamentNotes::KIND_NOTE, $composed['tags'], $composed['content']."\n\nnostr:".$this->notes->naddr($tournament), $now->getTimestamp());
     }
 
     /**
@@ -286,6 +300,10 @@ class FreePlaceNotes
             'published_at' => $accepted > 0 ? $now : null,
         ])->save();
 
+        if ($accepted > 0) {
+            $this->voice->delivered('note_free_places', self::TEMPLATE, $event->content, $event->tags, $now, subjects: ['tournament:'.$tournament->id]);
+        }
+
         Log::info('Stream bot free-places note', [
             'tournament' => $tournament->id,
             'slot' => $due['slot'],
@@ -299,7 +317,7 @@ class FreePlaceNotes
     /** The wording the next reminder takes (ProfileNotes). */
     private static function nextVariant(): int
     {
-        return ProfileNotes::nextVariant(self::NOTE_TYPE, StreamBotCopy::variants('tournament_note_places'));
+        return ProfileNotes::nextVariant(self::NOTE_TYPE, StreamBotCopy::variants(self::TEMPLATE));
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Support\Payouts\TournamentPlacements;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\Tournaments\TournamentChampion;
 use App\Support\TwentyOne\Stream\TournamentLiveSlides;
+use App\Support\Voice\BotVoice;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ use Throwable;
  * tournament is decided, the stream bot says so in the 24/7 stream's live
  * chat (kind 1311 under its 30311), once:
  *
- *   🏆 GG! <mention> wins <tournament> 🎉 <url>
+ *   🏆 GG! <mention> gewinnt <tournament> 🎉 <url>
  *
  * The winner is named by the Nostr key of their account (`nostr:npub1…` and
  * a `p` tag, a team's members and a shared place 1 up to
@@ -45,6 +46,11 @@ use Throwable;
  * StreamBotPost with the fact `tournament-winner:<id>`, so the rotation's
  * `tournament_winner` does not name the same winner again within its
  * repeat hours and the daily cap counts it.
+ *
+ * In German, as the whole chat (plan "KI-Stimme der Liga", P2); with its
+ * switch on the league voice writes it from the same facts, the template
+ * stays the fallback (BotVoice, function `chat_gg`). A winner who switched
+ * mentions off is named without a tag.
  */
 class ChampionChat
 {
@@ -60,6 +66,7 @@ class ChampionChat
         private StreamBotPublisher $publisher,
         private TournamentChampion $champions,
         private TournamentPlacements $placements,
+        private BotVoice $voice,
     ) {}
 
     /**
@@ -133,9 +140,10 @@ class ChampionChat
     }
 
     /**
-     * The GG's text and `p` tags; null without a place 1.
+     * The GG's text and `p` tags in the template's words, with the template
+     * wording and values it was rendered from; null without a place 1.
      *
-     * @return array{content: string, tags: list<list<string>>}|null
+     * @return array{content: string, tags: list<list<string>>, variant: int, values: array<string, string>}|null
      */
     public function compose(Tournament $tournament): ?array
     {
@@ -153,18 +161,20 @@ class ChampionChat
             $named[] = $this->named($winner, $tags);
         }
 
-        $content = StreamBotCopy::render(self::TEMPLATE, count($named) > 1 ? 1 : 0, [
+        $variant = count($named) > 1 ? 1 : 0;
+        $values = [
             'winner' => count($named) > 1 ? implode(', ', array_slice($named, 0, -1)).' & '.$named[count($named) - 1] : $named[0],
             'name' => $name,
             'url' => route('tournaments.show', $tournament),
-        ]);
+        ];
+        $content = StreamBotCopy::render(self::TEMPLATE, $variant, $values);
         $problems = StreamBotCopy::violations($content, $tags);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own GG: '.implode(', ', $problems));
         }
 
-        return ['content' => $content, 'tags' => $tags];
+        return ['content' => $content, 'tags' => $tags, 'variant' => $variant, 'values' => $values];
     }
 
     /**
@@ -246,7 +256,9 @@ class ChampionChat
 
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
-            $message = $this->compose($tournament) ?? throw new LogicException('Tournament '.$tournament->id.' has no place 1.');
+            $template = $this->compose($tournament) ?? throw new LogicException('Tournament '.$tournament->id.' has no place 1.');
+            $message = $this->voice->compose('chat_gg', self::TEMPLATE, $template['variant'], $template['values'], $template['tags'], $now, ['session' => StreamBot::session($stream, $now)])
+                ?? $template;
             $signed = $this->bot->event($key, $stream, $message['content'], $now->getTimestamp(), $message['tags']);
             $post->forceFill([
                 'event_id' => $signed->id,
@@ -261,6 +273,8 @@ class ChampionChat
         $post->forceFill(['relays_accepted' => $accepted, 'relays_total' => count($results), 'published_at' => $accepted > 0 ? $now : null])->save();
 
         if ($accepted > 0) {
+            $this->voice->delivered('chat_gg', self::TEMPLATE, $event->content, $event->tags, $now, subjects: ['tournament:'.$tournament->id], session: StreamBot::session($stream, $now));
+
             // In the chat log: the cap counts it and the rotation does not name this winner again soon. It does not move the
             // rotation's own next post (that one's next_due_at stands): the GG came on top.
             StreamBotPost::query()->create([

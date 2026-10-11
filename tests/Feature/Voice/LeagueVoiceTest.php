@@ -121,12 +121,38 @@ it('returns null without an exception when the request fails', function (Closure
     '500' => fn () => fn () => throw new RequestException(new Response(new Psr7Response(500, [], '{"error":{"message":"boom"}}'))),
 ]);
 
-it('returns null and counts the reason when the guard rejects the text', function () {
-    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype']]);
+it('returns null and counts the reasons when the guard rejects the text twice', function () {
+    VoiceAgent::fake([
+        ['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype'],
+    ]);
 
     expect(leagueVoice()->say('win', voiceFacts(), 'stream_chat'))->toBeNull()
         ->and(DB::table('voice_rejections')->orderBy('reason')->pluck('reason')->all())->toBe([VoiceGuard::HASHTAG, VoiceGuard::NUMBER, VoiceHygiene::TRUNCATED])
-        ->and(DB::table('voice_usage')->value('rejected'))->toBe(1);
+        ->and(DB::table('voice_usage')->value('rejected'))->toBe(2)
+        ->and(DB::table('voice_usage')->value('attempts'))->toBe(2);
+    VoiceAgent::assertPromptedTimes(2);
+});
+
+it('writes once more after a rejection, telling the model why, and posts the second text', function () {
+    VoiceAgent::fake([
+        ['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Satoshi schlägt Hal 3:1. Stark!', 'canon_id' => null, 'mood' => 'hype'],
+    ]);
+
+    $line = leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect($line?->text)->toBe('Satoshi schlägt Hal 3:1. Stark!')
+        ->and(DB::table('voice_usage')->first(['attempts', 'accepted', 'rejected']))->toEqual((object) ['attempts' => 2, 'accepted' => 1, 'rejected' => 1]);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Dein erster Entwurf ging nicht durch') && str_contains($prompt->prompt, 'Kein # im Text.'));
+});
+
+it('asks no second time once the daily cap is used up by the first', function () {
+    config(['esports.voice.channels.stream_chat.daily_cap' => 1]);
+    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype']]);
+
+    expect(leagueVoice()->say('win', voiceFacts(), 'stream_chat'))->toBeNull();
+    VoiceAgent::assertPromptedTimes(1);
 });
 
 it('returns null when the model mentions a person whose mentions are off', function () {

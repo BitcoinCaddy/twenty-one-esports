@@ -36,6 +36,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $variant
  * @property string|null $event_id
  * @property string|null $event
+ * @property string|null $template_content the template wording of a note the league voice wrote instead (PrideNotes)
  * @property int $attempts
  * @property int $relays_accepted
  * @property int $relays_total

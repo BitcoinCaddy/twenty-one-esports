@@ -26,8 +26,10 @@ use App\Support\StreamBot\StreamBotCopy;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\BlockfillOn;
 use Tests\Support\FakeStackerVerifier;
 use Tests\Support\TestSigner;
@@ -345,3 +347,25 @@ test('a player without a valid Nostr key is named plainly, with no p tag', funct
         ->and($note->tagsNamed('p'))->toBe([])
         ->and(StreamBotCopy::violations($text, $note->tags))->toBe([]);
 });
+
+test('with its switches on, the league voice writes the first-place note in English, the player tagged, the link and naddr kept; off, the template', function (bool $on) {
+    config(['esports.voice.functions.note_weekly' => $on, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Wow. {@player} leads the week now.', 'canon_id' => null, 'mood' => 'hype']]);
+    topNoteRun('Ada', 3100);
+    topNoteTick('2026-10-07 12:00:00');
+
+    $note = topNotes($this->relays)[0];
+    [$text] = explode("\n\nnostr:", $note->content, 2);
+
+    expect($note->tagsNamed('p'))->toHaveCount(1)
+        ->and($note->content)->toContain("\n\nnostr:naddr1")
+        ->and(StreamBotCopy::violations($text, $note->tags))->toBe([]);
+
+    if ($on) {
+        expect($text)->toBe('Wow. '.topNoteNpub('Ada')." leads the week now.\n👉 ".route('stacker.play'));
+        VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Englisch'));
+    } else {
+        expect($text)->toStartWith('🥇');
+        VoiceAgent::assertNeverPrompted();
+    }
+})->with(['on' => true, 'off' => false]);

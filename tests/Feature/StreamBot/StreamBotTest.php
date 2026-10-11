@@ -15,10 +15,14 @@ use App\Support\StreamBot\StreamBotCopy;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\StreamCoordinates;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\URL;
+use Laravel\Ai\Prompts\AgentPrompt;
 use swentel\nostr\Key\Key;
 use Tests\Support\TestSigner;
 
@@ -200,7 +204,8 @@ test('the interval: nothing before the next post is due, even with a busy chat',
 });
 
 test('the jitter keeps every interval within the configured window', function () {
-    config(['esports.stream_bot.jitter_minutes' => 5, 'esports.stream_bot.daily_cap' => 100, 'esports.stream_bot.repeat_hours' => 0]);
+    // Twelve posts from the few feature tips there are: the spam gate would rightly hold the repeats back.
+    config(['esports.stream_bot.jitter_minutes' => 5, 'esports.stream_bot.daily_cap' => 100, 'esports.stream_bot.repeat_hours' => 0, 'esports.voice.spam.enabled' => false]);
     streamIsLive();
     $interval = (int) config('esports.stream_bot.interval_minutes');
 
@@ -407,4 +412,77 @@ test('the chat check asks the chat relays for the stream\'s 1311s since the last
     config(['esports.stream_bot.chat_relays' => []]);
     expect($chat->humansSince($stream, $this->botKey->pubkey, 1000))->toBe([])
         ->and($reader->asked)->toHaveCount(2);
+});
+
+/*
+ * The league voice (plan "KI-Stimme der Liga", P2): with its switches on, the
+ * message the rotation picked goes out in the voice's German words with the
+ * template's link as its last line; off, rejected or failed, the template.
+ */
+
+test('the league voice writes the picked message in German, the template\'s link last', function () {
+    config(['esports.voice.functions.chat_rotation' => true, 'esports.voice.channels.stream_chat.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Hey! Klar, das geht ganz schnell.', 'canon_id' => null, 'mood' => 'call']]);
+    streamIsLive();
+
+    expect(botTick())->toStartWith('posted ');
+    $event = SignedEvent::fromInput($this->published[0]['event']);
+    [$text, $link] = explode("\n", $event->content);
+
+    expect($text)->toBe('Hey! Klar, das geht ganz schnell.')
+        ->and($link)->toMatch('~^👉 https?://\S+$~')
+        ->and(StreamBotCopy::violations($event->content, $event->tags))->toBe([])
+        ->and(StreamBotPost::query()->sole()->content)->toBe($event->content);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Deutsch'));
+});
+
+test('the rotation posts its German template when the voice is off, rejected or failing', function (string $case) {
+    $on = $case !== 'off';
+    config(['esports.voice.functions.chat_rotation' => $on, 'esports.voice.channels.stream_chat.enabled' => true]);
+    $rejected = ['text' => 'Neu hier? #bitcoin', 'canon_id' => null, 'mood' => 'call'];
+    VoiceAgent::fake(match ($case) {
+        'rejected' => [$rejected, $rejected],
+        'failing' => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+        default => [],
+    });
+    streamIsLive();
+
+    expect(botTick())->toStartWith('posted ');
+    $event = SignedEvent::fromInput($this->published[0]['event']);
+
+    expect($event->content)->not->toContain('#')
+        ->and(collect(explode("\n", $event->content))->every(fn (string $line): bool => preg_match('/^[^\p{L}\p{N}\s]/u', $line) === 1))->toBeTrue()
+        ->and(StreamBotCopy::violations($event->content, $event->tags))->toBe([]);
+
+    if ($on) {
+        expect(DB::table('voice_usage')->where('channel', 'stream_chat')->value($case === 'failing' ? 'failed' : 'rejected'))->toBeGreaterThan(0);
+    } else {
+        VoiceAgent::assertNeverPrompted();
+    }
+})->with(['off', 'rejected', 'failing']);
+
+test('the spam gate doubles the interval after an unanswered post', function () {
+    config(['esports.voice.spam.silent_posts' => 1, 'esports.stream_bot.alone_minutes' => 0]);
+    streamIsLive();
+
+    expect(botTick())->toStartWith('posted ');
+
+    // One unanswered post doubles the least interval (22 minutes without jitter here, now 44).
+    botLater(23);
+    expect(botTick())->toBe('no post: the spam gate holds the chat back (interval)');
+
+    botLater(21);
+    expect(botTick())->toStartWith('posted ');
+});
+
+test('a human in the chat ends the spam gate\'s backoff', function () {
+    config(['esports.voice.spam.silent_posts' => 1, 'esports.stream_bot.alone_minutes' => 30]);
+    streamIsLive();
+
+    expect(botTick())->toStartWith('posted ');
+
+    // 23 minutes on: the bot reads the chat (inside its 30 alone minutes), someone wrote, the backoff is gone.
+    $this->humans = [(new TestSigner)->pubkey];
+    botLater(23);
+    expect(botTick())->toStartWith('posted ');
 });

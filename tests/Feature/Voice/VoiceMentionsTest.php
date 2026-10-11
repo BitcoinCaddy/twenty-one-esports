@@ -88,3 +88,8 @@ it('mentions only the captains in a team match', function () {
     expect((new VoiceMentions)->check('{@captain_home} führt.', $facts))->toBe([])
         ->and((new VoiceMentions)->check('{@player_home} trifft.', $facts))->toContain(VoiceMentions::NOT_ALLOWED);
 });
+
+it('rejects a mentioned person who is also named in plain text', function () {
+    expect((new VoiceMentions)->check('Satoshi holt den Sieg. {@winner} läuft bei dir.', voiceMentionFacts()))->toContain(VoiceMentions::REPEATED)
+        ->and((new VoiceMentions)->check('{@winner} holt den Sieg. Läuft bei dir.', voiceMentionFacts()))->toBe([]);
+});

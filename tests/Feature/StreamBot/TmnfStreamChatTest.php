@@ -75,7 +75,7 @@ test('the running week: its track, our server, the end and the week page with th
 
     expect($message->builder)->toBe('tmnf_week')
         ->and($message->factKey)->toBe('tmnf-week:'.$week->id)
-        ->and($message->content)->toContain('A01-Race')->toContain('TWENTY ONE')->toContain('Mon, 12 Oct 2026')
+        ->and($message->content)->toContain('A01-Race')->toContain('TWENTY ONE')->toContain('Mo, 12. Okt 2026')
         ->and($message->content)->toEndWith(route('tournaments.show', $week));
 });
 
@@ -90,7 +90,7 @@ test('a new best time of the week tags its driver, with the time, the track and 
     tmnfChatClean($message);
 
     expect($message->factKey)->toBe('tmnf-top:'.$run->id)
-        ->and($message->content)->toContain(tmnfChatNpub($ben))->toContain('0:25.100')->toContain('A01-Race')->toContain('0.300 s faster')
+        ->and($message->content)->toContain(tmnfChatNpub($ben))->toContain('0:25.100')->toContain('A01-Race')->toContain('0,300 s schneller')
         ->and($message->content)->not->toContain(tmnfChatNpub($ada))
         ->and($message->tags)->toBe([['p', $ben->pubkey]]);
 
@@ -118,7 +118,7 @@ test('the finished week\'s podium tags its three drivers in their places, for a 
     tmnfChatClean($message);
 
     expect($message->factKey)->toBe('tmnf-podium:'.$week->id)
-        ->and($message->content)->toContain('TMNF Week 41, 2026')
+        ->and($message->content)->toContain('TMNF Woche 41, 2026')
         ->and($message->content)->toMatch('/🥇 '.preg_quote(tmnfChatNpub($users['Ada']), '/').' 0:25\.100 · 🥈 '.preg_quote(tmnfChatNpub($users['Ben']), '/').' 0:25\.400 · 🥉 '.preg_quote(tmnfChatNpub($users['Cy']), '/').' 0:25\.900/')
         ->and($message->content)->not->toContain(tmnfChatNpub($users['Dee']))
         ->and($message->tags)->toBe([['p', $users['Ada']->pubkey], ['p', $users['Ben']->pubkey], ['p', $users['Cy']->pubkey]]);

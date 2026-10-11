@@ -107,3 +107,72 @@ it('rejects a near copy of a recent post', function () {
 it('rejects more sentences than the channel allows', function () {
     expect((new VoiceHygiene)->check('Satoshi gewinnt. Hal verliert. Weiter geht es.', 'de', [], null, false, 2))->toContain(VoiceHygiene::TOO_MANY_SENTENCES);
 });
+
+/*
+| Everyday language (P2, user 2026-10-11: "Ein Mensch redet im Alltag nicht
+| in Schachtelsätzen"): words and commas per sentence, AI and officialese
+| phrases, and the stage directions of the spoken commentary.
+*/
+
+it('accepts short everyday sentences, one-word ones included', function (string $text, string $language) {
+    expect((new VoiceHygiene)->check($text, $language))->toBe([]);
+})->with([
+    'German' => ['Boah. Satoshi dreht das Ding noch. 3:1! Läuft.', 'de'],
+    'English' => ['Wow. Satoshi flips it late. 3-1! Yep.', 'en'],
+]);
+
+it('rejects a sentence of more than 14 words', function () {
+    expect((new VoiceHygiene)->check('Satoshi schlägt Hal heute Abend im Schach mit drei zu eins und bleibt damit weiter ganz oben dabei.', 'de'))
+        ->toContain(VoiceHygiene::LONG_SENTENCE);
+});
+
+it('rejects a sentence with more than one comma that joins clauses', function () {
+    expect((new VoiceHygiene)->check('Satoshi, der gestern verlor, gewinnt heute.', 'de'))->toContain(VoiceHygiene::COMMAS)
+        ->and((new VoiceHygiene)->check('Hal wins, Satoshi loses, which nobody saw coming.', 'en'))->toContain(VoiceHygiene::COMMAS);
+});
+
+it('lets a list of short items keep its commas', function () {
+    expect((new VoiceHygiene)->check('Schach, Pong, Blockli und Mühle heute. Wer spielt?', 'de'))->toBe([]);
+});
+
+it('counts a fact string as one word, its commas included', function () {
+    $start = 'Sat, 3 Oct 2026, 9:00 PM CEST';
+
+    expect((new VoiceHygiene)->check("Friday Blitz Cup starts {$start}. Who's in?", 'en', factStrings: [$start, 'Friday Blitz Cup']))->toBe([])
+        ->and((new VoiceHygiene)->check("Friday Blitz Cup starts {$start}. Who's in?", 'en'))->toContain(VoiceHygiene::COMMAS);
+});
+
+it('rejects a German AI or officialese phrase', function (string $text) {
+    expect((new VoiceHygiene)->check($text, 'de'))->toContain(VoiceHygiene::AI_PHRASE);
+})->with([
+    'Darüber hinaus gewinnt Satoshi.',
+    'Ein spannendes Finale für Satoshi!',
+    'Es ist erwähnenswert: Satoshi gewinnt.',
+    'Sei dabei beim Cup!',
+]);
+
+it('rejects an English AI phrase', function (string $text) {
+    expect((new VoiceHygiene)->check($text, 'en'))->toContain(VoiceHygiene::AI_PHRASE);
+})->with([
+    'It is worth noting that Satoshi wins.',
+    'What a thrilling final!',
+    'Satoshi showcases pure skill.',
+    'Let us delve into the bracket.',
+]);
+
+it('rejects the stage directions of the spoken commentary in a text post', function (string $text) {
+    expect((new VoiceHygiene)->check($text, 'de'))->toContain(VoiceHygiene::TTS_MARKER);
+})->with([
+    'Satoshi gewinnt. [laughter]',
+    '[surprise-oh] Satoshi gewinnt!',
+    'Satoshi gewinnt (lacht).',
+]);
+
+it('does not count a one-word exclamation as a sentence of the channel', function () {
+    expect((new VoiceHygiene)->check('Hey! Satoshi schlägt Hal 3:1. Wer will als Nächstes?', 'de', [], null, false, 2))->not->toContain(VoiceHygiene::TOO_MANY_SENTENCES)
+        ->and(VoiceHygiene::sentences('Boah. Läuft. Na also.'))->toBe(1);
+});
+
+it('keeps a clan tag in square brackets', function () {
+    expect((new VoiceHygiene)->check('Neuer Clan: Stacking Sats [SATS]. Hallo!', 'de'))->not->toContain(VoiceHygiene::TTS_MARKER);
+});
