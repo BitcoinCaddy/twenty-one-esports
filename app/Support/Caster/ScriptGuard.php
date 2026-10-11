@@ -218,17 +218,35 @@ final class ScriptGuard
     }
 
     /**
-     * The script without its lines that hold a sentence under minWords() (a
-     * model's "Boah." or "Läuft."): the repair before the check. Unchanged
-     * when fewer than `$minSentences` lines would stay; check() rejects it
-     * then (fail closed).
+     * A model draft with one sentence per line, split only between sentences
+     * ("Klar. Weiter." → two lines), never inside one: a clause cut of a long
+     * sentence left verb-first fragments the voice reads badly ("Stehen hier
+     * schon die Bretter bereit.", real Haiku drafts on the snapshot,
+     * 2026-10-12). A sentence too long is dropped by withoutShort() instead.
      */
-    public static function withoutShort(string $text, int $minSentences): string
+    public static function sentenceLines(string $text): string
+    {
+        $sentences = [];
+
+        foreach (self::lines($text) as $line) {
+            array_push($sentences, ...self::runs($line));
+        }
+
+        return implode("\n", $sentences);
+    }
+
+    /**
+     * The script without its lines that hold a sentence under minWords() (a
+     * model's "Boah." or "Läuft.") or, with `$maxWords`, over it: the repair
+     * before the check. Unchanged when fewer than `$minSentences` lines would
+     * stay; check() rejects it then (fail closed).
+     */
+    public static function withoutShort(string $text, int $minSentences, ?int $maxWords = null): string
     {
         $minWords = self::minWords();
-        $kept = array_values(array_filter(self::lines($text), function (string $line) use ($minWords): bool {
+        $kept = array_values(array_filter(self::lines($text), function (string $line) use ($minWords, $maxWords): bool {
             foreach (self::runs(self::withoutMarkers($line)) as $sentence) {
-                if (self::wordCount($sentence) < $minWords) {
+                if (self::wordCount($sentence) < $minWords || ($maxWords !== null && self::wordCount($sentence) > $maxWords)) {
                     return false;
                 }
             }
