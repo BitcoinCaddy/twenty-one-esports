@@ -100,13 +100,20 @@ test('the founder invites into the roster, the player confirms, and the founder 
     BrowserWait::until($founder, '() => document.querySelector("[data-test=edit-lineup-2v2]") !== null', 10_000);
     $founder->locator('[data-test=edit-lineup-2v2]')->click();
     BrowserWait::until($founder, '() => document.querySelector("[data-test=pick-'.$player->id.']") !== null', 10_000);
-    $founder->locator('[data-test=pick-'.$owner->id.']')->selectOption('captain');
-    $founder->locator('[data-test=pick-'.$player->id.']')->selectOption('player');
+    // The seats are the board's dropdowns (x-ui.select-menu, P7): open each and pick its option.
+    $pick = function (int $userId, string $role) use ($founder): void {
+        $founder->locator('[data-test=pick-'.$userId.']')->click();
+        $founder->locator('#pick-rocket-league-2v2-'.$userId.'-list [data-value='.$role.']')->click();
+    };
+    $pick($owner->id, 'captain');
+    $pick($player->id, 'player');
+    $shown = $founder->evaluate('() => ['.$owner->id.', '.$player->id.'].map((id) => document.querySelector("[data-test=pick-" + id + "]").innerText.trim())');
     $founder->locator('[data-test=confirm-lineup]')->click();
     BrowserWait::until($founder, '() => document.querySelector("[data-test=lineup-status-2v2]")?.innerText.includes("ready, 2 of 2")', 10_000);
 
     expect(Lineup::query()->where(['clan_id' => $clan->id, 'mode' => '2v2'])->sole()->seats()->pluck('role', 'user_id')->all())
         ->toBe([$owner->id => LineupRole::Captain, $player->id => LineupRole::Player])
+        ->and($shown)->toBe(['Captain', 'Player'])
         ->and($founder->evaluate('() => window.__errors'))->toBe([])
         ->and($invitee->evaluate('() => window.__errors'))->toBe([])
         ->and($founder->evaluate('() => document.documentElement.scrollWidth <= document.documentElement.clientWidth'))->toBeTrue();
