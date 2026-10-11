@@ -67,6 +67,60 @@ class ReactionLines
     }
 
     /**
+     * A reply to a trusted chatter that answers the message's intent without
+     * the model (user 2026-10-11: "reagiert gar nicht auf den Inhalt der
+     * Chat-Nachricht!"): a line of the intent's pool with the name, the plain
+     * hello only when no intent matches. Nothing of the message is read out.
+     */
+    public function reply(string $message, ?string $name): string
+    {
+        $intent = self::intent($message);
+
+        if ($intent === null) {
+            return $this->hello($name);
+        }
+
+        return $this->fill(self::withName($this->pick('reply_'.$intent), $name), []);
+    }
+
+    /**
+     * The intent of a chat message, first match wins: a request to react,
+     * 24/7 or sleep, work, zaps, a compliment, a question, a greeting; null
+     * when none matches.
+     */
+    public static function intent(string $message): ?string
+    {
+        $text = mb_strtolower($message);
+        $patterns = [
+            'react' => '/reagier|antworte|antwort mal|sag mal was|lies (?:mal )?(?:den )?chat/u',
+            'sleep' => '/24\s*\/\s*7|rund um die uhr|schläfst|schlafen|schlaf\b|pause|müde|nachts|die ganze nacht|immer noch da|non-?stop/u',
+            'work' => '/arbeit|\bjob\b|beruf|büro|\bchef|feierabend|schicht|urlaub/u',
+            'sats' => '/\bzap|\bsats?\b|satoshi|gezappt/u',
+            'thanks' => '/geil|super|\btoll|stark|\bcool|klasse|mega|nice|danke|liebe|gefällt|großartig|beste|lustig|witzig|grandios/u',
+            'question' => '/\?|^\s*(?:kannst|wie|wann|was|wo|warum|wieso|weshalb|wer|bist|hast|gibt|machst|spielst|darf|willst|wirst)\b/u',
+            'greeting' => '/\b(?:hallo|hi|hey|servus|moin|gm|guten (?:morgen|abend|tag)|grüß|griaß|grüezi|n\'?abend|tach)\b/u',
+        ];
+
+        foreach ($patterns as $intent => $pattern) {
+            if (preg_match($pattern, $text) === 1) {
+                return $intent;
+            }
+        }
+
+        return null;
+    }
+
+    /** A template's "{name}" filled, or taken out with its comma when there is no speakable name. */
+    public static function withName(string $template, ?string $name): string
+    {
+        if ($name !== null) {
+            return strtr($template, ['{name}' => $name]);
+        }
+
+        return trim((string) preg_replace(['/^((?:\[[a-z-]+\]\s*)*)\{name\},\s*/u', '/,\s*\{name\}(?=[,.!?])/u', '/\s*\{name\}/u'], ['$1', '', ''], $template));
+    }
+
+    /**
      * @return list<string>
      */
     public function pool(string $name): array
