@@ -14,6 +14,7 @@ use App\Support\Chess\ChessGameService;
 use App\Support\Chess\ChessInvites;
 use App\Support\Tournaments\CupSchedules;
 use App\Support\Tournaments\TournamentRunner;
+use App\Support\Tournaments\TournamentWaits;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\TestSigner;
@@ -282,6 +283,10 @@ test('a paired match whose round is not open yet waits: the opponent, the round 
         ->toContain('Your match starts as soon as the other matches of round 2 are done: 1 still open.')
         ->not->toContain('Play your match')
         ->not->toContain('data-test="now-action"');
+
+    // The organizers' panel gives the same reason, not "The league starts it shortly".
+    expect(TournamentWaits::forMatch($cup->refresh(), $next->refresh()->load(['round', 'slots.participant', 'seriesMatch.latestReport', 'chessGame', 'boardGame']))?->consequenceText())
+        ->toBe('Starts once round 2 is done: 1 still open');
 
     // Round 2 done: round 3 opens after the evening's break, at a time the hero names.
     nowDecide($other);
