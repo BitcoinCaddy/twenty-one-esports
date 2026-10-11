@@ -100,8 +100,8 @@ final class BoardGameService
      * A rated game comes with the trust gate the league pinned at the pairing
      * (RatedBoard, P6); without one the game is casual.
      *
-     * Without a mode the game plays its lobby mode (BoardGame::lobbyMode():
-     * correspondence for the board games since 2026-10-07).
+     * Without a mode the game plays correspondence where it has it, else its
+     * lobby mode (BoardGame::lobbyMode()).
      *
      * @throws BoardRuleViolation for a game that is no switched-on board game,
      *                            a mode without a clock, or a player already in a live game
@@ -113,7 +113,8 @@ final class BoardGameService
         }
 
         $definition = $this->definition($slug);
-        $mode ??= $definition->lobbyMode();
+        // Without a mode: correspondence where the game has it (Blockli since its blitz and rapid, 2026-10-11), else its live mode.
+        $mode ??= $definition->mode(BoardGame::CORRESPONDENCE) !== null ? BoardGame::CORRESPONDENCE : $definition->lobbyMode();
         [$initialMs, $incrementMs] = $this->timeControl($definition, $mode);
         $daily = $mode === BoardGame::CORRESPONDENCE;
         $rules = $definition->rules();

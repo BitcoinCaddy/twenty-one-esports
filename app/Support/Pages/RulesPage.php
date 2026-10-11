@@ -530,8 +530,9 @@ final class RulesPage
             'game' => Blockli::SLUG,
             'lead' => __('A race on 9 × 9: bring your pawn to the far side first, and block the other pawn\'s way.'),
             'facts' => [
-                // Correspondence only (user, 2026-10-07: fast modes are for chess).
-                [__('Time control'), __('1 move a day')],
+                // Blitz and rapid as chess has them, and one move a day (user, 2026-10-11).
+                [__('Time control'), implode(', ', [__('Blitz 5+3'), __('Rapid 10+5'), __('1 move a day')])],
+                [__('First move'), self::seconds((int) config('esports.board_games.first_move_seconds'))],
             ],
             'items' => [
                 __('White starts on e1 and wins on rank 9, Black starts on e9 and wins on rank 1. White moves first.'),

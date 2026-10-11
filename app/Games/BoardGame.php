@@ -42,7 +42,19 @@ abstract class BoardGame implements Game
      */
     public function lobbyMode(): string
     {
-        return $this->mode('blitz') !== null ? 'blitz' : 'correspondence';
+        return $this->liveModes()[0] ?? 'correspondence';
+    }
+
+    /**
+     * The modes played live with a clock (every mode but correspondence), in
+     * the registry's order: Blockli's blitz and rapid (user, 2026-10-11), the
+     * test fixture's blitz; none for nine men's morris and checkers.
+     *
+     * @return list<string>
+     */
+    public function liveModes(): array
+    {
+        return array_values(array_filter(array_keys($this->modes()), fn (string $mode): bool => $mode !== 'correspondence'));
     }
 
     /**

@@ -238,7 +238,15 @@ final class TournamentEditor
             throw new TournamentRuleViolation('casual_cup', __('This is one of the league\'s casual cups: its game, format, places, name and schedule are set by the league and stay casual. Only the description, the directors and the deadlines can change.'));
         }
 
-        if (! $tournament->isBeforeDraw() && array_diff(array_keys($diff), self::AFTER_DRAW) !== []) {
+        // A board game's time control (Blockli: blitz, rapid, correspondence; user 2026-10-11) switches after the draw too:
+        // it reaches the games not started yet (TournamentModeSwitch). Only the mode: the game stays.
+        $after = self::AFTER_DRAW;
+
+        if (isset($diff['mode']) && ! isset($diff['game']) && app(TournamentModeSwitch::class)->canSwitch($tournament)) {
+            $after[] = 'mode';
+        }
+
+        if (! $tournament->isBeforeDraw() && array_diff(array_keys($diff), $after) !== []) {
             throw new TournamentRuleViolation('locked', __('The draw has run: format, game, capacity and sign-up are locked. Only the name, the description and the start time can change.'));
         }
     }

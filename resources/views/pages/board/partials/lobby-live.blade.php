@@ -43,7 +43,8 @@
         @endif
     </div>
 
-    {{-- Correspondence only: a row's action is "Challenge", the correspondence page with that player picked (P3). --}}
+    {{-- Correspondence only: a row's action is "Challenge", the correspondence page with that player picked (P3). With live modes
+         (Blockli) "Invite" plays the live mode the tiles opened (Alpine liveMode). --}}
     <x-lobby.online-now :user="$user" :looking-key="$slug.'/'.$this->lobbyMode" :looking-tag="__('looking: :game', ['game' => $name])" :can-invite="! $active" :show-elo="false"
-                        :challenge-url="$this->lobbyMode === 'correspondence' ? route('board.correspondence', $slug) : null" />
+                        :challenge-url="app(\App\Games\GameRegistry::class)->mode($slug, 'correspondence') !== null ? route('board.correspondence', $slug) : null" :invite-mode="$this->liveModes !== [] ? 'liveMode' : null" />
 </section>

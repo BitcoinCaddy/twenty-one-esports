@@ -572,14 +572,14 @@ final class ShellNavigation
 
         if ($game->kind() === GameKind::Board) {
             return array_values(array_filter([
-                // Without blitz (user, 2026-10-07: the board games are correspondence only) the game page is where
-                // correspondence is played, and no second link leads there.
-                $game->mode('blitz') !== null
-                    ? self::link('play', GameNames::page($slug), __('Play blitz'), 'bolt', null, null, __('Play'), 'play')
+                // A board game with live modes (Blockli: blitz and rapid, user 2026-10-11) plays them live on its page, as chess;
+                // without them (nine men's morris, checkers: correspondence only) the page is where correspondence is played.
+                $game instanceof \App\Games\BoardGame && $game->liveModes() !== []
+                    ? self::link('play', GameNames::page($slug), __('Play live'), 'bolt', null, null, __('Play'), 'play')
                     : self::link('play', GameNames::page($slug), __('Play correspondence'), 'calendar', null, null, __('Play'), 'play'),
-                // Correspondence (P8): one move a day, on its own page, for a board game that has the mode next to blitz.
+                // Correspondence (P8): one move a day, on its own page, for a board game that has the mode next to live ones.
                 // Only while the page is routed: a route table cached with the switch off has none, and every page would answer 500.
-                $game->mode('blitz') !== null && $game->mode('correspondence') !== null && Route::has('board.correspondence') ? self::link('daily', route('board.correspondence', $slug), __('Correspondence'), 'calendar') : null,
+                $game instanceof \App\Games\BoardGame && $game->liveModes() !== [] && $game->mode('correspondence') !== null && Route::has('board.correspondence') ? self::link('daily', route('board.correspondence', $slug), __('Correspondence'), 'calendar') : null,
                 self::link('ladder', route('ladder.show', [$slug, array_key_first($game->modes())]), __('Ladder'), 'ladder', null, null, null, 'ladder'),
                 self::link('rules', route('rules').'#'.$slug, __('Rules'), 'shield-check'),
                 self::strongest(),

@@ -36,8 +36,8 @@ use App\Support\Stacker\StackerRuns;
  */
 final class InviteGames
 {
-    /** The board game modes a link can start, in the order offered (correspondence first, as daily chess). */
-    public const BOARD_MODES = [BoardGame::CORRESPONDENCE, 'blitz'];
+    /** The board game modes a link can start, in the order offered (correspondence first, as daily chess; then rapid and blitz, as chess's links). */
+    public const BOARD_MODES = [BoardGame::CORRESPONDENCE, 'rapid', 'blitz'];
 
     /** The chess link modes, in the order offered (the module made daily links before the picker; rapid before blitz, plan "Schach Rapid und Clan"). */
     public const CHESS_MODES = ['daily', 'rapid', 'blitz'];

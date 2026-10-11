@@ -16,11 +16,12 @@ use Tests\Support\NineMensMorrisOn;
 pest()->group('browser');
 
 /*
-| Nine men's morris, checkers and Blockli are correspondence only (user,
-| 2026-10-07). /play and their three lobbies measured as an admin in German
-| at six widths: no sideways overflow, no cut, squeezed or spilled text,
-| buttons 44 px, no Blitz tile or text, console and network quiet (with a
-| positive control on the same page).
+| Nine men's morris and checkers are correspondence only (user,
+| 2026-10-07); Blockli plays blitz and rapid again since 2026-10-11. /play
+| and the three lobbies measured as an admin in German at six widths: no
+| sideways overflow, no cut, squeezed or spilled text, buttons 44 px, no
+| Blitz tile or text for the two (Blockli's Blitz and Rapid tiles must be
+| there), console and network quiet (with a positive control on the same page).
 */
 
 /** Overflow, cut text, squeezed sentences, words spilling out of their cell, low buttons, blitz on the page; inside `main`. */
@@ -31,8 +32,9 @@ const NOBLITZ_MEASURE = <<<'JS'
         const label = (el) => (el.dataset.test ?? el.tagName.toLowerCase()) + ' "' + (el.innerText || el.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 40) + '"';
         const all = [...main.querySelectorAll('*')].filter((el) => !(el instanceof SVGElement) && visible(el) && el.getBoundingClientRect().width > 1);
         const scrolls = (el) => ['auto', 'scroll', 'hidden', 'clip'].includes(getComputedStyle(el).overflowX);
-        const boards = ['nine-mens-morris', 'checkers', 'blockli'];
-        const scopes = [...document.querySelectorAll(boards.map((s) => '[data-test=play-game-' + s + ']').join(',') + ', [data-test=board-lobby] [data-test=play]')];
+        const boards = ['nine-mens-morris', 'checkers'];
+        const lobby = document.querySelector('[data-test=board-lobby]')?.dataset.game;
+        const scopes = [...document.querySelectorAll(boards.map((s) => '[data-test=play-game-' + s + ']').join(',') + (lobby && boards.includes(lobby) ? ', [data-test=board-lobby] [data-test=play]' : ''))];
         return {
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             cut: all.filter((el) => el.children.length === 0 && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).textOverflow !== 'ellipsis').map(label),
@@ -44,6 +46,7 @@ const NOBLITZ_MEASURE = <<<'JS'
             // Blitz on a board game's card or ways to play (chess keeps its own on the same page).
             blitz: scopes.filter((el) => /blitz|5\+3/i.test(el.innerText)).map(label),
             scopes: scopes.length,
+            live: [...document.querySelectorAll('[data-test=board-lobby][data-game=blockli] [data-test=play-blitz], [data-test=board-lobby][data-game=blockli] [data-test=play-rapid]')].filter(visible).length,
         };
     }
     JS;
@@ -87,15 +90,15 @@ function noBlitzShot(Page $page, string $name): void
     File::move(base_path('tests/Browser/Screenshots/'.$name.'.png'), $dir.'/'.$name.'.png');
 }
 
-test('as an admin in German /play and the three board game lobbies offer no blitz and squeeze, cut and spill nothing at six widths; buttons 44 px; quiet console and network', function () {
+test('as an admin in German /play and the three board game lobbies squeeze, cut and spill nothing at six widths; nine men\'s morris and checkers offer no blitz, Blockli its Blitz and Rapid tiles; buttons 44 px; quiet console and network', function () {
     $admin = User::factory()->withPubkey(str_repeat('ad', 32))->create();
     Admin::query()->create(['pubkey' => $admin->pubkey]);
     $rows = [];
     $pages = [
-        'play' => [route('play', ['lang' => 'de'], false), '[data-test=play-board-games]', 3],
+        'play' => [route('play', ['lang' => 'de'], false), '[data-test=play-board-games]', 2],
         'nine-mens-morris' => [route('board.lobby', ['board' => 'nine-mens-morris', 'lang' => 'de'], false), '[data-test=board-lobby]', 1],
         'checkers' => [route('board.lobby', ['board' => 'checkers', 'lang' => 'de'], false), '[data-test=board-lobby]', 1],
-        'blockli' => [route('board.lobby', ['board' => 'blockli', 'lang' => 'de'], false), '[data-test=board-lobby]', 1],
+        'blockli' => [route('board.lobby', ['board' => 'blockli', 'lang' => 'de'], false), '[data-test=board-lobby]', 0],
     ];
 
     foreach ([[390, 844], [1024, 768], [1280, 800], [1440, 900], [1600, 900], [1920, 1080]] as [$width, $height]) {
@@ -120,6 +123,7 @@ test('as an admin in German /play and the three board game lobbies offer no blit
 
             expect($m['scopes'])->toBe($scopes, "{$label}: board game cards / ways to play found")
                 ->and($m['blitz'])->toBe([], "{$label}: blitz offered")
+                ->and($m['live'])->toBe($name === 'blockli' ? 2 : 0, "{$label}: Blockli's Blitz and Rapid tiles")
                 ->and($m['overflow'])->toBeLessThanOrEqual(0, "{$label}: sideways overflow")
                 ->and($m['cut'])->toBe([], "{$label}: cut text")
                 ->and($m['squeezed'])->toBe([], "{$label}: squeezed text")

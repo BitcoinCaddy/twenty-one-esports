@@ -11,7 +11,9 @@ use App\Models\TournamentSignup;
 use App\Models\User;
 use App\Support\LeagueTime;
 use App\Support\Tournaments\TournamentEditor;
+use App\Support\GameNames;
 use App\Support\Tournaments\TournamentGames;
+use App\Support\Tournaments\TournamentModeSwitch;
 use App\Support\Tournaments\TournamentModeration;
 use App\Support\Tournaments\TournamentRuleViolation;
 use Illuminate\Support\Collection;
@@ -206,6 +208,45 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
     public function log(): Collection
     {
         return $this->tournament->moderationEntries()->limit(50)->get();
+    }
+
+    /** The notice and error of the time-control switch (TournamentModeSwitch), its own section. */
+    public string $modeNotice = '';
+
+    public string $modeError = '';
+
+    /**
+     * Switch a board game tournament's time control (Blockli: blitz, rapid, correspondence; user 2026-10-11), also
+     * once it runs: the games not started yet play the new one. Saved at once; the chooser follows.
+     */
+    public function switchMode(string $mode): void
+    {
+        Gate::authorize('manage-tournament', $this->tournament);
+        $this->modeNotice = $this->modeError = '';
+        $throttle = 'tournament-edit:'.$this->tournament->id;
+
+        if (RateLimiter::tooManyAttempts($throttle, 1)) {
+            $this->modeError = __('Saved a moment ago. Wait :seconds s and save again.', ['seconds' => max(1, RateLimiter::availableIn($throttle))]);
+
+            return;
+        }
+
+        try {
+            $switched = app(TournamentModeSwitch::class)->switch($this->tournament, $this->user(), $mode);
+        } catch (TournamentRuleViolation $violation) {
+            $this->modeError = $violation->getMessage();
+
+            return;
+        }
+
+        if ($switched) {
+            RateLimiter::hit($throttle, 2);
+            $this->tournament = $this->tournament->refresh();
+            $this->game = TournamentGames::keyOf($this->tournament->game, $this->tournament->mode) ?? $this->game;
+            $this->modeNotice = $this->tournament->status === TournamentStatus::Running
+                ? __('Switched to :mode. Games already under way finish as they started; the players were told.', ['mode' => GameNames::mode($this->tournament->game, $mode)])
+                : __('Switched to :mode.', ['mode' => GameNames::mode($this->tournament->game, $mode)]);
+        }
     }
 
     public function save(): void
@@ -513,6 +554,28 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         @endif
 
         {{-- Its own island, rendered with every chooser change (game, mode, where) and with the page (errors). --}}
+        @php($modeSwitch = app(\App\Support\Tournaments\TournamentModeSwitch::class))
+        @if ($modeSwitch->canSwitch($tournament))
+            {{-- The time control (Blockli: blitz, rapid, correspondence), switchable in every state until the end (user, 2026-10-11): the board's
+                 section with its choice list, saved at once; running, it reaches the games not started yet. --}}
+            <section aria-labelledby="mode-switch-h" class="rv-sec" data-test="tournament-mode-switch">
+                <span class="flex flex-col gap-1">
+                    <h2 id="mode-switch-h" class="rv-h3">{{ __('Time control') }}</h2>
+                    <span class="max-w-[80ch] text-xs leading-normal text-ink-2">{{ $tournament->status === TournamentStatus::Running
+                        ? __('Switching applies to every game that has not started yet; games under way finish as they started. The players get a message.')
+                        : __('Saved at once. Once players have signed up, each gets a message.') }}</span>
+                </span>
+                <x-ui.options class="sm:max-w-xl" method="switchMode" :current="$tournament->mode" labelledby="mode-switch-h" test="mode-switch"
+                              :options="array_map(fn (string $mode): array => [$mode, GameNames::mode($tournament->game, $mode)], $modeSwitch->modes($tournament))" />
+                @if ($modeNotice)
+                    <p role="status" class="m-0 text-[13px] text-win" data-test="mode-switch-notice">{{ $modeNotice }}</p>
+                @endif
+                @if ($modeError)
+                    <p role="alert" class="m-0 text-[13px] text-loss" data-test="mode-switch-error">{{ $modeError }}</p>
+                @endif
+            </section>
+        @endif
+
         @island(name: 'deadlines', always: true)
             @include('pages.admin.partials.tournament-deadlines')
         @endisland

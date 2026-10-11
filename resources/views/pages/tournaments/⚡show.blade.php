@@ -1374,6 +1374,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             </div>
                         @endforeach
                     </dl>
+                    @if (($modeSwitched = app(\App\Support\Tournaments\TournamentModeSwitch::class)->lastSwitch($tournament)) !== null)
+                        {{-- The time control was switched after publishing (Blockli, user 2026-10-11): one line, what and when. --}}
+                        <p class="m-0 rounded-[4px] border border-btc-ring bg-feature px-3.5 py-2.5 text-[13px] leading-normal text-ink" data-test="mode-switched">{{ __('Switched from :from to :to on :date. Games already under way finish as they started.', [
+                            'from' => \App\Support\GameNames::mode($tournament->game, $modeSwitched['from']), 'to' => \App\Support\GameNames::mode($tournament->game, $modeSwitched['to']),
+                            'date' => $at($modeSwitched['at']),
+                        ]) }}</p>
+                    @endif
                     @if ($tournament->isDirectorMode())
                         <p class="m-0 text-xs leading-normal text-ink-2" data-test="director-notice">{{ __('Results are entered by the tournament directors.') }}</p>
                     @endif

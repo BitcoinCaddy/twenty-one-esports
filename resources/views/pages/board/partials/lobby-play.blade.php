@@ -1,13 +1,15 @@
 {{--
     The ways to play in a board game's lobby (pages/board/⚡lobby), after
-    the chess lobby's tile row (pages/chess/partials/lobby-play): Blitz opens
-    its panel in place under the row, Correspondence (chess: Daily chess)
-    and Tournaments lead into their flow, "Challenge a player" goes to the
-    online list. A search or an invite waiting for its answer shows its card
-    there whatever the tile. A board game without a blitz mode (all three
-    since the user dropped blitz on 2026-10-07) has no Blitz tile and no
-    panel: Correspondence is its orange tile, the invite plays one move a day. Alpine `stage` is the open panel ('blitz' |
-    null), `rated` the Casual/Rated choice sent with "Find opponent".
+    the chess lobby's tile row (pages/chess/partials/lobby-play): each live
+    mode (Blockli: Blitz 5+3 and Rapid 10+5, user 2026-10-11) opens the
+    quick-play panel in place under the row in its mode, as chess's tiles do;
+    Correspondence (chess: Daily chess) and Tournaments lead into their flow,
+    "Challenge a player" goes to the online list. A search or an invite
+    waiting for its answer shows its card there whatever the tile. A board
+    game without live modes (nine men's morris, checkers) has no such tile
+    and no panel: Correspondence is its orange tile. Alpine `stage` is the
+    open panel ('quick' | null), the page's `liveMode` the mode it plays
+    (boardLobby), `rated` the Casual/Rated choice sent with "Find opponent".
 
     Rated is selectable only while the board games' rated queue is offered
     and open for this player (RatedBoard); otherwise it is disabled with a
@@ -22,14 +24,28 @@
     use App\Support\Series\Ladders;
 
     $range = config('esports.board_games.queue.range');
-    $rating = Ratings::forUser($user?->id, $slug, 'blitz', \App\Models\Rating::CASUAL)['rating'];
+    $liveModes = $this->liveModes;
+    $hasLive = $liveModes !== [];
+    // Each live mode's casual rating, its clock ("5+3" from 300+3), its name and its rated refusal: the panel switches with liveMode.
+    $ratings = collect($liveModes)->mapWithKeys(fn (string $mode): array => [$mode => Ratings::forUser($user?->id, $slug, $mode, \App\Models\Rating::CASUAL)['rating']])->all();
+    $clock = function (string $mode) use ($slug): string {
+        $control = (string) app(GameRegistry::class)->mode($slug, $mode)?->timeControl;
+
+        return preg_match('/^(\d+)\+(\d+)$/', $control, $parts) === 1 ? intdiv((int) $parts[1], 60).'+'.$parts[2] : $control;
+    };
+    $modeNames = collect($liveModes)->mapWithKeys(fn (string $mode): array => [$mode => \App\Support\GameNames::mode($slug, $mode)])->all();
+    $firstLive = $liveModes[0] ?? 'blitz';
+    $rating = $ratings[$entry?->mode ?? $firstLive] ?? Ratings::forUser($user?->id, $slug, $firstLive, \App\Models\Rating::CASUAL)['rating'];
     // The rated queue off: rated is closed for everyone, with the reason RatedBoard gives for it.
-    $ratedRefusal = $this->ratedOffered ? $this->ratedRefusal : __('Rated :game is not open yet. Games are casual for now.', ['game' => $name]);
+    $closed = __('Rated :game is not open yet. Games are casual for now.', ['game' => $name]);
+    $refusals = collect($liveModes)->mapWithKeys(fn (string $mode): array => [$mode => $this->ratedOffered ? ($this->ratedRefusals[$mode] ?? null) : $closed])->all();
+    $ratedRefusal = $hasLive ? $refusals[$firstLive] : ($this->ratedOffered ? $this->ratedRefusal : $closed);
+    $badges = collect($liveModes)->mapWithKeys(fn (string $mode): array => [$mode => Ladders::isOpen($slug, $mode) ? __('not open yet') : __('from Block 0')])->all();
+    $byMode = $this->searchingByMode;
     $searching = $this->searching;
     $correspondence = $this->correspondence;
     $hasCorrespondence = app(GameRegistry::class)->mode($slug, BoardGame::CORRESPONDENCE) !== null;
-    $hasBlitz = app(GameRegistry::class)->mode($slug, 'blitz') !== null;
-    $tiles = (int) $hasBlitz + (int) $hasCorrespondence + 2;
+    $tiles = count($liveModes) + (int) $hasCorrespondence + 2;
     $waitingThere = $correspondence['challenges'] + $correspondence['yourMove'];
     // A soft hyphen: "Correspondence" is wider than a phone's tile, and Chrome on Linux has no hyphenation of its own
     // (measured at 375 px: it broke as "Correspondenc / e"). German "Fernpartie" fits.
@@ -41,30 +57,32 @@
 @endphp
 
 <section aria-labelledby="play-h" class="flex flex-col gap-2 lg:gap-3" data-test="play"
-         x-data="{ stage: @js($busy ? 'blitz' : null), help: false, rated: false }"
-         x-init="if (stage === null && location.hash === '#blitz') stage = 'blitz'; $watch('stage', (open) => open && $nextTick(() => requestAnimationFrame(() => document.getElementById('lobby-' + open)?.scrollIntoView({ block: 'nearest', behavior: 'instant' }))))">
+         x-data="{ stage: @js($busy && $hasLive ? 'quick' : null), help: false, rated: false, refusals: @js((object) $refusals) }"
+         x-init="if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' } $watch('stage', (open) => open && $nextTick(() => requestAnimationFrame(() => document.getElementById('lobby-' + open)?.scrollIntoView({ block: 'nearest', behavior: 'instant' }))))"
+         x-effect="if (refusals[liveMode] !== null && refusals[liveMode] !== undefined) rated = false">
     {{-- "Spielarten" (template T1, GameLobby.dc.html "Brettspiel-Lobby"): one row per way to play, as in chess. --}}
     <div class="gp-panel gp-modes">
         <h2 id="play-h" class="gp-h">{{ __('Ways to play') }}</h2>
         <ul role="list" class="m-0 flex list-none flex-col p-0" data-test="play-grid">
-            @if ($hasBlitz)
-                <li>
-                    <x-chess.lobby-tile :label="__('Blitz 5+3')" :action="__('Seek')" variant="primary" data-test="play-blitz"
-                                        x-on:click="stage = stage === 'blitz' ? null : 'blitz'" x-bind:aria-expanded="(stage === 'blitz').toString()"
-                                        aria-expanded="{{ $busy ? 'true' : 'false' }}" aria-controls="{{ $entry ? 'lobby-searching' : ($outgoing ? 'lobby-waiting' : 'lobby-blitz') }}">
+            @foreach ($liveModes as $liveMode)
+                <li wire:key="play-tile-{{ $liveMode }}">
+                    <x-chess.lobby-tile :label="$modeNames[$liveMode]" :action="__('Seek')" :variant="$loop->first ? 'primary' : 'default'" data-test="play-{{ $liveMode }}"
+                                        x-on:click="if (stage === 'quick' && liveMode === '{{ $liveMode }}') { stage = null } else { liveMode = '{{ $liveMode }}'; stage = 'quick' }"
+                                        x-bind:aria-expanded="(stage === 'quick' && liveMode === '{{ $liveMode }}').toString()"
+                                        aria-expanded="{{ ($entry?->mode === $liveMode) || ($outgoing !== null && $loop->first) ? 'true' : 'false' }}" aria-controls="{{ $entry ? 'lobby-searching' : ($outgoing ? 'lobby-waiting' : 'lobby-quick') }}">
                         <x-slot:meta>
-                            @if ($entry)
-                                <span class="{{ $tag }} bg-btc text-on-btc" data-test="play-blitz-state">{{ __('You are searching') }}</span>
+                            @if ($entry?->mode === $liveMode)
+                                <span class="{{ $tag }} bg-btc text-on-btc" data-test="play-{{ $liveMode }}-state">{{ __('You are searching') }}</span>
                             @else
-                                <span class="rv-live h-5 font-normal"><i></i><b data-test="play-blitz-searching">{{ $searching }}</b> {{ __('searching') }}</span>
+                                <span class="rv-live h-5 font-normal"><i></i><b data-test="play-{{ $liveMode }}-searching">{{ $byMode[$liveMode] ?? 0 }}</b> {{ __('searching') }}</span>
                             @endif
                         </x-slot:meta>
                     </x-chess.lobby-tile>
                 </li>
-            @endif
+            @endforeach
             @if ($hasCorrespondence)
                 <li>
-                    <x-chess.lobby-tile :label="__('Correspondence')" :action="__('Play correspondence')" :href="route('board.correspondence', $slug)" data-test="play-correspondence" :variant="$hasBlitz ? 'default' : 'primary'"
+                    <x-chess.lobby-tile :label="__('Correspondence')" :action="__('Play correspondence')" :href="route('board.correspondence', $slug)" data-test="play-correspondence" :variant="$hasLive ? 'default' : 'primary'"
                                         :count="$waitingThere" :count-label="trans_choice(':count challenge to answer|:count challenges to answer', $correspondence['challenges']).', '.trans_choice('your move in :count game|your move in :count games', $correspondence['yourMove'])">
                         <x-slot:detail>{{ __('1 move a day') }}</x-slot:detail>
                         <x-slot:meta>
@@ -105,8 +123,8 @@
             <div class="cube mt-4 flex size-[124px] flex-col items-center justify-between bg-[linear-gradient(180deg,#2A1F0E,#17120A)] px-2 py-2.5 text-center" aria-hidden="true">
                 <span class="text-[13px] font-bold">~{{ $entry->rating }} Elo</span>
                 <span class="text-[11px] text-btc-hi">{{ $entry->rating - $queueRange }} – {{ $entry->rating + $queueRange }}</span>
-                <span class="text-base font-bold">5+3</span>
-                <span class="text-[11px] text-ink-2" data-test="searching-kind">{{ $entry->rated ? __('Blitz · rated') : __('Blitz · casual') }}</span>
+                <span class="text-base font-bold">{{ $clock($entry->mode) }}</span>
+                <span class="text-[11px] text-ink-2" data-test="searching-kind">{{ $entry->rated ? __(':mode · rated', ['mode' => \App\Support\Chess\ChessModes::short($entry->mode)]) : __(':mode · casual', ['mode' => \App\Support\Chess\ChessModes::short($entry->mode)]) }}</span>
             </div>
             <span class="text-center font-display text-lg font-bold">{{ $entry->rated ? __('Finding a rated opponent for :game …', ['game' => $name]) : __('Finding an opponent for :game …', ['game' => $name]) }}</span>
             <span class="block h-1 w-full max-w-[420px] overflow-hidden rounded-xs bg-raised"><span class="sweep block h-1 w-2/5 rounded-xs bg-btc"></span></span>
@@ -136,44 +154,43 @@
         {{-- Waiting for the invited player's answer. --}}
         <div id="lobby-waiting" class="flex flex-col gap-3.5 rounded-[4px] bg-card p-5 shadow-ring-btc" data-test="lobby-invited">
             <span class="flex items-center gap-3"><span aria-hidden="true" class="block size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-btc motion-reduce:animate-none"></span><b class="min-w-0 text-base wrap-anywhere" data-test="waiting-name">{{ __('Waiting for :name', ['name' => $outgoing->invitee->displayName()]) }}</b></span>
-            <p class="m-0 text-[13px] text-ink-2">{{ $outgoing->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __('Blitz 5+3 · Casual · colours drawn at random') }}</p>
+            <p class="m-0 text-[13px] text-ink-2">{{ $outgoing->mode === BoardGame::CORRESPONDENCE ? __('1 move a day · Casual · colours drawn at random') : __(':mode · Casual · colours drawn at random', ['mode' => \App\Support\GameNames::mode($outgoing->game, $outgoing->mode)]) }}</p>
             <span class="flex gap-2.5">
                 <button type="button" wire:click="withdrawInvite" class="inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-[#5A2A2E] bg-transparent px-4 text-[13px] text-loss" data-test="withdraw-invite">{{ __('Withdraw') }}</button>
             </span>
         </div>
-    @elseif ($hasBlitz)
-        {{-- Quick play: kind, range, one call to action; the explanations behind "?". --}}
-        <div id="lobby-blitz" role="region" aria-label="{{ __('Blitz 5+3') }}" x-show="stage === 'blitz'" x-cloak
+    @elseif ($hasLive)
+        {{-- Quick play in the open live mode (the page's liveMode): kind, range, one call to action; the explanations behind "?". --}}
+        <div id="lobby-quick" role="region" aria-label="{{ $modeNames[$firstLive] }}" x-bind:aria-label="@js($modeNames)[liveMode]" x-bind:data-mode="liveMode" data-mode="{{ $firstLive }}" x-show="stage === 'quick'" x-cloak
              x-transition:enter="transition duration-200 ease-out motion-reduce:transition-none" x-transition:enter-start="opacity-0 -translate-y-1"
              class="flex flex-col gap-2 rounded-[4px] bg-card p-2 shadow-ring-btc lg:flex-row lg:flex-wrap lg:items-center lg:gap-3 lg:p-3" data-test="find-opponent">
             <div class="flex gap-2 lg:contents">
-                <div role="radiogroup" aria-label="{{ __('Game kind') }}" class="grid min-w-0 grow grid-cols-2 gap-1 rounded-md bg-ground p-1 shadow-ring lg:w-80 lg:grow-0" data-test="game-kind" data-rated-open="{{ $ratedRefusal === null ? 'true' : 'false' }}">
+                <div role="radiogroup" aria-label="{{ __('Game kind') }}" class="grid min-w-0 grow grid-cols-2 gap-1 rounded-md bg-ground p-1 shadow-ring lg:w-80 lg:grow-0" data-test="game-kind" data-rated-open="{{ $ratedRefusal === null ? 'true' : 'false' }}" x-bind:data-rated-open="(refusals[liveMode] === null).toString()">
                     <button type="button" role="radio" aria-checked="true" x-bind:aria-checked="rated ? 'false' : 'true'" x-on:click="rated = false" aria-describedby="kind-why" data-test="kind-casual"
                             class="flex min-h-11 cursor-pointer items-center justify-center rounded-sm px-2 text-[13px] font-bold text-btc-hi shadow-[inset_0_-2px_0_var(--color-btc)] bg-raised"
                             x-bind:class="rated ? 'bg-transparent! shadow-none! text-ink!' : ''">{{ __('Casual') }}</button>
                     <button type="button" role="radio" aria-checked="false" x-bind:aria-checked="rated ? 'true' : 'false'" x-on:click="rated = true" aria-describedby="kind-why" data-test="kind-rated"
-                            @disabled($ratedRefusal !== null)
+                            @disabled($ratedRefusal !== null) x-bind:disabled="refusals[liveMode] !== null"
                             class="flex min-h-11 cursor-pointer flex-wrap items-center justify-center gap-x-2 rounded-sm px-2 text-[13px] font-bold text-ink disabled:cursor-not-allowed disabled:text-ink-3"
                             x-bind:class="rated ? 'bg-raised text-btc-hi! shadow-[inset_0_-2px_0_var(--color-btc)]' : ''">
                         {{ __('Rated') }}
-                        @if ($ratedRefusal !== null)
-                            <span class="rounded-xs bg-raised px-1.5 py-0.5 text-[11px] font-normal text-ink-2" data-test="kind-rated-badge">{{ Ladders::isOpen($slug, 'blitz') ? __('not open yet') : __('from Block 0') }}</span>
-                        @endif
+                        <span @class(['rounded-xs bg-raised px-1.5 py-0.5 text-[11px] font-normal text-ink-2', 'hidden' => $ratedRefusal === null]) x-bind:class="refusals[liveMode] === null ? 'hidden' : ''"
+                              x-text="@js($badges)[liveMode]" data-test="kind-rated-badge">{{ $badges[$firstLive] ?? '' }}</span>
                     </button>
                 </div>
                 <button type="button" x-on:click="help = ! help" x-bind:aria-expanded="help.toString()" aria-expanded="false" aria-controls="blitz-help" data-test="kind-help"
                         class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center self-center rounded-md border border-line bg-well font-display text-base font-bold text-ink-2 hover:text-ink aria-expanded:border-btc aria-expanded:text-btc-hi lg:order-last">
-                    <span aria-hidden="true">?</span><span class="sr-only">{{ __('How blitz works') }}</span>
+                    <span aria-hidden="true">?</span><span class="sr-only">{{ __('How quick play works') }}</span>
                 </button>
             </div>
             <div class="flex gap-2 lg:contents">
                 <span class="flex min-h-12 shrink-0 flex-col justify-center rounded-md px-3 shadow-ring lg:min-h-11" data-test="blitz-range">
                     <span class="sr-only">{{ __('Opponent strength') }}:</span>
                     <b class="text-[15px] leading-5">±{{ $range['initial'] }}</b>
-                    <span class="text-[11px] leading-4 text-ink-2">{{ __('around :rating', ['rating' => $rating]) }}</span>
+                    <span class="text-[11px] leading-4 text-ink-2" x-text="@js(collect($ratings)->map(fn (int $value): string => __('around :rating', ['rating' => $value]))->all())[liveMode]">{{ __('around :rating', ['rating' => $rating]) }}</span>
                 </span>
                 @auth
-                    <button type="button" x-on:click="$wire.findOpponent(rated)" data-test="find-opponent-button"
+                    <button type="button" x-on:click="$wire.findOpponent(rated, liveMode)" data-test="find-opponent-button"
                             class="btn-p inline-flex min-h-12 grow cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 font-display text-base font-bold text-on-btc lg:min-w-64 lg:grow-0">
                         <x-icon name="bolt" :size="18" />{{ __('Find opponent') }}
                     </button>
@@ -182,7 +199,7 @@
                 @endauth
             </div>
             <div id="blitz-help" x-show="help" x-cloak class="flex flex-col gap-2 border-t border-hairline px-2 pt-3 pb-1 text-[13px] leading-normal text-ink-2 lg:order-last lg:basis-full" data-test="blitz-help">
-                <p id="kind-why" class="m-0 max-w-[72ch]" data-test="kind-why">@if ($ratedRefusal !== null){{ $ratedRefusal }}@else<span x-show="! rated">{{ __('Casual pairs you with anyone online and moves only your casual Elo.') }}</span> <span x-show="rated" x-cloak>{{ trans_choice('Rated pairs you only with a Trusted player you list each other with (you have :count). A win can mine a season block.|Rated pairs you only with Trusted players you list each other with (you have :count). A win can mine a season block.', $this->mutualOpponents) }}</span>@endif</p>
+                <p id="kind-why" class="m-0 max-w-[72ch]" data-test="kind-why"><span x-show="refusals[liveMode] !== null" x-text="refusals[liveMode]" @if ($ratedRefusal === null) x-cloak @endif>{{ $ratedRefusal }}</span><span x-show="refusals[liveMode] === null" @if ($ratedRefusal !== null) x-cloak @endif><span x-show="! rated">{{ __('Casual pairs you with anyone online and moves only your casual Elo.') }}</span> <span x-show="rated" x-cloak>{{ trans_choice('Rated pairs you only with a Trusted player you list each other with (you have :count). A win can mine a season block.|Rated pairs you only with Trusted players you list each other with (you have :count). A win can mine a season block.', $this->mutualOpponents) }}</span></span></p>
                 <p class="m-0 max-w-[72ch]">{{ __('Opponent strength') }}: {{ __('±:range around :rating, wider every :seconds s', ['range' => $range['initial'], 'rating' => $rating, 'seconds' => $range['every_seconds']]) }}</p>
                 <p class="m-0 max-w-[72ch]">{{ __('You join the queue and can cancel any time. The game starts as soon as someone in your range is found.') }}</p>
             </div>
