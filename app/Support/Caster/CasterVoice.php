@@ -302,8 +302,9 @@ final class CasterVoice
             $rejected = [];
 
             for ($try = 0; $try < 2; $try++) {
-                if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)
-                    || $this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
+                // Only the monthly budget stops a chat reply, never the daily cap the scene scripts use up
+                // (2026-10-11: 400 of 400 by 20:19, and every chatter got a template instead of an answer).
+                if ($this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
                     return null;
                 }
 
@@ -367,7 +368,7 @@ final class CasterVoice
             $violations[] = ScriptGuard::NAME_COUNT;
         }
 
-        if (preg_match_all('/\[[^\]]*\]/u', $text) > 1) {
+        if (preg_match_all('/\[[^\]]*\]/u', $text) > ScriptGuard::MAX_MARKERS) {
             $violations[] = ScriptGuard::MARKER_COUNT;
         }
 
