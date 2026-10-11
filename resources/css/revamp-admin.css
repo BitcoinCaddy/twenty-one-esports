@@ -1,0 +1,378 @@
+/*
+ * Revamp primitives of the admin area and the system pages (plan "Refactor und Design-Revamp", P8), 1:1 from the
+ * boards Admin* (canvas/gen/pages_more.py `admin()`, mood_b.py `.mb-console .mb-num .mb-dot .mb-hero`) and
+ * SystemPages: the admin sidebar (240 px, rows of 36 px, the active row orange-edged), the console breadcrumb
+ * bar with its one live readout, the section card (`sec`: card, padding 24, gap 12) and the display numerals.
+ * Same tokens as revamp.css; radius 4 (marks 2), focus 2 px #F9B25F, motion 150 ms ease-out.
+ */
+@layer components {
+    /* The sidebar (`nav aria-label=Admin`): border right, the tick ground, 12 px 8 px padding. */
+    /* Below 1024 px it is the one disclosure row under the header. */
+    .rv-admin-side {
+        border-bottom: 1px solid var(--color-hairline);
+    }
+
+    @media (width >= 64rem) {
+        .rv-admin-side {
+            border-right: 1px solid var(--color-hairline);
+            border-bottom: 0;
+            background: var(--color-tick);
+            padding: 12px 8px;
+        }
+    }
+
+    .rv-admin-side-group {
+        padding: 12px 12px 4px;
+        color: var(--color-ink-3);
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .rv-admin-side-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 4px;
+        color: var(--color-ink-2);
+        font-size: 14px;
+        white-space: nowrap;
+        transition: background-color 150ms ease-out, color 150ms ease-out;
+    }
+
+    .rv-admin-side-item:hover {
+        background: var(--color-row-hover);
+        color: var(--color-ink);
+    }
+
+    .rv-admin-side-item[aria-current] {
+        background: var(--color-btc-chip);
+        color: var(--color-ink);
+        box-shadow: inset 3px 0 0 var(--color-btc);
+    }
+
+    /* The breadcrumb bar as a console line (`.mb-console`): scanlines over a green-to-ground wash, a green edge. */
+    .rv-console {
+        border: 1px solid var(--color-hairline);
+        border-radius: 4px;
+        background:
+            repeating-linear-gradient(0deg, rgb(255 255 255 / 0.02) 0 1px, transparent 1px 3px),
+            linear-gradient(90deg, #0F1A13, var(--color-ground) 55%);
+        box-shadow: inset 3px 0 0 var(--color-win);
+    }
+
+    /* A display numeral (`.mb-num`): Unbounded 700, tabular, tight. */
+    .rv-num {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+        letter-spacing: -0.01em;
+    }
+
+    /* A status dot (`.mb-dot`), pulsing only where something runs right now (`.is-p`). */
+    .rv-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        flex: none;
+        border-radius: 50%;
+        background: var(--c, var(--color-win));
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--c, var(--color-win)) 22%, transparent);
+    }
+
+    .rv-dot.is-p {
+        animation: rv-pulse 1.6s ease-in-out infinite;
+    }
+
+    /* The live pill in green (`live(label, color=GREEN)`): something runs on its own, not on air. */
+    .rv-live.is-run {
+        border-color: var(--color-win-ring);
+        background: var(--color-win-tint);
+        color: var(--color-win);
+        height: 20px;
+    }
+
+    /* A section of an admin page (`sec`): card, padding 24, gap 12; 16 on phones. */
+    .rv-sec {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+        padding: 16px;
+        border: 1px solid var(--color-hairline);
+        border-radius: 4px;
+        background: var(--color-card);
+    }
+
+    @media (width >= 64rem) {
+        .rv-sec {
+            padding: 24px;
+        }
+    }
+
+    /* A hero card (`.mb-hero` + `.mb-light`): an orange glow from the top left and scanlines, behind the content. */
+    .rv-hero {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+    }
+
+    .rv-hero::before {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: radial-gradient(ellipse 50% 90% at 0% 0%, rgb(247 147 26 / 0.16), transparent 70%);
+        content: "";
+        pointer-events: none;
+    }
+
+    .rv-hero::after {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 3px);
+        content: "";
+        pointer-events: none;
+    }
+
+    /* A row list inside a section (`row g12 min-height:44px border-bottom`). */
+    .rv-rows > * {
+        border-bottom: 1px solid var(--color-hairline);
+    }
+
+    .rv-rows > *:last-child {
+        border-bottom: 0;
+    }
+
+    /* A form label (`.lb`) and field (`.in`) of the boards. */
+    .rv-lb {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--color-ink-2);
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+
+    /* The dropdown (`.dd`): 44 px, ground, line border, the value ellipsised, a chevron; its listbox below. */
+    .rv-dd {
+        display: flex;
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 12px;
+        border: 1px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-ground);
+        color: var(--color-ink);
+        font: inherit;
+        font-size: 14px;
+        text-align: left;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: border-color 150ms ease-out;
+    }
+
+    .rv-dd:hover,
+    .rv-dd[aria-expanded="true"] {
+        border-color: var(--color-edge);
+    }
+
+    .rv-dd:disabled {
+        color: var(--color-ink-3);
+        cursor: not-allowed;
+    }
+
+    .rv-dd > .v {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .rv-dd-opt {
+        display: flex;
+        min-height: 40px;
+        align-items: center;
+        padding: 0 12px;
+        border-radius: 2px;
+        color: var(--color-ink-2);
+        font-size: 14px;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .rv-dd-opt:hover,
+    .rv-dd-opt:focus {
+        background: var(--color-row-hover);
+        color: var(--color-ink);
+        outline: none;
+    }
+
+    .rv-dd-opt:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--color-btc-hi);
+    }
+
+    .rv-dd-opt[aria-selected="true"] {
+        background: var(--color-btc-chip);
+        color: var(--color-ink);
+        box-shadow: inset 3px 0 0 var(--color-btc);
+    }
+
+    /* The switch (`sw()`): a 52 x 32 track, on orange with a dark knob right, off raised grey with a grey knob left.
+       The button itself is 44 px tall (the target), the track is drawn inside it. */
+    .rv-sw {
+        position: relative;
+        width: 52px;
+        height: 44px;
+        flex: none;
+        border: 0;
+        background: none;
+        cursor: pointer;
+    }
+
+    .rv-sw::before {
+        position: absolute;
+        inset: 6px 0;
+        border: 1px solid var(--color-edge);
+        border-radius: 16px;
+        background: var(--color-raised);
+        content: "";
+        transition: background-color 150ms ease-out, border-color 150ms ease-out;
+    }
+
+    .rv-sw > i {
+        position: absolute;
+        top: 11px;
+        left: 5px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--color-ink-2);
+        transition: left 150ms ease-out, background-color 150ms ease-out;
+    }
+
+    .rv-sw[aria-checked="true"]::before {
+        border-color: var(--color-btc);
+        background: var(--color-btc);
+    }
+
+    .rv-sw[aria-checked="true"] > i {
+        left: 25px;
+        background: var(--color-on-btc);
+    }
+
+    .rv-sw:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* The choice list (`opts()`): 48 px rows, a round mark, the chosen one orange-edged on the chip ground. */
+    .rv-opt {
+        display: flex;
+        width: 100%;
+        min-height: 48px;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        border: 1px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-card);
+        color: var(--color-ink);
+        font: inherit;
+        font-size: 14px;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .rv-opt > i {
+        width: 16px;
+        height: 16px;
+        flex: none;
+        border: 1px solid var(--color-edge);
+        border-radius: 50%;
+    }
+
+    .rv-opt[aria-checked="true"] {
+        border-color: var(--color-btc);
+        background: var(--color-btc-chip);
+    }
+
+    .rv-opt[aria-checked="true"] > i {
+        border-color: var(--color-btc);
+        background: var(--color-btc);
+        box-shadow: inset 0 0 0 3px var(--color-btc-chip);
+    }
+
+    /* The danger button (`.bd`): red outline, bold; `.is-sm` 32 px like `.rv-b2.is-sm`. */
+    .rv-bd {
+        display: inline-flex;
+        height: 44px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 0 16px;
+        border: 1px solid var(--color-loss);
+        border-radius: 4px;
+        background: transparent;
+        color: var(--color-loss);
+        font-size: 14px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color 150ms ease-out;
+    }
+
+    .rv-bd:hover {
+        background: var(--color-loss-tint);
+        color: var(--color-loss);
+    }
+
+    .rv-bd.is-sm {
+        height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+    }
+
+    .rv-bd:disabled,
+    .rv-b2:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* A text field (`.in`): 44 px, ground, edge border. */
+    .rv-in {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        height: 44px;
+        padding: 0 12px;
+        border: 1px solid var(--color-edge);
+        border-radius: 4px;
+        background: var(--color-ground);
+        color: var(--color-ink);
+        font: inherit;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .rv-sw::before,
+        .rv-sw > i,
+        .rv-dd {
+            transition: none;
+        }
+
+        .rv-dot.is-p {
+            animation: none;
+        }
+
+        .rv-admin-side-item {
+            transition: none;
+        }
+    }
+}

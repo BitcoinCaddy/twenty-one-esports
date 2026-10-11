@@ -104,6 +104,10 @@ new #[Title('Admins')] #[Layout('layouts::app', ['section' => 'admin'])] class e
 @php($me = auth()->user()?->pubkey)
 
 <x-admin.page active="admins" :title="__('Admins')" :lead="__('Admins decide disputes, send payouts and release seasons. Board members are always admins.')" data-test="admin-admins">
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('Board') }}</span><span class="rv-num text-base text-ink">{{ count($this->board) }}</span></span><span class="flex items-baseline gap-2"><span class="rv-m">{{ __('added here') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ $this->admins->count() }}</span></span>
+    </x-slot:readout>
+
     <x-admin.panel :title="__('Board')" :meta="__('from the configuration, not editable here')" flush>
         <ul class="m-0 flex list-none flex-col p-0">
             @foreach (\App\Support\Board::pubkeys() as $pubkey)

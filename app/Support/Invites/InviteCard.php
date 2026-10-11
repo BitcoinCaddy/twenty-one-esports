@@ -91,7 +91,7 @@ final class InviteCard
 
         return substr(hash('sha256', json_encode([
             ...$score,
-            'v' => 2,
+            'v' => 3,
             $format,
             app()->getLocale(),
             $this->link->type->value,
@@ -188,11 +188,9 @@ final class InviteCard
      */
     private function footer(int $x, int $y, int $tile, int $right, int $baseline, int $urlSize, int $urlMax): void
     {
+        // The share-card frame (revamp P8, ShareCards.dc.html): the 21 tile, the invite's address beside it.
         $this->picture(public_path('icon-512.png'), $x, $y, $tile, (int) round($tile * 0.18));
-        $wordX = $x + $tile + 18;
-        $this->text('TWENTY ONE', 'display', (int) round($tile * 0.55), $wordX, $baseline, self::INK);
-        $wordWidth = $this->width('TWENTY ONE', 'display', (int) round($tile * 0.55));
-        $this->text('esports', 'mono', (int) round($tile * 0.36), $wordX + $wordWidth + 12, $baseline, self::INK_2);
+        $right = min($right, $x + $tile + 18 + $urlMax);
 
         $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
         $address = $host.'/i/'.substr($this->link->code, 0, 6).'…';
@@ -202,7 +200,7 @@ final class InviteCard
             $size -= 2;
         }
 
-        $this->text($address, 'mono', $size, $right - $this->width($address, 'mono', $size), $baseline, self::INK_2);
+        $this->text($address, 'mono', $size, $x + $tile + 18, $baseline, self::INK_2);
     }
 
     /**

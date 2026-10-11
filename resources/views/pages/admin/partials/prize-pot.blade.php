@@ -25,16 +25,13 @@
     $potModeButton = 'inline-flex h-11 cursor-pointer items-center rounded-md border px-3 text-[13px]';
 @endphp
 
-<section aria-labelledby="pot-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="prize-pot">
+<section aria-labelledby="pot-h" class="flex flex-col gap-4 rounded border border-hairline bg-card p-4 lg:p-6" data-test="prize-pot">
     <div class="flex flex-col gap-1">
-        <h2 id="pot-h" class="m-0 text-[15px] font-bold">{{ __('Prize pot') }}</h2>
+        <h2 id="pot-h" class="rv-h3">{{ __('Prize pot') }}</h2>
         <p class="m-0 max-w-[80ch] text-[13px] leading-normal text-ink-2">{{ __('Optional. The pot is kept in the league wallet, booked for this tournament alone; it shows on the tournament page and in the lists, with what each place can win. Set the prizes as a share of the pot or as fixed amounts; an admin pays the winners from the league wallet.') }}</p>
     </div>
 
-    <label class="flex min-h-11 items-center gap-3 self-start text-[13px]">
-        <input type="checkbox" wire:model.live="potEnabled" class="size-5 accent-btc" data-test="pot-enabled">
-        {{ __('This tournament has a prize pot') }}
-    </label>
+    <x-ui.check model="potEnabled" live :checked="$this->potEnabled" class="self-start" data-test="pot-enabled">{{ __('This tournament has a prize pot') }}</x-ui.check>
 
     @if ($this->potEnabled)
         <p class="m-0 text-xs text-ink-2" data-test="pot-league-wallet">{{ __('No wallet to connect: sponsors, top-ups and zaps are paid to the league wallet and counted for this pot.') }}</p>
@@ -105,7 +102,7 @@
                 <span class="text-xs text-ink-3">{{ __('Tied places share the sum of their amounts; a team’s share is split equally among its roster. What the pot holds beyond the prizes stays with the league.') }}</span>
             @else
                 @if ($potPreview !== null)
-                    <span class="text-xs text-ink-2">{{ __('Preview from :sats sats, after :percent % held back for routing fees:', ['sats' => $potFormat($potPreview), 'percent' => \App\Support\Prizes\PrizePool::WALLET_FEE_PERCENT]) }}</span>
+                    <span class="text-xs text-ink-2">{{-- No fee is ever named on a page (rule: no fees text); the preview is from the sats the prizes are paid from. --}}{{ __('Preview from :sats sats:', ['sats' => $potFormat($potPreview)]) }}</span>
                     <ol class="m-0 flex list-none flex-wrap gap-2 p-0">
                         @foreach ($potValues as $index => $percent)
                             <li class="flex flex-col rounded-md bg-ground px-3 py-2 shadow-ring-hairline" wire:key="pot-preview-{{ $index }}">

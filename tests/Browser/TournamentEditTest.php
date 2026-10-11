@@ -135,7 +135,7 @@ test('the edit page and its moderation list stay clean at 375 and 1440 px, and a
     $page->locator("[data-test=remove-{$solo->id}]")->click();
     BrowserWait::until($page, '() => document.querySelector("[data-test=remove-form]") !== null', 10_000);
     $page->locator('[data-test=remove-reason]')->fill('Signed up twice');
-    $page->locator('[data-test=remove-block]')->check();
+    $page->locator('[data-test=remove-block]')->click();
     editShot($page, 'tournament-remove-form-1440');
     $page->locator('[data-test=remove-confirm]')->click();
     BrowserWait::until($page, '() => document.querySelectorAll("[data-test=signup-row]").length === 2', 10_000);

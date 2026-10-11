@@ -339,7 +339,7 @@ test('a board-only value: an admin off the board sees it read-only and is refuse
     Admin::query()->create(['pubkey' => $other->pubkey]);
 
     Livewire::actingAs($other)->test('pages::admin.settings')
-        ->assertSeeHtml('id="setting-esports-fair_play-false_reports" type="text" inputmode="numeric" wire:model="form.esports-fair_play-false_reports" class="h-11 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink disabled:opacity-60" disabled')
+        ->assertSeeHtml('id="setting-esports-fair_play-false_reports" type="text" inputmode="numeric" wire:model="form.esports-fair_play-false_reports" class="rv-in disabled:opacity-60" disabled')
         // An unchanged board-only value in the same form does not block the admin's own change.
         ->set('form.esports-casual-lock-minutes', '40')
         ->call('save')

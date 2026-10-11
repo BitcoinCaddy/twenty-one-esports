@@ -10,11 +10,12 @@
 @endphp
 
 <x-layouts::app :title="__('Nostr DMs from the league')">
-    <div class="flex flex-col gap-5 px-4 pb-8 lg:px-12 lg:pb-10" data-test="dm-off">
-        <h1 class="m-0 font-display text-[28px] font-bold lg:text-[32px]">{{ __('Nostr DMs from the league') }}</h1>
-
-        <section aria-labelledby="dm-off-h" class="flex max-w-[640px] flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6">
-            <h2 id="dm-off-h" class="m-0 text-[15px] font-bold break-words">{{ __('For :name', ['name' => $user->displayName()]) }}</h2>
+    <div class="flex grow flex-col justify-center gap-5 px-4 py-10 lg:px-12 lg:py-16" data-test="dm-off">
+        {{-- SystemPages.dc.html "DMs abbestellt": the bell, the display heading, the state and the switches in one card. --}}
+        <section aria-labelledby="dm-off-title" class="rv-card rv-hero mx-auto flex w-full max-w-[640px] flex-col gap-4 p-6 lg:p-8">
+            <x-icon name="bell" :size="32" class="text-btc" />
+            <h1 id="dm-off-title" class="m-0 font-display text-[22px] leading-[1.25] font-bold lg:text-[24px]">{{ __('Nostr DMs from the league') }}</h1>
+            <h2 id="dm-off-h" class="rv-h3 break-words">{{ __('For :name', ['name' => $user->displayName()]) }}</h2>
 
             @if ($done === 'all')
                 <p role="status" class="m-0 flex items-start gap-2 rounded-lg bg-win-tint px-4 py-3 text-[13px] text-win" data-test="dm-off-done"><x-icon name="check" :size="16" class="mt-0.5 shrink-0" />{{ __('Done. The league sends you no more DMs.') }}</p>
@@ -54,7 +55,7 @@
 
             <p class="m-0 border-t border-hairline pt-4 text-xs leading-normal text-ink-2">
                 {{ __('Every notification, and turning DMs back on:') }}
-                <a href="{{ route('settings.notifications') }}" class="font-bold text-ink hover:text-btc-hi" data-test="dm-off-settings">{{ __('Notification settings') }}</a>
+                <a href="{{ route('settings.notifications') }}" class="rv-lk font-bold" data-test="dm-off-settings">{{ __('Notification settings') }}</a>
                 {{ __('(after logging in)') }}
             </p>
         </section>

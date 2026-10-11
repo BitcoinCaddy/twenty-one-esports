@@ -321,15 +321,18 @@ final class Canvas
     /** The TWENTY ONE mark, the wordmark and the site's host on the right. */
     public function footer(int|float $x, int|float $y, int $tile, int|float $right): void
     {
+        // The one frame of every share card (revamp P8, ShareCards.dc.html): the 21 tile bottom left and the
+        // host beside it, nothing on the right, so the art keeps the right side. `$right` bounds the host.
         $this->picture(public_path('icon-512.png'), $x, $y, $tile, (int) round($tile * 0.18));
-        $baseline = $y + $tile * 0.72;
-        $wordX = $x + $tile + 16;
-        $wordSize = (int) round($tile * 0.5);
-        $this->text('TWENTY ONE', 'display', $wordSize, $wordX, $baseline, self::INK);
-        $this->text('esports', 'mono', (int) round($tile * 0.34), $wordX + $this->width('TWENTY ONE', 'display', $wordSize) + 10, $baseline, self::INK_2);
-
+        $baseline = $y + $tile * 0.68;
         $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
-        $this->textRight($host, 'mono', (int) round($tile * 0.36), $right, $baseline, self::INK_2);
+        $size = (int) round($tile * 0.42);
+
+        while ($size > 14 && $x + $tile + 16 + $this->width($host, 'mono', $size) > $right) {
+            $size -= 2;
+        }
+
+        $this->text($host, 'mono', $size, $x + $tile + 16, $baseline, self::INK_2);
     }
 
     /**

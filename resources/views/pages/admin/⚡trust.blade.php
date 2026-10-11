@@ -208,13 +208,17 @@ new #[Title('Trust')] #[Layout('layouts::app', ['section' => 'admin'])] class ex
 }; ?>
 
 @php
-    $input = 'h-11 w-full rounded-md border border-edge bg-ground px-3 text-sm text-ink';
+    $input = 'rv-in';
     // Excluding a key (and lifting it) is the board's; dismissing a report is every admin's.
     $board = TrustAdmin::canExclude(auth()->user() instanceof User ? auth()->user() : null);
     $actions = ['dismiss' => __('dismissed report'), 'restore' => __('counted report again'), 'exclude' => __('excluded key'), 'lift' => __('lifted exclusion')];
 @endphp
 
 <x-admin.page active="trust" :title="__('Trust')" :lead="__('Reports and exclusions of the trust job')" data-test="admin-trust">
+    <x-slot:readout>
+        <span class="rv-live is-run"><i></i>{{ __('Trust job every 15 min.') }}</span><span class="flex items-baseline gap-2"><span class="rv-m">{{ __('with a rank') }}</span><span class="rv-num text-base text-ink" data-test="readout-value">{{ count($this->ranks) }}</span></span>
+    </x-slot:readout>
+
     <p class="m-0 max-w-[70ch] text-[13px] leading-normal text-ink-2">{{ __('A report counts if its author had rank 50 or more in the last run, and at most :count reports of one author count per season. The reports seen first fill these places, and a report that counted keeps its place for the season. Dismiss a report and it stops counting; exclude a key and it gets rank 0 and vouches for nobody. The next trust run applies your decision.', ['count' => (int) config('esports.trust.reports_per_author')]) }}</p>
 
     <label class="flex max-w-xl flex-col gap-1 text-xs text-ink-2">{{ __('Reason for your decision (required, saved with it)') }}
@@ -222,7 +226,7 @@ new #[Title('Trust')] #[Layout('layouts::app', ['section' => 'admin'])] class ex
     </label>
     @error('reason')<p class="m-0 text-[13px] text-loss" data-test="trust-error">{{ $message }}</p>@enderror
 
-    <section aria-labelledby="reports-h" class="flex flex-col rounded-lg bg-card px-4 py-2 lg:px-6">
+    <section aria-labelledby="reports-h" class="flex flex-col rounded border border-hairline bg-card px-4 py-2 lg:px-6">
         <h2 id="reports-h" class="m-0 py-3 text-[15px] font-bold">{{ __('Reports') }}</h2>
         @forelse ($this->reports as $report)
             @php($target = $this->target($report))
@@ -247,8 +251,8 @@ new #[Title('Trust')] #[Layout('layouts::app', ['section' => 'admin'])] class ex
         @endforelse
     </section>
 
-    <section aria-labelledby="exclusions-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:px-6">
-        <h2 id="exclusions-h" class="m-0 text-[15px] font-bold">{{ __('Excluded keys') }}</h2>
+    <section aria-labelledby="exclusions-h" class="flex flex-col gap-3 rounded border border-hairline bg-card p-4 lg:px-6">
+        <h2 id="exclusions-h" class="rv-h3">{{ __('Excluded keys') }}</h2>
         @if ($board)
             <form wire:submit="exclude" class="flex flex-col gap-2 sm:flex-row sm:items-end">
                 <x-player-picker id="trust-key" wire:model="key" allow-npub :label="__('Player or npub')" :exclude="$this->excludedUserIds" class="flex-1" />
@@ -270,7 +274,7 @@ new #[Title('Trust')] #[Layout('layouts::app', ['section' => 'admin'])] class ex
         @endforelse
     </section>
 
-    <section aria-labelledby="log-h" class="flex flex-col gap-1 rounded-lg bg-card px-4 py-4 lg:px-6" data-test="trust-log">
+    <section aria-labelledby="log-h" class="flex flex-col gap-1 rounded border border-hairline bg-card p-4 lg:px-6" data-test="trust-log">
         <h2 id="log-h" class="m-0 pb-2 text-[15px] font-bold">{{ __('Decision log') }} <span class="text-xs font-normal text-ink-3">{{ __('every decision and every undo, never changed') }}</span></h2>
         @forelse ($this->decisions as $decision)
             <div wire:key="d-{{ $decision->id }}" class="flex flex-col gap-0.5 border-t border-hairline py-2 text-[13px] sm:flex-row sm:gap-4" data-test="trust-decision">

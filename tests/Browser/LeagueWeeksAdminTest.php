@@ -80,6 +80,14 @@ function leagueWeeksGeometry(Page $page): array
 /**
  * Does `$action` and waits for the Livewire round-trip it starts to be answered.
  */
+/** Picks a value in the board's dropdown (revamp P8, x-ui.select-menu) that replaced the native select: open it, click the option. */
+function leagueWeeksPick(Page $page, string $id, string $value): void
+{
+    $page->locator("#{$id}")->click();
+    BrowserWait::until($page, '() => document.querySelector("#'.$id.'-list")?.checkVisibility() === true', 5_000);
+    $page->locator("#{$id}-list [data-value=\"{$value}\"]")->click();
+}
+
 function leagueWeeksRoundTrip(Page $page, Closure $action): void
 {
     $count = '() => performance.getEntriesByType("resource").filter((e) => e.initiatorType === "fetch" && e.name.includes("/livewire") && e.responseEnd > 0).length';
@@ -120,7 +128,7 @@ test('an admin sets the next TMNF week and approves the next Blockfill week, mea
     $heading = $page->evaluate('() => document.querySelector("h1").innerText');
     leagueWeeksShot($page, "league-weeks-{$locale}-{$width}");
 
-    $page->locator("#track-{$tmnf->id}")->selectOption('I7rI7jAga6C4tGAe5OTDoyLF2fh');
+    leagueWeeksPick($page, "track-{$tmnf->id}", 'I7rI7jAga6C4tGAe5OTDoyLF2fh');
     $page->locator("#limit-{$tmnf->id}")->fill('12');
     $page->locator("[data-week=\"{$tmnf->id}\"] [data-test=league-week-save]")->click();
     BrowserWait::until($page, '() => document.querySelector("[data-test=league-weeks-notice]") !== null', 10_000);
@@ -128,10 +136,10 @@ test('an admin sets the next TMNF week and approves the next Blockfill week, mea
 
     $card = "[data-week=\"{$blockfill->id}\"]";
     leagueWeeksRoundTrip($page, fn () => $page->locator("{$card} [data-test=rules-goal-60]")->click());
-    leagueWeeksRoundTrip($page, fn () => $page->locator("#start-{$blockfill->id}")->selectOption('1'));
+    leagueWeeksRoundTrip($page, fn () => leagueWeeksPick($page, "start-{$blockfill->id}", '1'));
     leagueWeeksRoundTrip($page, fn () => $page->locator("{$card} [data-test=rules-every-5]")->click());
-    leagueWeeksRoundTrip($page, fn () => $page->locator("#step-{$blockfill->id}")->selectOption('1'));
-    leagueWeeksRoundTrip($page, fn () => $page->locator("#cap-{$blockfill->id}")->selectOption('9'));
+    leagueWeeksRoundTrip($page, fn () => leagueWeeksPick($page, "step-{$blockfill->id}", '1'));
+    leagueWeeksRoundTrip($page, fn () => leagueWeeksPick($page, "cap-{$blockfill->id}", '9'));
     $rules = $page->evaluate('() => document.querySelector(\'[data-week="'.$blockfill->id.'"] [data-test=rules-summary]\').innerText');
     $ruled = leagueWeeksGeometry($page);
     leagueWeeksShot($page, "league-weeks-{$locale}-{$width}-rules");

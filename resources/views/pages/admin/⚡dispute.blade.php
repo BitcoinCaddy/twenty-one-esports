@@ -172,8 +172,8 @@ new #[Title('Dispute')] #[Layout('layouts::app', ['section' => 'admin'])] class 
         </p>
     @endif
 
-    <section aria-labelledby="hist-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6">
-        <span class="flex items-baseline justify-between"><h2 id="hist-h" class="m-0 text-[15px] font-bold">{{ __('History') }}</h2><span class="text-xs text-ink-2">{{ __('every step of this match, newest right') }}</span></span>
+    <section aria-labelledby="hist-h" class="flex flex-col gap-4 rounded border border-hairline bg-card p-4 lg:p-6">
+        <span class="flex items-baseline justify-between"><h2 id="hist-h" class="rv-h3">{{ __('History') }}</h2><span class="text-xs text-ink-2">{{ __('every step of this match, newest right') }}</span></span>
         <ol class="m-0 flex list-none flex-wrap gap-x-8 gap-y-4 p-0">
             <li class="flex flex-col items-center gap-1 text-center text-xs"><span class="text-[11px] text-ink-3">{{ SeriesPresenter::time($case->created_at ?? now(), $viewer, 'D m-d H:i') }}</span><span class="size-3.5 rounded-full border-2 border-edge"></span><b>{{ __('Challenge') }}</b><span class="text-ink-2">{{ $case->challenger_name }}</span></li>
             @if ($case->answered_at)<li class="flex flex-col items-center gap-1 text-center text-xs"><span class="text-[11px] text-ink-3">{{ SeriesPresenter::time($case->answered_at, $viewer, 'D m-d') }}</span><span class="size-3.5 rounded-full border-2 border-edge"></span><b>{{ __('Accepted') }}</b><span class="text-ink-2">{{ $case->challenged_name }}</span></li>@endif
@@ -191,12 +191,12 @@ new #[Title('Dispute')] #[Layout('layouts::app', ['section' => 'admin'])] class 
     </section>
 
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <div class="flex flex-col rounded-lg bg-card px-4 py-2 lg:px-6">
+        <div class="flex flex-col rounded border border-hairline bg-card px-4 py-2 lg:px-6">
             @foreach ([[__('Pairing'), $case->challenger_name.' : '.$case->challenged_name], [__('Format'), \App\Support\GameNames::game($case->game).', '.$case->mode.', Bo'.$case->best_of], [__('Played'), $case->start_at ? SeriesPresenter::time($case->start_at, $viewer) : '–']] as [$key, $v])
                 <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline text-[13px] last:border-0"><span class="text-ink-2">{{ $key }}</span><span>{{ $v }}</span></div>
             @endforeach
         </div>
-        <div class="flex flex-col rounded-lg bg-card px-4 py-2 lg:px-6">
+        <div class="flex flex-col rounded border border-hairline bg-card px-4 py-2 lg:px-6">
             @foreach ([[__('Match kind'), $case->rated ? __('Rated') : __('Casual, only casual Elo at stake')], [__('League record'), $case->rated ? __('from P7, after the decision') : __('none for casual matches')], [__('Open since'), $age]] as [$key, $v])
                 <div class="grid min-h-11 grid-cols-[120px_minmax(0,1fr)] items-center gap-3 border-b border-hairline text-[13px] last:border-0"><span class="text-ink-2">{{ $key }}</span><span>{{ $v }}</span></div>
             @endforeach
@@ -210,7 +210,7 @@ new #[Title('Dispute')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                 @foreach ($compare as $r)
                     @php($otherReport = collect($compare)->first(fn ($x) => $x->id !== $r->id))
                     @php($w = $r->score())
-                    <div class="flex flex-col rounded-lg bg-card px-4 py-4 lg:px-6" data-test="report-{{ $r->side }}">
+                    <div class="flex flex-col rounded border border-hairline bg-card p-4 lg:px-6" data-test="report-{{ $r->side }}">
                         <span class="flex items-center gap-3 pb-2"><x-clan-tag :clan="$case->sideClan($r->side)" :tag="$case->sideTag($r->side)" /><span class="flex flex-col"><b class="text-[15px]">{{ $case->sideName($r->side) }}</b><span class="text-xs text-ink-2">{{ $r->user?->displayName() }}, {{ __('captain') }}</span></span><span class="grow"></span><span class="inline-flex items-center gap-1 text-xs text-proof"><x-icon name="shield-check" :size="14" />{{ $r->event ? __('Signed') : __('Casual') }}</span></span>
                         @for ($i = 0; $i < $case->best_of; $i++)
                             @php($g = $r->games[$i] ?? null)
@@ -234,8 +234,8 @@ new #[Title('Dispute')] #[Layout('layouts::app', ['section' => 'admin'])] class 
 
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div class="flex flex-col gap-5">
-            <section aria-labelledby="ev-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6">
-                <span class="flex items-baseline justify-between"><h2 id="ev-h" class="m-0 text-[15px] font-bold">{{ __('Evidence') }}</h2><span class="text-xs text-ink-2">{{ __('admins only, never published') }}</span></span>
+            <section aria-labelledby="ev-h" class="flex flex-col gap-3 rounded border border-hairline bg-card p-4 lg:p-6">
+                <span class="flex items-baseline justify-between"><h2 id="ev-h" class="rv-h3">{{ __('Evidence') }}</h2><span class="text-xs text-ink-2">{{ __('admins only, never published') }}</span></span>
                 <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     @forelse ($case->evidence as $shot)
                         <a href="{{ route('admin.disputes.evidence', [$case, $shot]) }}" target="_blank" rel="noopener" class="flex flex-col gap-1 text-xs text-ink">
@@ -247,14 +247,14 @@ new #[Title('Dispute')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                     @endforelse
                 </div>
             </section>
-            <section aria-labelledby="mc-h" class="flex flex-col gap-2 rounded-lg bg-card px-4 py-5 lg:px-6">
-                <h2 id="mc-h" class="m-0 text-[15px] font-bold">{{ __('Match chat') }}</h2>
+            <section aria-labelledby="mc-h" class="flex flex-col gap-2 rounded border border-hairline bg-card p-4 lg:p-6">
+                <h2 id="mc-h" class="rv-h3">{{ __('Match chat') }}</h2>
                 <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('The chat is end-to-end encrypted over Nostr: the league server never receives or stores it, so there is no excerpt here. Ask the captains for screenshots instead.') }}</p>
             </section>
         </div>
 
-        <section aria-labelledby="dec-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#2A2A30] lg:px-6" data-test="decision">
-            <span class="flex items-baseline justify-between"><h2 id="dec-h" class="m-0 text-[15px] font-bold">{{ __('Decision') }}</h2><span class="text-xs text-ink-2">{{ __('you decide as :name', ['name' => $viewer->displayName()]) }}</span></span>
+        <section aria-labelledby="dec-h" class="flex flex-col gap-4 rounded border border-hairline bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#2A2A30] lg:px-6" data-test="decision">
+            <span class="flex items-baseline justify-between"><h2 id="dec-h" class="rv-h3">{{ __('Decision') }}</h2><span class="text-xs text-ink-2">{{ __('you decide as :name', ['name' => $viewer->displayName()]) }}</span></span>
             @if (! $open)
                 <p class="m-0 text-[13px] text-ink-2" data-test="decided">{{ __(':resolution by :name: :reason', ['resolution' => $case->resolution?->label() ?? '', 'name' => $case->resolvedBy?->displayName() ?? '', 'reason' => $case->resolution_reason ?? '']) }}</p>
             @elseif ($ownClan)
@@ -294,10 +294,8 @@ new #[Title('Dispute')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                             @if (! $case->hasGoals())
                                 <div class="grid grid-cols-[70px_minmax(0,1fr)] items-center gap-2 text-[13px]">
                                     <span class="text-ink-2">{{ __('Game :n', ['n' => $index + 1]) }}</span>
-                                    <select wire:model="games.{{ $index }}.winner" aria-label="{{ __('Winner of game :n', ['n' => $index + 1]) }}" data-test="result-winner-{{ $index }}" class="h-10 max-w-60 rounded-md border border-edge bg-ground px-2 text-ink">
-                                        <option value="">{{ __('not played') }}</option>
-                                        @foreach (SeriesMatch::SIDES as $side)<option value="{{ $side }}">{{ $case->sideTag($side) }}</option>@endforeach
-                                    </select>
+                                    <x-ui.select-menu :model="'games.'.$index.'.winner'" :value="$row['winner'] ?? ''" :label="__('Winner of game :n', ['n' => $index + 1])" width="240px" data-test="result-winner-{{ $index }}"
+                                                      :options="['' => __('not played')] + collect(SeriesMatch::SIDES)->mapWithKeys(fn (string $side): array => [$side => $case->sideTag($side)])->all()" />
                                 </div>
                                 @continue
                             @endif

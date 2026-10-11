@@ -48,7 +48,7 @@ final class ShareCard
     private const FEES = ['#7383A6', '#3B82E0', '#0FA394', '#5AAE3C', '#F2D45C', '#F7931A', '#F9A8D4'];
 
     /** Bump when a layout changes: every card gets a new file and URL. */
-    private const LAYOUT = 2;
+    private const LAYOUT = 3;
 
     private Canvas $c;
 

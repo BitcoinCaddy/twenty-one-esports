@@ -130,84 +130,80 @@ new #[Title('Disputes')] #[Layout('layouts::app', ['section' => 'admin'])] class
 }; ?>
 
 @php
-    $select = 'h-11 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
-    $chipClass = [
-        'report' => 'border-line bg-well',
-        'dispute' => 'border-[#5A2A2E] bg-loss-tint',
-        'noshow' => 'border-btc-hi bg-ground',
-        'open' => 'border-edge border-dashed bg-transparent',
-        'decided' => 'border-proof-ring bg-proof-fill',
-    ];
-    $chipTitle = ['report' => 'text-ink', 'dispute' => 'text-loss', 'noshow' => 'text-btc-hi', 'open' => 'text-ink-2', 'decided' => 'text-proof'];
+    $kindTag = ['report' => '', 'dispute' => 'is-bad', 'noshow' => 'is-btc'];
+    $kindLabel = ['report' => __('Report'), 'dispute' => __('Dispute'), 'noshow' => __('No-show reported')];
+    $modes = ['' => __('All modes'), '3v3' => '3v3', '2v2' => '2v2', '1v1' => '1v1'];
+    $clans = ['' => __('All clans')] + $this->clans->mapWithKeys(fn ($option): array => [$option->slug => $option->name])->all();
+    $sorts = ['oldest' => __('Oldest first'), 'newest' => __('Newest first')];
 @endphp
 
+{{--
+    AdminDisputes.dc.html: the title with its lead beside it, the status chips (Open N, Decided N) and the
+    filters of the page in one row, then the cases as one table: match, kind, pairing, reason, open for, the
+    action. The four decision kinds stay one click away (a disclosure), not as cards on the page.
+--}}
 <x-admin.page active="disputes" :title="__('Disputes')" :lead="__('Matches where a captain disputed the result')" data-test="admin-disputes">
-    <x-slot:actions>
-        <label class="inline-flex min-h-11 cursor-pointer items-center gap-2 text-[13px] text-ink-2"><input type="checkbox" wire:model.live="hideOwn" class="size-4 accent-[#F7931A]">{{ __('Hide matches of my own clans') }}</label>
-    </x-slot:actions>
+    <x-slot:readout>
+        <span class="flex items-baseline gap-2"><span class="rv-m">{{ __('open') }}</span><span @class(['rv-num text-base', 'text-btc-hi' => $this->counts['open'] > 0, 'text-ink' => $this->counts['open'] === 0]) data-test="readout-value">{{ $this->counts['open'] }}</span></span>
+    </x-slot:readout>
 
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div role="tablist" class="flex gap-1 rounded-lg bg-card p-1">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <span class="rv-m">{{ __('Status') }}</span>
+        <div role="tablist" class="flex flex-wrap gap-2">
             @foreach (['open' => __('Open'), 'resolved' => __('Resolved')] as $key => $label)
-                <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}"
-                        @class(['h-11 cursor-pointer rounded-md border-0 px-4 text-[13px]', 'bg-raised font-bold text-btc' => $tab === $key, 'bg-transparent text-ink-2' => $tab !== $key])>{{ $label }} {{ $this->counts[$key] }}</button>
+                <button type="button" role="tab" wire:click="$set('tab', '{{ $key }}')" aria-selected="{{ $tab === $key ? 'true' : 'false' }}" @if ($tab === $key) aria-current="true" @endif class="rv-chip">{{ $label }} <span class="rv-m">{{ $this->counts[$key] }}</span></button>
             @endforeach
         </div>
+        <span class="grow"></span>
         <div class="flex flex-wrap items-center gap-3">
-            <label class="flex items-center gap-2 text-xs text-ink-3">{{ __('Mode') }}<select wire:model.live="mode" class="{{ $select }}"><option value="">{{ __('All modes') }}</option>@foreach (['3v3', '2v2', '1v1'] as $option)<option value="{{ $option }}">{{ $option }}</option>@endforeach</select></label>
-            <label class="flex items-center gap-2 text-xs text-ink-3">{{ __('Clan') }}<select wire:model.live="clan" class="{{ $select }} w-[180px]"><option value="">{{ __('All clans') }}</option>@foreach ($this->clans as $option)<option value="{{ $option->slug }}">{{ $option->name }}</option>@endforeach</select></label>
-            <label class="flex items-center gap-2 text-xs text-ink-3">{{ __('Sort') }}<select wire:model.live="sort" class="{{ $select }}"><option value="oldest">{{ __('Oldest first') }}</option><option value="newest">{{ __('Newest first') }}</option></select></label>
+            <x-ui.select-menu model="mode" live :value="$this->mode" :options="$modes" :label="__('Mode')" width="140px" data-test="filter-mode" />
+            <x-ui.select-menu model="clan" live :value="$this->clan" :options="$clans" :label="__('Clan')" width="180px" data-test="filter-clan" />
+            <x-ui.select-menu model="sort" live :value="$this->sort" :options="$sorts" :label="__('Sort')" width="170px" data-test="filter-sort" />
+            <x-ui.check model="hideOwn" live :checked="$this->hideOwn" data-test="hide-own">{{ __('Hide matches of my own clans') }}</x-ui.check>
         </div>
     </div>
 
-    <div class="flex flex-col rounded-lg bg-card px-4 py-2 lg:px-6">
-        <div class="hidden h-11 grid-cols-[100px_minmax(0,1fr)_150px_110px_100px] items-center gap-4 border-b border-hairline text-xs text-ink-2 lg:grid">
-            <span>{{ __('Match') }}</span><span>{{ __('History') }}</span><span>{{ __('Reported') }}</span><span>{{ __('Open for') }}</span><span></span>
-        </div>
-        @forelse ($this->cases as $case)
-            @php($report = $case->latestReport)
-            @php($wins = $report?->score())
-            @php($hours = (int) ($case->updated_at?->diffInHours(now()) ?? 0))
-            <div wire:key="c-{{ $case->id }}" class="grid grid-cols-1 items-center gap-3 border-b border-hairline py-4 last:border-0 lg:grid-cols-[100px_minmax(0,1fr)_150px_110px_100px] lg:gap-4" data-test="dispute-row">
-                <span class="flex items-baseline gap-3 lg:flex-col lg:gap-1"><b class="text-lg">{{ $case->label() }}</b><span class="text-xs text-ink-2">{{ $case->mode }}, BO{{ $case->best_of }}</span></span>
-                <ol class="m-0 flex list-none flex-wrap items-center gap-y-2 p-0">
-                    @foreach ($this->history($case) as $index => $chip)
-                        @if ($index > 0)<span class="h-px w-3 bg-line" aria-hidden="true"></span>@endif
-                        <li class="flex min-w-[140px] flex-col gap-0.5 rounded-md border px-3 py-2 text-xs {{ $chipClass[$chip['kind']] }}">
-                            <b class="{{ $chipTitle[$chip['kind']] }}">{{ $chip['title'] }}</b><span>{{ $chip['who'] }}</span>@if ($chip['note'])<span class="text-[11px] text-ink-3">{{ $chip['note'] }}</span>@endif
-                        </li>
+    <div class="rv-card relative overflow-x-auto">
+        @if ($this->cases->isEmpty())
+            <div class="p-4 lg:p-6"><x-admin.empty :text="$tab === 'open' ? __('No open disputes. Every result is settled.') : __('No resolved cases yet.')" /></div>
+        @else
+            <table class="rv-tb min-w-[760px]">
+                <thead><tr><th>{{ __('Match') }}</th><th>{{ __('Kind') }}</th><th>{{ __('Pairing') }}</th><th>{{ __('Reason') }}</th><th>{{ __('Open for') }}</th><th class="is-r"><span class="sr-only">{{ __('Action') }}</span></th></tr></thead>
+                <tbody>
+                    @foreach ($this->cases as $case)
+                        @php
+                            $history = $this->history($case);
+                            $last = collect($history)->reject(fn (array $chip): bool => in_array($chip['kind'], ['open', 'decided'], true))->last();
+                            $hours = (int) ($case->updated_at?->diffInHours(now()) ?? 0);
+                        @endphp
+                        <tr wire:key="c-{{ $case->id }}" @class(['is-featured' => $tab === 'open']) data-test="dispute-row">
+                            <td class="whitespace-nowrap"><b class="text-btc-hi">{{ $case->label() }}</b> <span class="rv-m">{{ $case->mode }}, BO{{ $case->best_of }}</span></td>
+                            <td><span class="rv-tag {{ $last ? $kindTag[$last['kind']] : '' }}" @if ($last) title="{{ $kindLabel[$last['kind']] }}" @endif>{{ collect($history)->last()['title'] ?? '' }}</span></td>
+                            <td class="text-[13px]"><span class="inline-flex flex-wrap items-center gap-x-2 gap-y-1"><x-clan-tag :clan="$case->sideClan('challenger')" :tag="$case->challenger_tag" size="sm" /><b>{{ $case->sideName('challenger') }}</b><span class="rv-m">{{ __('vs') }}</span><x-clan-tag :clan="$case->sideClan('challenged')" :tag="$case->challenged_tag" size="sm" /><b>{{ $case->sideName('challenged') }}</b></span></td>
+                            <td class="max-w-[28ch] text-[13px] text-ink-2 [overflow-wrap:anywhere]">{{ $last['note'] ?? '' }}</td>
+                            <td class="whitespace-nowrap text-[13px]"><b @class(['text-loss' => $hours >= 48, 'text-ink' => $hours < 48])>{{ $case->updated_at?->diffForHumans(null, true) }}</b>@if ($hours >= 48) <span class="rv-m">{{ __('overdue') }}</span>@endif</td>
+                            <td class="is-r"><a href="{{ route('admin.disputes.show', $case) }}" class="{{ $tab === 'open' ? 'rv-b' : 'rv-b2' }} is-sm" data-test="review">{{ $tab === 'open' ? __('Review') : __('View') }}</a></td>
+                        </tr>
                     @endforeach
-                </ol>
-                <span class="flex flex-col gap-1">
-                    <span class="flex items-center gap-2"><x-clan-tag :clan="$case->sideClan('challenger')" :tag="$case->challenger_tag" size="sm" /><b class="font-display text-lg">{{ $wins ? $wins['challenger'].':'.$wins['challenged'] : '–:–' }}</b><x-clan-tag :clan="$case->sideClan('challenged')" :tag="$case->challenged_tag" size="sm" /></span>
-                    <span class="text-[11px] text-ink-2">{{ $report ? __('Reported by :clan', ['clan' => $case->sideName($report->side)]) : __('No-show, no result') }}</span>
-                </span>
-                <span class="flex flex-col text-xs"><b @class(['text-loss' => $hours >= 48, 'text-btc-hi' => $hours < 48])>{{ $case->updated_at?->diffForHumans(null, true) }}</b>@if ($hours >= 48)<span class="text-ink-3">{{ __('overdue') }}</span>@endif</span>
-                <span><x-button :href="route('admin.disputes.show', $case)" data-test="review">{{ $tab === 'open' ? __('Review') : __('View') }}</x-button></span>
-            </div>
-        @empty
-            <x-admin.empty :text="$tab === 'open' ? __('No open disputes. Every result is settled.') : __('No resolved cases yet.')" class="py-4" />
-        @endforelse
+                </tbody>
+            </table>
+        @endif
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-ink-2">
-        <span class="flex flex-wrap gap-4">
-            @foreach ([['border-line bg-well', __('Report')], ['border-[#5A2A2E] bg-loss-tint', __('Dispute')], ['border-proof-ring bg-proof-fill', __('League record')], ['border-btc-hi', __('No-show report')], ['border-dashed border-edge', __('waiting for an admin')]] as [$class, $label])
-                <span class="inline-flex items-center gap-2"><span class="size-4 rounded-xs border {{ $class }}"></span>{{ $label }}</span>
+    <details class="group rv-card px-4 lg:px-6" data-test="dispute-kinds">
+        <summary class="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[13px] text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+            {{ __('How a case is decided') }}<x-icon name="chevron-down" :size="14" class="transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
+        </summary>
+        <div class="grid grid-cols-1 gap-4 pb-4 sm:grid-cols-2 lg:grid-cols-4">
+            @foreach ([
+                [__('Accept a report'), __('One of the two reports stands. The league record says "decided by admin".')],
+                [__('Enter the result'), __('You enter each game\'s goals, or its winner in a game without goals, after checking the evidence.')],
+                [__('Forfeit'), __('One side didn\'t show up, reported with the no-show button from 15 min after the start while no game was entered. The other side wins.')],
+                [__('Void'), __('The match doesn\'t count, nobody wins. For breakdowns that are nobody\'s fault.')],
+            ] as [$title, $text])
+                <div class="flex flex-col gap-1"><b class="text-[13px]">{{ $title }}</b><p class="m-0 text-[13px] leading-normal text-ink-2">{{ $text }}</p></div>
             @endforeach
-        </span>
-        <span>{{ __('Open cases older than 48 h are marked red.') }}</span>
-    </div>
-
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        @foreach ([
-            [__('Accept a report'), __('One of the two reports stands. The league record says "decided by admin".')],
-            [__('Enter the result'), __('You enter each game\'s goals, or its winner in a game without goals, after checking the evidence.')],
-            [__('Forfeit'), __('One side didn\'t show up, reported with the no-show button from 15 min after the start while no game was entered. The other side wins.')],
-            [__('Void'), __('The match doesn\'t count, nobody wins. For breakdowns that are nobody\'s fault.')],
-        ] as [$title, $text])
-            <div class="flex flex-col gap-2 rounded-lg bg-card px-5 py-5"><b class="text-[15px]">{{ $title }}</b><p class="m-0 text-[13px] leading-normal text-ink-2">{{ $text }}</p></div>
-        @endforeach
-    </div>
-    <p class="m-0 max-w-[70ch] text-[13px] leading-normal text-ink-2">{{ __('Every decision is saved with your public reason. Casual matches get no league record; rated ones get it from Block 0. You can\'t decide a case involving your own clan.') }}</p>
+            <p class="m-0 max-w-[70ch] text-xs leading-normal text-ink-3 sm:col-span-2 lg:col-span-4">{{ __('Every decision is saved with your public reason. Casual matches get no league record; rated ones get it from Block 0. You can\'t decide a case involving your own clan.') }} {{ __('Open cases older than 48 h are marked red.') }}</p>
+        </div>
+    </details>
 </x-admin.page>
