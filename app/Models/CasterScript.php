@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
  * workstation and spooled as a CasterClip.
  *
  * @property int $id
- * @property string $kind scene, live, chat, filler, news or history
+ * @property string $kind scene, live, chat, filler, news, history or followed
  * @property string $phase App\Support\Caster\ScenePhase
  * @property string|null $scene the rotation scene it was written for, when one (a champion slide)
  * @property int $priority
@@ -53,8 +53,11 @@ class CasterScript extends Model
     /** A history segment: "Markus erzählt vom Bauernkrieg" (App\Support\Caster\HistoryScripts). */
     public const HISTORY = 'history';
 
+    /** A followed-profile segment: Markus on a Nostr note of a profile he follows (App\Support\Caster\FollowedScripts). */
+    public const FOLLOWED = 'followed';
+
     /** The long segments that play on calm slots only, one at a time (App\Support\Caster\ClipSpool::next()). */
-    public const SEGMENTS = [self::NEWS, self::HISTORY];
+    public const SEGMENTS = [self::NEWS, self::HISTORY, self::FOLLOWED];
 
     public const SOURCE_AI = 'ai';
 

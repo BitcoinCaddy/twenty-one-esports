@@ -70,11 +70,21 @@ final class NewsFilter
     /** Why the headline (from a feed in `$language`, de or en) is not spoken (FOREIGN, LIVE, TRAGEDY), or null when it may be. */
     public static function reason(string $headline, string $language = 'de'): ?string
     {
-        $lower = mb_strtolower($headline);
-
         if ($language !== 'de' || ! self::readsGerman($headline)) {
             return self::FOREIGN;
         }
+
+        return self::unfit($headline);
+    }
+
+    /**
+     * Why a text in any language is never spoken (LIVE, TRAGEDY), or null:
+     * the word lists of reason() without its language check, for a text the
+     * league voice retells in German (a followed profile's note, FollowedScripts).
+     */
+    public static function unfit(string $text): ?string
+    {
+        $lower = mb_strtolower($text);
 
         foreach (self::LIVE_PARTS as $part) {
             if (str_contains($lower, $part)) {
