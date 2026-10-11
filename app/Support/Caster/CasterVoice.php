@@ -5,9 +5,12 @@ namespace App\Support\Caster;
 use App\Support\Voice\LeagueVoice;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
+use App\Support\Voice\VoiceFactCheck;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceHygiene;
+use App\Support\Voice\VoicePrompt;
 use App\Support\Voice\VoiceUsage;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +29,9 @@ use Throwable;
  * write() returns the script (one sentence per line) or null: switch off,
  * daily cap or monthly budget reached, a failed request, or a text any check
  * rejects (VoiceHygiene, VoiceGuard on the text without its markers,
- * ScriptGuard). It never throws; the stream then simply has no clip for that
+ * ScriptGuard, then VoiceFactCheck for claims the facts do not support,
+ * counted under `caster_fact_check`) twice: a rejected first draft is
+ * written once more with its reasons, like LeagueVoice. It never throws; the stream then simply has no clip for that
  * scene and plays the music.
  *
  * `hints` (a chat message's keywords, a persona card) go into the prompt as
@@ -38,6 +43,31 @@ use Throwable;
 final class CasterVoice
 {
     public const CHANNEL = 'caster_script';
+
+    /** The usage channel of the second look at a script (VoiceFactCheck). */
+    public const FACT_CHECK = 'caster_fact_check';
+
+    /** Cast research lines (resources/data/voice/caster.json) that state how the league works at any hour: leagueBasics(). */
+    private const STANDING_LINES = ['exp_how_to_join', 'exp_daily_chess', 'exp_season_mining', 'exp_elo', 'exp_badges', 'promo-002', 'promo-008'];
+
+    /**
+     * What a ScriptGuard code means, for the second try (the league voice's hints cover the rest).
+     *
+     * @var array<string, string>
+     */
+    private const REASON_HINTS = [
+        ScriptGuard::SENTENCE_COUNT => 'Die Zahl der Sätze passte nicht.',
+        ScriptGuard::SENTENCE_LONG => 'Ein Satz war zu lang: höchstens 12 Wörter.',
+        ScriptGuard::COMMAS => 'Zu viele Kommas in einem Satz: lieber zwei kurze Sätze.',
+        ScriptGuard::MARKER_UNKNOWN => 'Ein Marker, den es nicht gibt.',
+        ScriptGuard::MARKER_COUNT => 'Höchstens zwei Marker.',
+        ScriptGuard::STAGE_DIRECTION => 'Keine Regieanweisung in Klammern.',
+        ScriptGuard::STOCK_PHRASE => 'Eine Floskel aus der Schriftsprache.',
+        ScriptGuard::OPENING_REPEAT => 'Derselbe Anfang wie ein Skript kurz davor: fang anders an.',
+        VoiceHygiene::LONG_SENTENCE => 'Ein Satz war zu lang: höchstens 12 Wörter.',
+        VoiceHygiene::PLACEHOLDER => 'Ein Platzhalter in geschweiften Klammern: nur echte Fakten.',
+        VoiceHygiene::PREAMBLE => 'Keine Vorrede, gleich mit dem ersten Satz anfangen.',
+    ];
 
     private const RECENT_TTL_SECONDS = 86_400;
 
@@ -106,8 +136,9 @@ final class CasterVoice
      * @param  list<string>  $topics
      * @param  list<CanonEntry>  $selection
      * @param  list<string>  $avoidOpenings  the first words of the last scripts
+     * @param  list<string>  $rejected  the reason codes of a first draft the checks turned down (one more try)
      */
-    public function variablePart(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $selection, array $avoidOpenings): string
+    public function variablePart(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $selection, array $avoidOpenings, array $rejected = []): string
     {
         $parts = [
             "## Auftrag\n\n".($kind === 'scene' ? 'Szenen-Skript' : 'Live-Einwurf')." für die Programmphase {$phase}: {$minSentences} bis {$maxSentences} Sätze, jeder Satz in einer eigenen Zeile, gesprochen auf Deutsch.",
@@ -128,6 +159,11 @@ final class CasterVoice
         }
 
         $parts[] = "## Kanon-Auswahl (ID: Wortlaut — Verwendung)\n\n".implode("\n", array_map(VoiceCanon::renderLine(...), $selection));
+        if ($rejected !== []) {
+            $reasons = array_map(fn (string $code): string => '- '.(self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code), $rejected);
+            $parts[] = "## Dein erster Entwurf ging nicht durch\n\n".implode("\n", $reasons)."\n\nSchreib neu: kürzer, einfacher, nur die Fakten.";
+        }
+
         $parts[] = 'Schreibe jetzt das Skript.';
 
         return implode("\n\n", $parts);
@@ -159,6 +195,30 @@ final class CasterVoice
         return $data;
     }
 
+    /**
+     * How the league works, as the cast research words it (STANDING_LINES):
+     * true at any hour, so the fact check counts them as facts. Without them
+     * it turned down "Die Lobby ist offen, rund um die Uhr." and "Fernschach
+     * heißt: ein Zug am Tag" (real run, 2026-10-11). The play-by-play
+     * examples ("Zug 34, die Damen sind runter.") never count: they describe
+     * a game, and only the scene's facts say whether one runs.
+     *
+     * @return list<string>
+     */
+    public static function leagueBasics(): array
+    {
+        $data = self::castData();
+        $lines = [];
+
+        foreach ([...array_map(fn (array $topic): array => [$topic['id'], $topic['example_de']], $data['topics']), ...array_map(fn (array $promo): array => [$promo['id'], $promo['text']], $data['promo'])] as [$id, $line]) {
+            if (in_array($id, self::STANDING_LINES, true)) {
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
     /** One file of every text the caster's vocabulary counts, written when its sources changed. */
     public static function vocabularyPath(): string
     {
@@ -187,16 +247,42 @@ final class CasterVoice
         }
 
         $settings = (array) config('tv.commentary.scripts', []);
-
-        if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)) {
-            return null;
-        }
-
-        if ($this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
-            return null;
-        }
-
         $facts = LeagueVoice::publicFacts($facts);
+        $rejected = [];
+
+        // Two tries at most, like LeagueVoice: the second one only after the checks turned the first down, with their reasons.
+        for ($try = 0; $try < 2; $try++) {
+            if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)) {
+                return null;
+            }
+
+            if ($this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
+                return null;
+            }
+
+            [$script, $rejected] = $this->draft($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $settings, $rejected);
+
+            if ($script !== null) {
+                return $script;
+            }
+
+        }
+
+        return null;
+    }
+
+    /**
+     * One try: the script, or null with the reason codes the checks found.
+     *
+     * @param  array<array-key, mixed>  $facts  public facts already
+     * @param  array<string, string>  $hints
+     * @param  list<string>  $topics
+     * @param  array<array-key, mixed>  $settings
+     * @param  list<string>  $rejected  the reasons of the previous try
+     * @return array{0: array{text: string, canon_id: string|null, mood: string}|null, 1: list<string>}
+     */
+    private function draft(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $settings, array $rejected): array
+    {
         $canonSettings = (array) config('esports.voice.canon', []);
         $selection = $this->canon->select(
             ScenePhase::MOMENTS[$phase] ?? 'general',
@@ -211,7 +297,7 @@ final class CasterVoice
         $this->usage->recordAttempt(self::CHANNEL);
 
         $response = (new VoiceAgent($this->fixedPart()))
-            ->prompt($this->variablePart($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $selection, $openings));
+            ->prompt($this->variablePart($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $selection, $openings, $rejected));
 
         $this->usage->recordTokens(
             self::CHANNEL,
@@ -227,20 +313,29 @@ final class CasterVoice
         $mood = is_array($answer) && is_string($answer['mood'] ?? null) ? $answer['mood'] : '';
         $cutOff = $response->steps->last()?->finishReason === FinishReason::Length;
 
-        $text = implode("\n", ScriptGuard::lines($this->hygiene->clean($raw, true, 'de')));
+        $maxWords = (int) ($settings['max_words_per_sentence'] ?? 12);
+        [$text, $canonId] = $this->repair(implode("\n", ScriptGuard::lines($this->hygiene->clean($raw, true, 'de'))), $maxSentences, $maxWords, $canonId);
         $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $text));
+        $canonWording = $this->canon->find($canonId)['wording'] ?? null;
 
         $violations = [
-            ...$this->hygiene->check($spoken, 'de', $recentTexts, $this->canon->find($canonId)['wording'] ?? null, $cutOff, $maxSentences),
+            ...$this->hygiene->check($spoken, 'de', $recentTexts, $canonWording, $cutOff, $maxSentences),
             ...$this->guard()->check($spoken, $facts, (int) ($settings['max_chars'] ?? 900), $canonId),
-            ...$this->scriptGuard->check($text, $minSentences, $maxSentences, (int) ($settings['max_words_per_sentence'] ?? 12), $openings),
+            ...$this->scriptGuard->check($text, $minSentences, $maxSentences, $maxWords, $openings),
         ];
 
+        // Only a script every deterministic check passed is read once more, for claims the facts do not support
+        // (a move, a piece, "drei Bretter live" while no game runs: no digit or name for the guard to catch).
+        if ($violations === [] && $this->unsupportedClaims($phase, $facts, $spoken, $canonWording) !== []) {
+            $violations[] = VoiceGuard::UNSUPPORTED_CLAIM;
+        }
+
         if ($violations !== []) {
+            $violations = array_values(array_unique($violations));
             $this->usage->recordRejection(self::CHANNEL, $violations);
             $this->usage->recordOutcome(self::CHANNEL, 'rejected');
 
-            return null;
+            return [null, $violations];
         }
 
         $this->remember('texts', $text, (int) ($settings['recent'] ?? 10));
@@ -249,7 +344,86 @@ final class CasterVoice
         }
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
-        return ['text' => $text, 'canon_id' => $canonId, 'mood' => $mood];
+        return [['text' => $text, 'canon_id' => $canonId, 'mood' => $mood], []];
+    }
+
+    /**
+     * The claims of the script its facts do not support (VoiceFactCheck, as
+     * in LeagueVoice), empty when the check is switched off. Its tokens count
+     * under `caster_fact_check`, so they count against the monthly budget; a
+     * failed request throws and write() returns null, and an unreadable
+     * answer is no clearance (fail closed).
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @return list<string>
+     */
+    private function unsupportedClaims(string $phase, array $facts, string $spoken, ?string $canonWording): array
+    {
+        if (! (bool) config('esports.voice.fact_check.enabled', true)) {
+            return [];
+        }
+
+        $this->usage->recordAttempt(self::FACT_CHECK);
+        $checked = [...$facts, 'league_basics' => self::leagueBasics()];
+        $response = (new VoiceFactCheck)->prompt(VoiceFactCheck::message($checked, $spoken, $canonWording, 'TV commentary, programme phase '.$phase, CarbonImmutable::now()));
+        $this->usage->recordTokens(self::FACT_CHECK, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
+
+        $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
+
+        if (! is_array($answer) || ! is_array($answer['claims'] ?? null)) {
+            $this->usage->recordOutcome(self::FACT_CHECK, 'rejected');
+
+            return ['unreadable fact check'];
+        }
+
+        $claims = [];
+        foreach ($answer['claims'] as $claim) {
+            if (! is_array($claim) || ($claim['supported'] ?? null) !== true) {
+                $claims[] = is_array($claim) && is_string($claim['claim'] ?? null) ? $claim['claim'] : 'unreadable claim';
+            }
+        }
+        $this->usage->recordOutcome(self::FACT_CHECK, $claims === [] ? 'accepted' : 'rejected');
+
+        return $claims;
+    }
+
+    /**
+     * The deterministic repairs before the checks (P6 yield round, like the
+     * posts' in LeagueVoice): a long or comma-heavy sentence cut at a clause
+     * boundary, one sentence per line (ScriptGuard::splitSentences()), and
+     * the sentences beyond the maximum dropped from the end
+     * (ScriptGuard::trimSentences()). Each repair is counted under
+     * `caster_script_repaired`; what they cannot repair, the checks reject. A
+     * canon entry whose wording the repair took apart or dropped is no longer
+     * the script's, so the guard sees the text without it.
+     *
+     * @return array{0: string, 1: ?string}
+     */
+    private function repair(string $text, int $maxSentences, int $maxWords, ?string $canonId): array
+    {
+        $repairs = [];
+        $split = ScriptGuard::splitSentences($text, $maxWords);
+
+        if ($split !== $text) {
+            $repairs[] = ScriptGuard::SENTENCE_LONG;
+        }
+
+        $trimmed = ScriptGuard::trimSentences($split, $maxSentences);
+
+        if ($trimmed !== $split) {
+            $repairs[] = ScriptGuard::SENTENCE_COUNT;
+        }
+
+        $wording = $this->canon->find($canonId)['wording'] ?? null;
+        if ($wording !== null && preg_match(VoiceGuard::wordingPattern($wording), $text) === 1 && preg_match(VoiceGuard::wordingPattern($wording), $trimmed) !== 1) {
+            $canonId = null;
+        }
+
+        if ($repairs !== []) {
+            $this->usage->recordRejection(self::CHANNEL.'_repaired', $repairs);
+        }
+
+        return [$trimmed, $canonId];
     }
 
     /**

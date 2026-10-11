@@ -303,7 +303,7 @@ final class VoicePreview
             }
 
             // The fact check's attempts belong to the text it reads, not to a text of its own.
-            if ($channel !== LeagueVoice::FACT_CHECK) {
+            if ($channel !== LeagueVoice::FACT_CHECK && $channel !== CasterVoice::FACT_CHECK) {
                 $out['attempts'] += $diff['attempts'];
                 $out['accepted'] += $diff['accepted'];
             }
