@@ -2851,5 +2851,815 @@
    "energy": "warm",
    "text": "Auch wer verliert, schürft Erfahrung. Und manchmal das nächste Revanche-Match."
   }
- ]
+ ],
+ "pattern_scripts": {
+  "note": "Deterministic scene scripts (App\\Support\\Caster\\PatternScripts), the fallback when the league voice writes nothing. Every {slot} is filled only from the scene's facts (SceneFacts::forTopic()); a line with a slot the facts cannot fill is not used. Lines carry no claim beyond their slots: no move, no mistake, no favourite, no mood of a player. `use_patterns` and `use_topics` name the cast research lines above that pass the same rule. `canon` lists, per phase, the canon entries whose usage fits any moment of that phase (no knapp, no upset, no last free place).",
+  "openings": [
+   {
+    "id": "op-live-1",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Live bei {sender}."
+   },
+   {
+    "id": "op-live-2",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Wir sind live dabei."
+   },
+   {
+    "id": "op-live-3",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Die Bretter sind besetzt."
+   },
+   {
+    "id": "op-live-4",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Ein Blick auf die laufenden Partien."
+   },
+   {
+    "id": "op-live-5",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Turnier-Update bei {sender}."
+   },
+   {
+    "id": "op-live-6",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Ein Blick auf das Turnier."
+   },
+   {
+    "id": "op-live-7",
+    "phases": [
+     "live_match"
+    ],
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Turnier im Blick."
+   },
+   {
+    "id": "op-res-1",
+    "phases": [
+     "after_result"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Schauen wir auf die Ergebnisse."
+   },
+   {
+    "id": "op-res-2",
+    "phases": [
+     "after_result"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Ein Blick zurück auf die letzten Partien."
+   },
+   {
+    "id": "op-res-3",
+    "phases": [
+     "after_result"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Die Ergebnisse sind da."
+   },
+   {
+    "id": "op-res-4",
+    "phases": [
+     "after_result"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Ergebnisse bei {sender}."
+   },
+   {
+    "id": "op-pre-1",
+    "phases": [
+     "pre_show"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Turnierzeit bei {sender}."
+   },
+   {
+    "id": "op-pre-2",
+    "phases": [
+     "pre_show"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Die Anmeldung ist offen."
+   },
+   {
+    "id": "op-pre-3",
+    "phases": [
+     "pre_show"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Schauen wir auf die nächsten Turniere."
+   },
+   {
+    "id": "op-pre-4",
+    "phases": [
+     "pre_show"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Ein Blick in den Turnierkalender."
+   },
+   {
+    "id": "op-brk-1",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Hier ist {sender}."
+   },
+   {
+    "id": "op-brk-2",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Ihr schaut {sender}."
+   },
+   {
+    "id": "op-brk-3",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Willkommen bei {sender}."
+   },
+   {
+    "id": "op-brk-4",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Kurz durchatmen."
+   },
+   {
+    "id": "op-brk-5",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Kleiner Blick auf die Liga."
+   },
+   {
+    "id": "op-brk-6",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "ladders"
+    ],
+    "text": "Ein Blick auf die Ladder."
+   },
+   {
+    "id": "op-brk-7",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "ladders"
+    ],
+    "text": "Die Tabellen der Liga."
+   },
+   {
+    "id": "op-brk-8",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Trackmania, Strecke der Woche."
+   },
+   {
+    "id": "op-brk-9",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "clans"
+    ],
+    "text": "Clan im Blick."
+   },
+   {
+    "id": "op-brk-10",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "blockfill"
+    ],
+    "text": "Blockfill, die Woche läuft."
+   },
+   {
+    "id": "op-brk-11",
+    "phases": [
+     "break"
+    ],
+    "topics": [
+     "mempool"
+    ],
+    "text": "Was läuft im Mempool?"
+   },
+   {
+    "id": "op-ngt-1",
+    "phases": [
+     "night"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Nachtprogramm bei {sender}."
+   },
+   {
+    "id": "op-ngt-2",
+    "phases": [
+     "night"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Ruhige Nacht bei {sender}."
+   },
+   {
+    "id": "op-ngt-3",
+    "phases": [
+     "night"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Hier ist {sender}, auch mitten in der Nacht."
+   },
+   {
+    "id": "op-ngt-4",
+    "phases": [
+     "night"
+    ],
+    "topics": [
+     "*"
+    ],
+    "text": "Leise Stunde bei {sender}."
+   }
+  ],
+  "facts": [
+   {
+    "id": "f-live-1",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Live auf dem Brett: {white} gegen {black}."
+   },
+   {
+    "id": "f-live-2",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "{white} spielt Weiß gegen {black}."
+   },
+   {
+    "id": "f-live-3",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "{mode} läuft: {white} gegen {black}."
+   },
+   {
+    "id": "f-live-4",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Bei {white} gegen {black} steht Zug {move} an."
+   },
+   {
+    "id": "f-live-5",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Gerade laufen {live_now} Partien in der Liga."
+   },
+   {
+    "id": "f-live-6",
+    "topics": [
+     "live_games",
+     "mempool"
+    ],
+    "text": "Bei {game} spielen gerade {a} und {b}."
+   },
+   {
+    "id": "f-res-1",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "{winner} gewinnt gegen {loser}."
+   },
+   {
+    "id": "f-res-2",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Im {mode} schlägt {winner} {loser}."
+   },
+   {
+    "id": "f-res-3",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "{winner} gewinnt nach {moves} Zügen gegen {loser}."
+   },
+   {
+    "id": "f-res-4",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Für {loser} endet die Partie durch {how}."
+   },
+   {
+    "id": "f-res-5",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "{draw_a} und {draw_b} trennen sich remis."
+   },
+   {
+    "id": "f-res-6",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Bei {game} gewinnt {winner} mit {score} gegen {loser}."
+   },
+   {
+    "id": "f-res-7",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Heute schon {games_today} Partien gespielt."
+   },
+   {
+    "id": "f-res-8",
+    "topics": [
+     "results",
+     "mempool"
+    ],
+    "text": "Der Punkt geht an {winner}."
+   },
+   {
+    "id": "f-tour-1",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "{tournament} startet {start}."
+   },
+   {
+    "id": "f-tour-2",
+    "topics": [
+     "tournaments",
+     "live_tournament"
+    ],
+    "text": "Bei {tournament} wird {game} gespielt."
+   },
+   {
+    "id": "f-tour-3",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Bei {tournament} sind {taken} von {places} Plätzen vergeben."
+   },
+   {
+    "id": "f-tour-4",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Noch {spots_left} Plätze frei bei {tournament}."
+   },
+   {
+    "id": "f-tour-5",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Nur noch ein Platz frei bei {last_spot}."
+   },
+   {
+    "id": "f-tour-6",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Im Topf von {tournament} liegen {pot_sats} Sats."
+   },
+   {
+    "id": "f-tour-7",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Schon angemeldet für {tournament}: {first_entrant}."
+   },
+   {
+    "id": "f-tour-8",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Modus bei {tournament}: {mode}."
+   },
+   {
+    "id": "f-tour-9",
+    "topics": [
+     "tournaments"
+    ],
+    "text": "Anmelden geht auf {website_spoken}."
+   },
+   {
+    "id": "f-lt-1",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Bei {tournament} sind {played} von {total} Spielen gespielt."
+   },
+   {
+    "id": "f-lt-2",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Vorne bei {tournament}: {leader} mit {leader_points} Punkten."
+   },
+   {
+    "id": "f-lt-3",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "Platz zwei bei {tournament}: {second}."
+   },
+   {
+    "id": "f-lt-4",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "{champion} gewinnt {tournament}."
+   },
+   {
+    "id": "f-lt-5",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "In Runde {round} schlägt {winner} {loser} mit {score}."
+   },
+   {
+    "id": "f-lt-6",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "{entrants} Teilnehmer sind bei {tournament} dabei."
+   },
+   {
+    "id": "f-lt-7",
+    "topics": [
+     "live_tournament"
+    ],
+    "text": "{tournament} ist {state}."
+   },
+   {
+    "id": "f-lad-1",
+    "topics": [
+     "ladders"
+    ],
+    "text": "An der Spitze der Ladder {ladder}: {leader} mit {leader_elo} Elo."
+   },
+   {
+    "id": "f-lad-2",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Bilanz von {leader}: {leader_wins} Siege, {leader_losses} Niederlagen."
+   },
+   {
+    "id": "f-lad-3",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Platz zwei in der Ladder {ladder}: {second} mit {second_elo} Elo."
+   },
+   {
+    "id": "f-lad-4",
+    "topics": [
+     "ladders"
+    ],
+    "text": "Nur {gap} Elo trennen {leader} und {second}."
+   },
+   {
+    "id": "f-lad-5",
+    "topics": [
+     "ladders"
+    ],
+    "text": "{leader} und {second} stehen gleichauf bei {tied_elo} Elo."
+   },
+   {
+    "id": "f-lad-6",
+    "topics": [
+     "ladders"
+    ],
+    "text": "In der Ladder {ladder} führt {leader}."
+   },
+   {
+    "id": "f-clan-1",
+    "topics": [
+     "clans"
+    ],
+    "text": "Clan im Blick: {clan_name}."
+   },
+   {
+    "id": "f-clan-2",
+    "topics": [
+     "clans"
+    ],
+    "text": "Das Kürzel von {clan_name} ist {clan_tag}."
+   },
+   {
+    "id": "f-clan-3",
+    "topics": [
+     "clans"
+    ],
+    "text": "{clan_name} hat {clan_members} Mitglieder."
+   },
+   {
+    "id": "f-clan-4",
+    "topics": [
+     "clans"
+    ],
+    "text": "{clan_games} Partien hat {clan_name} schon gespielt."
+   },
+   {
+    "id": "f-clan-5",
+    "topics": [
+     "clans"
+    ],
+    "text": "Insgesamt gibt es {clans} Clans in der Liga."
+   },
+   {
+    "id": "f-tm-1",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Die Strecke der Woche heißt {track}."
+   },
+   {
+    "id": "f-tm-2",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Die Autorenzeit liegt bei {author_time}."
+   },
+   {
+    "id": "f-tm-3",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "{leader} führt mit {leader_time}."
+   },
+   {
+    "id": "f-tm-4",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "Platz zwei in der Wertung: {second} mit {second_time}."
+   },
+   {
+    "id": "f-tm-5",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "{drivers} Fahrer stehen diese Woche schon in der Wertung."
+   },
+   {
+    "id": "f-tm-6",
+    "topics": [
+     "tmnf"
+    ],
+    "text": "{leader_under} ist schneller als die Autorenzeit."
+   },
+   {
+    "id": "f-bf-1",
+    "topics": [
+     "blockfill"
+    ],
+    "text": "{bf_leader} führt die Blockfill-Woche an, mit {bf_leader_time}."
+   },
+   {
+    "id": "f-bf-2",
+    "topics": [
+     "blockfill"
+    ],
+    "text": "Platz zwei in der Blockfill-Woche: {bf_second} mit {bf_second_time}."
+   },
+   {
+    "id": "f-bf-3",
+    "topics": [
+     "blockfill"
+    ],
+    "text": "{bf_players} Leute stehen schon auf der Bestenliste."
+   },
+   {
+    "id": "f-lg-1",
+    "topics": [
+     "league"
+    ],
+    "text": "{players} Spieler sind in der Liga dabei."
+   },
+   {
+    "id": "f-lg-2",
+    "topics": [
+     "league"
+    ],
+    "text": "Dazu kommen {clans} Clans."
+   },
+   {
+    "id": "f-lg-3",
+    "topics": [
+     "league"
+    ],
+    "text": "Insgesamt wurden hier schon {games_played} Partien gespielt."
+   },
+   {
+    "id": "f-lg-4",
+    "topics": [
+     "league"
+    ],
+    "text": "Heute stehen schon {games_today} Partien auf der Tafel."
+   }
+  ],
+  "use_patterns": [
+   {
+    "id": "pat-001",
+    "topics": [
+     "live_games",
+     "mempool"
+    ]
+   },
+   {
+    "id": "pat-037",
+    "topics": [
+     "results",
+     "mempool"
+    ]
+   },
+   {
+    "id": "pat-111",
+    "topics": [
+     "results",
+     "mempool"
+    ]
+   },
+   {
+    "id": "pat-128",
+    "topics": [
+     "results",
+     "mempool"
+    ]
+   }
+  ],
+  "use_topics": [
+   {
+    "id": "stat_league_totals",
+    "topics": [
+     "league"
+    ]
+   },
+   {
+    "id": "prg_ident",
+    "role": "opening",
+    "phases": [
+     "break"
+    ]
+   },
+   {
+    "id": "com_invite",
+    "role": "invite",
+    "phases": [
+     "break",
+     "after_result",
+     "pre_show",
+     "live_match"
+    ]
+   },
+   {
+    "id": "com_night",
+    "role": "invite",
+    "phases": [
+     "night"
+    ]
+   },
+   {
+    "id": "exp_how_to_join",
+    "role": "invite",
+    "phases": [
+     "break",
+     "night",
+     "pre_show"
+    ]
+   }
+  ],
+  "invite_when": {
+   "live_match": [
+    "between"
+   ],
+   "after_result": [
+    "between"
+   ],
+   "pre_show": [
+    "between",
+    "break"
+   ],
+   "break": [
+    "break"
+   ],
+   "night": [
+    "night"
+   ]
+  },
+  "canon": {
+   "break": [
+    "e21-gruesse-gehen-raus",
+    "derweg-das-geilste-sind-die-leute"
+   ],
+   "night": [
+    "title-alles-andere-gehoert-anderen-nur-die-zei",
+    "derweg-das-geilste-sind-die-leute"
+   ],
+   "pre_show": [
+    "title-macht-eure-hausaufgaben"
+   ],
+   "after_result": [
+    "clip-gruppe-bester-mann"
+   ],
+   "live_match": []
+  }
+ }
 }

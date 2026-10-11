@@ -12,11 +12,14 @@ return [
     | the user (P7 tone approval).
     |
     | scripts (App\Support\Caster\ScriptQueue, `caster:script` every minute):
-    | the league voice writes scene scripts ahead, `ahead_seconds` of airtime
-    | (estimated at `words_per_second`), `sentences` per scene script, at most
-    | `per_run` per minute. A script expires unused after `max_age_minutes` or
-    | when the facts of its phase changed. Live moments (`live_priority`) and
-    | chat reactions (`chat_priority`) jump the queue.
+    | scene scripts are written ahead per slide topic, `ahead_seconds` of
+    | airtime (estimated at `words_per_second`): at most `per_run_ai` by the
+    | league voice (`ai`, TV_COMMENTARY_AI; never for a topic without data),
+    | the rest as `patterns` (resources/data/voice/caster.json, filled only
+    | with the topic's facts), so airtime never depends on the model. A
+    | script expires unused after `max_age_minutes` or when the facts of its
+    | topic changed. Live moments (`live_priority`) and chat reactions
+    | (`chat_priority`) jump the queue.
     |
     | fetch: the workstation fetcher (`php artisan caster:fetch`) pulls scripts
     | with `token` as a bearer token (`.env` only, never logged). A fetcher
@@ -59,19 +62,35 @@ return [
     'commentary' => [
         'enabled' => (bool) env('TV_COMMENTARY', false),
 
+        // Whether the league voice (Claude) writes scene scripts at all; off, the pattern scripts fill the airtime alone.
+        'ai' => (bool) env('TV_COMMENTARY_AI', true),
+
         'scripts' => [
             'ahead_seconds' => 300,
             'words_per_second' => 2.4,
-            'sentences' => ['min' => 3, 'max' => 8],
+            'sentences' => ['min' => 2, 'max' => 8],
             'live_sentences' => ['min' => 1, 'max' => 3],
-            'max_words_per_sentence' => 12,
+            'max_words_per_sentence' => 16,
+            'max_commas' => 2,
             'max_chars' => 900,
-            'per_run' => 4,
+            // At most this many league-voice scene scripts per fill() run (each with its one retry); patterns fill the rest.
+            'per_run_ai' => 1,
             'max_age_minutes' => 10,
             'live_priority' => 100,
             'chat_priority' => 50,
             'recent' => 10,
             'daily_cap' => (int) env('TV_COMMENTARY_DAILY_CAP', 400),
+            // The canon entries a scene script's prompt offers (fitting the phase first): the system prompt (guides,
+            // patterns, invitations) stays byte-identical and cached, only the facts and this pick vary.
+            'canon' => ['min' => 12, 'max' => 15, 'token_budget' => 2_000],
+        ],
+
+        // The deterministic scene scripts (App\Support\Caster\PatternScripts): at most `per_run` per fill() run,
+        // `sentences` each, no line pattern again within the last `recent` pattern scripts.
+        'patterns' => [
+            'per_run' => 40,
+            'sentences' => ['min' => 3, 'max' => 6],
+            'recent' => 4,
         ],
 
         'fetch' => [

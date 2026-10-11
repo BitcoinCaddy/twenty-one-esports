@@ -48,7 +48,7 @@ final class CasterVoice
     public const FACT_CHECK = 'caster_fact_check';
 
     /** Cast research lines (resources/data/voice/caster.json) that state how the league works at any hour: leagueBasics(). */
-    private const STANDING_LINES = ['exp_how_to_join', 'exp_daily_chess', 'exp_season_mining', 'exp_elo', 'exp_badges', 'promo-002', 'promo-008'];
+    private const STANDING_LINES = ['exp_how_to_join', 'exp_daily_chess', 'exp_season_mining', 'exp_elo', 'exp_badges', 'prg_ident', 'promo-002', 'promo-008'];
 
     /**
      * What a ScriptGuard code means, for the second try (the league voice's hints cover the rest).
@@ -57,14 +57,14 @@ final class CasterVoice
      */
     private const REASON_HINTS = [
         ScriptGuard::SENTENCE_COUNT => 'Die Zahl der Sätze passte nicht.',
-        ScriptGuard::SENTENCE_LONG => 'Ein Satz war zu lang: höchstens 12 Wörter.',
+        ScriptGuard::SENTENCE_LONG => 'Ein Satz war zu lang: lieber zwei kurze Sätze.',
         ScriptGuard::COMMAS => 'Zu viele Kommas in einem Satz: lieber zwei kurze Sätze.',
         ScriptGuard::MARKER_UNKNOWN => 'Ein Marker, den es nicht gibt.',
         ScriptGuard::MARKER_COUNT => 'Höchstens zwei Marker.',
         ScriptGuard::STAGE_DIRECTION => 'Keine Regieanweisung in Klammern.',
         ScriptGuard::STOCK_PHRASE => 'Eine Floskel aus der Schriftsprache.',
         ScriptGuard::OPENING_REPEAT => 'Derselbe Anfang wie ein Skript kurz davor: fang anders an.',
-        VoiceHygiene::LONG_SENTENCE => 'Ein Satz war zu lang: höchstens 12 Wörter.',
+        VoiceHygiene::LONG_SENTENCE => 'Ein Satz war zu lang: lieber zwei kurze Sätze.',
         VoiceHygiene::PLACEHOLDER => 'Ein Platzhalter in geschweiften Klammern: nur echte Fakten.',
         VoiceHygiene::PREAMBLE => 'Keine Vorrede, gleich mit dem ersten Satz anfangen.',
     ];
@@ -124,10 +124,23 @@ final class CasterVoice
         $patterns = array_map(fn (array $row): string => "- [{$row['kind']} · Energie {$row['energy']} · ".implode('/', $row['fits'])."] {$row['template']}", $data['patterns']);
         $promo = array_map(fn (array $row): string => "- [{$row['category']} · ".implode('/', $row['when'])."] {$row['text']}", $data['promo']);
 
-        return $this->fixed = trim((string) file_get_contents(resource_path('data/voice/caster-guide.md')))
+        return $this->fixed = self::withoutHashes(trim((string) file_get_contents(resource_path('data/voice/caster-guide.md')))
             ."\n\n".trim((string) file_get_contents(resource_path('data/voice/style-guide.md')))
             ."\n\n## Satzmuster aus echten Casts (`{…}` füllen nur die Fakten)\n\n".implode("\n", $patterns)
-            ."\n\n## Einladungen (frei variieren, nie wörtlich wiederholen)\n\n".implode("\n", $promo)."\n";
+            ."\n\n## Einladungen (frei variieren, nie wörtlich wiederholen)\n\n".implode("\n", $promo))."\n";
+    }
+
+    /**
+     * A prompt without a single "#": headings become plain title lines, and
+     * a line that still carries one (the style guide's "#bitcoin" example,
+     * its "Kein `#`" rule) is left out. The caster's drafts were rejected for
+     * hashtags (2026-10-11); nothing in the prompt should show the model one.
+     */
+    private static function withoutHashes(string $prompt): string
+    {
+        $prompt = (string) preg_replace('/^#{1,6}\s+(.+)$/mu', '$1', $prompt);
+
+        return implode("\n", array_filter(explode("\n", $prompt), fn (string $line): bool => ! str_contains($line, '#')));
     }
 
     /**
@@ -141,7 +154,7 @@ final class CasterVoice
     public function variablePart(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $selection, array $avoidOpenings, array $rejected = []): string
     {
         $parts = [
-            "## Auftrag\n\n".($kind === 'scene' ? 'Szenen-Skript' : 'Live-Einwurf')." für die Programmphase {$phase}: {$minSentences} bis {$maxSentences} Sätze, jeder Satz in einer eigenen Zeile, gesprochen auf Deutsch.",
+            "## Auftrag\n\n".($kind === 'scene' ? 'Szenen-Skript' : 'Live-Einwurf')." für die Programmphase {$phase}: {$minSentences} bis {$maxSentences} Sätze".($kind === 'scene' ? ' (am besten vier bis sechs)' : '').', jeder Satz in einer eigenen Zeile, gesprochen auf Deutsch.',
             "## Fakten (die einzige Quelle für Zahlen, Namen und Links)\n\n".json_encode($facts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
@@ -158,7 +171,8 @@ final class CasterVoice
             $parts[] = "## So fingen die letzten Skripte an (nicht wieder so anfangen)\n\n".implode("\n", array_map(fn (string $opening): string => '- '.$opening, $avoidOpenings));
         }
 
-        $parts[] = "## Kanon-Auswahl (ID: Wortlaut — Verwendung)\n\n".implode("\n", array_map(VoiceCanon::renderLine(...), $selection));
+        // A canon line that carries a "#" (one usage note quotes the character) stays out: the prompt shows the model none.
+        $parts[] = "## Kanon-Auswahl (ID: Wortlaut — Verwendung)\n\n".implode("\n", array_filter(array_map(VoiceCanon::renderLine(...), $selection), fn (string $line): bool => ! str_contains($line, '#')));
         if ($rejected !== []) {
             $reasons = array_map(fn (string $code): string => '- '.(self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code), $rejected);
             $parts[] = "## Dein erster Entwurf ging nicht durch\n\n".implode("\n", $reasons)."\n\nSchreib neu: kürzer, einfacher, nur die Fakten.";
@@ -166,7 +180,8 @@ final class CasterVoice
 
         $parts[] = 'Schreibe jetzt das Skript.';
 
-        return implode("\n\n", $parts);
+        // Headings without "#"; the facts carry none (attempt() speaks them out).
+        return (string) preg_replace('/^#{1,6}\s+(.+)$/mu', '$1', implode("\n\n", $parts));
     }
 
     /**
@@ -201,7 +216,9 @@ final class CasterVoice
      * it turned down "Die Lobby ist offen, rund um die Uhr." and "Fernschach
      * heißt: ein Zug am Tag" (real run, 2026-10-11). The play-by-play
      * examples ("Zug 34, die Damen sind runter.") never count: they describe
-     * a game, and only the scene's facts say whether one runs.
+     * a game, and only the scene's facts say whether one runs. The station
+     * ident ("Hier ist TWENTY ONE, der Sender der EINUNDZWANZIG-Liga.") was
+     * turned down as unsupported until it counted (real run, 2026-10-11).
      *
      * @return list<string>
      */
@@ -247,7 +264,8 @@ final class CasterVoice
         }
 
         $settings = (array) config('tv.commentary.scripts', []);
-        $facts = LeagueVoice::publicFacts($facts);
+        // "#1" in a fact (a tournament name) is spoken "Nummer 1": the model then never sees a hash to copy.
+        $facts = self::spokenFacts(LeagueVoice::publicFacts($facts));
         $rejected = [];
 
         // Two tries at most, like LeagueVoice: the second one only after the checks turned the first down, with their reasons.
@@ -284,12 +302,15 @@ final class CasterVoice
     private function draft(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $settings, array $rejected): array
     {
         $canonSettings = (array) config('esports.voice.canon', []);
+        // A small pick for the phase's moment (`tv.commentary.scripts.canon`): the posts' 50 to 100 entries were
+        // about 10k of the 25k input tokens of every caster call (measured 2026-10-11), and a script quotes one at most.
+        $pick = (array) config('tv.commentary.scripts.canon', []);
         $selection = $this->canon->select(
             ScenePhase::MOMENTS[$phase] ?? 'general',
             $this->recent('canon'),
-            (int) ($canonSettings['min'] ?? 50),
-            (int) ($canonSettings['max'] ?? 100),
-            (int) ($canonSettings['token_budget'] ?? 12_000),
+            (int) ($pick['min'] ?? 12),
+            (int) ($pick['max'] ?? 15),
+            (int) ($pick['token_budget'] ?? 2_000),
         );
         $recentTexts = $this->recent('texts');
         $openings = array_map(ScriptGuard::opening(...), $recentTexts);
@@ -313,13 +334,21 @@ final class CasterVoice
         $mood = is_array($answer) && is_string($answer['mood'] ?? null) ? $answer['mood'] : '';
         $cutOff = $response->steps->last()?->finishReason === FinishReason::Length;
 
-        $maxWords = (int) ($settings['max_words_per_sentence'] ?? 12);
+        $maxWords = (int) ($settings['max_words_per_sentence'] ?? 16);
         [$text, $canonId] = $this->repair(implode("\n", ScriptGuard::lines($this->hygiene->clean($raw, true, 'de'))), $maxSentences, $maxWords, $canonId);
         $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $text));
         $canonWording = $this->canon->find($canonId)['wording'] ?? null;
 
+        // ScriptGuard counts the sentences (one per line, an ordinal like "11. Oktober" no end) and compares the
+        // first four words with the last scripts; the posts' rules for both (a sentence count over the prose, the
+        // first word alone) turned down spoken scripts that broke neither (real drafts, 2026-10-11).
+        $hygiene = array_diff(
+            $this->hygiene->check($spoken, 'de', $recentTexts, $canonWording, $cutOff, null, VoiceGuard::factStrings($facts), $maxWords, ScriptGuard::maxCommas()),
+            [VoiceHygiene::OPENER_REPEAT],
+        );
+
         $violations = [
-            ...$this->hygiene->check($spoken, 'de', $recentTexts, $canonWording, $cutOff, $maxSentences),
+            ...$hygiene,
             ...$this->guard()->check($spoken, $facts, (int) ($settings['max_chars'] ?? 900), $canonId),
             ...$this->scriptGuard->check($text, $minSentences, $maxSentences, $maxWords, $openings),
         ];
@@ -389,7 +418,9 @@ final class CasterVoice
 
     /**
      * The deterministic repairs before the checks (P6 yield round, like the
-     * posts' in LeagueVoice): a long or comma-heavy sentence cut at a clause
+     * posts' in LeagueVoice): a hashtag spoken out ("#1" as "Nummer 1",
+     * withoutHashtags(); the user: hashtags repaired, not rejected), a long
+     * or comma-heavy sentence cut at a clause
      * boundary, one sentence per line (ScriptGuard::splitSentences()), and
      * the sentences beyond the maximum dropped from the end
      * (ScriptGuard::trimSentences()). Each repair is counted under
@@ -402,9 +433,15 @@ final class CasterVoice
     private function repair(string $text, int $maxSentences, int $maxWords, ?string $canonId): array
     {
         $repairs = [];
-        $split = ScriptGuard::splitSentences($text, $maxWords);
+        $unhashed = self::withoutHashtags($text);
 
-        if ($split !== $text) {
+        if ($unhashed !== $text) {
+            $repairs[] = VoiceGuard::HASHTAG;
+        }
+
+        $split = ScriptGuard::splitSentences($unhashed, $maxWords);
+
+        if ($split !== $unhashed) {
             $repairs[] = ScriptGuard::SENTENCE_LONG;
         }
 
@@ -424,6 +461,27 @@ final class CasterVoice
         }
 
         return [$trimmed, $canonId];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $facts
+     * @return array<array-key, mixed>
+     */
+    private static function spokenFacts(array $facts): array
+    {
+        array_walk_recursive($facts, function (mixed &$value): void {
+            if (is_string($value)) {
+                $value = self::withoutHashtags($value);
+            }
+        });
+
+        return $facts;
+    }
+
+    /** A hashtag spoken as what it says: "#1" as "Nummer 1", "#Bitcoin" as "Bitcoin". */
+    public static function withoutHashtags(string $text): string
+    {
+        return (string) preg_replace(['/#\s*(\d+)/u', '/#+/u'], ['Nummer $1', ''], $text);
     }
 
     /**

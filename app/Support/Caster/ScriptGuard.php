@@ -6,7 +6,8 @@ namespace App\Support\Caster;
  * The spoken-text rules of a commentary script, on top of the league voice's
  * own checks (VoiceHygiene, VoiceGuard): one sentence per line, the number
  * of sentences the kind asks for, short sentences (spoken: at most
- * `max_words_per_sentence` words, one comma), and only the OmniVoice markers
+ * `max_words_per_sentence` words and `max_commas` commas, a decimal comma
+ * not counted), and only the OmniVoice markers
  * VoiceStudio understands. A bracket direction like "(lacht)" makes the
  * model babble (measured 2026-10-11), so it is refused, as is any other
  * square bracket.
@@ -54,8 +55,8 @@ final class ScriptGuard
         'diesbezüglich', 'hinsichtlich', 'bezüglich', 'spannendes event', 'ultimative', 'sei dabei',
     ];
 
-    /** Most commas a spoken sentence may carry. */
-    public const MAX_COMMAS = 1;
+    /** Most commas a spoken sentence may carry, unless `tv.commentary.scripts.max_commas` says otherwise (user 2026-10-11: "zu streng"). */
+    public const MAX_COMMAS = 2;
 
     /** A part cut off a sentence needs at least this many spoken words, so a list item ("K.-o.") never stands alone. */
     private const MIN_PART_WORDS = 2;
@@ -119,7 +120,7 @@ final class ScriptGuard
                 $violations[] = self::SENTENCE_LONG;
             }
 
-            if (substr_count($spoken, ',') > self::MAX_COMMAS) {
+            if (self::commas($spoken) > self::maxCommas()) {
                 $violations[] = self::COMMAS;
             }
         }
@@ -324,7 +325,18 @@ final class ScriptGuard
 
     private static function fits(string $sentence, int $maxWords): bool
     {
-        return self::wordCount($sentence) <= $maxWords && substr_count(self::withoutMarkers($sentence), ',') <= self::MAX_COMMAS;
+        return self::wordCount($sentence) <= $maxWords && self::commas(self::withoutMarkers($sentence)) <= self::maxCommas();
+    }
+
+    public static function maxCommas(): int
+    {
+        return (int) config('tv.commentary.scripts.max_commas', self::MAX_COMMAS);
+    }
+
+    /** The commas of a sentence; one between two digits is a decimal mark ("16,13 Sekunden"), not a clause. */
+    private static function commas(string $sentence): int
+    {
+        return (int) preg_match_all('/,(?!\d)|(?<!\d),/u', $sentence);
     }
 
     private static function wordCount(string $text): int

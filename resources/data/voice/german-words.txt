@@ -10,3 +10,5 @@ Chat Stream Leute Frage Punkt Punkte Elo Rang Abzeichen Kampf Nerven Klasse Ansa
 Mo Di Mi Do Fr Sa So Jan Feb Mär Apr Mai Jun Jul Aug Sep Sept Okt Nov Dez Uhr Std Min
 # TV commentary (P6 yield round, 2026-10-11): nouns and sentence-opening imperatives the real caster drafts were turned down for.
 Stellung Abendprogramm Stress Wecker Brettern Loggt Haltet
+# Slide facts round (2026-10-11, real drafts against the prod snapshot): turned down for these.
+Pokal Truppe Summe Tja Zuletzt Schachpartien Programmpause Ausprobieren Pausenzeit Schirm Autor Büchern

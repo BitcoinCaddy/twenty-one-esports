@@ -5,6 +5,7 @@ use App\Models\CasterScript;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\InvalidClip;
 use App\Support\Caster\ScenePhase;
+use App\Support\Caster\SceneTopic;
 use App\Support\Caster\SpoolFull;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -116,6 +117,23 @@ it('plays a live clip first, then a clip of the slot\'s phase', function () {
     expect(casterSpool()->next(ScenePhase::LIVE_MATCH, $now)['clip']?->id)->toBe($scene->id)
         // A match clip never plays over a break: wrong context is worse than music.
         ->and(casterSpool()->next(ScenePhase::BREAK, $now)['clip'])->toBeNull();
+});
+
+it('plays the clip about the slide on air first, and any clip of the phase without one', function () {
+    config(['tv.commentary.spool.filler_below_seconds' => 10]);
+    $now = CarbonImmutable::now();
+    $league = casterScript();
+    $league->update(['topic' => SceneTopic::LEAGUE]);
+    $ladder = casterScript();
+    $ladder->update(['topic' => SceneTopic::LADDERS]);
+    $first = casterSpool()->store($league, casterOpus(), 30, [], $now);
+    $ladderClip = casterSpool()->store($ladder, casterOpus(), 30, [], $now);
+
+    expect(casterSpool()->next(ScenePhase::BREAK, $now, SceneTopic::LADDERS)['clip']?->id)->toBe($ladderClip->id)
+        ->and(casterSpool()->next(ScenePhase::BREAK, $now, SceneTopic::TMNF)['clip']?->id)->toBe($first->id)
+        ->and(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($first->id)
+        // The topic never pulls a clip out of its phase.
+        ->and(casterSpool()->next(ScenePhase::LIVE_MATCH, $now, SceneTopic::LADDERS)['clip'])->toBeNull();
 });
 
 it('lets the calm phases stand in for each other', function () {
