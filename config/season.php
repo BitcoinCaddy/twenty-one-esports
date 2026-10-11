@@ -125,27 +125,29 @@ return [
     | and era in percent, daily limits per winning player, share key and UTC
     | day. A share group (`groups`, NIP `group`) counts its games as one for
     | both: the two EA Sports FC editions share one share and one daily limit,
-    | and so do the board games nine men's morris and checkers (`board-games`,
-    | plan "Mühle und Dame", P6; user decision 2026-09-29). `pairlimit` is
-    | [per UTC day, per season]; `subtree` 101 switches rule 7 off; `moves`
-    | counts for chess and the board games. The length is in weeks, eras last
-    | `halving_days`.
+    | and so do the board games Blockli, nine men's morris and checkers
+    | (`board-games`, plan "Mühle und Dame", P6; user decision 2026-09-29).
+    | `pairlimit` is [per UTC day, per season]; `subtree` 101 switches rule 7
+    | off; `moves` counts for chess and the board games. The length is in
+    | weeks, eras last `halving_days`.
     |
-    | board_games_proposal: what the admin season page proposes for the board
-    | games (P6), never part of a draft on its own: a weight per mode (the
-    | correspondence mode of P8 at twice blitz, as chess daily; their only
-    | mode since the user dropped blitz on 2026-10-07), the share of
-    | their group and its daily limit. The shares of the other games
-    | are the board's decision of 2026-09-28 and stay; filling in the proposal
-    | shrinks them in proportion to make room (35/40/25 become 32/36/22 next
-    | to 10), and the board saves that or not (plan: no silent redistribution).
+    | Chess rapid and the board games mine from Block 0 (user decision
+    | 2026-10-11): rapid at 1.5x, as its game lasts about 1.5x a blitz game,
+    | correspondence at twice blitz, as chess daily; the board games' 10 %
+    | come out of the board's 35/40/25 of 2026-09-28 in proportion (32/36/22).
+    | A board game that is switched off is left out of the draft
+    | (ChainDraft::defaults()), and with all of them off so are their share
+    | and daily limit.
     |
-    | chess_rapid_proposal: the weight of chess rapid (plan "Schach Rapid und
-    | Clan", P1), decided by the user on 2026-10-05. Rapid joined after the
-    | board's weights, so it mines only once the board fills it into the
-    | draft, or into a parameter change of a live season, which also opens
-    | its ladder there (NIP rev. 9.22). Until then rapid is casual in a live
-    | season. It counts in the chess share and daily limit.
+    | board_games_proposal and chess_rapid_proposal: what the admin season page
+    | proposes for a draft or a live season whose chain lacks them (a draft
+    | saved, or a season released, before they mined): the same weights, and
+    | for the board games the share of their group and its daily limit, the
+    | other shares shrunk in proportion to make room. Both return nothing
+    | while they mine already. A late mode of a game that mines (chess rapid)
+    | has no share or daily limit of its own; it counts in chess's. In a live
+    | season a parameter change that takes rapid in also opens its ladder
+    | there (NIP rev. 9.22); until then rapid is casual in that season.
     |
     | age_of_empires_2_proposal: the same for Age of Empires II (plan "AoE2
     | und Trackmania", P1): a weight per mode as the other series games, its
@@ -167,23 +169,37 @@ return [
             'ea-sports-fc-26/2v2' => 1000,
             'ea-sports-fc-27/1v1' => 1000,
             'ea-sports-fc-27/2v2' => 1000,
+            // Chess rapid and the board games from Block 0 (user, 2026-10-11): rapid at about 1.5x the duration of
+            // blitz, correspondence at twice blitz, as chess daily.
+            'chess/rapid' => 1500,
+            'blockli/blitz' => 1000,
+            'blockli/rapid' => 1500,
+            'blockli/correspondence' => 2000,
+            'nine-mens-morris/correspondence' => 2000,
+            'checkers/correspondence' => 2000,
         ],
         'groups' => [
             'ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27'],
-            'board-games' => ['nine-mens-morris', 'checkers'],
+            'board-games' => ['blockli', 'nine-mens-morris', 'checkers'],
         ],
+        // The board's 35/40/25 of 2026-09-28, shrunk in proportion next to the board games' 10 (user, 2026-10-11).
         'shares' => [
-            'chess' => 35,
-            'rocket-league' => 40,
-            'ea-sports-fc' => 25,
+            'chess' => 32,
+            'rocket-league' => 36,
+            'ea-sports-fc' => 22,
+            'board-games' => 10,
         ],
         'daily' => [
             'chess' => 5,
             'rocket-league' => 5,
             'ea-sports-fc' => 5,
+            'board-games' => 5,
         ],
         'board_games_proposal' => [
             'weights' => [
+                'blockli/blitz' => 1000,
+                'blockli/rapid' => 1500,
+                'blockli/correspondence' => 2000,
                 'nine-mens-morris/correspondence' => 2000,
                 'checkers/correspondence' => 2000,
             ],
@@ -201,7 +217,8 @@ return [
             'daily' => 5,
         ],
         // Chess rapid (plan "Schach Rapid und Clan", P1): weight 1.5, the user's decision of 2026-10-05, between blitz
-        // and daily. A mode of a game that mines already: no share or daily limit of its own (it counts in chess).
+        // and daily, in `weights` since 2026-10-11. A mode of a game that mines already: no share or daily limit of
+        // its own (it counts in chess).
         'chess_rapid_proposal' => [
             'weights' => [
                 'chess/rapid' => 1500,

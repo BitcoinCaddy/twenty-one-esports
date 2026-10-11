@@ -560,11 +560,11 @@ test('AdminSeason P43: the chain draft form and "What Block 0 signs" stay clean 
     $page->locator('[data-test=draft-share-chess]')->fill('30');
     $page->locator('[data-test=draft-message]')->fill('Block 0: every fair win is a block');
     $page->locator('[data-test=save-draft]')->click();
-    BrowserWait::until($page, '() => document.querySelector("[data-test=settings-log]")?.innerText.includes("35 → 30")', 10_000);
+    BrowserWait::until($page, '() => document.querySelector("[data-test=settings-log]")?.innerText.includes("32 → 30")', 10_000);
 
     expect($page->evaluate('() => window.__errors'))->toBe([])
         ->and($page->evaluate('() => document.querySelector("[data-test=preview-genesis]").innerText'))->toContain('["share","chess","30"]')
-        ->and($page->evaluate('() => [...document.querySelectorAll("[data-test=draft-warning]")].map((el) => el.innerText).join(" | ")'))->toContain('The shares add up to 95 %')
+        ->and($page->evaluate('() => [...document.querySelectorAll("[data-test=draft-warning]")].map((el) => el.innerText).join(" | ")'))->toContain('The shares add up to 88 %')
         ->and(ChainDraft::stored()['shares']['chess'] ?? null)->toBe(30)
         ->and(chainProblems($page, [route('admin.season'), route('home'), route('rules')]))->toBe([]);
 
@@ -575,7 +575,7 @@ test('AdminSeason P43: the chain draft form and "What Block 0 signs" stay clean 
     $page->locator('[data-test=save-draft]')->click();
     BrowserWait::until($page, '() => document.querySelector("[data-test=draft-error]") !== null', 10_000);
 
-    expect($page->evaluate('() => document.querySelector("[data-test=draft-error]").innerText'))->toContain('The shares add up to 115 %')
+    expect($page->evaluate('() => document.querySelector("[data-test=draft-error]").innerText'))->toContain('The shares add up to 108 %')
         ->and($page->evaluate('() => window.__errors'))->toBe([])
         ->and(ChainDraft::stored()['shares']['chess'] ?? null)->toBe(30);
 });

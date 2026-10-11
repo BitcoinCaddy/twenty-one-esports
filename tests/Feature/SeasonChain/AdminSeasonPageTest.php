@@ -79,7 +79,7 @@ test('in a live season a board admin changes a weight; the change is logged and 
 });
 
 test('in a season live since before chess rapid, the change form proposes its weight, and the saved change opens its ladder', function () {
-    $season = openSeason();
+    $season = openSeason(seasonGenesisWithout('chess/rapid'));
     NostrEvent::query()->where(['kind' => Ladders::KIND, 'd' => 'chess/rapid/'.$season->slug])->delete();
 
     Livewire::actingAs($this->board)->test('pages::admin.season')

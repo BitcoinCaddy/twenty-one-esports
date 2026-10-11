@@ -12,6 +12,7 @@
 
 use App\Enums\BoardEndReason;
 use App\Enums\BoardGameStatus;
+use App\Games\Blockli;
 use App\Games\Checkers;
 use App\Games\GameRegistry;
 use App\Games\NineMensMorris;
@@ -27,6 +28,7 @@ use App\Models\RatingChange;
 use App\Models\Season;
 use App\Models\SeasonAttestation;
 use App\Models\User;
+use App\Support\Board\BlockliRules;
 use App\Support\Board\BoardChallenges;
 use App\Support\Board\BoardGameService;
 use App\Support\Board\BoardQueue;
@@ -45,6 +47,7 @@ use App\Support\Series\Ladders;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
+use Tests\Support\BlockliOn;
 use Tests\Support\CheckersGame;
 use Tests\Support\NineMensMorrisOn;
 use Tests\Support\TestSigner;
@@ -254,6 +257,36 @@ test('a rated win of nine men\'s morris is rated, attested and mines a block wit
         ->and(collect($tags)->firstWhere(0, 'block'))->toBe(['block', '1', $season->genesisId()]);
 });
 
+test('with the chain defaults, a rated Blockli blitz or rapid win mines from Block 0 at its default weight', function (string $mode, int $weight) {
+    // The default genesis (user, 2026-10-11): Blockli switched on before Block 0, its modes weighted in the board
+    // games' share; only `moves` lowered so that one full move decides.
+    BlockliOn::play();
+    $parameters = Season::factory()->make()->parameters;
+    $season = openSeason(['parameters' => [...$parameters, 'moves' => 1]]);
+    [$anna, $bert] = User::factory()->count(2)->create();
+    $service = app(BoardGameService::class);
+    $game = $service->start(Blockli::SLUG, $anna, $bert, $mode, ratedGate: app(RatedBoard::class)->pin($anna, $bert));
+    $rules = new BlockliRules;
+
+    foreach ([1, 2] as $ply) {
+        $game = $service->move($game->refresh(), $game->player($game->turn), $rules->legalMoves($rules->deserialize($game->position))[0], $ply);
+    }
+
+    $service->resign($game->refresh(), $bert);
+    $attestation = SeasonAttestation::query()->sole();
+
+    expect($parameters['weights'])->toMatchArray(['blockli/blitz' => 1000, 'blockli/rapid' => 1500, 'blockli/correspondence' => 2000])
+        ->and($parameters['shares']['board-games'])->toBe(10)
+        ->and($game->refresh()->rated)->toBeTrue()
+        ->and($game->mode)->toBe($mode)
+        ->and($attestation->only(['height', 'rule', 'game', 'mode']))->toBe(['height' => 1, 'rule' => null, 'game' => Blockli::SLUG, 'mode' => $mode])
+        ->and($attestation->candidate['weight_key'])->toBe('blockli/'.$mode)
+        ->and($attestation->reward_per_player)->toBe($season->chainParameters()->rewardPerPlayer($weight, 1));
+})->with([
+    'blitz' => ['blitz', 1000],
+    'rapid' => ['rapid', 1500],
+]);
+
 test('consensus rule 2 holds for board games: a win with fewer full moves than `moves` does not mine', function () {
     boardMiningSeason(['moves' => 20]);
     [$anna, $bert] = User::factory()->count(2)->create();
@@ -347,39 +380,65 @@ test('chess keeps its weights and shares: the config, the default draft and a se
         ->and($defaults['weights'])->toMatchArray(['chess/blitz' => 1000, 'chess/correspondence' => 2000])
         ->and($season->genesis->weightFor('chess/blitz'))->toBe(1000)
         ->and($season->genesis->weightFor('chess/correspondence'))->toBe(2000)
-        ->and($defaults['shares'])->toBe(['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25])
-        // The board games are in the draft as a group, without a weight: they do not mine until the board says so.
-        ->and($defaults['groups'])->toBe(['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27'], 'board-games' => ['nine-mens-morris', 'checkers']])
-        // Correspondence (P8) is a mode of each board game with its own weight row.
+        // The board's 35/40/25 shrunk in proportion next to the board games' 10 (user, 2026-10-11).
+        ->and($defaults['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22, 'board-games' => 10])
+        // The board games are in the draft as a group with their weights: they mine from Block 0 (user, 2026-10-11).
+        ->and($defaults['groups'])->toBe(['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27'], 'board-games' => ['blockli', 'nine-mens-morris', 'checkers']])
+        // Correspondence (P8) is a mode of each board game with its own weight row; Blockli is switched off here.
         ->and(ChainDraft::table($defaults)['board-games'])->toBe(['nine-mens-morris/correspondence', 'checkers/correspondence'])
-        ->and($season->genesis->weightFor('nine-mens-morris/correspondence'))->toBe(0);
+        ->and($season->genesis->weightFor('nine-mens-morris/correspondence'))->toBe(2000)
+        ->and($season->genesis->weightFor('blockli/correspondence'))->toBe(0)
+        ->and(ChainDraft::boardGamesProposal($defaults))->toBeNull();
 
-    $proposal = ChainDraft::boardGamesProposal($defaults);
+    $proposal = ChainDraft::boardGamesProposal(boardGamesBeforeDefaults());
 
     expect(array_intersect_key($proposal['weights'], ['chess/blitz' => 1, 'chess/correspondence' => 1]))->toBe([]);
 });
 
-test('the board games\' proposal shrinks the other shares in proportion to exactly 100 %, and only while they do not mine', function () {
+/**
+ * A draft as the board saved it before the board games mined by default:
+ * without their weights, share and daily limit, chess 35 / Rocket League 40
+ * / EA Sports FC 25 (the board's decision of 2026-09-28).
+ *
+ * @return array<string, mixed>
+ */
+function boardGamesBeforeDefaults(): array
+{
     $defaults = ChainDraft::defaults();
 
-    expect(ChainDraft::boardGamesProposal($defaults))->toBe([
-        // Correspondence (P8) proposed at twice blitz, as chess daily; their only mode since 2026-10-07.
+    return [
+        ...$defaults,
+        'weights' => array_diff_key($defaults['weights'], ['nine-mens-morris/correspondence' => true, 'checkers/correspondence' => true]),
+        'shares' => ['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25],
+        'daily' => array_diff_key($defaults['daily'], ['board-games' => true]),
+    ];
+}
+
+test('the board games\' proposal shrinks the other shares in proportion to exactly 100 %, and only while they do not mine', function () {
+    $before = boardGamesBeforeDefaults();
+
+    expect(ChainDraft::boardGamesProposal($before))->toBe([
+        // Correspondence (P8) proposed at twice blitz, as chess daily.
         'weights' => ['nine-mens-morris/correspondence' => 2000, 'checkers/correspondence' => 2000],
         'shares' => ['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22, 'board-games' => 10],
         'daily' => ['board-games' => 5],
     ])
         // Room enough: nothing shrinks.
-        ->and(ChainDraft::boardGamesProposal([...$defaults, 'shares' => ['chess' => 30, 'rocket-league' => 30, 'ea-sports-fc' => 20]])['shares'])
+        ->and(ChainDraft::boardGamesProposal([...$before, 'shares' => ['chess' => 30, 'rocket-league' => 30, 'ea-sports-fc' => 20]])['shares'])
         ->toBe(['chess' => 30, 'rocket-league' => 30, 'ea-sports-fc' => 20, 'board-games' => 10])
-        // Mining already: no proposal.
-        ->and(ChainDraft::boardGamesProposal([...$defaults, 'weights' => [...$defaults['weights'], 'checkers/correspondence' => 500]]))->toBeNull();
+        // Mining already, as in the defaults or with one weight filled in: no proposal.
+        ->and(ChainDraft::boardGamesProposal(ChainDraft::defaults()))->toBeNull()
+        ->and(ChainDraft::boardGamesProposal([...$before, 'weights' => [...$before['weights'], 'checkers/correspondence' => 500]]))->toBeNull();
 
-    // Switched off: no row, no group, no proposal.
+    // Switched off: no row, no group, no weight, share or daily limit, no proposal.
     config(['esports.board_games.enabled' => false]);
     app()->forgetInstance(GameRegistry::class);
 
     expect(ChainDraft::boardGamesProposal(ChainDraft::defaults()))->toBeNull()
-        ->and(ChainDraft::defaults()['groups'])->toBe(['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27']]);
+        ->and(ChainDraft::defaults()['groups'])->toBe(['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27']])
+        ->and(ChainDraft::defaults()['weights'])->not->toHaveKeys(['nine-mens-morris/correspondence', 'checkers/correspondence', 'blockli/blitz'])
+        ->and(ChainDraft::defaults()['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22])
+        ->and(ChainDraft::defaults()['daily'])->not->toHaveKey('board-games');
 });
 
 /* ---------- The lobby's rated search ------------------------------------------------------------------------ */

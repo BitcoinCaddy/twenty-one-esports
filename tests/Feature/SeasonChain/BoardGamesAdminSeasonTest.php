@@ -4,10 +4,12 @@
  * The board games on the admin season page (plan "Mühle und Dame", P6):
  * every knob of theirs (weight per mode, the share and daily limit of their
  * group) is in the chain draft for Block 0 and in the rule change of a live
- * season, visible and savable. The draft proposes their values and the
- * shrunk shares of the others; nothing moves until the board saves, and the
- * log shows what moved. A running season whose genesis has no board games'
- * group takes them in one by one (share groups are the genesis's).
+ * season, visible and savable. They mine from Block 0 by default (user,
+ * 2026-10-11); a draft the board saved without them gets the proposal of
+ * their values and the shrunk shares of the others; nothing moves until the
+ * board saves, and the log shows what moved. A running season whose genesis
+ * has no board games' group takes them in one by one (share groups are the
+ * genesis's).
  */
 
 use App\Models\Season;
@@ -22,6 +24,42 @@ use Tests\Support\CheckersGame;
 use Tests\Support\NineMensMorrisOn;
 use Tests\Support\TestSigner;
 
+/**
+ * The chain defaults without the board games' weights, share and daily limit:
+ * a draft saved, or a season released, before they mined.
+ *
+ * @return array<string, mixed>
+ */
+function chainWithoutBoardGames(): array
+{
+    $defaults = ChainDraft::defaults();
+
+    return [
+        ...$defaults,
+        'weights' => array_filter($defaults['weights'], fn (string $key): bool => ! in_array(explode('/', $key)[0], ['blockli', 'nine-mens-morris', 'checkers'], true), ARRAY_FILTER_USE_KEY),
+        'shares' => ['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25],
+        'daily' => array_diff_key($defaults['daily'], ['board-games' => true]),
+    ];
+}
+
+/**
+ * The genesis parameters of a season released before the board games mined:
+ * with the board games' group, or (as before plan "Mühle und Dame", P6)
+ * without it.
+ *
+ * @return array{parameters: array<string, mixed>}
+ */
+function boardGamesUnminedGenesis(bool $withGroup): array
+{
+    $chain = chainWithoutBoardGames();
+    $groups = $withGroup ? $chain['groups'] : ['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27']];
+
+    return ['parameters' => [
+        'weights' => $chain['weights'], 'groups' => $groups,
+        'shares' => $chain['shares'], 'daily' => $chain['daily'], 'pairlimit' => $chain['pairlimit'], 'subtree' => $chain['subtree'], 'moves' => $chain['moves'],
+    ]];
+}
+
 beforeEach(function () {
     Queue::fake();
     NineMensMorrisOn::play();
@@ -30,7 +68,7 @@ beforeEach(function () {
     config(['esports.board' => [NostrKeys::hexToNpub($this->board->pubkey)], 'esports.league.nsec' => (new TestSigner)->secret, 'esports.trust.nsec' => (new TestSigner)->secret]);
 });
 
-test('the chain draft shows the board games as one row with a weight per game, a share and a daily limit, and proposes their values', function () {
+test('the chain draft shows the board games as one row with a weight per game, a share and a daily limit; they mine from Block 0, so nothing is proposed', function () {
     Livewire::actingAs($this->board)->test('pages::admin.season')
         ->assertSee('data-test="draft-row-board-games"', false)
         ->assertSee('data-test="draft-weight-nine-mens-morris-correspondence"', false)
@@ -38,7 +76,20 @@ test('the chain draft shows the board games as one row with a weight per game, a
         ->assertSee('data-test="draft-share-board-games"', false)
         ->assertSee('data-test="draft-daily-board-games"', false)
         ->assertSee('Board games')
-        // Not mining yet: empty fields, the other shares as the board decided them, and the proposal next to them.
+        // The defaults (user, 2026-10-11): their weights, their 10 % and the others shrunk to 32/36/22, no proposal.
+        ->assertSet('draftWeights.nine-mens-morris/correspondence', '2')
+        ->assertSet('draftWeights.checkers/correspondence', '2')
+        ->assertSet('draftShares', ['chess' => '32', 'rocket-league' => '36', 'ea-sports-fc' => '22', 'board-games' => '10', 'age-of-empires-2' => ''])
+        ->assertSet('draftDaily.board-games', '5')
+        ->assertDontSee('data-test="board-games-proposal"', false);
+
+    expect(ChainDraft::boardGamesProposal(ChainDraft::current()))->toBeNull();
+});
+
+test('a draft the board saved before the board games mined gets their proposal next to the shares the board decided', function () {
+    saveChainDraft(chainWithoutBoardGames());
+
+    Livewire::actingAs($this->board)->test('pages::admin.season')
         ->assertSet('draftWeights.nine-mens-morris/correspondence', '')
         ->assertSet('draftShares', ['chess' => '35', 'rocket-league' => '40', 'ea-sports-fc' => '25', 'board-games' => '', 'age-of-empires-2' => ''])
         ->assertSee('data-test="board-games-proposal"', false)
@@ -46,6 +97,8 @@ test('the chain draft shows the board games as one row with a weight per game, a
 });
 
 test('the board fills in the proposal and saves it: the board games mine in the draft, chess keeps its weights, and the log shows the shrunk shares', function () {
+    saveChainDraft(chainWithoutBoardGames());
+
     Livewire::actingAs($this->board)->test('pages::admin.season')
         ->call('fillBoardGamesProposal')
         ->assertSet('draftWeights.nine-mens-morris/correspondence', '2')
@@ -53,7 +106,7 @@ test('the board fills in the proposal and saves it: the board games mine in the 
         ->assertSet('draftShares', ['chess' => '32', 'rocket-league' => '36', 'ea-sports-fc' => '22', 'board-games' => '10', 'age-of-empires-2' => ''])
         ->assertSet('draftDaily.board-games', '5')
         // Nothing is saved by filling in.
-        ->tap(fn () => expect(ChainDraft::stored())->toBeNull())
+        ->tap(fn () => expect(ChainDraft::stored()['shares'])->toBe(['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25]))
         ->call('saveDraft')
         ->assertSet('draftError', '')
         ->assertDontSee('data-test="board-games-proposal"', false)
@@ -75,8 +128,10 @@ test('the board fills in the proposal and saves it: the board games mine in the 
         ->and($changes)->not->toHaveKey('chain.weights.chess/blitz');
 });
 
-test('the board keeps the board games unmined by leaving their weights empty; a share of 0 is refused, an empty one is not', function () {
+test('the board keeps the board games unmined by clearing their weights; a share of 0 is refused, an empty one is not', function () {
     $page = Livewire::actingAs($this->board)->test('pages::admin.season')
+        ->set('draftWeights.nine-mens-morris/correspondence', '')
+        ->set('draftWeights.checkers/correspondence', '')
         ->set('draftShares.board-games', '0')
         ->call('saveDraft');
 
@@ -88,7 +143,8 @@ test('the board keeps the board games unmined by leaving their weights empty; a 
         ->assertSet('draftError', '');
 
     expect(ChainDraft::stored()['weights'])->not->toHaveKey('checkers/correspondence')
-        ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 35, 'rocket-league' => 40, 'ea-sports-fc' => 25]);
+        ->and(ChainDraft::stored()['weights'])->not->toHaveKey('nine-mens-morris/correspondence')
+        ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22]);
 
     // A weight without a share and a daily limit is refused.
     $page->set('draftWeights.checkers/correspondence', '1')->call('saveDraft');
@@ -96,7 +152,7 @@ test('the board keeps the board games unmined by leaving their weights empty; a 
 });
 
 test('in a live season with the board games\' group the rule change adds them: weights, the group\'s share and daily limit, in one change', function () {
-    openSeason();
+    openSeason(boardGamesUnminedGenesis(withGroup: true));
 
     expect(Season::query()->sole()->chainParameters()->genesis->groups)->toHaveKey('board-games');
 
@@ -122,11 +178,7 @@ test('in a live season with the board games\' group the rule change adds them: w
 });
 
 test('a running season whose genesis has no board games\' group takes each board game in as its own share key', function () {
-    $defaults = ChainDraft::defaults();
-    openSeason(['parameters' => [
-        'weights' => $defaults['weights'], 'groups' => ['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27']],
-        'shares' => $defaults['shares'], 'daily' => $defaults['daily'], 'pairlimit' => $defaults['pairlimit'], 'subtree' => $defaults['subtree'], 'moves' => $defaults['moves'],
-    ]]);
+    openSeason(boardGamesUnminedGenesis(withGroup: false));
 
     $page = Livewire::actingAs($this->board)->test('pages::admin.season')
         ->assertSet('shares.nine-mens-morris', '')
@@ -150,7 +202,7 @@ test('a running season whose genesis has no board games\' group takes each board
 });
 
 test('a rule change that lets the board games mine without their share and daily limit names them in the plural; a single game keeps its sentence', function () {
-    openSeason();
+    openSeason(boardGamesUnminedGenesis(withGroup: true));
 
     Livewire::actingAs($this->board)->test('pages::admin.season')
         ->set('weights.checkers/correspondence', '1')
@@ -158,12 +210,8 @@ test('a rule change that lets the board games mine without their share and daily
         ->call('saveChange')
         ->assertSet('changeError', 'Board games mine, so they need a share and a daily limit in the same change.');
 
-    $defaults = ChainDraft::defaults();
     Season::query()->delete();
-    openSeason(['parameters' => [
-        'weights' => $defaults['weights'], 'groups' => ['ea-sports-fc' => ['ea-sports-fc-26', 'ea-sports-fc-27']],
-        'shares' => $defaults['shares'], 'daily' => $defaults['daily'], 'pairlimit' => $defaults['pairlimit'], 'subtree' => $defaults['subtree'], 'moves' => $defaults['moves'],
-    ]]);
+    openSeason(boardGamesUnminedGenesis(withGroup: false));
 
     Livewire::actingAs($this->board)->test('pages::admin.season')
         ->set('weights.checkers/correspondence', '1')

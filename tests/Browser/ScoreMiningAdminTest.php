@@ -98,8 +98,9 @@ test('the board fills in a score game\'s proposal on the chain draft and saves i
 
     expect($text)->toContain($locale === 'de' ? 'mindestens 5 vertrauenswürdige Spieler' : 'at least 5 trusted players')
         ->and($text)->toContain($locale === 'de' ? '48 Stunden' : '48 hours')
-        ->and($filled)->toBe(['33', '38', '24', '5'])
-        ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 33, 'rocket-league' => 38, 'ea-sports-fc' => 24, 'score-demo' => 5])
+        // The board games are off here, so the defaults leave 10 % free (32/36/22) and the 5 % fit without shrinking.
+        ->and($filled)->toBe(['32', '36', '22', '5'])
+        ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22, 'score-demo' => 5])
         ->and(ChainDraft::stored()['weights'])->toMatchArray(['score-demo/time-trial' => 1000, 'score-demo/highscore' => 1000, 'chess/blitz' => 1000]);
 
     foreach (['before' => $before, 'after' => $after] as $where => $m) {
