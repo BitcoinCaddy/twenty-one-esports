@@ -240,8 +240,8 @@ return [
         'chat' => [
             'reactions' => (bool) env('TV_COMMENTARY_CHAT', false),
             'profiles' => (bool) env('TV_COMMENTARY_CHAT_PROFILES', false),
-            'per_person_minutes' => 15,
-            'per_hour' => 6,
+            'per_person_minutes' => (int) env('TV_COMMENTARY_CHAT_PERSON_MINUTES', 2),
+            'per_hour' => (int) env('TV_COMMENTARY_CHAT_PER_HOUR', 20),
             'notes_per_person' => 50,
             'notes_days' => 30,
             'notes_total' => 20_000,

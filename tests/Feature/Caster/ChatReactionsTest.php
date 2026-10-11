@@ -130,21 +130,21 @@ it('trusts a trust rank at the minimum, not below it', function () {
         ->and(app(ChatterCache::class)->isReactable($low))->toBeFalse();
 });
 
-it('reacts to a person at most once per quarter hour and to everybody at most six times an hour', function () {
+it('reacts to a person at most once per cooldown (2 min) and to everybody at most twenty times an hour', function () {
     $chatter = new TestSigner;
     WotLevel::query()->create(['pubkey' => $chatter->pubkey, 'level' => 1, 'computed_at' => now()]);
     $now = CarbonImmutable::now();
-    ChatterProfile::query()->create(['pubkey' => $chatter->pubkey, 'last_reaction_at' => $now->subMinutes(10)]);
+    ChatterProfile::query()->create(['pubkey' => $chatter->pubkey, 'last_reaction_at' => $now->subMinute()]);
 
     expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now))->toBe('person_cooldown')
-        ->and(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now->addMinutes(6)))->toBeNull();
+        ->and(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now->addMinutes(2)))->toBeNull();
 
-    foreach (range(1, 6) as $i) {
+    foreach (range(1, 20) as $i) {
         CasterScript::query()->create(['kind' => CasterScript::CHAT, 'phase' => 'break', 'priority' => 50, 'text' => 'Hey.', 'facts_hash' => 'h',
             'status' => CasterScript::QUEUED, 'estimated_seconds' => 1, 'expires_at' => $now->addMinutes(10)]);
     }
 
-    expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now->addMinutes(6)))->toBe('hourly_cap');
+    expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now->addMinutes(2)))->toBe('hourly_cap');
 });
 
 it('keeps only lowercase keywords of a chat message: no names, numbers or links', function () {
