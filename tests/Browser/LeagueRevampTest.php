@@ -333,7 +333,9 @@ test('focus mode: on a phone game page the tab bar slides away on a board tap an
             ->and($hidden['barTop'])->toBeGreaterThanOrEqual($height, $label)
             ->and($hidden['edge'])->toBeTrue($label)
             // The board takes the height the bar gave up and stays where it was: no shift of its top edge.
-            ->and($hidden['board'][2] - $shown['board'][2])->toBeGreaterThanOrEqual($floor($shown) ? 12 : 48, $label.': board taller')
+            // Taller by about the bar's 64 px, unless the board meets a limit first: its 200 px floor with the dock's tab on
+            // the bar, or the column's width (PR #5 put Blockli's controls over the board: at 360 px it fills the width).
+            ->and($hidden['board'][2] - $shown['board'][2])->toBeGreaterThanOrEqual($floor($shown) || $hidden['board'][1] >= $width - 33 ? 1 : 48, $label.': board taller')
             ->and($hidden['board'][0])->toBe($shown['board'][0], $label.': board top unchanged')
             ->and($hidden['overflow'])->toBeLessThanOrEqual(0, $label)
             ->and($back['focus'])->toBe('shown', $label)
