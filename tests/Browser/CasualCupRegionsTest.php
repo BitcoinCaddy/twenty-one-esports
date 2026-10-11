@@ -1,10 +1,12 @@
 <?php
 
 use App\Enums\TournamentStatus;
+use App\Games\GameRegistry;
 use App\Models\Tournament;
 use App\Models\User;
+use App\Support\LeagueTime;
 use App\Support\Tournaments\CasualCups;
-use App\Support\Tournaments\CupBoard;
+use App\Support\Tournaments\TournamentLanding;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -169,50 +171,63 @@ test('the EU cup\'s page names the US cup with its start on the viewer\'s clock,
 });
 
 /*
-| The cup board on the tournaments page (P53): grouped by game with the
-| cover, each game's EU and US as a pair, and a filter bar that works without
-| a reload. Measured at 1440 and 375 in English and at 375 in German: no
-| overflow, every control a 44 px target, the cover in each group; the
-| filters hide and reorder in place (no navigation), and the console and the
-| answers stay clean, with a positive control.
+| The cups on the tournaments page (P53, redrawn in plan "Refactor und
+| Design-Revamp", P6: Tournaments.dc.html, TournamentsPhone.dc.html). The
+| boards drop the per-game cup groups, the cup hall and the organizer cards:
+| one "Open for sign-up" list carries every tournament, the organizers' (with
+| a pot) first, then the casual cups by start, each row with its game's cover;
+| the game chips filter it, from lg also the region chips and "Only free
+| places" (the phone board shows the game chips only and names the region in
+| the row). The chips are links: the filter is the page's URL. Running cups
+| stand under "Running", finished ones in the archive with its Hall of Fame
+| (Archive.dc.html). Measured at 1440 and 375 in English and at 375 in German:
+| no overflow, each row's cover drawn, and the console and the answers clean,
+| with a positive control.
 */
 
 /**
- * The board as the browser shows it: visible groups in page order with their
- * visible rows, the count line, the controls under 44 px and the overflow.
+ * The open list and the running list as the browser shows them: game and region of each visible row in page order,
+ * whether its cover is drawn, the count beside the heading, the overflow and the URL.
  *
- * @return array{groups: list<array{game: string, rows: list<string>, cover: bool}>, count: string, small: list<string>, overflow: int, url: string}
+ * @return array{open: list<array{id: string, game: string, region: string, cover: bool}>, running: list<array{id: string, game: string, region: string}>, count: string|null, empty: bool, overflow: int, url: string}
  */
 function cupBoardState(Page $page): array
 {
     return $page->evaluate('() => ({
-        groups: [...document.querySelectorAll("[data-cup-group]")].filter((g) => g.checkVisibility()).map((g) => ({
-            game: g.dataset.game,
-            rows: [...g.querySelectorAll("[data-cup-row]")].filter((r) => r.checkVisibility()).map((r) => r.dataset.region),
-            cover: (g.querySelector("[data-test=cup-group-cover]")?.getBoundingClientRect().width || 0) >= 90,
+        open: [...document.querySelectorAll("[data-test=open-row], [data-test=open-row-phone]")].filter((r) => r.checkVisibility()).map((r) => ({
+            id: r.dataset.tournament,
+            game: r.dataset.game,
+            region: r.dataset.region,
+            cover: (() => { const img = r.querySelector("[data-game-cover] img"); return !!img && img.getBoundingClientRect().width >= 64; })(),
         })),
-        count: document.querySelector("[data-test=cup-filter-count]").innerText.trim(),
-        small: [...document.querySelectorAll("[data-test=cup-filters] button, [data-test=cup-filters] select, [data-test=cup-filters] label:has(input), [data-test=cup-mention]")]
-            .filter((el) => el.checkVisibility()).filter((el) => el.getBoundingClientRect().height < 44).map((el) => el.dataset.test || el.tagName),
+        running: [...document.querySelectorAll("[data-test=running-row]")].filter((r) => r.checkVisibility()).map((r) => ({ id: r.dataset.tournament, game: r.dataset.game, region: r.dataset.region })),
+        count: document.querySelector("[data-test=open-tournaments] .rv-n")?.checkVisibility() ? document.querySelector("[data-test=open-tournaments] .rv-n").innerText.trim() : null,
+        empty: !!document.querySelector("[data-test=open-empty]")?.checkVisibility(),
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         url: location.href,
     })');
 }
 
-test('the tournaments page groups the cups by game with covers and filters them in place, at 1440 and 375, German at 375', function () {
+/** @param  list<array{game: string, region: string}>  $rows */
+function cupPairs(array $rows): array
+{
+    return array_map(fn (array $row): string => $row['game'].' '.$row['region'], $rows);
+}
+
+test('the tournaments page lists the cups with covers and filters them by game, region and free places, at 1440 and 375, German at 375', function () {
     config(['esports.casual_cups.enabled' => ['chess', 'rocket-league', 'ea-sports-fc-26']]);
     app(CasualCups::class)->tick();
-    // The Rocket League US cup is running: no free places, so "free places only" hides it.
+    // The Rocket League US cup is running: it leaves the open list for "Running".
     Tournament::query()->where('cup_open_series', 'rocket-league-us')->sole()->forceFill(['status' => TournamentStatus::Running])->save();
-    $all = ['chess' => ['eu', 'us'], 'rocket-league' => ['eu', 'us'], 'ea-sports-fc-26' => ['eu', 'us']];
+    $open = ['chess eu', 'chess us', 'ea-sports-fc-26 eu', 'ea-sports-fc-26 us', 'rocket-league eu'];
 
     foreach ([[1440, 900, 'en'], [375, 812, 'en'], [375, 812, 'de']] as [$width, $height, $lang]) {
-        $page = cupRegionsPage('/tournaments', $width, $height, '[data-test=cup-filters]');
+        $page = cupRegionsPage('/tournaments', $width, $height, '[data-test=open-tournaments]');
 
         if ($lang === 'de') {
             $page->goto(ComputeUrl::from('/locale/de'));
             $page->goto(ComputeUrl::from('/tournaments'));
-            BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=cup-filters]") !== null && document.fonts.status === "loaded"', 10_000);
+            BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=open-tournaments]") !== null && document.fonts.status === "loaded"', 10_000);
         }
 
         if ($width === 1440) {
@@ -222,66 +237,83 @@ test('the tournaments page groups the cups by game with covers and filters them 
         $start = cupBoardState($page);
         cupRegionsShot($page, "cup-board-{$width}-{$lang}");
 
-        expect(collect($start['groups'])->mapWithKeys(fn (array $g): array => [$g['game'] => $g['rows']])->all())->toBe($all)
-            ->and(collect($start['groups'])->every(fn (array $g): bool => $g['cover']))->toBeTrue()
-            ->and($start['count'])->toBe($lang === 'de' ? '6 Cups' : '6 cups')
-            ->and([$width, $lang, $start['small'], $start['overflow']])->toBe([$width, $lang, [], 0]);
+        $sorted = cupPairs($start['open']);
+        sort($sorted);
+        expect([$width, $lang, $sorted, $start['overflow']])->toBe([$width, $lang, $open, 0])
+            ->and(collect($start['open'])->every(fn (array $row): bool => $row['cover']))->toBeTrue()
+            ->and(cupPairs($start['running']))->toContain('rocket-league us')
+            ->and($start['count'])->toBe($width >= 1024 ? '5' : null);
 
-        // Region US: one row per game, no reload.
-        $page->locator('[data-test=cup-filter-region-us]')->click();
-        $us = cupBoardState($page);
-        expect(collect($us['groups'])->every(fn (array $g): bool => $g['rows'] === ['us']))->toBeTrue()
-            ->and($us['count'])->toBe($lang === 'de' ? '3 Cups' : '3 cups')
-            ->and($us['url'])->toBe($start['url']);
+        if ($width >= 1024) {
+            // Region US (lg up, Tournaments.dc.html): the US cups only, the open list and the running one; the URL says so.
+            $page->locator('[data-test=filter-region-us]')->click();
+            BrowserWait::until($page, '() => document.readyState === "complete" && location.search.includes("region=us") && document.querySelector("[data-test=filter-region-us]").getAttribute("aria-current") === "page"', 5_000);
+            $us = cupBoardState($page);
+            expect(collect($us['open'])->every(fn (array $row): bool => $row['region'] === 'us'))->toBeTrue()
+                ->and(collect(cupPairs($us['open']))->sort()->values()->all())->toBe(['chess us', 'ea-sports-fc-26 us'])
+                ->and(cupPairs($us['running']))->toBe(['rocket-league us'])
+                ->and($us['count'])->toBe('2');
 
-        // Plus free places only: the running Rocket League US cup goes, and its group with it.
-        $page->locator('[data-test=cup-filter-free]')->click();
-        expect(array_column(cupBoardState($page)['groups'], 'game'))->toBe(['chess', 'ea-sports-fc-26']);
+            // Plus free places only: the running Rocket League US cup stays out of the open list.
+            $page->locator('[data-test=filter-free]')->click();
+            BrowserWait::until($page, '() => document.querySelector("[data-test=filter-free]").getAttribute("aria-checked") === "true"', 5_000);
+            expect(collect(cupPairs(cupBoardState($page)['open']))->sort()->values()->all())->toBe(['chess us', 'ea-sports-fc-26 us']);
 
-        // One game: the select below sm, the covered buttons from sm.
-        $width < 640
-            ? $page->evaluate('() => { const s = document.querySelector("[data-test=cup-filter-game-select]"); s.value = "rocket-league"; s.dispatchEvent(new Event("change")); }')
-            : $page->locator('[data-test=cup-filter-game-rocket-league]')->click();
-        BrowserWait::until($page, '() => document.querySelector("[data-test=cup-filter-empty]").checkVisibility()', 3_000);
-        expect(cupBoardState($page)['groups'])->toBe([])
-            ->and($page->evaluate('() => document.querySelector("[data-test=cup-filter-count]").innerText.trim()'))->toBe($lang === 'de' ? '0 Cups' : '0 cups');
-
-        // "Show every cup" resets game, region and free places.
-        $page->locator('[data-test=cup-filter-empty] button')->click();
-        expect(collect(cupBoardState($page)['groups'])->mapWithKeys(fn (array $g): array => [$g['game'] => $g['rows']])->all())->toBe($all);
+            // Plus Rocket League: nothing open matches, the way back resets game, region and free places.
+            $page->locator('[data-test=filter-game-rocket-league]')->click();
+            BrowserWait::until($page, '() => document.readyState === "complete" && !!document.querySelector("[data-test=open-empty]")?.checkVisibility()', 5_000);
+            expect(cupBoardState($page)['open'])->toBe([]);
+            $page->locator('[data-test=open-empty] a')->click();
+            BrowserWait::until($page, '() => document.readyState === "complete" && location.search === "" && document.querySelectorAll("[data-test=open-row]").length > 0', 5_000);
+            $back = cupPairs(cupBoardState($page)['open']);
+            sort($back);
+            expect($back)->toBe($open);
+        } else {
+            // A phone (TournamentsPhone.dc.html): the game chips, the region in each row's line.
+            expect($page->evaluate('() => document.querySelector("[data-test=filter-region]").checkVisibility()'))->toBeFalse()
+                ->and($page->evaluate('() => [...document.querySelectorAll("[data-test=open-row-phone]")].filter((r) => r.checkVisibility()).every((r) => /\b(EU|US)\b/.test(r.innerText))'))->toBeTrue();
+            $page->locator('[data-test=filter-game-rocket-league]')->click();
+            BrowserWait::until($page, '() => document.readyState === "complete" && location.search.includes("game=rocket-league") && !!document.querySelector("[data-test=open-tournaments]")', 5_000);
+            expect(cupPairs(cupBoardState($page)['open']))->toBe(['rocket-league eu'])
+                ->and(cupPairs(cupBoardState($page)['running']))->toBe(['rocket-league us']);
+        }
 
         expect($page->evaluate('() => window.__errors'))->toBe([])
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     }
 });
 
-test('by start orders the game groups by their earliest cup and the rows by start', function () {
+test('the open list puts the cups in start order, whatever their game', function () {
     config(['esports.casual_cups.enabled' => ['chess', 'rocket-league']]);
     app(CasualCups::class)->tick();
-    // The chess EU cup moves two days later: chess's earliest cup is then its US one (Sun 02:00 Berlin), after Rocket League's EU cup (Sat 20:00).
+    // The chess EU cup moves two days later: it is then the last cup, after Rocket League's EU cup (Sat 20:00) and both US cups (Sun 02:00).
     $chessEu = Tournament::query()->where('cup_open_series', 'chess-eu')->sole();
     $chessEu->forceFill(['starts_at' => $chessEu->starts_at->addDays(2)])->save();
 
-    $page = cupRegionsPage('/tournaments', 1440, 900, '[data-test=cup-filters]');
-    expect(array_column(cupBoardState($page)['groups'], 'game'))->toBe(['chess', 'rocket-league']);
+    $page = cupRegionsPage('/tournaments', 1440, 900, '[data-test=open-tournaments]');
+    $ids = array_column(cupBoardState($page)['open'], 'id');
+    $starts = array_map(fn (string $id): int => Tournament::query()->findOrFail($id)->starts_at->getTimestamp(), $ids);
+    $ordered = $starts;
+    sort($ordered);
 
-    $page->locator('[data-test=cup-sort-start]')->click();
-    $state = cupBoardState($page);
-
-    expect(array_column($state['groups'], 'game'))->toBe(['rocket-league', 'chess'])
-        ->and($state['groups'][1]['rows'])->toBe(['us', 'eu'])
-        ->and($page->evaluate('() => document.querySelector("[data-test=cup-sort-start]").getAttribute("aria-pressed")'))->toBe('true')
+    expect($ids)->toHaveCount(4)
+        ->and($starts)->toBe($ordered)
+        ->and(end($ids))->toBe((string) $chessEu->id)
+        ->and(cupPairs(cupBoardState($page)['open'])[0])->toBe('rocket-league eu')
         ->and($page->evaluate('() => window.__errors'))->toBe([]);
 });
 
-test('the game filter of the cup board stays inside the window with every cup game, from 640 to 1920 px in English and German', function () {
-    // The board games run no cup since 2026-10-07 (correspondence only): five games, the board games listed in vain.
+test('the game chips stay inside the window with every cup game, from 640 to 1920 px in English and German', function () {
+    // The board games run no cup since 2026-10-07 (correspondence only): five games with a cup, the board games with none.
     NineMensMorrisOn::play();
     CheckersGame::play();
     config(['esports.casual_cups.enabled' => ['chess', 'rocket-league', 'ea-sports-fc-26', 'ea-sports-fc-27', 'age-of-empires-2', 'nine-mens-morris', 'checkers']]);
     app(CasualCups::class)->tick();
+    $cupGames = ['chess', 'rocket-league', 'ea-sports-fc-26', 'ea-sports-fc-27', 'age-of-empires-2'];
+    // By count (two cups each), ties in the registry's order (TournamentsBoard::gameChips()).
+    $expected = array_values(array_filter(array_keys(app(GameRegistry::class)->all()), fn (string $slug): bool => in_array($slug, $cupGames, true)));
 
-    $page = cupRegionsPage('/tournaments', 640, 900, '[data-test=cup-filters]');
+    $page = cupRegionsPage('/tournaments', 640, 900, '[data-test=filter-game]');
     cupRegionsControl($page);
     $measured = [];
 
@@ -289,22 +321,29 @@ test('the game filter of the cup board stays inside the window with every cup ga
         if ($lang === 'de') {
             $page->goto(ComputeUrl::from('/locale/de'));
             $page->goto(ComputeUrl::from('/tournaments'));
-            BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=cup-filters]") !== null && document.fonts.status === "loaded"', 10_000);
+            BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=filter-game]") !== null && document.fonts.status === "loaded"', 10_000);
         }
 
         foreach ([640, 1024, 1280, 1440, 1536, 1920] as $width) {
             $page->setViewportSize($width, 900);
-            // Past: px of a button beyond the window or cut off by its overflow-hidden group; clipped: a label cut inside its button (the sr-only name is
-            // cut on purpose); the buttons' names as a screen reader gets them (an aria-label, else the text outside aria-hidden) and the text they show.
+            // chipRow folds on resize (ResizeObserver): wait two frames.
+            $page->evaluate('() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))');
+            // Past: px of a visible chip beyond the window or its row; clipped: a chip whose label is cut; reachable: the game keys a viewer
+            // can pick, as a chip in the row or in the "+N more" menu; names: each visible chip's accessible name and its shown text.
             $measured["{$lang} {$width}"] = $page->evaluate('() => {
-                const buttons = [...document.querySelectorAll("[data-test^=cup-filter-game-]:not([data-test=cup-filter-game-select])")];
-                const edge = Math.min(window.innerWidth, buttons[0].parentElement.getBoundingClientRect().right);
+                const row = document.querySelector("[data-test=filter-game]");
+                const chips = [...row.querySelectorAll("[data-chip]")];
+                const shown = chips.filter((c) => c.checkVisibility());
+                const edge = Math.min(window.innerWidth, row.getBoundingClientRect().right);
+                const menu = [...row.querySelectorAll("[data-chip-menu]")].filter((m) => !m.hidden).map((m) => chips[Number(m.dataset.chipMenu)].dataset.test);
                 return {
                     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-                    past: Math.max(0, ...buttons.map((b) => Math.round(b.getBoundingClientRect().right - edge))),
-                    clipped: buttons.filter((b) => b.scrollWidth > b.clientWidth + 1 || [...b.querySelectorAll("span:not(.sr-only)")].some((s) => s.checkVisibility() && s.scrollWidth > s.clientWidth + 1)).map((b) => b.dataset.test),
-                    names: buttons.slice(1).map((b) => b.getAttribute("aria-label") ?? [...b.querySelectorAll("span")].filter((s) => s.checkVisibility() && !s.closest("[aria-hidden=true]")).map((s) => s.textContent).join("")),
-                    shown: buttons.slice(1).map((b) => [...b.querySelectorAll("span:not(.sr-only)")].filter((s) => s.checkVisibility()).map((s) => s.textContent).join("")),
+                    past: Math.max(0, ...shown.map((c) => Math.round(c.getBoundingClientRect().right - edge))),
+                    clipped: shown.filter((c) => c.scrollWidth > c.clientWidth + 1).map((c) => c.dataset.test),
+                    keys: chips.map((c) => c.dataset.test.replace("filter-game-", "")),
+                    counts: chips.map((c) => c.querySelector(".rv-m")?.textContent.trim() ?? null),
+                    reachable: [...shown.map((c) => c.dataset.test), ...menu].map((t) => t.replace("filter-game-", "")),
+                    names: shown.map((c) => [c.getAttribute("aria-label") ?? c.textContent.replace(/\s+/g, " ").trim(), c.innerText.replace(/\s+/g, " ").trim()]),
                 };
             }');
             cupRegionsShot($page, "cup-filter-seven-{$width}-{$lang}");
@@ -315,44 +354,51 @@ test('the game filter of the cup board stays inside the window with every cup ga
 
     foreach ($measured as $at => $state) {
         expect([$at, $state['overflow'], $state['past'], $state['clipped']])->toBe([$at, 0, 0, []])
-            ->and(count($state['names']))->toBe(5);
+            // "All" first, then the five cup games with two cups each.
+            ->and(array_slice($state['keys'], 0, 6))->toBe(['all', ...$expected])
+            ->and(array_slice($state['counts'], 1, 5))->toBe(['2', '2', '2', '2', '2'])
+            // Every chip can be picked: in the row or folded into the menu.
+            ->and(array_diff($state['keys'], $state['reachable']))->toBe([]);
 
-        // Label in name (WCAG 2.5.3): every name starts with the text its button shows.
-        foreach ($state['names'] as $index => $name) {
-            expect(str_starts_with($name, $state['shown'][$index]))->toBeTrue("{$at}: \"{$name}\" does not start with \"{$state['shown'][$index]}\"");
+        // Label in name (WCAG 2.5.3): every name starts with the text its chip shows.
+        foreach ($state['names'] as [$name, $text]) {
+            expect(str_starts_with($name, $text))->toBeTrue("{$at}: \"{$name}\" does not start with \"{$text}\"");
         }
     }
 
-    // The cup board follows the games menu's order since b45c7907 (the registry's, GameRegistry::ordered()): FC27 before FC26.
-    expect($measured['en 1440']['names'])->toBe(['Chess', 'RL, Rocket League', 'FC27, EA Sports FC 27', 'FC26, EA Sports FC 26', 'AoE2, Age of Empires II: Definitive Edition'])
-        ->and($measured['en 1536']['names'])->toBe(['Chess', 'Rocket League', 'EA Sports FC 27', 'EA Sports FC 26', 'Age of Empires II: Definitive Edition'])
-        ->and($page->evaluate('() => window.__errors'))->toBe([])
+    expect($page->evaluate('() => window.__errors'))->toBe([])
         ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
 });
 
 /*
- * The organizers' tournaments above the cup board (user, 2026-09-28: "alle
+ * The organizers' tournaments above the casual cups (user, 2026-09-28: "alle
  * manuell angelegten Turniere sind die WICHTIGSTEN ... oben groß und nicht
- * unten klein"): the hero and every card, with its cover drawn in 16:9,
- * before the first casual cup, at 1440 and 375, in English and German.
+ * unten klein"). Tournaments.dc.html keeps the order and draws it so: the
+ * featured organizer tournament as the large card with its cover on top, then
+ * the open list with the organizers' first ("Tournaments with a pot first,
+ * then casual cups"), a running one under "Running", a finished one in the
+ * archive. The board drops the large organizer cards in a grid: every other
+ * tournament is a row with a 16:9 thumb. At 1440 and 375 in English and German.
  */
 const ORGANIZER_STATE = <<<'JS'
     () => {
         const box = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top + scrollY), bottom: Math.round(r.bottom + scrollY), left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), height: Math.round(r.height) }; };
         const cover = (el) => { const img = el.querySelector('[data-game-cover] img'); if (!img) return null; const r = img.getBoundingClientRect(); return { loaded: img.complete && img.naturalWidth > 0, ratio: Math.round(100 * r.width / r.height) / 100, height: Math.round(r.height), loading: img.getAttribute('loading') }; };
-        const hero = document.querySelector('[data-test=next-tournament]');
+        const hero = document.querySelector('[data-test=featured-tournament]');
+        const rows = [...document.querySelectorAll('[data-test=open-row], [data-test=open-row-phone]')].filter((r) => r.checkVisibility());
         return {
             lang: document.documentElement.lang,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             width: window.innerWidth,
             hero: hero ? { id: hero.dataset.tournament, ...box(hero), cover: cover(hero) } : null,
-            cards: [...document.querySelectorAll('[data-test=organizer-card]')].map((el) => ({ id: el.dataset.tournament, state: el.dataset.state, ...box(el), cover: cover(el), city: el.querySelector('[data-test=organizer-card-start] .text-ink-3')?.textContent.trim() })),
-            board: box(document.querySelector('[data-test=cup-mentions]')),
+            rows: rows.map((el) => ({ id: el.dataset.tournament, cup: el.dataset.region !== '', ...box(el), cover: cover(el) })),
+            running: [...document.querySelectorAll('[data-test=running-row]')].map((el) => el.dataset.tournament),
+            openEnd: document.querySelector('[data-test=featured-open-end]')?.checkVisibility() ? document.querySelector('[data-test=featured-open-end]').innerText : null,
         };
     }
     JS;
 
-test('the organizers\' tournaments stand above the casual cups, large and with their covers, at 1440 and 375 in English and German', function () {
+test('the organizers\' tournaments stand above the casual cups, the featured one large with its cover, at 1440 and 375 in English and German', function () {
     config(['esports.casual_cups.enabled' => ['chess', 'rocket-league', 'ea-sports-fc-26']]);
     app(CasualCups::class)->tick();
     $now = CarbonImmutable::now();
@@ -366,22 +412,21 @@ test('the organizers\' tournaments stand above the casual cups, large and with t
     $open = $made('21,000 Sats, Zero Ball Control', TournamentStatus::Signup, $now->addDays(4), ['game' => 'rocket-league', 'mode' => '3v3']);
     $running = $made('Friday Blitz at the Bitcoin Bar Berlin', TournamentStatus::Running, $now->subHour());
     $finished = $made('Blitz Night Leipzig', TournamentStatus::Finished, $now->subDays(8));
-    $cards = [(string) $open->id, (string) $running->id, (string) $finished->id];
-    $endClock = function (string $lang) use ($hero): string {
+    $endLine = function (string $lang) use ($hero): ?string {
         app()->setLocale($lang);
-        $clock = CupBoard::start($hero->expectedEnd()['typical'], 'America/New_York')['clock'];
+        $line = TournamentLanding::openEnd($hero->refresh(), LeagueTime::zone());
         app()->setLocale('en');
 
-        return $clock;
+        return $line;
     };
 
     foreach ([[1440, 900, 'en'], [375, 812, 'en'], [1440, 900, 'de'], [375, 812, 'de']] as [$width, $height, $lang]) {
-        $page = cupRegionsPage('/tournaments', $width, $height, '[data-test=organizer-card]');
+        $page = cupRegionsPage('/tournaments', $width, $height, '[data-test=featured-tournament]');
 
         if ($lang === 'de') {
             $page->goto(ComputeUrl::from('/locale/de'));
             $page->goto(ComputeUrl::from('/tournaments'));
-            BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=organizer-card]") !== null && document.fonts.status === "loaded"', 10_000);
+            BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=featured-tournament]") !== null && document.fonts.status === "loaded"', 10_000);
         }
 
         if ($width === 1440 && $lang === 'en') {
@@ -390,91 +435,96 @@ test('the organizers\' tournaments stand above the casual cups, large and with t
 
         // Every cover drawn: scroll the lazy ones into view, then back.
         $page->evaluate('() => new Promise((resolve) => { window.scrollTo(0, document.body.scrollHeight); setTimeout(() => { window.scrollTo(0, 0); resolve(true); }, 400); })');
-        BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=organizer-tournaments] [data-game-cover] img")].every((img) => img.complete && img.naturalWidth > 0)', 10_000);
+        BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=featured-tournament] [data-game-cover] img, [data-test=open-tournaments] [data-game-cover] img")].filter((img) => img.checkVisibility()).every((img) => img.complete && img.naturalWidth > 0)', 10_000);
         $state = $page->evaluate(ORGANIZER_STATE);
         cupRegionsShot($page, "organizers-first-{$width}-{$lang}");
+
+        $cups = array_values(array_filter($state['rows'], fn (array $row): bool => $row['cup']));
+        $organizers = array_values(array_filter($state['rows'], fn (array $row): bool => ! $row['cup']));
 
         expect([$width, $lang, $state['lang'], $state['overflow']])->toBe([$width, $lang, $lang, 0])
             ->and($state['hero']['id'])->toBe((string) $hero->id)
             ->and($state['hero']['cover']['loaded'])->toBeTrue()
             ->and($state['hero']['cover']['loading'])->toBe('eager')
-            ->and($state['hero']['bottom'])->toBeLessThan($state['board']['top'])
-            ->and(array_column($state['cards'], 'id'))->toBe($cards)
-            ->and(array_column($state['cards'], 'state'))->toBe(['open', 'running', 'finished'])
-            // A guest in New York reads each start on their own clock, the hero's expected end too.
-            ->and(array_unique(array_column($state['cards'], 'city')))->toBe(['New York'])
-            ->and($page->evaluate('() => document.querySelector("[data-test=open-end]").innerText'))->toContain($endClock($lang));
+            ->and($state['hero']['bottom'])->toBeLessThan($cups[0]['top'])
+            // The table repeats the featured tournament on a wide screen; the phone list leaves it to the card above.
+            ->and(array_column($organizers, 'id'))->toBe($width >= 1024 ? [(string) $hero->id, (string) $open->id] : [(string) $open->id])
+            ->and(max(array_column($organizers, 'bottom')))->toBeLessThanOrEqual(min(array_column($cups, 'top')))
+            ->and($state['running'])->toContain((string) $running->id)
+            ->and(array_column($state['rows'], 'id'))->not->toContain((string) $finished->id);
 
-        foreach ($state['cards'] as $card) {
-            expect($card['bottom'])->toBeLessThan($state['board']['top'])
-                ->and($card['cover']['loaded'])->toBeTrue()
-                ->and($card['cover']['loading'])->toBe('lazy')
-                ->and($card['cover']['ratio'])->toBeGreaterThanOrEqual(1.76)->toBeLessThanOrEqual(1.79)
-                ->and($card['right'])->toBeLessThanOrEqual($state['width']);
+        foreach ($state['rows'] as $row) {
+            expect($row['cover']['loaded'])->toBeTrue()
+                ->and($row['cover']['ratio'])->toBeGreaterThanOrEqual(1.74)->toBeLessThanOrEqual(1.8)
+                ->and($row['right'])->toBeLessThanOrEqual($state['width']);
         }
 
-        // Large: at 1440 the hero's cover is at least 400 px high and a card's 170; on a phone every card spans the column.
+        // Large: the featured cover at 1440 is the board's 480 px wide card art (270 px high), far above a row's thumb; on a phone the card spans the column.
         $width === 1440
-            ? expect($state['hero']['cover']['height'])->toBeGreaterThanOrEqual(400)->and(min(array_column(array_column($state['cards'], 'cover'), 'height')))->toBeGreaterThanOrEqual(170)
-            : expect(array_unique(array_column($state['cards'], 'width')))->toBe([343])->and($state['hero']['width'])->toBe(343);
+            ? expect($state['hero']['cover']['height'])->toBeGreaterThanOrEqual(250)->and($state['hero']['cover']['height'])->toBeGreaterThan(4 * max(array_column(array_column($state['rows'], 'cover'), 'height')))
+                ->and($state['openEnd'])->toBe($endLine($lang))
+            : expect($state['hero']['width'])->toBe(343);
 
         expect($page->evaluate('() => window.__errors'))->toBe([])
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     }
+
+    // The finished one lists in the archive (Archive.dc.html).
+    $archive = cupRegionsPage('/tournaments/archive', 1440, 900, '[data-test=archive-finished]');
+    expect($archive->evaluate('() => [...document.querySelectorAll("[data-test=archive-row]")].map((r) => r.dataset.tournament)'))->toContain((string) $finished->id);
 });
 
 /*
- * The cups' head under the organizers' tournaments (P3 of plan
- * mempool-streifen; user, 2026-09-29: the cups "gehen ... total unter" and
- * nobody reads them as tournaments, "Trotzdem haben die anderen Turniere oben
- * drüber absolute Prio"). At 320, 375 and 1280 in English and German: the
- * organizers' hero and card come first and stay larger, the head says
- * tournament, shows the winner and the next cup with faces and a countdown
- * that ticks; at 375 and 1280 its sign-up button is in the head's first
- * screen. No overflow, no text box cut, and after a Livewire round trip the
+ * The cups under the organizers' tournaments (P3 of plan mempool-streifen;
+ * user, 2026-09-29: the cups "gehen ... total unter", "Trotzdem haben die
+ * anderen Turniere oben drüber absolute Prio"). Tournaments.dc.html and
+ * TournamentsPhone.dc.html drop the cup hall with its explainer, last winner
+ * and next-cup card: the next cup is the first cup row of the open list, with
+ * its seats and its sign-up, the last winner stands in the archive's Hall of
+ * Fame (Archive.dc.html). At 320, 375 and 1280 in English and German: the
+ * featured organizer tournament first and larger, the next cup's row with
+ * its taken seats and a sign-up target, no overflow and no text box cut, the
+ * winner's full name in the Hall of Fame, and after a Livewire round trip the
  * console and the answers stay clean (positive control first).
  */
 const CUP_HEAD_STATE = <<<'JS'
     () => {
         const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top + scrollY), bottom: Math.round(r.bottom + scrollY), width: Math.round(r.width), height: Math.round(r.height) }; };
         const size = (el) => el ? parseFloat(getComputedStyle(el).fontSize) : 0;
-        // Every element that holds text of its own, inside the head and the board rows: cut when its content is wider than its box.
         const own = (el) => [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim() !== '');
-        const scope = [...document.querySelectorAll('[data-test=cup-hall], [data-test=cup-group]')];
+        const scope = [...document.querySelectorAll('[data-test=featured-tournament], [data-test=open-tournaments], [data-test=hall-of-fame]')];
+        // A visually hidden heading (max-lg:sr-only, 1 px) is cut on purpose; everything else counts.
         const cut = scope.flatMap((root) => [root, ...root.querySelectorAll('*')])
-            .filter((el) => own(el) && el.checkVisibility() && !el.closest('.sr-only') && getComputedStyle(el).display !== 'inline' && el.scrollWidth > el.clientWidth + 1)
+            .filter((el) => own(el) && el.checkVisibility() && !el.closest('.sr-only') && getComputedStyle(el).display !== 'inline' && el.getBoundingClientRect().width > 1 && el.scrollWidth > el.clientWidth + 1)
             .map((el) => (el.dataset.test || el.tagName) + ': ' + el.innerText.trim().slice(0, 40));
-        // The floor of the screen: a bar fixed to the bottom (the phone's tab bar), else the window's bottom.
-        const floor = Math.min(innerHeight, ...[...document.querySelectorAll('body *')].filter((el) => getComputedStyle(el).position === 'fixed' && el.checkVisibility() && Math.abs(el.getBoundingClientRect().bottom - innerHeight) < 2 && el.getBoundingClientRect().width > innerWidth / 2).map((el) => el.getBoundingClientRect().top));
+        const rows = [...document.querySelectorAll('[data-test=open-row], [data-test=open-row-phone]')].filter((r) => r.checkVisibility());
+        const cup = rows.find((r) => r.dataset.region !== '');
+        const target = cup ? (cup.querySelector('[data-test=row-signup]') ?? cup.querySelector('a')) : null;
         return {
             lang: document.documentElement.lang,
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            floor: Math.round(floor),
-            organizers: box(document.querySelector('[data-test=organizer-tournaments]')),
-            heroName: size(document.querySelector('[data-test=next-tournament-name]')),
-            heroCover: box(document.querySelector('[data-test=next-tournament-cover]')),
-            hall: box(document.querySelector('[data-test=cup-hall]')),
-            kind: document.querySelector('[data-test=cup-kind]')?.innerText.trim(),
-            explainer: document.querySelector('[data-test=cup-explainer]')?.innerText.trim(),
-            winner: document.querySelector('[data-test=cup-winner-name]')?.innerText.trim(),
-            nextName: size(document.querySelector('[data-test=cup-next-name]')),
-            nextCover: box(document.querySelector('[data-test=cup-next-cover]')),
-            faces: [...document.querySelectorAll('[data-test=cup-next-face] img')].filter((img) => img.checkVisibility() && img.getBoundingClientRect().width >= 24).length,
-            rowFaces: document.querySelectorAll('[data-test=cup-faces] img').length,
-            cta: box(document.querySelector('[data-test=cup-next-cta]')),
-            countdown: document.querySelector('[data-test=cup-next-countdown]')?.innerText.trim(),
+            title: document.querySelector('h1')?.innerText.trim(),
+            hero: box(document.querySelector('[data-test=featured-tournament]')),
+            heroName: size(document.querySelector('#ft-h')),
+            heroCover: box(document.querySelector('[data-test=featured-tournament] [data-game-cover]')),
+            cup: cup ? { id: cup.dataset.tournament, top: box(cup).top, name: size(cup.querySelector('a.font-bold, b')), cover: box(cup.querySelector('[data-game-cover]')), seats: cup.innerText.match(/(\d+)\/(\d+)/)?.[1] ?? null } : null,
+            target: box(target),
+            champion: document.querySelector('[data-test=hof-champion]')?.innerText.trim() ?? null,
             cut,
         };
     }
     JS;
 
-test('the cups\' head says tournament and brings the winner and the next cup under the organizers\' tournaments, at 320, 375 and 1280 in English and German', function () {
+test('the next cup stands as the first cup row under the organizers\' featured tournament, its winner in the Hall of Fame, at 320, 375 and 1280 in English and German', function () {
     config(['esports.casual_cups.enabled' => ['chess', 'rocket-league', 'ea-sports-fc-26']]);
     // 39 characters without a break (review of P3: a long name widened the page from 21 characters at 320 px).
-    wonCasualCup(User::factory()->create(['name' => 'SatoshiNakamotoTheFirstMinerOfBlockZero']), User::factory()->create(['name' => 'hal_finney']));
+    $won = wonCasualCup(User::factory()->create(['name' => 'SatoshiNakamotoTheFirstMinerOfBlockZero']), User::factory()->create(['name' => 'hal_finney']));
+    // Published as the league publishes every cup (TournamentPublisher::openSignup()): the archive lists published tournaments only.
+    $won->forceFill(['published_at' => $won->starts_at->subDay()])->save();
     app(CasualCups::class)->tick();
-    // The FC 26 EU cup (Friday 18:00 Berlin) starts first, so it is the head's next cup.
-    cupSignups(Tournament::query()->where('cup_open_series', 'ea-sports-fc-26-eu')->sole(), 3);
+    // The FC 26 EU cup (Friday 18:00 Berlin) starts first, so it is the first cup row.
+    $next = Tournament::query()->where('cup_open_series', 'ea-sports-fc-26-eu')->sole();
+    cupSignups($next, 3);
     $now = CarbonImmutable::now();
     $made = function (string $name, TournamentStatus $status, CarbonImmutable $startsAt, array $attributes = []): Tournament {
         $tournament = Tournament::factory()->create(['name' => $name, 'starts_at' => $startsAt, 'created_by_id' => organizer()->id, ...$attributes]);
@@ -484,55 +534,46 @@ test('the cups\' head says tournament and brings the winner and the next cup und
     };
     $made('EINUNDZWANZIG Fifa 2026', TournamentStatus::Signup, $now->addDays(3), ['game' => 'ea-sports-fc-26', 'mode' => '1v1']);
     $made('21,000 Sats, Zero Ball Control', TournamentStatus::Signup, $now->addDays(4), ['game' => 'rocket-league', 'mode' => '3v3']);
-    $words = [
-        'en' => ['Tournaments', 'The league opens a cup for every game and region on its own. Its games are casual and move only your casual Elo.'],
-        'de' => ['Turniere', 'Die Liga eröffnet für jedes Spiel und jede Region selbst einen Cup. Seine Partien sind casual und bewegen nur dein Casual-Elo.'],
-    ];
+    $titles = ['en' => 'Tournaments', 'de' => 'Turniere'];
 
     foreach ([[1280, 900, 'en'], [375, 812, 'en'], [320, 640, 'en'], [1280, 900, 'de'], [375, 812, 'de'], [320, 640, 'de']] as [$width, $height, $lang]) {
-        $page = cupRegionsPage('/tournaments', $width, $height, '[data-test=cup-hall]');
+        $page = cupRegionsPage('/tournaments', $width, $height, '[data-test=open-tournaments]');
         // Every page of a run shares its cookies (the locale too), so each one says its language.
         $page->goto(ComputeUrl::from('/locale/'.$lang));
         $page->goto(ComputeUrl::from('/tournaments'));
-        BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=cup-hall]") !== null && document.fonts.status === "loaded"', 10_000);
+        BrowserWait::until($page, '() => window.Alpine && document.querySelector("[data-test=open-tournaments]") !== null && document.fonts.status === "loaded"', 10_000);
 
         if ($width === 1280 && $lang === 'en') {
             cupRegionsControl($page);
         }
 
-        $page->evaluate('() => document.querySelector("[data-test=cup-hall]").scrollIntoView()');
         $state = $page->evaluate(CUP_HEAD_STATE);
         cupRegionsShot($page, "cup-head-{$width}-{$lang}");
 
         expect([$width, $lang, $state['lang'], $state['overflow'], $state['cut']])->toBe([$width, $lang, $lang, 0, []])
-            ->and([$state['kind'], $state['explainer']])->toBe($words[$lang])
-            ->and($state['winner'])->toBe('SatoshiNakamotoTheFirstMinerOfBlockZero')
-            // The organizers first and larger: their block ends before the head, their hero's name and cover are bigger.
-            ->and($state['organizers']['bottom'])->toBeLessThan($state['hall']['top'])
-            ->and($state['heroName'])->toBeGreaterThan($state['nextName'])
-            ->and($state['heroCover']['height'])->toBeGreaterThan($state['nextCover']['height'])
-            // Faces: three in the next cup's seats, three in its board row.
-            ->and([$state['faces'], $state['rowFaces']])->toBe([3, 3])
-            ->and($state['cta']['height'])->toBeGreaterThanOrEqual(44);
+            ->and($state['title'])->toBe($titles[$lang])
+            // The organizers first and larger: the featured card ends before the first cup row, its name and cover are bigger.
+            ->and($state['hero']['bottom'])->toBeLessThan($state['cup']['top'])
+            ->and($state['heroName'])->toBeGreaterThan($state['cup']['name'])
+            ->and($state['heroCover']['height'])->toBeGreaterThan($state['cup']['cover']['height'])
+            // The next cup: its row first among the cups, its three taken seats, its sign-up a target (the phone row is the link, 68 px; the
+            // table's "Eintragen" the board's 32 px button, over WCAG 2.5.8's 24).
+            ->and($state['cup']['id'])->toBe((string) $next->id)
+            ->and($state['cup']['seats'])->toBe('3')
+            ->and($state['target']['height'])->toBeGreaterThanOrEqual($width >= 1024 ? 32 : 44);
 
-        // The sign-up button in the head's first screen, above a phone's tab bar.
-        if ($width >= 375) {
-            expect($state['cta']['bottom'] - $state['hall']['top'])->toBeLessThanOrEqual($state['floor']);
-        }
-
-        // The countdown ticks in the browser.
-        BrowserWait::until($page, '() => document.querySelector("[data-test=cup-next-countdown]").innerText.trim() !== '.json_encode($state['countdown']), 3_000);
-
-        // At zero (the event the countdown sends) the button goes and the head says sign-up closed.
-        $page->evaluate('() => document.querySelector("[data-test=cup-next-countdown]").dispatchEvent(new CustomEvent("countdown-zero", { bubbles: true }))');
-        BrowserWait::until($page, '() => document.querySelector("[data-test=cup-next-closed]").checkVisibility() && !document.querySelector("[data-test=cup-next-cta]").checkVisibility()', 3_000);
-        expect($page->evaluate(CUP_HEAD_STATE)['overflow'])->toBe(0)
-            ->and($page->evaluate(CUP_HEAD_STATE)['cut'])->toBe([]);
-
-        // A Livewire round trip on the page: the head stays, the console and the answers stay clean.
+        // A Livewire round trip on the page: the list stays, the console and the answers stay clean.
         $page->evaluate('() => window.Livewire.find(document.querySelector("[data-test=tournaments-index]").closest("[wire\\\\:id]").getAttribute("wire:id")).$refresh()');
         BrowserWait::until($page, '() => performance.getEntries().some((e) => e.name.includes("/livewire") && e.name.includes("update") && e.responseStatus > 0)', 5_000);
-        expect($page->evaluate('() => document.querySelector("[data-test=cup-hall]") !== null'))->toBeTrue()
+        expect($page->evaluate('() => document.querySelector("[data-test=open-tournaments]") !== null'))->toBeTrue()
+            ->and($page->evaluate('() => window.__errors'))->toBe([])
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+
+        // The last cup's winner, in full, in the archive's Hall of Fame (Archive.dc.html).
+        $page->goto(ComputeUrl::from('/tournaments/archive'));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=hall-of-fame]") !== null && document.fonts.status === "loaded"', 10_000);
+        $hall = $page->evaluate(CUP_HEAD_STATE);
+        expect([$width, $lang, $hall['overflow'], $hall['cut'], $hall['champion']])->toBe([$width, $lang, 0, [], 'SatoshiNakamotoTheFirstMinerOfBlockZero'])
             ->and($page->evaluate('() => window.__errors'))->toBe([])
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     }
