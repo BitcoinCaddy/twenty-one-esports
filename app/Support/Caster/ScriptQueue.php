@@ -247,6 +247,7 @@ class ScriptQueue
     public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null): CasterScript
     {
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
+        $text = self::withoutSignOffs($text);
         $inParts = in_array($kind, [CasterScript::SCENE, ...CasterScript::SEGMENTS], true) || $scene === ChatWishes::SCENE;
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
@@ -459,5 +460,29 @@ class ScriptQueue
         }
 
         return array_values($picked);
+    }
+
+    /** A goodbye anywhere in a sentence: "ciao", "peace out", "bis zum nächsten Mal", "macht's gut", "gute Nacht" … */
+    public const SIGN_OFF = '/\b(?:tsch(?:ü|ue)ss|tschau|ciao|adios|peace out|servus und|bis (?:gleich|später|morgen|bald|dann|demnächst|nächste woche|zum nächsten mal)|macht?\S{0,2} gut|auf wiedersehen|auf wiederhören|gute nacht|schönen abend noch|wir (?:sehen|hören|lesen) uns|haut rein|gehabt euch wohl|over and out|das war\S{0,2} für heute|meine finalen worte)\b/iu';
+
+    /**
+     * The TV voice never says goodbye (user 2026-10-11: "er soll sich nie wieder verabschieden!"): every sentence
+     * with a farewell leaves the script, whichever source it came from (the canon has dozens of podcast outros).
+     */
+    public static function withoutSignOffs(string $text): string
+    {
+        $lines = [];
+
+        foreach (explode("\n", $text) as $line) {
+            $sentences = preg_split('/(?<=[.!?])\\s+/u', trim($line)) ?: [];
+            $kept = array_filter($sentences, fn (string $sentence): bool => $sentence !== '' && preg_match(self::SIGN_OFF, $sentence) !== 1);
+            $kept = array_filter($kept, fn (string $sentence): bool => preg_match('/[\\p{L}]/u', preg_replace('/\\[[^\\]]*\\]/u', '', $sentence) ?? '') === 1);
+
+            if ($kept !== []) {
+                $lines[] = implode(' ', $kept);
+            }
+        }
+
+        return $lines === [] ? $text : implode("\n", $lines);
     }
 }

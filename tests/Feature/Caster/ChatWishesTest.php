@@ -406,3 +406,9 @@ it('plays the reply and then the wished segment ahead of scenes, also a long seg
     $spool->played($spool->nextLive($now));
     expect($spool->next('live_match', $now)['clip']->caster_script_id)->toBe($second->id);
 });
+
+it('never queues a goodbye: farewell sentences leave every script, the rest stays', function () {
+    expect(ScriptQueue::withoutSignOffs("Stack Sats und bleib bullisch damit. Ciao.\nDer Euro wackelt."))->toBe("Stack Sats und bleib bullisch damit.\nDer Euro wackelt.")
+        ->and(ScriptQueue::withoutSignOffs("[laughter] Peace out.\nBis zum nächsten Mal.\nWeiter geht's."))->toBe("Weiter geht's.")
+        ->and(ScriptQueue::withoutSignOffs('Gute Nacht von TWENTY ONE. Morgen geht es weiter.'))->toBe('Morgen geht es weiter.');
+});

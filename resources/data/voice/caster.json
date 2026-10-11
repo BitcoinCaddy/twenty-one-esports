@@ -1976,7 +1976,7 @@
    "kind": "sign_off",
    "energy": 1,
    "length": "mittel",
-   "template": "Gute Nacht von TWENTY ONE. Morgen geht's weiter, die Tafel ist schon vorbereitet.",
+   "template": "Die Nacht ist jung bei TWENTY ONE. Die Tafel für morgen ist schon vorbereitet.",
    "fits": [
     "night"
    ]
@@ -1986,7 +1986,7 @@
    "kind": "sign_off",
    "energy": 2,
    "length": "kurz",
-   "template": "Wir sehen uns beim nächsten Ergebnis.",
+   "template": "Bleibt dran, das nächste Ergebnis kommt bestimmt.",
    "fits": [
     "between"
    ]

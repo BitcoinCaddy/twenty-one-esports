@@ -716,7 +716,7 @@ final class PatternScripts
             $words = count(preg_split('/\s+/u', trim($wording), -1, PREG_SPLIT_NO_EMPTY) ?: []);
 
             if ($words < 2 || $words > self::CANON_MAX_WORDS || substr_count($wording, ',') > 1 || preg_match('/[#@()\[\]*:;„“”"»«…\/\d]|\p{So}|\p{Cs}/u', $wording) === 1
-                || preg_match(self::CANON_DENY, $wording) === 1 || preg_match('/(?<![\p{L}])\p{L}{1,3}\.\s/u', $wording) === 1 || in_array($entry['type'], ['segment', 'clip'], true)
+                || preg_match(self::CANON_DENY, $wording) === 1 || preg_match(ScriptQueue::SIGN_OFF, $wording) === 1 || preg_match('/(?<![\p{L}])\p{L}{1,3}\.\s/u', $wording) === 1 || in_array($entry['type'], ['segment', 'clip'], true)
                 || array_filter($persons, fn (string $person): bool => str_contains($lower, $person)) !== []) {
                 continue;
             }
