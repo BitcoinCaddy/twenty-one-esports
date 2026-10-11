@@ -196,7 +196,7 @@ test('the Rocket League page at 390, 1024, 1280 and 1440: nothing squeezed, cut 
 
     // The band's button leads to the Rocket League tournaments.
     $page->locator('[data-test=prize-band-all]')->click();
-    BrowserWait::until($page, '() => location.pathname === "/tournaments" && new URLSearchParams(location.search).get("game") === "rocket-league" && document.querySelector("[data-test=tournaments-game-filter]") !== null', 10_000);
+    BrowserWait::until($page, '() => location.pathname === "/tournaments" && new URLSearchParams(location.search).get("game") === "rocket-league" && document.querySelector("[data-test=tournament-filters]") !== null', 10_000);
 });
 
 test('an open tournament\'s poster in the band fits the narrow column beside the chat at 390, 1024 and 1280', function () {

@@ -22,6 +22,8 @@ final class ChessLobby
 
         // A player's "Find opponent", or a guest's way to log in.
         BrowserWait::until($page, '() => document.querySelector("[data-test=find-opponent-button], [data-test=find-opponent-login]")?.checkVisibility() === true', 5_000);
+        // The opened panel scrolls itself into view one frame after it shows (pages/chess/partials/lobby-play): let it.
+        $page->evaluate('() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
     }
 
     /** Opens the panel and its "?", so the reasons are rendered text. */

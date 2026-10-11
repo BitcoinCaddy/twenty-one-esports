@@ -101,7 +101,7 @@ new #[Title('Tournaments')] #[Layout('layouts::app', ['section' => 'tournaments'
 @endphp
 
 <div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-10 lg:px-12" data-test="tournaments-index">
-    <div class="flex items-center gap-4">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
         <h1 class="m-0 font-display text-2xl leading-[1.15] font-bold lg:text-[36px]">{{ __('Tournaments') }}</h1>
         <span class="text-[13px] text-ink-2 max-lg:hidden" data-test="tournaments-lead">
             {{ Seasons::isLive() ? __('Tournament matches count for Elo and never mine season blocks.') : __('Until Block 0 every tournament match is casual.') }}
@@ -109,7 +109,7 @@ new #[Title('Tournaments')] #[Layout('layouts::app', ['section' => 'tournaments'
         <span class="grow"></span>
         @can('create-tournaments')
             {{-- Organizers and admins: the way to set one up (the admin list holds the rest). --}}
-            <a href="{{ route('admin.tournaments.create') }}" class="rv-b2 max-lg:hidden" data-test="index-new-tournament">+ {{ __('New tournament') }}</a>
+            <a href="{{ route('admin.tournaments.create') }}" class="rv-b2 shrink-0" data-test="index-new-tournament">+ {{ __('New tournament') }}</a>
         @endcan
         <a href="{{ route('tournaments.archive') }}" class="rv-b2 max-lg:hidden" data-test="to-archive"><x-icon name="list" :size="16" />{{ __('Archive') }}</a>
         <a href="{{ route('tournaments.archive') }}" class="rv-lk text-[13px] lg:hidden" data-test="to-archive-phone">{{ __('Archive') }}</a>

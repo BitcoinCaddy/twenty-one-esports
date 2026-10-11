@@ -363,7 +363,7 @@ new #[Layout('layouts::app')] class extends Component {
         <x-game-cover :game="$slug" size="thumb" class="w-full shrink-0 rounded-[4px] sm:w-[240px]" />
         <div class="flex min-w-0 grow flex-col gap-2">
         <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <h1 class="m-0 font-display text-[28px] font-bold lg:text-[34px]">{{ __(':game correspondence', ['game' => $name]) }}</h1>
+            <h1 class="m-0 min-w-0 font-display text-[clamp(20px,7vw,28px)] font-bold break-words lg:text-[34px]">{{ __(':game correspondence', ['game' => $name]) }}</h1>
             <a href="{{ route('board.lobby', $slug) }}" class="rv-lk text-[13px]" data-test="correspondence-lobby-link">{{ __('Lobby') }}</a>
         </div>
         <p class="m-0 max-w-[70ch] text-[13px] leading-normal text-ink-2">{{ __('One move a day: each move has 24 hours, a reminder comes before your deadline, and a missed deadline loses the game. The server checks every move.') }}</p>

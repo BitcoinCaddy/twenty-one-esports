@@ -130,7 +130,13 @@
         <div class="mt-4 flex flex-wrap items-center gap-x-6 border-t border-hairline pt-3 text-[13px]" data-test="hub-links">
             <a href="{{ route('play') }}" @navigate(route('play')) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="hub-all-games">{{ __('All games and modes') }}</a>
             <a href="{{ route('games.index') }}" @navigate(route('games.index')) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="games-menu-live">{{ __('Watch live') }}</a>
+            {{-- One click from every page (P16 rule, NavigationCrawlTest): the ladders, and for a player the two challenges. --}}
+            <a href="{{ route('ladder.show', ['chess', 'rapid']) }}" @navigate(route('ladder.show', ['chess', 'rapid'])) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="hub-ladders">{{ __('Ladders') }}</a>
             <a href="{{ route('ladder.strongest') }}" @navigate(route('ladder.strongest')) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="hub-strongest">{{ __('Strongest players') }}</a>
+            @auth
+                <a href="{{ route('chess.challenge') }}" @navigate(route('chess.challenge')) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="hub-challenge-player">{{ __('Challenge a player') }}</a>
+                <a href="{{ route('challenges.create') }}" @navigate(route('challenges.create')) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="hub-challenge-clan">{{ __('Challenge a clan') }}</a>
+            @endauth
             <a href="{{ route('matches.index', ['chain' => 'casual']) }}" @navigate(route('matches.index', ['chain' => 'casual'])) class="flex min-h-11 items-center text-ink-2 hover:text-ink" data-test="hub-casual">{{ __('Casual chain') }}</a>
         </div>
     </div>

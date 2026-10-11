@@ -338,12 +338,6 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
     $colour = $registry->get($this->slug)->assets()->colour;
     $gameName = GameNames::game($this->slug);
     $bestOf = array_values(array_unique(array_merge(...array_values(array_map(fn ($mode) => $mode->bestOf, $modes)))));
-    $kinds = array_unique(array_map(fn ($mode) => $mode->rates, array_values($modes)));
-    $pitch = match (true) {
-        in_array('player', $kinds, true) && in_array('lineup', $kinds, true) => __('Play alone or with your clan. Every series moves your Elo.'),
-        in_array('lineup', $kinds, true) => __('Play with your clan. Every series moves your Elo.'),
-        default => __('Play one on one. Every series moves your Elo.'),
-    };
     $user = auth()->user();
     $casual = \App\Support\Series\CasualLobby::offers($slug);
     $casualOn = $casual && \App\Support\Series\CasualLobby::chatOn();
@@ -387,7 +381,8 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
 --}}
 <x-game.page :game="$slug" data-test="game-page">
     <x-slot:primary>
-        <a href="{{ $ctaHref }}" class="rv-b" data-test="game-cta" data-action="{{ $ctaAction }}">{{ $ctaAction === 'challenge' ? __('Challenge') : $ctaLabel }}</a>
+        {{-- In the sticky bar on a phone too: there the short word, so the tabs keep their room at 320 px. --}}
+        <a href="{{ $ctaHref }}" class="rv-b" data-test="game-cta" data-action="{{ $ctaAction }}"><span class="md:hidden">{{ match ($ctaAction) { 'login' => __('Log in'), 'match' => __('Open match'), 'casual' => __('Find opponent'), default => __('Challenge') } }}</span><span class="max-md:hidden">{{ $ctaAction === 'challenge' ? __('Challenge') : $ctaLabel }}</span></a>
     </x-slot:primary>
 
     <x-slot:top>
@@ -411,7 +406,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
                 <ul role="list" aria-label="{{ __('Right now in :game', ['game' => $gameName]) }}" class="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0" data-test="game-pulse">
                     @foreach ($pulseItems as [$key, $count, $text, $href, $live])
                         <li>
-                            <a href="{{ $href }}" class="flex flex-col text-ink hover:text-ink" data-test="game-pulse-{{ $key }}" data-count="{{ $count }}">
+                            <a href="{{ $href }}" class="flex min-h-11 flex-col justify-center text-ink hover:text-ink" data-test="game-pulse-{{ $key }}" data-count="{{ $count }}">
                                 <span class="rv-m">{{ $text }}</span>
                                 <b @class(['font-display text-xl leading-tight tabular-nums', 'text-ink-3' => $count === 0])>{{ $count }}</b>
                             </a>
@@ -603,7 +598,7 @@ new #[Layout('layouts::app', ['section' => 'matches', 'scripts' => ['resources/j
                 <div class="flex flex-col gap-2 border-t border-hairline pt-3">
                     <h3 id="rl-hr" class="m-0 text-[13px] font-bold text-ink-2">{{ __('Clan Hashrate, last 7 days') }}</h3>
                     @if ($hash->isEmpty())
-                        <p class="m-0 text-[13px] leading-normal text-ink-2" data-test="rl-hashrate-empty">{{ $hashEmpty }}</p>
+                        <p class="m-0 max-w-[68ch] text-[13px] leading-normal text-ink-2" data-test="rl-hashrate-empty">{{ $hashEmpty }}</p>
                     @else
                         <div role="img" aria-label="{{ $hash->map(fn ($row) => $row['clan']->name.' '.$row['points'])->implode(', ') }}" class="flex h-3 overflow-hidden rounded-xs bg-raised" data-test="rl-hashrate-bar">
                             @foreach ($hash as $index => $row)
