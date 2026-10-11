@@ -160,5 +160,45 @@
   "Hey {name}, willkommen im Wohnzimmer der Liga.",
   "Moin {name}, auch wenn wir hier eher Servus sagen.",
   "Grüß dich, {name}, schön dich zu sehen."
+ ],
+ "wish_history": [
+  "{name} will den Bauernkrieg hören, na dann!",
+  "{name} wünscht sich den Bauernkrieg, den bekommst du jetzt.",
+  "Der Bauernkrieg für {name}, Leute, holt euch was zu trinken.",
+  "{name} will Geschichte, also zurück ins Jahr der aufständischen Bauern."
+ ],
+ "wish_news": [
+  "{name} will Neuigkeiten, dann schauen wir mal in die Schlagzeilen.",
+  "Schlagzeilen für {name}, hier kommt die frischeste.",
+  "{name} fragt nach News, na dann lesen wir mal vor.",
+  "Nachrichten für {name}, mal sehen, was die Welt heute treibt."
+ ],
+ "wish_joke": [
+  "{name} will Sprüche hören, die kriegst du.",
+  "Ein paar Sprüche für {name}, aufgepasst.",
+  "{name} braucht was zum Lachen, kommt sofort.",
+  "Witze für {name}, aus dem Schatzkästchen von EINUNDZWANZIG."
+ ],
+ "wish_game": [
+  "{name} will wissen, wie es in der Liga steht, schauen wir rein.",
+  "Der Spielstand für {name}, kommt sofort.",
+  "{name} fragt nach den Partien, dann schauen wir mal aufs Brett.",
+  "Für {name} ein Blick auf das, was gerade läuft."
+ ],
+ "wish_canon": [
+  "{name} will EINUNDZWANZIG-Wissen, das gibt es jetzt.",
+  "Ein Stück Podcast-Geschichte für {name}.",
+  "{name} fragt nach EINUNDZWANZIG, da erzähl ich gern was.",
+  "Für {name} ein paar Klassiker aus dem Podcast."
+ ],
+ "wish_intro_joke": [
+  "Hier kommen ein paar Sprüche aus dem Kanon.",
+  "Aufgepasst, jetzt wird es lustig.",
+  "Ein paar Klassiker für euch."
+ ],
+ "wish_intro_canon": [
+  "Ein bisschen EINUNDZWANZIG-Wissen für euch.",
+  "Aus dem Archiv des Podcasts.",
+  "Ein paar Klassiker aus unserem Podcast."
  ]
 }

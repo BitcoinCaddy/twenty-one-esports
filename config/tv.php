@@ -291,6 +291,16 @@ return [
             'zaps' => (bool) env('TV_COMMENTARY_CHAT_ZAPS', true),
             'zap_bundle_seconds' => 60,
             'zap_big_sats' => (int) env('TV_COMMENTARY_ZAP_BIG_SATS', 10_000),
+            // Wishes of trusted chatters (App\Support\Caster\ChatWishes): a Bauernkrieg episode, news, jokes, the game,
+            // EINUNDZWANZIG lore or "erzähl mehr", queued right behind the reply. Web of trust level 1 always, up to
+            // `wishes_min_level`, or a trust rank of at least the season minimum. 0 lifts a limit (no cooldown, no
+            // hourly cap, no Bauernkrieg repeat window).
+            'wishes' => (bool) env('TV_COMMENTARY_CHAT_WISHES', true),
+            'wishes_min_level' => (int) env('TV_COMMENTARY_WISHES_MIN_LEVEL', 2),
+            'wishes_person_minutes' => (int) env('TV_COMMENTARY_WISH_PERSON_MINUTES', 5),
+            'wishes_per_hour' => (int) env('TV_COMMENTARY_WISHES_PER_HOUR', 6),
+            'wishes_history_repeat_minutes' => (int) env('TV_COMMENTARY_HISTORY_REPEAT_MINUTES', 60),
+            'wishes_max_age_minutes' => 30,
             // `caster:chat` runs every minute and reads the chat and zaps this often within it (a reaction is written sooner).
             'poll_seconds' => 15,
         ],

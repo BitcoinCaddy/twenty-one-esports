@@ -49,6 +49,28 @@ class ChatterCache
         return is_int($rank) && $rank >= $this->trustMinimum();
     }
 
+    /**
+     * Whether a chatter's wish is granted (ChatWishes): not muted, and web of
+     * trust level 1 (up to `wishes_min_level`, default 2) or a trust rank of
+     * at least the season's minimum.
+     */
+    public function mayWish(string $pubkey): bool
+    {
+        if (SiteModeration::isHidden($pubkey)) {
+            return false;
+        }
+
+        $level = max(1, (int) config('tv.commentary.chat.wishes_min_level', 2));
+
+        if (WotLevel::query()->whereKey($pubkey)->where('level', '<=', $level)->exists()) {
+            return true;
+        }
+
+        $rank = TrustRank::query()->where('pubkey', $pubkey)->value('rank');
+
+        return is_int($rank) && $rank >= $this->trustMinimum();
+    }
+
     public function touchChat(string $pubkey, CarbonImmutable $now): ChatterProfile
     {
         $profile = ChatterProfile::query()->firstOrNew(['pubkey' => $pubkey]);

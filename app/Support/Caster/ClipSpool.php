@@ -191,11 +191,18 @@ class ClipSpool
         return ['clip' => null, 'caption' => null, 'source' => 'none'];
     }
 
-    /** The oldest ready live moment or chat reaction, which may cut the gap between clips short. */
+    /**
+     * The oldest ready live moment, chat reaction or wished segment
+     * (ChatWishes::SCENE, also a long news or Bauernkrieg one), which may cut
+     * the gap between clips short. In the order the scripts were queued, so a
+     * wish's segment follows its acknowledgement.
+     */
     public function nextLive(CarbonImmutable $now): ?CasterClip
     {
         return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
-            ->whereIn('kind', self::LIVE_KINDS)->orderBy('id')->first();
+            ->where(fn ($query) => $query->whereIn('kind', self::LIVE_KINDS)
+                ->orWhereIn('caster_script_id', CasterScript::query()->where('scene', ChatWishes::SCENE)->select('id')))
+            ->orderBy('caster_script_id')->orderBy('id')->first();
     }
 
     /** The oldest ready news or history segment, unless one started within `segment_spacing_minutes`. */
