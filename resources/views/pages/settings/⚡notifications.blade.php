@@ -272,9 +272,10 @@ new #[Title('Notifications')] #[Layout('layouts::app', ['scripts' => ['resources
                     <p class="m-0 mb-2 text-xs leading-normal text-ink-2">{{ __('Daily collects these into one DM at 18:00 (Berlin time). The bell still shows each at once.') }}</p>
                     @foreach ($dmKinds as $kind)
                         @php([$label] = $kind->setting())
-                        <div class="flex min-h-[61px] items-center gap-4 border-b border-hairline py-2 last:border-0">
+                        {{-- The row wraps and the group never grows past it: "Tägliche Zusammenfassung" beside "Sofort" ran 37 px out of a 320 px phone in German; on a phone the wrapped buttons start under the label. --}}
+                        <div class="flex min-h-[61px] flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline py-2 last:border-0">
                             <span id="dm-timing-{{ $kind->value }}-label" class="min-w-0 grow text-sm">{{ __($label) }}</span>
-                            <div role="group" aria-labelledby="dm-timing-{{ $kind->value }}-label" class="flex shrink-0 flex-wrap justify-end gap-1" data-test="dm-timing-{{ $kind->value }}">
+                            <div role="group" aria-labelledby="dm-timing-{{ $kind->value }}-label" class="flex max-w-full flex-wrap gap-1 sm:ml-auto sm:justify-end" data-test="dm-timing-{{ $kind->value }}">
                                 @foreach (['instant' => __('At once'), 'daily' => __('Daily digest')] as $value => $text)
                                     <button type="button" wire:click="setDigest('{{ $kind->value }}', '{{ $value }}')" aria-pressed="{{ ($value === 'daily') === $settings->digestFor($kind->value) ? 'true' : 'false' }}" class="rv-chip h-11">{{ $text }}</button>
                                 @endforeach

@@ -39,10 +39,11 @@
     <div class="flex flex-col gap-6 pb-6 lg:px-12 lg:pb-8">
         {{--
             The head band (PlayerPublic.dc.html, template T7, P7): picture, name, address, honours and the ways to play on
-            the left, on the right the player's Nostr banner (or the drawn one) as the band's picture.
+            the left, on the right the player's Nostr banner (or the drawn one) as the band's picture. The band is the page's
+            key art (R1): from lg it runs edge to edge and its picture touches the right edge (data-bleed), as on the board.
         --}}
         <section aria-labelledby="ph-name" class="relative flex flex-col" data-test="player-header">
-            <div class="grid grid-cols-1 overflow-hidden border-b border-hairline bg-[linear-gradient(90deg,#14110C,var(--color-ground)_70%)] lg:-mx-12 lg:min-h-60 lg:grid-cols-[minmax(0,1fr)_minmax(0,30%)]" data-test="player-band">
+            <div class="grid grid-cols-1 overflow-hidden border-b border-hairline bg-[linear-gradient(90deg,#14110C,var(--color-ground)_70%)] lg:-mx-12 lg:min-h-60 lg:grid-cols-[minmax(0,1fr)_minmax(0,30%)]" data-bleed data-test="player-band">
                 <div class="order-2 flex flex-col gap-3 px-4 py-6 lg:order-1 lg:grid lg:grid-cols-[96px_minmax(0,1fr)] lg:items-start lg:gap-x-6 lg:gap-y-3 lg:px-12 lg:py-10">
                 <div class="flex items-end gap-3 lg:row-span-3">
                     <x-avatar :user="$user" :size="128" :class="\Illuminate\Support\Arr::toCssClasses(['size-[72px]! rounded-full lg:size-24!', 'shadow-[0_0_0_4px_#0A0A0B]' => ! $inviteFrame, 'shadow-[0_0_0_4px_#0A0A0B,0_0_0_7px_var(--color-btc),0_0_24px_rgba(247,147,26,0.35)]' => $inviteFrame])" :data-test="$inviteFrame ? 'invite-frame' : null" />
