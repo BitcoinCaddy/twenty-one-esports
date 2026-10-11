@@ -47,16 +47,19 @@ class HistoryScripts
     }
 
     /**
-     * The next segment, or null when every episode was told within `repeat_hours`.
+     * The next segment, or null when every episode was told within `repeat_hours`
+     * (`$repeatMinutes` instead: a chat wish, ChatWishes, may hear an episode
+     * again after an hour).
      *
      * @return array{text: string, episode: string}|null
      */
-    public function write(CarbonImmutable $now, bool $long = false): ?array
+    public function write(CarbonImmutable $now, bool $long = false, ?int $repeatMinutes = null): ?array
     {
         $data = self::data();
         $told = CasterScript::query()->where('kind', CasterScript::HISTORY)->where('facts_hash', 'like', self::HASH_PREFIX.'%')
             ->selectRaw('facts_hash, max(created_at) as told_at')->groupBy('facts_hash')->pluck('told_at', 'facts_hash')->all();
-        $since = $now->subHours((int) config('tv.commentary.history.repeat_hours', 24));
+        // `$repeatMinutes` 0: no repeat window, the episode told longest ago comes next.
+        $since = $repeatMinutes === null ? $now->subHours((int) config('tv.commentary.history.repeat_hours', 24)) : $now->subMinutes(max(0, $repeatMinutes));
 
         $candidates = [];
         foreach ($data['episodes'] as $index => $episode) {

@@ -84,6 +84,22 @@ class ReactionLines
     }
 
     /**
+     * The acknowledgement of a chat wish (ChatWishes), by the wisher's public
+     * name: "{name} will den Bauernkrieg hören, na dann!". The segment itself
+     * follows as a script of its own.
+     */
+    public function wish(string $type, ?string $name): string
+    {
+        return $this->fill(self::withName($this->pick('wish_'.$type), $name), []);
+    }
+
+    /** The opening line of a wished joke or canon run (ChatWishes::JOKE, ChatWishes::CANON). */
+    public function wishIntro(string $type): string
+    {
+        return $this->pick('wish_intro_'.$type);
+    }
+
+    /**
      * The intent of a chat message, first match wins: a request to react,
      * 24/7 or sleep, work, zaps, a compliment, a question, a greeting; null
      * when none matches.

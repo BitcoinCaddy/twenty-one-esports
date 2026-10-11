@@ -49,7 +49,9 @@ use Illuminate\Support\Facades\Cache;
  * 2026-10-11: "reagiert gar nicht auf den Inhalt der Chat-Nachricht! Das
  * will ich aber!"); without the model ReactionLines::reply() picks a line
  * for the message's intent. Banter passes, an invented league fact does
- * not (ChatFactCheck). An untrusted chatter's message is never read. Skips are counted per reason in VoiceUsage
+ * not (ChatFactCheck). A trusted chatter's wish (a Bauernkrieg episode,
+ * news, jokes, the game; ChatWishes) is acknowledged by name and the segment
+ * queued right behind the reply. An untrusted chatter's message is never read. Skips are counted per reason in VoiceUsage
  * (`chat_reaction`), never the text.
  */
 class ChatReactions
@@ -84,6 +86,7 @@ class ChatReactions
         private VoiceUsage $usage,
         private CasterVoice $voice,
         private ReactionLines $lines,
+        private ChatWishes $wishes,
     ) {}
 
     public static function enabled(): bool
@@ -186,13 +189,16 @@ class ChatReactions
         $settings = (array) config('tv.commentary.chat', []);
         $profile = ChatterProfile::query()->where('pubkey', $event->pubkey)->first();
 
-        if ($profile?->last_reaction_at !== null && $profile->last_reaction_at->greaterThan($now->subMinutes((int) ($settings['per_person_minutes'] ?? 15)))) {
+        // 0 means no limit, for the cooldown and the hourly cap alike.
+        $personMinutes = (int) ($settings['per_person_minutes'] ?? 15);
+        if ($personMinutes > 0 && $profile?->last_reaction_at !== null && $profile->last_reaction_at->greaterThan($now->subMinutes($personMinutes))) {
             return 'person_cooldown';
         }
 
         // The greetings for everybody have their own limit (everyone_minutes) and do not count here.
-        if (CasterScript::query()->where('kind', CasterScript::CHAT)->where(fn ($query) => $query->whereNull('topic')->orWhere('topic', '!=', self::GREETING_TOPIC))
-            ->where('created_at', '>', $now->subHour())->count() >= (int) ($settings['per_hour'] ?? 6)) {
+        $perHour = (int) ($settings['per_hour'] ?? 6);
+        if ($perHour > 0 && CasterScript::query()->where('kind', CasterScript::CHAT)->where(fn ($query) => $query->whereNull('topic')->orWhere('topic', '!=', self::GREETING_TOPIC))
+            ->where('created_at', '>', $now->subHour())->count() >= $perHour) {
             return 'hourly_cap';
         }
 
@@ -263,6 +269,21 @@ class ChatReactions
         // the name stays the one fact from the chatter: their own public kind 0 name (never a gamer tag).
         $message = self::sanitizeMessage($event->content);
         $facts = $name === null ? ['chat' => 'eine Nachricht im Stream-Chat'] : ['chatter_name' => $name];
+
+        // A wish of a trusted chatter (ChatWishes): the acknowledgement, then the segment right behind it, both live.
+        $wish = $this->wishes->grant($event->pubkey, $message, $now);
+        if ($wish !== null) {
+            $live = (int) config('tv.commentary.scripts.live_priority', 100);
+            $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $this->lines->wish($wish['type'], $name), SceneFacts::hash($facts), $live, $now, source: CasterScript::SOURCE_PATTERN);
+            $this->queue->enqueue($wish['kind'], ScenePhase::BREAK, $wish['text'], $wish['facts_hash'], $live, $now, scene: ChatWishes::SCENE, source: $wish['source'], topic: $wish['topic'],
+                maxAgeMinutes: (int) config('tv.commentary.chat.wishes_max_age_minutes', 30));
+            $profile->last_reaction_at = Carbon::instance($now);
+            $profile->save();
+            $this->cache->rememberExchange($event->pubkey, implode(', ', $keywords));
+
+            return true;
+        }
+
         $priority = (int) config('tv.commentary.scripts.chat_priority', 50);
         $text = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, $hints) : null;
 

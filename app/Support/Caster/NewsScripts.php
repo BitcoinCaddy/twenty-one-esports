@@ -40,12 +40,16 @@ class NewsScripts
 
     /**
      * The next headline: the section that did not speak last first, the newest
-     * unused one published within `fresh_hours`.
+     * unused one published within `fresh_hours`. `$section` first (a chat
+     * wish for Bitcoin or German news, ChatWishes), the other one after it.
      */
-    public function next(CarbonImmutable $now): ?CasterNews
+    public function next(CarbonImmutable $now, ?string $section = null): ?CasterNews
     {
         $last = CasterScript::query()->where('kind', CasterScript::NEWS)->orderByDesc('id')->value('topic');
         $sections = $last === CasterNews::BITCOIN ? [CasterNews::GERMANY, CasterNews::BITCOIN] : [CasterNews::BITCOIN, CasterNews::GERMANY];
+        if ($section !== null && in_array($section, $sections, true)) {
+            $sections = [$section, ...array_values(array_diff($sections, [$section]))];
+        }
         $fresh = $now->subHours((int) config('tv.commentary.news.fresh_hours', 12));
 
         foreach ($sections as $section) {
