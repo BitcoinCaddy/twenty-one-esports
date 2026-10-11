@@ -116,7 +116,7 @@ final class TournamentModeSwitch
             ->latest('id')->limit(100)->get()
             ->first(fn (TournamentModerationEntry $entry): bool => is_array($entry->details['mode'] ?? null) && is_string($entry->details['mode'][0] ?? null) && is_string($entry->details['mode'][1] ?? null));
 
-        if (! $entry instanceof TournamentModerationEntry || $tournament->published_at === null || $entry->created_at->lessThan($tournament->published_at)) {
+        if (! $entry instanceof TournamentModerationEntry || $entry->created_at->lessThan($tournament->published_at)) {
             return null;
         }
 
