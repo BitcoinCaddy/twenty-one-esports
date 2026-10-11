@@ -392,6 +392,7 @@ registerAlpine(() => {
 
             this.layout.cells.forEach((cell) => svg.append(svgElement('rect', { x: cell.x, y: cell.y, width: cell.size, height: cell.size, fill: '#3F3F46' })));
             this.layout.lines.forEach(([x1, y1, x2, y2]) => svg.append(svgElement('line', { x1, y1, x2, y2, stroke: '#52525B', 'stroke-width': Math.max(2, r * 0.12), 'stroke-linecap': 'round' })));
+            this.drawCoordinates(svg);
 
             this.layout.points.forEach((point) => {
                 const piece = pieces[point.id] ?? null;
@@ -436,6 +437,41 @@ registerAlpine(() => {
                     svg.append(svgElement('rect', { x: at.x - width / 2, y: at.y - height / 2, width, height, rx: this.bar.thickness / 2, fill: this.preview.move ? 'rgba(247, 147, 26, 0.9)' : 'rgba(239, 68, 68, 0.8)', 'pointer-events': 'none', 'data-preview': this.preview.move ? 'legal' : 'illegal' }));
                 }
             }
+        },
+
+        /**
+         * The squares' names on the edge squares, as on a chessboard (Markus, 2026-10-11: "spart das ständige Abzählen,
+         * wenn man alte Züge nachvollziehen will"): the file in the bottom right corner of the bottom row, the rank in the
+         * top left corner of the left column, both as the player sees the board. Only for a full grid of cells whose
+         * squares are named like a chessboard's (a1, e9); under the pieces, and never in the way of a click.
+         */
+        drawCoordinates(svg) {
+            const geometry = geometryOf(this.layout);
+            const named = this.layout.cells
+                .map((cell) => ({ cell, id: geometry.squareOf.get(cell.x + cell.size / 2 + ',' + (cell.y + cell.size / 2)) }))
+                .filter(({ id }) => /^[a-z]\d+$/.test(id ?? ''));
+            if (named.length < 4) return;
+            // Black's board is turned: its bottom row and left column are the drawing's top row and right column.
+            const turned = this.color === 'b';
+            const ys = named.map(({ cell }) => cell.y);
+            const xs = named.map(({ cell }) => cell.x);
+            const [bottom, left] = turned ? [Math.min(...ys), Math.max(...xs)] : [Math.max(...ys), Math.min(...xs)];
+            // A full grid only (Blockli): on checkers' dark squares the edge would name every other file and rank.
+            if (ys.filter((y) => y === bottom).length !== new Set(xs).size || xs.filter((x) => x === left).length !== new Set(ys).size) return;
+            named.forEach(({ cell, id }) => {
+                const size = cell.size;
+                const pad = size * 0.08;
+                const label = (text, corner, anchor, baseline) => {
+                    // The corner as seen; on the turned board the text turns back, so it reads upright.
+                    const [x, y] = turned ? [cell.x + size - corner[0], cell.y + size - corner[1]] : [cell.x + corner[0], cell.y + corner[1]];
+                    const element = svgElement('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': baseline, 'font-size': size * 0.28, 'font-weight': 700, fill: '#A1A1AA', 'pointer-events': 'none', 'aria-hidden': 'true', 'data-coordinate': text });
+                    if (turned) element.setAttribute('transform', 'rotate(180 ' + x + ' ' + y + ')');
+                    element.textContent = text;
+                    svg.append(element);
+                };
+                if (cell.y === bottom) label(id[0], [size - pad, size - pad], 'end', 'text-after-edge');
+                if (cell.x === left) label(id.slice(1), [pad, pad], 'start', 'text-before-edge');
+            });
         },
 
         pointLabel(id, piece) {
