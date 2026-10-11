@@ -209,13 +209,11 @@ return [
             'timeout_seconds' => 8,
             'connect_timeout_seconds' => 4,
             'max_feed_bytes' => 2 * 1024 * 1024,
-            // section bitcoin or germany; source as spoken ("laut tagesschau"); language of the headline.
+            // section bitcoin or germany; source as spoken ("laut tagesschau"). German feeds only: the voice is German,
+            // and a headline that reads as another language is skipped all the same (NewsFilter::FOREIGN).
             'feeds' => [
                 'btc-echo' => ['url' => 'https://www.btc-echo.de/feed/', 'source' => 'BTC-Echo', 'section' => 'bitcoin', 'language' => 'de'],
                 'blocktrainer' => ['url' => 'https://www.blocktrainer.de/feed/', 'source' => 'Blocktrainer', 'section' => 'bitcoin', 'language' => 'de'],
-                'bitcoin-magazine' => ['url' => 'https://bitcoinmagazine.com/feed', 'source' => 'Bitcoin Magazine', 'section' => 'bitcoin', 'language' => 'en'],
-                'coindesk' => ['url' => 'https://www.coindesk.com/arc/outboundfeeds/rss/', 'source' => 'CoinDesk', 'section' => 'bitcoin', 'language' => 'en'],
-                'cointelegraph' => ['url' => 'https://cointelegraph.com/rss/tag/bitcoin', 'source' => 'Cointelegraph', 'section' => 'bitcoin', 'language' => 'en'],
                 'tagesschau-inland' => ['url' => 'https://www.tagesschau.de/inland/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
                 'tagesschau-wirtschaft' => ['url' => 'https://www.tagesschau.de/wirtschaft/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
                 'spiegel-deutschland' => ['url' => 'https://www.spiegel.de/politik/deutschland/index.rss', 'source' => 'Spiegel', 'section' => 'germany', 'language' => 'de'],

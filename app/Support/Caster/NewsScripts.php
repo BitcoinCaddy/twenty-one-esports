@@ -24,8 +24,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class NewsScripts
 {
-    /** Pattern reactions not repeated within this many news segments. */
-    private const REACTION_MEMORY = 6;
+    /** Pattern reactions (at least 15 per section) not repeated within this many news segments: they rotate. */
+    private const REACTION_MEMORY = 12;
 
     public function __construct(private CasterVoice $voice) {}
 

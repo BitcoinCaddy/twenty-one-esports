@@ -15,8 +15,7 @@
   ]
  },
  "attribution": {
-  "de": "Laut {source}:",
-  "en": "Auf Englisch, laut {source}:"
+  "de": "Laut {source}:"
  },
  "reactions": {
   "bitcoin": [
@@ -27,7 +26,16 @@
    "Spannend.\nAber der Kurs ist nicht die Nachricht.",
    "Ach, die Krypto-Presse.\nJeden Tag ein neuer Weltuntergang und ein neuer Mond.",
    "Ich sag's mal so.\nBitcoin ist es völlig egal, was in der Zeitung steht.",
-   "Weiter geht's.\nVerifizieren statt vertrauen."
+   "Weiter geht's.\nVerifizieren statt vertrauen.",
+   "Ich schau lieber, ob mein Node noch läuft.\nDas ist die einzige Nachricht, die zählt.",
+   "Schlagzeilen kommen und gehen.\nDie Blöcke kommen alle zehn Minuten.",
+   "Kurz durchatmen.\nUnd dann einfach weiter stacken.",
+   "Am Ende ist es ganz einfach.\nBitcoin fragt nicht um Erlaubnis.",
+   "Die Presse hat Bitcoin schon oft beerdigt.\nIrgendwie lebt er immer noch.",
+   "Wer seine Schlüssel hat, kann solche Meldungen entspannt lesen.",
+   "Spannend für die einen.\nFür den Rest von uns nur ein weiterer Block.",
+   "Mein Tipp zu dieser Meldung.\nRuhig bleiben und den eigenen Node fragen.",
+   "Tja.\nDer Kaninchenbau wird jeden Tag ein bisschen tiefer."
   ],
   "germany": [
    "Ja mei.\nDeutschland halt.",
@@ -39,7 +47,14 @@
    "Gut, dass wir wenigstens Bitcoin haben.\nDa entscheidet kein Ausschuss.",
    "Respekt.\nDie Kreativität beim Geldausgeben fremder Leute ist grenzenlos.",
    "Ich hol mir erst mal einen Kaffee.\nDas muss man verdauen.",
-   "Das Problem ist nie zu wenig Staat.\nSagt zumindest der Staat."
+   "Das Problem ist nie zu wenig Staat.\nSagt zumindest der Staat.",
+   "Wieder ein Tag im Paradies der Paragraphen.",
+   "Ich frag mich ja nur eins.\nWer hat sich das ausgedacht und warum durfte er?",
+   "Bei uns im Allgäu sagt man dazu.\nDa schaust halt.",
+   "Wenn ich so wirtschaften würde, hätte mein Bankberater längst angerufen.",
+   "Man gewöhnt sich an alles.\nAuch an das hier.",
+   "Gut, dass das Geld dafür einfach so vom Himmel fällt.\nAch nein, Moment.",
+   "Ich glaube, ich wandere aus.\nIn den Kaninchenbau."
   ]
  }
 }

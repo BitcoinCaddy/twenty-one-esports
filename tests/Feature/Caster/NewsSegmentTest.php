@@ -100,8 +100,14 @@ it('turns down headlines about suffering and live tickers, and lets politics and
     'terror' => ['Terrorverdacht am Bahnhof', NewsFilter::TRAGEDY],
     'suicide' => ['Studie zu Suizid unter Landwirten', NewsFilter::TRAGEDY],
     'abuse' => ['Missbrauchsskandal im Verein', NewsFilter::TRAGEDY],
-    'english killed' => ['Three killed in bitcoin mine fire', NewsFilter::TRAGEDY, 'en'],
-    'english war' => ['Trump declares energy ceasefire', NewsFilter::TRAGEDY, 'en'],
+    'english feed' => ['Bitcoin ETF Rekord', NewsFilter::FOREIGN, 'en'],
+    'english headline on a german feed' => ['Saylor teases Strategy Bitcoin buying after ending September with STRC buybacks', NewsFilter::FOREIGN],
+    'english question' => ['Everyone wants SCOTUS to take up prediction markets: State of Crypto', NewsFilter::FOREIGN],
+    'german with an' => ['Neun Minister schreiben Protestbrief an Merz', null],
+    'english the language check missed' => ['Three killed in bitcoin mine fire', NewsFilter::TRAGEDY],
+    'german dies is this' => ['Dies kostet die Steuerzahler', null],
+    'german nouns only' => ['Bitcoin-ETF: Rekordzuflüsse', null],
+    'german with english words' => ['Coldcard warnt vor neuer Bitcoin-Falle', null],
     'ceasefire de' => ['Trump meldet Energie-Waffenruhe', NewsFilter::TRAGEDY],
     'hatred' => ['Kampf gegen Antisemitismus wird schwieriger', NewsFilter::TRAGEDY],
     'health' => ['Papst muss operiert werden', NewsFilter::TRAGEDY],
@@ -286,8 +292,34 @@ it('writes no news segment when the switch is off or no fresh headline waits', f
 it('keeps the pattern reactions free of facts, names and numbers, and within the spoken limits', function () {
     $data = NewsScripts::data();
 
+    expect(count($data['reactions']['bitcoin']))->toBeGreaterThanOrEqual(15)
+        ->and(count($data['reactions']['germany']))->toBeGreaterThanOrEqual(15)
+        ->and(array_keys($data['attribution']))->toBe(['de']);
+
     foreach ([...$data['reactions']['bitcoin'], ...$data['reactions']['germany'], ...$data['intros']['bitcoin'], ...$data['intros']['germany']] as $line) {
         expect(preg_match('/\d/', $line))->toBe(0)
             ->and((new ScriptGuard)->check($line, 1, 3, 16))->toBe([]);
     }
+});
+
+it('rotates the pattern reactions: twelve segments in a row, twelve different reactions', function () {
+    config(['tv.commentary.ai' => false]);
+    $scripts = app(NewsScripts::class);
+    $reactions = [];
+
+    foreach (range(1, 12) as $i) {
+        $segment = $scripts->write(casterNewsHeadline("Ausschuss prüft Vorlage {$i}"), CarbonImmutable::now(), false);
+        $reactions[] = implode("\n", array_slice(explode("\n", (string) $segment['text']), 2));
+    }
+
+    expect(array_unique($reactions))->toHaveCount(12)
+        ->and(array_diff($reactions, NewsScripts::data()['reactions']['germany']))->toBe([]);
+});
+
+it('never stores an English headline as speakable, even from a feed configured as German', function () {
+    config(['tv.commentary.news.feeds' => ['btc' => ['url' => 'https://feeds.test/btc', 'source' => 'BTC-Echo', 'section' => 'bitcoin', 'language' => 'de']]]);
+    Http::fake(['feeds.test/btc' => Http::response('<rss version="2.0"><channel><item><title>Saylor teases Strategy Bitcoin buying after ending September with STRC buybacks</title></item><item><title>Coldcard warnt vor neuer Bitcoin-Falle</title></item></channel></rss>')]);
+
+    expect(app(NewsFeeds::class)->fetch(CarbonImmutable::now()))->toMatchArray(['stored' => 1, 'filtered' => 1])
+        ->and(CasterNews::query()->where('skipped', NewsFilter::FOREIGN)->value('title'))->toStartWith('Saylor teases');
 });
