@@ -289,7 +289,8 @@ it('rejects scripts that break the stream or carry a sentence the voice cannot s
     'unknown marker' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\n[applause] Die Liga hat einundzwanzig Spieler, und es werden immer mehr.\nSchaut doch einfach mal selbst in der Lobby vorbei.", ScriptGuard::MARKER_UNKNOWN],
     'stage direction' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler, und es werden immer mehr.\nKlar, da geht noch eine ganze Menge mehr bei uns (lacht).", ScriptGuard::STAGE_DIRECTION],
     'fragments' => ["Hey!\nLäuft.\nJetzt aber.", ScriptGuard::SENTENCE_SHORT],
-    'long sentence' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn und Kollegen und Verwandten zusammen im Park und im Garten und auf dem Balkon und manchmal sogar bis tief in die Nacht hinein.\nSchaut doch einfach mal selbst in der Lobby vorbei.", ScriptGuard::SENTENCE_LONG],
+    // Two lines, the minimum: the over-long one cannot be dropped as a repair.
+    'long sentence' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn und Kollegen und Verwandten zusammen im Park und im Garten und auf dem Balkon und manchmal sogar bis tief in die Nacht hinein.", ScriptGuard::SENTENCE_LONG],
     'hashtag in a link' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nSchaut auf https://example.com vorbei, denn da gibt es noch viel mehr zu sehen.\nSchaut doch einfach mal selbst in der Lobby vorbei.", 'url'],
 ]);
 

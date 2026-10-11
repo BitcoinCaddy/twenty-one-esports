@@ -96,7 +96,7 @@ it('drops sentences from the end down to the maximum, unless a required fact goe
         ->and(ScriptGuard::trimSentences($script, 2, ['Sieben']))->toBe($script);
 });
 
-it('repairs a one-line draft with long sentences and too many of them, and counts the repair', function () {
+it('repairs a one-line draft: one sentence per line, a sentence over the limit dropped instead of cut, and counts the repair', function () {
     // The limits the drafts of 2026-10-11 were cut at; the repair itself does not depend on them.
     config(['tv.commentary.scripts.max_words_per_sentence' => 12, 'tv.commentary.scripts.max_commas' => 1, 'tv.commentary.scripts.min_words_per_sentence' => 0]);
     VoiceAgent::fake([[
@@ -106,8 +106,9 @@ it('repairs a one-line draft with long sentences and too many of them, and count
 
     $script = casterVoiceWrite();
 
-    expect($script['text'] ?? null)->toBe("Die Lobby ist offen, die Bretter sind frei.\nIhr könnt jederzeit rein.\nHeute sind 34 Spieler dabei.\nAcht Clans sind am Start.\nGleich geht es weiter.\nKurz durchatmen.\nSchaut rein.\nNa also, läuft.")
-        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL.'_repaired')->pluck('reason')->sort()->values()->all())->toBe([ScriptGuard::SENTENCE_COUNT, ScriptGuard::SENTENCE_LONG]);
+    // No clause cut any more: it left verb-first fragments ("Stehen hier schon die Bretter bereit.", real drafts 2026-10-12).
+    expect($script['text'] ?? null)->toBe("Heute sind 34 Spieler dabei.\nAcht Clans sind am Start.\nGleich geht es weiter.\nKurz durchatmen.\nSchaut rein.\nNa also, läuft.\nBleibt dran, Leute.\nBis gleich, ihr Lieben.")
+        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL.'_repaired')->pluck('reason')->sort()->values()->all())->toBe([ScriptGuard::SENTENCE_LONG, ScriptGuard::SENTENCE_SHORT]);
     VoiceAgent::assertPromptedTimes(1);
 });
 
@@ -163,7 +164,7 @@ it('asks every prompt for long complete sentences, a random angle and none of th
         && str_contains($prompt->prompt, CasterVoice::SENTENCE_STYLE));
     expect(count(CasterVoice::ANGLES))->toBeGreaterThanOrEqual(20)
         ->and(CasterVoice::chatReplyPrompt('Hallo', 'Ada', 1, 4))->toContain('Dein Blickwinkel diesmal:')->toContain(CasterVoice::SENTENCE_STYLE)
-        ->and(CasterVoice::newsPrompt('Hashrate erreicht Rekord', 'BTC-Echo', 'bitcoin', 1, 3))->toContain('Dein Blickwinkel diesmal:')->toContain('die Schlagzeile wörtlich und vollständig')
+        ->and(CasterVoice::newsPrompt('Hashrate erreicht Rekord', 'BTC-Echo', 'bitcoin', 1, 3))->toContain('Dein Blickwinkel diesmal:')->toContain('nie die Schlagzeile als Titel vorlesen')
         ->and(CasterVoice::followedPrompt('Ein Post', 'Ada', true, 3, 7))->toContain('Dein Blickwinkel diesmal:');
 });
 

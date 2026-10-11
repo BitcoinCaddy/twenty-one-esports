@@ -537,9 +537,9 @@ function casterBen(object $test, string $message): TestSigner
 }
 
 dataset('ben live messages', [
-    'react' => ['Kannst du mal auf den Chat reagieren, Markus!', 'react', "Klar reagier ich auf den Chat, El Presidento Ben.\nDafür sitz ich ja hier."],
-    'sleep' => ['Hey Markus! Kommentierst du nun 24/7?', 'sleep', "Vierundzwanzig sieben, El Presidento Ben?\nKlar, der Markus schläft nie, das übernimmt die Grafikkarte."],
-    'work' => ['Musst du nicht arbeiten?', 'work', "Arbeiten, El Presidento Ben?\nDas hier ist Proof of Work am Mikrofon."],
+    'react' => ['Kannst du mal auf den Chat reagieren, Markus!', 'react', "Natürlich reagier ich auf den Chat, El Presidento Ben, wofür sitz ich denn sonst hier.\nDafür sitz ich ja schließlich die ganze Nacht vor diesem Mikrofon."],
+    'sleep' => ['Hey Markus! Kommentierst du nun 24/7?', 'sleep', "Du fragst nach vierundzwanzig sieben, El Presidento Ben, und die Antwort ist ganz einfach.\nDer Markus schläft nie, weil das inzwischen die Grafikkarte übernimmt."],
+    'work' => ['Musst du nicht arbeiten?', 'work', "Du fragst, ob ich nicht arbeiten muss, El Presidento Ben, dabei arbeite ich gerade.\nDas hier ist nämlich echter Proof of Work am Mikrofon, nur ohne Stempeluhr."],
 ]);
 
 it('answers what a trusted chatter wrote through the model, the message as delimited data', function (string $message, string $intent, string $reply) {
@@ -645,8 +645,8 @@ it('says the plain hello only when no intent matches, and drops the name slot wi
 
 it('speaks an echoed 24/7 as words instead of turning the reply down for a digit', function () {
     casterBen($this, 'Hey Markus! Kommentierst du nun 24/7?');
-    VoiceAgent::fake([['text' => "24/7, El Presidento Ben?\nDer Sender schläft nie, und ich eigentlich auch nicht.", 'canon_id' => null, 'mood' => 'call']]);
+    VoiceAgent::fake([['text' => "Du fragst nach 24/7, El Presidento Ben, und das trifft es ziemlich genau.\nDer Sender schläft nie, und ich eigentlich auch nicht.", 'canon_id' => null, 'mood' => 'call']]);
 
     expect(casterReactions()->poll(CarbonImmutable::now()))->toBe(1)
-        ->and(CasterScript::query()->sole()->text)->toBe("Vierundzwanzig sieben, El Presidento Ben?\nDer Sender schläft nie, und ich eigentlich auch nicht.");
+        ->and(CasterScript::query()->sole()->text)->toBe("Du fragst nach vierundzwanzig sieben, El Presidento Ben, und das trifft es ziemlich genau.\nDer Sender schläft nie, und ich eigentlich auch nicht.");
 });

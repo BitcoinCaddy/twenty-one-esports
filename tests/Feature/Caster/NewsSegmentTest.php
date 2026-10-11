@@ -180,22 +180,20 @@ it('writes a news segment in the model\'s own words: its lead-in, the headline w
         ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(30)))->toBeTrue()
         ->and($news->fresh()->used_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'tagesschau: Bundesregierung plant neue Zuckersteuer') && str_contains($prompt->prompt, 'SKIP')
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Quelle: tagesschau\nSchlagzeile: Bundesregierung plant neue Zuckersteuer") && str_contains($prompt->prompt, 'SKIP')
         // The source as context (user 2026-10-12): feed and publication time.
         && str_contains($prompt->prompt, 'Feed: ') && str_contains($prompt->prompt, 'Veröffentlicht: '));
     NewsFactCheck::assertNeverPrompted();
 });
 
-it('puts the headline in a carrier sentence in front when the model left it out', function () {
-    $comment = "Noch eine Steuer, wie originell, denn dem Staat fällt einfach nichts anderes mehr ein.\nDer Staat findet immer irgendetwas zum Abkassieren, und diesmal ist es halt euer Kuchen.";
+it('puts no headline title in front of the model segment: the model retells it in its own sentences', function () {
+    $comment = "Die Bundesregierung will also schon wieder an euren Zucker ran, und dem Staat fällt einfach nichts anderes mehr ein.\nDer Staat findet immer irgendetwas zum Abkassieren, und diesmal ist es halt euer Kuchen.";
     VoiceAgent::fake([casterNewsDraft($comment)]);
 
     $answer = app(CasterVoice::class)->news('Bundesregierung plant neue Zuckersteuer', 'tagesschau', CasterNews::GERMANY);
-    $lines = ScriptGuard::lines((string) $answer['text']);
 
-    expect($lines)->toHaveCount(3)
-        ->and($lines[0])->toContain('tagesschau')->toEndWith('Bundesregierung plant neue Zuckersteuer.')
-        ->and(array_slice($lines, 1))->toBe(ScriptGuard::lines($comment));
+    expect(ScriptGuard::lines((string) $answer['text']))->toBe(ScriptGuard::lines($comment));
+    VoiceAgent::assertPrompted(fn ($prompt): bool => str_contains($prompt->prompt, 'nie die Schlagzeile als Titel vorlesen'));
 });
 
 it('never reads a bare headline: every carrier names the source and keeps the headline word for word inside one sentence', function () {
@@ -368,7 +366,7 @@ it('writes a long news segment: the same one model call, asking for three to six
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'dann 3 bis 6 Sätze dein Kommentar'));
 });
 
-it('trims a long segment to its comment maximum plus lead-in and headline, the carrier sentence in front where the headline is missing', function (int $sentences, int $lines) {
+it('trims a long segment to its comment maximum plus lead-in and retold headline, nothing put in front', function (int $sentences, int $lines) {
     $comment = implode("\n", array_map(fn (int $i): string => "Das ist mein ganz eigener Gedanke Nummer {$i} zu dieser Meldung.", range(1, $sentences)));
     $comment = str_replace(['1', '2', '3', '4', '5', '6', '7', '8', '9'], ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'], $comment);
     VoiceAgent::fake([casterNewsDraft($comment)]);
@@ -377,8 +375,8 @@ it('trims a long segment to its comment maximum plus lead-in and headline, the c
 
     expect(count(ScriptGuard::lines((string) $answer['text'])))->toBe($lines);
 })->with([
-    'two: free mode keeps them' => [2, 3],
-    'nine: trimmed to eight' => [9, 9],
+    'two: free mode keeps them' => [2, 2],
+    'nine: trimmed to the comment maximum' => [9, 8],
 ]);
 
 it('stands in for a long comment with three different pattern reactions', function () {
