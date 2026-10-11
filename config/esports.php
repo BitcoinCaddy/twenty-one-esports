@@ -1819,4 +1819,110 @@ return [
         'tournaments' => (bool) env('ESPORTS_PONG_TOURNAMENTS', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | League voice (plan "KI-Stimme der Liga", P1)
+    |--------------------------------------------------------------------------
+    |
+    | App\Support\Voice\LeagueVoice writes a post from the facts of a moment
+    | with Claude (laravel/ai, provider `anthropic`, key ANTHROPIC_API_KEY in
+    | `.env` only). Whatever fails (switch off, cap reached, timeout, 429,
+    | 500, a text the deterministic guard rejects) returns null, and the
+    | caller posts its own template instead (StreamBotCopy and friends).
+    |
+    | channels: one entry per voice function. `enabled` is off by default
+    | (each goes live only after the user approved its tone, P7);
+    | `daily_cap` counts attempts per Berlin day; `max_chars` is the guard's
+    | length limit; `language` is the language of the post.
+    |
+    | monthly_budget_usd: soft budget across all channels. Once the month's
+    | estimate (VoiceUsage, `php artisan voice:usage`) reaches it, every
+    | channel falls back to its template until the month turns. The key's
+    | own limit at Anthropic stays the hard stop.
+    |
+    | prices_usd_per_mtok: Haiku 5.5 below 100k prompt tokens
+    | (platform.claude.com/docs/en/about-claude/pricing, read 2026-10-11).
+    | The cache write price is not on the plan's list; 1.25x input is assumed.
+    |
+    | canon: how many canon entries one prompt carries (`min`..`max`), the
+    | ceiling of their estimated tokens (chars/4), and how many canon IDs a
+    | channel's last posts used that are left out of the next selection.
+    |
+    */
+
+    'voice' => [
+        'provider' => 'anthropic',
+        'model' => env('ESPORTS_VOICE_MODEL', 'claude-haiku-5-5'),
+        'timeout_seconds' => (int) env('ESPORTS_VOICE_TIMEOUT', 15),
+        'max_output_tokens' => 400,
+        'timezone' => 'Europe/Berlin',
+        'monthly_budget_usd' => (float) env('ESPORTS_VOICE_MONTHLY_BUDGET_USD', 60),
+        'prices_usd_per_mtok' => [
+            'input' => 0.10,
+            'cache_read' => 0.01,
+            'cache_write' => 0.125,
+            'output' => 0.50,
+        ],
+        'canon' => [
+            'min' => 50,
+            'max' => 100,
+            'token_budget' => 12_000,
+            'avoid_recent' => 30,
+        ],
+        // Words that never go out (VoiceGuard): insults, fee words (players never pay), "Gesicht"/"face"
+        // (pseudonymous league), and the community gag "Maul" the user did not approve.
+        'blocklist' => [
+            'idiot', 'vollidiot', 'depp', 'trottel', 'spast', 'behindert', 'hurensohn', 'wichser', 'arschloch',
+            'fotze', 'missgeburt', 'versager', 'loser', 'noob', 'opfer', 'scam', 'betrüger', 'maul',
+            'gebühr', 'gebühren', 'startgeld', 'teilnahmegebühr', 'fee', 'fees', 'entry fee', 'gesicht', 'face',
+        ],
+        // Real people of the community and of the canon's clips (meme-research/characters.md): named only as
+        // the speaker of the canon entry the text quotes, never with a sentence of their own.
+        'persons' => [
+            'Markus Turm', 'Praxmatika', 'Praxmatiker', 'Praxman', 'Finn', 'Gambler', 'Sirius', 'Gigi', 'Chris Sidor',
+            'Coinjoin Chris', 'Tanja', 'Schnurz', 'Holger', 'HolgerHatGarKeineNode', 'Yachti', 'Bit Tornado',
+            'Fiat Tracker', 'Garfield', 'Leo Mattis', 'Niko Jilch', 'Jilch', 'Michael Saylor', 'Saylor', 'Julian Hosp',
+            'Hosp', 'Kinski', 'Schnabel', 'Beppo', 'Kenobi', 'Roman Reher', 'Jack Mallers', 'Mises',
+        ],
+        'channels' => [
+            'stream_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_STREAM_CHAT', false), 'daily_cap' => 150, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
+            'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
+            'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
+            'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
+            'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 1200, 'multiline' => true, 'language' => 'de'],
+            'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 1500, 'multiline' => true, 'language' => 'de'],
+            'card' => ['enabled' => (bool) env('ESPORTS_VOICE_CARD', false), 'daily_cap' => 50, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de'],
+            'meme' => ['enabled' => (bool) env('ESPORTS_VOICE_MEME', false), 'daily_cap' => 30, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'de'],
+            // The caster is the largest consumer: throttled hardest per call, capped per day.
+            'caster' => ['enabled' => (bool) env('ESPORTS_VOICE_CASTER', false), 'daily_cap' => 300, 'max_chars' => 160, 'max_sentences' => 2, 'language' => 'de'],
+        ],
+        // The spam gate (App\Support\Voice\SpamGate, user 2026-10-11: "damit alles nicht zu bloaty und chatty wird
+        // und zu muting führt"). It can only hold a post back, never add one: the stream bot's own cadence
+        // (`stream_bot.interval_minutes`, `daily_cap`, `profile_gap_minutes`, `quiet_hours`, `repeat_hours`) stays
+        // the upper bound. Its own switch, independent of the voice channels; off, it lets everything through.
+        'spam' => [
+            'enabled' => (bool) env('ESPORTS_VOICE_SPAM_GATE', true),
+            'max_chars' => ['chat' => 180, 'profile' => 280],
+            'max_sentences' => 2,
+            // A person is mentioned at most once per `mention_hours` on the profile and once per stream session in
+            // the chat; a champion or tournament-win moment may add one more.
+            'mention_hours' => 24,
+            'mention_extra_moments' => ['champion', 'tournament_final'],
+            // Chat: after `silent_posts` bot posts without a human message in between, the interval doubles
+            // (`backoff_factor`), until a human writes again.
+            'silent_posts' => 3,
+            'backoff_factor' => 2,
+            // Repetition: compared with the channel's last `recent_posts` posts.
+            'recent_posts' => 10,
+            'near_copy_percent' => 80,
+            'opening_words' => 4,
+            'form_streak' => 3,
+            // Links: the same URL once per `link_hours`, the same kind of target (first path segment) `link_kind_per_day` times.
+            'link_hours' => 24,
+            'link_kind_per_day' => 2,
+            // A burst of at least this many moments of one type becomes one roundup post.
+            'roundup_min' => 3,
+        ],
+    ],
+
 ];
