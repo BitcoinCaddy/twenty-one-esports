@@ -90,7 +90,12 @@ class ReactionLines
      */
     public function wish(string $type, ?string $name): string
     {
-        return $this->fill(self::withName($this->pick('wish_'.$type), $name), []);
+        // Three lines, not one (user 2026-10-11: the wish reply was too short): the wish by name, a bit of banter, a hand-off.
+        return implode("\n", array_filter([
+            $this->fill(self::withName($this->pick('wish_'.$type), $name), []),
+            $this->pick('wish_banter'),
+            $this->pick('wish_handoff'),
+        ], fn (string $line): bool => $line !== ''));
     }
 
     /** The opening line of a wished joke or canon run (ChatWishes::JOKE, ChatWishes::CANON). */

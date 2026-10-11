@@ -142,7 +142,7 @@ it('tells a Bauernkrieg episode right behind the reply when a trusted chatter as
     [$reply, $segment] = wishQueue();
 
     expect($reply->kind)->toBe(CasterScript::CHAT)
-        ->and($reply->text)->toBeIn(wishAcks(ChatWishes::HISTORY))
+        ->and(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::HISTORY))
         ->and($segment->kind)->toBe(CasterScript::HISTORY)
         ->and($segment->scene)->toBe(ChatWishes::SCENE)
         ->and($segment->facts_hash)->toStartWith(HistoryScripts::HASH_PREFIX)
@@ -191,7 +191,7 @@ it('reads the newest headline for a news wish, Bitcoin first when asked for Bitc
     app(ChatReactions::class)->poll(CarbonImmutable::now());
     [$reply, $segment] = wishQueue();
 
-    expect($reply->text)->toBeIn(wishAcks(ChatWishes::NEWS))
+    expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::NEWS))
         ->and($segment->kind)->toBe(CasterScript::NEWS)
         ->and($segment->text)->toContain('Bitcoin-Hashrate erreicht Rekord')
         ->and($segment->topic)->toBe(CasterNews::BITCOIN);
@@ -205,7 +205,7 @@ it('tells verified canon jokes for a joke wish', function () {
     $lines = ScriptGuard::lines($segment->text);
     $canon = array_map(fn (string $id): string => rtrim((string) app(VoiceCanon::class)->find($id)['wording'], '.!?'), app(PatternScripts::class)->canonPool());
 
-    expect($reply->text)->toBeIn(wishAcks(ChatWishes::JOKE))
+    expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::JOKE))
         ->and($segment->kind)->toBe(CasterScript::LIVE)
         ->and($segment->scene)->toBe(ChatWishes::SCENE)
         ->and($lines)->toHaveCount(4)
@@ -223,7 +223,7 @@ it('tells EINUNDZWANZIG lore from the canon for a canon wish', function () {
     app(ChatReactions::class)->poll(CarbonImmutable::now());
     [$reply, $segment] = wishQueue();
 
-    expect($reply->text)->toBeIn(wishAcks(ChatWishes::CANON))
+    expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::CANON))
         ->and(count(ScriptGuard::lines($segment->text)))->toBeGreaterThanOrEqual(5)
         ->and((new ScriptGuard)->check($segment->text, 1, 12, 16))->toBe([]);
 });
@@ -236,7 +236,7 @@ it('comments the live games for a game wish, and grants nothing when no game has
     app(ChatReactions::class)->poll(CarbonImmutable::parse('2026-10-11 18:00'));
     [$reply, $segment] = wishQueue();
 
-    expect($reply->text)->toBeIn(wishAcks(ChatWishes::GAME))
+    expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::GAME))
         ->and($segment->kind)->toBe(CasterScript::LIVE)
         ->and($segment->topic)->toBe(SceneTopic::LIVE_GAMES)
         ->and($segment->scene)->toBe(ChatWishes::SCENE);

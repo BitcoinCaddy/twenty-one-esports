@@ -89,7 +89,7 @@ return [
         'scripts' => [
             'ahead_seconds' => 300,
             'words_per_second' => 2.4,
-            'sentences' => ['min' => 2, 'max' => 8],
+            'sentences' => ['min' => (int) env('TV_COMMENTARY_AI_SENTENCES_MIN', 2), 'max' => (int) env('TV_COMMENTARY_AI_SENTENCES_MAX', 8)],
             'live_sentences' => ['min' => 1, 'max' => 3],
             'chat_sentences' => ['min' => 1, 'max' => 8, 'ask' => 4],
             'max_words_per_sentence' => 16,
@@ -114,7 +114,7 @@ return [
         // within this many pattern scripts (user 2026-10-11: fewer data, no repeats, more jokes and pride).
         'patterns' => [
             'per_run' => 40,
-            'sentences' => ['min' => 3, 'max' => 6],
+            'sentences' => ['min' => (int) env('TV_COMMENTARY_PATTERN_SENTENCES_MIN', 3), 'max' => (int) env('TV_COMMENTARY_PATTERN_SENTENCES_MAX', 6)],
             'recent' => 4,
             'fact_memory_minutes' => 20,
             'name_memory_minutes' => 30,
@@ -209,7 +209,7 @@ return [
             'per_feed' => 20,
             'max_title_chars' => 160,
             'max_age_minutes' => 30,
-            'sentences' => ['min' => 1, 'max' => 3],
+            'sentences' => ['min' => (int) env('TV_COMMENTARY_NEWS_SENTENCES_MIN', 1), 'max' => (int) env('TV_COMMENTARY_NEWS_SENTENCES_MAX', 3)],
             'daily_cap' => (int) env('TV_COMMENTARY_NEWS_DAILY_CAP', 150),
             'timeout_seconds' => 8,
             'connect_timeout_seconds' => 4,
@@ -254,8 +254,8 @@ return [
                 'news' => (float) env('TV_COMMENTARY_LONG_NEWS', 0.5),
                 'history' => (float) env('TV_COMMENTARY_LONG_HISTORY', 0.5),
             ],
-            'scene_long' => ['min' => 8, 'max' => 14],
-            'news_long' => ['min' => 4, 'max' => 8],
+            'scene_long' => ['min' => (int) env('TV_COMMENTARY_SCENE_LONG_MIN', 8), 'max' => (int) env('TV_COMMENTARY_SCENE_LONG_MAX', 14)],
+            'news_long' => ['min' => (int) env('TV_COMMENTARY_NEWS_LONG_MIN', 4), 'max' => (int) env('TV_COMMENTARY_NEWS_LONG_MAX', 8)],
             'history_long' => ['min' => 15, 'max' => 30],
             // The fact guard's character cap for a whole long script (scripts.max_chars holds the short ones).
             'max_chars' => 1_800,
