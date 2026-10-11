@@ -180,7 +180,7 @@ it('writes a news segment in the model\'s own words: its lead-in, the headline w
         ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(30)))->toBeTrue()
         ->and($news->fresh()->used_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'tagesschau: Bundesregierung plant neue Zuckersteuer') && str_contains($prompt->prompt, 'SKIP')
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Quelle: tagesschau\nSchlagzeile: Bundesregierung plant neue Zuckersteuer") && str_contains($prompt->prompt, 'SKIP')
         // The source as context (user 2026-10-12): feed and publication time.
         && str_contains($prompt->prompt, 'Feed: ') && str_contains($prompt->prompt, 'Veröffentlicht: '));
     NewsFactCheck::assertNeverPrompted();
