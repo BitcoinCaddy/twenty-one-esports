@@ -87,15 +87,15 @@ it('writes a history segment from the fact file alone: intro, three to five fact
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
-    $script = CasterScript::query()->where('kind', CasterScript::HISTORY)->sole();
+    $script = CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->sole();
     $episode = HistoryScripts::data()['episodes'][0];
     $factLines = array_merge(...array_map(fn (array $fact): array => ScriptGuard::lines($fact['text']), $episode['facts']));
-    $spokenFacts = array_values(array_intersect($script->sentences(), $factLines));
+    $spokenFacts = array_values(array_intersect(casterWholeSentences($script), $factLines));
 
     expect($script->facts_hash)->toBe('history:memmingen')
         ->and($script->source)->toBe(CasterScript::SOURCE_PATTERN)
         ->and($script->priority)->toBe(0)
-        ->and(array_diff($script->sentences(), casterHistoryKnownLines()))->toBe([])
+        ->and(array_diff(casterWholeSentences($script), casterHistoryKnownLines()))->toBe([])
         ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
         ->and(count($spokenFacts))->toBeGreaterThanOrEqual(6)
         ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(120)))->toBeTrue();
@@ -120,7 +120,7 @@ it('tells the next history segment 45 to 90 minutes later, and no episode twice 
     $this->travel(91)->minutes();
 
     expect(CasterScript::query()->where('kind', CasterScript::HISTORY)->distinct()->count('facts_hash'))->toBe(8)
-        ->and(CasterScript::query()->where('kind', CasterScript::HISTORY)->count())->toBe(8)
+        ->and(CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->count())->toBe(8)
         ->and($queue->fillSegments(CarbonImmutable::now()))->toBe(0);
 
     $this->travel(24)->hours();
@@ -219,13 +219,13 @@ it('writes every second history segment long while the share is 0.5, and every o
 
     foreach (range(1, 4) as $ignored) {
         $queue->fillSegments(CarbonImmutable::now());
-        $lengths[] = count(CasterScript::query()->where('kind', CasterScript::HISTORY)->latest('id')->firstOrFail()->sentences());
+        $lengths[] = count(casterWholeSentences(CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->latest('id')->firstOrFail()));
         $this->travel(91)->minutes();
     }
 
     config(['tv.commentary.length.shares.history' => 1.0]);
     $queue->fillSegments(CarbonImmutable::now());
-    $lengths[] = count(CasterScript::query()->where('kind', CasterScript::HISTORY)->latest('id')->firstOrFail()->sentences());
+    $lengths[] = count(casterWholeSentences(CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->latest('id')->firstOrFail()));
 
     expect(array_map(fn (int $count): bool => $count >= 15, $lengths))->toBe([false, true, false, true, true])
         ->and(max($lengths))->toBeLessThanOrEqual(30);

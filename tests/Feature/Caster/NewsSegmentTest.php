@@ -205,7 +205,7 @@ it('writes at most one news segment per every_minutes, the sections in turn, no 
     $this->travel(11)->minutes();
     expect($queue->fillSegments(CarbonImmutable::now()))->toBe(0);
 
-    $spoken = CasterScript::query()->where('kind', CasterScript::NEWS)->orderBy('id')->get();
+    $spoken = CasterScript::query()->whole()->where('kind', CasterScript::NEWS)->orderBy('id')->get();
     expect($spoken->pluck('topic')->all())->toBe([CasterNews::BITCOIN, CasterNews::GERMANY, CasterNews::GERMANY])
         ->and($spoken->map(fn (CasterScript $script): string => $script->sentences()[1])->all())->toBe([
             'Laut BTC-Echo: Bitcoin-Hashrate erreicht neues Allzeithoch.',
@@ -340,9 +340,9 @@ it('writes a long news segment: the same one model call, asking for four to eigh
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
-    $script = CasterScript::query()->where('kind', CasterScript::NEWS)->sole();
-    expect($script->sentences())->toHaveCount(8)
-        ->and(array_slice($script->sentences(), 2))->toBe(ScriptGuard::lines($comment))
+    $script = CasterScript::query()->whole()->where('kind', CasterScript::NEWS)->sole();
+    expect(casterWholeSentences($script))->toHaveCount(8)
+        ->and(array_slice(casterWholeSentences($script), 2))->toBe(ScriptGuard::lines($comment))
         ->and($script->source)->toBe(CasterScript::SOURCE_AI);
     VoiceAgent::assertPromptedTimes(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, '4 bis 8 kurze Sätze'));
