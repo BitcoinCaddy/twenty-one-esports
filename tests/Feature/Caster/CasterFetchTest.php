@@ -82,7 +82,7 @@ it('hands out the next script with the pronunciation and marks the fetcher onlin
         ->assertJsonPath('script.id', $script->id)
         ->assertJsonPath('script.sentences', ['Hey!', 'Hier ist Blockli.', 'Läuft.'])
         ->assertJsonPath('full', false)
-        ->assertJsonPath('pronunciation.Blockli', Pronunciation::terms()['Blockli']);
+        ->assertJsonPath('pronunciation.TMNF', Pronunciation::terms()['TMNF']);
 
     expect($script->fresh()->status)->toBe(CasterScript::CLAIMED)
         ->and(app(ClipSpool::class)->fetcherOnline(CarbonImmutable::now()))->toBeTrue();
