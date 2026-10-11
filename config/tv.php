@@ -240,6 +240,7 @@ return [
             // and a headline that reads as another language is skipped all the same (NewsFilter::FOREIGN).
             'feeds' => [
                 'btc-echo' => ['url' => 'https://www.btc-echo.de/feed/', 'source' => 'BTC-Echo', 'section' => 'bitcoin', 'language' => 'de'],
+                'blocktrainer' => ['url' => 'https://www.blocktrainer.de/feed.xml', 'source' => 'Blocktrainer', 'section' => 'bitcoin', 'language' => 'de'],
                 'blocktrainer' => ['url' => 'https://www.blocktrainer.de/feed/', 'source' => 'Blocktrainer', 'section' => 'bitcoin', 'language' => 'de'],
                 'tagesschau-inland' => ['url' => 'https://www.tagesschau.de/inland/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
                 'tagesschau-wirtschaft' => ['url' => 'https://www.tagesschau.de/wirtschaft/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],

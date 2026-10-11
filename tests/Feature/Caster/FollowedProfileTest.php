@@ -310,7 +310,7 @@ it('asks the voice for a German retelling and no quote when the note is not Germ
     $prompt = CasterVoice::followedPrompt('The Cybercab floodgates are open', 'Markus', false, 3, 7);
 
     expect($prompt)->toContain('sinngemäß auf Deutsch')->not->toContain('wörtliches Zitat aus dem Post (höchstens zwanzig Wörter) ist erlaubt')
-        ->and(CasterVoice::followedPrompt('Hallo Welt', 'Markus', true, 3, 7))->toContain('höchstens zwanzig Wörter');
+        ->and(CasterVoice::followedPrompt('Hallo Welt', 'Markus', true, 3, 7))->toContain('Kein wörtliches Zitat');
 });
 
 it('never speaks a note older than fresh_hours (when set), of a profile no longer followed, or while the switch is off', function () {

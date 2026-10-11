@@ -164,7 +164,7 @@ it('asks every prompt for long complete sentences, a random angle and none of th
         && str_contains($prompt->prompt, CasterVoice::SENTENCE_STYLE));
     expect(count(CasterVoice::ANGLES))->toBeGreaterThanOrEqual(20)
         ->and(CasterVoice::chatReplyPrompt('Hallo', 'Ada', 1, 4))->toContain('Dein Blickwinkel diesmal:')->toContain(CasterVoice::SENTENCE_STYLE)
-        ->and(CasterVoice::newsPrompt('Hashrate erreicht Rekord', 'BTC-Echo', 'bitcoin', 1, 3))->toContain('Dein Blickwinkel diesmal:')->toContain('die Schlagzeile wörtlich und vollständig')
+        ->and(CasterVoice::newsPrompt('Hashrate erreicht Rekord', 'BTC-Echo', 'bitcoin', 1, 3))->toContain('Dein Blickwinkel diesmal:')->toContain('nie die Schlagzeile als Titel vorlesen')
         ->and(CasterVoice::followedPrompt('Ein Post', 'Ada', true, 3, 7))->toContain('Dein Blickwinkel diesmal:');
 });
 
