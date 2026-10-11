@@ -123,8 +123,8 @@ test('every surface shows the game at 390 and 1440 as an admin in German: no ove
         // The desktop tile, or the phone's list row (Main.dc.html / HomePhone.dc.html): the one that shows.
         'home tile' => [route('home', absolute: false), '[data-test=home-games] a[data-game=hyperbitcoinization]'],
         'matches row' => [route('matches.index', absolute: false), '[data-test=hyper-row]'],
-        // The cube itself: the column's "casual" tag above it is the strip's, the same for every game.
-        'matches cube' => [route('matches.index', absolute: false), '[data-test=strip-cube][data-game=hyperbitcoinization] a.bs-cube'],
+        // The cube of the Mempool chain (x-ui.mempool-chain, Mempool.dc.html; the old strip-cube strip is gone since P7).
+        'matches cube' => [route('matches.index', absolute: false), '[data-test=mempool-chain] [data-test=chain-cube][data-game=hyperbitcoinization]'],
         'play card' => [route('play', absolute: false), '[data-test=play-game-hyperbitcoinization]'],
         'rules section' => [route('rules', absolute: false), '[data-test=doc-section-hyperbitcoinization]'],
         'profile card' => [route('players.show', $anna->npub, false), '[data-test=player-hyper]'],
@@ -149,7 +149,7 @@ test('every surface shows the game at 390 and 1440 as an admin in German: no ove
 
     // The match list opens every match full-screen in a new tab: rows and cubes alike.
     surfaceGo($page, route('matches.index', absolute: false));
-    $links = $page->evaluate('() => [...document.querySelectorAll("[data-test=hyper-row], [data-test=strip-cube][data-game=hyperbitcoinization] a.bs-cube")].map((a) => [a.target, a.getAttribute("href")])');
+    $links = $page->evaluate('() => [...document.querySelectorAll("[data-test=hyper-row], [data-test=mempool-chain] [data-test=chain-cube][data-game=hyperbitcoinization]")].map((a) => [a.target, a.getAttribute("href")])');
     $german = $page->evaluate('() => document.querySelector("[data-test=hyper-row]").innerText');
 
     fwrite(STDERR, "\nhyper surfaces measured: ".json_encode($rows, JSON_UNESCAPED_UNICODE)."\nlinks: ".json_encode($links)."\n");

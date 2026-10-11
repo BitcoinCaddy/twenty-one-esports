@@ -96,7 +96,10 @@ test('every touched page shows its pictures at 1440 and 375, German at 375, with
         '/chess' => ['[data-test=cup-mention]', 2],
         '/games/rocket-league' => ['[data-test=cup-mention]', 2],
         route('tournaments.show', $cup, false) => ['[data-test=cup-mention]', 1],
-        '/matches' => ['[data-test=chess-row-face]', 4],
+        // The chess rows' faces from lg (Mempool.dc.html); a phone row is two lines of text without faces
+        // (MempoolPhone.dc.html, x-mempool.row), so below lg the chain's cubes are the page's pictures; the chain scrolls
+        // sideways by design, so a cube beyond the window's edge is no defect there.
+        '/matches' => ['[data-test=chess-row-face]', 4, '[data-test=mempool-chain] [data-test=chain-cube] .rv-cube'],
         '/ladder/chess/blitz' => ['main img[data-avatar]', 6],
         '/live' => ['[data-test=live-tournament-cover], [data-test=live-offline-next-cover]', 2],
         '/rules' => ['[data-test=rules-table-cover]', 7],
@@ -104,7 +107,8 @@ test('every touched page shows its pictures at 1440 and 375, German at 375, with
         '/clans' => ['[data-test=clan-card-mark], [data-test=clan-spotlight-mark]', 1],
         '/challenges/casual' => ['[data-test^=casual-game-] picture', 3],
         '/players/'.$player->npub => ['[data-test=open-picture-cover], [data-test=join-picture]', 2],
-        '/me' => ['[data-test=open-picture-cover], [data-test=join-picture]', 2],
+        // /me since P7 (Profile.dc.html "Dein Clan": one line and "Clan finden", no picture): the open tournament's cover.
+        '/me' => ['[data-test=open-picture-cover]', 1],
     ];
 
     $page = visit(route('testing.login', ['user' => $player, 'to' => '/robots.txt']))->page();
@@ -120,6 +124,8 @@ test('every touched page shows its pictures at 1440 and 375, German at 375, with
         }
 
         foreach ($pages as $path => [$selector, $least]) {
+            $sideways = $width < 1024 && isset($pages[$path][2]);
+            $selector = $sideways ? $pages[$path][2] : $selector;
             $page->goto(ComputeUrl::from($path));
             BrowserWait::until($page, '() => document.readyState === "complete" && window.Alpine && document.fonts.status === "loaded"', 10_000);
 
@@ -145,7 +151,7 @@ test('every touched page shows its pictures at 1440 and 375, German at 375, with
             $slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($path)), '-') ?: 'home';
             visualPassShot($page, "visual-{$slug}-{$width}-{$lang}");
 
-            if ($state['visible'] < $least || $state['painted'] !== $state['visible'] || $state['outside'] !== 0 || $state['overflow'] !== 0) {
+            if ($state['visible'] < $least || $state['painted'] !== $state['visible'] || (! $sideways && $state['outside'] !== 0) || $state['overflow'] !== 0) {
                 $failures[] = "{$path} {$width} {$lang}: ".json_encode($state);
             }
 

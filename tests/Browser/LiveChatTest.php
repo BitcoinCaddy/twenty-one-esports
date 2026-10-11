@@ -493,7 +493,7 @@ test('the stage stays whole, the chat fills the column and ends above the dock, 
     if ($player) {
         $user = User::factory()->member()->create(['name' => 'Pia Player']);
         TestSigner::forBrowser($user);
-        // A daily game on her move: the match dock floats at the bottom.
+        // A daily game on her move: an entry on the action dock (on a phone a tab at the bottom edge).
         ChessGame::factory()->daily()->create(['white_id' => $user->id]);
     }
 
@@ -501,8 +501,12 @@ test('the stage stays whole, the chat fills the column and ends above the dock, 
         $page = p24Page($user, $width, $height, touch: $width < 1024);
         p24Live($page);
         BrowserWait::until($page, '() => document.querySelectorAll("[data-test=live-chat-message]").length >= 30', 10_000);
-        if ($player) {
+        if ($player && $width < 1024) {
             BrowserWait::until($page, '() => [...document.querySelectorAll("[data-live-floor]")].some((el) => el.checkVisibility())', 10_000);
+        } elseif ($player) {
+            // From lg the action dock is a drawer behind the header's "Aktionen" since P7 (ActionDock.dc.html): it carries the
+            // game but floats nothing over the page, so there is no floor to wait for, only the entry.
+            BrowserWait::until($page, '() => Number(document.querySelector("[data-test=match-dock-root]")?.dataset.open ?? 0) > 0', 10_000);
         }
         Execution::instance()->wait(0.6);
         $layout = $page->evaluate(P24_LAYOUT);

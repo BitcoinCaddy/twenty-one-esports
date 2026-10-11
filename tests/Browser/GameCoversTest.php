@@ -146,18 +146,15 @@ test('covers show on /tournaments, the games menu, the challenge form and the ma
         gameCoverShot($page, "covers-challenge-create-{$width}");
         assertCleanPage($page, "challenge create at {$width}");
 
+        // The match list carries no covers since P7 (Mempool.dc.html, MempoolPhone.dc.html: the Format column names the
+        // game, the rows hold no picture). What stays: every game's rows are listed and the game chip filters them.
         $page = gameCoverPage($captain, route('matches.index', absolute: false), $width);
-        assertGameCovers($page, ['ea-sports-fc-27', 'ea-sports-fc-26', 'rocket-league', 'chess'], '[data-test=matches]');
+        expect($page->evaluate('() => [...new Set([...document.querySelectorAll("[data-test=matches-table] [data-test=match-row]")].map((r) => r.dataset.game))].sort()'))
+            ->toBe(['ea-sports-fc-26', 'ea-sports-fc-27', 'rocket-league'])
+            ->and($page->evaluate('() => document.querySelector("[data-test=matches-table] [data-test=chess-row]") !== null'))->toBeTrue();
         gameCoverShot($page, "covers-matches-{$width}");
-
-        // The game filter: a select on a phone, every button fully inside its group from sm.
-        if ($width === 375) {
-            expect($page->evaluate('() => [document.querySelector("[data-test=game-filter-select]").checkVisibility(), document.querySelector("[data-test=game-ea-sports-fc-26]").checkVisibility()]'))->toBe([true, false]);
-            $page->locator('[data-test=game-filter-select]')->selectOption('ea-sports-fc-26');
-            BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=matches] [data-test=match-row] [data-game-cover]")].every((p) => p.dataset.gameCover === "ea-sports-fc-26") && !document.querySelector("[data-test=chess-row]")', 10_000);
-        } else {
-            expect($page->evaluate('() => { const g = document.querySelector("[aria-labelledby=f-game][role=group]"); return g.scrollWidth <= g.clientWidth; }'))->toBeTrue();
-        }
+        $page->locator('[data-test=game-ea-sports-fc-26]')->click();
+        BrowserWait::until($page, '() => { const rows = [...document.querySelectorAll("[data-test=matches-table] [data-test=match-row]")]; return rows.length > 0 && rows.every((r) => r.dataset.game === "ea-sports-fc-26") && !document.querySelector("[data-test=chess-row]"); }', 10_000);
         assertCleanPage($page, "/matches at {$width}");
 
         $page = gameCoverPage($captain, route('games.series', 'ea-sports-fc-27', false), $width);
@@ -166,21 +163,9 @@ test('covers show on /tournaments, the games menu, the challenge form and the ma
         assertCleanPage($page, "FC 27 page at {$width}");
     }
 
-    // At sm (640 px), the narrowest width with the buttons, all five fit their group.
-    $page = gameCoverPage($captain, route('matches.index', absolute: false), 640);
-    expect($page->evaluate('() => { const g = document.querySelector("[aria-labelledby=f-game][role=group]"); return [g.checkVisibility(), g.scrollWidth <= g.clientWidth]; }'))->toBe([true, true]);
-    assertCleanPage($page, '/matches at 640');
-    // Positive control of the fit check: a button too wide for the group makes it false.
-    // The group wraps now (overflow visible), so the control measures what the eye sees: a button beyond the window.
-    expect($page->evaluate('() => { const g = document.querySelector("[aria-labelledby=f-game][role=group]"); g.insertAdjacentHTML("beforeend", \'<button style="flex:none;width:2000px">x</button>\'); return [...g.querySelectorAll("button")].every((x) => { const r = x.getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth; }); }'))->toBeFalse();
-
-    // Many games (nine live on 2026-10-03, the last one cut off from 1536 px, where the full names show): the buttons wrap onto more rows and every one stays on screen.
-    $wide = gameCoverPage($captain, route('matches.index', absolute: false), 1600);
-    expect($wide->evaluate('() => { const g = document.querySelector("[aria-labelledby=f-game][role=group]"); const b = g.querySelector("button[data-test^=game-]:not([data-test=game-all])"); for (let i = 0; i < 8; i++) { g.appendChild(b.cloneNode(true)); } const out = [...g.querySelectorAll("button")].filter((x) => { const r = x.getBoundingClientRect(); return r.right > window.innerWidth || r.left < 0; }).length; return [out, document.documentElement.scrollWidth <= document.documentElement.clientWidth]; }'))->toBe([0, true]);
-
     // Positive control: the same collector and cover check see a thrown error and a broken cover.
-    $page = gameCoverPage($captain, route('matches.index', absolute: false), 1440);
-    $page->evaluate('() => { setTimeout(() => { throw new Error("cover positive control"); }); const picture = document.querySelector("[data-test=matches] [data-test=match-row] picture[data-game-cover]"); picture.scrollIntoView(); picture.querySelector("source").remove(); const img = picture.querySelector("img"); img.removeAttribute("srcset"); img.loading = "eager"; img.src = "/images/games/missing-480.jpg"; }');
+    $page = gameCoverPage($captain, route('tournaments.index', absolute: false), 1440);
+    $page->evaluate('() => { setTimeout(() => { throw new Error("cover positive control"); }); const picture = document.querySelector("main picture[data-game-cover]"); picture.scrollIntoView(); picture.querySelector("source").remove(); const img = picture.querySelector("img"); img.removeAttribute("srcset"); img.loading = "eager"; img.src = "/images/games/missing-480.jpg"; }');
     BrowserWait::until($page, '() => window.__errors.some((e) => e.includes("cover positive control")) && window.__errors.some((e) => e.includes("missing-480.jpg"))', 5_000);
     $broken = array_values(array_filter($page->evaluate(GAME_COVERS_SCRIPT, null), fn (array $cover): bool => ! $cover['loaded']));
 
