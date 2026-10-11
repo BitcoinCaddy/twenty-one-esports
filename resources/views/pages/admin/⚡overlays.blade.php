@@ -133,7 +133,7 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
             $this->flash = __('The preset was saved. Its URL stays the same.');
         } else {
             $token = OverlayPreset::newToken();
-            $preset = OverlayPreset::query()->create($attributes + ['token_hash' => OverlayPreset::hashToken($token), 'created_by_id' => auth()->id()]);
+            $preset = OverlayPreset::query()->create($attributes + OverlayPreset::tokenAttributes($token) + ['created_by_id' => auth()->id()]);
             $this->revealedUrl = OverlayPreset::url($token);
             $this->revealedFor = $preset->id;
         }
@@ -230,7 +230,7 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
                  x-init="$el.scrollIntoView({ block: 'start' })"
                  x-data="{ copied: false, hint: '', url: @js($revealedUrl), async copy() { try { await navigator.clipboard.writeText(this.url); this.copied = true; this.hint = ''; setTimeout(() => this.copied = false, 2500); } catch (e) { this.hint = @js(__('Copy did not work here. Select the link and copy it.')); } } }">
             <h2 class="rv-h3">{{ __('The URL of :name', ['name' => $revealedName ?? '']) }}</h2>
-            <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Copy it now: it is shown only this once. Nobody can read it again, not even an admin; if it is lost, rotate it for a new one.') }}</p>
+            <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Paste it into OBS. It stays in the list below, ready to copy again.') }}</p>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <label class="sr-only" for="overlay-url">{{ __('Overlay URL') }}</label>
                 <input id="overlay-url" type="text" readonly value="{{ $revealedUrl }}" x-on:focus="$el.select()" class="{{ $input }} font-mono text-[13px]" data-test="overlay-url">
@@ -239,7 +239,7 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
                 </button>
             </div>
             <p class="m-0 text-xs text-loss" x-show="hint !== ''" x-text="hint" x-cloak></p>
-            <div><button type="button" wire:click="dismiss" class="rv-b2" data-test="overlay-dismiss">{{ __('I copied it') }}</button></div>
+            <div><button type="button" wire:click="dismiss" class="rv-b2" data-test="overlay-dismiss">{{ __('Done') }}</button></div>
         </section>
     @endif
 
@@ -316,21 +316,40 @@ new #[Title('OBS overlays')] #[Layout('layouts::app', ['section' => 'admin'])] c
                 <b class="truncate">{{ $preset->name }}</b>
                 <span class="rv-tag w-fit">{{ $preset->variant->label() }}</span>
                 <span class="flex min-w-0 flex-col gap-0.5">
-                    <span class="rv-m">
-                        {{ strtoupper($preset->locale) }}
-                        @if ($preset->variant->needsTournament())
-                            , {{ $preset->tournament?->name ?? __('Tournament no longer exists') }}
-                        @elseif ($preset->variant->takesTournament() && $preset->tournament !== null)
-                            , {{ $preset->tournament->name }}
-                        @endif
-                        , {{ $preset->rotated_at === null ? __('URL from :date', ['date' => $preset->created_at?->translatedFormat('j M Y')]) : __('URL rotated :date', ['date' => $preset->rotated_at->translatedFormat('j M Y')]) }}
-                    </span>
+                    @php
+                        $presetMeta = array_filter([
+                            strtoupper($preset->locale),
+                            $preset->variant->needsTournament() ? ($preset->tournament?->name ?? __('Tournament no longer exists')) : ($preset->variant->takesTournament() ? $preset->tournament?->name : null),
+                            $preset->rotated_at === null ? __('URL from :date', ['date' => $preset->created_at?->translatedFormat('j M Y')]) : __('URL rotated :date', ['date' => $preset->rotated_at->translatedFormat('j M Y')]),
+                        ]);
+                    @endphp
+                    <span class="rv-m">{{ implode(', ', $presetMeta) }}</span>
                 </span>
                 <span class="flex flex-wrap gap-2">
                     <button type="button" wire:click="edit({{ $preset->id }})" class="rv-b2 is-sm" data-test="overlay-edit">{{ __('Edit') }}</button>
                     <button type="button" wire:click="rotate({{ $preset->id }})" wire:confirm="{{ __('Rotate the URL of :name? The old URL stops working at once; OBS needs the new one.', ['name' => $preset->name]) }}" class="rv-b2 is-sm" data-test="overlay-rotate">{{ __('New URL') }}</button>
                     <button type="button" wire:click="remove({{ $preset->id }})" wire:confirm="{{ __('Delete :name? Its URL stops working.', ['name' => $preset->name]) }}" class="rv-bd is-sm" data-test="overlay-remove">{{ __('Delete') }}</button>
                 </span>
+                {{--
+                    The preset's URL, always there to copy (user, 2026-10-11): selectable mono text that wraps, Copy (the
+                    clipboard call inside the click; refused, the text is selected instead, so Ctrl+C takes it) and Open.
+                    A preset made before tokens were kept says how to get one, without a dead copy button.
+                --}}
+                @php($presetUrl = $preset->storedUrl())
+                @if ($presetUrl !== null)
+                    <div class="flex flex-col gap-2 rounded border border-hairline bg-ground p-2 sm:flex-row sm:items-center lg:col-span-4" wire:key="overlay-url-{{ $preset->id }}-{{ $preset->rotated_at?->timestamp }}" data-test="overlay-row-url"
+                         x-data="{ copied: false, timer: null, copy() { navigator.clipboard.writeText(@js($presetUrl)).then(() => { this.copied = true; clearTimeout(this.timer); this.timer = setTimeout(() => this.copied = false, 2000); }, () => { const range = document.createRange(); range.selectNodeContents(this.$refs.url); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); }); } }">
+                        <code x-ref="url" class="min-w-0 grow px-1 font-mono text-xs leading-normal break-all text-ink-2 select-all" data-test="overlay-row-url-text">{{ $presetUrl }}</code>
+                        <span class="flex shrink-0 gap-2">
+                            <button type="button" x-on:click="copy()" class="rv-b is-sm" data-test="overlay-row-copy">
+                                <span x-show="! copied">{{ __('Copy') }}</span><span x-show="copied" x-cloak role="status">{{ __('Copied') }}</span>
+                            </button>
+                            <a href="{{ $presetUrl }}" target="_blank" rel="noopener" class="rv-b2 is-sm" data-test="overlay-row-open">{{ __('Open the overlay') }}</a>
+                        </span>
+                    </div>
+                @else
+                    <p class="m-0 rounded border border-dashed border-dash px-3 py-2 text-xs leading-normal text-ink-2 lg:col-span-4" data-test="overlay-row-legacy">{{ __('URL created before the update: press “New URL” once and it stays visible here.') }}</p>
+                @endif
             </div>
         @empty
             <x-admin.empty :text="__('No preset yet. Create the first one above.')" />

@@ -8369,5 +8369,8 @@
     "Reload": "Neu laden",
     "Briefly down for maintenance": "Kurz in Wartung",
     "There is no match with this number yet.": "Es gibt noch kein Match mit dieser Nummer.",
-    "This page is announced.": "Diese Seite ist angekündigt."
+    "This page is announced.": "Diese Seite ist angekündigt.",
+    "Open the overlay": "Öffnen",
+    "URL created before the update: press “New URL” once and it stays visible here.": "URL vor dem Update erstellt — einmal ‚Neue URL‘ drücken, dann bleibt sie hier sichtbar.",
+    "Paste it into OBS. It stays in the list below, ready to copy again.": "Füge sie in OBS ein. Sie bleibt unten in der Liste und lässt sich jederzeit wieder kopieren."
 }
