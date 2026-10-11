@@ -11,6 +11,7 @@ use App\Support\GameNames;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Notifications\DmRelays;
 use App\Support\Tournaments\TournamentGameEnd;
+use App\Support\Tournaments\TournamentRunner;
 use Illuminate\Support\Facades\Blade;
 use Livewire\Attributes\Json;
 use Livewire\Attributes\Layout;
@@ -481,6 +482,16 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 <p class="m-0 rounded-[4px] border border-btc-ring bg-feature py-2 pr-3 pl-4 text-[13px] font-bold text-btc-hi shadow-[inset_3px_0_0_var(--color-btc)]" x-show="repetitionWarning" x-text="repetitionWarning" data-test="repetition-note"></p>
                 {{-- Who would be ahead in the race (Blockli): steps to the goal and blocks left a side (DerCaddy, 2026-10-09). --}}
                 <p class="m-0 text-[13px] text-ink-2" x-show="standingLine" x-text="standingLine" data-test="standing"></p>
+                @php
+                    // The deciding game of a two-leg pairing in a tournament whose drawn decider goes to the race standing (user, 2026-10-11).
+                    $deciderMatch = $boardGame->isActive() ? $boardGame->tournamentMatch : null;
+                    $standingDecides = $deciderMatch !== null && $deciderMatch->tournament?->decidesDrawByStanding()
+                        && TournamentRunner::canDecideByStanding($boardGame->game)
+                        && TournamentRunner::finishedBoardGames($deciderMatch)->where('id', '<', $boardGame->id)->count() >= 2;
+                @endphp
+                @if ($standingDecides)
+                    <p class="m-0 rounded-[4px] border border-line bg-card px-3 py-2 text-[13px] text-ink" data-test="decider-standing">{{ __('This game decides the pairing. If it is drawn, the race standing of the final position decides; a level standing is replayed.') }}</p>
+                @endif
                 <p role="alert" class="m-0 text-[13px] text-loss" x-show="error" x-text="error" data-test="board-error"></p>
 
                 <template x-if="state.status !== 'active'">

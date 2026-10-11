@@ -86,7 +86,7 @@ final class TournamentEditor
     public function __construct(private TournamentPublisher $publisher, private TournamentModeration $moderation) {}
 
     /**
-     * @param  array{name?: string, description?: string|null, checkin_minutes?: int|null, noshow_minutes?: int|null, report_hours?: int|null, response_minutes?: int|null, night_pause?: bool|null, night_pause_until?: string|null, night_pause_resume?: string|null, starts_at?: CarbonImmutable, signup_closes_at?: CarbonImmutable, capacity?: int, results_mode?: TournamentResultsMode, director_ids?: list<int>, game?: string, mode?: string, format?: TournamentFormat, options?: array<string, mixed>, time_window?: int, on_site?: bool, stations?: int|null, times?: array<string, float>|null}  $changes
+     * @param  array{name?: string, description?: string|null, draw_decider?: string|null, checkin_minutes?: int|null, noshow_minutes?: int|null, report_hours?: int|null, response_minutes?: int|null, night_pause?: bool|null, night_pause_until?: string|null, night_pause_resume?: string|null, starts_at?: CarbonImmutable, signup_closes_at?: CarbonImmutable, capacity?: int, results_mode?: TournamentResultsMode, director_ids?: list<int>, game?: string, mode?: string, format?: TournamentFormat, options?: array<string, mixed>, time_window?: int, on_site?: bool, stations?: int|null, times?: array<string, float>|null}  $changes
      * @return list<string> the fields that changed
      *
      * @throws TournamentRuleViolation
@@ -279,6 +279,22 @@ final class TournamentEditor
 
             if (isset($diff[$field]) && $value !== null && ($value < $min || $value > $max)) {
                 throw new TournamentRuleViolation('deadline_bounds', __('Keep each deadline within its range, or leave it empty for the league default.'));
+            }
+        }
+
+        // The draw-decider rule is part of the rules players sign up under: like the prizes it changes only in a draft or
+        // while sign-up is open (PrizePool::canChangeSplit), and only for a game that can use it.
+        if (isset($diff['draw_decider'])) {
+            if ($tournament->status !== TournamentStatus::Draft && ! $tournament->isSignupOpen()) {
+                throw new TournamentRuleViolation('draw_decider_frozen', __('How a drawn decider is settled is part of the rules players signed up under; it cannot change after sign-up closed.'));
+            }
+
+            $value = $changes['draw_decider'];
+            $game = $changes['game'] ?? $tournament->game;
+
+            if ($value !== null && ! in_array($value, [Tournament::DRAW_DECIDER_STANDING, Tournament::DRAW_DECIDER_REPLAY], true)
+                || $value === Tournament::DRAW_DECIDER_STANDING && ! TournamentRunner::canDecideByStanding($game)) {
+                throw new TournamentRuleViolation('draw_decider', __('Only a Blockli tournament can settle a drawn decider by the race standing.'));
             }
         }
 

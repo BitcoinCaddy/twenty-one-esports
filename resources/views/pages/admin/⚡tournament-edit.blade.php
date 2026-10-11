@@ -143,6 +143,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         }
 
         $this->fillNightPause($tournament);
+        $this->drawDecider = $tournament->decidesDrawByStanding() ? Tournament::DRAW_DECIDER_STANDING : Tournament::DRAW_DECIDER_REPLAY;
     }
 
     /**
@@ -235,6 +236,7 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
             'description' => trim($this->description) === '' ? null : trim($this->description),
             'starts_at' => LeagueTime::parse($this->startsAt, $tournament->starts_at),
             ...$this->chosenDeadlines(),
+            ...$this->chosenDrawDecider(),
         ];
 
         if ($beforeDraw) {

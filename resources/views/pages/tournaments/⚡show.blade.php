@@ -663,6 +663,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             array_splice($chips, 2, 0, [['lock', __('Sign-up closes'), $at($tournament->signup_closes_at), 'closes']]);
         }
 
+        // A two-leg race game (Blockli): how a 1:1 and a drawn third game are settled (draw_decider, user 2026-10-11).
+        if (\App\Support\Tournaments\TournamentRunner::canDecideByStanding($tournament->game)) {
+            array_splice($chips, 1, 0, [['award', __('Pairings'), $tournament->decidesDrawByStanding()
+                ? __('two games with the colours swapped; at 1:1 a third game decides, and if it is drawn the race standing of its final position decides (a block counts :rate steps); a level standing is replayed', ['rate' => app()->getLocale() === 'de' ? str_replace('.', ',', (string) \App\Support\Board\BlockliRules::BLOCK_STEPS) : (string) \App\Support\Board\BlockliRules::BLOCK_STEPS])
+                : trans_choice('two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through', \App\Support\Tournaments\TournamentRunner::drawnReplays($tournament)), 'pairings']]);
+        }
+
         $proof = array_values(array_filter([
             $tournament->naddr() ? ['naddr', $tournament->naddr()] : null,
             $tournament->event ? [__('Calendar event'), $tournament->event->event_id] : null,

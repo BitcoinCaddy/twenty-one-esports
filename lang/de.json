@@ -8369,5 +8369,18 @@
     "Reload": "Neu laden",
     "Briefly down for maintenance": "Kurz in Wartung",
     "There is no match with this number yet.": "Es gibt noch kein Match mit dieser Nummer.",
-    "This page is announced.": "Diese Seite ist angekündigt."
+    "This page is announced.": "Diese Seite ist angekündigt.",
+    ":legs, decider drawn: race standing, ahead by :steps": ":legs, Entscheidungspartie remis: Rennstand, :steps vorn",
+    "How a drawn decider is settled is part of the rules players signed up under; it cannot change after sign-up closed.": "Wie eine remis beendete Entscheidungspartie entschieden wird, gehört zu den Regeln, unter denen sich die Spieler angemeldet haben; nach Anmeldeschluss ändert es sich nicht mehr.",
+    "Only a Blockli tournament can settle a drawn decider by the race standing.": "Nur ein Blockli-Turnier kann eine remis beendete Entscheidungspartie nach dem Rennstand entscheiden.",
+    "Drawn decider": "Remis in der Entscheidungspartie",
+    "At 1:1 after both games a third game decides. If it is drawn too:": "Steht es nach beiden Partien 1:1, entscheidet eine dritte Partie. Endet auch sie remis:",
+    "The race standing decides": "Der Rennstand entscheidet",
+    "The side ahead in the race standing of the final position wins. A level standing is replayed.": "Wer im Rennstand der Schlussstellung vorn liegt, gewinnt. Bei Gleichstand wird nachgespielt.",
+    "Replayed up to :count time, then the higher seed goes through.|Replayed up to :count times, then the higher seed goes through.": "Bis zu :count-mal nachgespielt, dann kommt die höhere Setzung weiter.|Bis zu :count-mal nachgespielt, dann kommt die höhere Setzung weiter.",
+    "Part of the rules players signed up under: it no longer changes.": "Gehört zu den Regeln, unter denen sich die Spieler angemeldet haben: Es ändert sich nicht mehr.",
+    "two games with the colours swapped; at 1:1 a third game decides, and if it is drawn the race standing of its final position decides (a block counts :rate steps); a level standing is replayed": "zwei Partien mit getauschten Farben; bei 1:1 entscheidet eine dritte Partie, und endet sie remis, entscheidet der Rennstand ihrer Schlussstellung (ein Block zählt :rate Schritte); bei Gleichstand wird nachgespielt",
+    "two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through": "zwei Partien mit getauschten Farben; bei 1:1 entscheidet eine dritte Partie, eine remis beendete wird bis zu :count-mal nachgespielt, dann kommt die höhere Setzung weiter|zwei Partien mit getauschten Farben; bei 1:1 entscheidet eine dritte Partie, eine remis beendete wird bis zu :count-mal nachgespielt, dann kommt die höhere Setzung weiter",
+    "A Blockli pairing plays two games with the colours swapped; at 1:1 a third game decides. If that one is drawn too, the tournament page says what follows: the race standing of its final position, or replays as for chess.": "Eine Blockli-Paarung spielt zwei Partien mit getauschten Farben; bei 1:1 entscheidet eine dritte Partie. Endet auch sie remis, sagt die Turnierseite, was folgt: der Rennstand ihrer Schlussstellung oder Nachspielen wie beim Schach.",
+    "This game decides the pairing. If it is drawn, the race standing of the final position decides; a level standing is replayed.": "Diese Partie entscheidet die Paarung. Endet sie remis, entscheidet der Rennstand der Schlussstellung; bei Gleichstand wird nachgespielt."
 }
