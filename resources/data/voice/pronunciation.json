@@ -1,0 +1,19 @@
+{
+ "note": "Spoken respellings for VoiceStudio (OmniVoice, German): the fetcher replaces each term (whole word, case-sensitive) before /generate. First guesses from 2026-10-11 (\"Blockli\" was heard as \"Block League\"); the user checks them by ear in P7.",
+ "terms": {
+  "Hyperbitcoinization": "Hyper-Bitcoinisation",
+  "EINUNDZWANZIG": "Einundzwanzig",
+  "Blockfill": "Block-Fill",
+  "Blockli": "Block-li",
+  "Mempool": "Mem-Puhl",
+  "TMNF": "Trackmania",
+  "Nostr": "Noster",
+  "Sats": "Sätts",
+  "Zaps": "Zäpps",
+  "Zap": "Zäpp",
+  "npub": "en-pub",
+  "HODL": "Hodl",
+  "GG": "Dschi Dschi",
+  "Elo": "Elo"
+ }
+}

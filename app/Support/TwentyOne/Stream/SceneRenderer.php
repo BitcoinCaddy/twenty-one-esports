@@ -52,8 +52,20 @@ final class SceneRenderer
      */
     public function svg(array $scene, string $view = 'stream.scene'): string
     {
-        return view($view, $scene)->render();
+        $svg = view($view, $scene)->render();
+        $caption = $scene['voice_caption'] ?? null;
+
+        // The commentary as a lower third while its voice is off (plan "KI-Stimme der Liga", P6): on top of the scene.
+        if (is_string($caption) && trim($caption) !== '' && ($end = strrpos($svg, '</svg>')) !== false) {
+            $lines = array_slice(explode("\n", wordwrap(trim(preg_replace('/\s+/u', ' ', $caption) ?? ''), self::CAPTION_CHARS, "\n", true)), 0, 2);
+            $svg = substr($svg, 0, $end).view('stream.rotation.partials.voice-caption', ['lines' => $lines])->render().substr($svg, $end);
+        }
+
+        return $svg;
     }
+
+    /** Characters per line of the commentary lower third (Unbounded 800 at 24 px, about 14.6 px a character, on 1128 px; wordwrap counts bytes, so umlauts only shorten a line). */
+    public const CAPTION_CHARS = 70;
 
     /**
      * @param  array<string, mixed>  $scene

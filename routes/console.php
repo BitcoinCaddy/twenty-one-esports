@@ -832,3 +832,16 @@ if (app(GameRegistry::class)->find(TrackmaniaNationsForever::SLUG) !== null) {
     Schedule::command('tmnf:weeks')->hourly()->withoutOverlapping()->onOneServer();
     Schedule::command('twentyone:stream-bot:tmnf')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 }
+
+/*
+ * TWENTY ONE TV commentary (plan "KI-Stimme der Liga", P6, all off by default):
+ * `caster:script` writes scene scripts ahead and expires stale ones, `caster:chat`
+ * queues reactions to trusted chatters and recomputes the web of trust daily.
+ * `caster:prune` runs always, so the spool and the chatter cache stay within their
+ * caps whatever the switches say (and are emptied after a switch-off).
+ * `caster:fetch` is not scheduled here: it runs on the workstation that voices.
+ */
+Schedule::command('caster:script')->everyMinute()->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
+Schedule::command('caster:chat')->everyMinute()->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
+Schedule::command('caster:chat', ['--wot'])->dailyAt('05:11')->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
+Schedule::command('caster:prune')->everyTenMinutes()->withoutOverlapping()->onOneServer();

@@ -315,6 +315,12 @@ final class RotationPlanner
     /** Rounds that took a Proof of Pong result (the results take turns by it). */
     private int $pongTurn = 0;
 
+    /** Slots shown so far: a new number is a new slot, however long the commentary holds one. */
+    private int $slotNumber = 0;
+
+    /** Until when the slot on show is held (App\Support\Caster\SceneDirector); 0: not held. */
+    private float $holdUntil = 0.0;
+
     /** The key of the last new #1 shown, and when. */
     private ?string $lastMoment = null;
 
@@ -434,13 +440,42 @@ final class RotationPlanner
 
         $this->holdTenseHyper($now);
 
-        if ($this->slot === null || $now >= $this->slot['until'] || $this->endsEarly($ids, $tournaments)) {
+        // A hold (the commentary still speaking about this slot) keeps it on show until then, early ends included.
+        if ($this->slot === null || $now >= $this->slot['until'] || ($now >= $this->holdUntil && $this->endsEarly($ids, $tournaments))) {
             $this->advance($now, $games, $tournaments, $blockfillMoment);
         }
 
         assert($this->slot !== null);
 
         return $this->slot;
+    }
+
+    /**
+     * Keep the slot on show until `$until` (plan "KI-Stimme der Liga", P6: a scene stands until its commentary
+     * clip has been spoken): its time is extended to at least `$until`, and until then nothing ends it early,
+     * a champion moment or a running tournament included. A later, earlier hold shortens the hold (a takeover
+     * waits for the end of the sentence on air), never the slot's own time. Used only while the commentary is on.
+     */
+    public function hold(float $until): void
+    {
+        if ($this->slot === null) {
+            return;
+        }
+
+        $this->holdUntil = $until;
+        $this->slot['until'] = max($this->slot['until'], $until);
+    }
+
+    /** A new number for every slot shown (the slot's `until` can move while it is held). */
+    public function slotNumber(): int
+    {
+        return $this->slotNumber;
+    }
+
+    /** Whether a champion moment or a running tournament waits to take the stream from the slot on show. */
+    public function urgentPending(): bool
+    {
+        return ($this->moments !== [] && ! $this->roundMoment) || ($this->running !== [] && ! $this->roundRunning && ! $this->roundMoment);
     }
 
     /**
@@ -537,6 +572,8 @@ final class RotationPlanner
 
             if ($slot !== null) {
                 $this->slot = $slot;
+                $this->slotNumber++;
+                $this->holdUntil = 0.0;
 
                 return;
             }
