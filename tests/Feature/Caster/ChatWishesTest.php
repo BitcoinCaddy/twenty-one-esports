@@ -26,6 +26,7 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\StreamBot\StreamCoordinates;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
+use App\Support\Voice\VoiceGuard;
 use Carbon\CarbonImmutable;
 use Tests\Support\TestSigner;
 
@@ -123,14 +124,14 @@ it('keeps every wish line speakable with a three-word name', function () {
 
         foreach ($lines->pool('wish_'.$type) as $line) {
             expect($line)->toContain('{name}')
-                ->and((new ScriptGuard)->check(strtr($line, ['{name}' => 'El Presidento Ben']), 1, 1, 16))->toBe([], $line)
+                ->and((new ScriptGuard)->check(strtr($line, ['{name}' => 'El Presidento Ben']), 1, 1, 32))->toBe([], $line)
                 ->and(ReactionLines::withName($line, null))->not->toContain('{name}');
         }
     }
 
     foreach (['wish_intro_joke', 'wish_intro_canon'] as $pool) {
         foreach ($lines->pool($pool) as $line) {
-            expect((new ScriptGuard)->check($line, 1, 1, 16))->toBe([], $line);
+            expect((new ScriptGuard)->check($line, 1, 1, 32))->toBe([], $line);
         }
     }
 });
@@ -173,7 +174,7 @@ it('does not tell the same Bauernkrieg episode twice within an hour', function (
 it('picks the episode told more than an hour ago, and grants no Bauernkrieg wish when every episode was told within the hour', function (int $minutesAgoOfLast, ?string $expected) {
     $episodes = array_column(HistoryScripts::data()['episodes'], 'id');
     foreach ($episodes as $index => $episode) {
-        $script = app(ScriptQueue::class)->enqueue(CasterScript::HISTORY, 'break', 'x', HistoryScripts::HASH_PREFIX.$episode, 0, CarbonImmutable::now());
+        $script = app(ScriptQueue::class)->enqueue(CasterScript::HISTORY, 'break', "Folge {$episode} vom Bauernkrieg.", HistoryScripts::HASH_PREFIX.$episode, 0, CarbonImmutable::now());
         $script->forceFill(['created_at' => now()->subMinutes($index === count($episodes) - 1 ? $minutesAgoOfLast : 20), 'status' => CasterScript::VOICED])->save();
     }
     wishChatter($this, 'Erzähl vom Bauernkrieg');
@@ -216,9 +217,10 @@ it('tells verified canon jokes for a joke wish', function () {
         ->and($lines)->toHaveCount(4)
         ->and($lines[0])->toBeIn(app(ReactionLines::class)->pool('wish_intro_joke'));
 
-    // Every joke is a canon entry word for word, nothing made up.
+    // Every joke carries a canon entry word for word (a short saying inside a carrier sentence), nothing made up.
     foreach (array_slice($lines, 1) as $line) {
-        expect(rtrim(ScriptGuard::withoutMarkers($line), '.!?'))->toBeIn($canon);
+        expect(array_filter($canon, fn (string $wording): bool => preg_match(VoiceGuard::wordingPattern($wording), $line) === 1))->not->toBeEmpty($line)
+            ->and((new ScriptGuard)->check($line, 1, 1, 32))->toBe([], $line);
     }
 });
 
@@ -230,7 +232,7 @@ it('tells EINUNDZWANZIG lore from the canon for a canon wish', function () {
 
     expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::CANON))
         ->and(count(ScriptGuard::lines($segment->text)))->toBeGreaterThanOrEqual(5)
-        ->and((new ScriptGuard)->check($segment->text, 1, 12, 16))->toBe([]);
+        ->and((new ScriptGuard)->check($segment->text, 1, 12, 32))->toBe([], $segment->text);
 });
 
 it('comments the live games for a game wish, and grants nothing when no game has data', function () {
@@ -312,6 +314,8 @@ it('lifts each wish and chat limit with 0 (unlimited via .env)', function (strin
         'tv.commentary.chat.per_person_minutes' => 0,
         'tv.commentary.chat.per_hour' => 100,
         "tv.commentary.chat.{$limit}" => 0,
+        // The limits alone: the no-repeat memory would drop the repeated test lines.
+        'tv.commentary.repeat_hours' => 0,
     ]);
     foreach (range(1, 3) as $turn) {
         app(ScriptQueue::class)->enqueue(CasterScript::LIVE, 'break', 'x', 'x', 0, CarbonImmutable::now(), scene: ChatWishes::SCENE);

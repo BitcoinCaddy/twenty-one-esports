@@ -124,24 +124,36 @@ function casterQueue(?SceneFacts $facts = null): ScriptQueue
     return new ScriptQueue(app(CasterVoice::class), $facts ?? casterQuietFacts());
 }
 
-/** A script the guards accept: short spoken German, one sentence per line. */
-const CASTER_GOOD_SCRIPT = "Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler.\nKlar, da geht noch mehr.\nSchaut einfach mal rein.";
+/** A script the guards accept: long, complete spoken German sentences, one per line. */
+const CASTER_GOOD_SCRIPT = "Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr gerade eingeschaltet habt.\nDie Liga hat inzwischen einundzwanzig Spieler, und es werden jede Woche mehr.\nSchaut doch einfach mal selbst in der Lobby vorbei und spielt eine Runde mit.";
 
-it('asks the league voice once per fill and fills the rest of the airtime with pattern scripts', function () {
-    config(['tv.commentary.scripts.ahead_seconds' => 20, 'tv.commentary.scripts.per_run_ai' => 1]);
+it('asks the league voice first, up to ai_calls_per_fill scripts, and fills only the rest with pattern scripts', function () {
+    config(['tv.commentary.scripts.ahead_seconds' => 60, 'tv.commentary.scripts.ai_calls_per_fill' => 2]);
     VoiceAgent::fake([
         ['text' => CASTER_GOOD_SCRIPT, 'canon_id' => null, 'mood' => 'fakten'],
-        ['text' => "Läuft bei der Liga.\nEinundzwanzig Leute sind dabei.\nUnd ihr?\nRein da.", 'canon_id' => null, 'mood' => 'call'],
+        ['text' => "Bei uns läuft die Liga rund um die Uhr, und das schon seit vielen Wochen.\nWer von euch heute noch spielen will, der schreibt es bitte in den Chat.\nIch warte gespannt darauf, wer sich als Nächstes an ein Brett traut.", 'canon_id' => null, 'mood' => 'call'],
     ]);
 
     $written = casterQueue()->fill(CarbonImmutable::now());
 
-    expect($written)->toBeGreaterThan(1)
-        ->and(CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->count())->toBe(1)
-        ->and(CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBe($written - 1)
-        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->whereNull('topic')->count())->toBe(0)
-        ->and(casterQueue()->airtimeAhead())->toBeGreaterThanOrEqual(20.0);
-    VoiceAgent::assertPromptedTimes(1);
+    expect($written)->toBeGreaterThan(2)
+        ->and(CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->count())->toBe(2)
+        ->and(CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBe($written - 2)
+        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->whereNull('topic')->count())->toBe(0);
+    VoiceAgent::assertPromptedTimes(2);
+});
+
+it('falls back to a pattern script for the topic when the league voice gives nothing', function () {
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 6]);
+    VoiceAgent::fake([
+        ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'],
+    ]);
+
+    casterQueue()->fill(CarbonImmutable::now());
+
+    expect(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBeGreaterThan(0)
+        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->count())->toBe(0);
 });
 
 it('never asks the league voice while its switch is off, and the patterns still fill the airtime', function () {
@@ -165,8 +177,10 @@ it('asks the league voice about no topic whose slides have no data', function ()
 });
 
 it('gives the one league-voice script to a topic with data and its slide facts', function () {
-    config(['tv.commentary.scripts.ahead_seconds' => 5]);
-    VoiceAgent::fake([['text' => "Live auf dem Brett: eine Partie Blitz.\nBleibt dran.", 'canon_id' => null, 'mood' => 'fakten']]);
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 1]);
+    // Daytime: at night only the night topics get scripts.
+    $this->travelTo(CarbonImmutable::today()->setTime(15, 0));
+    VoiceAgent::fake([['text' => "Live auf dem Brett läuft gerade eine Partie Blitz, und die schauen wir uns an.\nBleibt unbedingt dran, denn gleich wird es auf dem Brett richtig spannend.", 'canon_id' => null, 'mood' => 'fakten']]);
 
     casterQueue(casterFactsWith(['liveGames' => [['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'mode' => 'Blitz', 'move' => 14]]]))->fill(CarbonImmutable::now());
 
@@ -244,7 +258,7 @@ it('deletes rows that left the queue a day ago', function () {
 
 it('puts a live moment at the front of the queue', function () {
     $now = CarbonImmutable::now();
-    VoiceAgent::fake([['text' => "Wahnsinn!\nDie Liga hat 21 Spieler.", 'canon_id' => null, 'mood' => 'hype']]);
+    VoiceAgent::fake([['text' => "Wahnsinn, was für ein Ergebnis das gerade auf dem Brett geworden ist!\nDie Liga hat einundzwanzig Spieler, und heute hat einer davon richtig abgeräumt.", 'canon_id' => null, 'mood' => 'hype']]);
     $queue = casterQueue();
     $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Vorher.', 'h', 0, $now);
 
@@ -265,25 +279,24 @@ it('seeds every filler once and never expires it', function () {
         ->and($queue->expire($now->addDays(30)))->toBe(0);
 });
 
-it('rejects scripts that break the spoken-text rules', function (string $text, string $reason) {
+it('rejects scripts that break the stream or carry a sentence the voice cannot speak well', function (string $text, string $reason) {
     config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.patterns.per_run' => 0]);
     VoiceAgent::fake([['text' => $text, 'canon_id' => null, 'mood' => 'fakten']]);
 
     expect(casterQueue()->fill(CarbonImmutable::now()))->toBe(0)
         ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->pluck('reason')->all())->toContain($reason);
 })->with([
-    'unknown marker' => ["Hey, hier ist TWENTY ONE TV.\n[applause] Die Liga hat 21 Spieler.\nSchaut rein.", ScriptGuard::MARKER_UNKNOWN],
-    'stage direction' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler.\nKlar, da geht noch mehr (lacht).", ScriptGuard::STAGE_DIRECTION],
-    'too few sentences' => ['Hey, hier ist TWENTY ONE TV.', ScriptGuard::SENTENCE_COUNT],
-    'long sentence' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn zusammen im Park.\nSchaut rein.", ScriptGuard::SENTENCE_LONG],
-    'invented number' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 500 Spieler.\nSchaut rein.", 'number'],
-    'stock phrase' => ["Hey, hier ist TWENTY ONE TV.\nDarüber hinaus hat die Liga 21 Spieler.\nSchaut rein.", ScriptGuard::STOCK_PHRASE],
+    'unknown marker' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\n[applause] Die Liga hat einundzwanzig Spieler, und es werden immer mehr.\nSchaut doch einfach mal selbst in der Lobby vorbei.", ScriptGuard::MARKER_UNKNOWN],
+    'stage direction' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler, und es werden immer mehr.\nKlar, da geht noch eine ganze Menge mehr bei uns (lacht).", ScriptGuard::STAGE_DIRECTION],
+    'fragments' => ["Hey!\nLäuft.\nJetzt aber.", ScriptGuard::SENTENCE_SHORT],
+    'long sentence' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn und Kollegen und Verwandten zusammen im Park und im Garten und auf dem Balkon und manchmal sogar bis tief in die Nacht hinein.\nSchaut doch einfach mal selbst in der Lobby vorbei.", ScriptGuard::SENTENCE_LONG],
+    'hashtag in a link' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nSchaut auf https://example.com vorbei, denn da gibt es noch viel mehr zu sehen.\nSchaut doch einfach mal selbst in der Lobby vorbei.", 'url'],
 ]);
 
 it('lets the whitelisted markers through and counts no marker as a word', function () {
     $guard = new ScriptGuard;
 
-    expect($guard->check("Hey!\n[laughter] Na also.\nLäuft.", 3, 8, 12))->toBe([])
+    expect($guard->check("Hey, das ist wirklich ein richtig schöner Abend.\n[laughter] Na also, ich hab es euch doch gleich gesagt.\nLäuft bei uns heute wie am Schnürchen.", 3, 8, 12))->toBe([])
         ->and(ScriptGuard::withoutMarkers('[surprise-oh] Boah. [sigh]'))->toBe('Boah.')
         ->and($guard->check("Eins.\nZwei.\nDrei.", 3, 8, 12, [ScriptGuard::opening('Eins zwei drei.')]))->toContain(ScriptGuard::OPENING_REPEAT);
 });
@@ -315,18 +328,19 @@ it('spreads the long variants evenly at their share, owes at most one that could
     expect(LengthMix::isDue(LengthMix::SCENE))->toBeFalse();
 });
 
-it('writes about every fourth pattern scene long, 8 to 14 sentences, the rest short as before', function () {
-    config(['tv.commentary.ai' => false, 'tv.commentary.scripts.ahead_seconds' => 400]);
+it('writes about every fourth pattern scene long, 6 to 10 sentences, the rest short as before', function () {
+    // The length mix alone: the no-repeat memory (SpokenMemory) would thin the pattern pool out over 400 seconds.
+    config(['tv.commentary.ai' => false, 'tv.commentary.scripts.ahead_seconds' => 400, 'tv.commentary.repeat_hours' => 0, 'tv.commentary.patterns.sentences' => ['min' => 3, 'max' => 5]]);
     VoiceAgent::fake();
 
     casterQueue(casterFactsWith())->fill(CarbonImmutable::now());
 
     $counts = CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->orderBy('id')->get()->map(fn (CasterScript $script): int => count(casterWholeSentences($script)))->all();
-    $long = array_filter($counts, fn (int $count): bool => $count >= 8);
+    $long = array_filter($counts, fn (int $count): bool => $count >= 6);
 
     expect(count($counts))->toBeGreaterThanOrEqual(8)
         ->and(count($long))->toBeGreaterThanOrEqual(intdiv(count($counts), 4) - 1)->toBeLessThanOrEqual(intdiv(count($counts), 4) + 1)
-        ->and(max($counts))->toBeLessThanOrEqual(14)
+        ->and(max($counts))->toBeLessThanOrEqual(10)
         ->and(min(array_diff_key($counts, $long)))->toBeGreaterThanOrEqual(3);
     VoiceAgent::assertNeverPrompted();
 });

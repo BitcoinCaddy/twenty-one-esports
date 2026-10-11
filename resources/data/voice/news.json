@@ -1,60 +1,71 @@
 {
- "note": "TWENTY ONE TV news segment (App\\Support\\Caster\\NewsScripts): an intro line per section, the headline read word for word with its source, then the commentary. The league voice writes the commentary; these reactions stand in when it is off or its draft fails a check. They are opinion only: no facts, no names, no numbers, and they must fit any headline of their section. Markus Turm's voice: Bitcoin-libertarian, critical of the state and of socialism, Allgäu-casual, sarcastic but never against a private person or a group.",
+ "note": "TWENTY ONE TV news segment (App\\Support\\Caster\\NewsScripts): an intro line per section, the headline read word for word at the end of a carrier sentence that names its source (headline_carriers: {source}, {headline}; never a bare title, user 2026-10-12), then the commentary. Every spoken sentence is complete and has at least seven words. The league voice writes the commentary; these reactions stand in when it is off or its draft fails a check. They are opinion only: no facts, no names, no numbers, and they must fit any headline of their section. Markus Turm's voice: Bitcoin-libertarian, critical of the state and of socialism, Allgäu-casual, sarcastic but never against a private person or a group.",
  "intros": {
   "bitcoin": [
-   "Breaking News aus der Bitcoin-Welt.",
-   "Neues aus dem Kaninchenbau.",
-   "Kurz rüber in die Bitcoin-Nachrichten.",
-   "Bitcoin-News, frisch vom Ticker."
+   "Jetzt schauen wir mal kurz rüber in die Bitcoin-Welt, denn da gibt es eine frische Meldung.",
+   "Aus dem Kaninchenbau gibt es Neuigkeiten, und die will ich euch nicht vorenthalten.",
+   "Wir machen einen kleinen Abstecher in die Bitcoin-Nachrichten, weil da gerade etwas reingekommen ist.",
+   "Frisch vom Ticker kommen jetzt die Bitcoin-News, und ich hab sie für euch schon mal aufgeschlagen."
   ],
   "germany": [
-   "Schlagzeile aus Deutschland.",
-   "Und jetzt die Nachrichten aus dem besten Deutschland aller Zeiten.",
-   "Kurzer Blick in die deutsche Presse.",
-   "Neues aus der Bundesrepublik."
+   "Jetzt kommt eine Schlagzeile aus Deutschland, und ihr dürft euch schon mal festhalten.",
+   "Und jetzt die Nachrichten aus dem besten Deutschland aller Zeiten, wie man uns so gern erzählt.",
+   "Wir werfen einen kurzen Blick in die deutsche Presse, weil man ja informiert bleiben will.",
+   "Aus der Bundesrepublik gibt es Neues, und ich hab mir das für euch einmal genauer angeschaut."
   ]
  },
- "attribution": {
-  "de": "Laut {source}:"
- },
+ "headline_carriers": [
+  "Die nächste Schlagzeile kommt von {source} und lautet ganz wörtlich: {headline}",
+  "Im Nachrichtenfeed von {source} steht gerade diese Schlagzeile: {headline}",
+  "Die Redaktion von {source} titelt heute folgendermaßen: {headline}",
+  "Frisch aus dem Ticker von {source} kommt die folgende Schlagzeile: {headline}",
+  "Ganz oben im Feed von {source} steht im Moment diese Meldung: {headline}",
+  "Die Kollegen von {source} haben gerade diese Schlagzeile veröffentlicht: {headline}",
+  "Ich lese euch jetzt die aktuelle Schlagzeile von {source} wörtlich vor: {headline}",
+  "Bei den Nachrichten von {source} springt mir gerade diese Zeile ins Auge: {headline}",
+  "Laut {source} lautet die aktuelle Schlagzeile ganz genau so: {headline}",
+  "Schaut mal was {source} gerade als Schlagzeile online gestellt hat: {headline}",
+  "Eine ganz frische Meldung von {source} habe ich hier für euch: {headline}",
+  "Auf der Seite von {source} lese ich gerade die folgende Überschrift: {headline}"
+ ],
  "reactions": {
   "bitcoin": [
-   "Tick tack, nächster Block.\nDer Rest ist Rauschen.",
-   "Schön und gut.\nIch stack einfach weiter.",
-   "Man kann es auch kurz machen.\nKauft Bitcoin und lest weniger Nachrichten.",
-   "Und am Ende gilt trotzdem.\nNicht deine Schlüssel, nicht deine Coins.",
-   "Spannend.\nAber der Kurs ist nicht die Nachricht.",
-   "Ach, die Krypto-Presse.\nJeden Tag ein neuer Weltuntergang und ein neuer Mond.",
-   "Ich sag's mal so.\nBitcoin ist es völlig egal, was in der Zeitung steht.",
-   "Weiter geht's.\nVerifizieren statt vertrauen.",
-   "Ich schau lieber, ob mein Node noch läuft.\nDas ist die einzige Nachricht, die zählt.",
-   "Schlagzeilen kommen und gehen.\nDie Blöcke kommen alle zehn Minuten.",
-   "Kurz durchatmen.\nUnd dann einfach weiter stacken.",
-   "Am Ende ist es ganz einfach.\nBitcoin fragt nicht um Erlaubnis.",
-   "Die Presse hat Bitcoin schon oft beerdigt.\nIrgendwie lebt er immer noch.",
-   "Wer seine Schlüssel hat, kann solche Meldungen entspannt lesen.",
-   "Spannend für die einen.\nFür den Rest von uns nur ein weiterer Block.",
-   "Mein Tipp zu dieser Meldung.\nRuhig bleiben und den eigenen Node fragen.",
-   "Tja.\nDer Kaninchenbau wird jeden Tag ein bisschen tiefer."
+   "Tick tack, der nächste Block kommt sowieso, und der ganze Rest ist am Ende nur Rauschen im Kanal.",
+   "Das ist alles schön und gut, aber ich stack einfach in aller Ruhe weiter, egal was in der Zeitung steht.",
+   "Man kann es auch ganz kurz machen, denn ihr kauft einfach Bitcoin und lest dafür weniger Nachrichten.",
+   "Und am Ende des Tages gilt trotzdem die alte Regel, dass es nicht deine Coins sind, wenn es nicht deine Schlüssel sind.",
+   "Das klingt spannend, aber vergesst bitte nie, dass der Kurs nicht die eigentliche Nachricht ist.",
+   "Ach, die liebe Krypto-Presse bringt jeden Tag einen neuen Weltuntergang und am nächsten Tag gleich wieder einen neuen Mond.",
+   "Ich sag es mal ganz offen, denn Bitcoin ist es völlig egal, was über ihn in der Zeitung steht.",
+   "Wir machen einfach weiter wie immer und verifizieren lieber selbst, statt irgendwem blind zu vertrauen.",
+   "Ich schau jetzt lieber nach ob mein Node noch läuft, weil das die einzige Nachricht ist, die für mich zählt.",
+   "Schlagzeilen kommen und gehen, während die Blöcke ganz stur alle zehn Minuten weiterkommen.",
+   "Wir atmen jetzt einmal tief durch und stacken dann ganz entspannt einfach weiter.",
+   "Am Ende ist es eigentlich ganz einfach, weil Bitcoin niemanden um Erlaubnis fragt.",
+   "Die Presse hat Bitcoin schon so oft beerdigt, und irgendwie lebt er trotzdem immer noch.",
+   "Wer seine Schlüssel selbst verwahrt, kann solche Meldungen ganz entspannt bei einem Kaffee lesen.",
+   "Für die einen ist das spannend, aber für den Rest von uns ist es einfach nur ein weiterer Block in der Kette.",
+   "Mein ehrlicher Tipp zu dieser Meldung ist, dass ihr ruhig bleibt und einfach euren eigenen Node fragt.",
+   "Tja, der Kaninchenbau wird jeden Tag ein kleines bisschen tiefer, und wir graben einfach fröhlich weiter."
   ],
   "germany": [
-   "Ja mei.\nDeutschland halt.",
-   "Und wer zahlt's am Ende?\nGenau, ihr.",
-   "Ich sag nichts.\nIch denk mir nur meinen Teil.",
-   "Man könnte lachen.\nWenn es nicht so teuer wäre.",
-   "Noch ein Formular, dann wird bestimmt alles gut.",
-   "Die Planwirtschaft lässt grüßen.\nMit Stempel und in dreifacher Ausfertigung.",
-   "Gut, dass wir wenigstens Bitcoin haben.\nDa entscheidet kein Ausschuss.",
-   "Respekt.\nDie Kreativität beim Geldausgeben fremder Leute ist grenzenlos.",
-   "Ich hol mir erst mal einen Kaffee.\nDas muss man verdauen.",
-   "Das Problem ist nie zu wenig Staat.\nSagt zumindest der Staat.",
-   "Wieder ein Tag im Paradies der Paragraphen.",
-   "Ich frag mich ja nur eins.\nWer hat sich das ausgedacht und warum durfte er?",
-   "Bei uns im Allgäu sagt man dazu.\nDa schaust halt.",
-   "Wenn ich so wirtschaften würde, hätte mein Bankberater längst angerufen.",
-   "Man gewöhnt sich an alles.\nAuch an das hier.",
-   "Gut, dass das Geld dafür einfach so vom Himmel fällt.\nAch nein, Moment.",
-   "Ich glaube, ich wandere aus.\nIn den Kaninchenbau."
+   "Ja mei, da kann man eigentlich nur noch feststellen, dass Deutschland halt einfach Deutschland ist.",
+   "Und wer zahlt das am Ende alles, frag ich euch, denn das seid natürlich wieder ihr.",
+   "Ich sag dazu jetzt lieber nichts, aber ich denk mir ganz still meinen Teil.",
+   "Man könnte eigentlich herzlich darüber lachen, wenn das Ganze nicht so furchtbar teuer wäre.",
+   "Noch ein einziges Formular mehr, und dann wird ganz bestimmt alles wieder gut.",
+   "Die Planwirtschaft lässt schön grüßen, und zwar mit Stempel und in dreifacher Ausfertigung.",
+   "Gut, dass wir wenigstens Bitcoin haben, denn da entscheidet zum Glück kein Ausschuss.",
+   "Respekt, denn die Kreativität beim Ausgeben vom Geld fremder Leute ist hierzulande wirklich grenzenlos.",
+   "Ich hol mir jetzt erst mal einen Kaffee, weil man so eine Meldung in Ruhe verdauen muss.",
+   "Das Problem ist ja angeblich nie zu wenig Staat, und das hören wir ausgerechnet immer vom Staat selbst.",
+   "Willkommen zu einem weiteren wunderschönen Tag im Paradies der Paragraphen.",
+   "Ich frag mich ja nur, wer sich das ausgedacht hat und warum er das überhaupt durfte.",
+   "Bei uns im Allgäu würde man dazu ganz trocken feststellen, dass man da halt schaut.",
+   "Wenn ich so wirtschaften würde, dann hätte mein Bankberater mich schon längst angerufen.",
+   "Man gewöhnt sich wohl an alles im Leben, und offenbar sogar an so etwas wie das hier.",
+   "Wie schön, dass das Geld dafür einfach so vom Himmel fällt, aber das tut es ja leider gar nicht.",
+   "Ich glaube, ich wandere jetzt aus, und zwar ganz tief hinein in den Kaninchenbau."
   ]
  }
 }

@@ -8,17 +8,15 @@ use Carbon\CarbonImmutable;
 /**
  * "Markus erzählt vom Bauernkrieg" (user 2026-10-11: "Ein Gag wäre es, wenn
  * er ab und an mal etwas Längeres über die Bauernkriege erzählen würde"):
- * one episode of resources/data/voice/bauernkrieg.json per segment, built
- * from the file alone, no model: an intro, the episode's facts in order (as
- * many as fit `history.sentences.max`, at least three), one twist (a joke,
- * announced as one) and an outro. Every fact carries its source URL in the
- * file; nothing else in the segment claims a fact.
+ * one episode of resources/data/voice/bauernkrieg.json per segment. Markus
+ * tells it freely (CasterVoice::history(), user 2026-10-12: "FREIE
+ * KI-generierte Rede!!!"), the episode's facts (each with its source URL in
+ * the file) as the model's data; only when the voice gives nothing, the
+ * pattern episode stands in: the facts in order and a twist (build()).
  *
  * A long episode (LengthMix; user 2026-10-11: "Ich denke da an die
- * Bauernkriege-Geschichten … die länger sein dürfen"): the episode's facts in
- * narrative order as far as `length.history_long.max` sentences go, with an
- * aside (opinion, from the file's `asides`) after every second fact, then the
- * twist and the outro: 15 to 30 sentences, two to four minutes spoken.
+ * Bauernkriege-Geschichten … die länger sein dürfen"): `length.history_long`
+ * sentences, two to four minutes spoken (buildLong() as the fallback).
  *
  * Due every `history.every_minutes` (a random length within the range, drawn
  * from the last segment's id, so it is stable between runs); the episode
@@ -26,6 +24,8 @@ use Carbon\CarbonImmutable;
  */
 class HistoryScripts
 {
+    public function __construct(private CasterVoice $voice) {}
+
     /** facts_hash of a history script: this prefix and the episode id. */
     public const HASH_PREFIX = 'history:';
 
@@ -51,7 +51,7 @@ class HistoryScripts
      * (`$repeatMinutes` instead: a chat wish, ChatWishes, may hear an episode
      * again after an hour).
      *
-     * @return array{text: string, episode: string}|null
+     * @return array{text: string, episode: string, source: string}|null
      */
     public function write(CarbonImmutable $now, bool $long = false, ?int $repeatMinutes = null): ?array
     {
@@ -81,21 +81,31 @@ class HistoryScripts
         $episode = $candidates[0]['episode'];
         $turn = count($told) + intdiv($now->getTimestamp(), 86_400);
 
-        return ['text' => $long ? self::buildLong($episode, $turn, $data) : self::build($episode, $turn, $data), 'episode' => $episode['id']];
+        // Markus narrates the episode freely (CasterVoice::history()); the pattern episode only when the voice gives nothing.
+        $told = ScriptQueue::aiEnabled() ? $this->voice->history($episode, $long) : null;
+
+        if ($told === null && ! PatternScripts::enabled()) {
+            return null;
+        }
+
+        return $told !== null
+            ? ['text' => $told, 'episode' => $episode['id'], 'source' => CasterScript::SOURCE_AI]
+            : ['text' => $long ? self::buildLong($episode, $turn) : self::build($episode, $turn), 'episode' => $episode['id'], 'source' => CasterScript::SOURCE_PATTERN];
     }
 
     /**
-     * An episode as a script, the intro, twist and outro picked by `$turn`.
+     * The pattern episode (the fallback when the voice gives nothing): the
+     * episode's facts in order, as many as fit `history.sentences.max` (at
+     * least three), and one twist picked by `$turn`. No fixed intro, aside or
+     * outro any more (user 2026-10-12: "'Und gleich geht's weiter mit der
+     * Liga' kommt auch ständig! ALLE WIEDERHOLUNGEN RAUS!!!").
      *
      * @param  array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}  $episode
-     * @param  array{intros: list<string>, outros: list<string>, asides: list<string>, episodes: list<array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}>}  $data
      */
-    public static function build(array $episode, int $turn, array $data): string
+    public static function build(array $episode, int $turn): string
     {
-        $intro = ScriptGuard::lines($data['intros'][$turn % count($data['intros'])]);
         $twist = ScriptGuard::lines($episode['twists'][$turn % count($episode['twists'])]);
-        $outro = ScriptGuard::lines($data['outros'][$turn % count($data['outros'])]);
-        $budget = (int) config('tv.commentary.history.sentences.max', 12) - count($intro) - count($twist) - count($outro);
+        $budget = (int) config('tv.commentary.history.sentences.max', 12) - count($twist);
 
         $facts = [];
         foreach ($episode['facts'] as $index => $fact) {
@@ -109,55 +119,44 @@ class HistoryScripts
             array_push($facts, ...$lines);
         }
 
-        return implode("\n", [...$intro, ...$facts, ...$twist, ...$outro]);
+        return implode("\n", [...$facts, ...$twist]);
     }
 
     /**
-     * A long episode: the intro, the facts in order with an aside after every
-     * second one (the episode's other twist in the middle) while
-     * `length.history_long.max` sentences allow, the twist and the outro.
-     * Asides rotate with `$turn`, none twice. Every episode of
-     * the file makes at least `length.history_long.min` sentences this way
-     * (HistorySegmentTest holds the file to it).
+     * The long pattern episode: every fact in narrative order as far as
+     * `length.history_long.max` sentences go, the episode's other twist in
+     * the middle, its twist at the end.
      *
      * @param  array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}  $episode
-     * @param  array{intros: list<string>, outros: list<string>, asides: list<string>, episodes: list<array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}>}  $data
      */
-    public static function buildLong(array $episode, int $turn, array $data): string
+    public static function buildLong(array $episode, int $turn): string
     {
-        $intro = ScriptGuard::lines($data['intros'][$turn % count($data['intros'])]);
         $twist = ScriptGuard::lines($episode['twists'][$turn % count($episode['twists'])]);
-        $outro = ScriptGuard::lines($data['outros'][$turn % count($data['outros'])]);
-        $asides = $data['asides'];
         $otherTwist = count($episode['twists']) > 1 ? ScriptGuard::lines($episode['twists'][($turn + 1) % count($episode['twists'])]) : [];
         $middle = max(1, intdiv(count($episode['facts']), 2));
-        $budget = (int) config('tv.commentary.length.history_long.max', 30) - count($intro) - count($twist) - count($outro);
+        $budget = (int) config('tv.commentary.length.history_long.max', 30) - count($twist);
 
         $body = [];
-        $asidesUsed = 0;
         foreach ($episode['facts'] as $index => $fact) {
             $lines = ScriptGuard::lines($fact['text']);
-            // An aside before every third, fifth … fact: after every second one told, never at the very end.
-            $aside = $index > 0 && $index % 2 === 0 && $asidesUsed < count($asides) ? [$asides[($turn * 5 + $asidesUsed) % count($asides)]] : [];
-            $between = $index === $middle && $otherTwist !== [] ? $otherTwist : $aside;
+            $between = $index === $middle ? $otherTwist : [];
 
             if (count($body) + count($between) + count($lines) > $budget) {
                 break;
             }
 
             array_push($body, ...$between, ...$lines);
-            $asidesUsed += $between === $aside ? count($aside) : 0;
         }
 
-        return implode("\n", [...$intro, ...$body, ...$twist, ...$outro]);
+        return implode("\n", [...$body, ...$twist]);
     }
 
     /**
-     * @return array{intros: list<string>, outros: list<string>, asides: list<string>, episodes: list<array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}>}
+     * @return array{episodes: list<array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}>}
      */
     public static function data(): array
     {
-        /** @var array{intros: list<string>, outros: list<string>, asides: list<string>, episodes: list<array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}>} $data */
+        /** @var array{episodes: list<array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}>} $data */
         $data = json_decode((string) file_get_contents(resource_path('data/voice/bauernkrieg.json')), true, flags: JSON_THROW_ON_ERROR);
 
         return $data;

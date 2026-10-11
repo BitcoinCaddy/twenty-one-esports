@@ -31,8 +31,11 @@ use Illuminate\Support\Facades\Cache;
  * - JOKE: three verified canon jokes;
  * - MORE ("erzähl mehr", "weiter"): the type of the last wish or segment again.
  *
- * Every text comes from the builders and the canon, no model, so nothing is
- * invented. Limits: one wish per person per `wishes_person_minutes`, at most
+ * The league voice tells each of them freely (user 2026-10-12: "FREIE
+ * KI-generierte Rede!!!"): a Bauernkrieg episode from its facts, a news
+ * segment from its headline, a game scene from its facts, a joke or lore run
+ * with the canon as inspiration; the builders and the canon stand in when
+ * the voice gives nothing. Limits: one wish per person per `wishes_person_minutes`, at most
  * `wishes_per_hour` in all; a wish that cannot be built (no headline, no live
  * data) falls back to the plain reply and costs no limit.
  */
@@ -80,6 +83,7 @@ class ChatWishes
         private SceneFacts $facts,
         private VoiceCanon $canon,
         private ReactionLines $lines,
+        private CasterVoice $voice,
     ) {}
 
     public static function enabled(): bool
@@ -166,7 +170,7 @@ class ChatWishes
     {
         $segment = $this->history->write($now, true, (int) config('tv.commentary.chat.wishes_history_repeat_minutes', 60));
 
-        return $segment === null ? null : ['kind' => CasterScript::HISTORY, 'text' => $segment['text'], 'facts_hash' => HistoryScripts::HASH_PREFIX.$segment['episode'], 'source' => CasterScript::SOURCE_PATTERN, 'topic' => null];
+        return $segment === null ? null : ['kind' => CasterScript::HISTORY, 'text' => $segment['text'], 'facts_hash' => HistoryScripts::HASH_PREFIX.$segment['episode'], 'source' => $segment['source'], 'topic' => null];
     }
 
     /** @return array{kind: string, text: string, facts_hash: string, source: string, topic: string|null}|null */
@@ -203,6 +207,14 @@ class ChatWishes
                 continue;
             }
 
+            // The league voice first (user 2026-10-12: "FREIE KI-generierte Rede!!!"), the pattern scene as the fallback.
+            $range = (array) config('tv.commentary.scripts.sentences', []);
+            $ai = ScriptQueue::aiEnabled() ? $this->voice->write(CasterScript::SCENE, SceneTopic::phase($topic, $now), $facts, (int) ($range['min'] ?? 2), (int) ($range['max'] ?? 8)) : null;
+
+            if ($ai !== null) {
+                return ['kind' => CasterScript::LIVE, 'text' => $ai['text'], 'facts_hash' => SceneFacts::hash($facts), 'source' => CasterScript::SOURCE_AI, 'topic' => $topic];
+            }
+
             $script = $this->patterns->write($topic, SceneTopic::phase($topic, $now), $facts, $now);
 
             if ($script !== null) {
@@ -221,9 +233,16 @@ class ChatWishes
      */
     private function jokeSegment(): ?array
     {
+        $picked = $this->freshCanon($this->patterns->canonPool(), 3);
+        $riff = $this->riff(self::JOKE, $picked);
+
+        if ($riff !== null) {
+            return ['kind' => CasterScript::LIVE, 'text' => $riff, 'facts_hash' => 'wish:joke', 'source' => CasterScript::SOURCE_AI, 'topic' => null];
+        }
+
         $lines = [];
-        foreach ($this->freshCanon($this->patterns->canonPool(), 3) as $id) {
-            $lines[] = self::sentence((string) $this->canon->find($id)['wording']);
+        foreach ($picked as $turn => $id) {
+            $lines[] = (string) $this->patterns->spokenCanon($id, $turn, $lines);
         }
 
         if (count($lines) < 2) {
@@ -251,15 +270,22 @@ class ChatWishes
             }
 
             $meaning = self::plainMeaning($entry['meaning']);
-            $wording = self::sentence($entry['wording']);
+            $wording = $this->patterns->spokenCanon($id);
 
-            if ($meaning !== null && self::speakable($wording)) {
+            if ($meaning !== null && $wording !== null && self::speakable($wording)) {
                 $stories[$id] = [$wording, $meaning];
             }
         }
 
+        $picked = $this->freshCanon(array_keys($stories), 2);
+        $riff = $this->riff(self::CANON, $picked);
+
+        if ($riff !== null) {
+            return ['kind' => CasterScript::LIVE, 'text' => $riff, 'facts_hash' => 'wish:canon', 'source' => CasterScript::SOURCE_AI, 'topic' => null];
+        }
+
         $lines = [];
-        foreach ($this->freshCanon(array_keys($stories), 2) as $id) {
+        foreach ($picked as $id) {
             array_push($lines, ...$stories[$id]);
         }
 
@@ -268,6 +294,30 @@ class ChatWishes
         }
 
         return ['kind' => CasterScript::LIVE, 'text' => implode("\n", [$this->lines->wishIntro(self::CANON), ...$lines]), 'facts_hash' => 'wish:canon', 'source' => CasterScript::SOURCE_PATTERN, 'topic' => null];
+    }
+
+    /**
+     * The league voice's free take on a joke or lore wish, the picked canon
+     * entries as its inspiration (CasterVoice::riff()); null when the AI is
+     * off or gave nothing, and the pattern run stands in.
+     *
+     * @param  list<string>  $ids
+     */
+    private function riff(string $type, array $ids): ?string
+    {
+        if (! ScriptQueue::aiEnabled() || $ids === []) {
+            return null;
+        }
+
+        $inspiration = [];
+        foreach ($ids as $id) {
+            $entry = $this->canon->find($id);
+            if ($entry !== null) {
+                $inspiration[] = ['wording' => $entry['wording'], 'meaning' => $entry['meaning']];
+            }
+        }
+
+        return $this->voice->riff($type, $inspiration);
     }
 
     /**
@@ -280,7 +330,7 @@ class ChatWishes
     {
         $recent = Cache::get(self::CANON_RECENT);
         $recent = is_array($recent) ? array_values(array_filter($recent, 'is_string')) : [];
-        $pool = array_values(array_filter($pool, fn (string $id): bool => $this->canon->find($id) !== null && self::speakable(self::sentence((string) $this->canon->find($id)['wording']))));
+        $pool = array_values(array_filter($pool, fn (string $id): bool => $this->canon->find($id) !== null && self::speakable((string) $this->patterns->spokenCanon($id))));
         $fresh = array_values(array_diff($pool, $recent));
 
         if (count($fresh) < $count) {
@@ -324,16 +374,16 @@ class ChatWishes
             return null;
         }
 
-        $sentences = ScriptGuard::splitSentences(self::sentence($meaning), (int) config('tv.commentary.scripts.max_words_per_sentence', 16));
+        $sentences = ScriptGuard::splitSentences(self::sentence($meaning), (int) config('tv.commentary.scripts.max_words_per_sentence', 32));
         $lines = ScriptGuard::lines($sentences);
 
         return count($lines) <= 2 && array_filter($lines, fn (string $line): bool => ! self::speakable($line)) === [] ? implode("\n", $lines) : null;
     }
 
-    /** A line the script checks take on its own: one sentence of at most the word limit, at most one comma. */
+    /** A line the script checks take on its own: one complete sentence between the word minimum and limit, at most the comma limit. */
     private static function speakable(string $line): bool
     {
-        return (new ScriptGuard)->check($line, 1, 1, (int) config('tv.commentary.scripts.max_words_per_sentence', 16)) === [];
+        return (new ScriptGuard)->check($line, 1, 1, (int) config('tv.commentary.scripts.max_words_per_sentence', 32)) === [];
     }
 
     private static function sentence(string $text): string

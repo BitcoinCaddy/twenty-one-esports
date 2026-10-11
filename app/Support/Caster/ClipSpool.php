@@ -201,7 +201,8 @@ class ClipSpool
             }
         } else {
             // The filler played longest ago (updated_at moves on every play).
-            $filler = CasterClip::query()->where('kind', CasterScript::FILLER)->where('status', CasterClip::READY)->orderBy('updated_at')->orderBy('id')->first();
+            // No filler while the pattern fallback is off (user 2026-10-12: "KEINE SICH WIEDERHOLENDEN FÜLLSÄTZE MEHR"): music instead.
+            $filler = PatternScripts::enabled() ? CasterClip::query()->where('kind', CasterScript::FILLER)->where('status', CasterClip::READY)->orderBy('updated_at')->orderBy('id')->first() : null;
 
             if ($filler !== null) {
                 return ['clip' => $filler, 'caption' => null, 'source' => 'filler'];

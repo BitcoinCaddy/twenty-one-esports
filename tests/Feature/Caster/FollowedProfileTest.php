@@ -206,7 +206,8 @@ it('reacts to each note exactly once, across runs, new instances and the note co
 });
 
 it('writes at most one followed-profile segment per every_minutes, newest note first', function () {
-    config(['tv.commentary.ai' => false]);
+    // The order alone: the no-repeat memory would drop the second stand-in's attribution (same first words).
+    config(['tv.commentary.ai' => false, 'tv.commentary.repeat_hours' => 0]);
     $this->reader->events = [
         followedNote($this->author, 'Erster Gedanke des Tages zum Thema Bitcoin', 40),
         followedNote($this->author, 'Zweiter Gedanke des Tages zum Thema Fiatgeld', 20),
@@ -223,17 +224,17 @@ it('writes at most one followed-profile segment per every_minutes, newest note f
     expect($queue->fillSegments(CarbonImmutable::now()))->toBe(0);
 
     expect(CasterScript::query()->where('kind', CasterScript::FOLLOWED)->orderBy('id')->get()->map(fn (CasterScript $script): string => $script->sentences()[0])->all())->toBe([
-        'Auf Nostr schreibt ein Nostr-Kollege: Zweiter Gedanke des Tages zum Thema Fiatgeld.',
-        'Auf Nostr schreibt ein Nostr-Kollege: Erster Gedanke des Tages zum Thema Bitcoin.',
+        'Auf Nostr schreibt ein Nostr-Kollege gerade Folgendes: Zweiter Gedanke des Tages zum Thema Fiatgeld.',
+        'Auf Nostr schreibt ein Nostr-Kollege gerade Folgendes: Erster Gedanke des Tages zum Thema Bitcoin.',
     ]);
 });
 
-it('writes the segment: intro with the display name, then the league voice\'s retelling and reaction, after one model call and a fact check on the note', function () {
+it('writes the segment: intro with the display name, then the league voice\'s retelling and reaction, after one model call and no fact check', function () {
     $this->reader->events = [followedName($this->author, 'Markus'), followedNote($this->author, 'Dieses Halloween verkleide ich mich als Deutscher', 30)];
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
-    $take = "Der Markus will sich an Halloween als Deutscher verkleiden.\nGruseliger geht es kaum.\nFormular ausfüllen, Stempel holen, fertig ist das Kostüm.";
+    $take = "Der Markus will sich an Halloween tatsächlich als Deutscher verkleiden.\nGruseliger geht es eigentlich kaum, und das meine ich ganz ernst.\nFormular ausfüllen und Stempel holen, und schon ist das Kostüm fertig.";
     VoiceAgent::fake([followedDraft($take)]);
-    NoteFactCheck::fake([['claims' => []]]);
+    NoteFactCheck::fake();
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
@@ -250,37 +251,36 @@ it('writes the segment: intro with the display name, then the league voice\'s re
         ->and($note->reacted_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "<<<post\nDieses Halloween verkleide ich mich als Deutscher\npost>>>") && str_contains($prompt->prompt, 'SKIP'));
-    NoteFactCheck::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Note:\nDieses Halloween verkleide ich mich als Deutscher") && str_contains($prompt->prompt, 'Take:'));
+    NoteFactCheck::assertNeverPrompted();
 });
 
-it('falls back to a quote and a pattern reaction when the take invents what the note says', function (string $draft, array $factCheck, string $reason) {
+it('falls back to a quote and a pattern reaction when the take breaks a house rule twice', function (string $draft, string $reason) {
     $this->reader->events = [followedNote($this->author, 'Dieses Schmuckstück wurde für sehr viel Geld in den Hang betoniert und ist heute für die Hälfte zu haben, typisch Kesselstadt', 30)];
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
-    VoiceAgent::fake([followedDraft($draft), followedDraft("Ganz harmlos.\nWirklich.\nEhrlich.")]);
-    NoteFactCheck::fake($factCheck);
+    VoiceAgent::fake([followedDraft($draft)]);
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
     $script = CasterScript::query()->sole();
     expect($script->source)->toBe(CasterScript::SOURCE_PATTERN)
-        ->and($script->sentences()[0])->toBe('Auf Nostr schreibt ein Nostr-Kollege: Dieses Schmuckstück wurde für sehr viel Geld in den Hang betoniert und ist heute für die Hälfte zu haben, typisch…')
+        ->and($script->sentences()[0])->toBe('Auf Nostr schreibt ein Nostr-Kollege gerade Folgendes: Dieses Schmuckstück wurde für sehr viel Geld in den Hang betoniert und ist heute für die Hälfte zu haben, typisch…')
         ->and(implode("\n", array_slice($script->sentences(), 1)))->toBeIn(FollowedScripts::data()['reactions'])
         ->and(DB::table('voice_rejections')->where('channel', CasterVoice::FOLLOWED_CHANNEL)->where('reason', $reason)->value('count'))->toBe(1);
     VoiceAgent::assertPromptedTimes(1);
 })->with([
-    'invented detail (fact check)' => ["Da hat einer seine Villa am Bodensee verscherbelt.\nTja.\nPech gehabt.", [['claims' => [['claim' => 'Villa am Bodensee', 'evidence' => '', 'supported' => false]]]], VoiceGuard::UNSUPPORTED_CLAIM],
-    'invented digits (guard)' => ["Das Ding kostet jetzt 3 Millionen.\nTja.\nPech gehabt.", [['claims' => []]], VoiceGuard::NUMBER],
+    'a link (guard)' => ["Da hat einer seine Villa am Hang für die Hälfte verscherbelt.\nSchaut euch das unter https://example.com selbst einmal ganz genau an.\nPech gehabt, kann ich da nur sagen, und weiter geht es.", VoiceGuard::URL],
+    'fragments' => ["Tja.\nPech gehabt.\nSo ist das.", ScriptGuard::SENTENCE_SHORT],
 ]);
 
-it('falls back to the quote when the voice fails, fails closed when the fact check fails', function () {
+it('voices a take with an invented detail: no fact check any more (free mode)', function () {
     $this->reader->events = [followedNote($this->author, 'Ich hab jetzt auch ein paar Sats in den Preispool gelegt.', 30)];
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
-    VoiceAgent::fake([followedDraft("Der Markus hat Sats in den Preispool gelegt.\nGroßzügig.\nSehr großzügig.")]);
-    NoteFactCheck::fake(fn () => throw new RuntimeException('timeout'));
+    VoiceAgent::fake([followedDraft("Der Markus hat gerade drei Millionen Sats in den Preispool gelegt.\nDas ist großzügig, und zwar richtig großzügig für einen Allgäuer.\nIch hoffe, dass die Spieler das auch zu schätzen wissen.")]);
+    NoteFactCheck::fake();
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1)
-        ->and(CasterScript::query()->sole()->source)->toBe(CasterScript::SOURCE_PATTERN)
-        ->and(CasterScript::query()->sole()->sentences()[0])->toBe('Auf Nostr schreibt ein Nostr-Kollege: Ich hab jetzt auch ein paar Sats in den Preispool gelegt.');
+        ->and(CasterScript::query()->sole()->source)->toBe(CasterScript::SOURCE_AI);
+    NoteFactCheck::assertNeverPrompted();
 });
 
 it('drops the note when the model calls it unfit, and a foreign note when only the stand-in is left', function () {
@@ -356,11 +356,11 @@ it('keeps the pattern lines free of numbers and within the spoken limits, enough
     $data = FollowedScripts::data();
 
     expect(count($data['reactions']))->toBeGreaterThanOrEqual(15)
-        ->and($data['reactions'][0])->toBe('Na, das lass ich mal so stehen.');
+        ->and($data['reactions'][0])->toBe('Na, das lass ich jetzt einfach mal so stehen, weil es eigentlich für sich selbst spricht.');
 
     foreach ([...$data['reactions'], ...$data['self_intros'], ...array_map(fn (string $intro): string => str_replace('{name}', FollowedNotes::FALLBACK_NAME, $intro), $data['intros'])] as $line) {
         expect(preg_match('/\d/', $line))->toBe(0)
-            ->and((new ScriptGuard)->check($line, 1, 3, 16))->toBe([]);
+            ->and((new ScriptGuard)->check($line, 1, 3, 32))->toBe([]);
     }
 });
 
@@ -391,8 +391,6 @@ it('speaks of Markus\' own profile in the first person: the intro, the prompt an
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
     $take = "Ich hab auf Nostr geschrieben, dass Ben meine Stimme nimmt.\nDer Markus Turm im Dauerbetrieb, wer hätte das gedacht.\nHauptsache, ich muss nicht mehr wach bleiben.";
     VoiceAgent::fake([followedDraft($take)]);
-    NoteFactCheck::fake([['claims' => []]]);
-
     expect(FollowedScripts::isSelf('markusturm'))->toBeTrue()
         ->and(FollowedScripts::isSelf('Markus'))->toBeFalse()
         ->and(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
@@ -402,13 +400,13 @@ it('speaks of Markus\' own profile in the first person: the intro, the prompt an
         ->and($script->sentences()[0])->toBeIn(FollowedScripts::data()['self_intros']);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'deinen eigenen Nostr-Post') && str_contains($prompt->prompt, 'Ich-Form'));
 
-    // The stand-in reads "Auf Nostr hab ich geschrieben: …".
+    // The stand-in reads "Auf Nostr hab ich vor Kurzem Folgendes geschrieben: …".
     config(['tv.commentary.ai' => false]);
     $this->travel(11)->minutes();
     $this->reader->events[] = followedNote($this->author, 'Dieses Halloween verkleide ich mich als Deutscher', 1);
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1)
-        ->and(CasterScript::query()->orderByDesc('id')->first()->sentences()[0])->toBe('Auf Nostr hab ich geschrieben: Dieses Halloween verkleide ich mich als Deutscher.');
+        ->and(CasterScript::query()->orderByDesc('id')->first()->sentences()[0])->toBe('Auf Nostr hab ich vor Kurzem Folgendes geschrieben: Dieses Halloween verkleide ich mich als Deutscher.');
 });
 
 /*
@@ -587,7 +585,7 @@ describe('the whole history', function () {
     });
 
     it('speaks the backlog oldest first from the very first note, a note under an hour old ahead, each once, the old ones with month and year in words', function () {
-        config(['tv.commentary.ai' => false]);
+        config(['tv.commentary.ai' => false, 'tv.commentary.repeat_hours' => 0]);
         $this->paging->relays['wss://a.test'] = [
             followedNoteAt($this->author, 'Mein allererster Post auf Nostr, hallo zusammen', CarbonImmutable::parse('2023-03-15 12:00', 'Europe/Berlin')->getTimestamp()),
             followedNoteAt($this->author, 'Sommer auf dem Berg und Bitcoin im Kopf', CarbonImmutable::parse('2024-07-01 09:00', 'Europe/Berlin')->getTimestamp()),
@@ -615,11 +613,11 @@ describe('the whole history', function () {
         }
 
         expect($spoken)->toBe([
-            'Im März zweitausenddreiundzwanzig hab ich auf Nostr geschrieben: Mein allererster Post auf Nostr, hallo zusammen.',
-            'Auf Nostr hab ich geschrieben: Gerade eben geschrieben, frischer geht es nicht mehr.',
-            'Im Juli zweitausendvierundzwanzig hab ich auf Nostr geschrieben: Sommer auf dem Berg und Bitcoin im Kopf.',
-            'Im Oktober zweitausendsechsundzwanzig hab ich auf Nostr geschrieben: Vorgestern ging es um den Stream und die Liga.',
-            'Auf Nostr hab ich geschrieben: Gestern Abend noch ein Gedanke zu Nostr gehabt.',
+            'Im März zweitausenddreiundzwanzig hab ich auf Nostr Folgendes geschrieben: Mein allererster Post auf Nostr, hallo zusammen.',
+            'Auf Nostr hab ich vor Kurzem Folgendes geschrieben: Gerade eben geschrieben, frischer geht es nicht mehr.',
+            'Im Juli zweitausendvierundzwanzig hab ich auf Nostr Folgendes geschrieben: Sommer auf dem Berg und Bitcoin im Kopf.',
+            'Im Oktober zweitausendsechsundzwanzig hab ich auf Nostr Folgendes geschrieben: Vorgestern ging es um den Stream und die Liga.',
+            'Auf Nostr hab ich vor Kurzem Folgendes geschrieben: Gestern Abend noch ein Gedanke zu Nostr gehabt.',
         ])
             ->and(CasterScript::query()->where('kind', CasterScript::FOLLOWED)->distinct()->count('facts_hash'))->toBe(5)
             ->and(CasterFollowedNote::query()->whereNull('reacted_at')->count())->toBe(0);
@@ -628,7 +626,7 @@ describe('the whole history', function () {
     it('puts the month and year in the intro of the voice\'s take, and tells the voice it is a look back without a date of its own', function () {
         $this->paging->relays['wss://a.test'] = [followedNoteAt($this->author, 'Mein allererster Post auf Nostr, hallo zusammen', CarbonImmutable::parse('2023-03-15 12:00', 'Europe/Berlin')->getTimestamp())];
         app(FollowedNotes::class)->fetch(CarbonImmutable::now());
-        $take = "Ich hab damals meinen ersten Post auf Nostr abgesetzt.\nHallo zusammen, ganz brav.\nSo fängt jede große Geschichte an.";
+        $take = "Ich hab damals meinen allerersten Post auf Nostr abgesetzt, ganz schüchtern.\nHallo zusammen hab ich geschrieben, und zwar ganz brav und anständig.\nSo fängt eben jede große Geschichte an, auch meine eigene.";
         VoiceAgent::fake([followedDraft($take)]);
         NoteFactCheck::fake([['claims' => []]]);
 
@@ -649,7 +647,7 @@ describe('the whole history', function () {
             $line = str_replace(['{when}', '{name}'], [$when, FollowedNotes::FALLBACK_NAME], $line);
             expect(preg_match('/\d/', $line))->toBe(0)
                 ->and($line)->toStartWith($when)
-                ->and((new ScriptGuard)->check($line, 1, 3, 16))->toBe([]);
+                ->and((new ScriptGuard)->check($line, 1, 3, 32, [], 0))->toBe([], $line);
         }
     });
 });

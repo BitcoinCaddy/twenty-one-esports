@@ -13,7 +13,7 @@ return [
     |
     | scripts (App\Support\Caster\ScriptQueue, `caster:script` every minute):
     | scene scripts are written ahead per slide topic, `ahead_seconds` of
-    | airtime (estimated at `words_per_second`): at most `per_run_ai` by the
+    | airtime (estimated at `words_per_second`): at most `ai_calls_per_fill` by the
     | league voice (`ai`, TV_COMMENTARY_AI; never for a topic without data),
     | the rest as `patterns` (resources/data/voice/caster.json, filled only
     | with the topic's facts), so airtime never depends on the model. A
@@ -92,11 +92,21 @@ return [
             'sentences' => ['min' => (int) env('TV_COMMENTARY_AI_SENTENCES_MIN', 2), 'max' => (int) env('TV_COMMENTARY_AI_SENTENCES_MAX', 8)],
             'live_sentences' => ['min' => 1, 'max' => 3],
             'chat_sentences' => ['min' => 1, 'max' => 8, 'ask' => 4],
-            'max_words_per_sentence' => 16,
+            // Long, complete sentences (user 2026-10-12: "Wenn die Sätze länger sind, dann hören sich die Audios viel besser
+            // an" and "komplette Sätze ab jetzt nur noch"): OmniVoice intones a fragment or a two-word sentence badly, so
+            // every spoken sentence of a non-chat script has at least `min_words_per_sentence` words (markers not counted).
+            'max_words_per_sentence' => (int) env('TV_COMMENTARY_MAX_WORDS', 32),
+            'min_words_per_sentence' => (int) env('TV_COMMENTARY_MIN_WORDS', 7),
             'max_commas' => 2,
             'max_chars' => 900,
-            // At most this many league-voice scene scripts per fill() run (each with its one retry); patterns fill the rest.
-            'per_run_ai' => 1,
+            // League-voice scene scripts per fill() run (each with its one retry), AI first (user 2026-10-12: "FREIE
+            // KI-generierte Rede!!! Komplette Varianz!"); patterns only where the voice gave nothing. The monthly budget
+            // and `daily_cap` bound them as well.
+            'ai_calls_per_fill' => (int) env('TV_COMMENTARY_AI_CALLS_PER_FILL', 12),
+            // Sampling temperature of every TV call (high: variance and artistic freedom, user 2026-10-12) and room for a long
+            // segment's answer (a Bauernkrieg episode of 30 sentences is about 1,000 tokens; the posts' 400 would cut it off).
+            'temperature' => (float) env('TV_COMMENTARY_TEMPERATURE', 1.0),
+            'max_output_tokens' => (int) env('TV_COMMENTARY_MAX_OUTPUT_TOKENS', 1_500),
             'max_age_minutes' => 10,
             'live_priority' => 100,
             'chat_priority' => 50,
@@ -113,6 +123,9 @@ return [
         // for a person's name; `flavour_recent`: no flavour line (joke, invitation, pride, chat call, emotion) again
         // within this many pattern scripts (user 2026-10-11: fewer data, no repeats, more jokes and pride).
         'patterns' => [
+            // Template text at all (user 2026-10-12: "KEINE SICH WIEDERHOLENDEN FÜLLSÄTZE MEHR: ALLES NUR NOCH MIT KI"): off,
+            // nothing pattern-made and no filler is queued or played, and when the model gives nothing the music plays.
+            'enabled' => (bool) env('TV_COMMENTARY_PATTERNS', false),
             'per_run' => 40,
             'sentences' => ['min' => (int) env('TV_COMMENTARY_PATTERN_SENTENCES_MIN', 3), 'max' => (int) env('TV_COMMENTARY_PATTERN_SENTENCES_MAX', 6)],
             'recent' => 4,
@@ -288,14 +301,18 @@ return [
         // pattern script of `scene_long` (a fact, canon lines, pride, an invitation, no model); a long news segment is the
         // intro, the headline and a comment of `news_long` by the league voice (one call per headline, as before), so at
         // most 10; a long Bauernkrieg segment chains `history_long` of the episode's facts, asides, twist and outro.
+        // No sentence again within this many hours, from any source (App\Support\Caster\SpokenMemory; user 2026-10-12:
+        // "ALLE WIEDERHOLUNGEN RAUS!!!"): the queue keeps a day of scripts, so more than 24 has no effect. 0 turns it off.
+        'repeat_hours' => (int) env('TV_COMMENTARY_REPEAT_HOURS', 24),
+
         'length' => [
             'shares' => [
                 'scene' => (float) env('TV_COMMENTARY_LONG_SCENES', 0.25),
                 'news' => (float) env('TV_COMMENTARY_LONG_NEWS', 0.5),
                 'history' => (float) env('TV_COMMENTARY_LONG_HISTORY', 0.5),
             ],
-            'scene_long' => ['min' => (int) env('TV_COMMENTARY_SCENE_LONG_MIN', 8), 'max' => (int) env('TV_COMMENTARY_SCENE_LONG_MAX', 14)],
-            'news_long' => ['min' => (int) env('TV_COMMENTARY_NEWS_LONG_MIN', 4), 'max' => (int) env('TV_COMMENTARY_NEWS_LONG_MAX', 8)],
+            'scene_long' => ['min' => (int) env('TV_COMMENTARY_SCENE_LONG_MIN', 6), 'max' => (int) env('TV_COMMENTARY_SCENE_LONG_MAX', 10)],
+            'news_long' => ['min' => (int) env('TV_COMMENTARY_NEWS_LONG_MIN', 3), 'max' => (int) env('TV_COMMENTARY_NEWS_LONG_MAX', 6)],
             'history_long' => ['min' => 15, 'max' => 30],
             // The fact guard's character cap for a whole long script (scripts.max_chars holds the short ones).
             'max_chars' => 1_800,

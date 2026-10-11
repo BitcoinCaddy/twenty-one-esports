@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
  * The server's queue of commentary scripts (plan "Puffer und Länge", stage 1):
  * scene scripts are written ahead per slide topic (SceneTopic, with the
  * facts its slides render) until `ahead_seconds` of airtime are queued or
- * spooled: at most `per_run_ai` by the league voice (and none while
+ * spooled: the league voice first, at most `ai_calls_per_fill` (none while
  * `tv.commentary.ai` is off), the rest as pattern scripts (PatternScripts),
  * so airtime never depends on the model; live moments and chat reactions
  * jump the queue; a script expires unused after `max_age_minutes` or when
@@ -58,6 +58,8 @@ class ScriptQueue
 
     private FollowedScripts $followed;
 
+    private ?SpokenMemory $memory = null;
+
     public function __construct(
         private CasterVoice $voice,
         private SceneFacts $facts,
@@ -89,10 +91,13 @@ class ScriptQueue
 
     /**
      * Write scene scripts until the airtime ahead reaches its target, each
-     * for the topic with data that has the least airtime ready: first at
-     * most `per_run_ai` by the league voice, then pattern scripts, at most
-     * `patterns.per_run`. A topic without data of its own gets no script, so
-     * the model is never asked about an empty scene.
+     * for the topic with data that has the least airtime ready: by the league
+     * voice first (user 2026-10-12: "FREIE KI-generierte Rede!!! Komplette
+     * Varianz!"), at most `ai_calls_per_fill` scripts per run, a long one when
+     * the length mix asks for it; a pattern script only where the voice gave
+     * nothing (off, capped, both tries failed), at most `patterns.per_run`. A
+     * topic without data of its own gets no script, so the model is never
+     * asked about an empty scene.
      *
      * @return int scripts written
      */
@@ -120,7 +125,7 @@ class ScriptQueue
             }
         }
 
-        $aiLeft = self::aiEnabled() ? max(0, (int) ($settings['per_run_ai'] ?? 1)) : 0;
+        $aiLeft = self::aiEnabled() ? max(0, (int) ($settings['ai_calls_per_fill'] ?? 6)) : 0;
         $patternsLeft = max(0, (int) config('tv.commentary.patterns.per_run', 40));
         $exhausted = [];
 
@@ -131,18 +136,22 @@ class ScriptQueue
 
             if ($aiLeft > 0) {
                 $aiLeft--;
-                $script = $this->voice->write(CasterScript::SCENE, $phase, $facts, (int) ($sentences['min'] ?? 2), (int) ($sentences['max'] ?? 8), [], $this->topics($phase, $now));
+                $long = LengthMix::isDue(LengthMix::SCENE);
+                $range = $long ? (array) config('tv.commentary.length.scene_long', []) : $sentences;
+                $script = $this->voice->write(CasterScript::SCENE, $phase, $facts, (int) ($range['min'] ?? 2), (int) ($range['max'] ?? 8), [], $this->topics($phase, $now), $long);
 
-                if ($script !== null) {
-                    $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_AI, topic: $topic);
+                if ($script !== null && $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_AI, topic: $topic) !== null) {
+                    LengthMix::written(LengthMix::SCENE, $long);
                     $written++;
-                }
 
-                continue;
+                    continue;
+                }
             }
 
-            if ($patternsLeft <= 0) {
-                break;
+            if ($patternsLeft <= 0 || ! PatternScripts::enabled()) {
+                $exhausted[] = $topic;
+
+                continue;
             }
 
             $patternsLeft--;
@@ -152,13 +161,12 @@ class ScriptQueue
             $long = $script !== null;
             $script ??= $this->patterns->write($topic, $phase, $facts, $now);
 
-            if ($script === null) {
+            if ($script === null || $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_PATTERN, topic: $topic) === null) {
                 $exhausted[] = $topic;
 
                 continue;
             }
 
-            $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_PATTERN, topic: $topic);
             LengthMix::written(LengthMix::SCENE, $long);
             $written++;
         }
@@ -183,9 +191,8 @@ class ScriptQueue
             $long = LengthMix::isDue(LengthMix::HISTORY);
             $segment = $this->history->write($now, $long);
 
-            if ($segment !== null) {
-                $this->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, $segment['text'], HistoryScripts::HASH_PREFIX.$segment['episode'], 0, $now,
-                    source: CasterScript::SOURCE_PATTERN, maxAgeMinutes: (int) config('tv.commentary.history.max_age_minutes', 120));
+            if ($segment !== null && $this->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, $segment['text'], HistoryScripts::HASH_PREFIX.$segment['episode'], 0, $now,
+                source: $segment['source'], maxAgeMinutes: (int) config('tv.commentary.history.max_age_minutes', 120)) !== null) {
                 LengthMix::written(LengthMix::HISTORY, $long);
                 $written++;
             }
@@ -197,9 +204,8 @@ class ScriptQueue
             $item = $this->news->next($now);
             $segment = $item === null ? null : $this->news->write($item, $now, self::aiEnabled(), LengthMix::isDue(LengthMix::NEWS));
 
-            if ($item !== null && $segment !== null) {
-                $this->enqueue(CasterScript::NEWS, ScenePhase::BREAK, $segment['text'], 'news:'.$item->id, 0, $now,
-                    source: $segment['source'], topic: $item->section, maxAgeMinutes: (int) config('tv.commentary.news.max_age_minutes', 30));
+            if ($item !== null && $segment !== null && $this->enqueue(CasterScript::NEWS, ScenePhase::BREAK, $segment['text'], 'news:'.$item->id, 0, $now,
+                source: $segment['source'], topic: $item->section, maxAgeMinutes: (int) config('tv.commentary.news.max_age_minutes', 30)) !== null) {
                 LengthMix::written(LengthMix::NEWS, $segment['long']);
                 $written++;
             }
@@ -211,9 +217,8 @@ class ScriptQueue
             $note = $this->followed->next($now);
             $segment = $note === null ? null : $this->followed->write($note, $now, self::aiEnabled());
 
-            if ($note !== null && $segment !== null) {
-                $this->enqueue(CasterScript::FOLLOWED, ScenePhase::BREAK, $segment['text'], 'followed:'.$note->id, 0, $now,
-                    source: $segment['source'], maxAgeMinutes: (int) config('tv.commentary.followed.max_age_minutes', 30));
+            if ($note !== null && $segment !== null && $this->enqueue(CasterScript::FOLLOWED, ScenePhase::BREAK, $segment['text'], 'followed:'.$note->id, 0, $now,
+                source: $segment['source'], maxAgeMinutes: (int) config('tv.commentary.followed.max_age_minutes', 30)) !== null) {
                 $written++;
             }
         }
@@ -242,12 +247,33 @@ class ScriptQueue
 
     /**
      * Queues a script; a long scene, segment or wished segment as its parts
-     * (parts()), all with the same expiry. Returns the script, or its first part.
+     * (parts()), all with the same expiry. Returns the script, or its first
+     * part; null for template text or a filler while the pattern fallback is
+     * off (PatternScripts::enabled()), and when every sentence of it was said within `repeat_hours`
+     * (SpokenMemory: from any source, chat replies and fallbacks included;
+     * the sentences said before leave a script, the rest is queued).
      */
-    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null): CasterScript
+    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null): ?CasterScript
     {
+        // AI only unless the pattern fallback is switched on (PatternScripts::enabled()): no template text, no filler.
+        if (! PatternScripts::enabled() && ($source === CasterScript::SOURCE_PATTERN || $kind === CasterScript::FILLER)) {
+            return null;
+        }
+
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
         $text = self::withoutSignOffs($text);
+
+        if ($kind !== CasterScript::FILLER) {
+            $this->memory ??= new SpokenMemory;
+            $text = $this->memory->withoutRepeats($text, $now);
+
+            if (trim(ScriptGuard::withoutMarkers($text)) === '') {
+                return null;
+            }
+
+            $this->memory->remember($text, $now);
+        }
+
         $inParts = in_array($kind, [CasterScript::SCENE, ...CasterScript::SEGMENTS], true) || $scene === ChatWishes::SCENE;
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
@@ -386,6 +412,10 @@ class ScriptQueue
     /** The fillers (resources/data/voice/fillers.json) wait in the queue until each is voiced once. */
     public function seedFillers(CarbonImmutable $now): int
     {
+        if (! PatternScripts::enabled()) {
+            return 0;
+        }
+
         $data = json_decode((string) file_get_contents(resource_path('data/voice/fillers.json')), true);
         $texts = is_array($data) ? array_values(array_filter((array) ($data['fillers'] ?? []), 'is_string')) : [];
         $known = CasterScript::query()->where('kind', CasterScript::FILLER)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED, CasterScript::VOICED])->pluck('text')->all();

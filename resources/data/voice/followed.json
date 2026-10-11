@@ -1,50 +1,50 @@
 {
- "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own; the dated_ variants, with {when} = 'Im März zweitausenddreiundzwanzig', for a note older than followed.dated_after_hours), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note.",
+ "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own; the dated_ variants, with {when} = 'Im März zweitausenddreiundzwanzig', for a note older than followed.dated_after_hours), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note. Every spoken sentence is complete and has at least seven words (user 2026-10-12).",
  "intros": [
-  "Kurzer Blick rüber auf Nostr, da hat {name} wieder was gepostet.",
-  "Auf Nostr meldet sich {name} zu Wort.",
-  "Frisch auf Nostr, und zwar hat {name} getippt.",
-  "Was schreibt denn {name} da auf Nostr?",
-  "Ich hab mal auf Nostr reingeschaut, und {name} war fleißig."
+  "Wir werfen einen kurzen Blick rüber auf Nostr, denn da hat {name} wieder etwas gepostet.",
+  "Auf Nostr meldet sich gerade {name} zu Wort, und das will ich euch nicht vorenthalten.",
+  "Frisch auf Nostr hat {name} etwas getippt, und ich lese euch das gleich einmal vor.",
+  "Ich bin neugierig, was {name} da gerade auf Nostr geschrieben hat, also schauen wir mal rein.",
+  "Ich hab mal wieder auf Nostr reingeschaut, und {name} war in der Zwischenzeit richtig fleißig."
  ],
  "self_intros": [
-  "Ich hab mal wieder auf Nostr was rausgehauen.",
-  "Kurzer Blick auf Nostr, da hab ich doch neulich was gepostet.",
-  "Auf Nostr hab ich mich mal wieder zu Wort gemeldet.",
-  "Frisch von meinem eigenen Nostr-Profil."
+  "Ich hab mal wieder auf Nostr etwas rausgehauen, und das schauen wir uns jetzt gemeinsam an.",
+  "Wir werfen einen kurzen Blick auf Nostr, denn da hab ich doch neulich selbst etwas gepostet.",
+  "Auf Nostr hab ich mich mal wieder zu Wort gemeldet, und ihr dürft jetzt mithören.",
+  "Jetzt kommt etwas ganz frisch von meinem eigenen Nostr-Profil, und ich bin selbst gespannt."
  ],
  "dated_intros": [
-  "{when} hat {name} auf Nostr was gepostet.",
-  "{when} hat sich {name} auf Nostr zu Wort gemeldet.",
-  "{when} hat {name} auf Nostr das hier getippt, ein Blick ins Archiv.",
-  "{when} schrieb {name} auf Nostr, wir blättern im Archiv."
+  "{when} hat {name} auf Nostr etwas gepostet, und das holen wir jetzt noch einmal hervor.",
+  "{when} hat sich {name} auf Nostr zu Wort gemeldet, und ich finde, das passt heute wieder.",
+  "{when} hat {name} auf Nostr das hier getippt, und wir werfen einen Blick ins Archiv.",
+  "{when} schrieb {name} auf Nostr etwas, und wir blättern jetzt gemeinsam im Archiv."
  ],
  "self_dated_intros": [
-  "{when} hab ich auf Nostr geschrieben.",
-  "{when} hab ich auf Nostr mal was rausgehauen.",
-  "{when} hab ich das auf Nostr gepostet, ein Blick in mein Archiv.",
-  "{when} hab ich auf Nostr getippt, eine Reise durch meine Geschichte."
+  "{when} hab ich auf Nostr etwas geschrieben, und das schauen wir uns jetzt noch einmal an.",
+  "{when} hab ich auf Nostr mal etwas rausgehauen, und ich bin gespannt, wie es gealtert ist.",
+  "{when} hab ich das auf Nostr gepostet, und wir werfen einen Blick in mein Archiv.",
+  "{when} hab ich auf Nostr getippt, und das wird jetzt eine kleine Reise durch meine Geschichte."
  ],
- "attribution": "Auf Nostr schreibt {name}:",
- "self_attribution": "Auf Nostr hab ich geschrieben:",
- "dated_attribution": "{when} schrieb {name} auf Nostr:",
- "self_dated_attribution": "{when} hab ich auf Nostr geschrieben:",
+ "attribution": "Auf Nostr schreibt {name} gerade Folgendes:",
+ "self_attribution": "Auf Nostr hab ich vor Kurzem Folgendes geschrieben:",
+ "dated_attribution": "{when} schrieb {name} auf Nostr Folgendes:",
+ "self_dated_attribution": "{when} hab ich auf Nostr Folgendes geschrieben:",
  "reactions": [
-  "Na, das lass ich mal so stehen.",
-  "Kann man so sehen.\nMuss man aber nicht.",
-  "Starke Worte.\nIch nicke mal wissend in die Kamera.",
-  "Tja.\nNostr ist halt das ehrlichste Netzwerk der Welt.",
-  "Da sag ich jetzt lieber nichts dazu.\nOder doch, aber erst nach dem nächsten Block.",
-  "Ich hätte es nicht schöner sagen können.\nOkay, vielleicht ein bisschen schöner.",
-  "Herrlich.\nGenau dafür gibt es Nostr.",
-  "Interessanter Gedanke.\nIch denk da mal ein paar Blöcke drüber nach.",
-  "Das unterschreib ich.\nMit meinem privaten Schlüssel natürlich.",
-  "Ganz ehrlich, das ist Content.\nDa kann kein Algorithmus mithalten.",
-  "Respekt.\nKein Zensor, kein Algorithmus, einfach raus damit.",
-  "Ich muss schmunzeln.\nUnd ich stack einfach weiter.",
-  "So spricht ein freier Mensch.\nOder einer, der zu viel Kaffee hatte.",
-  "Mutig.\nAber auf Nostr darf man das.",
-  "Das war jetzt sehr Allgäu.\nOder sehr Bitcoin, das ist ja fast dasselbe.",
-  "Gut gebrüllt.\nVerifizieren statt vertrauen, wie immer."
+  "Na, das lass ich jetzt einfach mal so stehen, weil es eigentlich für sich selbst spricht.",
+  "Das kann man durchaus so sehen, aber man muss es natürlich nicht unbedingt.",
+  "Das sind starke Worte, und ich nicke hier mal ganz wissend in die Kamera.",
+  "Tja, Nostr ist halt einfach das ehrlichste Netzwerk der Welt, und genau das sieht man hier wieder.",
+  "Da sag ich jetzt lieber nichts dazu, oder vielleicht doch, aber erst nach dem nächsten Block.",
+  "Ich hätte es nicht schöner sagen können, oder okay, vielleicht doch ein kleines bisschen schöner.",
+  "Das ist einfach herrlich, und genau für solche Momente gibt es Nostr überhaupt.",
+  "Das ist ein interessanter Gedanke, und ich denk da jetzt mal ein paar Blöcke lang drüber nach.",
+  "Das unterschreib ich sofort, und zwar natürlich mit meinem privaten Schlüssel.",
+  "Ganz ehrlich, das ist echter Content, und da kann kein Algorithmus der Welt mithalten.",
+  "Respekt, denn da ist kein Zensor und kein Algorithmus dazwischen, sondern es kommt einfach raus.",
+  "Ich muss gerade richtig schmunzeln, und danach stack ich einfach ganz entspannt weiter.",
+  "So spricht ein freier Mensch, oder halt einer, der heute schon zu viel Kaffee hatte.",
+  "Das ist ganz schön mutig, aber auf Nostr darf man so etwas zum Glück einfach schreiben.",
+  "Das war jetzt sehr Allgäu, oder sehr Bitcoin, was ja ohnehin fast dasselbe ist.",
+  "Gut gebrüllt, und wie immer gilt bei uns, dass man lieber verifiziert statt blind zu vertrauen."
  ]
 }

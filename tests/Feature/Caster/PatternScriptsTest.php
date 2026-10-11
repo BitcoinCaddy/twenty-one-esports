@@ -254,19 +254,21 @@ it('writes forty flavour lines and more that pass the spoken rules and the hard 
     }
 
     foreach ($lines as $line) {
-        $split = ScriptGuard::splitSentences($line, 16);
+        $split = ScriptGuard::splitSentences($line, 32);
 
-        expect((new ScriptGuard)->check($split, 1, 3, 16))->toBe([], $line)
+        expect((new ScriptGuard)->check($split, 1, 3, 32))->toBe([], $line)
             ->and(PatternScripts::commaChain($split))->toBeFalse($line)
             ->and($line)->not->toMatch('/#|@|npub|lnurl|gebühr|startgeld|\bfee\b|gesicht|\bface\b|sats? zahlen/iu');
     }
 
+    // A joke is spoken as one complete sentence: a short saying inside a carrier (spokenCanon()), never bare.
     foreach ($flavour['jokes'] as $id) {
         $wording = (string) (app(VoiceCanon::class)->find($id)['wording'] ?? '');
+        $spoken = (string) patternScripts()->spokenCanon($id);
 
         expect($wording)->not->toBe('', $id)
-            ->and(app(CasterVoice::class)->guard()->check($wording, $basics, 900, $id))->toBe([], $wording)
-            ->and((new ScriptGuard)->check(ScriptGuard::splitSentences($wording.' [laughter]', 16), 1, 3, 16))->toBe([], $wording)
+            ->and(app(CasterVoice::class)->guard()->check($spoken, $basics, 900, $id))->toBe([], $spoken)
+            ->and((new ScriptGuard)->check(ScriptGuard::splitSentences($spoken.' [laughter]', 32), 1, 3, 32))->toBe([], $spoken)
             ->and($wording)->not->toMatch('/#|@|gebühr|startgeld|\bfee\b|gesicht|\bface\b/iu');
     }
 });
@@ -295,11 +297,11 @@ it('names nobody the leader whose row is not ranked first', function () {
 it('drops a line that fails the guard from the pool for the day and logs it once', function () {
     $data = json_decode((string) file_get_contents(resource_path('data/voice/caster.json')), true);
     $data['promo'] = [
-        ['id' => 'test-good', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => 'Schaut einfach mal rein.'],
-        ['id' => 'test-bad', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => 'Die Liga hat 500 Spieler.'],
+        ['id' => 'test-good', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => 'Schaut einfach mal selbst in der Lobby rein und spielt eine Runde mit.'],
+        ['id' => 'test-bad', 'category' => 'x', 'when' => ['break'], 'energy' => 'warm', 'text' => 'Die Liga hat inzwischen 500 Spieler, und es werden jeden Tag mehr.'],
     ];
     $data['pattern_scripts']['use_topics'] = [];
-    $pride = array_map(fn (int $n): array => ['id' => "test-pride-{$n}", 'phases' => ['break'], 'text' => 'Das ist unsere Liga.'], range(1, 6));
+    $pride = array_map(fn (int $n): array => ['id' => "test-pride-{$n}", 'phases' => ['break'], 'text' => 'Das ist unsere Liga, und darauf bin ich wirklich stolz, '.['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs'][$n - 1].'.'], range(1, 6));
     $data['pattern_scripts']['flavour'] = ['pride' => $pride, 'engage' => [], 'emotion' => [], 'invite' => [], 'jokes' => []];
     $path = storage_path('framework/testing/caster-patterns-'.uniqid().'.json');
     @mkdir(dirname($path), 0777, true);
@@ -313,7 +315,7 @@ it('drops a line that fails the guard from the pool for the day and logs it once
     unlink($path);
 
     expect(implode("\n", $texts))->not->toContain('500')
-        ->and(implode("\n", $texts))->toContain('Schaut einfach mal rein.')
+        ->and(implode("\n", $texts))->toContain('Schaut einfach mal selbst in der Lobby rein und spielt eine Runde mit.')
         ->and(DB::table('voice_rejections')->where('channel', PatternScripts::CHANNEL)->where('reason', VoiceGuard::NUMBER)->value('count'))->toBe(1);
     Log::shouldHaveReceived('info')->with('Caster pattern line dropped', Mockery::on(fn (array $context): bool => $context['line'] === 'test-bad' && $context['for'] === 'day'))->once();
 });
@@ -474,7 +476,7 @@ it('writes a long scene as a small monologue: one fact, up to three canon lines,
 
         $long++;
         $roles = array_count_values($script['roles']);
-        expect($guard->check($script['text'], 8, 14, 16))->toBe([], $topic)
+        expect($guard->check($script['text'], 8, 14, 32))->toBe([], $topic)
             ->and($roles[PatternScripts::FACT] ?? 0)->toBeLessThanOrEqual(1)
             ->and(count($script['canon_ids']))->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(3)
             ->and(($roles[PatternScripts::PRIDE] ?? 0) + ($roles[PatternScripts::INVITE] ?? 0) + ($roles[PatternScripts::ENGAGE] ?? 0))->toBeGreaterThanOrEqual(2);

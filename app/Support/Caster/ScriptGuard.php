@@ -5,9 +5,11 @@ namespace App\Support\Caster;
 /**
  * The spoken-text rules of a commentary script, on top of the league voice's
  * own checks (VoiceHygiene, VoiceGuard): one sentence per line, the number
- * of sentences the kind asks for, short sentences (spoken: at most
- * `max_words_per_sentence` words and `max_commas` commas, a decimal comma
- * not counted), and only the OmniVoice markers
+ * of sentences the kind asks for, sentences of a speakable length (spoken: at
+ * least `min_words_per_sentence` words, so no fragment or two-word
+ * exclamation reaches the voice, user 2026-10-12: "komplette Sätze ab jetzt
+ * nur noch"; at most `max_words_per_sentence` words and `max_commas` commas,
+ * a decimal comma not counted), and only the OmniVoice markers
  * VoiceStudio understands. A bracket direction like "(lacht)" makes the
  * model babble (measured 2026-10-11), so it is refused, as is any other
  * square bracket.
@@ -25,6 +27,8 @@ final class ScriptGuard
     public const SENTENCE_COUNT = 'sentence_count';
 
     public const SENTENCE_LONG = 'sentence_long';
+
+    public const SENTENCE_SHORT = 'sentence_short';
 
     public const COMMAS = 'commas';
 
@@ -68,6 +72,9 @@ final class ScriptGuard
     /** Most commas a spoken sentence may carry, unless `tv.commentary.scripts.max_commas` says otherwise (user 2026-10-11: "zu streng"). */
     public const MAX_COMMAS = 2;
 
+    /** The fewest spoken words of a sentence, unless `tv.commentary.scripts.min_words_per_sentence` says otherwise (user 2026-10-12). */
+    public const MIN_WORDS = 7;
+
     /** A part cut off a sentence needs at least this many spoken words, so a list item ("K.-o.") never stands alone. */
     private const MIN_PART_WORDS = 2;
 
@@ -96,11 +103,13 @@ final class ScriptGuard
 
     /**
      * @param  list<string>  $recentOpenings  the first words of the last scripts (normalised)
+     * @param  int|null  $minWords  the fewest spoken words per sentence; null: minWords(), 0: no minimum (a chat reply runs free)
      * @return list<string>
      */
-    public function check(string $text, int $minSentences, int $maxSentences, int $maxWords, array $recentOpenings = []): array
+    public function check(string $text, int $minSentences, int $maxSentences, int $maxWords, array $recentOpenings = [], ?int $minWords = null): array
     {
         $violations = [];
+        $minWords ??= self::minWords();
         $lines = self::lines($text);
 
         if (count($lines) < $minSentences || count($lines) > $maxSentences) {
@@ -128,6 +137,13 @@ final class ScriptGuard
 
             if (count(preg_split('/\s+/u', trim($spoken), -1, PREG_SPLIT_NO_EMPTY) ?: []) > $maxWords) {
                 $violations[] = self::SENTENCE_LONG;
+            }
+
+            // Every sentence of the line, also two in one line ("Hey! Schön, dass du da bist."): a fragment sounds choppy.
+            foreach (self::runs($spoken) as $sentence) {
+                if (self::wordCount($sentence) < $minWords) {
+                    $violations[] = self::SENTENCE_SHORT;
+                }
             }
 
             if (self::commas($spoken) > self::maxCommas()) {
@@ -167,9 +183,7 @@ final class ScriptGuard
         $sentences = [];
 
         foreach (self::lines($text) as $line) {
-            $runs = preg_split('/(?<=[.!?…])(?<!\d\.)\s+(?=(?:\[[a-z-]+\]\s*)*[\p{Lu}\p{N}„"»])/u', $line) ?: [$line];
-
-            foreach ($runs as $run) {
+            foreach (self::runs($line) as $run) {
                 array_push($sentences, ...self::splitSentence(trim($run), $maxWords));
             }
         }
@@ -204,6 +218,28 @@ final class ScriptGuard
     }
 
     /**
+     * The script without its lines that hold a sentence under minWords() (a
+     * model's "Boah." or "Läuft."): the repair before the check. Unchanged
+     * when fewer than `$minSentences` lines would stay; check() rejects it
+     * then (fail closed).
+     */
+    public static function withoutShort(string $text, int $minSentences): string
+    {
+        $minWords = self::minWords();
+        $kept = array_values(array_filter(self::lines($text), function (string $line) use ($minWords): bool {
+            foreach (self::runs(self::withoutMarkers($line)) as $sentence) {
+                if (self::wordCount($sentence) < $minWords) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
+
+        return count($kept) < max(1, $minSentences) ? $text : implode("\n", $kept);
+    }
+
+    /**
      * The sentences of a script, one per non-empty line.
      *
      * @return list<string>
@@ -211,6 +247,22 @@ final class ScriptGuard
     public static function lines(string $text): array
     {
         return array_values(array_filter(array_map('trim', explode("\n", $text)), fn (string $line): bool => $line !== ''));
+    }
+
+    /**
+     * The sentences of one line: a cut after a closing mark before a capital, a digit or a quote ("Klar. Weiter.").
+     *
+     * @return list<string>
+     */
+    public static function runs(string $line): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/(?<=[.!?…])(?<!\d\.)\s+(?=(?:\[[a-z-]+\]\s*)*[\p{Lu}\p{N}„"»])/u', $line) ?: [$line]), fn (string $run): bool => $run !== ''));
+    }
+
+    /** The fewest spoken words a sentence of a non-chat script may have (`tv.commentary.scripts.min_words_per_sentence`). */
+    public static function minWords(): int
+    {
+        return max(0, (int) config('tv.commentary.scripts.min_words_per_sentence', self::MIN_WORDS));
     }
 
     /** The text without its markers, as the fact guard and the word count see it. */
@@ -310,7 +362,8 @@ final class ScriptGuard
             return null;
         }
 
-        $minimum = $bareConjunction ? self::MIN_CLAUSE_WORDS : self::MIN_PART_WORDS;
+        // Neither part may fall below the sentence minimum: a cut that leaves a fragment is no repair.
+        $minimum = max($bareConjunction ? self::MIN_CLAUSE_WORDS : self::MIN_PART_WORDS, self::minWords());
         if (self::wordCount($left) < $minimum || self::wordCount($rest) < $minimum) {
             return null;
         }
