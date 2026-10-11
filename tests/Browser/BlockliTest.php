@@ -254,7 +254,7 @@ test('while a block is shown, Rotate, Confirm and Move the pawn stand in the pop
  * block pop-up (the stretch it stands in), its card (the buttons' box, or the hint), its buttons and the block shown,
  * rounded; null where there is none.
  */
-const BLOCKLI_BOXES = <<<'JS'
+const BLOCKLI_POPUP_BOXES = <<<'JS'
     () => {
         const box = (selector) => {
             const el = document.querySelector(selector);
@@ -286,13 +286,13 @@ test('the block pop-up stands over the board, never over the block: a finger get
     // of the page, the hint alone stands at the top of the part of the board in view.
     $touch ? $white->locator('[data-test=mode-block]')->tap() : $white->locator('[data-test=mode-block]')->click();
     $white->evaluate('() => window.scrollTo(0, 0)');
-    BrowserWait::until($white, '() => { const b = ('.BLOCKLI_BOXES.')(); return b.popup !== null && Math.abs(b.popup[0] - b.view[0] - 8) <= 1; }', 5_000);
-    expect($white->evaluate(BLOCKLI_BOXES)['buttons'])->toBeNull();
+    BrowserWait::until($white, '() => { const b = ('.BLOCKLI_POPUP_BOXES.')(); return b.popup !== null && Math.abs(b.popup[0] - b.view[0] - 8) <= 1; }', 5_000);
+    expect($white->evaluate(BLOCKLI_POPUP_BOXES)['buttons'])->toBeNull();
 
     // A block on the 7th rank: the pop-up below it, a finger's buttons in the middle between the block and the bottom of the
     // board in view (DerCaddy, 2026-10-09), a mouse's hint at that bottom.
     $touch ? blockliTap($white, true, 'c7/d8', -30) : blockliHover($white, 'c7/d8', -30);
-    $boxes = $white->evaluate(BLOCKLI_BOXES);
+    $boxes = $white->evaluate(BLOCKLI_POPUP_BOXES);
     expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c7/d8', 'h', true])
         ->and($boxes['buttons'] !== null)->toBe($touch)
         ->and($boxes['card'][0])->toBeGreaterThan($boxes['block'][1])
@@ -303,7 +303,7 @@ test('the block pop-up stands over the board, never over the block: a finger get
 
     // A block on the 2nd rank, reached below the pop-up: it moves above the block.
     $touch ? blockliTap($white, true, 'c1/d2', -30) : blockliHover($white, 'c1/d2', -30);
-    $boxes = $white->evaluate(BLOCKLI_BOXES);
+    $boxes = $white->evaluate(BLOCKLI_POPUP_BOXES);
     expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c1/d2', 'h', true])
         ->and($boxes['card'][1])->toBeLessThan($boxes['block'][0])
         ->and($boxes['card'][0])->toBeGreaterThanOrEqual($boxes['view'][0])
