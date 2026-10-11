@@ -54,7 +54,7 @@ beforeEach(function () {
     BlockliOn::play();
 });
 
-function liveAdmin(): User
+function blockliLiveAdmin(): User
 {
     $admin = User::factory()->create();
     Admin::query()->create(['pubkey' => $admin->pubkey]);
@@ -63,7 +63,7 @@ function liveAdmin(): User
 }
 
 /** A running two-player Blockli knockout in `$mode`, its first game started. */
-function liveTournament(string $mode): Tournament
+function blockliLiveTournament(string $mode): Tournament
 {
     $tournament = Tournament::factory()->create([
         'game' => 'blockli', 'mode' => $mode, 'format' => TournamentFormat::SingleElimination,
@@ -153,7 +153,7 @@ test('the lobby has a tile per live mode and queues in the one asked for; two ra
 });
 
 test('a tournament switches its time control in a draft, in sign-up and with the draw pending; once players are in, each is told once', function (TournamentStatus $status, int $told) {
-    $admin = liveAdmin();
+    $admin = blockliLiveAdmin();
     $tournament = Tournament::factory()->create(['status' => $status, 'game' => 'blockli', 'mode' => 'correspondence', 'starts_at' => now()->addDays(3),
         'signup_closes_at' => $status === TournamentStatus::Signup ? now()->addDay() : now()->subHour(), 'published_at' => $status === TournamentStatus::Draft ? null : now()->subDay()]);
     foreach (User::factory()->count(2)->create() as $player) {
@@ -173,8 +173,8 @@ test('a tournament switches its time control in a draft, in sign-up and with the
 ]);
 
 test('a running tournament switches for the games not started yet: the game under way keeps its mode, the next one plays the new mode, the players are told once', function () {
-    $admin = liveAdmin();
-    $tournament = liveTournament('correspondence');
+    $admin = blockliLiveAdmin();
+    $tournament = blockliLiveTournament('correspondence');
     $first = liveGameOf($tournament);
     $switch = app(TournamentModeSwitch::class);
     $news = fn (): int => DB::table('notifications')->where('data', 'like', '%now plays%')->count();
@@ -203,7 +203,7 @@ test('a running tournament switches for the games not started yet: the game unde
 });
 
 test('the night pause gates a rapid tournament\'s starts but not a correspondence one\'s', function () {
-    $tournament = liveTournament('correspondence');
+    $tournament = blockliLiveTournament('correspondence');
     $tournament->forceFill(['night_pause' => true])->save();
     $night = CarbonImmutable::parse('2026-10-12 03:00', 'Europe/Berlin');
 
@@ -222,12 +222,12 @@ test('a chess tournament, a finished one and a casual cup cannot switch; only an
     expect($switch->canSwitch($chess))->toBeFalse()
         ->and($switch->canSwitch($finished))->toBeFalse()
         ->and(fn () => $switch->switch($draft, User::factory()->create(), 'rapid'))->toThrow(TournamentRuleViolation::class)
-        ->and(fn () => $switch->switch($finished, liveAdmin(), 'rapid'))->toThrow(TournamentRuleViolation::class);
+        ->and(fn () => $switch->switch($finished, blockliLiveAdmin(), 'rapid'))->toThrow(TournamentRuleViolation::class);
 });
 
 test('the edit page offers the switch with the board\'s choice list and saves it at once, also for a running tournament', function () {
-    $admin = liveAdmin();
-    $tournament = liveTournament('correspondence');
+    $admin = blockliLiveAdmin();
+    $tournament = blockliLiveTournament('correspondence');
 
     Livewire::actingAs($admin)->test('pages::admin.tournament-edit', ['tournament' => $tournament])
         ->assertSeeHtml('data-test="mode-switch-blitz"')->assertSeeHtml('data-test="mode-switch-rapid"')
