@@ -56,6 +56,15 @@ use Illuminate\Support\Facades\Cache;
  */
 class ChatReactions
 {
+    /** What the acknowledgement of a wish announces (ChatWishes types): the segment itself follows right behind it. */
+    private const WISH_TEASERS = [
+        ChatWishes::HISTORY => 'gleich danach erzählst du eine Geschichte aus dem Bauernkrieg: kündige sie an, erzähl sie noch nicht',
+        ChatWishes::NEWS => 'gleich danach liest du eine Schlagzeile vor und kommentierst sie: kündige sie an, nenn sie noch nicht',
+        ChatWishes::JOKE => 'gleich danach kommen ein paar Sprüche aus dem Podcast: kündige sie an',
+        ChatWishes::CANON => 'gleich danach erzählst du etwas aus der EINUNDZWANZIG-Welt: kündige es an',
+        ChatWishes::GAME => 'gleich danach kommentierst du das Spielgeschehen: kündige es an',
+    ];
+
     public const SKIPS = 'chat_reaction';
 
     /** The topic of a zap thank-you (kind live) and of the greeting for everybody (kind chat). */
@@ -274,7 +283,10 @@ class ChatReactions
         $wish = $this->wishes->grant($event->pubkey, $message, $now);
         if ($wish !== null) {
             $live = (int) config('tv.commentary.scripts.live_priority', 100);
-            $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $this->lines->wish($wish['type'], $name), SceneFacts::hash($facts), $live, $now, source: CasterScript::SOURCE_PATTERN);
+            // The acknowledgement answers the message too (user 2026-10-11: "antwortet nur generisch!"); the template only
+            // when the model is off or its draft broke a house rule.
+            $ack = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, [...$hints, 'gleich_danach' => self::WISH_TEASERS[$wish['type']] ?? 'du erfüllst den Wunsch']) : null;
+            $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $ack ?? $this->lines->wish($wish['type'], $name), SceneFacts::hash($facts), $live, $now, source: $ack === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
             $this->queue->enqueue($wish['kind'], ScenePhase::BREAK, $wish['text'], $wish['facts_hash'], $live, $now, scene: ChatWishes::SCENE, source: $wish['source'], topic: $wish['topic'],
                 maxAgeMinutes: (int) config('tv.commentary.chat.wishes_max_age_minutes', 30));
             $profile->last_reaction_at = Carbon::instance($now);
