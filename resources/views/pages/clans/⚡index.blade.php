@@ -372,10 +372,10 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
                                 <td class="is-r">
                                     <span class="inline-flex flex-wrap justify-end gap-2">
                                         @if ($apply)
-                                            <a href="{{ $apply['url'] }}" class="rv-b2 is-sm h-11" data-test="clan-card-apply" data-applied="{{ $apply['applied'] ? 'true' : 'false' }}">{{ $apply['applied'] ? __('Applied') : __('Apply') }}<span class="sr-only"> {{ $clan->name }}</span></a>
+                                            <a href="{{ $apply['url'] }}" class="rv-b2 is-sm h-11 max-sm:px-2" data-test="clan-card-apply" data-applied="{{ $apply['applied'] ? 'true' : 'false' }}">{{ $apply['applied'] ? __('Applied') : __('Apply') }}<span class="sr-only"> {{ $clan->name }}</span></a>
                                         @endif
                                         @if ($challenges[$clan->id] ?? null)
-                                            <a href="{{ $challenges[$clan->id] }}" class="rv-b2 is-sm h-11" data-test="clan-card-challenge">{{ __('Challenge') }}<span class="sr-only"> {{ $clan->name }}</span></a>
+                                            <a href="{{ $challenges[$clan->id] }}" class="rv-b2 is-sm h-11 max-sm:px-2" data-test="clan-card-challenge">{{ __('Challenge') }}<span class="sr-only"> {{ $clan->name }}</span></a>
                                         @endif
                                     </span>
                                 </td>
