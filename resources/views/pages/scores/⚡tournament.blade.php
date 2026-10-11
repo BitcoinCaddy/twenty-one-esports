@@ -333,7 +333,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
     $field = 'h-11 w-full min-w-0 rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
 @endphp
 
-<div class="flex flex-col gap-6 px-4 pt-6 pb-12 lg:gap-8 lg:px-12 lg:pt-8" data-test="score-tournament" @if ($running) wire:poll.30s.visible="poll" @endif>
+<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-12 lg:gap-8 lg:px-12" data-test="score-tournament" @if ($running) wire:poll.30s.visible="poll" @endif>
     @if ($blockfill)
         @include('pages.scores.partials.blockfill-hero', ['heading' => $tournament->title(), 'week' => $tournament, 'standings' => $standings, 'metric' => $metric])
     @elseif ($tmnf)

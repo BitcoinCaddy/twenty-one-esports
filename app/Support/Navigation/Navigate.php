@@ -37,6 +37,7 @@ final class Navigate
         'play',
         'matches.index',
         'tournaments.index',
+        'tournaments.archive',
         'clans.index',
         'games.index',
         'mining',

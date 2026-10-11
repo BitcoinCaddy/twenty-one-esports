@@ -76,7 +76,7 @@ test('the call to action follows the tournament and the viewer in every status',
         playOutAsDirector($tournament);
 
         return [$tournament, null];
-    }, 'finished', 'Share the win'], // the champion moment on top (ChampionMomentTest) holds the way to the results
+    }, 'finished', 'Zap the winner'], // the champion in the hero (ChampionMomentTest) with the way to zap the winner
     'called off' => [function () {
         $tournament = openTournament();
         $tournament->forceFill(['status' => TournamentStatus::Cancelled])->save();
@@ -120,7 +120,7 @@ test('who plays lists the entries by Elo with their seed, marks the viewer and f
         ->and(preg_match('/data-test="roster-entry"\s+data-you[^>]*>(?:(?!data-test="roster-entry").)*?satsjaeger/s', $html))->toBe(1)
         // Signed up already: no "your spot?" link for the viewer.
         ->and($html)->not->toContain('data-test="your-seat"')
-        ->and($html)->toContain('3 of 8 spots taken');
+        ->and($html)->toContain('3 of 8 places taken');
 
     // A guest sees the first open spot as theirs, and six open tiles at most plus the rest counted.
     $big = openTournament(['capacity' => 12]);

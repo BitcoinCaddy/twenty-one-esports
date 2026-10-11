@@ -11,15 +11,14 @@ use Tests\Support\TestSigner;
 
 /*
 |--------------------------------------------------------------------------
-| The champion moment on a finished tournament page (user, 2026-10-03)
+| The champion on a finished tournament page (user, 2026-10-03; board TournamentDetail.dc.html, P6 of plan
+| "Refactor und Design-Revamp")
 |--------------------------------------------------------------------------
 |
-| "Das mini Ding als Stolz-Moment für den Sieger??? NEINN!!!!! Das muss
-| krasser werden!!!!" A finished tournament opens on its champion: trophy,
-| the avatar large, the name in display type, "Champion · <tournament>",
-| the podium of places 1 to 3, the champion's record and path, the prize
-| when it is paid, "Share the win" and "Results". The winner reads "You
-| won!" and shares the win on Nostr with the champion card.
+| "Das mini Ding als Stolz-Moment für den Sieger??? NEINN!!!!! Das muss krasser werden!!!!" The accepted board puts
+| the champion into the page's hero beside the pot and the seats, the button "Sieger zappen", and a glowing champion
+| card at the end of the bracket with the prize and the record. The winner reads "You won!" and shares the win on
+| Nostr with the champion card; a beaten player reads their place.
 |
 */
 
@@ -37,48 +36,32 @@ function championMomentTournament(): Tournament
     return $tournament->refresh();
 }
 
-/** The champion hero's markup alone. */
+/** The hero's markup alone. */
 function championHero(string $html): string
 {
-    $start = strpos($html, 'data-test="champion-hero"');
+    $start = strpos($html, 'data-test="tournament-hero"');
     expect($start)->not->toBeFalse();
     $open = strrpos(substr($html, 0, $start), '<section');
-    $end = strpos($html, '<!-- /champion-hero -->', $start);
-    expect($end)->not->toBeFalse();
 
-    return substr($html, $open, $end - $open);
+    return substr($html, $open, strpos($html, '</section>', $start) - $open);
 }
 
-test('a visitor sees the champion first: trophy, name, "Champion · <tournament>", the podium, the record and path, and the way to the results', function () {
+test('a visitor sees the champion in the hero, the champion card at the end of the bracket with the record, and the way to zap the winner', function () {
     $tournament = championMomentTournament();
     $champion = app(TournamentChampion::class)->of($tournament);
     $html = $this->get(route('tournaments.show', $tournament))->assertOk()->getContent();
     $hero = championHero($html);
 
     expect($champion->name)->toBe('Player 1')
-        // At the very top: before the tournament's own hero, and the tiny "Finished. Winner" line under the button is gone.
-        ->and(strpos($html, 'data-test="champion-hero"'))->toBeLessThan(strpos($html, 'data-test="tournament-hero"'))
-        ->and($html)->not->toContain('data-test="cta-note"')
-        ->and($hero)->toContain('data-test="tournament-winner"')
-        ->toContain('data-test="champion-name"')
-        ->toContain('Champion · Friday Blitz Cup')
-        ->toContain('Player 1')
-        ->toContain('data-test="champion-trophy"')
-        ->toContain('data-test="champion-podium"')
-        ->toContain('data-test="podium-1"')
-        ->toContain('data-test="podium-2"')
-        ->toContain('data-test="podium-3"')
-        // Two rounds, two wins, the path names whom they beat.
-        ->toContain('data-test="champion-record"')
-        ->toContain('2 wins')
-        ->toContain('data-test="champion-path"')
-        ->toContain('Player 2')
-        ->toContain('href="#bracket"')
-        ->toContain('data-test="champion-results"')
-        ->toContain('data-test="champion-share"')
-        ->toContain('Share the win')
+        ->and($hero)->toContain('data-test="champion-hero"')
+        ->toContain('data-test="champion-name">Player 1</b>')
+        ->toContain('Champion')
+        ->toContain('Friday Blitz Cup')
+        ->toContain('href="#zap-winner"')
         ->not->toContain('You won!')
-        ->not->toContain('data-test="champion-prize"');
+        ->not->toContain('data-test="champion-prize"')
+        // The champion card closes the bracket: the name and the record (two rounds, two wins, no loss).
+        ->and(str($html)->after('data-test="bracket-champion"')->before('</div>')->toString().str($html)->after('data-test="bracket-champion"')->limit(1200)->toString())->toContain('Player 1', '2 wins', 'no loss');
 });
 
 test('the winner reads "You won!" and shares the win on Nostr; a beaten player reads their place', function () {
@@ -116,13 +99,13 @@ test('the prize is named in sats once the league paid it', function () {
     expect(championHero($this->get(route('tournaments.show', $tournament))->getContent()))->toContain('data-test="champion-prize"')->toContain('21,000');
 });
 
-test('the champion moment survives a Livewire roundtrip, for the winner and a guest', function () {
+test('the champion survives a Livewire roundtrip, for the winner and a guest', function () {
     $tournament = championMomentTournament();
     $winner = User::query()->findOrFail(app(TournamentChampion::class)->of($tournament)->user_id);
 
     // The guest first: actingAs() stays for every later test() of this case.
     Livewire::test('pages::tournaments.show', ['tournament' => $tournament])
-        ->call('$refresh')->assertOk()->assertSeeHtml('data-test="champion-share"');
+        ->call('$refresh')->assertOk()->assertSeeHtml('data-test="champion-hero"');
     Livewire::actingAs($winner)->test('pages::tournaments.show', ['tournament' => $tournament])
         ->call('$refresh')->assertOk()->assertSeeHtml('data-test="champion-hero"')->assertSee('You won!');
 });
@@ -131,5 +114,5 @@ test('the German page says it in German', function () {
     $tournament = championMomentTournament();
     $hero = championHero($this->get(route('tournaments.show', ['tournament' => $tournament, 'lang' => 'de']))->assertOk()->getContent());
 
-    expect($hero)->toContain('Champion · Friday Blitz Cup')->toContain('Sieg teilen')->toContain('Ergebnisse')->not->toContain('Share the win');
+    expect($hero)->toContain('Champion')->toContain('Sieger zappen')->toContain('Beendet')->not->toContain('Zap the winner');
 });

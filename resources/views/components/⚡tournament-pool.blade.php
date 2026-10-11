@@ -13,7 +13,6 @@ use App\Support\Prizes\InvoiceCaps;
 use App\Support\Prizes\PoolRefusal;
 use App\Support\Prizes\PotTopUps;
 use App\Support\Prizes\PotZaps;
-use App\Support\Prizes\PrizePool;
 use App\Support\QrCode;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -83,7 +82,51 @@ new class extends Component {
     #[Computed]
     public function payouts(): Collection
     {
-        return $this->tournament->payouts_approved_at === null ? collect() : $this->tournament->payouts()->with('event')->get();
+        return $this->tournament->payouts_approved_at === null ? collect() : $this->tournament->payouts()->with(['event', 'participant'])->get();
+    }
+
+    /**
+     * Why a payout's place is not the place the bracket shows (plan "Refactor und Design-Revamp", P6, finding 2:
+     * payout place 2 went to the bracket's third while the runner-up lost the final as a no-show). Whoever did not
+     * play wins nothing and everyone behind moves up (App\Support\Payouts\PayoutPlan, user 2026-10-04), so the
+     * payout list says so instead of contradicting the bracket.
+     *
+     * @return array<int, string> payout id => the line under it
+     */
+    #[Computed]
+    public function movedUp(): array
+    {
+        if ($this->payouts->isEmpty()) {
+            return [];
+        }
+
+        $placements = app(\App\Support\Payouts\TournamentPlacements::class)->of($this->tournament) ?? [];
+        $bracketPlace = [];
+
+        foreach ($placements as $row) {
+            foreach ($row['participants'] as $id) {
+                $bracketPlace[$id] = $row['place'];
+            }
+        }
+
+        $excluded = array_keys(\App\Support\Payouts\PayoutPlan::excluded($this->tournament));
+        $notes = [];
+
+        foreach ($this->payouts as $payout) {
+            $from = $bracketPlace[$payout->participant_id] ?? null;
+
+            if ($from === null || $from <= $payout->place) {
+                continue;
+            }
+
+            $ahead = \App\Models\TournamentParticipant::query()->whereKey(array_filter($excluded, fn (int $id): bool => ($bracketPlace[$id] ?? PHP_INT_MAX) < $from))
+                ->orderBy('seed')->pluck('name')->all();
+            $notes[$payout->id] = $ahead === []
+                ? __('Place :from in the bracket, moved up.', ['from' => $from])
+                : __('Place :from in the bracket, moved up: :names did not play and win nothing.', ['from' => $from, 'names' => implode(', ', $ahead)]);
+        }
+
+        return $notes;
     }
 
     /**
@@ -259,7 +302,7 @@ new class extends Component {
     }
 @endphp
 
-<section @if (! $hasPot) aria-labelledby="pool-panel-h" @else aria-label="{{ __('Fill the pot') }}" @endif class="flex flex-col gap-4 px-4 lg:px-12" data-test="pool-panel">
+<section @if (! $hasPot) aria-labelledby="pool-panel-h" @else aria-label="{{ __('Fill the pot') }}" @endif class="flex flex-col gap-4" data-test="pool-panel">
     @if (! $hasPot)
         <h2 id="pool-panel-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('Prize pool') }}</h2>
     @endif
@@ -270,8 +313,8 @@ new class extends Component {
             @else
                 <p class="m-0 text-xs text-ink-3" data-test="pool-state">
                     {{ $fixed
-                        ? __('Kept in the league wallet for this tournament alone; the fixed prizes are paid once the pot covers them and :percent % for routing fees.', ['percent' => PrizePool::WALLET_FEE_PERCENT])
-                        : __('Kept in the league wallet for this tournament alone; :percent % stays back for routing fees.', ['percent' => PrizePool::WALLET_FEE_PERCENT]) }} ·
+                        ? __('Kept in the league wallet for this tournament alone; the fixed prizes are paid once the pot covers them.')
+                        : __('Kept in the league wallet for this tournament alone.') }} ·
                     {{ $open ? __('open to everyone until the tournament ends') : __('closed at the admin check, :date', ['date' => $tournament->pool_closed_at?->format('Y-m-d H:i')]) }}
                 </p>
                 <p class="m-0 max-w-[80ch] text-xs leading-normal text-ink-2">
@@ -408,12 +451,12 @@ new class extends Component {
                         @foreach ($this->payouts as $payout)
                             <tr class="border-t border-hairline align-top" wire:key="payout-{{ $payout->id }}" data-test="payout-row" data-status="{{ $payout->status->value }}">
                                 <td class="py-2 pr-3">{{ $payout->place }}.</td>
-                                <td class="py-2 pr-3 [overflow-wrap:anywhere]">{{ $payout->name }}</td>
+                                <td class="py-2 pr-3 [overflow-wrap:anywhere]" data-test="payout-name">{{ $payout->publicName() }}@if (isset($this->movedUp[$payout->id]))<span class="mt-1 block text-xs text-ink-2" data-test="payout-moved-up">{{ $this->movedUp[$payout->id] }}</span>@endif</td>
                                 <td class="py-2 pr-3 text-right whitespace-nowrap">{{ $sats($payout->amount_sats) }} {{ __('sats') }}</td>
                                 <td class="py-2">
                                     <span @class(['inline-flex h-6 items-center rounded-xs px-2 text-xs font-bold', 'bg-win-tint text-win' => $payout->status === PayoutStatus::Paid, 'bg-raised text-ink-2' => $payout->status === PayoutStatus::Forwarded, 'bg-btc-chip text-btc-hi' => ! in_array($payout->status, [PayoutStatus::Paid, PayoutStatus::Forwarded], true)])>{{ $payout->status->label() }}</span>
                                     @if ($payout->status === PayoutStatus::Forwarded)
-                                        <span class="mt-1 block text-xs text-ink-2" data-test="payout-forwarded">{{ __(':name passed the prize on: it goes into the next pot.', ['name' => $payout->name]) }}</span>
+                                        <span class="mt-1 block text-xs text-ink-2" data-test="payout-forwarded">{{ __(':name passed the prize on: it goes into the next pot.', ['name' => $payout->publicName()]) }}</span>
                                     @endif
                                     @if ($payout->status === PayoutStatus::Open && $payout->reasonText())
                                         <span class="mt-1 block text-xs text-ink-2">{{ $payout->reasonText() }}</span>

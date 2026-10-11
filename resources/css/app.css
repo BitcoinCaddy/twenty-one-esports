@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import './revamp.css';
+@import './revamp-tournaments.css';
 
 @source '../views';
 @source '../../app/Support';

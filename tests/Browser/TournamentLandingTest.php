@@ -68,13 +68,15 @@ const LANDING_STATE = <<<'JS'
             hero: rect('[data-test=tournament-hero]'),
             button: rect('[data-test=signup-cta] a, [data-test=signup-cta] [data-test=cta-closed]'),
             cover: rect('[data-test=game-cover]'),
-            seats: document.querySelectorAll('.tl-seat').length,
-            taken: document.querySelectorAll('.tl-seat.is-taken').length,
+            // The hero's seat bar (x-ui.seats, rule R9): one square per place, the taken ones filled.
+            seats: document.querySelectorAll('[data-test=places-meter] [data-test=seats] i').length,
+            taken: document.querySelectorAll('[data-test=places-meter] [data-test=seats] i.is-on').length,
             roster: document.querySelectorAll('[data-test=roster-entry]').length,
             open: document.querySelectorAll('[data-test=open-seat]').length,
             live: document.querySelectorAll('[data-live]').length,
             bracketScroll: scroller ? { scroll: scroller.scrollWidth, client: scroller.clientWidth } : null,
-            countdown: document.querySelector('[data-test=countdown]')?.textContent.trim() ?? null,
+            // The segmented countdown (x-ui.countdown): days, hours and minutes.
+            countdown: [...document.querySelectorAll('[data-test=tournament-countdown] [data-test=countdown-segments] b')].map((b) => b.textContent.trim()).join(':') || null,
             lang: document.documentElement.lang,
         };
     }
@@ -203,7 +205,7 @@ test('the tournament page works as a landing page in every state at 375, 768 and
         ->and($measured['open'][375]['taken'])->toBe(5)
         ->and($measured['open'][375]['roster'])->toBe(5)
         ->and($measured['open'][375]['open'])->toBe(6)
-        ->and($measured['open'][375]['countdown'])->toMatch('/^2 days \d\d:\d\d:\d\d$/')
+        ->and($measured['open'][375]['countdown'])->toMatch('/^02:\d\d:\d\d$/')
         ->and($measured['full'][768]['cta'])->toBe('full')
         ->and($measured['full'][768]['open'])->toBe(0)
         ->and($measured['running'][1440]['cta'])->toBe('live')
@@ -212,11 +214,9 @@ test('the tournament page works as a landing page in every state at 375, 768 and
         ->and($measured['running'][375]['bracketScroll']['scroll'])->toBeGreaterThan($measured['running'][375]['bracketScroll']['client'])
         ->and($measured['finished'][1440]['cta'])->toBe('finished');
 
-    // The countdown ticks in the browser.
+    // The countdown counts on in the browser (segmentCountdown: minutes, so the script's state is read, not a tick).
     $page->goto(ComputeUrl::from(route('tournaments.show', $open)));
-    BrowserWait::until($page, '() => document.querySelector("[data-test=countdown]") !== null', 10_000);
-    $first = $page->evaluate('() => document.querySelector("[data-test=countdown]").textContent.trim()');
-    BrowserWait::until($page, '() => document.querySelector("[data-test=countdown]").textContent.trim() !== '.json_encode($first), 3_000);
+    BrowserWait::until($page, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=tournament-countdown] [data-test=countdown-segments]"))?.p?.length === 3', 10_000);
 
     // German, for the eye and the console.
     $german = User::factory()->create(['name' => 'besucher', 'locale' => 'de']);

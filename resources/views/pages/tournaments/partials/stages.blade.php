@@ -13,7 +13,7 @@
 
         <div @class(['grid gap-4', 'lg:grid-cols-2' => count($stage['parts']) > 1])>
             @foreach ($stage['parts'] as $part)
-                <div class="flex min-w-0 flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6">
+                <div @class(['flex min-w-0 flex-col gap-3', 'rv-card px-4 py-5 lg:px-6' => count($stage['parts']) > 1 || count($stages) > 1])>
                     @if ($part['title'])
                         <h3 class="m-0 text-[15px] font-bold">{{ $part['title'] }}</h3>
                     @endif
@@ -27,7 +27,7 @@
                             <div class="overflow-x-auto overscroll-x-contain pb-1" data-test="bracket-scroll">
                                 <div class="tl-bracket flex min-w-max gap-6">
                                     @foreach ($section['columns'] as $column)
-                                        <div class="tl-col flex w-[220px] flex-col gap-3">
+                                        <div class="tl-col flex w-[190px] flex-col gap-3">
                                             <span class="text-xs text-ink-3">{{ $column['label'] }}</span>
                                             <div class="flex grow flex-col justify-around gap-3">
                                                 @foreach ($column['matches'] as $box)
@@ -38,6 +38,18 @@
                                             </div>
                                         </div>
                                     @endforeach
+                                    @if (($champion ?? null) !== null && $loop->parent->parent->last && $loop->last && $part['kind'] === 'bracket')
+                                        {{-- The champion card at the end of the bracket (TournamentDetail.dc.html): the name, the prize and the record. --}}
+                                        <div class="flex w-[220px] flex-col justify-center" data-test="bracket-champion">
+                                            <div class="rv-glow flex flex-col gap-2 rounded-[4px] bg-feature p-4">
+                                                <span class="flex items-center gap-1.5 text-[13px] font-bold text-btc"><x-icon name="trophy" :size="16" />{{ __('Champion') }}</span>
+                                                <b class="text-lg leading-tight [overflow-wrap:anywhere]">{{ $champion['name'] }}</b>
+                                                @if ($champion['line'] !== '')
+                                                    <span class="rv-m">{{ $champion['line'] }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach

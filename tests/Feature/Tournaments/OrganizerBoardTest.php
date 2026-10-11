@@ -83,7 +83,7 @@ test('a card counts the places taken and names the start as day, clock and city,
     app()->setLocale('en');
 });
 
-test('the tournaments page shows every organizer tournament with its cover before the first casual cup; the ended cups are listed below', function () {
+test('the tournaments page features the next organizer tournament, lists the open ones before the casual cups and the running ones apart; ended ones go to the archive', function () {
     cupTick();
     $now = CarbonImmutable::now();
     $next = byOrganizer('Friday Blitz', TournamentStatus::Signup, $now->addDays(2));
@@ -91,38 +91,33 @@ test('the tournaments page shows every organizer tournament with its cover befor
     $running = byOrganizer('Running Cup', TournamentStatus::Running, $now->subHour());
     $finished = byOrganizer('Autumn Final', TournamentStatus::Finished, $now->subDays(8));
     $endedCup = Tournament::query()->where('cup_open_series', 'chess-us')->sole();
-    $endedCup->forceFill(['status' => TournamentStatus::Finished])->save();
+    $endedCup->forceFill(['status' => TournamentStatus::Finished, 'published_at' => now()])->save();
 
     $html = $this->get(route('tournaments.index'))->assertOk()->getContent();
-    $board = strpos($html, 'data-test="cup-mentions"');
-    $hero = str($html)->after('data-test="next-tournament" data-tournament="')->before('</section>')->toString();
+    $featured = str($html)->after('data-test="featured-tournament" data-tournament="')->before('</section>')->toString();
 
-    expect($hero)->toStartWith($next->id.'"')->toContain('data-game-cover="chess"')->toContain('loading="eager"')
-        ->and($board)->toBeGreaterThan(0);
+    expect($featured)->toStartWith($next->id.'"')->toContain('data-game-cover="chess"')->toContain('loading="eager"');
 
-    preg_match_all('/data-test="organizer-card" data-tournament="(\d+)" data-state="([a-z]+)"/', $html, $cards, PREG_OFFSET_CAPTURE);
-    expect(array_map(fn (array $match): int => (int) $match[0], $cards[1]))->toBe([$open->id, $running->id, $finished->id])
-        ->and(array_column($cards[2], 0))->toBe(['open', 'running', 'finished'])
-        // Every card, and the hero, before the board; each with its cover, lazy below the hero.
-        ->and(collect($cards[0])->every(fn (array $match): bool => $match[1] < $board))->toBeTrue()
-        ->and(strpos($html, 'data-test="next-tournament"'))->toBeLessThan($board)
-        ->and(substr_count(str($html)->after('data-test="organizer-tournaments"')->before('data-test="cup-mentions"')->toString(), 'data-test="organizer-card-cover"'))->toBe(3)
-        ->and(substr_count(str($html)->after('data-test="organizer-card"')->before('data-test="cup-mentions"')->toString(), 'loading="eager"'))->toBe(0);
+    // The open table: the organizers' tournaments first (featured edge), then the casual cups.
+    preg_match_all('/data-test="open-row" data-tournament="(\d+)"\s*(data-featured)?/', $html, $rows);
+    $ids = array_map(intval(...), $rows[1]);
+    expect(array_slice($ids, 0, 2))->toBe([$next->id, $open->id])
+        ->and(array_slice($rows[2], 0, 2))->toBe(['data-featured', 'data-featured'])
+        ->and(count($ids))->toBeGreaterThan(2);
 
-    // Under the board: the ended cup only; the open cups stay on the board, the organizers' above.
-    $list = str($html)->after('id="all-h"')->before('id="formats-h"')->toString();
-    expect($list)->toContain('Past casual cups')->toContain($endedCup->name)
-        ->not->toContain('Casual Cup EU')->not->toContain('Friday Blitz')->not->toContain('Autumn Final');
+    // Running in its own table; nothing that ended is on this page, it is on the archive.
+    expect(str($html)->after('data-test="running-tournaments"')->toString())->toContain('Running Cup')
+        ->and($html)->not->toContain('Autumn Final')->not->toContain($endedCup->name);
+    $this->get(route('tournaments.archive'))->assertOk()->assertSee('Autumn Final')->assertSee($endedCup->name);
 });
 
-test('with only casual cups on, the page says so where the organizers\' tournaments go, and the board follows', function () {
+test('with only casual cups on, the page has no featured tournament and the open table holds the cups', function () {
     cupTick();
 
     $html = $this->get(route('tournaments.index'))->assertOk()
-        ->assertSeeInOrder(['data-test="organizer-empty"', 'No organizer tournament yet', 'data-test="cup-mentions"'], false)
-        ->assertDontSeeHtml('data-test="organizer-card"')
-        ->assertDontSeeHtml('data-test="next-tournament"')
+        ->assertDontSeeHtml('data-test="featured-tournament"')
+        ->assertSeeHtml('data-test="open-row"')
         ->getContent();
 
-    expect($html)->not->toContain('id="all-h"');
+    expect($html)->not->toContain('data-featured');
 });

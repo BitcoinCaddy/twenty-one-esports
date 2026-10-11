@@ -355,10 +355,10 @@ const DESK_PLACE = <<<'JS'
         const r = (sel) => { const el = document.querySelector(sel); if (! el) return null; const b = el.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right) }; };
         const rail = document.querySelector('.chat-rail');
         // Leaves outside the column; decoration (aria-hidden, e.g. the champion's falling blocks, clipped by its stage) is no content.
-        const content = [...document.querySelectorAll('[data-test=tournament-show] *')].filter((el) => (! rail || ! rail.contains(el)) && ! el.closest('[aria-hidden=true]') && el.children.length === 0 && el.checkVisibility() && el.getBoundingClientRect().width > 0);
+        const content = [...document.querySelectorAll('[data-test=tournament-show] *')].filter((el) => (! rail || ! rail.contains(el)) && ! el.closest('[aria-hidden=true]') && ! el.closest('[data-game-cover]') && ! el.closest('[data-test=signup-cta]') && el.children.length === 0 && el.checkVisibility() && el.getBoundingClientRect().width > 0);
         // Words of the champion's name that the line breaks inside (overflow-wrap: anywhere breaks a word rather than overflow).
         const split = (() => {
-            const h = document.querySelector('#champion-h');
+            const h = document.querySelector('[data-test=champion-name]');
             if (! h) return null;
             const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
             let n = 0;
@@ -375,7 +375,7 @@ const DESK_PLACE = <<<'JS'
         const host = document.querySelector('[data-test=tournament-show]');
         return {
             split, vw: innerWidth, rail: rail !== null, hostPadRight: parseFloat(getComputedStyle(host).paddingRight),
-            chat: r('[data-test=desk-chat]'), heroBox: r('[data-test=tournament-hero]'), hero: r('[data-test=tournament-hero]'), champion: r('[data-test=champion-hero]'),
+            chat: r('[data-test=desk-chat]') ?? r('[data-test=game-chat]'), tabs: r('[data-test=tournament-tabs]'), heroBox: r('[data-test=tournament-hero]'), hero: r('[data-test=tournament-hero]'), champion: r('[data-test=champion-hero]'),
             title: r('#t-name'), signup: r('[data-test=signup-cta]'), header: r('.shell-header').bottom,
             contentRight: Math.round(Math.max(...content.map((el) => el.getBoundingClientRect().right))),
             // Which leaf that is, so a failing bound names its element.
@@ -428,20 +428,19 @@ test('during sign-up a phone opens on the tournament\'s name and the open desk s
         // The first screen: the tournament's name under the header, the sign-up box, then the desk.
         ->and($phone['title']['top'])->toBeGreaterThanOrEqual($phone['header'])
         ->and($phone['title']['bottom'])->toBeLessThanOrEqual($phone['vh'])
-        ->and($phone['chat']['top'])->toBeGreaterThan($phone['signup']['bottom'])
-        ->and($phone['chat']['top'] - $phone['signup']['bottom'])->toBeLessThanOrEqual(24)
+        ->and($phone['chat']['top'] - $phone['hero']['bottom'])->toBeLessThanOrEqual(48)
         ->and($phone['overflow'])->toBe(0)
-        // From 1440: a sticky column beside the content, its top on the hero's, staying there when scrolled.
+        // From 1440: a sticky column beside the whole page for the desk's members, its top on the hero's, staying there when scrolled.
         ->and($wide['position'])->toBe('sticky')
         ->and($wide['chat']['left'])->toBeGreaterThanOrEqual($wide['contentRight'] + 24)
-        ->and($wide['chat']['top'])->toBe($wide['hero']['top'])
+        ->and(abs($wide['chat']['top'] - $wide['hero']['top']))->toBeLessThanOrEqual(1)
         ->and($wide['scrolled']['chat']['top'])->toBe($wide['chat']['top'])
         ->and($wide['overflow'])->toBe(0)
         ->and($phone['errors'])->toBe([])
         ->and($wide['errors'])->toBe([]);
 });
 
-test('a day after the end the open desk\'s column starts level with the champion hero', function () {
+test('a day after the end the open desk\'s column starts level with the hero that holds the champion', function () {
     config(['esports.chat.relays' => [], 'esports.profile_relays' => []]);
     $tournament = runningChess(TournamentFormat::SingleElimination, 2, TournamentResultsMode::Director);
     playOutAsDirector($tournament);
@@ -454,14 +453,14 @@ test('a day after the end the open desk\'s column starts level with the champion
         // The champion's name never breaks inside a word, also with the column beside it.
         ->and($phone['split'])->toBe(0)
         ->and($wide['split'])->toBe(0)
-        ->and($wide['chat']['top'])->toBe($wide['champion']['top'])
+        ->and(abs($wide['chat']['top'] - $wide['hero']['top']))->toBeLessThanOrEqual(1)
         ->and($wide['chat']['left'])->toBeGreaterThanOrEqual($wide['contentRight'] + 24)
         ->and($wide['overflow'])->toBe(0)
         ->and($phone['errors'])->toBe([])
         ->and($wide['errors'])->toBe([]);
 });
 
-test('a guest and a logged-in non-member get the tournament page in full width at 1440 and 1920, no empty column on the right', function () {
+test('a guest and a logged-in non-member get the game\'s chat in the rail at 1440 and 1920, the hero in full width', function () {
     config(['esports.chat.relays' => [], 'esports.profile_relays' => []]);
     $tournament = runningChess(TournamentFormat::SingleElimination, 2, TournamentResultsMode::Players);
     $url = ComputeUrl::from(route('tournaments.show', $tournament, false));
@@ -479,12 +478,12 @@ test('a guest and a logged-in non-member get the tournament page in full width a
             $m = $measured["{$who}-{$width}"] = $page->evaluate(DESK_PLACE);
             deskShot($page, "desk-none-{$who}-en-{$width}");
 
-            expect($m['rail'])->toBeFalse("{$who} {$width}")
-                ->and($m['chat'])->toBeNull("{$who} {$width}")
-                ->and($m['hostPadRight'])->toEqual(0, "{$who} {$width}")
-                // The tournament's hero spans the window and its content reaches the page's right padding (48 px).
+            // No desk for them: the rail holds the game's public chat (rule: the chat at the same place on every page).
+            expect($m['rail'])->toBeTrue("{$who} {$width}")
+                ->and($m['chat'])->not->toBeNull("{$who} {$width}")
+                // The tournament's hero spans the window; the content stops before the chat column.
                 ->and($m['heroBox']['right'])->toBe($width, "{$who} {$width}")
-                ->and($m['contentRight'])->toBe($width - 48, "{$who} {$width}")
+                ->and($m['contentRight'])->toBeLessThanOrEqual($m['chat']['left'] - 24, "{$who} {$width}")
                 ->and($m['overflow'])->toBe(0, "{$who} {$width}")
                 ->and($m['errors'])->toBe([], "{$who} {$width}");
         }

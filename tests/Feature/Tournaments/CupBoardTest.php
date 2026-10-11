@@ -38,6 +38,16 @@ beforeEach(function () {
     cupTick();
 });
 
+/**
+ * The cup board with its head and filter bar (<x-tournaments.cup-mentions heading filters>). The tournaments page no
+ * longer mounts it (P6 of plan "Refactor und Design-Revamp": the cups are rows of its open table); the board keeps
+ * its data and modes for the pages that do.
+ */
+function cupBoardHtml(): string
+{
+    return Blade::render('<x-tournaments.cup-mentions heading filters />');
+}
+
 /** The rows of the rendered board: [game, region, free] per row, in page order. */
 function boardRows(string $html): array
 {
@@ -62,11 +72,11 @@ test('the board groups the cups by game in the league\'s order, EU before US, an
 });
 
 test('a guest reads each start on its region\'s clock, named by the city; a player with a zone reads their own, fixed', function () {
-    $html = $this->get(route('tournaments.index'))->assertOk()->getContent();
+    $html = cupBoardHtml();
 
     expect($html)->toContain('data-test="cup-clock">8:00 PM</span>', 'data-test="cup-day">Sat, Oct 10</span>', 'data-test="cup-city">Berlin</span>', 'data-test="cup-city">New York</span>')
         // Never a bare offset or UTC stamp on the board.
-        ->and(str($html)->after('data-test="cup-mentions"')->before('id="all-h"')->toString())->not->toContain('UTC', 'GMT');
+        ->and(str($html)->after('data-test="cup-mentions"')->toString())->not->toContain('UTC', 'GMT');
 
     app()->setLocale('de');
     $german = app(CupBoard::class)->groups()[0]['cups'];
@@ -74,7 +84,7 @@ test('a guest reads each start on its region\'s clock, named by the city; a play
     app()->setLocale('en');
 
     $this->actingAs(User::factory()->create(['timezone' => 'Asia/Tokyo']));
-    $own = $this->get(route('tournaments.index'))->assertOk()->getContent();
+    $own = cupBoardHtml();
 
     // 20:00 Berlin is 3:00 AM Sunday in Tokyo; 20:00 New York is 9:00 AM Sunday. No browser rewrite.
     expect($own)->toContain('data-test="cup-clock">3:00 AM</span>', 'data-test="cup-clock">9:00 AM</span>', 'data-test="cup-day">Sun, Oct 11</span>', 'data-test="cup-city">Tokyo</span>')
@@ -86,12 +96,8 @@ test('the tournaments page has the filter bar and every row carries game, region
     $full->forceFill(['status' => TournamentStatus::Running])->save();
     $special = openTournament(['name' => 'RL Sunday'], rocketLeague: true);
 
-    $html = $this->get(route('tournaments.index'))->assertOk()
-        ->assertSeeHtml('data-test="cup-filters"')
-        ->assertSeeHtml('x-data="cupBoard()"')
-        ->assertSeeHtml('data-test="cup-filter-free"')
-        ->assertSeeHtml('data-test="cup-sort-start"')
-        ->getContent();
+    $html = cupBoardHtml();
+    expect($html)->toContain('data-test="cup-filters"', 'x-data="cupBoard()"', 'data-test="cup-filter-free"', 'data-test="cup-sort-start"');
 
     expect(boardRows($html))->toBe([
         ['chess', 'eu', '1'], ['chess', 'us', '1'],
@@ -101,11 +107,8 @@ test('the tournaments page has the filter bar and every row carries game, region
         ->and(substr_count($html, 'data-test="cup-group-cover"'))->toBe(3)
         ->and(substr_count($html, 'data-test="cup-filter-game-'))->toBe(5);
 
-    // A running cup reads "Running" with the play icon; the special tournament is a card above the board, and no
-    // cup has ended, so there is no list of past cups under it (OrganizerBoardTest).
-    $organizers = str($html)->after('data-test="organizer-tournaments"')->before('data-test="cup-mentions"')->toString();
-    expect($organizers)->toContain('RL Sunday')->not->toContain('Casual Cup')
-        ->and($html)->not->toContain('id="all-h"')
+    // A running cup reads "Running" with the play icon; the special tournament never stands on the cup board.
+    expect($html)->not->toContain('RL Sunday')
         ->and(substr_count($html, 'data-test="cup-status"'))->toBe(6);
     expect($special->refresh()->isCasualCup())->toBeFalse();
 });
@@ -162,9 +165,8 @@ test('with a cup open for sign-up the head says tournament and what a cup is, an
     $next = Tournament::query()->where('cup_open_series', 'ea-sports-fc-26-eu')->sole();
     boardSignups($next, 3);
 
-    $html = $this->get(route('tournaments.index'))->assertOk()
-        ->assertSeeInOrder(['data-test="organizer-tournaments"', 'data-test="cup-hall"', 'Casual cups', 'data-test="cup-kind"', 'Tournaments', 'The league opens a cup for every game and region on its own. Its games are casual and move only your casual Elo.', 'data-test="cup-next"', 'data-test="cup-filters"'], false)
-        ->getContent();
+    $html = cupBoardHtml();
+    $this->assertMatchesRegularExpression('/'.implode('.*', array_map(fn (string $part): string => preg_quote($part, '/'), ['data-test="cup-hall"', 'Casual cups', 'data-test="cup-kind"', 'Tournaments', 'The league opens a cup for every game and region on its own. Its games are casual and move only your casual Elo.', 'data-test="cup-next"', 'data-test="cup-filters"'])).'/s', $html);
     $head = cupHead($html);
 
     // FC 26 starts Friday 18:00, the others Saturday 20:00, each on its clock: FC 26 in Berlin is the earliest.
@@ -177,7 +179,7 @@ test('with a cup open for sign-up the head says tournament and what a cup is, an
         ->and($head)->toContain('title="cup_player_'.$next->id.'_1"')
         // The board says tournament too, and every row shows who is in.
         ->and($html)->toContain('Rapid 10+5 tournament</span>')
-        ->and(str($html)->after('data-test="cup-hall"')->before('id="formats-h"')->toString())->not->toContain('Double Elimination', 'data-test="cup-format"')
+        ->and(str($html)->after('data-test="cup-hall"')->toString())->not->toContain('Double Elimination', 'data-test="cup-format"')
         ->and(substr_count($html, 'data-test="cup-faces"'))->toBe(1)
         // No cup has ended yet: no winner, and no line about the next cup.
         ->and($head)->not->toContain('data-test="cup-winner"', 'data-test="cup-none"');
@@ -185,15 +187,15 @@ test('with a cup open for sign-up the head says tournament and what a cup is, an
     // Signed in: the button leads to the sign-up; once in, it says so and the open seat is no link any more.
     $player = User::factory()->create();
     $this->actingAs($player);
-    expect(cupHead($this->get(route('tournaments.index'))->getContent()))->toContain('href="'.route('tournaments.signup', $next).'"', __('Take your seat'));
+    expect(cupHead(cupBoardHtml()))->toContain('href="'.route('tournaments.signup', $next).'"', __('Take your seat'));
 
     // The fourth player fills the cup: the head moves on to the next cup with a free place.
     TournamentSignup::query()->create(['tournament_id' => $next->id, 'user_id' => $player->id, 'name' => 'me', 'members' => [$player->id]]);
-    expect(cupHead($this->get(route('tournaments.index'))->getContent()))->not->toContain('data-tournament="'.$next->id.'"');
+    expect(cupHead(cupBoardHtml()))->not->toContain('data-tournament="'.$next->id.'"');
 
     // Grown to 8 places, it is the next cup again, and the head says the viewer is in; no open seat is a link.
     $next->forceFill(['capacity' => 8])->save();
-    $mine = cupHead($this->get(route('tournaments.index'))->getContent());
+    $mine = cupHead(cupBoardHtml());
     expect($mine)->toContain('data-tournament="'.$next->id.'"', 'You’re in', 'hh-seat is-taken is-you', '4 of 8 spots taken')->not->toContain(__('Take your seat'));
 });
 
@@ -210,7 +212,7 @@ test('when every cup is running the head has no next cup, and each running row s
     // Four players at the close: a round robin evening (CasualCups::formatFor()).
     Tournament::query()->where('cup_open_series', 'chess-eu')->update(['format' => TournamentFormat::RoundRobin]);
 
-    $html = $this->get(route('tournaments.index'))->assertOk()->getContent();
+    $html = cupBoardHtml();
 
     expect(cupHead($html))->toContain('data-test="cup-explainer"')->not->toContain('data-test="cup-next"', 'data-test="cup-none"')
         ->and(substr_count($html, 'data-test="cup-status"'))->toBe(6)
@@ -219,13 +221,13 @@ test('when every cup is running the head has no next cup, and each running row s
 });
 
 test('a cup whose start has passed is not the next cup, even before the league\'s clock closes it; the head switches at zero', function () {
-    $html = $this->get(route('tournaments.index'))->assertOk()->getContent();
+    $html = cupBoardHtml();
     // The countdown's zero event hides the button and says sign-up closed (resources/js/tournamentLanding.js).
     expect(cupHead($html))->toContain('x-on:countdown-zero="started = true"', 'data-test="cup-next-closed"', 'x-show="! started"');
 
     // Past every start (Saturday 20:00 New York is the last), no tick: every cup still says sign-up in the table.
     $this->travelTo(CarbonImmutable::parse('2026-10-11 02:00:00', 'UTC'));
-    $late = $this->get(route('tournaments.index'))->assertOk()->getContent();
+    $late = cupBoardHtml();
 
     expect(Tournament::query()->casualCup()->where('status', TournamentStatus::Signup)->count())->toBe(6)
         ->and(cupHead($late))->not->toContain('data-test="cup-next"');
@@ -234,13 +236,13 @@ test('a cup whose start has passed is not the next cup, even before the league\'
 test('with no cup on the head stays, names the league\'s gap, and shows the last cup\'s winner', function () {
     Tournament::query()->casualCup()->delete();
 
-    $html = $this->get(route('tournaments.index'))->assertOk()->getContent();
+    $html = cupBoardHtml();
     expect($html)->toContain('data-test="cup-hall"', 'data-test="cup-none"', 'No cup takes players right now. The next one opens 1 day after the last cup’s final or call-off.')
         ->not->toContain('data-test="cup-filters"', 'data-test="cup-next"', 'data-test="cup-winner"', 'data-test="cup-group"');
 
     $winner = User::factory()->create(['name' => 'satoshi_rook']);
     $cup = wonCasualCup($winner, User::factory()->create(['name' => 'hal_finney']), 7);
-    $head = str($this->get(route('tournaments.index'))->assertOk()->getContent())->after('data-test="cup-hall"')->before('id="all-h"')->toString();
+    $head = str(cupBoardHtml())->after('data-test="cup-hall"')->toString();
 
     expect($head)->toContain('data-test="cup-winner"', 'Won the last cup', 'data-test="cup-winner-name">satoshi_rook</span>', 'data-test="cup-winner-cup">Chess Casual Cup EU #7</span>', 'href="'.route('tournaments.show', $cup).'"')
         ->not->toContain('hal_finney');
@@ -251,10 +253,10 @@ test('with the cups switched off or no league key, no head promises a cup', func
     wonCasualCup(User::factory()->create(), User::factory()->create());
 
     config(['esports.casual_cups.enabled' => []]);
-    expect($this->get(route('tournaments.index'))->assertOk()->getContent())->not->toContain('data-test="cup-hall"', 'data-test="cup-mentions"');
+    expect(cupBoardHtml())->not->toContain('data-test="cup-hall"', 'data-test="cup-mentions"');
 
     config(['esports.casual_cups.enabled' => ['chess'], 'esports.league.nsec' => null]);
-    expect($this->get(route('tournaments.index'))->assertOk()->getContent())->not->toContain('data-test="cup-hall"', 'data-test="cup-mentions"');
+    expect(cupBoardHtml())->not->toContain('data-test="cup-hall"', 'data-test="cup-mentions"');
 });
 
 test('home and the game pages keep the side mention without the head', function () {

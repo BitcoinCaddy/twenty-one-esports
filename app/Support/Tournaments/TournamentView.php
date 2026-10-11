@@ -222,6 +222,7 @@ final class TournamentView
                 'mix' => $participant?->isMixTeam() ?? false,
                 'score' => $score,
                 'won' => $result !== null && (isset($result['ranks']) && $match->bracket === 'heat' ? $rank === 1 : $winner === $index),
+                'seed' => $participant?->seed,
             ];
         }
 

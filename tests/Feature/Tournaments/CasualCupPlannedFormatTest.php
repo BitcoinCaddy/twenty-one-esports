@@ -145,11 +145,11 @@ test('a sign-up that makes it 9 names the double elimination in its own response
     [$ninth, $signer] = keyedPlayer();
 
     $page = Livewire::actingAs($ninth)->test('pages::tournaments.signup', ['tournament' => $cup->refresh()])
-        ->assertSeeHtml('data-test="signup-format">Round Robin</dd>');
+        ->assertSeeHtml('data-test="signup-format">Round Robin</span>');
 
     $page->call('enterSolo', json_encode($signer->signTemplates($page->instance()->prepareSolo())))
         ->assertSet('justEntered', true)
-        ->assertSeeHtml('data-test="signup-format">Double Elimination</dd>')
+        ->assertSeeHtml('data-test="signup-format">Double Elimination</span>')
         ->assertSee('Format follows the sign-ups: 9 players → Double Elimination');
 
     Event::assertDispatched(TournamentChanged::class, fn (TournamentChanged $event): bool => $event->tournamentId === $cup->id && $event->reason === 'signup');

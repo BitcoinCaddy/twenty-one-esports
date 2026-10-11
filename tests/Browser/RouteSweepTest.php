@@ -534,6 +534,14 @@ const SWEEP_PAGE_SIDE = [375 => 16, 1024 => 16, 1440 => 16];
  */
 const SWEEP_FLUSH_PATHS = ['/', '/login'];
 
+/**
+ * Flush pages whose path carries an id: the tournament detail opens with its hero band directly under the header and
+ * its cover running to the right edge (TournamentDetail.dc.html, revamp P6).
+ *
+ * @var list<string>
+ */
+const SWEEP_FLUSH_PATTERNS = ['#^/tournaments/\d+$#'];
+
 /** @var list<string> Routes that answer without the app shell (JSON, images, the player card fragment, the full-screen tournament TV, the broadcast styleguide). */
 const SWEEP_NO_HEADER_ROUTES = ['tournaments.tv', 'broadcast.styleguide', 'nostr.nip05', 'admin.disputes.evidence', 'players.card', 'avatars.generated', 'invites.card',
     'badges.rank', 'badges.rank.thumb', 'cards.rank-up', 'cards.block', 'cards.tournament', 'cards.tournament-invite', 'cards.wrapped', 'cards.blockfill', 'cards.page', 'stream.cover', 'stream.pride-image'];
@@ -671,7 +679,7 @@ function recordGapViolation(array $data, string $routeName, string $label, int $
         return;
     }
 
-    if (in_array($data['path'], SWEEP_FLUSH_PATHS, true)) {
+    if (in_array($data['path'], SWEEP_FLUSH_PATHS, true) || array_filter(SWEEP_FLUSH_PATTERNS, fn (string $pattern): bool => preg_match($pattern, $data['path']) === 1) !== []) {
         return;
     }
 

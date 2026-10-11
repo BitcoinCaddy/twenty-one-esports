@@ -72,7 +72,7 @@ use Livewire\Component;
  * one next step (play, start, join the lobby, wait, bye, out, won) or a
  * spectator's live boards; a cup's invite and times live there.
  */
-new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 'scripts' => ['resources/js/tournamentDesk.js']])] class extends Component {
+new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 'scripts' => ['resources/js/tournamentDesk.js', 'resources/js/gameChannel.js']])] class extends Component {
     public Tournament $tournament;
 
     public string $closesAt = '';
@@ -774,52 +774,59 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
     }
 }; ?>
 
-@php(extract([...$this->page]))
+{{--
+    The page as the boards TournamentDetail.dc.html and TournamentDetailPhone.dc.html draw it (plan "Refactor und
+    Design-Revamp", P6, template T6): the key-art hero with the marks, the big name, the pot, the champion, the seats,
+    the countdown and the one main action; "What to do now" for a player of a running tournament; then the page's
+    tabs and the stage stepper, the bracket (2D or the three.js 3D view), who plays beside the prize card, the pot's
+    working part and the rules, with the chat in the right rail (the tournament desk for its members, else the game's
+    chat) and the Nostr bar under it.
+--}}
+@php
+    extract([...$this->page]);
+    $registry = app(\App\Games\GameRegistry::class);
+    $hasPool = $this->pool !== null;
+    $poolSats = $hasPool ? (int) $this->pool['sats'] : null;
+    $poolZaps = $hasPool ? (int) ($this->pool['zaps'] ?? 0) : 0;
+    $poolBase = $hasPool ? (int) ($this->pool['base'] ?? $poolSats) : null;
+    $heroChampion = $championMoment['champions'][0] ?? null;
+    $heroChampionUser = $heroChampion['users'][0] ?? null;
+    $statusTag = match ($status) {
+        TournamentStatus::Finished => ['rv-tag is-ok', 'check'],
+        TournamentStatus::Cancelled => ['rv-tag is-bad', 'close'],
+        TournamentStatus::Running => ['rv-tag is-ok', null],
+        default => ['rv-tag', null],
+    };
+    $seatsTaken = $drawn ? count($roster) : $places['taken'];
+    $seatsAll = $drawn ? max(count($roster), $places['places']) : $places['places'];
+    // The stage stepper: done steps green, the current one orange (rule R6); not for a leaderboard or a draft.
+    $stepIndex = match ($status) {
+        TournamentStatus::Signup => $tournament->isSignupOpen() ? 0 : 1,
+        TournamentStatus::Drawing => 2,
+        TournamentStatus::Running => 3,
+        TournamentStatus::Finished => 4,
+        default => null,
+    };
+    $stepper = $stepIndex !== null && ! $score && ! $week ? [
+        ['check', __('Enter the tournament')], ['check', __('Check in')], ['mining', __('Drawing the bracket')], ['play', __('Matches')], ['trophy', __('Winner')],
+    ] : [];
+    $bracket3d = $drawn && ! $lobbies && $this->stages !== [] && ! $score && ! $week;
+    $bracket3dConfig = $bracket3d ? ['url' => route('tournaments.bracket-data', ['tournament' => $tournament, 'lang' => app()->getLocale()]), 'id' => $tournament->id, 'three' => '/hyper/vendor/three.min.js', 'words' => ['live' => __('Live'), 'champion' => __('Champion'), 'standings' => __('Standings'), 'pairings' => __('Pairings')], 'art' => collect(['crown', 'medal-gold', 'medal-silver', 'medal-bronze'])->mapWithKeys(fn (string $id): array => [$id => '/broadcast/art/'.$id.'.webp'])->all()] : null;
+    $tabs = array_values(array_filter([
+        $score || $blockfillWeek ? ['#leaderboard', __('Leaderboard')] : ['#bracket', $lobbies ? __('Lobbies') : __('Bracket')],
+        $blockfillWeek ? null : ['#entries', __('Participants')],
+        $hasPool ? ['#prizes', __('Prizes')] : null,
+        $published && $status !== TournamentStatus::Cancelled && ! $week ? [route('tournaments.tv', $tournament), __('Live')] : null,
+        $blockfillWeek ? null : ['#rules', __('Rules')],
+    ]));
+    $rail = $desk !== null ? 'desk' : ($registry->find($tournament->game) !== null && ! $week ? 'game' : null);
+@endphp
 
-<div @class(['flex flex-col gap-12 pb-16 lg:gap-16', 'chat-rail-host xl:[--chat-rail-own:0px] xl:[--chat-rail-bottom:4rem]' => $desk !== null, 'xl:[--chat-rail-top:1rem]' => $desk !== null && ! $championMoment && $now]) data-test="tournament-show" data-cta="{{ $cta }}" @if ($poll) x-data="tournamentLive({ id: {{ $tournament->id }}, poll: 15, action: 'refreshLive' })" @endif>
-    {{--
-        The organizer's and admin's bar (user, 2026-09-28: the prize pool was too hard to reach): prize pool,
-        edit and payouts, each behind its own gate (<x-tournaments.manage-actions>), at the top of the page.
-    --}}
-    {{--
-        "What to do now" (TournamentNow, user 2026-10-03): the first thing on a running or finished tournament page, above
-        everything else, also the organizer's bar. One state per viewer with one primary action; it holds the cup match,
-        the lobby and the match countdowns that stood here as three cards.
-    --}}
-    {{-- A finished tournament opens on its champion (user, 2026-10-03), the viewer's own place inside it. --}}
-    @island(name: 'now', always: true)
-    @php(extract([...$this->page]))
-    @if ($championMoment)
-        @include('pages.tournaments.partials.champion', ['moment' => $championMoment, 'tournament' => $tournament, 'results' => $score ? '#leaderboard' : '#bracket', 'desk' => $desk])
-    @elseif ($now)
-        @include('pages.tournaments.partials.now', ['now' => $now, 'tournament' => $tournament, 'cup' => $this->cupMatch, 'error' => $cupError, 'waits' => $this->myWaits, 'lobby' => $this->myLobby, 'desk' => $desk])
-    @endif
-    @endisland
+<div class="flex flex-col pb-16 max-lg:pb-36" data-test="tournament-show" data-cta="{{ $cta }}" @if ($poll) x-data="tournamentLive({ id: {{ $tournament->id }}, poll: 15, action: 'refreshLive' })" @endif>
 
-    {{--
-        The tournament desk, always open for its members (user, 2026-10-04: "versteckt hinter einem Button-Klick, das
-        ist schlechte UX"): below xl right under the hero (during sign-up and the draw: under the sign-up box, further
-        down); from xl `.chat-rail` makes it a sticky side column beside the whole page (resources/css/app.css).
-    --}}
-    @if ($desk && ! $deskInHero)
-        <div class="chat-rail mx-4 lg:mx-12 xl:mx-0" data-test="desk-rail"><x-tournaments.desk-chat :desk="$desk" /></div>
-    @endif
-
-    @if ($this->canManage || $this->canDirect)
-        {{-- On a phone one compact row without the label, so the pot's number stays in the first screen for organizers too. --}}
-        <div class="-mb-10 flex flex-col gap-2 px-4 pt-2 sm:-mb-6 sm:flex-row sm:items-center sm:gap-4 sm:pt-4 lg:-mb-10 lg:px-12" data-test="manage-bar">
-            <span class="text-[13px] text-ink-2 max-sm:sr-only">{{ __('You manage this tournament.') }}</span>
-            <x-tournaments.manage-actions :tournament="$tournament" :except="['publish']" compact />
-        </div>
-    @endif
-
-    {{--
-        A draft at the very top, for whoever may publish it (user, 2026-10-01: the publish form sat far down the
-        page and an admin could not find it). The form is inline, so "Publish tournament" in the admin list and
-        on the edit page (#publish) lands right on it; the create flow lands here too, with its notice.
-    --}}
+    {{-- A draft at the very top, for whoever may publish it (user, 2026-10-01). --}}
     @if ($status === TournamentStatus::Draft && $this->canManage)
-        <section id="publish" aria-labelledby="draft-h" class="mx-4 flex scroll-mt-24 flex-col gap-3 rounded-card bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#F7931A] lg:mx-12 lg:px-6" data-test="draft-banner">
+        <section id="publish" aria-labelledby="draft-h" class="mx-4 mb-6 flex scroll-mt-24 flex-col gap-3 rounded-card bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#F7931A] lg:mx-12 lg:px-6" data-test="draft-banner">
             @if (is_string($created = session('status')) && $created !== '')
                 <p role="status" class="m-0 rounded-md bg-win-tint px-3 py-2 text-[13px] text-win" data-test="draft-notice">{{ $created }}</p>
             @endif
@@ -838,621 +845,585 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
         </section>
     @endif
 
-    {{--
-        Hero: cover, name, the prize pot, the call to action with the countdown, the places. Four grid items,
-        each placed explicitly from lg: name over the call to action on the left, cover over the pot on the
-        right (user, 2026-09-28: the pot is the most important thing of a tournament and sat far down the
-        page). Below lg in reading order: cover, name, pot, call to action, so the pot's number is in the
-        phone's first screen.
-    --}}
+    {{-- A member of the tournament desk has the desk beside the whole page from xl, the hero included (user, 2026-10-04:
+         the desk open without a click, its field in the first screen); everybody else gets the game's chat under the hero. --}}
+    <div @class(['flex flex-col', 'chat-rail-host xl:[--chat-rail-own:3rem] xl:[--chat-rail-top:calc(var(--spacing-page-top-lg)*-1)]' => $rail === 'desk'])>
     @if ($blockfillWeek)
-        {{-- A Blockfill week: the game's own hero (cover, the week and its rules as chips, the time to beat, Play now) and its three steps. --}}
-        <div class="flex flex-col gap-6 px-4 pt-4 lg:px-12 lg:pt-8">
+        {{-- A Blockfill week: the game's own hero (cover, the week and its rules as chips, the time to beat, Play now). --}}
+        <div class="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 lg:px-12">
             @include('pages.scores.partials.blockfill-hero', ['heading' => $tournament->title(), 'week' => $tournament, 'standings' => $weekStandings, 'metric' => $scoreMetric])
         </div>
     @else
-    {{-- With the desk inside (sign-up), static from xl: the column then stands beside the whole page, not this section. --}}
-    <section aria-labelledby="t-name" @class(['tl-hero relative isolate', 'xl:static' => $deskInHero]) data-test="tournament-hero">
-        <div class="grid gap-4 px-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:grid-rows-[auto_1fr] lg:gap-x-12 lg:px-12">
-            {{-- Below lg the cover follows the call to action: with the own-copy box in front of it, Sign up stood
-                 behind the tab bar at 375 x 812 under a cover above the name (measured, 2026-10-04). --}}
-            <div class="flex min-w-0 flex-col gap-5 max-lg:order-last lg:col-start-2 lg:row-start-1 lg:self-end">
-                @include('pages.tournaments.partials.cover', ['tournament' => $tournament, 'class' => 'tl-poster-in w-full lg:max-w-[440px] lg:justify-self-end'])
-            </div>
+        {{--
+            The hero (TournamentDetail.dc.html): the game's key art on the right, faded into the ground; the status and
+            organizer marks with the data line, the name big, then the pot, the champion, the seats, the countdown and
+            the one main action. On a phone the art sits on top (TournamentDetailPhone.dc.html).
+        --}}
+        {{-- With a step of their own ("What to do now") the hero is compact, so that step stays in the first screen (user, 2026-10-02/03). --}}
+        @php($compactHero = $now && ! $championMoment)
+        <section aria-labelledby="t-name" @class(['rv-band -mt-page-top lg:-mt-page-top-lg', 'lg:min-h-[300px]' => ! $compactHero]) data-test="tournament-hero" data-state="{{ $cta }}">
+            {{-- With a step of their own to take ("What to do now"), a phone skips the art so the step stays in the first screen. --}}
+            <x-game-cover :game="$tournament->game" size="hero" loading="eager" class="{{ ($now && ! $championMoment) || (in_array($cta, ['open', 'entered'], true) && app(\App\Games\GameRegistry::class)->find($tournament->game) instanceof \App\Games\Contracts\PlayedOnOwnCopy) ? 'max-lg:hidden ' : '' }}mx-4 mt-4 rounded-[4px] lg:absolute lg:top-0 lg:right-0 lg:m-0 lg:aspect-auto lg:h-full lg:w-[37%] lg:rounded-none [&_img]:object-cover" data-test="game-cover" />
+            <div class="absolute inset-y-0 right-0 hidden w-[37%] bg-[linear-gradient(90deg,#0A0A0B,rgba(10,10,11,.1)_45%)] lg:block" aria-hidden="true"></div>
 
-            <div class="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-1 lg:self-end">
-                <div class="flex flex-wrap items-center gap-2 text-xs">
-                    <span class="inline-flex h-8 items-center gap-2 rounded-sm bg-btc-chip px-3 font-bold text-btc-hi" data-test="tournament-status">
-                        <span @class(['size-1.5 rounded-full bg-btc', 'animate-live' => in_array($cta, ['open', 'live'], true)])></span>{{ $status->label() }}
-                    </span>
-                    <span class="inline-flex h-8 items-center gap-1.5 rounded-sm bg-raised px-3 text-ink-2"><x-icon :name="$chess ? 'pawn' : (app(\App\Games\GameRegistry::class)->find($tournament->game)?->assets()->icon ?? 'trophy')" :size="14" />{{ $gameLine }}</span>
-                    <span class="inline-flex h-8 items-center rounded-sm bg-raised px-3 text-ink-2" data-test="tournament-format">{{ $formatLabel }}</span>
-                    <span class="inline-flex h-8 items-center rounded-sm bg-raised px-3 text-ink-2">{{ $tournament->on_site ? __('On site') : __('Online') }}</span>
+            <div @class(['relative mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-4 pt-4 lg:pr-[40%] lg:pl-12', 'pb-6 lg:pt-8 lg:pb-10' => ! $compactHero, 'pb-4 lg:pt-5 lg:pb-5' => $compactHero])>
+                <span class="flex flex-wrap items-center gap-2">
+                    <span class="{{ $statusTag[0] }}" data-test="tournament-status">@if ($statusTag[1])<x-icon :name="$statusTag[1]" :size="12" />@elseif (in_array($cta, ['open', 'live'], true))<span class="rv-live is-ok" aria-hidden="true"><i></i></span>@endif{{ $status->label() }}</span>
                     @if ($tournament->isCasualCup())
-                        <span class="inline-flex h-8 items-center rounded-sm bg-raised px-3 text-ink-2" data-test="casual-marker">{{ __('Casual') }}</span>
+                        <span class="rv-tag" data-test="casual-marker">{{ __('Casual') }}</span>
+                    @elseif (! $week)
+                        <span class="rv-tag is-btc"><x-icon name="trophy" :size="12" />{{ __('Organizer tournament') }}</span>
                     @endif
-                </div>
+                    <span class="rv-m">{{ $gameLine }}, <span data-test="tournament-format">{{ $formatLabel }}</span>, {{ \App\Support\Engagement\HomeBoard::dayClock($tournament->starts_at) }}</span>
+                </span>
 
-                <h1 id="t-name" class="m-0 font-display text-[32px] leading-[1.08] font-bold break-words sm:text-[44px] xl:text-[56px]">{{ $tournament->title() }}</h1>
-            </div>
+                <h1 id="t-name" @class(['m-0 font-display leading-[1.1] font-bold [overflow-wrap:anywhere]', 'text-[28px] sm:text-[40px] xl:text-[52px]' => ! $compactHero, 'text-2xl lg:text-[30px]' => $compactHero]) data-test="tournament-name">{{ $tournament->title() }}</h1>
 
-            @if ($this->pool !== null)
-                <div class="min-w-0 lg:col-start-2 lg:row-start-2 lg:self-start">
-                    @include('pages.tournaments.partials.prize-pool', ['pool' => $this->pool, 'tournament' => $tournament, 'manage' => $this->canManage,
-                        'topUp' => \App\Support\Prizes\PotTopUps::enabled($tournament)])
-                </div>
-            @endif
-
-            <div class="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2 lg:self-start">
-
-                {{-- A Blockfill week (P6): its Play button comes first, the start after it. --}}
-                @unless ($week)
-                    @include('pages.tournaments.partials.when', ['tournament' => $tournament, 'startsIn' => $landing->startsIn(), 'published' => $published])
-                @endunless
-
-                {{-- A casual cup names the other region's cup of its game (EU and US, user 2026-09-28). --}}
-                @if ($tournament->isCasualCup())
-                    <div class="contents" data-test="cup-other-regions"><x-tournaments.cup-mentions :game="$tournament->game" :except="$tournament->id" /></div>
+                {{-- A game played outside the site: "you need your own copy", above the action. --}}
+                @if (in_array($cta, ['open', 'entered'], true))
+                    <div class="max-w-[640px]">@include('pages.tournaments.partials.own-copy', ['tournament' => $tournament])</div>
                 @endif
 
-                @if (filled($tournament->description))
-                    <p class="m-0 max-w-[60ch] text-[15px] leading-relaxed whitespace-pre-line text-ink-2" data-test="tournament-description">{{ $tournament->description }}</p>
-                @elseif (! $week)
-                    {{-- A Blockfill week (P6) goes straight to its Play button: its steps are below. --}}
-                    <p class="m-0 max-w-[60ch] text-[15px] leading-relaxed text-ink-2">{{ __($formatCopy['how']) }}</p>
-                @endif
-
-                {{-- The call to action for the viewer's state; below lg it comes first in its column, before the
-                     date and the description, so a phone has the action in its first screen (user, 2026-10-03). --}}
-                {{-- A finished tournament with its champion moment on top needs no second "results" button and line here. --}}
-                @if ($cta !== 'draft' && ! ($cta === 'finished' && $championMoment))
-                    <div class="tl-cta flex flex-col gap-4 rounded-card bg-card p-4 shadow-ring max-lg:order-first lg:p-5" data-test="signup-cta" data-state="{{ $cta }}">
-                        {{-- A game played outside the site: "you need your own copy", above the action. --}}
-                        @include('pages.tournaments.partials.own-copy', ['tournament' => $tournament])
-                        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-                            @if ($tmnfWeek)
-                                {{-- A TMNF week: played on our own server, How to join is right below. --}}
-                                <a href="#join" data-test="to-tmnf-join"
-                                   class="btn-p tl-go inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-md bg-btc px-6 font-display text-base font-bold text-on-btc hover:text-on-btc">
-                                    <x-icon name="flag" :size="20" />{{ __('How to join') }}
-                                </a>
-                            @elseif ($week && \Illuminate\Support\Facades\Route::has('stacker.play'))
-                                {{-- A Blockfill week (P6): played on the game page, no sign-up. --}}
-                                <a href="{{ route('stacker.play') }}" data-test="to-blockfill"
-                                   class="btn-p tl-go inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-md bg-btc px-6 font-display text-base font-bold text-on-btc hover:text-on-btc">
-                                    <x-icon name="bolt" :size="20" />{{ __('Play Blockfill') }}
-                                </a>
-                            @else
-                            @switch($cta)
-                                @case('open')
-                                    <a href="{{ route('tournaments.signup', $tournament) }}" data-test="to-signup"
-                                       class="btn-p tl-go inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-md bg-btc px-6 font-display text-base font-bold text-on-btc hover:text-on-btc">
-                                        <x-icon name="tournaments" :size="20" />{{ __('Sign up') }}
-                                    </a>
-                                    @break
-                                @case('entered')
-                                    <a href="{{ route('tournaments.signup', $tournament) }}" data-test="to-signup"
-                                       class="inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-md bg-win-tint px-6 font-display text-base font-bold text-win shadow-ring-win hover:text-win">
-                                        <x-icon name="check" :size="20" />{{ __('You’re in') }}
-                                    </a>
-                                    @break
-                                @case('live')
-                                @case('finished')
-                                    <a href="{{ $score ? '#leaderboard' : '#bracket' }}" data-test="to-bracket"
-                                       class="btn-p inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-md bg-btc px-6 font-display text-base font-bold text-on-btc hover:text-on-btc">
-                                        <x-icon :name="$cta === 'live' ? 'eye' : 'trophy'" :size="20" />{{ $cta === 'live' ? ($score ? __('See the leaderboard') : __('Watch live')) : __('See the results') }}
-                                    </a>
-                                    @break
-                                @default
-                                    <span class="inline-flex min-h-14 shrink-0 items-center justify-center gap-2.5 rounded-md bg-raised px-6 font-display text-base font-bold text-ink-2" data-test="cta-closed">
-                                        <x-icon name="lock" :size="20" />{{ match ($cta) { 'full' => __('Sign-up is full'), 'cancelled' => __('Called off'), default => __('Sign-up closed') } }}
-                                    </span>
-                            @endswitch
+                <div class="flex flex-wrap items-end gap-x-8 gap-y-4 pt-1">
+                    @if ($hasPool)
+                        <span class="flex flex-col" data-test="prize-pot">
+                            <span class="rv-m">{{ __('Prize pot in sats') }}</span>
+                            <b class="font-display text-[26px] leading-tight font-bold whitespace-nowrap text-btc tabular-nums lg:text-[32px]" data-test="pool-sats">{{ \App\Support\Engagement\HomeBoard::sats($poolSats) }} Sats</b>
+                            @if ($poolZaps > 0)
+                                <span class="rv-m">{{ __(':base + :zaps from zaps', ['base' => \App\Support\Engagement\HomeBoard::sats($poolBase), 'zaps' => \App\Support\Engagement\HomeBoard::sats($poolZaps)]) }}</span>
                             @endif
-
-                            <div class="flex min-w-0 flex-col gap-1">
-                                @if ($countdown)
-                                    <span class="text-xs text-ink-2">{{ $countdown['label'] }}</span>
-                                    <span class="font-display text-xl font-bold tabular-nums sm:text-2xl" role="timer" data-test="countdown" title="{{ $countdown['when'] }}"
-                                          x-data="countdown({ at: {{ $countdown['ms'] }}, days: @js(__(':count day|:count days')) })" x-text="text">{{ $countdown['text'] }}</span>
-                                @endif
-                                <span class="text-[13px] leading-normal text-ink-2" data-test="cta-note">
-                                    @if ($week)
-                                        {{ $status === TournamentStatus::Finished
-                                            ? ($champion ? __('This week is over. Winner: :name. A new week is on.', ['name' => $champion->name]) : __('This week is over. A new week is on.'))
-                                            : ($tmnfWeek ? __('No sign-up: your first finish on our server puts you on the board below.') : __('No sign-up: your first verified ranked run puts you on the board below.')) }}
-                                        <a href="#leaderboard" class="font-bold text-ink underline decoration-edge underline-offset-4 hover:decoration-ink" data-test="to-leaderboard">{{ $status === TournamentStatus::Finished ? __('See the results') : __('See the leaderboard') }}</a>
-                                    @else
-                                    @switch($cta)
-                                        @case('open') {{ trans_choice(':count spot left. You can pull out until sign-up closes.|:count spots left. You can pull out until sign-up closes.', $open) }} @break
-                                        @case('entered') {{ match (true) {
-                                            $status === TournamentStatus::Drawing => __('Sign-up is closed. The draw waits for Bitcoin block :height; its hash seeds the mix teams and the bracket.', ['height' => $tournament->draw_height]),
-                                            $yourSeed !== null => __('Seed :seed if sign-up closed now. Final seeds are set at sign-up close.', ['seed' => $yourSeed]),
-                                            default => __('You are signed up: :entry. You can pull out until sign-up closes.', ['entry' => $landing->entry()?->name]),
-                                        } }} @break
-                                        @case('full') {{ __('Every spot is taken. Places open up when someone pulls out.') }} @break
-                                        @case('closed') {{ $status === TournamentStatus::Drawing ? __('Sign-up is closed. The draw waits for Bitcoin block :height; its hash seeds the mix teams and the bracket.', ['height' => $tournament->draw_height]) : __('Sign-up has closed. The draw follows.') }} @break
-                                        @case('live') {{ $score ? __('The window is open. The leaderboard moves as values come in.') : ($lobbies ? __('The lobbies are on. A player reports the places after the time limit.') : __('The matches are on. Results land in the bracket as they come in.')) }} @break
-                                        @case('finished') {{ $champion ? __('Finished. Winner: :name.', ['name' => $champion->name]) : ($this->sharedFirst !== [] ? __('Finished. Shared 1st place: :names.', ['names' => implode(', ', $this->sharedFirst)]) : __('The tournament has finished.')) }} @break
-                                        @case('cancelled') {{ __('The tournament was called off.') }} @break
-                                    @endswitch
-                                    @endif
-                                </span>
-                            </div>
-                        </div>
-
-                        @if (! $drawn)
-                            <div class="flex items-center gap-3 border-t border-hairline pt-4" data-test="who-is-in">
-                                @if ($faces !== [])
-                                    <span class="flex shrink-0 -space-x-2">
-                                        @foreach ($faces as $face)
-                                            <x-avatar :user="$face" :size="28" class="rounded-full ring-2 ring-card" />
-                                        @endforeach
-                                    </span>
-                                @endif
-                                <span class="min-w-0 text-[13px] leading-normal text-ink-2">{{ $inLine }}</span>
-                            </div>
-                        @endif
-                    </div>
-                    @if ($deskInHero)
-                        <div class="chat-rail max-lg:order-first" data-test="desk-rail"><x-tournaments.desk-chat :desk="$desk" /></div>
+                        </span>
                     @endif
-                @endif
-
-                @if ($week)
-                    @include('pages.tournaments.partials.when', ['tournament' => $tournament, 'startsIn' => $landing->startsIn(), 'published' => $published])
-                @endif
-
-                {{-- Invite: the page link to any chat, and the tournament's card as an image --}}
-                @if ($published && $status !== TournamentStatus::Cancelled && ! $week)
-                    @include('pages.tournaments.partials.share', ['tournament' => $tournament, 'text' => $shareText, 'label' => $cta === 'open' || $cta === 'entered' ? __('Bring your friends') : __('Share this tournament')])
-                @endif
-            </div>
-        </div>
-
-        {{-- The places as seats: one block per spot, filled in the order people signed up --}}
-        @if (! $drawn && $published)
-            <div class="mt-8 flex flex-col gap-2.5 px-4 lg:mt-10 lg:px-12" data-test="places-meter">
-                <div class="flex items-baseline justify-between gap-3">
-                    <span class="text-[13px] text-ink-2"><b class="font-display text-lg text-ink tabular-nums" x-data="countUp({{ $places['taken'] }})">{{ $places['taken'] }}</b> {{ __('of :places spots taken', ['places' => $places['places']]) }}</span>
-                    @if ($teams)
-                        <span class="text-xs text-ink-3">{{ trans_choice(':count lineup|:count lineups', $places['lineups']) }}, {{ trans_choice(':count solo player|:count solo players', $places['solos']) }}</span>
+                    @if ($heroChampion !== null)
+                        <span class="flex flex-col gap-1" data-test="champion-hero" data-viewer="{{ $championMoment['viewer']['state'] ?? 'guest' }}" data-shared="{{ $championMoment['shared'] ? '1' : '0' }}">
+                            <span class="rv-m">{{ $championMoment['shared'] ? __('Shared 1st place') : __('Champion') }}</span>
+                            <span class="flex items-center gap-2.5">
+                                @if ($heroChampionUser)
+                                    <x-avatar :user="$heroChampionUser" :name="$heroChampion['name']" :size="32" class="flex-none" />
+                                @else
+                                    <span class="rv-av flex-none"><x-icon name="clans" :size="14" /></span>
+                                @endif
+                                <b class="text-lg [overflow-wrap:anywhere]" data-test="champion-name">{{ implode(', ', array_column($championMoment['champions'], 'name')) }}</b>
+                            </span>
+                        </span>
+                    @endif
+                    @if ($published && ! $week && $seatsAll > 0)
+                        <span class="flex flex-col gap-1" data-test="places-meter">
+                            <span class="rv-m">{{ __('Places') }}</span>
+                            <span class="flex h-8 items-center gap-2"><x-ui.seats :taken="$seatsTaken" :places="$seatsAll" /><span class="tabular-nums">{{ $seatsTaken }}/{{ $seatsAll }}</span></span>
+                        </span>
+                    @endif
+                    @if ($countdown)
+                        {{-- The one countdown of the page: sign-up close while it is open, else the start. --}}
+                        <span class="flex flex-col gap-1" data-test="tournament-countdown">
+                            <span class="rv-m">{{ $countdown['label'] }}</span>
+                            <x-ui.countdown :at="\Illuminate\Support\Carbon::createFromTimestampMs($countdown['ms'])" size="sm" :label="$countdown['label']" />
+                        </span>
+                    @endif
+                    @if ($cta !== 'draft')
+                        {{-- On a phone the main action is a bar above the tab bar (TournamentDetailPhone, TournamentSignup-Phone.dc.html): always in reach. --}}
+                        {{-- With "What to do now" a phone takes its action from there, not from a second bar. --}}
+                        <span class="{{ $compactHero ? 'max-lg:!hidden ' : '' }}flex flex-wrap items-center gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-[calc(var(--tabbar-h)+var(--dock-h))] max-lg:z-30 max-lg:flex-nowrap max-lg:border-t max-lg:border-hairline max-lg:bg-ground max-lg:px-4 max-lg:py-3 max-lg:[&>a]:grow" data-test="signup-cta" data-state="{{ $cta }}">
+                            @if ($tmnfWeek)
+                                <a href="#join" class="rv-b h-12 px-6" data-test="to-tmnf-join"><x-icon name="flag" :size="18" />{{ __('How to join') }}</a>
+                            @elseif ($week && \Illuminate\Support\Facades\Route::has('stacker.play'))
+                                <a href="{{ route('stacker.play') }}" class="rv-b h-12 px-6" data-test="to-blockfill"><x-icon name="bolt" :size="18" />{{ __('Play Blockfill') }}</a>
+                            @else
+                                @switch($cta)
+                                    @case('open')
+                                        <a href="{{ route('tournaments.signup', $tournament) }}" class="rv-b h-12 px-6" data-test="to-signup">{{ __('Enter the tournament') }}</a>
+                                        @break
+                                    @case('entered')
+                                        <a href="{{ route('tournaments.signup', $tournament) }}" class="rv-b2 h-12 border-win-ring px-6 text-win" data-test="to-signup"><x-icon name="check" :size="18" />{{ __('You’re in') }}</a>
+                                        @break
+                                    @case('live')
+                                        <a href="{{ $score ? '#leaderboard' : '#bracket' }}" class="rv-b h-12 px-6" data-test="to-bracket"><x-icon name="eye" :size="18" />{{ $score ? __('See the leaderboard') : __('Watch live') }}</a>
+                                        @break
+                                    @case('finished')
+                                        @if ($heroChampion !== null && ! $week)
+                                            <a href="#zap-winner" class="rv-b h-12 px-6" data-test="to-zap-winner"><x-icon name="bolt" :size="18" />{{ __('Zap the winner') }}</a>
+                                        @else
+                                            <a href="{{ $score ? '#leaderboard' : '#bracket' }}" class="rv-b2 h-12 px-6" data-test="to-bracket">{{ __('See the results') }}</a>
+                                        @endif
+                                        @break
+                                    @default
+                                        <span class="rv-b2 h-12 cursor-default px-6 text-ink-2" data-test="cta-closed"><x-icon name="lock" :size="18" />{{ match ($cta) { 'full' => __('Sign-up is full'), 'cancelled' => __('Called off'), default => __('Sign-up closed') } }}</span>
+                                @endswitch
+                            @endif
+                            {{-- The tournament desk stays open a day after the end (TournamentDesk): the button brings its chat into view. --}}
+                            <x-tournaments.desk-button :desk="$desk" on-page class="h-12 max-lg:px-3 max-lg:[&>span:first-of-type]:sr-only" />
+                            @if (($championMoment['viewer']['state'] ?? null) === 'won' && ! $championMoment['shared'])
+                                <livewire:share-button type="tournament" :moment="(string) $tournament->id" :label="__('Share the win')" />
+                            @endif
+                        </span>
                     @endif
                 </div>
-                @if ($cellCount > 0)
-                    <div @class(['tl-seats', 'is-dense' => $cellCount > 24]) role="meter" aria-valuemin="0" aria-valuemax="{{ $places['places'] }}" aria-valuenow="{{ $places['taken'] }}"
-                         aria-label="{{ __(':taken of :places spots taken', ['taken' => $places['taken'], 'places' => $places['places']]) }}" style="--cells: {{ $cellCount }}">
-                        @for ($cell = 0; $cell < $cellCount; $cell++)
-                            <span @class(['tl-seat', 'is-taken' => $cell < $places['taken']]) @if ($cell < $places['taken']) style="animation-delay: {{ 200 + $cell * $fillStep }}ms" @endif></span>
-                        @endfor
-                    </div>
-                @else
-                    <div class="h-3 overflow-hidden rounded-sm bg-raised" role="meter" aria-valuemin="0" aria-valuemax="{{ $places['places'] }}" aria-valuenow="{{ $places['taken'] }}"
-                         aria-label="{{ __(':taken of :places spots taken', ['taken' => $places['taken'], 'places' => $places['places']]) }}">
-                        <span class="block h-full animate-fill bg-btc" style="width: {{ $places['places'] > 0 ? round($places['taken'] / $places['places'] * 100, 2) : 0 }}%"></span>
-                    </div>
+
+                {{-- One data line under the action: what the state means for this viewer (rule: hybrid density, data stays). --}}
+                @if (in_array($cta, ['open', 'entered', 'full', 'closed'], true) || ($week && $cta !== 'draft'))
+                    <p class="rv-m m-0 max-w-[75ch] text-[13px]" data-test="cta-note">
+                        @if ($week)
+                            {{ $status === TournamentStatus::Finished
+                                ? ($champion ? __('This week is over. Winner: :name. A new week is on.', ['name' => $champion->name]) : __('This week is over. A new week is on.'))
+                                : ($tmnfWeek ? __('No sign-up: your first finish on our server puts you on the board below.') : __('No sign-up: your first verified ranked run puts you on the board below.')) }}
+                        @else
+                            @switch($cta)
+                                @case('open') {{ trans_choice(':count spot left. You can pull out until sign-up closes.|:count spots left. You can pull out until sign-up closes.', $open) }} @break
+                                @case('entered') {{ match (true) {
+                                    $status === TournamentStatus::Drawing => __('Sign-up is closed. The draw waits for Bitcoin block :height; its hash seeds the mix teams and the bracket.', ['height' => $tournament->draw_height]),
+                                    $yourSeed !== null => __('Seed :seed if sign-up closed now. Final seeds are set at sign-up close.', ['seed' => $yourSeed]),
+                                    default => __('You are signed up: :entry. You can pull out until sign-up closes.', ['entry' => $landing->entry()?->name]),
+                                } }} @break
+                                @case('full') {{ __('Every spot is taken. Places open up when someone pulls out.') }} @break
+                                @case('closed') {{ $status === TournamentStatus::Drawing ? __('Sign-up is closed. The draw waits for Bitcoin block :height; its hash seeds the mix teams and the bracket.', ['height' => $tournament->draw_height]) : __('Sign-up has closed. The draw follows.') }} @break
+                            @endswitch
+                        @endif
+                    </p>
                 @endif
-                {{-- P48: NIP-52 RSVPs from the relays, under the sign-ups and never added to them --}}
-                <livewire:rsvp-summary :tournament="$tournament->id" :key="'rsvps-'.$tournament->id" />
+                @if (! in_array($status, [TournamentStatus::Finished, TournamentStatus::Cancelled], true) && ($openEnd = $landing->openEndLine($zone)))
+                    <p class="rv-m m-0" data-test="hero-open-end">{{ $openEnd }}</p>
+                @endif
+
+                @if (($championMoment['viewer']['state'] ?? null) === 'won')
+                    <p class="m-0 text-[15px] font-bold text-rank-gold" data-test="champion-you">{{ __('You won!') }} {{ __('Congratulations, champion!') }}</p>
+                @elseif (($championMoment['viewer']['state'] ?? null) === 'placed')
+                    <p class="m-0 text-[13px] text-ink-2" data-test="champion-you">{{ __('You finished in place :place', ['place' => $championMoment['viewer']['place']]) }}. {{ __('Thanks for playing!') }}</p>
+                @endif
+                @if ($championMoment !== null && $championMoment['prize'] !== null)
+                    <span class="sr-only" data-test="champion-prize">{{ number_format($championMoment['prize']) }} {{ __('sats prize') }}</span>
+                @endif
+
             </div>
-        @endif
-    </section>
+        </section>
     @endif
 
     {{-- A TMNF week: How to join, big, right under the hero (plan "Trackmania und Restposten", P2). --}}
     @if ($tmnfWeek)
-        <div class="px-4 lg:px-12">@include('pages.scores.partials.tmnf-join', ['week' => $tournament, 'track' => $tmnfTrack])</div>
+        <div class="mx-auto w-full max-w-[1440px] px-4 pt-6 lg:px-12">@include('pages.scores.partials.tmnf-join', ['week' => $tournament, 'track' => $tmnfTrack])</div>
     @endif
 
-    {{-- P45: the tournament on Nostr (its NIP-52 calendar event), a message to its organizer; a Blockfill week has neither to share (P6) --}}
-    @if ($published && ! $week)
-        <x-nostr-bar :bar="\App\Support\Nostr\NostrBar::tournament($tournament)" class="mx-4 lg:mx-12" />
-    @endif
-
-    {{-- P47: who of the player's Nostr follows plays here; while sign-up is open, an invite DM with the personal tournament link --}}
-    @if ($published && $status === TournamentStatus::Signup)
-        <div class="mx-4 has-[>.hidden]:hidden lg:mx-12"><livewire:follows-here context="tournament" :subject="(string) $tournament->id" :wire:key="'follows-here-t-'.$tournament->id" /></div>
-    @endif
-
-    @if ($championMoment)
-        {{-- P47: a tip for the winners (NIP-57), each whose profile has a Lightning address; nothing otherwise. --}}
-        <div class="mx-4 has-[>.hidden]:hidden lg:mx-12"><livewire:zap-winner type="tournament" :subject="(string) $tournament->id" :wire:key="'zap-tournament-'.$tournament->id" /></div>
-    @elseif ($champion)
-        {{-- The result (P11): the winner, the share card, and for the winners the share button. --}}
-        <section aria-labelledby="tw-h" class="mx-4 flex flex-col gap-4 rounded-card bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#F7931A] sm:flex-row sm:items-center lg:mx-12 lg:px-6" data-test="tournament-winner">
-            @php($winnerCard = \App\Support\Cards\ShareCard::tournament($tournament, $champion))
-            <img src="{{ $winnerCard->path('wide') }}" alt="{{ __(':tournament winners', ['tournament' => $tournament->title()]) }}" width="1200" height="630" loading="lazy"
-                 class="aspect-[1200/630] h-auto w-full shrink-0 rounded-md shadow-ring sm:w-[280px]">
-            <div class="flex min-w-0 flex-col gap-2">
-                <span class="flex items-center gap-1.5 text-xs font-bold text-btc-hi"><x-icon name="trophy" :size="14" />{{ __('Winner') }}</span>
-                <h2 id="tw-h" class="m-0 font-display text-2xl font-bold [overflow-wrap:anywhere]">{{ $champion->name }}</h2>
-                @if (auth()->check() && in_array(auth()->id(), $champion->memberIds(), true) && ! $tournament->isLeagueWeek())
-                    <livewire:share-button type="tournament" :moment="(string) $tournament->id" />
-                @endif
-            </div>
-        </section>
-
-        {{-- P47: a tip for the winners (NIP-57), each whose profile has a Lightning address; nothing otherwise. Not for a Blockfill week (P6). --}}
-        @if (! $tournament->isLeagueWeek())
-            <div class="mx-4 has-[>.hidden]:hidden lg:mx-12"><livewire:zap-winner type="tournament" :subject="(string) $tournament->id" :wire:key="'zap-tournament-'.$tournament->id" /></div>
-        @endif
-    @elseif ($this->sharedFirst !== [])
-        {{-- A lobby tournament (P10): place 1 shared across all its lobbies, one line for the whole tournament. --}}
-        <section aria-labelledby="tw-h" class="mx-4 flex flex-col gap-2 rounded-card bg-card px-4 py-5 shadow-[inset_0_0_0_1px_#F7931A] lg:mx-12 lg:px-6" data-test="tournament-shared-first">
-            <span class="flex items-center gap-1.5 text-xs font-bold text-btc-hi"><x-icon name="trophy" :size="14" />{{ __('Winners') }}</span>
-            <h2 id="tw-h" class="m-0 font-display text-2xl font-bold [overflow-wrap:anywhere]">{{ __('Shared 1st place: :names', ['names' => implode(', ', $this->sharedFirst)]) }}</h2>
-        </section>
-    @endif
-
-    {{-- The board: who plays and the bracket (or the leaderboard), rendered alone on a push while the tournament runs (refreshLive) --}}
-    @island(name: 'board', always: true)
-    @php(extract([...$this->page]))
-    {{-- Who plays (a Blockfill week: its podium and board below are who plays) --}}
-    @unless ($blockfillWeek)
-    <section aria-labelledby="entries-h" class="flex flex-col gap-4 px-4 lg:px-12" data-test="entries">
-        <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 id="entries-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('Who plays') }}</h2>
-            @unless ($score)
-                <span class="text-xs text-ink-3">{{ $drawn ? __('Seeded by Elo at sign-up close') : __('Seeds if sign-up closed now, by Elo; equal Elo by earlier sign-up') }}</span>
-            @endunless
-        </div>
-
-        <ul class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2 p-0 sm:gap-3" x-data="{ settled: false }" x-init="setTimeout(() => settled = true, 50)">
-            @foreach ($roster as $row)
-                <li wire:key="{{ $row['key'] }}" x-init="settled && $el.classList.add('tl-arrive')" data-test="roster-entry" @if ($row['you']) data-you @endif
-                    @class(['relative flex min-w-0 flex-col gap-3 rounded-card p-3.5', 'bg-card shadow-ring' => ! $row['you'], 'bg-btc-chip shadow-[inset_0_0_0_1px_var(--color-btc)]' => $row['you'],
-                        'shadow-[inset_0_0_0_1px_#F7931A]' => $champion && $row['key'] === 'participant-'.$champion->id])>
-                    <span class="flex items-start justify-between gap-2">
-                        @if ($row['kind'] === 'lineup' && $row['clan'])
-                            <x-clan-tag :clan="$row['clan']" :tile="40" class="flex size-10 shrink-0 items-center justify-center rounded-md bg-btc-tint text-[11px] font-bold text-btc" />
-                        @elseif (isset($row['users'][0]) && in_array($row['kind'], ['player', 'solo'], true))
-                            <x-avatar :user="$row['users'][0]" :size="40" class="rounded-md" />
-                        @else
-                            <span class="flex size-10 shrink-0 items-center justify-center rounded-md bg-raised text-ink-2"><x-icon name="clans" :size="18" /></span>
-                        @endif
-                        @if ($row['seed'] !== null && ! $week)
-                            <span class="font-display text-lg leading-none font-bold text-ink-3 tabular-nums" title="{{ __('Seed :seed', ['seed' => $row['seed']]) }}"><span class="sr-only">{{ __('Seed') }} </span>{{ $row['seed'] }}</span>
-                        @endif
-                    </span>
-                    <span class="flex min-w-0 flex-col gap-1">
-                        <span class="flex min-w-0 items-center gap-1.5">
-                            @if ($row['href'])
-                                <a href="{{ $row['href'] }}" class="truncate text-[13px] font-bold text-ink hover:text-btc-hi">{{ $row['name'] }}</a>
-                            @else
-                                <span class="truncate text-[13px] font-bold">{{ $row['name'] }}</span>
-                            @endif
-                        </span>
-                        <span class="flex flex-wrap items-center gap-1.5 text-xs text-ink-2">
-                            @if ($row['kind'] !== 'lineup' && $row['clan'])
-                                <x-clan-tag :clan="$row['clan']" size="sm" />
-                            @endif
-                            @if ($row['rating'] !== null && ! $score)
-                                <span class="tabular-nums">{{ __(':rating Elo', ['rating' => $row['rating']]) }}</span>
-                            @elseif ($row['kind'] === 'solo')
-                                <span>{{ __('Solo, drawn into a mix team') }}</span>
-                            @elseif ($row['kind'] === 'mix')
-                                <span>{{ __('Mix team') }}</span>
-                            @endif
-                        </span>
-                    </span>
-                    @if (count($row['users']) > 1)
-                        <span class="flex -space-x-1.5">
-                            @foreach (array_slice($row['users'], 0, 5) as $member)
-                                <x-avatar :user="$member" :size="22" class="rounded-full ring-2 ring-card" />
-                            @endforeach
-                        </span>
-                    @endif
-                    @if ($row['you'])
-                        <span class="absolute -top-2 left-3 inline-flex h-5 items-center rounded-xs bg-btc px-1.5 text-[11px] font-bold text-on-btc" data-test="you-chip">{{ __('You') }}</span>
-                    @endif
-                    @if ($champion && $row['key'] === 'participant-'.$champion->id)
-                        <span class="absolute -top-2 right-3 inline-flex h-5 items-center gap-1 rounded-xs bg-btc px-1.5 text-[11px] font-bold text-on-btc"><x-icon name="trophy" :size="12" />{{ __('Winner') }}</span>
-                    @endif
-                </li>
-            @endforeach
-
-            @if (! $drawn && $published && $status !== TournamentStatus::Cancelled && $open > 0)
-                {{-- Phones show three open tiles, wider screens six; the rest is counted. --}}
-                @php($phoneTiles = 3)
-                @for ($seat = 0; $seat < min($open, \App\Support\Tournaments\TournamentLanding::OPEN_TILES); $seat++)
-                    <li wire:key="open-{{ $seat }}" data-test="open-seat" @class(['flex min-h-[132px] flex-col items-start justify-between gap-3 rounded-card border border-dashed border-dash p-3.5', 'max-sm:hidden' => $seat >= $phoneTiles])>
-                        <span class="flex size-10 items-center justify-center rounded-md border border-dashed border-dash text-ink-3"><x-icon name="user" :size="18" /></span>
-                        @if ($seat === 0 && $cta === 'open')
-                            <a href="{{ route('tournaments.signup', $tournament) }}" class="text-[13px] font-bold" data-test="your-seat">{{ __('Your spot?') }}</a>
-                        @else
-                            <span class="text-[13px] text-ink-3">{{ __('Open spot') }}</span>
-                        @endif
-                    </li>
-                @endfor
-                @if ($open > $phoneTiles)
-                    <li wire:key="open-more-phone" class="flex min-h-[132px] items-center justify-center rounded-card border border-dashed border-dash p-3.5 text-center text-[13px] text-ink-3 sm:hidden">
-                        {{ trans_choice('+:count more open spot|+:count more open spots', $open - $phoneTiles) }}
-                    </li>
-                @endif
-                @if ($open > \App\Support\Tournaments\TournamentLanding::OPEN_TILES)
-                    <li wire:key="open-more" class="flex min-h-[132px] max-sm:hidden items-center justify-center rounded-card border border-dashed border-dash p-3.5 text-center text-[13px] text-ink-3" data-test="open-more">
-                        {{ trans_choice('+:count more open spot|+:count more open spots', $open - \App\Support\Tournaments\TournamentLanding::OPEN_TILES) }}
-                    </li>
-                @endif
-            @endif
-        </ul>
-
-        @if ($roster === [] && $tmnfWeek)
-            <p class="m-0 text-[13px] text-ink-2" data-test="entries-empty">{{ __('No finish yet this week. Drive the first one.') }}</p>
-        @elseif ($roster === [] && $week)
-            <p class="m-0 text-[13px] text-ink-2" data-test="entries-empty">{{ __('No verified run yet this week. Play the first one.') }}</p>
-        @elseif ($roster === [] && ($drawn || ! $published || $status === TournamentStatus::Cancelled))
-            <p class="m-0 text-[13px] text-ink-2" data-test="entries-empty">{{ __('Nobody has signed up yet.') }}</p>
-        @endif
-    </section>
-    @endunless
-
-    @if ($blockfillWeek)
-        @include('pages.tournaments.partials.blockfill-board', ['tournament' => $tournament, 'standings' => $weekStandings, 'metric' => $scoreMetric])
-    @elseif ($score)
-        @include('pages.scores.partials.tournament-board', ['tournament' => $tournament, 'metric' => $scoreMetric, 'drawn' => $drawn])
-    @else
-    {{-- The bracket: projected before the draw, the real one after it --}}
-    {{-- The 3D view (plan "OBS-Broadcast-Overlays", P6): beside the drawn bracket of a running or finished tournament, never
-         instead of it; bracketView (resources/js/bracketView.js) loads three.js only when a viewer picks it. Inline @php
-         only: a @php block after an inline @php( in this template swallows the code between them. --}}
-    @php($bracket3d = $drawn && ! $lobbies && $this->stages !== [])
-    @php($bracket3dConfig = $bracket3d ? ['url' => route('tournaments.bracket-data', ['tournament' => $tournament, 'lang' => app()->getLocale()]), 'id' => $tournament->id, 'three' => '/hyper/vendor/three.min.js', 'words' => ['live' => __('Live'), 'champion' => __('Champion'), 'standings' => __('Standings'), 'pairings' => __('Pairings')], 'art' => collect(['crown', 'medal-gold', 'medal-silver', 'medal-bronze'])->mapWithKeys(fn (string $id): array => [$id => '/broadcast/art/'.$id.'.webp'])->all()] : null)
-    <section id="bracket" aria-labelledby="bracket-h" class="group/bv flex scroll-mt-24 flex-col gap-4 px-4 lg:px-12" data-test="bracket"
-             data-bracket-view="2d" wire:ignore.self x-data="{{ $bracket3d ? 'bracketView('.\Illuminate\Support\Js::from($bracket3dConfig).')' : '{}' }}">
+    {{--
+        The main column and the chat rail (rule: chat is primary, the same place in every template): from xl the rail
+        stands on the right from the tabs down; below xl it follows "What to do now".
+        The bracket's 2D / 3D switch (bracketView, resources/js/bracketView.js) holds the whole column, so its toggle
+        sits in the tab row; three.js loads only when a viewer picks 3D.
+    --}}
+    <div @class(['group/bv mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 pt-6 lg:px-12 lg:pt-8', 'chat-rail-host xl:[--chat-rail-top:2rem] xl:[--chat-rail-own:3rem]' => $rail === 'game'])
+         data-bracket-view="2d" @if ($bracket3d) wire:ignore.self x-data="bracketView({{ \Illuminate\Support\Js::from($bracket3dConfig) }})" @endif data-test="tournament-body">
         @if ($bracket3d)
             {{-- A remembered 3D shows its box before the first paint, so the page does not jump once scripts run. --}}
             <script>(function (s) { try { if (localStorage.getItem('bracket-view') === '3d') { var c = document.createElement('canvas'); if (window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))) s.dataset.bracketView = '3d'; } } catch (e) {} })(document.currentScript.parentElement);</script>
         @endif
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <span class="flex flex-wrap items-center gap-3">
-                <h2 id="bracket-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ $lobbies ? __('Lobbies') : __('Bracket') }}</h2>
-                @if ($projection !== null)
-                    <span class="inline-flex h-6 items-center rounded-xs border border-dashed border-edge px-2 text-[11px] text-ink-2" data-test="projected-chip">{{ __('Projected') }}</span>
-                @endif
-            </span>
-            <span class="flex flex-wrap items-center gap-2">
-                @if ($bracket3d)
-                    <span role="radiogroup" aria-label="{{ __('Bracket view') }}" wire:ignore class="flex gap-1 rounded-md border border-edge bg-ground p-[3px]" data-test="bracket-view-toggle">
-                        @foreach (['2d' => '2D', '3d' => '3D'] as $choice => $text)
-                            <button type="button" role="radio" x-on:click="choose('{{ $choice }}')" :aria-checked="view === '{{ $choice }}' ? 'true' : 'false'" aria-checked="{{ $choice === '2d' ? 'true' : 'false' }}"
-                                    @if ($choice === '3d') :disabled="! webgl" :title="webgl ? '' : @js(__('The 3D view needs WebGL, which this browser has switched off.'))" @endif
-                                    @class(['h-[38px] min-w-11 cursor-pointer rounded-sm border-0 px-3 text-[13px] font-bold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50',
-                                        'bg-raised text-btc group-data-[bracket-view=3d]/bv:bg-transparent group-data-[bracket-view=3d]/bv:text-ink-2' => $choice === '2d',
-                                        'bg-transparent text-ink-2 hover:text-ink group-data-[bracket-view=3d]/bv:bg-raised group-data-[bracket-view=3d]/bv:text-btc' => $choice === '3d'])
-                                    data-test="bracket-view-{{ $choice }}">{{ $text }}</button>
-                        @endforeach
-                    </span>
-                @endif
-                @if ($published && $status !== TournamentStatus::Cancelled && ! $tournament->isLeagueWeek())
-                    {{-- The TV view (P19): the bracket full screen, live, for a big screen or a stream. A Blockfill week has none (P6). --}}
-                    <span class="text-xs text-ink-3 max-sm:hidden" id="tv-hint">{{ __('Full screen for a TV or a stream') }}</span>
-                    <x-button variant="quiet" :href="route('tournaments.tv', $tournament)" icon="eye" data-test="to-tv" aria-describedby="tv-hint">{{ __('TV view') }}</x-button>
-                @endif
-                @if ($drawn && $tournament->draw_hash)
-                    <x-button variant="quiet" :href="route('tournaments.draw', $tournament)" icon="shield-check">{{ __('The draw') }}</x-button>
-                @endif
-                @if ($drawn && $this->canDirect && $tournament->isDirectorMode())
-                    <x-button variant="secondary" :href="route('tournaments.director', $tournament)" data-test="to-director">{{ __('Director desk') }}</x-button>
-                @endif
-            </span>
+
+        {{-- "What to do now" (TournamentNow, user 2026-10-03): a player's one next step while the tournament runs. --}}
+        @island(name: 'now', always: true)
+        @php(extract([...$this->page]))
+        @if ($now && ! $championMoment)
+            @include('pages.tournaments.partials.now', ['now' => $now, 'tournament' => $tournament, 'cup' => $this->cupMatch, 'error' => $cupError, 'waits' => $this->myWaits, 'lobby' => $this->myLobby, 'desk' => $desk])
+        @endif
+        @endisland
+
+        @if ($this->canManage || $this->canDirect)
+            {{-- The organizer's way to the T6 desk pages, after "What to do now" (user, 2026-10-03); on a phone one compact row. --}}
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4" data-test="manage-bar">
+                <span class="rv-tag is-btc-soft max-sm:sr-only">{{ __('Organizers only') }}</span>
+                <x-tournaments.manage-actions :tournament="$tournament" :except="['publish']" compact />
+            </div>
+        @endif
+
+        @if ($rail === 'desk')
+            <div class="chat-rail flex flex-col gap-4" data-test="desk-rail"><x-tournaments.desk-chat :desk="$desk" /></div>
+        @elseif ($rail === 'game')
+            <div class="chat-rail tl-rail flex flex-col gap-4" x-data="{ fit() { const top = this.$el.getBoundingClientRect().top + scrollY; this.$el.style.setProperty('--tl-rail-h', Math.max(480, innerHeight - top - 24) + 'px'); } }" x-init="fit()" x-on:resize.window.debounce.150ms="fit()" data-test="game-rail"><livewire:game-channel :game="$tournament->game" :wire:key="'game-channel-'.$tournament->game" /></div>
+        @endif
+
+        {{-- The page's tabs (one order on every tournament page) and, beside them, the bracket view's switch. --}}
+        <div class="flex items-end gap-4">
+            <nav class="rv-tabs grow" aria-label="{{ __('Tournament') }}" data-test="tournament-tabs">
+                @foreach ($tabs as [$href, $label])
+                    <a href="{{ $href }}" class="rv-tab" @if ($loop->first) aria-current="true" @endif>{{ $label }}</a>
+                @endforeach
+            </nav>
+            @if ($bracket3d)
+                <span role="radiogroup" aria-label="{{ __('Bracket view') }}" wire:ignore class="mb-1.5 flex flex-none gap-1" data-test="bracket-view-toggle">
+                    @foreach (['2d' => '2D', '3d' => '3D'] as $choice => $text)
+                        <button type="button" role="radio" x-on:click="choose('{{ $choice }}')" :aria-checked="view === '{{ $choice }}' ? 'true' : 'false'" aria-checked="{{ $choice === '2d' ? 'true' : 'false' }}"
+                                @if ($choice === '3d') :disabled="! webgl" :title="webgl ? '' : @js(__('The 3D view needs WebGL, which this browser has switched off.'))" @endif
+                                @class(['rv-chip min-w-11 justify-center disabled:cursor-not-allowed disabled:opacity-50',
+                                    'border-btc bg-btc font-bold text-on-btc group-data-[bracket-view=3d]/bv:border-line group-data-[bracket-view=3d]/bv:bg-ground group-data-[bracket-view=3d]/bv:font-normal group-data-[bracket-view=3d]/bv:text-ink-2' => $choice === '2d',
+                                    'group-data-[bracket-view=3d]/bv:border-btc group-data-[bracket-view=3d]/bv:bg-btc group-data-[bracket-view=3d]/bv:font-bold group-data-[bracket-view=3d]/bv:text-on-btc' => $choice === '3d'])
+                                data-test="bracket-view-{{ $choice }}">{{ $text }}</button>
+                    @endforeach
+                </span>
+            @endif
         </div>
 
-        @if ($followNote !== null && $projection !== null)
-            {{-- A casual cup picks its format by who is in (CasualCups::plannedFormat()); every sign-up redraws it. --}}
-            <p class="m-0 inline-flex items-center gap-2 self-start rounded-sm bg-btc-chip px-3 py-1.5 text-[13px] text-btc-hi" data-test="format-follows">
-                <x-icon name="tournaments" :size="14" />{{ $followNote }}
-            </p>
-        @endif
-
-        @if ($lobbies)
-            {{-- How every lobby is played (P10): the same sentences as /rules and the game page (Lobbies::rules()). --}}
-            <div class="flex flex-col gap-2 rounded-card bg-card p-4 lg:p-5" data-test="lobby-rules">
-                <h3 class="m-0 text-[15px] font-bold">{{ __('How the lobbies are played') }}</h3>
-                <ul role="list" class="m-0 flex list-disc flex-col gap-1 pl-4 text-[13px] leading-normal break-words text-ink-2">
-                    @foreach (\App\Support\Tournaments\Lobbies::rules($tournament->game) as $rule)
-                        <li>{{ $rule }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        @if ($drawn && $lobbies)
-            <livewire:tournament-lobbies :tournament="$tournament" :key="'lobbies-'.$tournament->id" />
-        @elseif ($drawn && $bracket3d)
-            {{-- The 3D view: a fixed box (3:4 on a phone, 16:9 from sm), drawn only while chosen and on screen. --}}
-            <div wire:ignore data-bracket-3d class="hidden flex-col overflow-hidden rounded-card bg-ground shadow-ring-hairline group-data-[bracket-view=3d]/bv:flex" data-test="bracket-3d">
-                <div class="relative">
-                    <canvas class="block aspect-[3/4] max-h-[75vh] w-full touch-pan-y sm:aspect-video sm:max-h-[min(70vh,720px)]" role="img" aria-label="{{ __('The bracket in 3D. The 2D view lists every match as text.') }}"></canvas>
-                    <p class="absolute inset-0 m-0 flex items-center justify-center text-[13px] text-ink-2" x-show="state === 'loading'" x-cloak>{{ __('Loading the 3D view') }}</p>
-                </div>
-                <div class="flex items-center gap-2 border-t border-hairline px-2 py-1.5">
-                    <button type="button" x-on:click="prev()" class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent text-ink hover:bg-raised" aria-label="{{ __('Previous part of the bracket') }}" data-test="bracket-3d-prev">
-                        <x-icon name="chevron-down" :size="18" class="rotate-90" />
-                    </button>
-                    <span class="min-w-0 grow truncate text-center text-[13px] font-bold" aria-live="polite" x-text="page ? page.title : ''" data-test="bracket-3d-title"></span>
-                    <button type="button" x-on:click="next()" class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent text-ink hover:bg-raised" aria-label="{{ __('Next part of the bracket') }}" data-test="bracket-3d-next">
-                        <x-icon name="chevron-down" :size="18" class="-rotate-90" />
-                    </button>
-                </div>
-            </div>
-            <div class="group-data-[bracket-view=3d]/bv:hidden" data-test="bracket-2d">
-                @include('pages.tournaments.partials.stages', ['stages' => $this->stages, 'tournament' => $tournament])
-            </div>
-        @elseif ($drawn)
-            @include('pages.tournaments.partials.stages', ['stages' => $this->stages, 'tournament' => $tournament])
-        @elseif ($projection !== null)
-            <div class="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" data-test="bracket-preview" data-format="{{ $planned->format->value }}" data-players="{{ $planned->capacity }}">
-                <figure class="m-0 flex flex-col gap-2 rounded-card bg-card p-4" x-data x-ref="figure">
-                    @foreach ([['desktop', $preview, 480, 208, 'hidden lg:block'], ['mobile', $previewSmall, 326, 196, 'lg:hidden']] as [$size, $shape, $width, $height, $visibility])
-                        <svg viewBox="0 0 {{ $width }} {{ $height }}" class="tf-preview {{ $visibility }} h-auto w-full" role="img" wire:key="pv-{{ $size }}"
-                             aria-label="{{ __('Preview of :format for :who', ['format' => $formatLabel, 'who' => $previewWho]) }}">
-                            @foreach ($shape['lines'] as $line)
-                                <path d="{{ $line['d'] }}" fill="none" stroke="#3A3A42" stroke-width="1" style="animation-delay: {{ $line['delay'] }}s" />
-                            @endforeach
-                            @foreach ($shape['rects'] as $rect)
-                                <rect x="{{ $rect['x'] }}" y="{{ $rect['y'] }}" width="{{ $rect['w'] }}" height="{{ $rect['h'] }}" rx="2"
-                                      fill="{{ $rect['ghost'] ? 'transparent' : '#F7931A' }}" stroke="{{ $rect['ghost'] ? '#8B8B90' : 'none' }}" @if ($rect['ghost']) stroke-dasharray="3 3" @endif
-                                      style="animation-delay: {{ $rect['delay'] }}s" />
-                            @endforeach
-                            @foreach ($shape['texts'] as $text)
-                                <text x="{{ $text['x'] }}" y="{{ $text['y'] }}" text-anchor="{{ $text['anchor'] }}" fill="#8B8B90" font-size="10" font-family="JetBrains Mono, monospace">{{ __($text['text'], $text['replace']) }}</text>
-                            @endforeach
-                        </svg>
-                    @endforeach
-                    <figcaption class="flex items-start gap-3 text-xs leading-normal text-ink-2">
-                        <span class="grow" data-test="preview-caption">{{ __(':format for :who. Each block is one match, lit in the round it is played.', ['format' => $formatLabel, 'who' => $previewWho]) }}</span>
-                        <button type="button" class="min-h-6 shrink-0 cursor-pointer text-btc hover:text-btc-hi" data-test="preview-replay"
-                                x-on:click="$refs.figure.querySelectorAll('svg').forEach((svg) => { svg.classList.remove('tf-preview'); void svg.getBoundingClientRect(); svg.classList.add('tf-preview'); })">{{ __('Play again') }}</button>
-                    </figcaption>
-                </figure>
-
-                <div class="flex min-w-0 flex-col gap-3 rounded-card bg-card p-4">
-                    <h3 class="m-0 text-[15px] font-bold">{{ $projection['groups'] !== [] ? __('Groups if sign-up closed now') : ($lobbies ? __('Lobbies if sign-up closed now') : __('Round 1 if sign-up closed now')) }}</h3>
-                    @if ($projection['groups'] !== [])
-                        <div class="grid grid-cols-2 gap-2 sm:gap-3">
-                            @foreach ($projection['groups'] as $number => $members)
-                                <div class="flex flex-col gap-1.5 rounded-md bg-ground p-3 shadow-ring-hairline" wire:key="pg-{{ $number }}">
-                                    <span class="text-xs font-bold text-ink-2">{{ __('Group :group', ['group' => chr(64 + $number)]) }}</span>
-                                    @foreach ($members as $side)
-                                        @include('pages.tournaments.partials.projected-side', ['side' => $side])
-                                    @endforeach
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <ol class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
-                            @foreach ($projection['matches'] as $match)
-                                <li class="flex flex-col gap-1 rounded-md bg-ground p-2.5 shadow-ring-hairline" wire:key="pm-{{ $match['key'] }}" data-test="projected-match">
-                                    @foreach ($match['sides'] as $side)
-                                        @include('pages.tournaments.partials.projected-side', ['side' => $side])
-                                    @endforeach
-                                </li>
-                            @endforeach
-                        </ol>
-                        @if ($projection['byes'] !== [])
-                            <p class="m-0 text-xs leading-normal text-ink-2">{{ trans_choice('Seed :seeds skips round 1 (bye).|Seeds :seeds skip round 1 (bye).', count($projection['byes']), ['seeds' => implode(', ', $projection['byes'])]) }}</p>
-                        @endif
-                    @endif
-                    <p class="m-0 text-xs leading-normal text-ink-3">{{ __('A preview, not the draw. Seeds are fixed when sign-up closes; the hash of the next Bitcoin block seeds the real bracket.') }}</p>
-                </div>
-            </div>
-        @else
-            <p class="m-0 text-[13px] text-ink-2">{{ __('The tournament was called off.') }}</p>
-        @endif
-
-        @if ($drawn && $tournament->isDirectorMode())
-            {{-- The director log is public (TOURNAMENT-FORMATS.md, section 6). --}}
-            <details class="group rounded-card bg-card" data-test="public-log">
-                <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 lg:px-6">
-                    <h3 class="m-0 text-[15px] font-bold">{{ __('Director log') }}</h3>
-                    <span class="grow text-xs text-ink-3">{{ __('public, newest first') }}</span>
-                    <x-icon name="chevron-down" :size="16" class="transition-transform group-open:rotate-180" />
-                </summary>
-                <div class="flex flex-col gap-2 px-4 pb-4 lg:px-6">
-                    @forelse ($tournament->resultEntries()->with('match')->limit(20)->get() as $entry)
-                        <p class="m-0 flex gap-3 border-t border-hairline pt-2 text-xs leading-normal">
-                            <span class="shrink-0 text-ink-3">{{ $entry->created_at->copy()->timezone($zone)->format('H:i') }}</span>
-                            <span><b>{{ strtoupper($entry->match->key) }} {{ $entry->result['label'] ?? '' }}</b> {{ __('by :name', ['name' => $entry->user_name]) }}@if ($entry->isCorrection()), <span class="text-btc">{{ __('correction, was :old', ['old' => $entry->replaced['label'] ?? '']) }}</span>@endif</span>
-                        </p>
-                    @empty
-                        <p class="m-0 text-xs text-ink-2">{{ __('No result entered yet.') }}</p>
-                    @endforelse
-                </div>
-            </details>
-        @endif
-    </section>
-    @endif
-    @endisland
-
-    {{-- The pot's working part (P9): its state, "Fill the pot" (#pot-fill) and the payouts; the pot itself heads the page. --}}
-    @if (! $week && ($tournament->pool_opened_at !== null || ($this->canManage && ! in_array($tournament->status, [TournamentStatus::Draft, TournamentStatus::Cancelled], true))))
-        <livewire:tournament-pool :tournament="$tournament" :key="'pool-'.$tournament->id" />
-    @endif
-
-    {{-- How it works, and the facts (a Blockfill week has them as steps and chips above) --}}
-    @unless ($blockfillWeek)
-    <section aria-labelledby="how-h" class="grid gap-8 px-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12 lg:px-12">
-        <div class="flex flex-col gap-4">
-            <h2 id="how-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('How it works') }}</h2>
-            <ol class="m-0 flex list-none flex-col gap-4 p-0" data-test="how-it-works">
-                @foreach ($steps as $index => [$title, $text])
-                    <li class="flex gap-3.5">
-                        <span class="flex size-9 shrink-0 items-center justify-center rounded-md border border-btc-deep font-display text-sm font-bold text-btc-hi">{{ $index + 1 }}</span>
-                        <span class="flex flex-col gap-1"><b class="text-[15px]">{{ $title }}</b><span class="text-[13px] leading-normal text-ink-2">{{ $text }}</span></span>
+        @if ($stepper !== [])
+            <ol class="rv-steps m-0 list-none p-0 max-sm:hidden" aria-label="{{ __('Stages') }}" data-test="stage-stepper">
+                @foreach ($stepper as $index => [$icon, $label])
+                    <li @class(['is-done' => $index < $stepIndex]) @if ($index === $stepIndex) aria-current="step" @endif>
+                        <x-icon :name="$index < $stepIndex ? 'check' : $icon" :size="16" class="flex-none" />{{ $label }}
                     </li>
                 @endforeach
             </ol>
-        </div>
+        @endif
 
-        <div class="flex flex-col gap-4">
-            <h2 class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('The facts') }}</h2>
-            <dl class="m-0 grid gap-2 sm:grid-cols-2" data-test="facts">
-                @foreach ($chips as [$icon, $term, $value, $key])
-                    <div class="flex gap-3 rounded-md bg-card px-3.5 py-3" data-fact="{{ $key }}">
-                        <x-icon :name="$icon" :size="18" class="mt-0.5 shrink-0 text-btc" />
-                        <span class="flex min-w-0 flex-col gap-0.5">
-                            <dt class="text-xs text-ink-3">{{ $term }}</dt>
-                            <dd class="m-0 text-[13px] leading-normal">{{ $value }}</dd>
-                        </span>
+        {{-- The board: the bracket (or the leaderboard), who plays and the prizes; rendered alone on a push while the tournament runs (refreshLive). --}}
+        @island(name: 'board', always: true)
+        @php(extract([...$this->page]))
+        @php($bracket3d = $drawn && ! $lobbies && $this->stages !== [] && ! $score && ! $week)
+@php($bracketChampion = $championMoment && ! $championMoment['shared'] ? ['name' => $championMoment['champions'][0]['name'], 'line' => implode(', ', array_filter([$championMoment['prize'] !== null ? __(':sats Sats prize money', ['sats' => \App\Support\Engagement\HomeBoard::sats($championMoment['prize'])]) : null, $championMoment['record'] !== null ? trans_choice(':count win|:count wins', $championMoment['record']['wins']) : null, $championMoment['record'] !== null ? ($championMoment['record']['losses'] > 0 ? trans_choice(':count loss|:count losses', $championMoment['record']['losses']) : __('no loss')) : null]))] : null)
+        @if ($blockfillWeek)
+            @include('pages.tournaments.partials.blockfill-board', ['tournament' => $tournament, 'standings' => $weekStandings, 'metric' => $scoreMetric])
+        @elseif ($score)
+            @include('pages.scores.partials.tournament-board', ['tournament' => $tournament, 'metric' => $scoreMetric, 'drawn' => $drawn])
+        @else
+            <section id="bracket" aria-labelledby="bracket-h" class="flex scroll-mt-24 flex-col gap-4" data-test="bracket">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span class="flex flex-wrap items-center gap-3">
+                        <h2 id="bracket-h" class="rv-h3">{{ $lobbies ? __('Lobbies') : __('Bracket') }}</h2>
+                        @if ($projection !== null)
+                            <span class="rv-tag border-dashed" data-test="projected-chip">{{ __('Projected') }}</span>
+                        @endif
+                    </span>
+                    <span class="flex flex-wrap items-center gap-2">
+                        @if ($published && $status !== TournamentStatus::Cancelled && ! $tournament->isLeagueWeek())
+                            <a href="{{ route('tournaments.tv', $tournament) }}" class="rv-b2 is-sm" data-test="to-tv"><x-icon name="eye" :size="14" />{{ __('TV view') }}</a>
+                        @endif
+                        @if ($drawn && $tournament->draw_hash)
+                            <a href="{{ route('tournaments.draw', $tournament) }}" class="rv-b2 is-sm"><x-icon name="shield-check" :size="14" />{{ __('The draw') }}</a>
+                        @endif
+                        @if ($drawn && $this->canDirect && $tournament->isDirectorMode())
+                            <a href="{{ route('tournaments.director', $tournament) }}" class="rv-b2 is-sm" data-test="to-director">{{ __('Director desk') }}</a>
+                        @endif
+                    </span>
+                </div>
+
+                @if ($followNote !== null && $projection !== null)
+                    <p class="m-0 inline-flex items-center gap-2 self-start rounded-sm bg-btc-chip px-3 py-1.5 text-[13px] text-btc-hi" data-test="format-follows">
+                        <x-icon name="tournaments" :size="14" />{{ $followNote }}
+                    </p>
+                @endif
+
+                @if ($drawn && $lobbies)
+                    <livewire:tournament-lobbies :tournament="$tournament" :key="'lobbies-'.$tournament->id" />
+                @elseif ($drawn && $bracket3d)
+                    <div wire:ignore data-bracket-3d class="hidden flex-col overflow-hidden rounded-card bg-ground shadow-ring-hairline group-data-[bracket-view=3d]/bv:flex" data-test="bracket-3d">
+                        <div class="relative">
+                            <canvas class="block aspect-[3/4] max-h-[75vh] w-full touch-pan-y sm:aspect-video sm:max-h-[min(70vh,720px)]" role="img" aria-label="{{ __('The bracket in 3D. The 2D view lists every match as text.') }}"></canvas>
+                            <p class="absolute inset-0 m-0 flex items-center justify-center text-[13px] text-ink-2" x-show="state === 'loading'" x-cloak>{{ __('Loading the 3D view') }}</p>
+                        </div>
+                        <div class="flex items-center gap-2 border-t border-hairline px-2 py-1.5">
+                            <button type="button" x-on:click="prev()" class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent text-ink hover:bg-raised" aria-label="{{ __('Previous part of the bracket') }}" data-test="bracket-3d-prev">
+                                <x-icon name="chevron-down" :size="18" class="rotate-90" />
+                            </button>
+                            <span class="min-w-0 grow truncate text-center text-[13px] font-bold" aria-live="polite" x-text="page ? page.title : ''" data-test="bracket-3d-title"></span>
+                            <button type="button" x-on:click="next()" class="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent text-ink hover:bg-raised" aria-label="{{ __('Next part of the bracket') }}" data-test="bracket-3d-next">
+                                <x-icon name="chevron-down" :size="18" class="-rotate-90" />
+                            </button>
+                        </div>
                     </div>
-                @endforeach
-            </dl>
-            @if ($tournament->isDirectorMode())
-                <p class="m-0 text-xs leading-normal text-ink-2" data-test="director-notice">{{ __('Results are entered by the tournament directors.') }}</p>
+                    <div class="rv-card p-4 group-data-[bracket-view=3d]/bv:hidden lg:p-6" data-test="bracket-2d">
+                        @include('pages.tournaments.partials.stages', ['stages' => $this->stages, 'tournament' => $tournament, 'champion' => $bracketChampion])
+                    </div>
+                @elseif ($drawn)
+                    <div class="rv-card p-4 lg:p-6">@include('pages.tournaments.partials.stages', ['stages' => $this->stages, 'tournament' => $tournament, 'champion' => $bracketChampion])</div>
+                @elseif ($projection !== null)
+                    <div class="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" data-test="bracket-preview" data-format="{{ $planned->format->value }}" data-players="{{ $planned->capacity }}">
+                        <figure class="rv-card m-0 flex flex-col gap-2 p-4" x-data x-ref="figure">
+                            @foreach ([['desktop', $preview, 480, 208, 'hidden lg:block'], ['mobile', $previewSmall, 326, 196, 'lg:hidden']] as [$size, $shape, $width, $height, $visibility])
+                                <svg viewBox="0 0 {{ $width }} {{ $height }}" class="tf-preview {{ $visibility }} h-auto w-full" role="img" wire:key="pv-{{ $size }}"
+                                     aria-label="{{ __('Preview of :format for :who', ['format' => $formatLabel, 'who' => $previewWho]) }}">
+                                    @foreach ($shape['lines'] as $line)
+                                        <path d="{{ $line['d'] }}" fill="none" stroke="#3A3A42" stroke-width="1" style="animation-delay: {{ $line['delay'] }}s" />
+                                    @endforeach
+                                    @foreach ($shape['rects'] as $rect)
+                                        <rect x="{{ $rect['x'] }}" y="{{ $rect['y'] }}" width="{{ $rect['w'] }}" height="{{ $rect['h'] }}" rx="2"
+                                              fill="{{ $rect['ghost'] ? 'transparent' : '#F7931A' }}" stroke="{{ $rect['ghost'] ? '#8B8B90' : 'none' }}" @if ($rect['ghost']) stroke-dasharray="3 3" @endif
+                                              style="animation-delay: {{ $rect['delay'] }}s" />
+                                    @endforeach
+                                    @foreach ($shape['texts'] as $text)
+                                        <text x="{{ $text['x'] }}" y="{{ $text['y'] }}" text-anchor="{{ $text['anchor'] }}" fill="#8B8B90" font-size="10" font-family="JetBrains Mono, monospace">{{ __($text['text'], $text['replace']) }}</text>
+                                    @endforeach
+                                </svg>
+                            @endforeach
+                            <figcaption class="flex items-start gap-3 text-xs leading-normal text-ink-2">
+                                <span class="grow" data-test="preview-caption">{{ __(':format for :who. Each block is one match, lit in the round it is played.', ['format' => $formatLabel, 'who' => $previewWho]) }}</span>
+                                <button type="button" class="min-h-6 shrink-0 cursor-pointer text-btc hover:text-btc-hi" data-test="preview-replay"
+                                        x-on:click="$refs.figure.querySelectorAll('svg').forEach((svg) => { svg.classList.remove('tf-preview'); void svg.getBoundingClientRect(); svg.classList.add('tf-preview'); })">{{ __('Play again') }}</button>
+                            </figcaption>
+                        </figure>
+
+                        <div class="rv-card flex min-w-0 flex-col gap-3 p-4">
+                            <h3 class="m-0 text-[15px] font-bold">{{ $projection['groups'] !== [] ? __('Groups if sign-up closed now') : ($lobbies ? __('Lobbies if sign-up closed now') : __('Round 1 if sign-up closed now')) }}</h3>
+                            @if ($projection['groups'] !== [])
+                                <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                                    @foreach ($projection['groups'] as $number => $members)
+                                        <div class="flex flex-col gap-1.5 rounded-md bg-ground p-3 shadow-ring-hairline" wire:key="pg-{{ $number }}">
+                                            <span class="text-xs font-bold text-ink-2">{{ __('Group :group', ['group' => chr(64 + $number)]) }}</span>
+                                            @foreach ($members as $side)
+                                                @include('pages.tournaments.partials.projected-side', ['side' => $side])
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <ol class="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+                                    @foreach ($projection['matches'] as $match)
+                                        <li class="flex flex-col gap-1 rounded-md bg-ground p-2.5 shadow-ring-hairline" wire:key="pm-{{ $match['key'] }}" data-test="projected-match">
+                                            @foreach ($match['sides'] as $side)
+                                                @include('pages.tournaments.partials.projected-side', ['side' => $side])
+                                            @endforeach
+                                        </li>
+                                    @endforeach
+                                </ol>
+                                @if ($projection['byes'] !== [])
+                                    <p class="m-0 text-xs leading-normal text-ink-2">{{ trans_choice('Seed :seeds skips round 1 (bye).|Seeds :seeds skip round 1 (bye).', count($projection['byes']), ['seeds' => implode(', ', $projection['byes'])]) }}</p>
+                                @endif
+                            @endif
+                            <p class="m-0 text-xs leading-normal text-ink-3">{{ __('A preview, not the draw. Seeds are fixed when sign-up closes; the hash of the next Bitcoin block seeds the real bracket.') }}</p>
+                        </div>
+                    </div>
+                @else
+                    <p class="m-0 text-[13px] text-ink-2">{{ __('The tournament was called off.') }}</p>
+                @endif
+
+                @if ($drawn && $tournament->isDirectorMode())
+                    {{-- The director log is public (TOURNAMENT-FORMATS.md, section 6). --}}
+                    <details class="group rounded-card bg-card" data-test="public-log">
+                        <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 lg:px-6">
+                            <h3 class="m-0 text-[15px] font-bold">{{ __('Director log') }}</h3>
+                            <span class="grow text-xs text-ink-3">{{ __('public, newest first') }}</span>
+                            <x-icon name="chevron-down" :size="16" class="transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div class="flex flex-col gap-2 px-4 pb-4 lg:px-6">
+                            @forelse ($tournament->resultEntries()->with('match')->limit(20)->get() as $entry)
+                                <p class="m-0 flex gap-3 border-t border-hairline pt-2 text-xs leading-normal">
+                                    <span class="shrink-0 text-ink-3">{{ $entry->created_at->copy()->timezone($zone)->format('H:i') }}</span>
+                                    <span><b>{{ strtoupper($entry->match->key) }} {{ $entry->result['label'] ?? '' }}</b> {{ __('by :name', ['name' => $entry->user_name]) }}@if ($entry->isCorrection()), <span class="text-btc">{{ __('correction, was :old', ['old' => $entry->replaced['label'] ?? '']) }}</span>@endif</span>
+                                </p>
+                            @empty
+                                <p class="m-0 text-xs text-ink-2">{{ __('No result entered yet.') }}</p>
+                            @endforelse
+                        </div>
+                    </details>
+                @endif
+            </section>
+        @endif
+
+        {{-- Who plays beside the prize card (TournamentDetail.dc.html: "Teilnehmer, Setzliste" and "Preispool"). --}}
+        <div @class(['grid grid-cols-1 items-start gap-6', 'lg:grid-cols-2' => $this->pool !== null && ! $blockfillWeek])>
+            @unless ($blockfillWeek)
+                <section id="entries" aria-labelledby="entries-h" class="flex scroll-mt-24 flex-col gap-3" data-test="entries">
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <h2 id="entries-h" class="rv-h3">{{ $score ? __('Who plays') : __('Participants, seeds') }}</h2>
+                        @unless ($score)
+                            <span class="rv-m">{{ $drawn ? __('Seeded by Elo at sign-up close') : __('Seeds if sign-up closed now, by Elo; equal Elo by earlier sign-up') }}</span>
+                        @endunless
+                    </div>
+                    <ul class="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-2">
+                        @foreach ($roster as $row)
+                            @php($isChampion = $champion && $row['key'] === 'participant-'.$champion->id)
+                            <li wire:key="{{ $row['key'] }}" data-test="roster-entry" @if ($row['you']) data-you @endif
+                                @class(['relative flex h-[52px] min-w-0 items-center gap-2.5 rounded-[4px] border px-3', 'border-hairline bg-card' => ! $row['you'] && ! $isChampion, 'border-btc bg-btc-chip' => $row['you'] || $isChampion])>
+                                @if ($row['seed'] !== null && ! $week)
+                                    <span class="w-6 flex-none text-[13px] text-ink-3 tabular-nums" title="{{ __('Seed :seed', ['seed' => $row['seed']]) }}"><span class="sr-only">{{ __('Seed') }} </span>#{{ $row['seed'] }}</span>
+                                @endif
+                                @if ($row['kind'] === 'lineup' && $row['clan'])
+                                    <x-clan-tag :clan="$row['clan']" :tile="24" class="flex size-6 shrink-0 items-center justify-center rounded-full bg-btc-tint text-[9px] font-bold text-btc" />
+                                @elseif (isset($row['users'][0]) && in_array($row['kind'], ['player', 'solo'], true))
+                                    <x-avatar :user="$row['users'][0]" :name="$row['name']" :size="24" class="flex-none" />
+                                @else
+                                    <span class="rv-av is-sm flex-none"><x-icon name="clans" :size="12" /></span>
+                                @endif
+                                <span class="flex min-w-0 grow flex-col" @if ($row['rating'] !== null && ! $score) title="{{ __(':rating Elo', ['rating' => $row['rating']]) }}" @endif>
+                                    @if ($row['href'])
+                                        <a href="{{ $row['href'] }}" class="truncate text-sm font-bold text-ink hover:text-btc-hi">{{ $row['name'] }}</a>
+                                    @else
+                                        <span class="truncate text-sm font-bold">{{ $row['name'] }}</span>
+                                    @endif
+                                    @if ($row['kind'] === 'solo')
+                                        <span class="rv-m truncate">{{ __('Solo, drawn into a mix team') }}</span>
+                                    @elseif ($row['kind'] === 'mix')
+                                        <span class="rv-m truncate">{{ __('Mix team') }}</span>
+                                    @endif
+                                </span>
+                                @if ($row['you'])
+                                    <span class="absolute -top-2 left-3 inline-flex h-5 items-center rounded-xs bg-btc px-1.5 text-[11px] font-bold text-on-btc" data-test="you-chip">{{ __('You') }}</span>
+                                @endif
+                                @if ($isChampion)
+                                    <x-icon name="trophy" :size="14" class="flex-none text-btc" />
+                                @endif
+                            </li>
+                        @endforeach
+
+                        @if (! $drawn && $published && $status !== TournamentStatus::Cancelled && $open > 0)
+                            @for ($seat = 0; $seat < min($open, \App\Support\Tournaments\TournamentLanding::OPEN_TILES); $seat++)
+                                <li wire:key="open-{{ $seat }}" data-test="open-seat" @class(['flex h-[52px] items-center gap-2.5 rounded-[4px] border border-dashed border-dash px-3', 'max-sm:hidden' => $seat >= 3])>
+                                    <span class="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-dash text-ink-3"><x-icon name="user" :size="12" /></span>
+                                    @if ($seat === 0 && $cta === 'open')
+                                        <a href="{{ route('tournaments.signup', $tournament) }}" class="text-[13px] font-bold" data-test="your-seat">{{ __('Your spot?') }}</a>
+                                    @else
+                                        <span class="text-[13px] text-ink-3">{{ __('Open spot') }}</span>
+                                    @endif
+                                </li>
+                            @endfor
+                            @if ($open > \App\Support\Tournaments\TournamentLanding::OPEN_TILES)
+                                <li wire:key="open-more" class="flex h-[52px] items-center justify-center rounded-[4px] border border-dashed border-dash px-3 text-[13px] text-ink-3 max-sm:hidden" data-test="open-more">
+                                    {{ trans_choice('+:count more open spot|+:count more open spots', $open - \App\Support\Tournaments\TournamentLanding::OPEN_TILES) }}
+                                </li>
+                            @endif
+                        @endif
+                    </ul>
+
+                    @if ($roster === [] && $tmnfWeek)
+                        <p class="m-0 text-[13px] text-ink-2" data-test="entries-empty">{{ __('No finish yet this week. Drive the first one.') }}</p>
+                    @elseif ($roster === [] && $week)
+                        <p class="m-0 text-[13px] text-ink-2" data-test="entries-empty">{{ __('No verified run yet this week. Play the first one.') }}</p>
+                    @elseif ($roster === [] && ($drawn || ! $published || $status === TournamentStatus::Cancelled))
+                        <p class="m-0 text-[13px] text-ink-2" data-test="entries-empty">{{ __('Nobody has signed up yet.') }}</p>
+                    @endif
+                    @if (! $drawn && $published)
+                        {{-- P48: NIP-52 RSVPs from the relays, under the sign-ups and never added to them --}}
+                        <livewire:rsvp-summary :tournament="$tournament->id" :key="'rsvps-'.$tournament->id" />
+                    @endif
+                </section>
+            @endunless
+
+            @if ($this->pool !== null)
+                <div id="prizes" class="min-w-0 scroll-mt-24">
+                    @include('pages.tournaments.partials.prize-pool', ['pool' => $this->pool, 'tournament' => $tournament, 'manage' => $this->canManage,
+                        'topUp' => \App\Support\Prizes\PotTopUps::enabled($tournament), 'results' => $championMoment['podium'] ?? []])
+                </div>
             @endif
         </div>
-    </section>
-    @endunless
+        @endisland
 
-    {{-- Questions, and the proof for the nerds (a Blockfill week: the proof alone, its chips answer the questions) --}}
-    @if (! $blockfillWeek || $proof !== [])
-    <section @unless ($blockfillWeek) aria-labelledby="faq-h" @endunless class="flex flex-col gap-3 px-4 lg:px-12" data-test="{{ $blockfillWeek ? 'week-proof' : 'faq' }}">
+        {{-- A casual cup names the other region's cup of its game (EU and US, user 2026-09-28). --}}
+        @if ($tournament->isCasualCup())
+            <div data-test="cup-other-regions"><x-tournaments.cup-mentions :game="$tournament->game" :except="$tournament->id" /></div>
+        @endif
+
+        {{-- The pot's working part (P9): its state, "Fill the pot" (#pot-fill) and the payouts. --}}
+        @if (! $week && ($tournament->pool_opened_at !== null || ($this->canManage && ! in_array($tournament->status, [TournamentStatus::Draft, TournamentStatus::Cancelled], true))))
+            <livewire:tournament-pool :tournament="$tournament" :key="'pool-'.$tournament->id" />
+        @endif
+
+        {{-- The secondary slot: the tournament on Nostr, who of your follows plays, a tip for the winners. --}}
+        @if ($published && ! $week)
+            <x-nostr-bar :bar="\App\Support\Nostr\NostrBar::tournament($tournament)" />
+        @endif
+        @if ($published && $status === TournamentStatus::Signup)
+            <div class="has-[>.hidden]:hidden"><livewire:follows-here context="tournament" :subject="(string) $tournament->id" :wire:key="'follows-here-t-'.$tournament->id" /></div>
+        @endif
+        @if ($champion && ! $tournament->isLeagueWeek())
+            <div id="zap-winner" class="scroll-mt-24 has-[>.hidden]:hidden"><livewire:zap-winner type="tournament" :subject="(string) $tournament->id" :wire:key="'zap-tournament-'.$tournament->id" /></div>
+        @elseif ($this->sharedFirst !== [])
+            <p class="rv-card m-0 p-4 text-[13px]" data-test="tournament-shared-first"><b>{{ __('Shared 1st place: :names', ['names' => implode(', ', $this->sharedFirst)]) }}</b></p>
+        @endif
+
+        {{-- The rules of this tournament: the steps, the facts, the questions and the proof (rule: explanations live here, not in the views above). --}}
         @unless ($blockfillWeek)
-        <h2 id="faq-h" class="m-0 font-display text-xl font-bold lg:text-2xl">{{ __('Questions') }}</h2>
-        <div class="grid gap-2 lg:grid-cols-2 lg:items-start">
-            @foreach ([
-                [$lobbies ? __('How is the lobby match played?') : __('How does :format work?', ['format' => $formatLabel]), __($formatCopy['how']).' '.__('Good for:').' '.__($formatCopy['good'])],
-                ...($week ? [] : [[__('What if someone does not show up?'), $noShow]]),
-                $score ? [__('How is the winner found?'), $scoreMetric?->lowerIsBetter()
-                    ? __('By the fastest time on the course inside the window. A tie goes to whoever set it first.')
-                    : __('By the highest score on the course inside the window. A tie goes to whoever set it first.')]
-                : [__('How are seeds set?'), \Illuminate\Support\Str::ucfirst($teams
-                    ? __('by Elo at sign-up close, equal Elo by earlier sign-up; mix teams after the lineups, in draw order')
-                    : __('by Elo at sign-up close, equal Elo by earlier sign-up')).'.'],
-                ...($this->pool !== null ? [[__('How is the prize pool paid out?'), __('When the tournament has ended, an admin checks it and closes the pool. The pool is split by place as shown; tied places share their percentages and a team’s share is split equally among its roster. Each player’s share goes to the Lightning address in their Nostr profile, and the league publishes every payment on Nostr with its proof.')]] : []),
-            ] as [$question, $answer])
-                <details class="group rounded-md bg-card">
-                    <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-[13px] font-bold">
-                        <span class="grow">{{ $question }}</span>
-                        <x-icon name="chevron-down" :size="16" class="shrink-0 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <p class="m-0 px-4 pb-4 text-[13px] leading-relaxed text-ink-2">{{ $answer }}</p>
-                </details>
-            @endforeach
-        </div>
+            <section id="rules" aria-labelledby="how-h" class="grid scroll-mt-24 gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+                <div class="flex flex-col gap-4">
+                    <h2 id="how-h" class="rv-h3">{{ __('How it works') }}</h2>
+                    <ol class="m-0 flex list-none flex-col gap-4 p-0" data-test="how-it-works">
+                        @foreach ($steps as $index => [$title, $text])
+                            <li class="flex gap-3.5">
+                                <span class="flex size-8 shrink-0 items-center justify-center rounded-[4px] bg-btc-chip text-sm font-bold text-btc">{{ $index + 1 }}</span>
+                                <span class="flex flex-col gap-1"><b class="text-[15px]">{{ $title }}</b><span class="text-[13px] leading-normal text-ink-2">{{ $text }}</span></span>
+                            </li>
+                        @endforeach
+                    </ol>
+                    @unless ($week)
+                        @include('pages.tournaments.partials.when', ['tournament' => $tournament, 'startsIn' => $landing->startsIn(), 'published' => $published])
+                    @endunless
+                    @if ($lobbies)
+                        <div class="flex flex-col gap-2 rounded-card bg-card p-4 lg:p-5" data-test="lobby-rules">
+                            <h3 class="m-0 text-[15px] font-bold">{{ __('How the lobbies are played') }}</h3>
+                            <ul role="list" class="m-0 flex list-disc flex-col gap-1 pl-4 text-[13px] leading-normal break-words text-ink-2">
+                                @foreach (\App\Support\Tournaments\Lobbies::rules($tournament->game) as $rule)
+                                    <li>{{ $rule }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <h2 class="rv-h3">{{ __('The facts') }}</h2>
+                    <dl class="m-0 grid gap-2 sm:grid-cols-2" data-test="facts">
+                        @foreach ($chips as [$icon, $term, $value, $key])
+                            <div class="flex gap-3 rounded-[4px] bg-card px-3.5 py-3" data-fact="{{ $key }}">
+                                <x-icon :name="$icon" :size="18" class="mt-0.5 shrink-0 text-btc" />
+                                <span class="flex min-w-0 flex-col gap-0.5">
+                                    <dt class="text-xs text-ink-3">{{ $term }}</dt>
+                                    <dd class="m-0 text-[13px] leading-normal">{{ $value }}</dd>
+                                </span>
+                            </div>
+                        @endforeach
+                    </dl>
+                    @if ($tournament->isDirectorMode())
+                        <p class="m-0 text-xs leading-normal text-ink-2" data-test="director-notice">{{ __('Results are entered by the tournament directors.') }}</p>
+                    @endif
+                    @if (filled($tournament->description))
+                        <p class="m-0 max-w-[65ch] text-[13px] leading-relaxed whitespace-pre-line text-ink-2" data-test="tournament-description">{{ $tournament->description }}</p>
+                    @endif
+                    @if ($published && $status !== TournamentStatus::Cancelled && ! $week)
+                        @include('pages.tournaments.partials.share', ['tournament' => $tournament, 'text' => $shareText, 'label' => $cta === 'open' || $cta === 'entered' ? __('Bring your friends') : __('Share this tournament')])
+                    @endif
+                </div>
+            </section>
         @endunless
 
-        @if ($proof !== [])
-            <details class="group rounded-md bg-card" data-test="nerds">
-                <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-[13px] font-bold">
-                    <x-icon name="shield-check" :size="16" class="shrink-0 text-proof" />
-                    <span class="grow">{{ __('For the nerds: the proof on Nostr') }}</span>
-                    <x-icon name="chevron-down" :size="16" class="shrink-0 transition-transform group-open:rotate-180" />
-                </summary>
-                <div class="flex flex-col gap-3 px-4 pb-4">
-                    <p class="m-0 text-xs leading-normal text-ink-2">{{ __('The league signs the tournament as a calendar event and, when it has a solo pool, the draw. Anyone can re-check them with these ids.') }}</p>
-                    <x-proof :rows="$proof" open />
-                </div>
-            </details>
-        @endif
-    </section>
-    @endif
+        {{-- Questions, and the proof for the nerds --}}
+        @if (! $blockfillWeek || $proof !== [])
+            <section @unless ($blockfillWeek) aria-labelledby="faq-h" @endunless class="flex flex-col gap-3" data-test="{{ $blockfillWeek ? 'week-proof' : 'faq' }}">
+                @unless ($blockfillWeek)
+                    <h2 id="faq-h" class="rv-h3">{{ __('Questions') }}</h2>
+                    <div class="grid gap-2 lg:grid-cols-2 lg:items-start">
+                        @foreach ([
+                            [$lobbies ? __('How is the lobby match played?') : __('How does :format work?', ['format' => $formatLabel]), __($formatCopy['how']).' '.__('Good for:').' '.__($formatCopy['good'])],
+                            ...($week ? [] : [[__('What if someone does not show up?'), $noShow]]),
+                            $score ? [__('How is the winner found?'), $scoreMetric?->lowerIsBetter()
+                                ? __('By the fastest time on the course inside the window. A tie goes to whoever set it first.')
+                                : __('By the highest score on the course inside the window. A tie goes to whoever set it first.')]
+                            : [__('How are seeds set?'), \Illuminate\Support\Str::ucfirst($teams
+                                ? __('by Elo at sign-up close, equal Elo by earlier sign-up; mix teams after the lineups, in draw order')
+                                : __('by Elo at sign-up close, equal Elo by earlier sign-up')).'.'],
+                            ...($this->pool !== null ? [[__('How is the prize pool paid out?'), __('When the tournament has ended, an admin checks it and closes the pool. The pool is split by place as shown; tied places share their percentages and a team’s share is split equally among its roster. Each player’s share goes to the Lightning address in their Nostr profile, and the league publishes every payment on Nostr with its proof.')]] : []),
+                        ] as [$question, $answer])
+                            <details class="group rounded-[4px] bg-card">
+                                <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-[13px] font-bold">
+                                    <span class="grow">{{ $question }}</span>
+                                    <x-icon name="chevron-down" :size="16" class="shrink-0 transition-transform group-open:rotate-180" />
+                                </summary>
+                                <p class="m-0 px-4 pb-4 text-[13px] leading-relaxed text-ink-2">{{ $answer }}</p>
+                            </details>
+                        @endforeach
+                    </div>
+                @endunless
 
-    {{-- P48: comments and likes on the tournament's calendar event (NIP-22, NIP-25), read from the league relays --}}
-    @if ($published)
-        <div class="px-4 lg:px-12">
+                @if ($proof !== [])
+                    <details class="group rounded-[4px] bg-card" data-test="nerds">
+                        <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 text-[13px] font-bold">
+                            <x-icon name="shield-check" :size="16" class="shrink-0 text-proof" />
+                            <span class="grow">{{ __('For the nerds: the proof on Nostr') }}</span>
+                            <x-icon name="chevron-down" :size="16" class="shrink-0 transition-transform group-open:rotate-180" />
+                        </summary>
+                        <div class="flex flex-col gap-3 px-4 pb-4">
+                            <p class="m-0 text-xs leading-normal text-ink-2">{{ __('The league signs the tournament as a calendar event and, when it has a solo pool, the draw. Anyone can re-check them with these ids.') }}</p>
+                            <x-proof :rows="$proof" open />
+                        </div>
+                    </details>
+                @endif
+            </section>
+        @endif
+
+        {{-- P48: comments and likes on the tournament's calendar event (NIP-22, NIP-25), read from the league relays --}}
+        @if ($published)
             <livewire:nostr-comments type="tournament" :target="(string) $tournament->id" :key="'comments-'.$tournament->id" />
-        </div>
-    @endif
+        @endif
+    </div>
+    </div>
 </div>

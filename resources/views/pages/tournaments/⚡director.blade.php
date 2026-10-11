@@ -190,12 +190,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
     $chip = \App\Support\Tournaments\Lobbies::formatLabel($tournament).', '.trans_choice(':count player|:count players', $tournament->participants()->count()).', '.($tournament->on_site ? trans_choice('on site with :count board|on site with :count boards', (int) $tournament->stations) : __('Online'));
 @endphp
 
-<div class="flex flex-col gap-5 px-4 pt-6 pb-10 lg:px-12" data-test="director-desk">
-    <a href="{{ route('tournaments.show', $tournament) }}" class="inline-flex items-center gap-1 self-start text-[13px]"><x-icon name="prev" :size="14" />{{ $tournament->title() }}</a>
-    <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-4">
-        <h1 class="m-0 font-display text-[28px] font-bold lg:text-[34px]">{{ __('Director desk') }}</h1>
-        <span class="inline-flex min-h-7 items-center self-start rounded-sm bg-raised px-2.5 text-xs text-ink-2 lg:self-auto">{{ $chip }}</span>
-    </div>
+<div class="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-10 lg:px-12" data-test="director-desk">
+    <x-tournaments.page-head :tournament="$tournament" :page="__('Director desk')" current="director" organizer>
+        <x-slot:side><span class="rv-tag h-8 px-3">{{ $chip }}</span></x-slot:side>
+    </x-tournaments.page-head>
     <p class="m-0 max-w-[80ch] text-[13px] leading-normal text-ink-2">{{ __('Results in this tournament are entered by the tournament directors. Players can’t report or accept results. Every entry and every correction is saved with your name and the time.') }}</p>
 
     @if (! $tournament->isDirectorMode())

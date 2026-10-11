@@ -312,7 +312,7 @@ test('the lobby card shows the settings to everyone, and the name and password o
         ->assertSee('Kartengröße')->assertSee('Bündnissieg')->assertSee('Zeitlimit, 2 Stunden');
 });
 
-test('a player\'s own lobby is pinned above the hero with name, password and copy buttons; nobody else gets it, and a decided lobby leaves the pin', function () {
+test('a player\'s own lobby is pinned right under the hero with name, password and copy buttons; nobody else gets it, and a decided lobby leaves the pin', function () {
     $tournament = runningLobby(9);
     [$first, $second] = lobbiesOf($tournament)->all();
     $player = User::query()->find($first->slots[0]->participant->user_id);
@@ -322,8 +322,9 @@ test('a player\'s own lobby is pinned above the hero with name, password and cop
     $html = $this->actingAs($player)->get(route('tournaments.show', $tournament))->assertOk()->getContent();
     expect($html)->toContain('data-test="my-lobby"')->toContain('data-test="my-lobby-copy-name"')->toContain('data-test="my-lobby-copy-password"')
         ->toContain('Join this lobby in Age of Empires II')
-        // Pinned first: above the hero and above the lobby list.
-        ->and(strpos($html, 'data-test="my-lobby"'))->toBeLessThan(strpos($html, 'data-test="tournament-hero"'))
+        // Pinned right under the hero (TournamentDetail.dc.html), above the lobby list.
+        ->and(strpos($html, 'data-test="my-lobby"'))->toBeGreaterThan(strpos($html, 'data-test="tournament-hero"'))
+        ->and(strpos($html, 'data-test="my-lobby"'))->toBeLessThan(strpos($html, 'id="bracket"'))
         ->and(substr($html, strpos($html, 'data-test="my-lobby"'), 6000))->toContain($first->lobby['name'])->toContain($first->lobby_password)
         ->not->toContain($second->lobby_password);
 
@@ -360,15 +361,14 @@ test('a finished lobby tournament names its shared 1st place across all lobbies 
     $names = collect([$first->slots[0], $first->slots[1], $second->slots[0]])->sortBy('tournament_participant_id')->map(fn ($slot): string => (string) $slot->participant->name)->implode(', ');
 
     $this->get(route('tournaments.show', $tournament))->assertOk()
-        // The champion moment on top (ChampionMomentTest) names everybody on the shared place 1.
+        // The hero (ChampionMomentTest) names everybody on the shared place 1, and the page says it once more below.
         ->assertSee('data-test="tournament-shared-first"', false)
-        ->assertSeeInOrder(['data-shared="1"', 'Shared 1st place · '.$tournament->title(), $names], false)
-        ->assertDontSee('data-test="tournament-winner"', false);
+        ->assertSeeInOrder(['data-shared="1"', 'Shared 1st place', $names], false);
     // A single winner keeps the winner card.
     $single = runningLobby(4);
     app(LobbyResults::class)->enter(lobbiesOf($single)->sole(), $single->creator, lobbyPlaces(lobbiesOf($single)->sole(), [1, 2, 3, 4]));
     $this->get(route('tournaments.show', $single))->assertOk()
-        ->assertSee('data-test="tournament-winner"', false)->assertDontSee('data-test="tournament-shared-first"', false);
+        ->assertSee('data-shared="0"', false)->assertDontSee('data-test="tournament-shared-first"', false);
 });
 
 test('the format chooser describes the lobby for Age of Empires II and shows no series deadlines; a series game keeps both', function () {

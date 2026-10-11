@@ -98,6 +98,23 @@ class TournamentPayout extends Model
     }
 
     /**
+     * The name a public page shows for this payout: the entry's name as the bracket shows it, never the account name
+     * stored beside it (plan "Refactor und Design-Revamp", P6: /tournaments/2 showed "Industrie_KPI" in the bracket
+     * and "UWE" in the payouts for the same player). A team's share names the team and the player of the share.
+     * Without an entry (deleted) the stored name.
+     */
+    public function publicName(): string
+    {
+        $participant = $this->participant;
+
+        if ($participant === null) {
+            return $this->name;
+        }
+
+        return count($participant->memberIds()) > 1 ? $participant->name.': '.$this->name : $participant->name;
+    }
+
+    /**
      * What the pages say about a payout that is not simply paid.
      */
     public function reasonText(): ?string

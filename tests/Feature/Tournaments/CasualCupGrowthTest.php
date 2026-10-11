@@ -148,8 +148,9 @@ test('the cup page always shows the places of the current size', function () {
     cupTick();
 
     Livewire::test('pages::tournaments.show', ['tournament' => $cup->refresh()])
-        ->assertSeeHtml('aria-valuemax="8"')
-        ->assertSee('of 8 spots taken');
+        // The hero's seat bar names the places of the grown size (x-ui.seats).
+        ->assertSee('of 8 places taken')
+        ->assertSeeHtml('/8</span>');
 });
 
 test('a cup opened with every place before P27 is fitted to the growing sign-up once, with one new version', function () {
