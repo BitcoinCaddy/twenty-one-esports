@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property string $facts_hash
  * @property string $status queued, claimed, voiced, expired
  * @property string $source ai (the league voice) or pattern (App\Support\Caster\PatternScripts)
- * @property string|null $topic App\Support\Caster\SceneTopic, for a scene script
+ * @property string|null $topic App\Support\Caster\SceneTopic for a scene script; App\Support\Caster\ChatReactions::ZAP_TOPIC or GREETING_TOPIC for a zap thank-you or a greeting
  * @property float $estimated_seconds
  * @property Carbon|null $claimed_at
  * @property Carbon $expires_at

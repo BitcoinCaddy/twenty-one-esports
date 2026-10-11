@@ -1,0 +1,107 @@
+{
+ "note": "Pattern lines of the TWENTY ONE TV reactions to the stream chat and to zaps (App\\Support\\Caster\\ReactionLines): spoken German, one sentence per line, at most 16 words and two commas, no hashtags, no fees, no Lightning address, no 'Gesicht'. Placeholders: {wer} (a trusted zapper's name or 'Jemand im Chat'/'Ein Zuschauer', always opens the sentence), {sats} (the amount spelled out with 'Sats'), {anzahl} (the number of zaps, spelled out), {name} (a trusted chatter's name). Nothing a chatter wrote is ever read out.",
+ "zap_single": [
+  "{wer} hat gerade {sats} gezappt.",
+  "{wer} schickt {sats} rüber.",
+  "{wer} zappt {sats} in den Stream.",
+  "{wer} lässt {sats} regnen.",
+  "{wer} hat uns eben {sats} geschickt.",
+  "{wer} wirft {sats} in den Stream.",
+  "{wer} zappt uns gerade {sats}.",
+  "{wer} hat eben {sats} losgeschickt."
+ ],
+ "zap_bundle": [
+  "{anzahl} Zaps in einer Minute, ihr seid verrückt!",
+  "Gleich {anzahl} Zaps auf einmal, zusammen {sats}.",
+  "Da kommen {anzahl} Zaps hintereinander, zusammen {sats}.",
+  "{anzahl} Zaps in einer Minute, macht zusammen {sats}.",
+  "Was ist denn hier los, {anzahl} Zaps mit zusammen {sats}!"
+ ],
+ "zap_big": [
+  "[surprise-wa] Ich glaub's ja nicht!",
+  "[surprise-wa] Wahnsinn, das ist kein Zap, das ist ein Statement!",
+  "[laughter] Okay, jetzt bin ich kurz sprachlos.",
+  "[surprise-oh] Leute, mir fehlen gerade echt die Worte.",
+  "[surprise-wa] Das ist ja ein ganzer Block voller Liebe!",
+  "[laughter] Damit ist der Abend offiziell gerettet!",
+  "[surprise-wa] Was für ein Brocken, ich zittere ein bisschen!",
+  "[surprise-wa] [laughter] Ganz großes Kino, vielen, vielen Dank!"
+ ],
+ "zap_thanks": [
+  "Danke für die Sats!",
+  "Vielen Dank, das ist richtig stark.",
+  "Herzlichen Dank dafür!",
+  "Danke, das wissen wir echt zu schätzen.",
+  "Mega, danke schön!",
+  "Tausend Dank!",
+  "Danke, das geht runter wie Öl.",
+  "Riesigen Dank in den Chat!",
+  "Danke, das freut uns wirklich sehr.",
+  "Danke für die Liebe in Sats!"
+ ],
+ "zap_witty": [
+  "Heute ist ein guter Tag, um Sats zu stapeln.",
+  "Tick tock, next block, und schon sind die Sats da.",
+  "Stack Sats und bleib bullisch damit.",
+  "Damit ist mein Stack offiziell ein bisschen schwerer.",
+  "Das geht direkt auf den Stapel, versprochen.",
+  "Zaps sind Tips, und ihr seid die Besten.",
+  "Ich hodl die jetzt, ich trade nichts.",
+  "Davon kauf ich mir keinen Lambo, aber vielleicht einen Kaffee.",
+  "Maximal einundzwanzig Millionen Bitcoin, und ein paar Sats davon landen hier.",
+  "Liebe auf den ersten Block, sag ich nur.",
+  "Befreit die Sats, und ihr habt sie befreit.",
+  "Der Zap kam schneller als der nächste Block.",
+  "Lightning ist schnell, aber eure Großzügigkeit ist schneller.",
+  "So macht Livestream richtig Spaß.",
+  "Ihr seid das beste Publikum der Liga.",
+  "Das Brett freut sich, die Spieler freuen sich, ich freu mich.",
+  "Mit so einem Chat kann die Liga nur gewinnen.",
+  "Egal was passiert, wir sind gut gelaunt und stacken Satoshis.",
+  "Das ist Wertschätzung in der härtesten Währung der Welt.",
+  "Proof of Zap, sauber im Chat dokumentiert.",
+  "Kein Kurschart heute, nur gute Laune im Chat.",
+  "Ich nehm das als Zeichen, einfach weiterzuspielen.",
+  "Damit steht fest, wer heute die Stimmung macht.",
+  "Ein Zap sagt mehr als tausend Emojis.",
+  "Damit habt ihr gerade den Tag gerettet.",
+  "So klingt Bitcoin, wenn er Spaß macht.",
+  "Ich sag nur, Blockzeit für gute Laune.",
+  "Ihr zappt, wir spielen, alle haben Spaß.",
+  "Ganz ehrlich, ihr macht mich sprachlos.",
+  "Wenn das kein bullisches Signal ist, weiß ich auch nicht.",
+  "Die Sats sind angekommen, die Freude auch.",
+  "Dieser Chat stapelt nicht nur Sats, sondern auch gute Laune.",
+  "Ab sofort seid ihr offiziell Ehren-Plebs der Liga.",
+  "Das ist echtes Peer-to-Peer, direkt in den Stream.",
+  "Darf man abends noch GM sagen, ich sage ja, GM und danke."
+ ],
+ "greet_one": [
+  "Da schreibt jemand im Chat, hallo!",
+  "Hallo an dich im Chat!",
+  "Schön, dass du schreibst, willkommen!",
+  "Servus in den Chat!",
+  "GM in den Chat, egal wie spät es ist."
+ ],
+ "greet_many": [
+  "Grüße an alle, die gerade schreiben.",
+  "Schön, dass ihr im Chat seid.",
+  "Im Chat ist ja richtig was los!",
+  "Der Chat lebt, das freut mich.",
+  "Servus zusammen im Chat!"
+ ],
+ "invite": [
+  "Wer Lust hat, spielt einfach mit.",
+  "Kommt doch mal an ein Brett und spielt mit.",
+  "Mitspielen geht ganz einfach über die Seite der Liga.",
+  "Vielleicht sehen wir euch ja gleich am Brett.",
+  "Wer mag, fordert einfach jemanden zu einer Partie heraus.",
+  "Die Lobby ist offen, rund um die Uhr."
+ ],
+ "trusted_hello": [
+  "Hallo {name}, schön, dass du im Chat bist.",
+  "Servus {name}, danke für deine Nachricht.",
+  "Grüße an {name} im Chat!",
+  "Hey {name}, schön, dich im Chat zu sehen."
+ ]
+}

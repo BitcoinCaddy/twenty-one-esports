@@ -51,8 +51,14 @@ return [
     | plus `tail_seconds` (never mid-sentence), at most `max_hold_seconds`.
     |
     | chat (App\Support\Caster\ChatReactions): spoken reactions to the stream
-    | chat (kind 1311), only for trusted pubkeys (TrustRank >= the season's
-    | minimum, or web-of-trust level 1/2 of the league's trust anchors).
+    | chat (kind 1311): a personal one only for trusted pubkeys (TrustRank >=
+    | the season's minimum, or web-of-trust level 1/2 of the league's trust
+    | anchors); everybody else (`everyone`) gets a generic greeting without
+    | name or content, at most one per `everyone_minutes` for all of them.
+    | `zaps`: every zap of the stream (kind 9735) is thanked once, with the
+    | amount spelled out, the zapper's name only when trusted; zaps within
+    | `zap_bundle_seconds` share one thank-you, from `zap_big_sats` on an
+    | extra-emotional line. Pattern texts work with `ai` off.
     | `profiles` adds the persona card from public kind 0 + notes (cached in
     | the database, capped, pruned). Both stay off until the association has
     | decided the data protection question (profiling, GDPR).
@@ -162,6 +168,11 @@ return [
             'exchanges_per_person' => 5,
             'inactive_days' => 30,
             'wot_level_two_min_followers' => 2,
+            'everyone' => (bool) env('TV_COMMENTARY_CHAT_EVERYONE', true),
+            'everyone_minutes' => (int) env('TV_COMMENTARY_CHAT_EVERYONE_MINUTES', 3),
+            'zaps' => (bool) env('TV_COMMENTARY_CHAT_ZAPS', true),
+            'zap_bundle_seconds' => 60,
+            'zap_big_sats' => (int) env('TV_COMMENTARY_ZAP_BIG_SATS', 10_000),
         ],
     ],
 
