@@ -59,6 +59,8 @@ export default function matchDock(config) {
     let rowTab = null;
     let rowObserver = null;
     let rowWidth = null;
+    // The --dock-h this dock set for its tab on a page bar (reserveFloor), null while it set none.
+    let reservedFloor = null;
 
     return {
         open: null,
@@ -126,6 +128,7 @@ export default function matchDock(config) {
             this.teardown?.abort();
             rowObserver?.disconnect();
             document.documentElement.style.removeProperty('--dock-row-w');
+            document.documentElement.style.removeProperty('--dock-h');
             // Stop listening, never leave: the next page's dock (or the page itself) may watch the same game.
             this.listened.forEach((handler, id) => window.Echo?.channel('game.' + id + '.watch').stopListening('.game.updated', handler));
             this.listened.clear();
@@ -161,31 +164,19 @@ export default function matchDock(config) {
             this.open = null;
             window.dispatchEvent(new CustomEvent('dock-toggle', { detail: false }));
             if (returnFocus) {
-                const selector = was.startsWith('item:') ? `[data-dock-tab="${was.slice(5)}"]` : was === 'more' ? '[data-test=dock-more-button]' : was === 'slot' ? '[data-test=dock-slot-button]' : null;
+                const selector = was === 'sheet' ? '[data-test=dock-slot-button], [data-test=nav-actions], [data-test=tab-actions], [data-test=dock-bar-tab], [data-test=dock-row-tab]' : was === 'slot' ? '[data-test=dock-slot-button]' : null;
                 const target = selector && [...document.querySelectorAll(selector)].find((el) => el.getClientRects().length > 0);
                 target?.focus();
             }
         },
 
         /**
-         * The header's "Aktionen" entry (design canvas, Header.dc.html): on a phone the sheet, on a game page's
-         * title row its slot list, else the floating bar unfolded with the focus on its handle.
+         * The header's and the tab bar's "Aktionen" (ActionDock.dc.html, ActionDockPhone.dc.html): the dock, a panel
+         * under the header from 1024 px and a sheet over the tab bar below. Nothing open: the link's own page.
          */
         openFromHeader() {
-            if (Number(this.$root.dataset.open || 0) === 0) return false;
-            if (!window.matchMedia('(width >= 64rem)').matches) {
-                this.toggle('sheet');
-
-                return true;
-            }
-            const slot = this.$root.querySelector('[data-test=dock-slot-button]');
-            if (slot && slot.getClientRects().length > 0) {
-                this.toggle('slot', slot);
-
-                return true;
-            }
-            if (this.folded) this.fold();
-            this.$nextTick(() => this.$root.querySelector('[data-test=dock-handle]')?.focus());
+            if (Number(this.$root.dataset.open || 0) === 0 && this.$root.dataset.cup !== '1') return false;
+            this.toggle('sheet');
 
             return true;
         },
@@ -256,9 +247,26 @@ export default function matchDock(config) {
             // Whether the chat sheet is open, from its bar: a refresh of the dock runs init() anew, and the event is gone by then.
             if (bar) this.chatOpen = bar.getAttribute('aria-expanded') === 'true';
             this.reserveRow();
+            this.reserveFloor();
 
             const viewport = window.visualViewport;
             this.keyboard = !!viewport && viewport.height < window.innerHeight * 0.7;
+        },
+
+        /**
+         * The tab on a page bar (the match room's score bar, the daily move bar) stands 44 px above the bar's top edge, so
+         * whatever ends above the bars (the room chat: --dock-h, app.css) ends above the tab too, measured, not guessed:
+         * a taller score bar (2026-10-11, the draw decider) put the tab on the room chat's field. Unset without that tab.
+         */
+        reserveFloor() {
+            const tab = this.$root.querySelector('[data-test=dock-bar-tab]');
+            const shows = !!tab && this.pageBar !== null && !this.row && !this.keyboard && !this.chatOpen;
+            const tabbar = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+            const floor = shows ? Math.max(0, this.pageBar + 44 - tabbar) : null;
+            if (floor === reservedFloor) return;
+            reservedFloor = floor;
+            if (floor === null) document.documentElement.style.removeProperty('--dock-h');
+            else document.documentElement.style.setProperty('--dock-h', floor + 'px');
         },
 
         /**
@@ -370,7 +378,7 @@ export default function matchDock(config) {
             const turned = [...this.$root.querySelectorAll('[data-dock-item][data-need="1"]')].filter((el) => !before.has(el.dataset.dockItem));
             if (turned.length === 0 || config.quiet) return;
             turned.forEach((item) => {
-                this.$root.querySelectorAll(`[data-dock-tab="${item.dataset.dockItem}"]`).forEach((el) => {
+                this.$root.querySelectorAll(`[data-test=dock-card][data-key="${item.dataset.dockItem}"]`).forEach((el) => {
                     el.classList.remove('dk-ping');
                     void el.offsetWidth;
                     el.classList.add('dk-ping');

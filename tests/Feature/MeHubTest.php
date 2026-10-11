@@ -96,8 +96,8 @@ test('what needs the player, what runs and comes, ratings, results, clan and Loo
         ->toContain(route('ladder.show', ['game' => 'chess', 'mode' => 'blitz']))
         ->toContain(route('ladder.show', ['game' => 'rocket-league', 'mode' => '3v3']));
 
-    // Results: seven games and the series, newest (the series) first, from Satoshi's side, with deltas.
-    expect(substr_count($html, 'data-test="me-result"'))->toBe(8)
+    // Results: the last six of seven games and the series, newest (the series) first, from Satoshi's side, with deltas.
+    expect(substr_count($html, 'data-test="me-result"'))->toBe(6)
         ->and(strpos($html, route('matches.show', $player['won'])))->toBeLessThan(strpos($html, 'data-outcome="draw"'))
         ->and($html)->toContain('2 : 0')
         ->toContain('data-outcome="win"')
@@ -117,7 +117,7 @@ test('what needs the player, what runs and comes, ratings, results, clan and Loo
         ->toContain('data-test="invite-module" data-place="me"');
 });
 
-test('only the last ten results show, and the page reads a fixed number of queries however many there are', function () {
+test('only the last six results show, and the page reads a fixed number of queries however many there are', function () {
     $queries = function (int $results): int {
         $player = meHubPlayer($results);
         // Once before counting: the shell caches its league-wide counts on the first page of a run.
@@ -127,7 +127,8 @@ test('only the last ten results show, and the page reads a fixed number of queri
         $html = $this->actingAs($player['me'])->get(route('dashboard'))->assertOk()->getContent();
         DB::disableQueryLog();
 
-        expect(substr_count($html, 'data-test="me-result"'))->toBe(min(10, $results + 1));
+        // The last six, as Profile.dc.html draws them (P7).
+        expect(substr_count($html, 'data-test="me-result"'))->toBe(min(6, $results + 1));
 
         return count(DB::getQueryLog());
     };

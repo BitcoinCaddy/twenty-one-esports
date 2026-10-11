@@ -133,9 +133,9 @@ test('the dock and the notifications name the game\'s and the invite\'s mode', f
         expect($item?->title)->toBe(ChessModes::short($mode))
             ->and($item?->sentence)->toStartWith(ChessModes::short($mode).' ');
 
-        // The panel the dock opens names the game's mode too (reviewer 2026-10-05: "Blitz 10+5, casual" for a rapid game).
-        $panel = Blade::render('<x-match-dock.panel :item="$item" :now-ms="$n" :viewer="$p" />', ['item' => $item, 'n' => (int) now()->getTimestampMs(), 'p' => $game->white]);
-        expect($panel)->toContain(e(__(':mode, casual', ['mode' => ChessModes::label($mode)])))
+        // The dock's card names the game's mode too (reviewer 2026-10-05: "Blitz 10+5, casual" for a rapid game).
+        $card = Blade::render('<x-match-dock.card :item="$item" :now-ms="$n" />', ['item' => $item, 'n' => (int) now()->getTimestampMs()]);
+        expect($card)->toContain(e(ChessModes::short($mode)))
             ->when($mode !== 'blitz', fn ($html) => $html->not->toContain('Blitz'));
 
         $invite = ChessInvite::query()->create(['inviter_id' => User::factory()->create()->id, 'invitee_id' => User::factory()->create()->id, 'mode' => $mode,

@@ -75,6 +75,11 @@
         gap: 8px;
     }
 
+    /* The tall row (44 px chips, the touch target of R16): the ladder template's ladder switch. */
+    .rv-chips-lg .rv-chip {
+        height: 44px;
+    }
+
     .rv-chips-track {
         display: flex;
         min-width: 0;

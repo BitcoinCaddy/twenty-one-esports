@@ -7,9 +7,14 @@
  *
  * Markup: x-ref="track" around the chips (each [data-chip="<i>"]), x-ref="more" the "+N" button wrapper with its
  * [data-more-count], and the menu's links [data-chip-menu="<i>"].
+ *
+ * Morph-safe: a Livewire round trip of the page around the row morphs the chips back to the server's markup (every
+ * chip shown, the "+N" hidden). The `morphed` hook folds them again in the same task, before the next paint, so the
+ * row never unfolds for a frame (tests/Browser/ChipRowTest.php).
  */
 export default function chipRow() {
     let observer = null;
+    let unhook = null;
 
     return {
         open: false,
@@ -19,10 +24,18 @@ export default function chipRow() {
             this.$nextTick(() => this.fit());
             observer = new ResizeObserver(() => this.fit());
             observer.observe(this.$el);
+            unhook = window.Livewire?.hook?.('morphed', ({ el }) => {
+                if (!el || el.contains(this.$el)) {
+                    this.fit();
+                }
+            }) ?? null;
         },
 
         destroy() {
             observer?.disconnect();
+            if (typeof unhook === 'function') {
+                unhook();
+            }
         },
 
         fit() {

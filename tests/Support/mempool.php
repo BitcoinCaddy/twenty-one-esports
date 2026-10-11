@@ -70,7 +70,8 @@ function mempoolAttest(Season $season, string $source, int $id, ?int $height, ?s
  */
 function stripCubes(string $html): array
 {
-    preg_match_all('/data-test="strip-cube" data-game="([^"]+)" data-state="([^"]+)"/', $html, $matches, PREG_SET_ORDER);
+    // The chain of the Mempool page (x-ui.mempool-chain, P7 of plan "Refactor und Design-Revamp"); strip-cube was the old strip.
+    preg_match_all('/data-test="(?:strip|chain)-cube" data-game="([^"]+)" data-state="([^"]+)"/', $html, $matches, PREG_SET_ORDER);
 
     return array_map(fn (array $match): string => $match[1].':'.$match[2], $matches);
 }

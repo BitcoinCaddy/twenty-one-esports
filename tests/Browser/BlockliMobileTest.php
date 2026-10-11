@@ -324,7 +324,8 @@ test('on a desktop board page the match dock sits in the title row, not over the
         ->and($m['slot'][3])->toBeLessThanOrEqual($m['chat'][1]);
 
     $page->locator('[data-test=dock-slot-button]')->click();
-    BrowserWait::until($page, '() => !!document.querySelector("#dock-slot-list")?.checkVisibility()', 5_000);
+    // The title-row button opens the action dock's panel under the header (ActionDock.dc.html, P7).
+    BrowserWait::until($page, '() => !!document.querySelector("#dock-sheet")?.checkVisibility()', 5_000);
     expect($page->evaluate('() => window.__errors'))->toBe([])
         ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
 });

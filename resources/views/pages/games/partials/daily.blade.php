@@ -36,7 +36,7 @@
 @endphp
 
 {{-- Players get the chat sheet (72px) under the bottom bar on phones, hence the taller bottom padding. --}}
-<div wire:ignore x-data="dailyGame(@js($config))" x-on:keydown.window="hotkey($event)" @class(['flex flex-col gap-3 lg:gap-5 lg:px-12 lg:pb-10', $color ? 'pb-[212px]' : 'pb-[140px]']) data-test="daily-game">
+<div wire:ignore x-data="dailyGame(@js($config))" x-on:keydown.window="hotkey($event)" @class(['flex flex-col gap-3 lg:gap-5 lg:px-12 lg:pb-10', $color ? 'pb-[212px]' : 'pb-[140px]']) data-test="daily-game" data-focus-page>
 
     {{-- Title --}}
     <div class="flex flex-col gap-1.5 px-4 lg:px-0">
@@ -63,7 +63,7 @@
         {{-- Board column: the board, typing a move, draw and resign --}}
         <div class="max-lg:contents lg:col-start-1 lg:row-start-1 lg:flex lg:flex-col lg:gap-4">
             <div class="order-2 lg:order-none">
-                <x-chess.board :playable="$color !== null" class="lg:mt-4 lg:max-w-[544px]" x-bind:class="browsing && 'is-past'" data-test="daily-board">
+                <x-chess.board :playable="$color !== null" class="lg:mt-4 lg:max-w-[544px]" x-bind:class="browsing && 'is-past'" data-test="daily-board" data-focus-board>
                     {{-- Promotion picker --}}
                     <template x-if="promotion">
                         <div class="absolute inset-0">

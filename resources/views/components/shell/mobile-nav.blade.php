@@ -160,6 +160,9 @@
         @endif
     </div>
 
+    {{-- Focus mode (resources/js/focusMode.js, P7): while the bar is away on a game page, this strip at the bottom edge brings it back. --}}
+    <button type="button" class="focus-edge lg:hidden" aria-label="{{ __('Show the navigation') }}" data-test="focus-edge"></button>
+
     {{-- The tab bar: five places, labelled, 64 px plus the safe-area inset. --}}
     <nav class="tabbar fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-bar pb-[env(safe-area-inset-bottom)]" aria-label="{{ __('Main navigation') }}" data-test="tab-bar" data-live-floor>
         <div class="rv-pb">

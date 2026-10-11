@@ -37,27 +37,29 @@ pest()->group('browser');
 /** Every card and the spotlight, scrolled into view one by one so lazy pictures load, then measured. */
 const CLAN_PRIDE_MEASURE = <<<'JS'
     async () => {
-        // Shown boxes only: the spotlight clan's grid card waits hidden for a search (the search filters in the browser, performance plan P7).
-        const boxes = [...document.querySelectorAll('[data-test=clan-spotlight], [data-test=clan-card]')].filter((el) => el.offsetParent !== null);
-        for (const box of boxes) {
-            box.scrollIntoView({ block: 'center' });
-            await Promise.all([...box.querySelectorAll('img')].map((img) => img.complete ? null : new Promise((done) => { img.addEventListener('load', done, { once: true }); img.addEventListener('error', done, { once: true }); setTimeout(done, 3000); })));
+        // Shown rows only: a search hides rows in the browser (performance plan P7). Clans.dc.html (P7): one table.
+        const rows = [...document.querySelectorAll('[data-test=clan-card]')].filter((el) => el.checkVisibility());
+        for (const row of rows) {
+            row.scrollIntoView({ block: 'center' });
+            await Promise.all([...row.querySelectorAll('img')].map((img) => img.complete ? null : new Promise((done) => { img.addEventListener('load', done, { once: true }); img.addEventListener('error', done, { once: true }); setTimeout(done, 3000); })));
         }
         window.scrollTo(0, 0);
+        const table = document.querySelector('[data-test=clan-grid]');
+        const edge = table ? table.getBoundingClientRect().right : 0;
         const rect = (el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y + scrollY), w: Math.round(r.width), h: Math.round(r.height) }; };
-        const card = (el) => ({
+        const row = (el) => ({
             clan: el.dataset.clan,
             ...rect(el),
-            lit: el.hasAttribute('data-lit'),
             mark: el.querySelector('[data-test$=-mark]') ? rect(el.querySelector('[data-test$=-mark]')) : null,
-            faces: [...el.querySelectorAll('img[data-avatar]')].map((img) => img.naturalWidth),
             logos: [...el.querySelectorAll('img[data-clan-logo]')].map((img) => [img.naturalWidth, img.loading]),
             moment: el.querySelector('[data-test=clan-moment]')?.innerText ?? null,
-            wider: [...el.querySelectorAll('*')].filter((c) => c.getBoundingClientRect().right > el.getBoundingClientRect().right + 1 && !c.closest('.cube')).length,
+            // Nothing of a row reaches past the table's card (a sideways scroller would hide it).
+            wider: [...el.querySelectorAll('*')].filter((c) => c.checkVisibility() && c.getBoundingClientRect().right > edge + 1).length,
         });
         return {
-            spotlight: [...document.querySelectorAll('[data-test=clan-spotlight]')].map(card),
-            cards: [...document.querySelectorAll('[data-test=clan-card]')].filter((el) => el.offsetParent !== null).map(card),
+            spotlight: [...document.querySelectorAll('[data-test=clan-spotlight]')].map(row),
+            cards: rows.map(row),
+            tableScrolls: table ? table.scrollWidth > table.clientWidth : false,
             empty: document.querySelector('[data-test=clans-empty]') !== null,
             lang: document.documentElement.lang,
         };
@@ -140,7 +142,7 @@ function clanPrideWorld(int $count, int $offset = 0): void
     }
 }
 
-test('clan cards with marks, faces and proud moments at 0, 2 and 12 clans, 375 and 1440 px, English and German', function () {
+test('the clan table with marks and proud moments at 0, 2 and 12 clans, 375 and 1440 px, English and German', function () {
     $viewer = User::factory()->create(['name' => 'Vera Viewer']);
     $controlled = false;
 
@@ -155,7 +157,7 @@ test('clan cards with marks, faces and proud moments at 0, 2 and 12 clans, 375 a
             foreach (Clan::query()->orderBy('name')->take(3)->get() as $index => $clan) {
                 $clan->update(['picture' => clanPrideLogo($index)]);
             }
-            // A won series (the spotlight) and a streak of 4 (a lit card).
+            // A won series and a streak of 4: each the line under its clan's name.
             $winner = Clan::query()->where('name', 'Mempool Maniacs')->sole()->lineups()->sole();
             $loser = Clan::query()->where('name', 'Block 21')->sole()->lineups()->sole();
             SeriesMatch::factory()->create(['challenger_lineup_id' => $winner->id, 'challenged_lineup_id' => $loser->id, 'status' => SeriesStatus::Confirmed, 'winner' => 'challenger',
@@ -185,37 +187,30 @@ test('clan cards with marks, faces and proud moments at 0, 2 and 12 clans, 375 a
             fwrite(STDERR, "\n[clan-pride] {$size} clans {$width}px {$locale} doc ".json_encode($widths).' '.json_encode($m, JSON_UNESCAPED_UNICODE)."\n");
             clanPrideShot($page, "clan-pride-{$size}-{$width}-{$locale}");
 
-            $all = [...$m['spotlight'], ...$m['cards']];
             $gridNames = array_map(fn (array $card): string => Clan::query()->where('slug', $card['clan'])->value('name'), $m['cards']);
             $sorted = $gridNames;
             sort($sorted);
 
+            // Before Block 0 the table is by name; no spotlight any more (Clans.dc.html, P7).
             expect($m['lang'])->toBe($locale)
                 ->and($widths[0])->toBeLessThanOrEqual($widths[1])
                 ->and($m['empty'])->toBe($size === 0)
-                ->and(count($all))->toBe($size)
+                ->and($m['spotlight'])->toBe([])
+                ->and(count($m['cards']))->toBe($size)
                 ->and($gridNames)->toBe($sorted)
-                ->and(collect($all)->every(fn (array $card): bool => $card['mark'] !== null && $card['wider'] === 0
-                    && count($card['faces']) >= 3 && min($card['faces']) > 0
-                    && collect($card['logos'])->every(fn (array $logo): bool => $logo[0] > 0)))->toBeTrue()
-                ->and(collect($m['cards'])->pluck('w')->unique()->values()->all())->toBe($size === 0 ? [] : [$width === 375 ? 343 : 432]);
+                ->and($m['tableScrolls'])->toBeFalse()
+                ->and(collect($m['cards'])->every(fn (array $card): bool => $card['mark'] !== null && $card['mark']['w'] === 32 && $card['wider'] === 0 && $card['h'] >= 44
+                    && collect($card['logos'])->every(fn (array $logo): bool => $logo[0] > 0)))->toBeTrue();
 
             if ($size === 12) {
-                $spot = $m['spotlight'][0] ?? null;
-                $lit = collect($m['cards'])->where('lit', true)->values();
+                $moments = collect($m['cards'])->mapWithKeys(fn (array $card): array => [Clan::query()->where('slug', $card['clan'])->value('name') => $card['moment']]);
 
-                expect($spot)->not->toBeNull()
-                    ->and(Clan::query()->where('slug', $spot['clan'])->value('name'))->toBe('Mempool Maniacs')
-                    ->and($spot['moment'])->toContain('Block 21')->toContain('2:0')
-                    ->and($lit)->toHaveCount(1)
-                    ->and(Clan::query()->where('slug', $lit[0]['clan'])->value('name'))->toBe('Genesis Guild')
-                    ->and($lit[0]['moment'])->toContain($locale === 'de' ? '4 Partien in Folge' : '4 games in a row')
-                    // Three columns at 1440, the grid's first row on one line.
-                    ->and($width === 1440 ? count(array_unique(array_column(array_slice($m['cards'], 0, 3), 'y'))) : 1)->toBe(1);
+                expect($moments['Mempool Maniacs'])->toContain('Block 21')->toContain('2:0')
+                    ->and($moments['Genesis Guild'])->toContain($locale === 'de' ? '4 Partien in Folge' : '4 games in a row');
 
-                // A search (filtered in the browser since performance plan P7): one card shown, no spotlight.
+                // A search (filtered in the browser since performance plan P7): one row shown.
                 $page->locator('#clan-q')->fill('genesis');
-                BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=clan-card]")].filter((el) => el.offsetParent !== null).length === 1 && document.querySelector("[data-test=clan-spotlight]")?.offsetParent === null', 10_000);
+                BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=clan-card]")].filter((el) => el.checkVisibility()).length === 1', 10_000);
             }
 
             expect($page->evaluate('() => window.__errors'))->toBe([])

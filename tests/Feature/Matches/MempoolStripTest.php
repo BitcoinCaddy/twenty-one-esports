@@ -56,20 +56,18 @@ test('the strip shows every game, casual and rated, finished and running, merged
         'chess:live', 'rocket-league:next',
     ]);
 
-    // Every game in its colour family; the legend names exactly the games on screen, in the registry's order.
-    preg_match_all('/data-test="strip-legend-game" data-game="([^"]+)"/', $html, $legend);
-    expect($legend[1])->toBe(['chess', NineMensMorris::SLUG, Checkers::SLUG, 'rocket-league'])
-        ->and($html)->toContain('bs-cube g-morris is-fin')->toContain('bs-cube g-checkers is-fin')->toContain('bs-cube g-rl is-fin')
-        ->and($html)->toContain('>Mempool</p>')
-        ->toContain('Matches of every game, played and waiting.')
+    // Every game in its colour family (Mempool.dc.html: the legend names the kinds of cube, not the games).
+    expect($html)->toContain('rv-cube g-morris')->toContain('rv-cube g-checkers')->toContain('rv-cube g-rl')
+        ->and($html)->toContain('data-test="mempool-legend"')
+        ->toContain('Matches and highscore attempts of every game, done on the left, waiting on the right.')
         ->toContain('href="'.route('mining').'"')
         ->toContain('href="'.route('board.show', $morris).'"')
         ->toContain('href="'.route('games.show', $daily).'"')
         // The match number stays a match number; a casual board game has none.
-        ->toContain('<span class="bs-num" data-test="strip-number">'.$series->label().'</span>')
-        ->toContain('<span class="bs-num" data-test="strip-number">'.$blitz->number().'</span>')
-        ->toContain('<span class="bs-num" data-test="strip-number">#'.$checkers->number.'</span>')
-        ->toContain('<span class="bs-num" data-test="strip-number"></span>')
+        ->toContain('<span data-test="strip-number">'.$series->label().'</span>')
+        ->toContain('<span data-test="strip-number">'.$blitz->number().'</span>')
+        ->toContain('<span data-test="strip-number">#'.$checkers->number.'</span>')
+        ->toContain('<span data-test="strip-number"></span>')
         ->and($running->id)->toBeInt()->and($scheduled->id)->toBeInt();
 });
 
@@ -122,11 +120,11 @@ test('a mined rated match shows its block and links to it; a voided or unmined o
     expect(substr_count($html, 'data-test="strip-block"'))->toBe(2)
         ->and($html)->toContain('href="'.route('mining').'#block-812"')
         ->toContain('is-mined')
-        ->toContain('<span class="bs-stamp-text">Block 813</span>')
+        ->toContain('Block 813</span>')
         ->toContain('data-test="strip-block-note">void</span>')
         ->toContain('data-test="strip-no-block"')
         // A screen reader hears "no block: <reason>", the prefix once (review note).
-        ->toContain('<span class="bs-stamp-text">no block</span><span class="sr-only">: a player is not Trusted yet</span>')
+        ->toContain('no block<span class="sr-only">: a player is not Trusted yet</span>')
         ->not->toContain('No block: No block')
         ->not->toContain('#block-900');
 });
@@ -159,24 +157,23 @@ test('a block of another season names its season and links nowhere; only a block
         ->and($blocks['series-'.$then->id]['chain']['href'])->toBeNull();
 });
 
-test('the strip promises mining only while a season runs', function () {
+test('the Mempool page never promises mining, before, during or between seasons: how blocks are mined is on the rules page', function () {
+    // Mempool.dc.html: the head says what the page is ("done on the left, waiting on the right"); explanation lives on
+    // the rules page (plan "Refactor und Design-Revamp": Erklärtext raus aus den Ansichten), linked from the head.
     mempoolSeries();
-    $promise = 'A fair rated win mines a block of the season chain.';
+    $promise = 'mines a block';
+    $rules = 'href="'.route('rules').'#season-chain"';
 
-    // Before Block 0.
     $html = $this->get(route('matches.index'))->assertOk()->getContent();
-    expect($html)->not->toContain($promise)->not->toContain('Rated wins mine a block of the season chain')
-        ->toContain('Rated wins mine blocks only while a season runs.');
+    expect($html)->not->toContain($promise)->toContain($rules);
 
-    // Live.
     $season = openSeason();
     $html = $this->get(route('matches.index'))->assertOk()->getContent();
-    expect($html)->toContain($promise)->toContain('Rated wins mine a block of the season chain');
+    expect($html)->not->toContain($promise)->toContain($rules);
 
-    // Between seasons.
     $season->forceFill(['ends_at' => now()->subMinute()])->save();
     $html = $this->get(route('matches.index'))->assertOk()->getContent();
-    expect($html)->not->toContain($promise)->toContain('Rated wins mine blocks only while a season runs.');
+    expect($html)->not->toContain($promise)->toContain($rules);
 });
 
 test('/mining carries the anchor of each latest block, where the strip links a mined match', function () {
@@ -322,11 +319,10 @@ test('the Chain filter narrows strip, table and status counts to the rated or th
         ->toContain('href="'.route('board.show', $ratedBoard).'"')->not->toContain('href="'.route('board.show', $casualBoard).'"')
         ->and($casual)->toContain('href="'.route('matches.show', $casualSeries).'"')->not->toContain('href="'.route('matches.show', $ratedSeries).'"')
         ->toContain('href="'.route('board.show', $casualBoard).'"')->not->toContain('href="'.route('board.show', $ratedBoard).'"')
-        // Each view says what it is; the casual one never promises mining.
-        ->and($casual)->toContain('They move the casual rating and mine no blocks.')->not->toContain('mines a block')
-        ->and($season)->toContain('Rated matches of every game, played and waiting.')
-        ->and($casual)->toMatch('/aria-pressed="true" data-test="chain-casual"/')
-        ->and($all)->toMatch('/aria-pressed="true" data-test="chain-all"/');
+        // The casual view never promises mining; the chain chips mark the view on screen (x-ui.chips, aria-current).
+        ->and($casual)->not->toContain('mines a block')
+        ->and($casual)->toMatch('/aria-current="page"\s+class="rv-chip"\s+data-test="chain-casual"/')
+        ->and($all)->toMatch('/aria-current="page"\s+class="rv-chip"\s+data-test="chain-all"/');
 
     // The status counts follow the chain: one casual game playing, none rated.
     Livewire::withQueryParams(['chain' => 'casual'])->test('pages::matches.index')

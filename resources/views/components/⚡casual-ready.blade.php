@@ -185,53 +185,55 @@ new class extends Component
         {{-- Full attention: nothing else on the page matters for these 60 seconds. --}}
         <div wire:key="ready-{{ $match->number }}" class="fixed inset-0 z-[60] flex items-end justify-center bg-[rgba(10,10,11,.82)] backdrop-blur-[2px] lg:items-center"
              x-data="casualReadyPrompt(@js($config))" data-test="ready-prompt" data-match="{{ $match->number }}">
+            {{--
+                MatchRoom-1a-Bereit.dc.html (P7 of plan "Refactor und Design-Revamp"): a flat card with an orange edge, "Match
+                gefunden", the two names as the title, the format, minutes and seconds left in two boxes beside the seats,
+                one sentence and the one action. A phone gets it as a sheet on the bottom edge.
+            --}}
             <section role="dialog" aria-modal="true" aria-labelledby="ready-h" aria-describedby="ready-d" x-trap.noscroll="true"
-                     class="dk-sheet flex max-h-[100svh] w-full flex-col gap-5 overflow-y-auto rounded-t-2xl bg-card px-4 pt-5 pb-6 shadow-[0_0_0_1px_var(--color-btc-ring),0_-24px_48px_rgba(10,10,11,.6)] lg:max-w-[560px] lg:rounded-lg lg:px-8 lg:py-8"
+                     class="dk-sheet flex max-h-[100svh] w-full flex-col gap-5 overflow-y-auto rounded-t-[8px] border border-btc bg-card px-4 pt-5 pb-6 shadow-[0_0_32px_rgb(247_147_26/0.25)] lg:max-w-[560px] lg:rounded-[4px] lg:p-8"
                      data-test="ready-sheet">
-                <div class="flex items-center gap-3">
-                    <x-game-cover :game="$match->game" size="thumb" loading="eager" class="w-14 shrink-0 rounded-sm shadow-ring" />
-                    <span class="flex min-w-0 flex-col gap-0.5">
-                        <h2 id="ready-h" class="m-0 font-display text-xl leading-tight font-bold lg:text-2xl">{{ __('Match found') }}</h2>
-                        <span class="truncate text-xs text-ink-2">{{ __(':game 1v1, casual, best of :n', ['game' => $gameName, 'n' => $match->best_of]) }}</span>
-                    </span>
+                <span class="rv-live self-start"><i></i>{{ __('Match found') }}</span>
+                <div class="flex flex-col gap-2">
+                    <h2 id="ready-h" class="m-0 font-display text-[24px] leading-[1.15] font-bold [overflow-wrap:anywhere] lg:text-[30px]">{{ __(':a against :b', ['a' => $user->displayName(), 'b' => $opponent?->displayName() ?? '']) }}</h2>
+                    <span class="text-[14px] text-ink-2">{{ __(':game 1v1, casual, best of :n', ['game' => $gameName, 'n' => $match->best_of]) }}</span>
                 </div>
 
-                {{-- The two seats: each lights up when its player pressed Ready. --}}
-                <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3" data-test="ready-seats">
-                    @foreach ([[$user, $meReady, true], [$opponent, $themReady, false]] as $index => [$player, $isReady, $isMe])
-                        @if ($index === 1)
-                            <span class="font-display text-sm font-bold text-ink-3" aria-hidden="true">vs</span>
-                        @endif
-                        <span @class(['flex min-w-0 flex-col items-center gap-2 rounded-lg px-2 py-3 text-center', 'bg-win-tint shadow-[inset_0_0_0_1px_var(--color-win-ring)]' => $isReady, 'bg-well shadow-ring' => ! $isReady])
-                              data-test="ready-seat-{{ $isMe ? 'me' : 'them' }}" data-ready="{{ $isReady ? '1' : '0' }}">
-                            <x-avatar :user="$player" :size="56" class="rounded-md" />
-                            <b class="w-full truncate text-[13px]">{{ $isMe ? __('You') : $player?->displayName() }}</b>
-                            <span @class(['inline-flex items-center gap-1 text-xs font-bold', 'text-win' => $isReady, 'text-ink-2' => ! $isReady])>
-                                @if ($isReady)<x-icon name="check" :size="14" />{{ __('Ready') }}@else{{ __('Not ready yet') }}@endif
-                            </span>
-                        </span>
-                    @endforeach
+                <div class="flex flex-wrap items-center gap-x-8 gap-y-4">
+                    {{-- Minutes and seconds left as two boxes (the board's countdown segments); the timer text for screen readers. --}}
+                    <span class="rv-cd" aria-hidden="true" x-bind:class="urgent && 'text-loss'">
+                        <span class="rv-cd-seg"><b class="min-w-[64px] text-[36px]" x-text="(left.split(':')[0] ?? '0').padStart(2, '0')">{{ str_pad(explode(':', App\Support\Dock\OpenMatches::format((int) $match->ready_by?->getTimestampMs() - (int) now()->getTimestampMs(), 'clock'))[0], 2, '0', STR_PAD_LEFT) }}</b><span class="rv-m">{{ __('Mins') }}</span></span>
+                        <span class="rv-cd-colon">:</span>
+                        <span class="rv-cd-seg"><b class="min-w-[64px] text-[36px]" x-text="left.split(':')[1] ?? '00'">{{ explode(':', App\Support\Dock\OpenMatches::format((int) $match->ready_by?->getTimestampMs() - (int) now()->getTimestampMs(), 'clock'))[1] ?? '00' }}</b><span class="rv-m">{{ __('Secs') }}</span></span>
+                    </span>
+                    <span class="sr-only" role="timer" aria-live="off" x-text="left" data-test="ready-clock">{{ App\Support\Dock\OpenMatches::format((int) $match->ready_by?->getTimestampMs() - (int) now()->getTimestampMs(), 'clock') }}</span>
+
+                    {{-- The two seats: each says when its player pressed Ready. --}}
+                    <ul class="m-0 flex min-w-0 list-none flex-col gap-2 p-0" data-test="ready-seats">
+                        @foreach ([[$user, $meReady, true], [$opponent, $themReady, false]] as [$player, $isReady, $isMe])
+                            <li class="flex min-w-0 items-center gap-3" data-test="ready-seat-{{ $isMe ? 'me' : 'them' }}" data-ready="{{ $isReady ? '1' : '0' }}">
+                                <x-avatar :user="$player" :size="32" class="rounded-full" />
+                                <span class="flex min-w-0 flex-col">
+                                    <b class="truncate text-[14px]">{{ $player?->displayName() }}</b>
+                                    <span @class(['inline-flex items-center gap-1 text-[13px]', 'text-win' => $isReady, 'text-ink-2' => ! $isReady])>
+                                        @if ($isReady)<x-icon name="check" :size="14" />{{ __('ready') }}@else{{ __('not ready yet') }}@endif
+                                    </span>
+                                </span>
+                            </li>
+                        @endforeach
+                    </ul>
                 </div>
 
-                {{-- The clock: one big number and a fuse that burns down. --}}
-                <div class="flex flex-col gap-2" role="timer" aria-live="off">
-                    <span class="flex items-baseline justify-between gap-3">
-                        <span id="ready-d" class="text-[13px] leading-normal text-ink-2">{{ $meReady ? __('Waiting for :name. The match room opens when both are ready.', ['name' => $opponent?->displayName() ?? '']) : __('Press Ready within :seconds seconds. The match room opens when both are ready.', ['seconds' => $match->casualSetting('ready_seconds')]) }}</span>
-                        <b class="font-display text-[40px] leading-none font-bold tabular-nums lg:text-5xl" x-bind:class="urgent ? 'text-loss' : 'text-ink'" x-text="left" data-test="ready-clock">{{ App\Support\Dock\OpenMatches::format((int) $match->ready_by?->getTimestampMs() - (int) now()->getTimestampMs(), 'clock') }}</b>
-                    </span>
-                    <span class="block h-1.5 overflow-hidden rounded-xs bg-raised" aria-hidden="true">
-                        <span class="block h-1.5 rounded-xs" x-bind:class="urgent ? 'bg-loss' : 'bg-btc'" x-bind:style="{ width: (share * 100) + '%' }"></span>
-                    </span>
-                </div>
+                <p id="ready-d" class="m-0 text-[13px] leading-normal text-ink-2">{{ $meReady ? __('Waiting for :name. The match room opens when both are ready.', ['name' => $opponent?->displayName() ?? '']) : __('Press Ready within :seconds seconds. The match room opens when both are ready.', ['seconds' => $match->casualSetting('ready_seconds')]) }}</p>
 
                 @if ($meReady)
-                    <p class="m-0 flex min-h-14 items-center justify-center gap-2 rounded-md bg-win-tint text-[15px] font-bold text-win" role="status" data-test="ready-done">
+                    <p class="m-0 flex min-h-14 items-center justify-center gap-2 rounded-[4px] border border-win-ring bg-win-tint text-[15px] font-bold text-win lg:self-start lg:px-8" role="status" data-test="ready-done">
                         <x-icon name="check" :size="18" />{{ __('You are ready') }}
                     </p>
                 @else
                     <button type="button" x-ref="ready" x-on:click="ready()" x-bind:disabled="busy" data-test="ready-button"
-                            class="btn-p inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-btc font-display text-lg font-bold text-on-btc disabled:cursor-wait disabled:opacity-70">
-                        <x-icon name="check" :size="20" />{{ __('Ready') }}
+                            class="rv-b min-h-14 w-full px-8 text-[16px] disabled:cursor-wait disabled:opacity-70 lg:min-h-[52px] lg:w-auto lg:self-start">
+                        {{ __('Ready') }}
                     </button>
                 @endif
                 <p x-show="error" x-text="error" x-cloak class="m-0 text-[13px] text-loss" role="alert" data-test="ready-error"></p>

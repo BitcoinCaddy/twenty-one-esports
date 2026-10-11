@@ -213,9 +213,13 @@ const PAGE_BUDGETS = [
     'live' => [14, 46],
     'clans.index' => [8, 43],
     // +2 (plan "Refactor und Design-Revamp", P3): how the season works moved here from home (the rules in force, the draft).
-    'mining' => [19, 50],
+    // +4 (P7, Season.dc.html): "gerade eben" under the head (HomeBoard::ticker(), the latest moves, results and runs).
+    'mining' => [23, 54],
     'games.index' => [5, 36],
-    'matches.index' => [38, 69],
+    // +8 (plan "Refactor und Design-Revamp", P7, Mempool.dc.html): "gerade eben" (latest moves, results and checked runs,
+    // HomeBoard::ticker()) and the proud moments (HomeBoard::pride()) the start page shows too; the advanced statistics
+    // are read only once opened.
+    'matches.index' => [46, 77],
     'scores.show' => [7, 38],
     // +2 (plan "Schach Rapid und Clan", P1): the published-ladder read and the player's chess rapid rating.
     'dashboard' => [null, 68],

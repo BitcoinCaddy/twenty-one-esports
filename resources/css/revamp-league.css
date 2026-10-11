@@ -1,0 +1,603 @@
+/*
+ * The league and account pages of the revamp (plan "Refactor und Design-Revamp", P7; canvas pages "Liga" and
+ * "Spieler & Konto"). Values 1:1 from the boards (Mempool.dc.html `.tb .tag .dd`, Season.dc.html, Profile.dc.html,
+ * ActionDock.dc.html); tokens and radius from rule R16, motion from R17. Primitives of revamp.css are reused.
+ */
+@layer components {
+    /* LIVE as a tag (Mempool.dc.html: `.tag` red with the live ring), the word always there (WCAG 1.4.1). */
+    .rv-tag.is-live {
+        border-color: var(--color-live-ring);
+        color: var(--color-live);
+    }
+
+    /* The Mempool page's chain anchors itself when older blocks come in (mempoolChain.js history()), not the browser. */
+    .rv-chain[data-history] .rv-chain-vp {
+        overflow-anchor: none;
+    }
+
+    /* A long cube value (a time with milliseconds, "0:50.000"): wide display digits ran 8 px past the 80 px face at 15 px. */
+    .rv-cube-v.is-long {
+        font-size: 13px;
+    }
+
+    /* The season chain stamp under a mined cube: the block, a small orange square before it (R14). */
+    .rv-stamp {
+        display: inline-flex;
+        width: 108px;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        color: var(--color-btc);
+        font-size: 12px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rv-stamp > i {
+        display: block;
+        width: 8px;
+        height: 8px;
+        flex: none;
+        background: var(--color-btc);
+    }
+
+    .rv-stamp.is-elsewhere,
+    .rv-stamp.is-none {
+        color: var(--color-ink-3);
+    }
+
+    .rv-stamp.is-elsewhere > i {
+        background: var(--color-ink-3);
+    }
+
+    .rv-stamp.is-void {
+        color: var(--color-ink-3);
+        text-decoration: line-through;
+    }
+
+    /* Dropdown (`.dd`, Components.dc.html): a 44 px button with its listbox, never the native select (rule R11). */
+    .rv-dd {
+        display: flex;
+        width: 100%;
+        height: 44px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 0 12px;
+        border: 1px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-ground);
+        color: var(--color-ink);
+        font: inherit;
+        font-size: 14px;
+        text-align: left;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .rv-dd:hover {
+        border-color: var(--color-edge);
+    }
+
+    .rv-dd > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .rv-dd-menu {
+        position: absolute;
+        z-index: 40;
+        top: calc(100% + 4px);
+        right: 0;
+        left: 0;
+        display: flex;
+        max-height: 320px;
+        flex-direction: column;
+        padding: 4px;
+        overflow-y: auto;
+        border: 1px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-row-hover);
+        box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+    }
+
+    .rv-dd-menu > [role="option"] {
+        display: flex;
+        min-height: 44px;
+        flex: none;
+        align-items: center;
+        padding: 0 10px;
+        border-radius: 3px;
+        color: var(--color-ink-2);
+        font-size: 14px;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .rv-dd-menu > [role="option"]:hover,
+    .rv-dd-menu > [role="option"].is-active {
+        background: var(--color-raised);
+        color: var(--color-ink);
+    }
+
+    .rv-dd-menu > [role="option"][aria-selected="true"] {
+        color: var(--color-btc);
+        font-weight: 700;
+    }
+
+    /* The Mempool table (Mempool.dc.html `.tb`): eight columns from lg, 40 px rows, hairline under each. */
+    .mp-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 12px;
+        row-gap: 2px;
+        min-height: 52px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--color-hairline);
+        color: var(--color-ink);
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
+    .mp-row:hover {
+        background: var(--color-row-hover);
+        color: var(--color-ink);
+    }
+
+    .mp-row:last-child {
+        border-bottom: 0;
+    }
+
+    .mp-head {
+        grid-column: 1;
+        grid-row: 1;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mp-sides {
+        display: flex;
+        min-width: 0;
+        grid-column: 1;
+        grid-row: 2;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        color: var(--color-ink-2);
+        font-size: 12px;
+    }
+
+    .mp-sides > * {
+        min-width: 0;
+    }
+
+    .mp-check {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+
+    .mp-num {
+        color: var(--color-btc);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mp-score {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mp-th {
+        display: none;
+    }
+
+    @media (width >= 64rem) {
+        .mp-row,
+        .mp-th {
+            grid-template-columns: 64px 92px minmax(0, 1fr) 96px minmax(0, 180px) 112px 112px 148px;
+            column-gap: 16px;
+        }
+
+        /* The board's 40 px row, 44 px as a link target (the house rule; the row is one link). */
+        .mp-row {
+            min-height: 44px;
+            padding: 6px 12px;
+        }
+
+        .mp-sides,
+        .mp-check {
+            grid-column: auto;
+            grid-row: auto;
+        }
+
+        .mp-sides {
+            color: var(--color-ink);
+            font-size: 14px;
+        }
+
+        .mp-th {
+            display: grid;
+            align-items: center;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--color-line);
+            color: var(--color-ink-3);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+    }
+
+    /* The Season hero before Block 0 (Season.dc.html `.band`): an orange edge, the countdown, the genesis block. */
+    .sn-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: center;
+        gap: 32px;
+        padding: 20px 16px;
+        border: 1px solid var(--color-btc-ring);
+        border-radius: 4px;
+        background: linear-gradient(100deg, #1a140b, var(--color-card) 62%);
+        box-shadow: inset 4px 0 0 var(--color-btc);
+    }
+
+    @media (width >= 64rem) {
+        .sn-hero {
+            grid-template-columns: minmax(0, 1fr) auto;
+            padding: 32px;
+        }
+    }
+
+    .sn-cd .rv-cd-seg > b {
+        min-width: 68px;
+        font-size: 36px;
+    }
+
+    @media (width < 40rem) {
+        .sn-cd .rv-cd-seg > b {
+            min-width: 52px;
+            font-size: 24px;
+        }
+    }
+
+    .sn-genesis {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        flex: none;
+        filter: drop-shadow(0 0 22px rgb(247 147 26 / 0.5));
+    }
+
+    .sn-genesis > .rv-cube-tp {
+        width: 120px;
+        height: 14px;
+        background: var(--color-btc-hi);
+        clip-path: polygon(14px 0, 120px 0, 106px 14px, 0 14px);
+    }
+
+    .sn-genesis > .rv-cube-sd {
+        width: 14px;
+        height: 120px;
+        background: var(--color-btc-deep);
+        clip-path: polygon(0 14px, 14px 0, 14px 106px, 0 120px);
+    }
+
+    .sn-genesis-fr {
+        position: absolute;
+        top: 14px;
+        left: 0;
+        display: flex;
+        width: 106px;
+        height: 106px;
+        flex-direction: column;
+        padding: 10px;
+        background: var(--color-btc);
+        color: var(--color-on-btc);
+    }
+
+    .sn-link {
+        width: 20px;
+        height: 2px;
+        flex: none;
+        background: repeating-linear-gradient(90deg, var(--color-edge) 0 4px, transparent 4px 8px);
+    }
+
+    .sn-ghost {
+        display: grid;
+        flex: none;
+        place-items: center;
+        border: 1.5px dashed var(--color-edge);
+        border-radius: 3px;
+        background: var(--color-card);
+        color: var(--color-ink-3);
+        font-family: var(--font-display);
+        font-size: 14px;
+    }
+
+    /* The era table (Season.dc.html `.tb.tight`): 13 px, 6 px cells, the pay bar beside each era. */
+    .sn-tb th,
+    .sn-tb td {
+        padding-right: 6px;
+        padding-left: 6px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .sn-tb th:first-child,
+    .sn-tb td:first-child {
+        padding-left: 16px;
+    }
+
+    .sn-tb tr.is-current td {
+        background: var(--color-btc-chip);
+    }
+
+    .sn-bar {
+        display: inline-block;
+        height: 12px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, var(--color-btc), var(--color-btc-hi));
+        box-shadow: 0 0 10px rgb(247 147 26 / 0.35);
+    }
+
+    /* The action dock (ActionDock.dc.html): a panel under the header on the right from 1024 px, a sheet over the tab bar. */
+    .dk-drawer {
+        position: fixed;
+        z-index: 40;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: flex;
+        max-height: 80svh;
+        flex-direction: column;
+        border-top: 1px solid var(--color-line);
+        border-radius: 8px 8px 0 0;
+        background: var(--color-bar);
+        box-shadow: 0 -16px 32px rgb(10 10 11 / 0.8);
+        animation: dk-sheet 0.25s ease-out both;
+    }
+
+    @media (width >= 64rem) {
+        .dk-drawer {
+            top: 56px;
+            bottom: 0;
+            left: auto;
+            width: 460px;
+            max-height: none;
+            border-top: 0;
+            border-left: 1px solid var(--color-line);
+            border-radius: 0;
+            animation: dk-rise 0.2s ease-out both;
+        }
+    }
+
+    .dk-card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid var(--color-hairline);
+        border-radius: 4px;
+        background: var(--color-card);
+    }
+
+    .dk-card.is-now {
+        box-shadow: inset 3px 0 0 var(--color-live);
+    }
+
+    .dk-card-title {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 14px;
+        line-height: 1.3;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .dk-card-time {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .dk-card-time.is-urgent {
+        color: var(--color-live);
+    }
+
+    .dk-card-dot {
+        display: block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--color-live);
+    }
+
+    /* A result on /me (Profile.dc.html "Letzte Ergebnisse"): a card with its outcome as a 3 px edge on top. */
+    .me-tile {
+        display: flex;
+        height: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 12px 8px 10px;
+        border: 1px solid var(--color-hairline);
+        border-top: 3px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-card);
+        color: var(--color-ink);
+        text-align: center;
+    }
+
+    .me-tile:hover {
+        background: var(--color-row-hover);
+        color: var(--color-ink);
+    }
+
+    .me-tile.is-win {
+        border-top-color: var(--color-win);
+    }
+
+    .me-tile.is-loss {
+        border-top-color: var(--color-loss);
+    }
+
+    /* The Mempool head: two big counts (Mempool.dc.html `.livebig`, Unbounded 48 tabular). */
+    .mp-big {
+        font-family: var(--font-display);
+        font-size: 48px;
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .mp-dot {
+        display: block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--color-live);
+        box-shadow: 0 0 12px var(--color-live);
+    }
+
+    /* "Erweiterte Statistik" (`details.adv`): one summary line, the stats inline under it. */
+    .rv-adv {
+        border: 1px solid var(--color-hairline);
+        border-radius: 4px;
+        background: var(--color-card);
+    }
+
+    .rv-adv > summary {
+        display: flex;
+        min-height: 44px;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        font-size: 14px;
+        font-weight: 700;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    .rv-adv > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .rv-adv > summary > svg {
+        transition: transform 150ms ease-out;
+    }
+
+    .rv-adv[open] > summary > svg {
+        transform: rotate(180deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rv-adv > summary > svg {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dk-drawer {
+        animation: none;
+    }
+}
+
+/*
+ * Focus mode on a phone's game page (resources/js/focusMode.js): the tab bar slides away while the player plays, and
+ * the page's own bottom bars (chat sheet, Blockli's bar: [data-page-bar]) sink with it; a 24 px strip at the bottom
+ * edge brings it back on a tap. The body keeps its room for the bar, so the document's height and everything on it
+ * stay put (no layout shift; BlitzGameTest measures the document height through 70 moves). The board takes the
+ * height in boardGame.js fitBoard. 200 ms, ease-out (R17).
+ */
+@media (width < 64rem) {
+    [data-test="tab-bar"],
+    [data-page-bar] {
+        transition: translate 200ms ease-out;
+    }
+
+    :root.is-focus [data-test="tab-bar"] {
+        translate: 0 100%;
+    }
+
+    :root.is-focus [data-page-bar] {
+        translate: 0 0;
+    }
+
+    :root.is-focus .focus-edge {
+        display: block;
+    }
+}
+
+.focus-edge {
+    position: fixed;
+    z-index: 41;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: none;
+    height: 24px;
+    border: 0;
+    background: linear-gradient(0deg, rgb(10 10 11 / 0.6), transparent);
+    cursor: pointer;
+}
+
+.focus-edge::after {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-edge);
+    content: "";
+    translate: -50% 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-test="tab-bar"],
+    [data-page-bar] {
+        transition: none;
+    }
+}
+
+
+/*
+ * The settings pages (Settings.dc.html, template T-Settings, P7): from lg two columns, the rail of
+ * components/settings/header on the left all the way down, the heading and the page's cards on the right (760 px).
+ * From xl: at 1024 the chess page's board choices need the whole width (measured: 1032 px page at 1024 with the rail).
+ */
+@media (width >= 80rem) {
+    :where(div):has(> [data-test="settings-header"]) {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 760px);
+        column-gap: 32px;
+        /* No row gap: the rail spans 30 implicit rows, and a gap per empty row would add height. */
+        row-gap: 0;
+        align-content: start;
+        padding-top: 24px;
+    }
+
+    :where(div):has(> [data-test="settings-header"]) > *,
+    :where(div):has(> [data-test="settings-header"]) > [data-test="settings-header"] > :not(.settings-rail) {
+        grid-column: 2;
+        margin-bottom: 20px;
+    }
+
+    :where(div):has(> [data-test="settings-header"]) > [data-test="settings-header"] > .settings-rail {
+        grid-row: 1 / span 30;
+        grid-column: 1;
+        align-self: start;
+        position: sticky;
+        top: calc(var(--shell-h) + 24px);
+    }
+
+}

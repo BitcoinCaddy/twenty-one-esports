@@ -397,7 +397,7 @@ test('the casual cups to come are grouped in the registry order', function () {
     gameSurfacesInOrder(array_column(app(CupBoard::class)->groups(), 'game'), 'the cup board');
 });
 
-test('the mempool strip on /matches names its games in the registry order', function () {
+test('the game chips on /matches name their games in the registry order', function () {
     $player = User::factory()->create();
     $rival = User::factory()->create();
 
@@ -410,10 +410,11 @@ test('the mempool strip on /matches names its games in the registry order', func
     ]);
 
     $html = $this->get(route('matches.index'))->assertOk()->getContent();
-    $legend = gameSurfacesAttribute($html, ['strip-legend-game']);
+    // Mempool.dc.html "Spiel": one chip per game the table can show (x-ui.chips, data-test "game-<slug>").
+    preg_match_all('#data-test="game-([a-z0-9-]+)"#', $html, $chips);
 
-    expect(count($legend))->toBeGreaterThan(1);
-    gameSurfacesInOrder($legend, 'the mempool strip legend');
+    expect(count($chips[1]))->toBeGreaterThan(1);
+    gameSurfacesInOrder($chips[1], 'the game chips of /matches');
 });
 
 test('the surfaces left out are about one game by design and still exist', function (string $route, string $reason) {

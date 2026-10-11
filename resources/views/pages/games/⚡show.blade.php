@@ -597,7 +597,7 @@ new #[Layout('layouts::app', ['section' => 'chess', 'realtime' => true, 'scripts
              x-data="chessGame(@js(['state' => app(ChessGameService::class)->snapshot($game), 'startFen' => $game->startFen(), 'color' => $color, 'labels' => $this->labels()]))"
              x-on:keydown.window="hotkey($event)"
              @class(['flex flex-col gap-4 px-4 pb-8 lg:gap-5 lg:px-12 lg:pb-10', 'max-lg:pb-28' => $color !== null])
-             data-test="chess-game">
+             data-test="chess-game" data-focus-page>
 
             {{-- Title row --}}
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -749,7 +749,7 @@ new #[Layout('layouts::app', ['section' => 'chess', 'realtime' => true, 'scripts
                 --}}
                 <div class="max-lg:contents lg:col-start-1 lg:row-span-4 lg:row-start-1 lg:mt-4 lg:flex lg:flex-col lg:gap-4">
                     <div class="order-2 -mx-4 flex flex-col gap-4 lg:contents">
-                        <x-chess.board playable :class="$boardWidth" x-bind:class="browsing && 'is-past'" data-test="live-board">
+                        <x-chess.board playable :class="$boardWidth" x-bind:class="browsing && 'is-past'" data-test="live-board" data-focus-board>
                             {{-- Promotion picker, on the target file (ChessOverlays 2) --}}
                             <template x-if="promotion">
                                 <div class="absolute inset-0">

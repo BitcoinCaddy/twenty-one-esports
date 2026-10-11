@@ -167,10 +167,12 @@ test('every settings page shows the same seven tabs, its own one active and name
 
     preg_match('/<nav aria-label="Settings sections".*?<\/nav>/s', $html, $nav);
     preg_match_all('/data-test="(settings-[a-z-]+-tab)"/', $nav[0] ?? '', $tabs);
-    preg_match('/<a [^>]*aria-current="page"[^>]*>([^<]+)<\/a>/', $nav[0] ?? '', $active);
+    // The tab's own text, after its icon (Settings.dc.html rail, P7).
+    preg_match('/<a [^>]*aria-current="page"[^>]*>(.*?)<\/a>/s', $nav[0] ?? '', $active);
+    $active[1] = strip_tags($active[1] ?? '');
     preg_match('/<h1[^>]*data-test="settings-heading"[^>]*>([^<]+)<\/h1>/', $html, $h1);
 
-    expect($tabs[1])->toBe(['settings-gamer-tags-tab', 'settings-account-tab', 'settings-notifications-tab', 'settings-chess-tab', 'settings-opponents-tab', 'settings-badges-tab', 'settings-nostr-address-tab'])
+    expect($tabs[1])->toBe(['settings-account-tab', 'settings-gamer-tags-tab', 'settings-chess-tab', 'settings-notifications-tab', 'settings-opponents-tab', 'settings-badges-tab', 'settings-nostr-address-tab'])
         ->and(substr_count($nav[0], 'aria-current="page"'))->toBe(1)
         ->and(html_entity_decode(trim($active[1] ?? '')))->toBe($heading)
         ->and(html_entity_decode(trim($h1[1] ?? '')))->toBe($heading)

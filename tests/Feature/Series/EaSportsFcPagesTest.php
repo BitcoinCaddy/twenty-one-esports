@@ -56,14 +56,15 @@ test('the games menu links every game with its cover', function () {
         ->assertSee('href="'.route('challenges.create', ['game' => 'ea-sports-fc-26']).'"', false);
 });
 
-test('the match list filters by an FC game and shows a cover in every row', function () {
+test('the match list filters by an FC game and names the game in every row', function () {
     $fc = SeriesMatch::factory()->create(['challenger_lineup_id' => fcLineup('ea-sports-fc-26')->id, 'challenged_lineup_id' => fcLineup('ea-sports-fc-26')->id]);
     $rl = SeriesMatch::factory()->create();
     $chess = ChessGame::factory()->create();
     $row = fn (string $key) => 'wire:key="'.$key.'"';
 
     Livewire::test('pages::matches.index')
-        ->assertSeeHtml('data-game-cover="ea-sports-fc-26"')->assertSeeHtml('data-game-cover="chess"')
+        // Mempool.dc.html: the Format column names the game (no cover in the row).
+        ->assertSeeHtml('data-game="ea-sports-fc-26"')->assertSee('EA Sports FC 26')
         ->call('pickGame', 'ea-sports-fc-26')->assertSet('game', 'ea-sports-fc-26')
         ->assertSeeHtml($row('m-'.$fc->id))->assertDontSeeHtml($row('m-'.$rl->id))->assertDontSeeHtml($row('c-'.$chess->id))
         ->call('pickGame', 'rocket-league')

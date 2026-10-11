@@ -206,7 +206,7 @@ test('another clan\'s page offers the challenge with both lineups picked, its ow
         ->assertDontSee('data-test="challenge-clan"', false);
 });
 
-test('a search on /clans filters in the browser: a render with the search hides the other cards and loads each player only what the avatar shows', function () {
+test('a search on /clans filters in the browser: a render with the search hides the other rows and loads each player only a few columns', function () {
     $clans = Clan::factory()->count(5)->sequence(fn ($sequence) => ['name' => 'Clan '.chr(65 + $sequence->index)])->create();
     foreach ($clans as $clan) {
         foreach (User::factory()->count(2)->create() as $user) {
@@ -224,12 +224,11 @@ test('a search on /clans filters in the browser: a render with the search hides 
     DB::disableQueryLog();
     $html = $page->html();
 
-    // One users query for the faces, seven columns, not the whole row.
+    // One users query for the members, seven columns, not the whole row.
     expect($users)->toHaveCount(1)
         ->and($users->first()['query'])->toStartWith('select "id", "pubkey", "npub", "name", "picture", "avatar_path", "profile_checked_at" from "users"')
-        ->and($html)->toMatch('/<article(?![^>]*display: none)[^>]*data-test="clan-card" data-clan="'.preg_quote($clans[2]->slug, '/').'"/')
-        ->and($html)->toMatch('/<article[^>]*style="display: none;"[^>]*data-test="clan-card" data-clan="'.preg_quote($clans[3]->slug, '/').'"/')
-        ->and($html)->toContain('3 players');
+        ->and($html)->toMatch('/<tr(?![^>]*display: none)[^>]*data-test="clan-card" data-clan="'.preg_quote($clans[2]->slug, '/').'"/')
+        ->and($html)->toMatch('/<tr[^>]*style="display: none;"[^>]*data-test="clan-card" data-clan="'.preg_quote($clans[3]->slug, '/').'"/');
 });
 
 test('/clans asks the same queries for one clan as for five', function () {
