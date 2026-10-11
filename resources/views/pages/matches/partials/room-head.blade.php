@@ -24,7 +24,7 @@
             @if ($m->lobby_region)
                 <span class="rv-tag">{{ __('Region :region', ['region' => $m->lobby_region]) }}</span>
             @endif
-            <span class="rv-tag">{{ $m->label() }}</span>
+            <span class="rv-tag max-sm:hidden">{{ $m->label() }}</span>
             @if ($live)
                 <span class="rv-live" style="height: 20px" data-test="room-status"><i></i>{{ __('Match running') }}</span>
             @else
@@ -39,7 +39,8 @@
             <span class="rv-vs-name" title="{{ $m->sideName('challenged') }}" data-test="side-name-challenged">{{ $m->sideName('challenged') }}</span>
             <span class="rv-av size-10 text-base max-sm:hidden" aria-hidden="true">{{ $initial($m->sideName('challenged')) }}</span>
         </h1>
-        <span class="rv-m text-[13px]" data-test="series-meta">{{ $seriesMeta }}{{ $m->rated ? '' : '; '.__('casual: no block, no sats until Block 0') }}</span>
+        {{-- Phone (MatchRoom-*-Phone): the chips already say best of and mode, so only the casual line stays (one line). --}}
+        <span class="rv-m text-[13px]" data-test="series-meta"><span @class(['max-sm:hidden' => ! $m->rated])>{{ $seriesMeta }}{{ $m->rated ? '' : '; ' }}</span>{{ $m->rated ? '' : __('casual: no block, no sats until Block 0') }}</span>
     </div>
     @if ($roomClock !== null)
         <span class="flex shrink-0 items-center gap-3 sm:flex-col sm:items-end sm:gap-1" data-test="room-clock">
