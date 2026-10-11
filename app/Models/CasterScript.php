@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
@@ -23,12 +25,14 @@ use Illuminate\Support\Carbon;
  * @property string $source ai (the league voice) or pattern (App\Support\Caster\PatternScripts)
  * @property string|null $topic App\Support\Caster\SceneTopic for a scene script; App\Support\Caster\ChatReactions::ZAP_TOPIC or GREETING_TOPIC for a zap thank-you or a greeting; the news section (bitcoin, germany) for a news segment
  * @property float $estimated_seconds
+ * @property string|null $part_group the parts of one long script share it (App\Support\Caster\ScriptQueue::enqueue()); null for a script in one piece
+ * @property int|null $part_index the position of the part in its group, from 1
  * @property Carbon|null $claimed_at
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at'])]
+#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at', 'part_group', 'part_index'])]
 class CasterScript extends Model
 {
     public const QUEUED = 'queued';
@@ -67,6 +71,7 @@ class CasterScript extends Model
     {
         return [
             'priority' => 'integer',
+            'part_index' => 'integer',
             'estimated_seconds' => 'float',
             'claimed_at' => 'datetime',
             'expires_at' => 'datetime',
@@ -79,6 +84,23 @@ class CasterScript extends Model
     public function clips(): HasMany
     {
         return $this->hasMany(CasterClip::class);
+    }
+
+    /**
+     * One row per script: a script in one piece, or the first part of a long one (its later parts left out).
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function whole(Builder $query): void
+    {
+        $query->where(fn (Builder $query) => $query->whereNull('part_index')->orWhere('part_index', 1));
+    }
+
+    /** Whether this is a later part of a long script (part 2 on), which plays only right after the part before it. */
+    public function isContinuation(): bool
+    {
+        return $this->part_group !== null && (int) $this->part_index > 1;
     }
 
     /**

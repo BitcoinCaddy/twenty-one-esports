@@ -29,3 +29,19 @@ function casterScript(string $kind = CasterScript::SCENE, string $phase = SceneP
         'expires_at' => $kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes(10),
     ]);
 }
+
+/**
+ * The sentences of a whole script: of all its parts in order when it was
+ * queued in parts (ScriptQueue::parts()), else its own.
+ *
+ * @return list<string>
+ */
+function casterWholeSentences(CasterScript $script): array
+{
+    if ($script->part_group === null) {
+        return $script->sentences();
+    }
+
+    return array_merge(...CasterScript::query()->where('part_group', $script->part_group)->orderBy('part_index')->get()
+        ->map(fn (CasterScript $part): array => $part->sentences())->all());
+}

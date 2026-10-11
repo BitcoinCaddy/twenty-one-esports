@@ -290,6 +290,19 @@ return [
             'max_chars' => 1_800,
         ],
 
+        // Long scripts in parts (live 2026-10-11: a wished Bauernkrieg episode of 27 lines left 2.5 minutes of silence
+        // while the workstation voiced it as one clip): a scene, segment or wished segment of more than `sentences`
+        // lines is queued as parts of at most that many (4 to 5 each), split between sentences only
+        // (App\Support\Caster\ScriptQueue::parts(); 0 turns it off). The workstation voices them in order, so the first
+        // part is on the spool within seconds; SceneDirector plays the next part after `breath_seconds` (plus the
+        // clip's lead-in of about a second) instead of the music gap, before any other scene, ignoring
+        // spool.segment_spacing_minutes. A part not ready `wait_seconds` after the one before it ends the group.
+        'parts' => [
+            'sentences' => (int) env('TV_COMMENTARY_PART_SENTENCES', 5),
+            'breath_seconds' => 0.0,
+            'wait_seconds' => 20,
+        ],
+
         // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen
         // zu Dauerkommentaren kommt"): every `every_minutes` (random within the range) `clips` clips back to back, each with
         // its own scene and only a breath of `breath_seconds` between them instead of spool.gap_seconds

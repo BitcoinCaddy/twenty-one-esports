@@ -140,6 +140,7 @@ it('tells a Bauernkrieg episode right behind the reply when a trusted chatter as
 
     expect(app(ChatReactions::class)->poll(CarbonImmutable::now()))->toBe(1);
     [$reply, $segment] = wishQueue();
+    $parts = array_slice(wishQueue(), 1);
 
     expect($reply->kind)->toBe(CasterScript::CHAT)
         ->and(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::HISTORY))
@@ -149,7 +150,11 @@ it('tells a Bauernkrieg episode right behind the reply when a trusted chatter as
         ->and($segment->priority)->toBe($reply->priority)->toBe((int) config('tv.commentary.scripts.live_priority'))
         ->and($segment->id)->toBeGreaterThan($reply->id)
         // The long episode: at least `length.history_long.min` sentences, every fact from the file.
-        ->and(count(ScriptGuard::lines($segment->text)))->toBeGreaterThanOrEqual((int) config('tv.commentary.length.history_long.min'));
+        ->and(count(casterWholeSentences($segment)))->toBeGreaterThanOrEqual((int) config('tv.commentary.length.history_long.min'))
+        // Queued in parts (live 2026-10-11: 2.5 minutes of silence while the whole episode was voiced), all of them wished.
+        ->and(count($parts))->toBeGreaterThan(1)
+        ->and(array_unique(array_map(fn (CasterScript $part): string => $part->scene.'|'.$part->part_group.'|'.$part->priority, $parts)))->toHaveCount(1)
+        ->and(array_map(fn (CasterScript $part): int => (int) $part->part_index, $parts))->toBe(range(1, count($parts)));
     VoiceAgent::assertNeverPrompted();
 });
 
@@ -161,7 +166,7 @@ it('does not tell the same Bauernkrieg episode twice within an hour', function (
     wishChatter($this, 'Noch mehr Bauernkrieg bitte', name: 'Anna', signer: $anna, at: $now->addMinute()->getTimestamp());
     app(ChatReactions::class)->poll($now->addMinute());
 
-    $episodes = CasterScript::query()->where('kind', CasterScript::HISTORY)->pluck('facts_hash')->all();
+    $episodes = CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->pluck('facts_hash')->all();
     expect($episodes)->toHaveCount(2)->and($episodes[0])->not->toBe($episodes[1]);
 });
 
@@ -259,7 +264,7 @@ it('continues with the type of the last wish on "erzähl mehr"', function () {
     wishChatter($this, 'Erzähl mehr!', name: 'Anna', at: $now->addMinute()->getTimestamp());
     app(ChatReactions::class)->poll($now->addMinute());
 
-    $segments = CasterScript::query()->where('scene', ChatWishes::SCENE)->orderBy('id')->get();
+    $segments = CasterScript::query()->whole()->where('scene', ChatWishes::SCENE)->orderBy('id')->get();
     expect($segments)->toHaveCount(2)
         ->and($segments->pluck('kind')->all())->toBe([CasterScript::HISTORY, CasterScript::HISTORY])
         ->and($segments[0]->facts_hash)->not->toBe($segments[1]->facts_hash);
@@ -285,6 +290,18 @@ it('grants one wish per person within the cooldown, and at most per_hour in all'
     expect(CasterScript::query()->where('scene', ChatWishes::SCENE)->count())->toBe(2)
         // Every message still got its reply.
         ->and(CasterScript::query()->where('kind', CasterScript::CHAT)->count())->toBe(4);
+});
+
+it('counts a long wished segment queued in parts as one wish against per_hour', function () {
+    config(['tv.commentary.chat.wishes_per_hour' => 2]);
+    $now = CarbonImmutable::now();
+    wishChatter($this, 'Erzähl vom Bauernkrieg');
+    app(ChatReactions::class)->poll($now);
+    wishChatter($this, 'Noch mehr Bauernkrieg bitte', name: 'Anna', at: $now->addMinute()->getTimestamp());
+    app(ChatReactions::class)->poll($now->addMinute());
+
+    expect(CasterScript::query()->where('scene', ChatWishes::SCENE)->count())->toBeGreaterThan(2)
+        ->and(CasterScript::query()->whole()->where('scene', ChatWishes::SCENE)->count())->toBe(2);
 });
 
 it('lifts each wish and chat limit with 0 (unlimited via .env)', function (string $limit) {
@@ -320,7 +337,7 @@ it('tells a Bauernkrieg episode again at once with a repeat window of 0', functi
 
     app(ChatReactions::class)->poll(CarbonImmutable::now()->addSecond());
 
-    expect(CasterScript::query()->where('scene', ChatWishes::SCENE)->where('kind', CasterScript::HISTORY)->count())->toBe(1);
+    expect(CasterScript::query()->whole()->where('scene', ChatWishes::SCENE)->where('kind', CasterScript::HISTORY)->count())->toBe(1);
 });
 
 it('grants no wish to a stranger, a muted chatter or level 2 below wishes_min_level', function (string $who) {
@@ -355,7 +372,7 @@ it('grants a wish to a trust rank at the minimum (not below) and to level 2 by d
 
     app(ChatReactions::class)->poll(CarbonImmutable::now());
 
-    expect(CasterScript::query()->where('scene', ChatWishes::SCENE)->count())->toBe($granted);
+    expect(CasterScript::query()->whole()->where('scene', ChatWishes::SCENE)->count())->toBe($granted);
 })->with([['rank at minimum', 1], ['rank below minimum', 0], ['level two', 1]]);
 
 it('plays the reply and then the wished segment ahead of scenes, also a long segment on a busy slot, and claims both while the spool is full', function () {
@@ -364,13 +381,19 @@ it('plays the reply and then the wished segment ahead of scenes, also a long seg
     $scene = app(ScriptQueue::class)->enqueue(CasterScript::SCENE, 'live_match', "Ein Satz.\nNoch einer.", 'x', 0, $now);
     app(ChatReactions::class)->poll($now);
 
-    // Claimed while full (live kinds only): the reply first, then the segment, the scene never.
+    // Claimed while full (live kinds only): the reply first, then the segment part by part, the scene never.
     $queue = app(ScriptQueue::class);
     $first = $queue->claim($now, ClipSpool::LIVE_KINDS);
     $second = $queue->claim($now, ClipSpool::LIVE_KINDS);
+    $rest = [];
+    while (($part = $queue->claim($now, ClipSpool::LIVE_KINDS)) !== null) {
+        $rest[] = $part;
+    }
     expect($first->kind)->toBe(CasterScript::CHAT)
         ->and($second->kind)->toBe(CasterScript::HISTORY)
-        ->and($queue->claim($now, ClipSpool::LIVE_KINDS))->toBeNull();
+        ->and($second->part_index)->toBe(1)
+        ->and(array_map(fn (CasterScript $part): int => (int) $part->part_index, $rest))->toBe(range(2, count($rest) + 1))
+        ->and(array_column(array_map(fn (CasterScript $part): array => $part->toArray(), $rest), 'id'))->not->toContain($scene->id);
 
     // Voiced out of order (the segment's clip first): still played reply first, then the segment, on a live-match slot.
     $clip = fn (CasterScript $script): CasterClip => CasterClip::query()->create(['caster_script_id' => $script->id, 'phase' => 'break', 'kind' => $script->kind, 'path' => 'x/'.$script->id.'.opus', 'duration_seconds' => 5, 'bytes' => 10, 'sentence_ends' => [5.0], 'status' => CasterClip::READY, 'expires_at' => $now->addMinutes(10)]);

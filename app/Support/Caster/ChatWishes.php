@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Cache;
  * something the commentary can build gets it: the reply acknowledges the
  * wish by name (ReactionLines::wish()) and the segment is queued right behind
  * it, both at live priority, so it plays at the next clip boundary without a
- * music gap (ClipSpool::nextLive() takes wish segments, marked by SCENE).
+ * music gap (ClipSpool::nextLive() takes wish segments, marked by SCENE). A
+ * long segment is queued in parts (ScriptQueue::parts()): the first part is
+ * voiced within seconds, the rest follow back to back (SceneDirector).
  *
  * What can be wished (intent(), keywords, first match wins):
  * - HISTORY: a long Bauernkrieg episode (HistoryScripts), none told within
@@ -119,7 +121,8 @@ class ChatWishes
         }
 
         $perHour = (int) config('tv.commentary.chat.wishes_per_hour', 6);
-        if ($perHour > 0 && CasterScript::query()->where('scene', self::SCENE)->where('created_at', '>', $now->subHour())->count() >= $perHour) {
+        // A long wished segment is queued in parts (ScriptQueue::parts()): one wish, however many parts.
+        if ($perHour > 0 && CasterScript::query()->whole()->where('scene', self::SCENE)->where('created_at', '>', $now->subHour())->count() >= $perHour) {
             return null;
         }
 

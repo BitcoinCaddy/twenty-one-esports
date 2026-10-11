@@ -137,8 +137,8 @@ it('asks the league voice once per fill and fills the rest of the airtime with p
     $written = casterQueue()->fill(CarbonImmutable::now());
 
     expect($written)->toBeGreaterThan(1)
-        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->count())->toBe(1)
-        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBe($written - 1)
+        ->and(CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->count())->toBe(1)
+        ->and(CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBe($written - 1)
         ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->whereNull('topic')->count())->toBe(0)
         ->and(casterQueue()->airtimeAhead())->toBeGreaterThanOrEqual(20.0);
     VoiceAgent::assertPromptedTimes(1);
@@ -321,7 +321,7 @@ it('writes about every fourth pattern scene long, 8 to 14 sentences, the rest sh
 
     casterQueue(casterFactsWith())->fill(CarbonImmutable::now());
 
-    $counts = CasterScript::query()->where('kind', CasterScript::SCENE)->orderBy('id')->get()->map(fn (CasterScript $script): int => count($script->sentences()))->all();
+    $counts = CasterScript::query()->whole()->where('kind', CasterScript::SCENE)->orderBy('id')->get()->map(fn (CasterScript $script): int => count(casterWholeSentences($script)))->all();
     $long = array_filter($counts, fn (int $count): bool => $count >= 8);
 
     expect(count($counts))->toBeGreaterThanOrEqual(8)

@@ -6,6 +6,7 @@ use App\Models\CasterClip;
 use App\Models\CasterScript;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * The server's queue of commentary scripts (plan "Puffer und Länge", stage 1):
@@ -29,6 +30,17 @@ use Illuminate\Support\Facades\DB;
  * The length mix (LengthMix, `tv.commentary.length`): a share of each kind
  * is a long variant, a long pattern scene, a long news comment, a long
  * Bauernkrieg episode.
+ *
+ * Long scripts in parts (live 2026-10-11: "er wollte was über Bauernkriege
+ * sagen und hat dann einfach aufgehört" — the reply played, then 2.5 minutes
+ * of silence while the workstation voiced a 27-line episode as one clip): a
+ * scene, a segment or a wished segment of more than `parts.sentences`
+ * sentences is queued as consecutive parts of at most that many sentences,
+ * split between lines only (one sentence per line), sharing `part_group`.
+ * claim() hands out a later part only once the parts before it left the
+ * queue, so the first part is voiced and spooled within seconds and the rest
+ * follow in order; the parts share one expiry, and expire() expires the rest
+ * of a group once one part expired. SceneDirector plays them back to back.
  *
  * Bounded: expired and voiced rows older than a day are deleted, so the table
  * holds at most a day of scripts.
@@ -228,31 +240,82 @@ class ScriptQueue
         return $script === null ? null : $this->enqueue($kind, $phase, $script['text'], SceneFacts::hash($facts), $priority, $now, $scene);
     }
 
+    /**
+     * Queues a script; a long scene, segment or wished segment as its parts
+     * (parts()), all with the same expiry. Returns the script, or its first part.
+     */
     public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null): CasterScript
     {
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
+        $inParts = in_array($kind, [CasterScript::SCENE, ...CasterScript::SEGMENTS], true) || $scene === ChatWishes::SCENE;
+        $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
+        $group = count($parts) > 1 ? (string) Str::ulid() : null;
 
-        return CasterScript::query()->create([
-            'kind' => $kind,
-            'phase' => $phase,
-            'scene' => $scene,
-            'source' => $source,
-            'topic' => $topic,
-            'priority' => $priority,
-            'text' => $text,
-            'facts_hash' => $factsHash,
-            'status' => CasterScript::QUEUED,
-            'estimated_seconds' => self::estimateSeconds($text),
-            // Fillers carry no facts: they never go stale.
-            'expires_at' => $kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes($maxAge),
-        ]);
+        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAge, $parts, $group): CasterScript {
+            $first = null;
+
+            foreach ($parts as $index => $part) {
+                $script = CasterScript::query()->create([
+                    'kind' => $kind,
+                    'phase' => $phase,
+                    'scene' => $scene,
+                    'source' => $source,
+                    'topic' => $topic,
+                    'priority' => $priority,
+                    'text' => $part,
+                    'facts_hash' => $factsHash,
+                    'status' => CasterScript::QUEUED,
+                    'estimated_seconds' => self::estimateSeconds($part),
+                    // Fillers carry no facts: they never go stale.
+                    'expires_at' => $kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes($maxAge),
+                    'part_group' => $group,
+                    'part_index' => $group === null ? null : $index + 1,
+                ]);
+                $first ??= $script;
+            }
+
+            /** @var CasterScript $first */
+            return $first;
+        });
+    }
+
+    /**
+     * A script of more than `$perPart` sentences (lines) as parts of at most
+     * that many, split between lines only and as even as possible (27 lines
+     * at 5: 5, 5, 5, 4, 4, 4); a shorter one, or `$perPart` below 1, in one piece.
+     *
+     * @return list<string>
+     */
+    public static function parts(string $text, int $perPart): array
+    {
+        $lines = ScriptGuard::lines($text);
+
+        if ($perPart < 1 || count($lines) <= $perPart) {
+            return [$text];
+        }
+
+        $count = (int) ceil(count($lines) / $perPart);
+        $base = intdiv(count($lines), $count);
+        $extra = count($lines) % $count;
+        $parts = [];
+        $offset = 0;
+
+        for ($index = 0; $index < $count; $index++) {
+            $size = $base + ($index < $extra ? 1 : 0);
+            $parts[] = implode("\n", array_slice($lines, $offset, $size));
+            $offset += $size;
+        }
+
+        return $parts;
     }
 
     /**
      * The next script for the fetcher: the highest priority first, then the
      * oldest; claims that never came back are free again. `$kinds` limits it
      * to those kinds (the live moments and reactions while the spool is full);
-     * a wished segment (ChatWishes::SCENE) travels with them.
+     * a wished segment (ChatWishes::SCENE) travels with them, and so does a
+     * later part of a long script. A later part is handed out only once every
+     * part before it left the queue, so the parts are voiced in order.
      *
      * @param  list<string>|null  $kinds
      */
@@ -266,7 +329,10 @@ class ScriptQueue
 
         return DB::transaction(function () use ($now, $kinds): ?CasterScript {
             $script = CasterScript::query()->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
-                ->when($kinds !== null, fn ($query) => $query->where(fn ($query) => $query->whereIn('kind', (array) $kinds)->orWhere('scene', ChatWishes::SCENE)))
+                ->when($kinds !== null, fn ($query) => $query->where(fn ($query) => $query->whereIn('kind', (array) $kinds)->orWhere('scene', ChatWishes::SCENE)->orWhere('part_index', '>', 1)))
+                ->where(fn ($query) => $query->whereNull('part_group')->orWhereNotExists(fn ($earlier) => $earlier->from('caster_scripts as earlier')
+                    ->whereColumn('earlier.part_group', 'caster_scripts.part_group')->whereColumn('earlier.part_index', '<', 'caster_scripts.part_index')
+                    ->where('earlier.status', CasterScript::QUEUED)))
                 ->orderByDesc('priority')->orderBy('id')->lockForUpdate()->first();
 
             $script?->update(['status' => CasterScript::CLAIMED, 'claimed_at' => $now]);
@@ -284,7 +350,8 @@ class ScriptQueue
 
     /**
      * Scripts whose time is up expire unused, with their clips (ClipSpool
-     * deletes the files); rows that left the queue a day ago are deleted.
+     * deletes the files), and with them the unvoiced rest of their part
+     * group; rows that left the queue a day ago are deleted.
      *
      * @return int scripts expired now
      */
@@ -292,6 +359,11 @@ class ScriptQueue
     {
         $expired = CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
             ->where('expires_at', '<=', $now)->update(['status' => CasterScript::EXPIRED]);
+
+        // The parts of a script expire together: without the part before it, a part would start mid-story.
+        $expired += CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
+            ->whereIn('part_group', CasterScript::query()->from('caster_scripts as dead')->where('dead.status', CasterScript::EXPIRED)->whereNotNull('dead.part_group')->select('dead.part_group'))
+            ->update(['status' => CasterScript::EXPIRED]);
 
         CasterScript::query()->whereIn('status', [CasterScript::EXPIRED, CasterScript::VOICED])
             ->where('kind', '!=', CasterScript::FILLER)

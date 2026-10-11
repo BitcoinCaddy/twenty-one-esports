@@ -7,6 +7,7 @@ use App\Models\CasterScript;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -36,6 +37,10 @@ use Illuminate\Support\Str;
  * text lower third. A long segment (news, history) comes right after the
  * live clips, on a calm slot only (never over a live match or a result),
  * and never within `segment_spacing_minutes` of the last one.
+ *
+ * A later part of a long script (ScriptQueue::parts()) is never picked by
+ * next(), nextLive() or nextSegment(): it plays only right after the part
+ * before it (part(), SceneDirector), so it never starts a story mid-way.
  */
 class ClipSpool
 {
@@ -86,7 +91,9 @@ class ClipSpool
             throw new InvalidClip('size');
         }
 
-        $airtimeCapped = $script->kind !== CasterScript::FILLER && ! in_array($script->kind, [...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true);
+        // A later part is never refused for airtime: the part before it may already be on air.
+        $airtimeCapped = $script->kind !== CasterScript::FILLER && ! in_array($script->kind, [...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true)
+            && ! $script->isContinuation();
 
         if ($this->bytes() + strlen($opus) > (int) ($settings['max_bytes'] ?? 0)
             || ($airtimeCapped && $this->readySeconds() + $durationSeconds > (float) ($settings['max_seconds'] ?? 0))) {
@@ -149,7 +156,8 @@ class ClipSpool
     {
         $this->releaseStale($now);
 
-        $ready = CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now);
+        $ready = CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->whereNotIn('caster_script_id', self::continuations());
 
         $live = $this->nextLive($now);
         if ($live !== null) {
@@ -213,6 +221,7 @@ class ClipSpool
     public function nextLive(CarbonImmutable $now): ?CasterClip
     {
         return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->whereNotIn('caster_script_id', self::continuations())
             ->where(fn ($query) => $query->whereIn('kind', self::LIVE_KINDS)
                 ->orWhereIn('caster_script_id', CasterScript::query()->where('scene', ChatWishes::SCENE)->select('id')))
             ->orderBy('caster_script_id')->orderBy('id')->first();
@@ -228,7 +237,61 @@ class ClipSpool
         }
 
         return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->whereNotIn('caster_script_id', self::continuations())
             ->whereIn('kind', CasterScript::SEGMENTS)->orderBy('id')->first();
+    }
+
+    /**
+     * The part group of a clip's script and the part's position, or null for a script in one piece.
+     *
+     * @return array{group: string, index: int}|null
+     */
+    public function partOf(CasterClip $clip): ?array
+    {
+        $script = CasterScript::query()->find($clip->caster_script_id);
+
+        return $script?->part_group === null ? null : ['group' => $script->part_group, 'index' => (int) $script->part_index];
+    }
+
+    /** The ready clip of part `$index` of `$group`, or null (not voiced yet, expired or gone). */
+    public function part(string $group, int $index, CarbonImmutable $now): ?CasterClip
+    {
+        return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->whereIn('caster_script_id', CasterScript::query()->where('part_group', $group)->where('part_index', $index)->select('id'))
+            ->orderBy('id')->first();
+    }
+
+    /** Whether part `$index` of `$group` may still come: queued, claimed or voiced, and not expired. */
+    public function partPending(string $group, int $index, CarbonImmutable $now): bool
+    {
+        return CasterScript::query()->where('part_group', $group)->where('part_index', $index)
+            ->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED, CasterScript::VOICED])->where('expires_at', '>', $now)->exists();
+    }
+
+    /**
+     * A group that ended early (a part missing or cut off): its parts from
+     * `$fromIndex` on expire and their ready clips are deleted, so none of
+     * them waits in the spool for a story that is over.
+     */
+    public function endGroup(string $group, int $fromIndex): void
+    {
+        $rest = CasterScript::query()->where('part_group', $group)->where('part_index', '>=', $fromIndex);
+
+        (clone $rest)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED, CasterScript::VOICED])->update(['status' => CasterScript::EXPIRED]);
+
+        foreach (CasterClip::query()->where('status', CasterClip::READY)->whereIn('caster_script_id', (clone $rest)->select('id'))->get() as $clip) {
+            $this->delete($clip);
+        }
+    }
+
+    /**
+     * The ids of the later parts of long scripts (part 2 on), which play only right after the part before them.
+     *
+     * @return Builder<CasterScript>
+     */
+    private static function continuations(): Builder
+    {
+        return CasterScript::query()->where('part_index', '>', 1)->select('id');
     }
 
     public function playing(CasterClip $clip): void

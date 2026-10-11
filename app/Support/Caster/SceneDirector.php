@@ -47,6 +47,16 @@ use Carbon\CarbonImmutable;
  * ends the run. The run is the director's: the queue writes ahead and the
  * spool picks by phase and topic, so only the director knows which clips
  * really play in a row (run() names the run and the position on air).
+ *
+ * The parts of a long script (ScriptQueue::parts(), `tv.commentary.parts`)
+ * play as one story: when a part ended, the next part of its group follows
+ * after `parts.breath_seconds` (plus the lead-in), before any other scene or
+ * segment, whatever the phase and `segment_spacing_minutes`; the music gap
+ * holds back everything else meanwhile, and a live moment or reaction may
+ * still cut in between two parts. A part not ready `parts.wait_seconds`
+ * after the one before it ended, an expired one, or a part cut off by a
+ * takeover ends the group (ClipSpool::endGroup()). A group counts as one
+ * run clip.
  */
 final class SceneDirector
 {
@@ -70,7 +80,14 @@ final class SceneDirector
     private ?float $nextRunAt = null;
 
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}}  $settings
+     * The part that comes next: its group and position, when it may start (`at`) and how long it is waited for (`until`).
+     *
+     * @var array{group: string, index: int, at: float, until: float}|null
+     */
+    private ?array $part = null;
+
+    /**
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -80,8 +97,8 @@ final class SceneDirector
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}} $settings */
-        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', [])];
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}} $settings */
+        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', [])];
 
         return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings);
     }
@@ -95,14 +112,12 @@ final class SceneDirector
     public function tick(RotationPlanner $planner, array $slot, float $now): ?string
     {
         if ($this->clip !== null && ! $this->timeline->isPlaying($now)) {
-            $this->spool->played($this->clip);
-            $this->clip = null;
-            $this->timeline->clear();
+            $this->clipEnded($this->clip, $now);
+        }
 
-            // Inside a run only a breath; after its last clip the music gap returns.
-            $inRun = $this->runPosition > 0 && $this->runLeft > 0;
-            $this->quietUntil = $now + ($inRun ? $this->between('breath_seconds') : $this->gap());
-            $this->runPosition = $inRun ? $this->runPosition : 0;
+        // The next part of the story on air comes before anything else, once its breath is over.
+        if ($this->clip === null && $this->part !== null && $now >= $this->part['at']) {
+            $this->continuePart($planner, $now);
         }
 
         // A live moment or reaction plays at the next clip boundary: it cuts the gap short, also in the middle of
@@ -166,8 +181,93 @@ final class SceneDirector
         return null;
     }
 
+    /**
+     * The clip on air ended: it leaves the spool, and what follows is the
+     * next part of its group after a breath, else (a live moment that cut in
+     * between two parts) still the part that was due, else the music gap or,
+     * inside a run, a breath.
+     */
+    private function clipEnded(CasterClip $clip, float $now): void
+    {
+        $at = CarbonImmutable::createFromTimestamp($now);
+        $part = $this->spool->partOf($clip);
+        $cut = $this->timeline->isCut();
+        $this->spool->played($clip);
+        $this->clip = null;
+        $this->timeline->clear();
+
+        $settings = (array) ($this->settings['parts'] ?? []);
+        $breath = max(0.0, (float) ($settings['breath_seconds'] ?? 0.0));
+        $wait = max(0.0, (float) ($settings['wait_seconds'] ?? 20));
+
+        if ($part !== null) {
+            // A live wished segment of another story cut in: the story that was due is over.
+            if ($this->part !== null && $this->part['group'] !== $part['group']) {
+                $this->spool->endGroup($this->part['group'], $this->part['index']);
+            }
+
+            $this->part = null;
+
+            // Cut off by a takeover, the story lost its last sentences: it does not go on over the takeover.
+            if ($cut) {
+                $this->spool->endGroup($part['group'], $part['index'] + 1);
+            } elseif ($this->spool->partPending($part['group'], $part['index'] + 1, $at)) {
+                $this->part = ['group' => $part['group'], 'index' => $part['index'] + 1, 'at' => $now + $breath, 'until' => $now + $breath + $wait];
+            } else {
+                // The last part, or the next one cannot come any more: what is left of the group goes.
+                $this->spool->endGroup($part['group'], $part['index'] + 1);
+            }
+        } elseif ($this->part !== null) {
+            $this->part['at'] = $now + $breath;
+            $this->part['until'] = max($this->part['until'], $now + $breath + $wait);
+        }
+
+        if ($this->part !== null) {
+            // Only the next part may end this quiet (a live moment still cuts in).
+            $this->quietUntil = $this->part['until'];
+
+            return;
+        }
+
+        // Inside a run only a breath; after its last clip the music gap returns.
+        $inRun = $this->runPosition > 0 && $this->runLeft > 0;
+        $this->quietUntil = $now + ($inRun ? $this->between('breath_seconds') : $this->gap());
+        $this->runPosition = $inRun ? $this->runPosition : 0;
+    }
+
+    /**
+     * Plays the part that is due when its clip is ready; ends the group when
+     * the part cannot come any more (expired, gone, undecodable) or was waited
+     * for `parts.wait_seconds`, and the normal gaps return.
+     */
+    private function continuePart(RotationPlanner $planner, float $now): void
+    {
+        if ($this->part === null) {
+            return;
+        }
+
+        ['group' => $group, 'index' => $index, 'until' => $until] = $this->part;
+        $at = CarbonImmutable::createFromTimestamp($now);
+        $clip = $this->spool->part($group, $index, $at);
+
+        if ($clip !== null) {
+            $this->part = null;
+
+            if ($this->play($planner, $clip, $now, continuation: true)) {
+                return;
+            }
+        } elseif ($this->spool->partPending($group, $index, $at) && $now < $until) {
+            return;
+        }
+
+        $this->spool->endGroup($group, $index);
+        $this->part = null;
+        // Waited long enough already; a part that will not come gets the music gap a clip end would have had.
+        $this->quietUntil = $now >= $until ? $now : $now + $this->gap();
+    }
+
     /** Puts a clip on the timeline and holds the slot until it has been spoken; false when it cannot be decoded (then dropped). */
-    private function play(RotationPlanner $planner, CasterClip $clip, float $now): bool
+    private function play(RotationPlanner $planner, CasterClip $clip, float $now, bool $continuation = false): bool
     {
         $pcm = $this->spool->pcm($clip);
 
@@ -187,7 +287,8 @@ final class SceneDirector
         $this->clip = $clip;
         $this->quietUntil = 0.0;
 
-        if (! in_array($clip->kind, ClipSpool::LIVE_KINDS, true)) {
+        // A later part continues its story: the group counts as one run clip.
+        if (! in_array($clip->kind, ClipSpool::LIVE_KINDS, true) && ! $continuation) {
             $this->countRunClip($now);
         }
 
