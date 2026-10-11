@@ -606,7 +606,7 @@ it('lets banter through and turns down an invented league fact in a chat reply',
     expect((new ChatFactCheck)->instructions())->toContain('None of these is a claim')->toContain('LEAGUE FACT');
 });
 
-it('turns down a chat reply without the name, with the name twice or with two markers', function (string $draft) {
+it('turns down a chat reply without the name, with the name twice or with three markers', function (string $draft) {
     casterBen($this, 'Musst du nicht arbeiten?');
     VoiceAgent::fake([['text' => $draft, 'canon_id' => null, 'mood' => 'call'], ['text' => $draft, 'canon_id' => null, 'mood' => 'call']]);
 
@@ -615,7 +615,7 @@ it('turns down a chat reply without the name, with the name twice or with two ma
 })->with([
     'no name' => ["Arbeiten?\nDas hier ist Proof of Work am Mikrofon."],
     'name twice' => ["Arbeiten, El Presidento Ben?\nDas hier ist Arbeit, El Presidento Ben."],
-    'two markers' => ["[laughter] Arbeiten, El Presidento Ben?\n[sigh] Das hier ist Proof of Work am Mikrofon."],
+    'three markers' => ["[laughter] Arbeiten, El Presidento Ben?\n[sigh] Das hier ist Proof of Work am Mikrofon. [laughter]"],
 ]);
 
 it('sanitises a chat message: no links, keys, markup or control characters, at most 200 characters', function () {
