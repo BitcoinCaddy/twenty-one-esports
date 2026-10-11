@@ -158,6 +158,7 @@ const NAV_NOT_PAGES = [
     'cards.page' => 'image',
     'cards.wrapped' => 'image',
     'cards.blockfill' => 'image: the share card of a Blockfill run',
+    'cards.meme' => 'image: the meme card of a live Proof of Pong win',
 ];
 
 /**

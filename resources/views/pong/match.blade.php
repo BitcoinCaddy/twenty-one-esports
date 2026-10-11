@@ -59,6 +59,10 @@
         <div class="banner" id="banner" hidden aria-live="polite" data-test="pong-banner"><img alt="" width="160" height="160"><small></small><b></b><span></span></div>
         <div class="event-pin" id="event-pin" hidden data-test="pong-event-pin"><img alt="" width="160" height="160"><span class="event-pin-text"><b></b><span></span></span></div>
         <div class="ticker" id="ticker" hidden aria-live="polite" data-test="pong-ticker"></div>
+        @if (! empty($config['banter']))
+            {{-- The bot's line in the game chat, spoken as its archetype, never as a real person (plan "KI-Stimme der Liga", P5; resources/js/pong/banter.js, muted in the settings). German like every game chat. --}}
+            <div class="banter" id="banter" hidden aria-live="polite" data-test="pong-banter"><b data-test="pong-banter-name">{{ $config['banter']['name'] }}</b><span lang="de" data-banter-text data-test="pong-banter-text"></span></div>
+        @endif
         <div class="toast" id="toast" hidden aria-live="polite"></div>
         <div class="queue" id="queue" hidden aria-live="polite" data-test="pong-queue"><b></b><span></span><small hidden></small></div>
         <div class="cheer" id="cheer" hidden data-test="pong-cheer"><img alt="" width="720" height="720"><span class="cheer-text"><b></b><span></span></span></div>

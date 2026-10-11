@@ -183,6 +183,17 @@ body[data-portrait="1"] .event-pin.in { animation-name: pin-in-upright; }
 @keyframes stamp { 0% { transform: translate(-50%, -50%) scale(2.2) rotate(-14deg); opacity: 0; } 55% { transform: translate(-50%, -50%) scale(0.92) rotate(-6deg); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1) rotate(-6deg); } }
 .toast { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); padding: 8px 12px; border-radius: 10px; background: var(--pong-card); font-weight: 700; white-space: nowrap; pointer-events: none; }
 
+/* The bot's line in the game chat (plan "KI-Stimme der Liga", P5): a speech bubble at the bot's side (right when the field lies,
+   top when it stands upright), never over the score; it lets the pointer through to the paddle. */
+.banter { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 2px; max-width: min(320px, calc(100% - 24px)); padding: 8px 12px;
+    border-radius: 10px 10px 2px 10px; background: rgb(4 6 13 / 0.82); box-shadow: inset -3px 0 0 var(--side-1, var(--pong-bot)); pointer-events: none; text-align: left; }
+.banter b { font: 700 12px/1.2 var(--font-display); color: var(--side-1, var(--pong-bot)); }
+.banter span { font-size: 14px; line-height: 1.35; color: var(--pong-ink); overflow-wrap: anywhere; }
+.banter.in { animation: banter-in 220ms var(--ease-out) both; }
+@keyframes banter-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@container (max-aspect-ratio: 1/1) { .banter { bottom: auto; top: 12px; border-radius: 10px 2px 10px 10px; } }
+@media (prefers-reduced-motion: reduce) { .banter.in { animation: none; } }
+
 /* ---------- The goal celebration: the scorer's pose from their side ----------------------------------------- */
 
 .cheer { --tone: var(--pong-btc); position: absolute; bottom: 0; left: 0; height: min(80%, 440px); display: flex; align-items: flex-end; gap: 0; cursor: pointer; }
