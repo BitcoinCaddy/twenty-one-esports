@@ -40,7 +40,8 @@ use Illuminate\Support\Str;
 class ClipSpool
 {
     /** A clip still marked as playing this long after its start was left behind by a crash. */
-    private const PLAYING_STALE_MINUTES = 10;
+    /** Seconds a playing clip may run past its own length before it counts as cut off. */
+    private const PLAYING_MARGIN_SECONDS = 30;
 
     public const FETCHER_SEEN = 'caster:fetcher_seen_at';
 
@@ -146,6 +147,8 @@ class ClipSpool
      */
     public function next(string $phase, CarbonImmutable $now, ?string $topic = null): array
     {
+        $this->releaseStale($now);
+
         $ready = CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now);
 
         $live = $this->nextLive($now);
@@ -278,11 +281,7 @@ class ClipSpool
             $counts['expired']++;
         }
 
-        $stale = CasterClip::query()->where('status', CasterClip::PLAYING)->where('updated_at', '<', $now->subMinutes(self::PLAYING_STALE_MINUTES))->get();
-        foreach ($stale as $clip) {
-            $this->delete($clip);
-            $counts['stale']++;
-        }
+        $counts['stale'] += $this->releaseStale($now);
 
         $known = array_flip(CasterClip::query()->pluck('path')->all());
         foreach ($this->disk()->files($this->dir()) as $file) {
@@ -316,5 +315,26 @@ class ClipSpool
         }
 
         $clip->delete();
+    }
+
+    /**
+     * A clip left "playing" longer than its own length plus a margin is gone: a stream restart (every deploy
+     * restarts the daemon) cut it off and nothing else would ever play after it (2026-10-11: clip 330 held the
+     * spool for minutes after a deploy).
+     */
+    public function releaseStale(CarbonImmutable $now): int
+    {
+        $released = 0;
+
+        foreach (CasterClip::query()->where('status', CasterClip::PLAYING)->get() as $clip) {
+            $ends = $clip->updated_at?->copy()->addSeconds((int) ceil((float) $clip->duration_seconds) + self::PLAYING_MARGIN_SECONDS);
+
+            if ($ends === null || $ends->lessThan($now)) {
+                $this->delete($clip);
+                $released++;
+            }
+        }
+
+        return $released;
     }
 }

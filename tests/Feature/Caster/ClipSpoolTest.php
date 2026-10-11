@@ -183,3 +183,17 @@ it('takes a live moment or reaction over the seconds cap, never over the byte ca
         ->and(fn () => casterSpool()->store(casterScript(), casterOpus(), 1, [], CarbonImmutable::now()))->toThrow(SpoolFull::class)
         ->and(fn () => casterSpool()->store(casterScript(CasterScript::LIVE), casterOpus(), 1, [], CarbonImmutable::now()))->toThrow(SpoolFull::class);
 });
+
+it('releases a clip a stream restart left playing once its own length plus a margin has passed, so the next one plays', function () {
+    $now = CarbonImmutable::now();
+    $cut = casterSpool()->store(casterScript(), casterOpus(), 21.0, [21.0], $now->subMinutes(5));
+    casterSpool()->playing($cut);
+    CasterClip::query()->whereKey($cut->id)->update(['updated_at' => $now->subSeconds(52)]);
+    $running = casterSpool()->store(casterScript(), casterOpus(), 40.0, [40.0], $now);
+    casterSpool()->playing($running);
+    CasterClip::query()->whereKey($running->id)->update(['updated_at' => $now->subSeconds(20)]);
+
+    expect(casterSpool()->releaseStale($now))->toBe(1)
+        ->and(CasterClip::query()->find($cut->id))->toBeNull()
+        ->and(CasterClip::query()->find($running->id)?->status)->toBe(CasterClip::PLAYING);
+});
