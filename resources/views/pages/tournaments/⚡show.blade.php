@@ -789,6 +789,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
     {{-- A finished tournament opens on its champion (user, 2026-10-03), the viewer's own place inside it. --}}
     @island(name: 'now', always: true)
     @php(extract([...$this->page]))
+    <x-tournament-night-pause :tournament="$tournament" class="mx-4 lg:mx-12" />
     @if ($championMoment)
         @include('pages.tournaments.partials.champion', ['moment' => $championMoment, 'tournament' => $tournament, 'results' => $score ? '#leaderboard' : '#bracket', 'desk' => $desk])
     @elseif ($now)

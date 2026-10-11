@@ -3,6 +3,7 @@
 namespace App\Support\Tournaments;
 
 use App\Enums\TournamentStatus;
+use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Models\User;
 use App\Support\Series\SeriesRuleViolation;
@@ -48,9 +49,16 @@ final class CupSchedules
             $first = min(array_map(intval(...), $proposals === [] ? [0] : $proposals));
             ['proposals' => $times] = SeriesService::schedule($proposals, max(now()->getTimestamp() + 1, min($answerBy, $first)), null);
 
+            $night = NightPause::windowOf(Tournament::query()->findOrFail($locked->tournament_id));
+
             foreach ($times as $time) {
                 if ($time > $windowEnd) {
                     throw new SeriesRuleViolation('cup_window', __('Every suggested time has to lie before the round ends.'));
+                }
+
+                // The cup's night pause (NightPause): no match starts in it.
+                if (NightPause::current($night, CarbonImmutable::createFromTimestamp($time)) !== null) {
+                    throw new SeriesRuleViolation('cup_night', __('No suggested time may lie in the night pause.'));
                 }
             }
 

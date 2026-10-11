@@ -34,7 +34,12 @@ use Throwable;
  *    `esports.tournaments.reminders` before the league decides it (slice 5,
  *    TournamentReminders), each once.
  *
+ * 5b. The night pause's messages (NightPauseNotices): when it starts, and
+ *    before play goes on.
+ *
  * Steps 2 to 5 skip a paused tournament's series (P18, TournamentControl).
+ * The night pause needs no step of its own: every deadline it holds is
+ * computed past it (NightPause::addSeconds()), so none falls due inside.
  *
  * The chess check-in (a missed first move) needs nothing here: the game's own
  * deadline ends it (CheckChessClock, and `chess:check-clocks` every ten
@@ -58,7 +63,7 @@ final class TournamentScheduler
     public function __construct(private TournamentDraws $draws, private SeriesService $series, private CasualCups $cups, private TournamentReminders $reminders, private LobbyResults $lobbies, private LobbySwitch $lobbySwitch, private HyperCups $hyperCups) {}
 
     /**
-     * @return array{cups: array{opened: int, grown: int, extended: int, evenings: int, cancelled: int, rounds: int, decided: int}, hyper_cups: int, closed: int, drawn: int, noshows: int, forfeited: int, overdue: int, confirmed: int, reminded: int, lobbies: array{overdue: int, closed: int, pruned: int}, healed?: int}
+     * @return array{cups: array{opened: int, grown: int, extended: int, evenings: int, cancelled: int, rounds: int, decided: int}, hyper_cups: int, closed: int, drawn: int, noshows: int, forfeited: int, overdue: int, confirmed: int, reminded: int, night: int, lobbies: array{overdue: int, closed: int, pruned: int}, healed?: int}
      */
     public function tick(): array
     {
@@ -77,6 +82,8 @@ final class TournamentScheduler
         $done['confirmed'] = $this->each($this->timed()->where('status', SeriesStatus::Reported),
             fn (SeriesMatch $match): bool => $this->series->autoConfirm($match));
         $done['reminded'] = $this->reminders->tick();
+        // The night pause (NightPause): its start and the coming restart, to each player with an open match, once each.
+        $done['night'] = app(NightPauseNotices::class)->tick();
         // Lobbies (P10, security audit F3): overdue ones are told, a day later closed without a result.
         $done['lobbies'] = $this->lobbies->tick();
 

@@ -870,10 +870,10 @@ final class SeriesService
         // Nobody checked in: after the check-in no-show time plus the response time (a side may still check in, then
         // the other one is the no-show), the double no-show rule decides the match (TournamentRunner).
         if ($in === []) {
-            // autoNoshowAt() is not null here (guard above); the runner checks it again under the lock.
-            $due = $match->autoNoshowAt()->copy()->addMinutes((int) $match->responseMinutes());
+            // The runner checks it again under the lock.
+            $due = $match->doubleNoshowAt();
 
-            return ! $due->isFuture() && app(TournamentRunner::class)->decideNobodyCheckedIn($match);
+            return $due !== null && ! $due->isFuture() && app(TournamentRunner::class)->decideNobodyCheckedIn($match);
         }
 
         if (count($in) !== 1) {

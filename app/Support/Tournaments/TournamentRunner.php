@@ -1010,7 +1010,7 @@ final class TournamentRunner
 
             $locked = SeriesMatch::query()->lockForUpdate()->find($series->id);
             $match = TournamentMatch::query()->with(['tournament', 'slots.participant', 'round.stage', 'seriesMatch'])->lockForUpdate()->find($series->tournament_match_id);
-            $due = $locked?->autoNoshowAt()?->copy()->addMinutes((int) $locked->responseMinutes());
+            $due = $locked?->doubleNoshowAt();
 
             if ($locked === null || $match === null || $match->result !== null || $match->isReplaced($locked->id) || $due === null || $due->isFuture()
                 || $locked->status !== SeriesStatus::Accepted || $locked->noshow_reported_at !== null || $locked->overdue_at !== null

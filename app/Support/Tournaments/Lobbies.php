@@ -339,14 +339,15 @@ final class Lobbies
 
     /**
      * Until when the players report a lobby: the later of the start and the
-     * draw, plus the lobby's set-up, the time limit and `report_minutes`.
-     * After it only a director decides the lobby.
+     * draw, plus the lobby's set-up, the time limit and `report_minutes`;
+     * the tournament's night pause does not count (NightPause). After it
+     * only a director decides the lobby.
      */
     public static function reportBy(Tournament $tournament, CarbonImmutable $drawnAt): CarbonImmutable
     {
         $lobby = self::config($tournament->game) ?? [];
         $start = $drawnAt->max($tournament->starts_at->toImmutable());
 
-        return $start->addMinutes(self::plannedMinutes($tournament->game) + max(0, (int) ($lobby['report_minutes'] ?? 60)));
+        return NightPause::addSeconds(NightPause::windowOf($tournament), $start, (self::plannedMinutes($tournament->game) + max(0, (int) ($lobby['report_minutes'] ?? 60))) * 60)->toImmutable();
     }
 }

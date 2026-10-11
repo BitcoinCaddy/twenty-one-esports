@@ -19,7 +19,8 @@
 @if ($wait->decidesAt !== null)
     <span {{ $attributes->class('min-w-0 [overflow-wrap:anywhere]') }} data-test="auto-decision" data-at="{{ $wait->decidesAt->getTimestamp() }}">
         @if ($wait->paused)
-            <span class="font-bold text-ink-2">{{ __('Paused: no deadline runs.') }}</span>
+            {{-- The night pause (NightPause) says until when; an organizer's pause has no end yet. --}}
+            <span class="font-bold text-ink-2">{{ $wait->resumesAt !== null ? __('Night pause until :time: the clock stands, then runs on.', ['time' => \App\Support\LeagueTime::stamp($wait->resumesAt)]) : __('Paused: no deadline runs.') }}</span>
             <span class="text-ink-3">{{ __('Then: :what', ['what' => $wait->consequenceText()]) }}</span>
         @else
             {{ __('Auto-decision in') }}

@@ -36,6 +36,7 @@ final readonly class MatchWait
      * @param  array<string, string>  $params  the parameters of `$consequence` and `$action`
      * @param  string|null  $subject  what the reminders are stored against (`series:<id>`, `chess:<id>`, `match:<id>`)
      * @param  CarbonImmutable|null  $timeAt  the moment `:time` names (in `$params` in the league's time), for a recipient's own zone
+     * @param  CarbonImmutable|null  $resumesAt  the end of the tournament's night pause under way (NightPause); its clocks stand until then
      */
     public function __construct(
         public int $matchId,
@@ -55,6 +56,7 @@ final readonly class MatchWait
         public ?string $subject,
         public string $url,
         public ?CarbonImmutable $timeAt = null,
+        public ?CarbonImmutable $resumesAt = null,
     ) {}
 
     /** The state's short label, translated. */

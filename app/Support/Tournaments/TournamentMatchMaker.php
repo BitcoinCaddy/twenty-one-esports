@@ -111,8 +111,9 @@ final class TournamentMatchMaker
      */
     public function startReady(Tournament $tournament): void
     {
-        // Paused (P18): nothing new starts until it is resumed. A game switched off since (its profile is a stand-in) starts nothing.
-        if ($tournament->status !== TournamentStatus::Running || $tournament->isPaused() || $tournament->profile()->isUnknown()) {
+        // Paused (P18) or in its night pause (NightPause): nothing new starts until it goes on. A game switched off since (its
+        // profile is a stand-in) starts nothing.
+        if ($tournament->status !== TournamentStatus::Running || $tournament->isPaused() || $tournament->profile()->isUnknown() || NightPause::activeFor($tournament) !== null) {
             return;
         }
 
@@ -206,7 +207,7 @@ final class TournamentMatchMaker
 
     /**
      * Start one match inside startReady()'s transaction. Null when the
-     * tournament is paused or no longer running, false when the match
+     * tournament is paused (by hand or in its night pause) or no longer running, false when the match
      * cannot start now, true when it started.
      *
      * @throws TournamentRuleViolation
@@ -215,7 +216,7 @@ final class TournamentMatchMaker
     {
         $locked = Tournament::query()->lockForUpdate()->find($tournament->id);
 
-        if ($locked === null || $locked->status !== TournamentStatus::Running || $locked->isPaused()) {
+        if ($locked === null || $locked->status !== TournamentStatus::Running || $locked->isPaused() || NightPause::activeFor($locked) !== null) {
             return null;
         }
 
@@ -623,6 +624,7 @@ final class TournamentMatchMaker
             ?? throw new TournamentRuleViolation('no_players', "Tournament match {$match->id} has no player with an account left.");
         $start = CasualCups::seriesStartsAt($match);
         $pinned = CasualMatches::pinned();
+        $night = NightPause::pin($tournament);
         $now = now();
 
         $series = SeriesMatch::query()->create([
@@ -644,8 +646,9 @@ final class TournamentMatchMaker
             'respond_by' => $now,
             'start_at' => $start,
             'answered_at' => $now,
-            'ready_by' => $start->addMinutes($pinned['checkin_after_minutes'] ?? 10),
-            'casual' => [...$pinned, 'scheduled_at' => $start->getTimestamp()],
+            // The night pause (NightPause): the check-in close, like every casual clock of the cup's series, stops in it.
+            'ready_by' => NightPause::addSeconds($night === false ? null : $night, $start, (int) ($pinned['checkin_after_minutes'] ?? 10) * 60),
+            'casual' => [...$pinned, 'scheduled_at' => $start->getTimestamp(), 'night_pause' => $night],
             'origin' => SeriesMatch::ORIGIN_CUP,
             'host_side' => SeriesMatch::SIDES[random_int(0, 1)],
             'sides' => ['challenger' => $a->memberIds(), 'challenged' => $b->memberIds()],

@@ -14,6 +14,8 @@ use App\Support\GameNames;
 use App\Support\PreSeason;
 use App\Support\RequestMemo;
 use App\Support\Series\SeriesPresenter;
+use App\Support\Tournaments\NightPauseNotices;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -164,6 +166,13 @@ final class UpcomingEvents
     private function item(TournamentSignup $signup, User $user, int $nowMs, array $rooms): DockItem
     {
         $tournament = $signup->tournament;
+        $night = NightPauseNotices::state($tournament);
+        $mine = $night === null ? null : NightPauseNotices::forPlayer($tournament, $user, $night['resumes']);
+
+        if ($night !== null && $mine !== null) {
+            return $this->nightItem($tournament, $user, $nowMs, $night, $mine);
+        }
+
         $startMs = (int) $tournament->starts_at->getTimestampMs();
         $running = self::isLive($tournament, $nowMs);
         $today = self::isToday($tournament);
@@ -200,6 +209,53 @@ final class UpcomingEvents
             tick: $running ? null : ['endsAt' => $startMs, 'format' => 'hm', 'total' => max(1, $startMs - $nowMs), 'redUnder' => 0],
             model: $tournament,
             withdraw: $mayWithdraw ? route('tournaments.signup', $tournament).'#withdraw' : null,
+        );
+    }
+
+    /**
+     * The night pause of a tournament the player has an open match in
+     * (NightPauseNotices; user, 2026-10-10: "damit die Leute das nicht
+     * übersehen und ihren 'Termin' verpassen"): at the top of the dock,
+     * counting down to the pause in its warning time and to the restart
+     * while it runs; on the player from the warning and in the last hour
+     * before play goes on.
+     *
+     * @param  array{state: 'soon'|'paused', starts: CarbonImmutable, resumes: CarbonImmutable, until: string, resume: string}  $night
+     * @param  array{match: TournamentMatch, opponent: string, url: string, due: CarbonInterface|null, due_kind: 'checkin'|'deadline'|null}  $mine
+     */
+    private function nightItem(Tournament $tournament, User $user, int $nowMs, array $night, array $mine): DockItem
+    {
+        $paused = $night['state'] === 'paused';
+        $endsMs = (int) ($paused ? $night['resumes'] : $night['starts'])->getTimestampMs();
+        $time = fn (CarbonInterface $at): string => SeriesPresenter::time($at, $user, 'H:i');
+        $start = $time($night['starts']);
+        $due = $mine['due'] === null ? '' : ', '.($mine['due_kind'] === 'checkin'
+            ? self::text('check in by :time', ['time' => $time($mine['due'])])
+            : self::text('next deadline :time', ['time' => $time($mine['due'])]));
+        $line = $paused
+            ? self::text('Night pause: your match against :name goes on at :time', ['name' => $mine['opponent'], 'time' => $time($night['resumes'])]).$due
+            : self::text('Night pause at :time: a match under way may be finished', ['time' => $start === '00:00' ? '24:00' : $start]);
+
+        return new DockItem(
+            key: 'tournament-'.$tournament->id,
+            kind: 'tournament',
+            group: 'live',
+            phase: 'starts',
+            needsYou: ! $paused || $endsMs - $nowMs <= OpenMatches::STARTS_SOON_MS,
+            name: $tournament->title(),
+            face: null,
+            tag: null,
+            number: '',
+            href: $mine['url'],
+            title: self::text('Night pause'),
+            state: $paused ? self::text('Night pause') : self::text('Night pause soon'),
+            trailing: OpenMatches::format(max(0, $endsMs - $nowMs), 'hm'),
+            line: $line,
+            sentence: $line,
+            action: self::text('Open match'),
+            deadlineMs: $endsMs,
+            tick: ['endsAt' => $endsMs, 'format' => 'hm', 'total' => max(1, $paused ? $endsMs - (int) $night['starts']->getTimestampMs() : 3_600_000), 'redUnder' => $paused ? 0 : 900_000],
+            model: $tournament,
         );
     }
 

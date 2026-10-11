@@ -72,6 +72,7 @@
         <env name="ESPORTS_STREAM_BOT_NSEC" value="" force="true"/>
         <env name="ESPORTS_STREAM_BOT_CHAT_RELAYS" value="" force="true"/>
         <env name="ESPORTS_STREAM_BOT_QUIET_HOURS" value="" force="true"/>
+        <env name="ESPORTS_NIGHT_PAUSE" value="false" force="true"/>
         <env name="ESPORTS_CASUAL_CUP_GAMES" value="" force="true"/>
         <env name="ESPORTS_STREAM_CHAT_RELAYS" value="" force="true"/>
         <env name="ESPORTS_POOL_NPUB" value="" force="true"/>

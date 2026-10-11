@@ -106,7 +106,7 @@ test('an online series runs on the round clock: no-show 15, result 15 + longest 
     SeriesMatch::query()->update(['ready_at_challenger' => now(), 'ready_at_challenged' => now()]);
 
     expect($series->best_of)->toBe(5)
-        ->and($series->deadlines)->toBe(['noshow_minutes' => 15, 'report_minutes' => 75, 'response_minutes' => 10, 'checkin_minutes' => 30])
+        ->and($series->deadlines)->toBe(['noshow_minutes' => 15, 'report_minutes' => 75, 'response_minutes' => 10, 'checkin_minutes' => 30, 'night_pause' => false])
         ->and($series->reportDueAt()->equalTo($series->start_at->copy()->addMinutes(75)))->toBeTrue();
 
     $this->travel(74)->minutes();
@@ -122,23 +122,23 @@ test('the round clock derives the result deadline from each series\' own best-of
     $series = honestSeries(honestMatch(honestTournament(TournamentFormat::SingleElimination, 2, 'ea-sports-fc-26'), 'm1-1'));
 
     expect($series->best_of)->toBe(3)
-        ->and($series->deadlines)->toBe(['noshow_minutes' => 15, 'report_minutes' => 84, 'response_minutes' => 10, 'checkin_minutes' => 30]);
+        ->and($series->deadlines)->toBe(['noshow_minutes' => 15, 'report_minutes' => 84, 'response_minutes' => 10, 'checkin_minutes' => 30, 'night_pause' => false]);
 });
 
 test('the tournament\'s own deadlines beat the round clock; its own no-show wait moves the derived result deadline', function () {
     $own = honestSeries(honestMatch(honestTournament(TournamentFormat::SingleElimination, 2, attributes: ['noshow_minutes' => 20, 'report_hours' => 1, 'response_minutes' => 5, 'checkin_minutes' => 30]), 'm1-1'));
     $noshowOnly = honestSeries(honestMatch(honestTournament(TournamentFormat::SingleElimination, 2, attributes: ['noshow_minutes' => 20]), 'm1-1'));
 
-    expect($own->deadlines)->toBe(['noshow_minutes' => 20, 'report_hours' => 1, 'response_minutes' => 5, 'checkin_minutes' => 30])
+    expect($own->deadlines)->toBe(['noshow_minutes' => 20, 'report_hours' => 1, 'response_minutes' => 5, 'checkin_minutes' => 30, 'night_pause' => false])
         ->and($own->reportDueAt()->equalTo($own->start_at->copy()->addHour()))->toBeTrue()
-        ->and($noshowOnly->deadlines)->toBe(['noshow_minutes' => 20, 'report_minutes' => 80, 'response_minutes' => 10, 'checkin_minutes' => 30]);
+        ->and($noshowOnly->deadlines)->toBe(['noshow_minutes' => 20, 'report_minutes' => 80, 'response_minutes' => 10, 'checkin_minutes' => 30, 'night_pause' => false]);
 });
 
 test('on site and in daily chess the long defaults stay', function () {
     config(['esports.tournaments.report_hours' => 2, 'esports.tournaments.response_minutes' => 30, 'esports.series.noshow_minutes' => 15]);
     $series = honestSeries(honestMatch(honestTournament(TournamentFormat::SingleElimination, 2, attributes: ['on_site' => true, 'stations' => 2]), 'm1-1'));
 
-    expect($series->deadlines)->toBe(['noshow_minutes' => 15, 'report_hours' => 2, 'response_minutes' => 30]);
+    expect($series->deadlines)->toBe(['noshow_minutes' => 15, 'report_hours' => 2, 'response_minutes' => 30, 'night_pause' => false]);
 });
 
 /* ---------- Who starts when ------------------------------------------------------------------------------- */

@@ -16,6 +16,7 @@ use App\Support\Tournaments\Estimator;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
 use App\Support\Tournaments\Lobbies;
+use App\Support\Tournaments\NightPause;
 use App\Support\Tournaments\TournamentDeadlines;
 use Carbon\CarbonImmutable;
 use Database\Factories\TournamentFactory;
@@ -73,6 +74,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $noshow_minutes
  * @property int|null $report_hours
  * @property int|null $response_minutes
+ * @property bool|null $night_pause the night pause on or off; null = the league default ({@see NightPause})
+ * @property string|null $night_pause_until "HH:MM" (league zone) the night pause starts; null = the league default
+ * @property string|null $night_pause_resume "HH:MM" (league zone) play goes on; null = the league default
  * @property int|null $prize_target_sats the organizer's goal for the pool (P9); shown, never paid from by itself
  * @property list<int>|null $prize_split percent per place, null = {@see self::DEFAULT_SPLIT}
  * @property Carbon|null $pool_opened_at the pot is open since then (set at publish)
@@ -111,7 +115,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable(['name', 'description', 'game', 'mode', 'format', 'options', 'capacity', 'starts_at', 'time_window', 'on_site', 'stations', 'times', 'results_mode', 'status', 'seed', 'created_by_id',
     'slug', 'signup_closes_at', 'published_at', 'event_id', 'draw_height', 'draw_hash', 'draw_event_id', 'draw_committed_at', 'ladder_address',
-    'checkin_minutes', 'noshow_minutes', 'report_hours', 'response_minutes',
+    'checkin_minutes', 'noshow_minutes', 'report_hours', 'response_minutes', 'night_pause', 'night_pause_until', 'night_pause_resume',
     'prize_target_sats', 'prize_split', 'pool_opened_at', 'pool_closed_at', 'payouts_approved_at', 'payouts_approved_by_id',
     'pot_source', 'pot_nwc_uri', 'pot_lud16', 'pot_balance_sats', 'pot_balance_at', 'pot_balance_error', 'paused_at',
     'prize_mode', 'prize_fixed', 'pot_can_receive',
@@ -171,6 +175,7 @@ class Tournament extends Model
             'noshow_minutes' => 'integer',
             'report_hours' => 'integer',
             'response_minutes' => 'integer',
+            'night_pause' => 'boolean',
             'prize_target_sats' => 'integer',
             'prize_split' => 'array',
             'pool_opened_at' => 'datetime',

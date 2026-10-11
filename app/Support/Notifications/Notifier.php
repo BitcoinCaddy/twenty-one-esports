@@ -56,9 +56,13 @@ use Throwable;
 final class Notifier
 {
     /**
+     * `$immediate`: a DM the player chose to get in the daily digest goes out
+     * now instead (the night pause's restart reminder, user 2026-10-10:
+     * "Termin-Erinnerung sofort"); a player with DMs off still gets none.
+     *
      * @return list<'push'|'dm'|'digest'> the remote channels it went out on ('digest': a DM that waits for the daily digest)
      */
-    public function send(User $user, NotificationKind $kind, Notice $notice, ChessGame|BoardGame|HyperMatch|null $game = null, bool $remote = true, ?User $sender = null): array
+    public function send(User $user, NotificationKind $kind, Notice $notice, ChessGame|BoardGame|HyperMatch|null $game = null, bool $remote = true, ?User $sender = null, bool $immediate = false): array
     {
         $settings = $user->chessSettings();
         $trigger = $kind->value;
@@ -115,7 +119,7 @@ final class Notifier
         }
 
         if (in_array('dm', $channels, true) && NotificationDm::fromConfig()->isConfigured()) {
-            if ($settings->digestFor($trigger)) {
+            if ($settings->digestFor($trigger) && ! $immediate) {
                 // P45: waits for the daily digest (DmDigest), in the same transaction as its cause.
                 NotificationDigestItem::query()->create([
                     'user_id' => $user->id,

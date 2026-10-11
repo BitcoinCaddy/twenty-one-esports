@@ -689,6 +689,16 @@ return [
         'reminders' => array_values(array_map(intval(...), array_filter(array_map('trim', explode(',', (string) env('ESPORTS_TOURNAMENT_REMINDERS', '30,5'))), is_numeric(...)))),
         'remind_every_minutes' => 10,
         'first_move_nudge_seconds' => 120,
+        // Night pause (user, 2026-10-10; App\Support\Tournaments\NightPause): from `until` to `resume` in the league's zone
+        // no new match starts and no league clock runs; a match under way may finish. A tournament may override all three.
+        // `warn_minutes`: the "pause starts soon" notice; `resume_reminder_minutes`: the DM before the restart.
+        'night_pause' => [
+            'enabled' => (bool) env('ESPORTS_NIGHT_PAUSE', true),
+            'until' => '00:00',
+            'resume' => '18:00',
+            'warn_minutes' => 60,
+            'resume_reminder_minutes' => 30,
+        ],
     ],
 
     /*
