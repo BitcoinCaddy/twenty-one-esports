@@ -198,6 +198,13 @@ final class PatternScripts
             ];
         }
 
+        // Game moments (GameMoments): each its own item, its fields the slots of the `moment_lines`, and `{mood_<mood>}`
+        // the player the moment is about, so a line can be written for one mood only.
+        foreach (self::listOf($facts['moments'] ?? null) as $moment) {
+            $mood = is_string($moment['mood'] ?? null) ? $moment['mood'] : null;
+            $items[] = [...array_diff_key($moment, ['kind' => true, 'mood' => true]), ...($mood !== null && isset($moment['lead']) ? ['mood_'.$mood => $moment['lead']] : [])];
+        }
+
         $items = array_map(fn (array $item): array => array_map('strval', array_filter($item, fn (mixed $value): bool => is_string($value) && $value !== '' || is_int($value))), $items);
 
         return ['global' => $global, 'items' => $items === [] ? [[]] : $items];
@@ -272,6 +279,12 @@ final class PatternScripts
                 $openings[(string) $row['id']] = $text;
             } elseif ($role === 'invite' && in_array($phase, (array) ($row['phases'] ?? []), true)) {
                 $invites[(string) $row['id']] = $text;
+            }
+        }
+
+        foreach ((array) ($data['moment_lines'] ?? []) as $row) {
+            if ($fits((array) ($row['topics'] ?? []))) {
+                $facts[(string) $row['id']] = (string) $row['text'];
             }
         }
 
@@ -455,6 +468,7 @@ final class PatternScripts
         return [
             ...array_column((array) ($section['openings'] ?? []), 'text', 'id'),
             ...array_column((array) ($section['facts'] ?? []), 'text', 'id'),
+            ...array_column((array) ($data['moment_lines'] ?? []), 'text', 'id'),
             ...array_column((array) $data['patterns'], 'template', 'id'),
             ...array_column((array) $data['topics'], 'example_de', 'id'),
             ...array_column((array) $data['promo'], 'text', 'id'),

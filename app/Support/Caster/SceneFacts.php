@@ -7,6 +7,7 @@ use App\Enums\ChessGameStatus;
 use App\Models\ChessGame;
 use App\Models\Clan;
 use App\Models\User;
+use App\Support\Caster\GameMoments\GameMoments;
 use App\Support\TwentyOne\Stream\BlockfillSlides;
 use App\Support\TwentyOne\Stream\MempoolSlides;
 use App\Support\TwentyOne\Stream\StreamStats;
@@ -124,7 +125,25 @@ class SceneFacts
             default => $this->leagueTotals(),
         };
 
-        return [...$facts, ...$data];
+        return [...$facts, ...$data, ...$this->moments($topic, $night)];
+    }
+
+    /**
+     * What the topic's games are doing (GameMoments: material, race standing,
+     * leader and gap, comebacks, each with a mood), under `moments`; none
+     * when there are none or the read fails.
+     *
+     * @return array{moments?: list<array<string, string|int>>}
+     */
+    protected function moments(string $topic, bool $night): array
+    {
+        try {
+            $moments = app(GameMoments::class)->forTopic($topic, $night);
+        } catch (Throwable) {
+            return [];
+        }
+
+        return $moments === [] ? [] : ['moments' => $moments];
     }
 
     /**
