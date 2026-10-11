@@ -239,10 +239,14 @@ final class VoiceGuard
         }
 
         // Names: no handle-like or unknown capitalised word outside the facts. A fact name in another form ("Muller"
-        // for "Müller", "Adas" or "Ada's" for "Ada") is that fact, not an invented name (P2 yield round).
+        // for "Müller", "Adas" or "Ada's" for "Ada") is that fact, not an invented name (P2 yield round), and so is
+        // a fact number spelled out at the start of a spoken sentence ("Acht Clans" for 8, P6 yield round).
         $factKeys = array_fill_keys(array_map(self::nameKey(...), self::words(implode(' ', $factStrings))), true);
+        $factNumberValues = array_map('strval', array_keys($factNumbers));
         foreach (self::words($withoutFacts) as $word) {
-            if (! isset($factKeys[self::nameKey($word)]) && $this->looksLikeInventedName($word, $entry)) {
+            $spelled = self::spelledNumber($word);
+
+            if (! isset($factKeys[self::nameKey($word)]) && ! ($spelled !== null && in_array((string) $spelled, $factNumberValues, true)) && $this->looksLikeInventedName($word, $entry)) {
                 $violations[] = self::NAME;
                 break;
             }
@@ -380,6 +384,36 @@ final class VoiceGuard
         $key = (string) preg_replace('/[\'’]s$/u', '', $key);
 
         return mb_strlen($key) > 3 && str_ends_with($key, 's') ? mb_substr($key, 0, -1) : $key;
+    }
+
+    /** The value of a German number word from 0 to 999 ("acht" → 8, "Vierunddreißig" → 34), null for any other word. */
+    public static function spelledNumber(string $word): ?int
+    {
+        $word = str_replace('ß', 'ss', mb_strtolower($word));
+        $units = ['ein' => 1, 'eins' => 1, 'eine' => 1, 'zwei' => 2, 'drei' => 3, 'vier' => 4, 'fünf' => 5, 'sechs' => 6, 'sieben' => 7, 'acht' => 8, 'neun' => 9];
+        $small = ['null' => 0, ...$units, 'zehn' => 10, 'elf' => 11, 'zwölf' => 12, 'dreizehn' => 13, 'vierzehn' => 14, 'fünfzehn' => 15,
+            'sechzehn' => 16, 'siebzehn' => 17, 'achtzehn' => 18, 'neunzehn' => 19];
+        $tens = ['zwanzig' => 20, 'dreissig' => 30, 'vierzig' => 40, 'fünfzig' => 50, 'sechzig' => 60, 'siebzig' => 70, 'achtzig' => 80, 'neunzig' => 90];
+
+        $hundreds = 0;
+        if (preg_match('/^(.*?)hundert(.*)$/u', $word, $match) === 1) {
+            $hundreds = $match[1] === '' ? 1 : ($units[$match[1]] ?? null);
+            if ($hundreds === null) {
+                return null;
+            }
+            $word = $match[2];
+        }
+
+        if ($word === '') {
+            return $hundreds > 0 ? 100 * $hundreds : null;
+        }
+
+        $rest = $small[$word] ?? $tens[$word] ?? null;
+        if ($rest === null && preg_match('/^(.+?)und(.+)$/u', $word, $match) === 1 && isset($units[$match[1]], $tens[$match[2]]) && $match[1] !== 'eins' && $match[1] !== 'eine') {
+            $rest = $units[$match[1]] + $tens[$match[2]];
+        }
+
+        return $rest === null || ($hundreds > 0 && $rest === 0) ? null : 100 * $hundreds + $rest;
     }
 
     /**

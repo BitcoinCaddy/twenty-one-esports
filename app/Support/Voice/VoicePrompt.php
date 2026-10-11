@@ -30,7 +30,7 @@ final class VoicePrompt
      *
      * @var array<string, string>
      */
-    private const REASON_HINTS = [
+    public const REASON_HINTS = [
         VoiceGuard::NUMBER => 'Eine Zahl stand nicht in den Fakten.',
         VoiceGuard::NAME => 'Ein großgeschriebenes Wort oder ein Name stand nicht in den Fakten.',
         VoiceGuard::URL => 'Kein Link im Text.',

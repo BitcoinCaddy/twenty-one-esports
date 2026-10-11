@@ -148,7 +148,7 @@ final class VoiceHygiene
             $violations[] = self::MARKDOWN;
         }
 
-        if (preg_match('/^\s*(?:hier ist|hier kommt|here is|here\'s|klar[,!]|sure[,!]|okay[,!]|ok[,!]|(?:post|text|tweet|nachricht|antwort|answer|caption)\s*:)/iu', $text) === 1) {
+        if (preg_match('/^\s*(?:hier ist(?!\s+twenty\s+one\b)|hier kommt|here is|here\'s|klar[,!]|sure[,!]|okay[,!]|ok[,!]|(?:post|text|tweet|nachricht|antwort|answer|caption)\s*:)/iu', $text) === 1) {
             $violations[] = self::PREAMBLE;
         }
 
