@@ -1,0 +1,1560 @@
+{
+ "Upset (Außenseiter schlägt Favorit)": [
+  {
+   "line": "{sieger} ({elo_sieger}) schlägt {verlierer} ({elo_verlierer}). Das Auto wird sich nicht durchsetzen, hoch lebe das Pferd! 🐎",
+   "canon_id": "e21-auto-pferd",
+   "form": "zitat"
+  },
+  {
+   "line": "{elo_diff} Elo Unterschied, trotzdem {ergebnis}. Einfach mal Ludwig von Mises lesen – Zentralbanker hassen diesen Trick!",
+   "canon_id": "e21-mises-trick",
+   "form": "zitat"
+  },
+  {
+   "line": "{verlierer} war klarer Favorit. Woran hat et jelegen?",
+   "canon_id": "e21-woran-hat-et-jelegen",
+   "form": "frage"
+  },
+  {
+   "line": "Vor der Partie hätte keiner auf {sieger} gewettet. Jetzt steht {ergebnis} im Mempool.",
+   "canon_id": "e21-wette",
+   "form": "fakten"
+  },
+  {
+   "line": "{verlierer} fliegt raus. Another One Bites The Dust.",
+   "canon_id": "title-another-one-bites-the-dust",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} gewinnt {ergebnis}. Nicht nachzuvollziehen, aber eingetragen.",
+   "canon_id": "clip-fussball-nicht-nachzuvollziehen",
+   "form": "deadpan"
+  },
+  {
+   "line": "Few understand, wie {sieger} diese Partie gedreht hat.",
+   "canon_id": "btc-few-understand",
+   "form": "understatement"
+  },
+  {
+   "line": "{sieger} gegen den Favoriten: {ergebnis}. Hopium hat sich ausgezahlt.",
+   "canon_id": "title-hopium",
+   "form": "hype"
+  },
+  {
+   "line": "Elo sagt {verlierer}, das Brett sagt {sieger}. Don't trust, verify.",
+   "canon_id": "e21-dont-trust-verify",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} kommt aus dem Nichts und nimmt {verlierer} {ergebnis} ab. ⚡",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Wer hat {sieger} auf dem Zettel gehabt? Eins in den Chat für „ich“, zwei für „niemand“.",
+   "canon_id": "e21-eins-in-den-chat",
+   "form": "call"
+  },
+  {
+   "line": "Die Super Nova ist da: {sieger} schlägt {verlierer} in {spiel}.",
+   "canon_id": "title-die-super-nova-ist-da",
+   "form": "hype"
+  },
+  {
+   "line": "{verlierer} unterliegt {sieger}. Kann man doch verstehen, war trotzdem überraschend.",
+   "canon_id": "clip-nordwolle-kann-man-doch-verstehen",
+   "form": "understatement"
+  },
+  {
+   "line": "{sieger} gewinnt als Außenseiter. Panzerknackersyndrom: Heute wurde der Tresor geknackt.",
+   "canon_id": "title-panzerknackersyndrom",
+   "form": "hype"
+  },
+  {
+   "line": "{ergebnis} für {sieger}. Ohne Witz.",
+   "canon_id": "e21-ohne-witz",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} schlägt die Nummer {rang_verlierer}. Lecko mio.",
+   "canon_id": "title-lecko-mio",
+   "form": "hype"
+  }
+ ],
+ "Comeback": [
+  {
+   "line": "{sieger} lag {rueckstand} hinten und holt sich {spiel} noch. HODL. 💎",
+   "canon_id": "btc-hodl",
+   "form": "hype"
+  },
+  {
+   "line": "Lichtblick der Woche: {sieger} dreht ein {rueckstand} zum Sieg.",
+   "canon_id": "e21-lichtblick-der-woche",
+   "form": "fakten"
+  },
+  {
+   "line": "{sieger} meldet sich nach {pause_tage} Tagen zurück und gewinnt. Opa erzählt vom Krieg, und diesmal gewinnt er ihn.",
+   "canon_id": "e21-opa-erzaehlt",
+   "form": "hype"
+  },
+  {
+   "line": "Innovation durch Rückstand: {sieger} gewinnt nach {rueckstand}.",
+   "canon_id": "title-innovation-durch-rueckstand",
+   "form": "understatement"
+  },
+  {
+   "line": "{rueckstand} hinten, dann {ergebnis}. Diamond Hands.",
+   "canon_id": "btc-diamond-hands",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} kauft den Dip und gewinnt noch {ergebnis}.",
+   "canon_id": "btc-buy-the-dip",
+   "form": "fakten"
+  },
+  {
+   "line": "Pass mal auf, hat {sieger} sich wohl gedacht: {rueckstand} aufgeholt.",
+   "canon_id": "clip-panzerknacker-pass-mal-auf",
+   "form": "hype"
+  },
+  {
+   "line": "{verlierer} führte {fuehrung}. 100x long … and it's gone.",
+   "canon_id": "title-100x-long-and-it-s-gone",
+   "form": "deadpan"
+  },
+  {
+   "line": "Sei dein eigener Held! {sieger} gewinnt nach {rueckstand} ganz allein.",
+   "canon_id": "title-sei-dein-eigener-held",
+   "form": "hype"
+  },
+  {
+   "line": "Totgesagt, abgeschrieben, Sieger: {sieger}, {ergebnis}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Die Rückkehr des Lichts: {sieger} gewinnt nach {niederlagen} Niederlagen wieder.",
+   "canon_id": "title-die-rueckkehr-des-lichts",
+   "form": "zitat"
+  },
+  {
+   "line": "Wie viele hätten bei {rueckstand} noch an {sieger} geglaubt? Schreibt mal in den Chat.",
+   "canon_id": "e21-schreibt-in-den-chat",
+   "form": "frage"
+  },
+  {
+   "line": "Schritt in die richtige Richtung: {sieger} beendet die Durststrecke mit {ergebnis}.",
+   "canon_id": "e21-schritt-richtige-richtung",
+   "form": "understatement"
+  },
+  {
+   "line": "{sieger} gewinnt nach {rueckstand} Rückstand. Ultra geil.",
+   "canon_id": "e21-ultra-geil",
+   "form": "hype"
+  },
+  {
+   "line": "{sieger} holt {spiel} aus der Asche, {ergebnis}. 🔥",
+   "canon_id": null,
+   "form": "hype"
+  },
+  {
+   "line": "Bitcoin ist der beste Lehrer, sagt ein Der-Weg-Titel. {sieger} hat aus der Hinrunde gelernt: {ergebnis}.",
+   "canon_id": "derweg-bitcoin-ist-der-beste-lehrer",
+   "form": "zitat"
+  }
+ ],
+ "Lange Serie": [
+  {
+   "line": "{spieler} gewinnt das {serie}. Spiel in Folge. Stacking Sats, ein Sieg nach dem anderen. ⚡",
+   "canon_id": "btc-stacking-sats",
+   "form": "fakten"
+  },
+  {
+   "line": "Serie {serie}: {spieler} spielt wie mit Laser Eyes.",
+   "canon_id": "btc-laser-eyes",
+   "form": "hype"
+  },
+  {
+   "line": "Neue Elo-Bestmarke für {spieler}: {elo_neu}. Soll ich dir mal ein richtiges All-Time-High zeigen? 📈",
+   "canon_id": "e21-richtiges-ath",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler} steht bei {elo_neu}. Number go up.",
+   "canon_id": "btc-number-go-up",
+   "form": "deadpan"
+  },
+  {
+   "line": "{serie} Siege am Stück. Lightning Löwe entlaufen.",
+   "canon_id": "title-lightning-loewe-entlaufen",
+   "form": "hype"
+  },
+  {
+   "line": "{spieler}: {serie} Siege, keine Niederlage. Buy Only Edition.",
+   "canon_id": "title-buy-only-edition",
+   "form": "deadpan"
+  },
+  {
+   "line": "Wer stoppt {spieler}? {serie} Siege und es läuft.",
+   "canon_id": null,
+   "form": "frage"
+  },
+  {
+   "line": "Hier oben, Alter: {spieler} führt mit {serie} Siegen in Serie.",
+   "canon_id": "clip-nordwolle-hier-oben-alter",
+   "form": "hype"
+  },
+  {
+   "line": "Tick tock, next win: {spieler} hält die Serie bei {serie}.",
+   "canon_id": "btc-tick-tock-next-block",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler} gewinnt schon wieder. Regular News.",
+   "canon_id": "title-regular-news",
+   "form": "understatement"
+  },
+  {
+   "line": "Der Bärenmarkt der Gegner geht weiter: {spieler} bei {serie} Siegen.",
+   "canon_id": "e21-baerenmarkt",
+   "form": "deadpan"
+  },
+  {
+   "line": "{spieler} macht {serie}. Moon-Juice getrunken?",
+   "canon_id": "title-moon-juice",
+   "form": "frage"
+  },
+  {
+   "line": "{serie} in Folge. Zack Zack Fertig, nächste Partie.",
+   "canon_id": "clip-nordwolle-zack-zack-fertig",
+   "form": "hype"
+  },
+  {
+   "line": "{spieler} hält die Führung seit {tage} Tagen. Du verkaufst deine Bitcoin nicht!",
+   "canon_id": "title-du-verkaufst-deine-bitcoin-nicht",
+   "form": "zitat"
+  },
+  {
+   "line": "{serie} Siege. Nur eine Frage der Zeit, bis jemand {spieler} stoppt. Oder auch nicht.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "Allein durch die News: {spieler} mit {serie} Siegen.",
+   "canon_id": "title-allein-durch-die-news",
+   "form": "fakten"
+  }
+ ],
+ "Serie gerissen": [
+  {
+   "line": "Nach {serie} Siegen ist die Serie von {spieler} gerissen. Mal verlierste, mal gewinnen die andern.",
+   "canon_id": "e21-mal-verlierste",
+   "form": "zitat"
+  },
+  {
+   "line": "{serie} Siege, dann {ergebnis} gegen {sieger}. Ich habe fertig.",
+   "canon_id": "e21-ich-habe-fertig",
+   "form": "deadpan"
+  },
+  {
+   "line": "Die Serie ist weg, die Elo bleibt hoch: {spieler} steht bei {elo}.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "{sieger} beendet die Serie von {spieler}. I want to break free – und {sieger} hat es geschafft.",
+   "canon_id": "title-i-want-to-break-free",
+   "form": "hype"
+  },
+  {
+   "line": "Hodlgate? Nein, nur eine Niederlage. {spieler} verliert nach {serie} Siegen.",
+   "canon_id": "title-hodlgate",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} stoppt {spieler}. Tiefpunkt? Bei {elo} Elo eher nicht.",
+   "canon_id": "clip-fussball-tiefpunkt",
+   "form": "frage"
+  },
+  {
+   "line": "Früher oder später musste es passieren: {spieler} verliert gegen {sieger}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler}s Serie endet bei {serie}. Der Markt crasht, kurz.",
+   "canon_id": "clip-verschiedenes-der-markt-crasht",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} hat {spieler} nach {serie} Siegen erwischt. Respekt an beide. 🤙",
+   "canon_id": "nostr-shaka",
+   "form": "fakten"
+  },
+  {
+   "line": "Kampagne gegen mich, denkt {spieler} wohl – {sieger} hat einfach gut gespielt.",
+   "canon_id": "clip-fussball-kampagne-gegen-mich",
+   "form": "understatement"
+  },
+  {
+   "line": "{serie} Siege sind trotzdem {serie} Siege. Woran hat et jelegen?",
+   "canon_id": "e21-woran-hat-et-jelegen",
+   "form": "frage"
+  },
+  {
+   "line": "Rekord bleibt bei {serie}. {spieler} verliert {ergebnis}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Ab in den Keller! Zumindest eine Partie lang: {spieler} verliert nach {serie} Siegen.",
+   "canon_id": "title-ab-in-den-keller",
+   "form": "hype"
+  },
+  {
+   "line": "{sieger} stoppt den Lauf. Die Liga ist wieder offen.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "Diesmal zu früh gefreut: {spieler} verliert gegen {sieger}. Knapp daneben ist auch vorbei.",
+   "canon_id": "e21-knapp-daneben",
+   "form": "zitat"
+  },
+  {
+   "line": "Serie vorbei. {spieler} nimmt es sportlich, {sieger} nimmt die Punkte.",
+   "canon_id": null,
+   "form": "understatement"
+  }
+ ],
+ "Turnierfinale": [
+  {
+   "line": "Heute Abend Finale {turnier}: {spieler_a} gegen {spieler_b}. Hol das Popcorn! 🍿",
+   "canon_id": "e21-hol-das-popcorn",
+   "form": "hype"
+  },
+  {
+   "line": "Finale {turnier}. Eins in den Chat für {spieler_a}, zwei für {spieler_b}.",
+   "canon_id": "e21-eins-in-den-chat",
+   "form": "call"
+  },
+  {
+   "line": "Zu zweit ist es doch am schönsten: {spieler_a} gegen {spieler_b} um {turnier}.",
+   "canon_id": "title-zu-zweit-ist-es-doch-am-schoensten",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler_a} gegen {spieler_b}. HUP HUP!",
+   "canon_id": "title-hup-hup",
+   "form": "hype"
+  },
+  {
+   "line": "Finale um {uhrzeit}. Düdüdüdüdüm.",
+   "canon_id": "clip-maurice-duedueduedueduem",
+   "form": "hype"
+  },
+  {
+   "line": "Größter Podcast aller Zeiten? Nein. Größtes Finale der Woche: {spieler_a} gegen {spieler_b}.",
+   "canon_id": "e21-groesster-podcast",
+   "form": "zitat"
+  },
+  {
+   "line": "Wer gewinnt {turnier}? Keine Ahnung. Genau deshalb schauen wir.",
+   "canon_id": "title-keine-ahnung",
+   "form": "deadpan"
+  },
+  {
+   "line": "Ankündigung: Finale {turnier}, {uhrzeit}, {spieler_a} gegen {spieler_b}. Let's go!",
+   "canon_id": "e21-lets-go",
+   "form": "hype"
+  },
+  {
+   "line": "Spieltheorie in Aktion: {spieler_a} und {spieler_b} kennen sich aus {rematch_anzahl} Partien.",
+   "canon_id": "title-spieltheorie-in-aktion",
+   "form": "fakten"
+  },
+  {
+   "line": "Hey Heey Heeey – in {minuten} Minuten beginnt das Finale.",
+   "canon_id": "clip-verschiedenes-hey-heey-heeey",
+   "form": "hype"
+  },
+  {
+   "line": "{spieler_a} oder {spieler_b}? Was ist euer Take dazu?",
+   "canon_id": "e21-mein-take",
+   "form": "frage"
+  },
+  {
+   "line": "Finale {turnier}: {spieler_a} ({elo_a}) gegen {spieler_b} ({elo_b}). Keine Finanzberatung, nur eine Prognose: wird eng.",
+   "canon_id": "e21-keine-finanzberatung",
+   "form": "deadpan"
+  },
+  {
+   "line": "Zwei übrig von {teilnehmer}. Heute entscheidet sich {turnier}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Finale. Wettkönig gesucht: Wer tippt richtig?",
+   "canon_id": "e21-wette",
+   "form": "call"
+  },
+  {
+   "line": "{spieler_a} gegen {spieler_b}, live und in Farbe im Stream.",
+   "canon_id": "e21-live-und-in-farbe",
+   "form": "fakten"
+  },
+  {
+   "line": "Heute zählt nur eine Partie. {spieler_a}, {spieler_b}, viel Glück. 🏆",
+   "canon_id": null,
+   "form": "understatement"
+  }
+ ],
+ "Champion": [
+  {
+   "line": "{sieger} gewinnt {turnier} ohne verlorene Partie. There is no second best. 🏆",
+   "canon_id": "btc-no-second-best",
+   "form": "zitat"
+  },
+  {
+   "line": "{sieger} holt {turnier}. Bester Mann heute.",
+   "canon_id": "e21-bester-mann",
+   "form": "hype"
+  },
+  {
+   "line": "{sieger} ist Champion. Keine weitere Diskussion.",
+   "canon_id": "clip-fussball-keine-weitere-diskussion",
+   "form": "deadpan"
+  },
+  {
+   "line": "One Man Show: {sieger} gewinnt {turnier} mit {siege} Siegen.",
+   "canon_id": "title-one-man-show",
+   "form": "fakten"
+  },
+  {
+   "line": "Viva la veintiuno, carajo! {sieger} gewinnt {turnier}.",
+   "canon_id": "title-viva-la-veintiuno-carajo",
+   "form": "hype"
+  },
+  {
+   "line": "{sieger} gewinnt {turnier}. Glückwunsch an alle {teilnehmer} – Grüße gehen raus an {meetup}!",
+   "canon_id": "e21-gruesse-gehen-raus",
+   "form": "fakten"
+  },
+  {
+   "line": "Flieht, ihr Narren! {sieger} ist Champion von {turnier}.",
+   "canon_id": "title-flieht-ihr-narren",
+   "form": "hype"
+  },
+  {
+   "line": "{sieger} gewinnt {turnier}. Ich hab's geschafft, würde das Soundboard sagen.",
+   "canon_id": "clip-gruppe-ich-hab-s-geschafft",
+   "form": "zitat"
+  },
+  {
+   "line": "Wir schreiben Geschichte: {sieger} gewinnt das erste {turnier}.",
+   "canon_id": "title-wir-schreiben-geschichte",
+   "form": "hype"
+  },
+  {
+   "line": "Klar und deutlich: {sieger} gewinnt {turnier} {ergebnis}.",
+   "canon_id": "clip-fussball-klar-und-deutlich",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} ist Champion. {topf} Sats gehen raus. Befreit die Sats!",
+   "canon_id": "title-befreit-die-sats",
+   "form": "hype"
+  },
+  {
+   "line": "Und der Champion von {turnier} heißt {sieger}. Mehr gibt es nicht zu sagen.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "Wer gewinnt {turnier}? Bitcoin ist die Antwort – und {sieger} auch.",
+   "canon_id": "title-bitcoin-ist-die-antwort",
+   "form": "frage"
+  },
+  {
+   "line": "End of Quote – Repeat the Line: {sieger} is king of {turnier}!",
+   "canon_id": "title-end-of-quote-repeat-the-line-bitcoin-is-",
+   "form": "zitat"
+  },
+  {
+   "line": "{sieger} holt {turnier}, {zweiter} wird Zweiter. Beide stark. ⚡",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Champion {sieger}. Absolut reines Gewissen: kein Protest, keine Prüfung, nur Siege.",
+   "canon_id": "clip-fussball-absolut-reines-gewissen",
+   "form": "deadpan"
+  }
+ ],
+ "Neue Saison": [
+  {
+   "line": "Saison {saison} ist eröffnet. Miteinander Bullish Samma!",
+   "canon_id": "e21-miteinander-bullish",
+   "form": "hype"
+  },
+  {
+   "line": "Neue Saison, alle bei null. Heute ist ein guter Tag um Sats zu stapeln.",
+   "canon_id": "e21-sats-stapeln",
+   "form": "zitat"
+  },
+  {
+   "line": "Saison {saison} startet. Lass Bitcoin laufen statt im Fiat zu ersaufen.",
+   "canon_id": "title-lass-bitcoin-laufen-statt-im-fiat-zu-ers",
+   "form": "zitat"
+  },
+  {
+   "line": "Die erste Partie der Saison {saison} ist gespielt, {spieler} eröffnet. Running bitcoin.",
+   "canon_id": "btc-running-bitcoin",
+   "form": "fakten"
+  },
+  {
+   "line": "Blockzeit {blockhoehe}: Saison {saison} beginnt.",
+   "canon_id": "e21-blockzeit",
+   "form": "fakten"
+  },
+  {
+   "line": "Saison {saison}. Escape to 21 World.",
+   "canon_id": "title-escape-to-21-world",
+   "form": "hype"
+  },
+  {
+   "line": "Herzlich willkommen bei Einundzwanzig – und in Saison {saison} der Liga.",
+   "canon_id": "e21-herzlich-willkommen-21",
+   "form": "fakten"
+  },
+  {
+   "line": "Neue Saison, neue Elo-Jagd. Sternzeichen Bulle?",
+   "canon_id": "title-sternzeichen-bulle",
+   "form": "frage"
+  },
+  {
+   "line": "Saison {saison}: {spiele} Spiele, {teilnehmer} Spieler, null Gebühren.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Pleb Economic Forum eröffnet: Saison {saison} läuft.",
+   "canon_id": "title-pleb-economic-forum",
+   "form": "hype"
+  },
+  {
+   "line": "Macht eure Hausaufgaben! Regeln für Saison {saison} stehen online.",
+   "canon_id": "title-macht-eure-hausaufgaben",
+   "form": "call"
+  },
+  {
+   "line": "Saison {saison}. Besseres Geld, bessere Welt – bessere Spiele haben wir auch.",
+   "canon_id": "e21-besseres-geld",
+   "form": "zitat"
+  },
+  {
+   "line": "Alles auf null. Wer schreibt diesmal Geschichte?",
+   "canon_id": null,
+   "form": "frage"
+  },
+  {
+   "line": "Saison {saison} beginnt. WAGMI.",
+   "canon_id": "btc-wagmi",
+   "form": "hype"
+  },
+  {
+   "line": "Neue Saison. Montag ist mein Lieblingstag! – passt heute.",
+   "canon_id": "title-montag-ist-mein-lieblingstag",
+   "form": "zitat"
+  },
+  {
+   "line": "Saison {saison} ist da. Let's go!",
+   "canon_id": "e21-lets-go",
+   "form": "hype"
+  }
+ ],
+ "Saisonende": [
+  {
+   "line": "Die Saison neigt sich dem Ende. Das Jahr neigt sich dem Ende. Wir können festhalten: Es war ein gutes Jahr für den Bitcoin.",
+   "canon_id": "e21-gutes-jahr-bitcoin",
+   "form": "zitat"
+  },
+  {
+   "line": "Saison {saison} vorbei. Champion: {sieger}. Drei Weizenbier für alle (alkoholfrei geht auch).",
+   "canon_id": "clip-fussball-drei-weizenbier",
+   "form": "hype"
+  },
+  {
+   "line": "Alles andere gehört anderen, nur die Zeit gehört uns. Danke für Saison {saison}.",
+   "canon_id": "title-alles-andere-gehoert-anderen-nur-die-zei",
+   "form": "zitat"
+  },
+  {
+   "line": "Saison {saison} ist Geschichte: {partien} Partien, {spieler_anzahl} Spieler.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Die letzte Folge? Nein, nur die letzte Partie der Saison.",
+   "canon_id": "title-die-letzte-folge",
+   "form": "deadpan"
+  },
+  {
+   "line": "Vielen Dank, dass ihr dabei wart. Saison {saison} ist abgeschlossen.",
+   "canon_id": "e21-danke-dabei",
+   "form": "fakten"
+  },
+  {
+   "line": "Saisonbilanz {saison}: {sieger} vorne, {zweiter} knapp dahinter. Nun zu den Fakten.",
+   "canon_id": "clip-fussball-nun-zu-den-fakten",
+   "form": "fakten"
+  },
+  {
+   "line": "Ende Saison {saison}. Bitcoin ist es wert – die Liga auch.",
+   "canon_id": "derweg-bitcoin-ist-es-wert",
+   "form": "zitat"
+  },
+  {
+   "line": "Saison vorbei, Elo eingefroren bis {neustart}.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "Wer hat euch diese Saison am meisten überrascht? Schreibt mal in den Chat.",
+   "canon_id": "e21-schreibt-in-den-chat",
+   "form": "frage"
+  },
+  {
+   "line": "Saison {saison} endet. Lichtblick der Saison: {highlight}.",
+   "canon_id": "e21-lichtblick-der-woche",
+   "form": "fakten"
+  },
+  {
+   "line": "Saison {saison} ist durch. Ciao ciao, bis {neustart}.",
+   "canon_id": "e21-ciao-ciao",
+   "form": "understatement"
+  },
+  {
+   "line": "Die Saison war hin und her. Am Ende steht {sieger} oben.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Saison {saison}: Das Geilste sind die Leute.",
+   "canon_id": "derweg-das-geilste-sind-die-leute",
+   "form": "zitat"
+  },
+  {
+   "line": "{sieger} gewinnt Saison {saison}. Frohe All-Time-Highnachten!",
+   "canon_id": "e21-all-time-highnachten",
+   "form": "hype"
+  },
+  {
+   "line": "Danke an {spieler_anzahl} Spieler. Saison {saison} ist im Mempool – äh, im Archiv.",
+   "canon_id": null,
+   "form": "deadpan"
+  }
+ ],
+ "Blockfill-Woche": [
+  {
+   "line": "Blockzeit {blockhoehe}: Die Blockfill-Woche {woche} beginnt.",
+   "canon_id": "e21-blockzeit",
+   "form": "fakten"
+  },
+  {
+   "line": "Block {blockhoehe} ist gefüllt. Tick tock, next block. ⏱️",
+   "canon_id": "btc-tick-tock-next-block",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler} führt die Blockfill-Woche {woche} mit {punkte} Punkten an.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Aufstand der Blockkrieger: Woche {woche} ist eröffnet.",
+   "canon_id": "title-aufstand-der-blockkrieger",
+   "form": "hype"
+  },
+  {
+   "line": "Blockfill-Woche {woche}. Heute ist ein guter Tag um Sats zu stapeln.",
+   "canon_id": "e21-sats-stapeln",
+   "form": "zitat"
+  },
+  {
+   "line": "FOSS Gruß aus dem Mempool: {spieler} stapelt {punkte} Punkte.",
+   "canon_id": "title-foss-gruss-aus-dem-mempool",
+   "form": "zitat"
+  },
+  {
+   "line": "Wer füllt den nächsten Block am schnellsten? Woche {woche} läuft.",
+   "canon_id": null,
+   "form": "frage"
+  },
+  {
+   "line": "{spieler} macht {punkte} Punkte in einer Runde. Proof of Work.",
+   "canon_id": "btc-proof-of-work",
+   "form": "deadpan"
+  },
+  {
+   "line": "Blockfill {woche}: {spieler} vorn, {zweiter} jagt. Stück für Stück.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Woche {woche}, Block {blockhoehe}. Difficulty Adjustment? Nur für die Gegner von {spieler}.",
+   "canon_id": "btc-difficulty-adjustment",
+   "form": "deadpan"
+  },
+  {
+   "line": "Blockfill-Woche {woche} endet. Sieger: {spieler}. ⛏️",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Stacking until midnight: {spieler} spielt um {uhrzeit} noch Blockfill.",
+   "canon_id": "e21-stacking-until-midnight",
+   "form": "zitat"
+  },
+  {
+   "line": "Blockfill-Woche {woche}: {spieler} mit {punkte}. Das unendliche Gulasch geht weiter.",
+   "canon_id": "title-das-unendliche-gulasch",
+   "form": "deadpan"
+  },
+  {
+   "line": "{spieler} knackt {punkte}. Number go up.",
+   "canon_id": "btc-number-go-up",
+   "form": "hype"
+  },
+  {
+   "line": "Neue Woche, neuer Block: {woche} beginnt bei Blockzeit {blockhoehe}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Blockfill-Woche {woche}. In der großen Runde brauchen wir erstmal die Blockzeit: {blockhoehe}.",
+   "canon_id": "e21-blockzeit",
+   "form": "zitat"
+  }
+ ],
+ "Pong 21:20 / 20:22": [
+  {
+   "line": "21:20 nach Difficulty Adjustment: {sieger} braucht zwei Punkte Vorsprung und holt sie.",
+   "canon_id": "btc-difficulty-adjustment",
+   "form": "fakten"
+  },
+  {
+   "line": "{verlierer} verliert mit 20:22. Knapp daneben ist auch vorbei.",
+   "canon_id": "e21-knapp-daneben",
+   "form": "zitat"
+  },
+  {
+   "line": "Matchball bei 21:20. Hosp oder top!",
+   "canon_id": "e21-hosp-oder-top",
+   "form": "hype"
+  },
+  {
+   "line": "22:20 für {sieger}. Absolute Frechheit, sagt {verlierer} vermutlich.",
+   "canon_id": "clip-fussball-absolute-frechheit",
+   "form": "deadpan"
+  },
+  {
+   "line": "21:20? Nein, 23:21. Pong hat kein Erbarmen.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} gewinnt {ergebnis} nach {ballwechsel} Ballwechseln. 90 Minuten Hardcore in Pong-Zeit.",
+   "canon_id": "clip-verschiedenes-90-minuten-hardcore",
+   "form": "hype"
+  },
+  {
+   "line": "{ergebnis}. Wir drehen uns im Kreis, bis einer zwei vorne ist.",
+   "canon_id": "title-wir-drehen-uns-im-kreis",
+   "form": "deadpan"
+  },
+  {
+   "line": "20:20, dann zwei Punkte {sieger}. Eins in den Chat, wer mitgefiebert hat.",
+   "canon_id": "e21-eins-in-den-chat",
+   "form": "call"
+  },
+  {
+   "line": "{sieger} gewinnt {ergebnis}. Halving im letzten Ballwechsel, und der Punkt zählte doppelt.",
+   "canon_id": "btc-halving",
+   "form": "fakten"
+  },
+  {
+   "line": "{ergebnis}: Pizza Day in der Verlängerung, zwei Bälle, {sieger} behält die Nerven. 🍕",
+   "canon_id": "btc-pizza-day",
+   "form": "fakten"
+  },
+  {
+   "line": "Wer bei 20:20 gewinnt, hat Diamond Hands. Heute: {sieger}.",
+   "canon_id": "btc-diamond-hands",
+   "form": "zitat"
+  },
+  {
+   "line": "{ergebnis}. Stromgeschwindigkeit.",
+   "canon_id": "clip-panzerknacker-stromgeschwindigkeit",
+   "form": "deadpan"
+  },
+  {
+   "line": "{verlierer} war bei 21:20 dran. Dann nicht mehr.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "{sieger} gewinnt {ergebnis}. Brrr-Ereignis kurz vor Schluss, Ball schneller, Nerven stärker.",
+   "canon_id": "btc-money-printer-brrr",
+   "form": "fakten"
+  },
+  {
+   "line": "Few understand, wie man bei 20:21 noch gewinnt. {sieger} schon.",
+   "canon_id": "btc-few-understand",
+   "form": "zitat"
+  },
+  {
+   "line": "Arbeitsamt-Phase bei 20:20: Ball wartet, Puls nicht. {sieger} gewinnt {ergebnis}.",
+   "canon_id": "e21-arbeitsamt-turm",
+   "form": "fakten"
+  }
+ ],
+ "Knappes Spiel": [
+  {
+   "line": "{sieger} gewinnt {ergebnis}. Knapper geht es kaum.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "{ergebnis} – Knapp daneben ist auch vorbei, {verlierer}.",
+   "canon_id": "e21-knapp-daneben",
+   "form": "zitat"
+  },
+  {
+   "line": "Bis zum letzten Zug offen, dann {sieger}. Düdüdüdüdüm.",
+   "canon_id": "clip-maurice-duedueduedueduem",
+   "form": "hype"
+  },
+  {
+   "line": "{sieger} gegen {verlierer}: {ergebnis}. Diamond Hands auf beiden Seiten.",
+   "canon_id": "btc-diamond-hands",
+   "form": "fakten"
+  },
+  {
+   "line": "Ein Punkt Unterschied. Wer hat mitgezittert?",
+   "canon_id": null,
+   "form": "frage"
+  },
+  {
+   "line": "{sieger} gewinnt {ergebnis}. Es geht um die Sache! Und um einen Punkt.",
+   "canon_id": "title-es-geht-um-die-sache",
+   "form": "zitat"
+  },
+  {
+   "line": "{ergebnis}. Warum die Schärfe reinkommt? Weil es so eng war.",
+   "canon_id": "clip-fussball-warum-die-schaerfe-reinkommt",
+   "form": "frage"
+  },
+  {
+   "line": "So knapp, dass der Schiedsrichter nachrechnet. Don't trust, verify. Ergebnis: {sieger}.",
+   "canon_id": "e21-dont-trust-verify",
+   "form": "fakten"
+  },
+  {
+   "line": "{ergebnis}. Ich muss nachdenken, wer hier eigentlich besser war.",
+   "canon_id": "clip-verschiedenes-ich-muss-nachdenken",
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} gewinnt {ergebnis}. Gute Partie, beide. 🤙",
+   "canon_id": "nostr-shaka",
+   "form": "fakten"
+  },
+  {
+   "line": "{sieger} {ergebnis}. Hin und her, bis zum letzten Ballwechsel.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{verlierer} verliert {ergebnis}. Kann man doch verstehen.",
+   "canon_id": "clip-nordwolle-kann-man-doch-verstehen",
+   "form": "understatement"
+  },
+  {
+   "line": "{ergebnis} nach {dauer}. Das unendliche Gulasch, aber mit Sieger.",
+   "canon_id": "title-das-unendliche-gulasch",
+   "form": "deadpan"
+  },
+  {
+   "line": "Wer bei so einem Ergebnis keine Gänsehaut hat, schaut kein Pong.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "{sieger} {ergebnis}. Hosp oder top – heute top.",
+   "canon_id": "e21-hosp-oder-top",
+   "form": "hype"
+  },
+  {
+   "line": "Ein Zug entscheidet: {sieger} gewinnt {spiel}. Ohne Witz.",
+   "canon_id": "e21-ohne-witz",
+   "form": "deadpan"
+  }
+ ],
+ "Remis": [
+  {
+   "line": "Remis zwischen {spieler_a} und {spieler_b}. Wir drehen uns im Kreis.",
+   "canon_id": "title-wir-drehen-uns-im-kreis",
+   "form": "deadpan"
+  },
+  {
+   "line": "Unentschieden. Kann ich nicht mehr hören, sagt das Soundboard nach dem dritten Remis in Folge.",
+   "canon_id": "clip-fussball-kann-ich-nicht-mehr-hoeren",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler_a} und {spieler_b} teilen sich den Punkt. Fair.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "Remis nach {zuege} Zügen. Bitcoin ist Ruhe – dieses Brett auch.",
+   "canon_id": "derweg-bitcoin-ist-ruhe",
+   "form": "zitat"
+  },
+  {
+   "line": "Kein Sieger, aber {zuege} Züge Schach vom Feinsten. Der denkende Ratgeber hätte es nicht besser gespielt.",
+   "canon_id": "title-der-denkende-ratgeber",
+   "form": "zitat"
+  },
+  {
+   "line": "Remis. Wer hätte gewinnen sollen? Was ist euer Take dazu?",
+   "canon_id": "e21-mein-take",
+   "form": "frage"
+  },
+  {
+   "line": "Unentschieden. Schönes Wetter heute, ne?",
+   "canon_id": "e21-schoenes-wetter",
+   "form": "deadpan"
+  },
+  {
+   "line": "Remis zwischen {spieler_a} ({elo_a}) und {spieler_b} ({elo_b}). Elo bewegt sich {elo_delta}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Punkteteilung. Bitcoin ist das Ying zum Yang – {spieler_a} und {spieler_b} heute auch.",
+   "canon_id": "derweg-bitcoin-ist-das-ying-zum-yang",
+   "form": "zitat"
+  },
+  {
+   "line": "Remis. Spieltheorie in Aktion.",
+   "canon_id": "title-spieltheorie-in-aktion",
+   "form": "deadpan"
+  },
+  {
+   "line": "Beide gewinnen nicht, beide verlieren nicht. Peer to Peer im wahrsten Sinn.",
+   "canon_id": "e21-peer-to-peer",
+   "form": "deadpan"
+  },
+  {
+   "line": "Remis! Rematch? Eins in den Chat für Ja.",
+   "canon_id": "e21-eins-in-den-chat",
+   "form": "call"
+  },
+  {
+   "line": "Unentschieden nach {dauer}. Absolute Entschleunigung.",
+   "canon_id": "derweg-bitcoin-ist-absolute-entschleunigung",
+   "form": "zitat"
+  },
+  {
+   "line": "Remis. Keine Ahnung, wer besser war. Genau richtig so.",
+   "canon_id": "title-keine-ahnung",
+   "form": "deadpan"
+  },
+  {
+   "line": "{spieler_a} und {spieler_b}: Remis. Mühle-Patt, Dame-Patt, Liga-Patt.",
+   "canon_id": null,
+   "form": "hype"
+  },
+  {
+   "line": "Remis. Nächste Woche Mittwoch, 19:15 Uhr – oder einfach jetzt Revanche.",
+   "canon_id": "e21-mittwoch-1915",
+   "form": "call"
+  }
+ ],
+ "Aufgabe / Nichterscheinen": [
+  {
+   "line": "{verlierer} ist nicht erschienen, {sieger} bekommt den Sieg. Es kommt dir schon entgegen, Cheers.",
+   "canon_id": "title-es-kommt-dir-schon-entgegen-cheers",
+   "form": "zitat"
+  },
+  {
+   "line": "{verlierer} gibt auf. Ich habe fertig.",
+   "canon_id": "e21-ich-habe-fertig",
+   "form": "deadpan"
+  },
+  {
+   "line": "Aufgabe nach {zuege} Zügen. Zack Zack Fertig.",
+   "canon_id": "clip-nordwolle-zack-zack-fertig",
+   "form": "deadpan"
+  },
+  {
+   "line": "Kein Gegner da. {sieger} wartet {minuten} Minuten und gewinnt kampflos.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{sieger} gewinnt durch Nichterscheinen. Du bist so alleine.",
+   "canon_id": "clip-verschiedenes-du-bist-so-alleine",
+   "form": "deadpan"
+  },
+  {
+   "line": "{verlierer} hat aufgegeben. Paper Hands? Wir sagen: Familienabend.",
+   "canon_id": "btc-paper-hands",
+   "form": "understatement"
+  },
+  {
+   "line": "Kampflos weiter: {sieger}. Bitte warten, Ihre Wartenummer war 21.",
+   "canon_id": "e21-arbeitsamt-turm",
+   "form": "deadpan"
+  },
+  {
+   "line": "{verlierer} nicht da, {sieger} weiter. Schade für den Stream.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Aufgabe von {verlierer}. Kann man doch verstehen.",
+   "canon_id": "clip-nordwolle-kann-man-doch-verstehen",
+   "form": "understatement"
+  },
+  {
+   "line": "Nichterscheinen = Aufgabe. So steht es in den Regeln. Macht eure Hausaufgaben!",
+   "canon_id": "title-macht-eure-hausaufgaben",
+   "form": "zitat"
+  },
+  {
+   "line": "{sieger} gewinnt, ohne einen Zug zu machen. Proof of Work sieht anders aus.",
+   "canon_id": "btc-proof-of-work",
+   "form": "deadpan"
+  },
+  {
+   "line": "Freilos für {sieger}. Gut ausgeruht ins nächste Spiel.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "{verlierer} ist offline. Ist dieser Bitcoin gerade hier im Raum? Leider nein.",
+   "canon_id": "title-ist-dieser-bitcoin-gerade-hier-im-raum",
+   "form": "zitat"
+  },
+  {
+   "line": "{sieger} kampflos. Schönes Wetter heute, ne?",
+   "canon_id": "e21-schoenes-wetter",
+   "form": "deadpan"
+  },
+  {
+   "line": "Aufgabe in Runde {runde}. {sieger} zieht ins {naechste_runde} ein.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{verlierer} gibt bei {stand} auf. Nachweis meiner Unschuld: Der Schiedsrichter bestätigt {sieger}.",
+   "canon_id": "clip-fussball-nachweis-meiner-unschuld",
+   "form": "deadpan"
+  }
+ ],
+ "Erster Sieg eines Neulings": [
+  {
+   "line": "Erster Sieg für {spieler}. Willkommen in der Sekte. 🧡",
+   "canon_id": "e21-sekte",
+   "form": "hype"
+  },
+  {
+   "line": "{spieler} hat {freund} in die Liga geholt, und {freund} gewinnt gleich. Orange Pill wirkt.",
+   "canon_id": "btc-orange-pill",
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler} gewinnt das erste Spiel. Ich bin Bitcoiner – äh, Ligaspieler.",
+   "canon_id": "title-ich-bin-bitcoiner",
+   "form": "zitat"
+  },
+  {
+   "line": "Liebe auf den ersten Block? {spieler} gewinnt die erste Partie.",
+   "canon_id": "title-liebe-auf-den-ersten-block",
+   "form": "frage"
+  },
+  {
+   "line": "Erster Sieg, erster Eintrag im Mempool: {spieler}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler} gewinnt zum ersten Mal. Ich hab's geschafft! 🎉",
+   "canon_id": "clip-gruppe-ich-hab-s-geschafft",
+   "form": "hype"
+  },
+  {
+   "line": "Rabbit Hole: {spieler} spielt seit {stunden} Stunden und hat gerade zum ersten Mal gewonnen.",
+   "canon_id": "btc-rabbit-hole",
+   "form": "fakten"
+  },
+  {
+   "line": "Willkommen, {spieler}. Erster Sieg in {spiel}. Stell dich kurz vor für Leute, die dich noch nicht kennen.",
+   "canon_id": "e21-stell-dich-vor",
+   "form": "call"
+  },
+  {
+   "line": "Neuling {spieler} gewinnt. Einundzwanzig wird Jung.",
+   "canon_id": "title-einundzwanzig-wird-jung",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler} schlägt {verlierer} im ersten Spiel. Die Super Nova ist da.",
+   "canon_id": "title-die-super-nova-ist-da",
+   "form": "hype"
+  },
+  {
+   "line": "Erster Sieg für {spieler}. Bester Mann heute.",
+   "canon_id": "e21-bester-mann",
+   "form": "hype"
+  },
+  {
+   "line": "{spieler} gewinnt die erste Partie. Verliebt in Bitcoin? Zumindest in Pong.",
+   "canon_id": "title-verliebt-in-bitcoin",
+   "form": "frage"
+  },
+  {
+   "line": "Neu, nervös, gewonnen: {spieler}.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "{spieler} holt den ersten Sieg. GM, neue Ligaspieler-Woche.",
+   "canon_id": "nostr-gm",
+   "form": "fakten"
+  },
+  {
+   "line": "Erstes Spiel, erster Sieg: {spieler}. Bitcoin hat mich gefixt, heißt eine Der-Weg-Folge. Die Liga offenbar auch.",
+   "canon_id": "derweg-bitcoin-hat-mich-gefixt",
+   "form": "zitat"
+  },
+  {
+   "line": "{spieler} gewinnt zum ersten Mal. Gratulation – und Grüße gehen raus an {meetup}.",
+   "canon_id": "e21-gruesse-gehen-raus",
+   "form": "fakten"
+  }
+ ],
+ "Rivalen-Rematch": [
+  {
+   "line": "{spieler_a} gegen {spieler_b}, Teil {nummer}. It became personal.",
+   "canon_id": "clip-verschiedenes-it-became-personal",
+   "form": "hype"
+  },
+  {
+   "line": "Rematch: {spieler_a} will Revanche für {letztes_ergebnis}. Warum die Schärfe reinkommt? Darum.",
+   "canon_id": "clip-fussball-warum-die-schaerfe-reinkommt",
+   "form": "zitat"
+  },
+  {
+   "line": "Bilanz {bilanz_a}:{bilanz_b}. Heute Runde {nummer}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler_a} gegen {spieler_b} schon wieder. Brudi.",
+   "canon_id": "clip-gruppe-brudi",
+   "form": "deadpan"
+  },
+  {
+   "line": "Meine Coins sind älter als deine Freundin – {spieler_a} spielt seit Saison {saison_a}, {spieler_b} seit {saison_b}.",
+   "canon_id": "title-meine-coins-sind-aelter-als-deine-freund",
+   "form": "zitat"
+  },
+  {
+   "line": "Wer gewinnt das Rematch? Eins in den Chat für {spieler_a}, zwei für {spieler_b}.",
+   "canon_id": "e21-eins-in-den-chat",
+   "form": "call"
+  },
+  {
+   "line": "Erst {ergebnis_1}, jetzt Revanche. Live und in Farbe.",
+   "canon_id": "e21-live-und-in-farbe",
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler_a} gegen {spieler_b}: Die Wette läuft schon im Chat.",
+   "canon_id": "e21-wette",
+   "form": "fakten"
+  },
+  {
+   "line": "Rematch gewonnen von {sieger}. Bilanz jetzt {bilanz_a}:{bilanz_b}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler_a} gegen {spieler_b}. Hol das Popcorn!",
+   "canon_id": "e21-hol-das-popcorn",
+   "form": "hype"
+  },
+  {
+   "line": "Revanche geglückt: {sieger}. Absolut reines Gewissen.",
+   "canon_id": "clip-fussball-absolut-reines-gewissen",
+   "form": "deadpan"
+  },
+  {
+   "line": "Das {nummer}. Duell. Spieltheorie in Aktion.",
+   "canon_id": "title-spieltheorie-in-aktion",
+   "form": "fakten"
+  },
+  {
+   "line": "{spieler_a} vs. {spieler_b}: Tschill den Tshit, es ist nur ein Spiel. Ein sehr wichtiges.",
+   "canon_id": "title-tschill-den-tshit",
+   "form": "deadpan"
+  },
+  {
+   "line": "Rivalen, Teil {nummer}. Wer verliert, schreibt dem anderen GM.",
+   "canon_id": "nostr-gm",
+   "form": "call"
+  },
+  {
+   "line": "{sieger} gewinnt das Rematch. Kann man so machen.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "Revanche für {letztes_ergebnis}? {sieger} sagt: Pass mal auf.",
+   "canon_id": "clip-panzerknacker-pass-mal-auf",
+   "form": "zitat"
+  }
+ ],
+ "Nachtpause": [
+  {
+   "line": "Pause bis {uhrzeit}. Ciao ciao.",
+   "canon_id": "e21-ciao-ciao",
+   "form": "understatement"
+  },
+  {
+   "line": "Die Liga schläft. Tick tock, next block – die Blockchain nicht.",
+   "canon_id": "btc-tick-tock-next-block",
+   "form": "zitat"
+  },
+  {
+   "line": "Nachtruhe bis {uhrzeit}. Alles andere gehört anderen, nur die Zeit gehört uns.",
+   "canon_id": "title-alles-andere-gehoert-anderen-nur-die-zei",
+   "form": "zitat"
+  },
+  {
+   "line": "Für heute Schluss. Vielen Dank, dass ihr dabei wart.",
+   "canon_id": "e21-danke-dabei",
+   "form": "fakten"
+  },
+  {
+   "line": "Stacking until midnight – und dann ist Pause bis {uhrzeit}.",
+   "canon_id": "e21-stacking-until-midnight",
+   "form": "zitat"
+  },
+  {
+   "line": "Nachtpause. Bitcoin gibt dir Ruhe, heißt eine Der-Weg-Folge. Wir gönnen sie euch bis {uhrzeit}.",
+   "canon_id": "derweg-bitcoin-gibt-dir-ruhe",
+   "form": "zitat"
+  },
+  {
+   "line": "Heute {partien} Partien. Morgen ab {uhrzeit} geht es weiter.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Licht aus. Wer jetzt noch spielt, spielt gegen den Bot.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "Nachtpause. GM gibt es ab {uhrzeit}.",
+   "canon_id": "nostr-gm",
+   "form": "deadpan"
+  },
+  {
+   "line": "Schluss für heute. Wiederschauen und reingehauen.",
+   "canon_id": "e21-wiederschauen",
+   "form": "understatement"
+  },
+  {
+   "line": "Der Stream schläft, der Mempool nicht. Bis {uhrzeit}.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Pause bis {uhrzeit}. Bitcoin ist absolute Entschleunigung – die Liga ab jetzt auch.",
+   "canon_id": "derweg-bitcoin-ist-absolute-entschleunigung",
+   "form": "zitat"
+  },
+  {
+   "line": "Ende des Spieltags. Drei Weizenbier, dann Bett.",
+   "canon_id": "clip-fussball-drei-weizenbier",
+   "form": "deadpan"
+  },
+  {
+   "line": "Wer hat heute am längsten gespielt? {spieler} mit {stunden} Stunden. Jetzt ist Pause.",
+   "canon_id": null,
+   "form": "frage"
+  },
+  {
+   "line": "Pause. Outro läuft.",
+   "canon_id": "clip-maurice-outro",
+   "form": "deadpan"
+  },
+  {
+   "line": "Gute Nacht, Liga. Nächster Block, nächster Spieltag.",
+   "canon_id": null,
+   "form": "understatement"
+  }
+ ],
+ "Anmeldung offen": [
+  {
+   "line": "Anmeldung für {turnier} ist offen. Komm in die Gruppe.",
+   "canon_id": "e21-komm-in-die-gruppe",
+   "form": "call"
+  },
+  {
+   "line": "{turnier}: Anmeldung läuft bis {frist}. Ich hätt Bock.",
+   "canon_id": "clip-verschiedenes-ich-haett-bock",
+   "form": "hype"
+  },
+  {
+   "line": "Rennt! Anmeldung für {turnier} ist offen.",
+   "canon_id": "title-rennt",
+   "form": "hype"
+  },
+  {
+   "line": "Anmeldung {turnier} offen. Dennis würde sagen: Wer das Rettungsboot zu teuer findet, geht mit der Titanic unter.",
+   "canon_id": "e21-titanic-rettungsboot",
+   "form": "zitat"
+  },
+  {
+   "line": "{turnier} startet {datum}. {plaetze} Plätze, null Gebühren.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Wer ist dabei bei {turnier}? Schreibt mal in den Chat.",
+   "canon_id": "e21-schreibt-in-den-chat",
+   "form": "frage"
+  },
+  {
+   "line": "Anmeldung offen. Die Dreifaltigkeit der FOMO: {turnier}, {turnier_2}, {turnier_3}.",
+   "canon_id": "title-die-dreifaltigkeit-der-fomo",
+   "form": "zitat"
+  },
+  {
+   "line": "Meet-Up Meisterschaften: Meetups können sich ab heute für {turnier} anmelden.",
+   "canon_id": "title-meet-up-meisterschaften",
+   "form": "fakten"
+  },
+  {
+   "line": "{turnier} ist offen. Orange-Pill Party: Bring jemanden mit.",
+   "canon_id": "title-orange-pill-party",
+   "form": "call"
+  },
+  {
+   "line": "Anmeldung offen. Macht eure Hausaufgaben! Regeln hier: {link}.",
+   "canon_id": "title-macht-eure-hausaufgaben",
+   "form": "call"
+  },
+  {
+   "line": "Ab heute: {turnier}. Let's go!",
+   "canon_id": "e21-lets-go",
+   "form": "hype"
+  },
+  {
+   "line": "Anmeldung für {turnier}. Heute ist ein guter Tag um Sats zu stapeln – und sich einzutragen.",
+   "canon_id": "e21-sats-stapeln",
+   "form": "zitat"
+  },
+  {
+   "line": "{turnier} wartet. {plaetze} Plätze. Eintragen dauert eine Minute.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Mailand oder Madrid, Hauptsache Bitcoin – Schach oder Pong, Hauptsache angemeldet.",
+   "canon_id": "title-mailand-oder-madrid-hauptsache-bitcoin",
+   "form": "zitat"
+  },
+  {
+   "line": "Anmeldung offen. Wer es verpasst: Mal verlierste, mal gewinnen die andern.",
+   "canon_id": "e21-mal-verlierste",
+   "form": "deadpan"
+  },
+  {
+   "line": "{turnier}: offen für alle, mit Nostr-Login. Dein Schlüssel ist dein Konto.",
+   "canon_id": "nostr-keys",
+   "form": "fakten"
+  }
+ ],
+ "Letzter freier Platz": [
+  {
+   "line": "Noch ein Platz frei in {turnier}. FOMO ist erlaubt.",
+   "canon_id": "btc-fomo",
+   "form": "deadpan"
+  },
+  {
+   "line": "Ein Platz übrig. Die größte Zitadellen FOMO aller Zeiten, Liga-Edition.",
+   "canon_id": "title-die-groesste-zitadellen-fomo-aller-zeite",
+   "form": "zitat"
+  },
+  {
+   "line": "{turnier}: {belegt}/{plaetze}. Wer nimmt den letzten Platz?",
+   "canon_id": null,
+   "form": "frage"
+  },
+  {
+   "line": "Letzter Platz in {turnier}. Rennt!",
+   "canon_id": "title-rennt",
+   "form": "hype"
+  },
+  {
+   "line": "Ein Platz frei. Ich hätt Bock – du auch?",
+   "canon_id": "clip-verschiedenes-ich-haett-bock",
+   "form": "frage"
+  },
+  {
+   "line": "Fast voll: {belegt} von {plaetze}. Wer zögert, guckt zu.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Letzter Platz. Dennis’ Titanic-Rettungsboot gilt auch hier: Jetzt einsteigen.",
+   "canon_id": "e21-titanic-rettungsboot",
+   "form": "zitat"
+  },
+  {
+   "line": "Noch einer. Eins in den Chat, wenn du ihn willst.",
+   "canon_id": "e21-eins-in-den-chat",
+   "form": "call"
+  },
+  {
+   "line": "{turnier} ist bis auf einen Platz voll. Komm in die Gruppe.",
+   "canon_id": "e21-komm-in-die-gruppe",
+   "form": "call"
+  },
+  {
+   "line": "Ein Platz, {stunden} Stunden. Tick tock, next block.",
+   "canon_id": "btc-tick-tock-next-block",
+   "form": "zitat"
+  },
+  {
+   "line": "Letzter Platz in {turnier} – kostenlos, wie immer.",
+   "canon_id": null,
+   "form": "understatement"
+  },
+  {
+   "line": "Noch ein Platz frei. Wer ist dieser Bitcoin gerade hier im Raum?",
+   "canon_id": "title-ist-dieser-bitcoin-gerade-hier-im-raum",
+   "form": "frage"
+  },
+  {
+   "line": "Fast ausgebucht. Frage der Zeit, bis der letzte Platz weg ist.",
+   "canon_id": null,
+   "form": "deadpan"
+  },
+  {
+   "line": "Ein Platz. Sternzeichen Bulle? Dann zugreifen.",
+   "canon_id": "title-sternzeichen-bulle",
+   "form": "frage"
+  },
+  {
+   "line": "{turnier} voll bis auf einen. Danach heißt es: Du bist so alleine – auf der Warteliste.",
+   "canon_id": "clip-verschiedenes-du-bist-so-alleine",
+   "form": "deadpan"
+  },
+  {
+   "line": "Letzte Chance für {turnier}. Ultra geil, wenn du dabei bist.",
+   "canon_id": "e21-ultra-geil",
+   "form": "hype"
+  }
+ ],
+ "Turniertopf wächst": [
+  {
+   "line": "Der Topf für {turnier} steht bei {topf} Sats. Preis, Preis, Preis.",
+   "canon_id": "title-preis-preis-preis",
+   "form": "zitat"
+  },
+  {
+   "line": "{zaps} Zaps, {topf} Sats im Topf. Bitte nicht mehr spenden! (War ein Witz.)",
+   "canon_id": "e21-bitte-nicht-mehr-spenden",
+   "form": "deadpan"
+  },
+  {
+   "line": "Topf wächst auf {topf} Sats. Danke für jeden Zap. ⚡",
+   "canon_id": "nostr-zap",
+   "form": "fakten"
+  },
+  {
+   "line": "{topf} Sats für {turnier}. Internet Bucks.",
+   "canon_id": "clip-verschiedenes-internet-bucks",
+   "form": "deadpan"
+  },
+  {
+   "line": "Treasuries here, treasuries there: Der Topf liegt bei {topf} Sats.",
+   "canon_id": "title-treasuries-here-treasuries-there",
+   "form": "zitat"
+  },
+  {
+   "line": "Neuer Zap von {zapper}: Topf jetzt {topf} Sats. Noch etwas Sahne oben drauf.",
+   "canon_id": "title-noch-etwas-sahne-oben-drauf",
+   "form": "zitat"
+  },
+  {
+   "line": "{topf} Sats. Wer gewinnt sie? Schreibt mal in den Chat.",
+   "canon_id": "e21-schreibt-in-den-chat",
+   "form": "frage"
+  },
+  {
+   "line": "Der Topf steigt. Number go up.",
+   "canon_id": "btc-number-go-up",
+   "form": "deadpan"
+  },
+  {
+   "line": "Topf {topf} Sats, Teilnahme kostenlos. So soll es sein.",
+   "canon_id": null,
+   "form": "fakten"
+  },
+  {
+   "line": "Der Wal Sonntag: Großer Zap, Topf bei {topf} Sats.",
+   "canon_id": "title-der-wal-sonntag",
+   "form": "hype"
+  },
+  {
+   "line": "{topf} Sats im Topf. Befreit die Sats! – am {datum} an den Sieger.",
+   "canon_id": "title-befreit-die-sats",
+   "form": "hype"
+  },
+  {
+   "line": "Zaps sind Tips – und gerade sind es viele: {topf} Sats.",
+   "canon_id": "nostr-zap-tips",
+   "form": "fakten"
+  },
+  {
+   "line": "Topf bei {topf} Sats. Value for Value, live.",
+   "canon_id": "e21-value-for-value",
+   "form": "fakten"
+  },
+  {
+   "line": "{topf} Sats für {turnier}. Lecko mio.",
+   "canon_id": "title-lecko-mio",
+   "form": "hype"
+  },
+  {
+   "line": "Der Topf hat sich verdoppelt: {topf} Sats. 🤙",
+   "canon_id": "nostr-shaka",
+   "form": "fakten"
+  },
+  {
+   "line": "{topf} Sats. Ohne Witz.",
+   "canon_id": "e21-ohne-witz",
+   "form": "deadpan"
+  }
+ ]
+}

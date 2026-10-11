@@ -1,0 +1,211 @@
+<?php
+
+namespace App\Support\Voice;
+
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Responses\Data\FinishReason;
+use Laravel\Ai\Responses\StructuredAgentResponse;
+use Throwable;
+
+/**
+ * The league voice (plan "KI-Stimme der Liga"): one post from the facts of a
+ * moment, written by Claude Haiku and let through only by deterministic
+ * checks. say() returns null whenever anything is off, and the caller posts
+ * its own template instead (StreamBotCopy and friends); it never throws.
+ *
+ * null when: the channel is unknown or switched off, its daily cap or the
+ * monthly soft budget is reached, the request fails (timeout, 429, 5xx,
+ * unreadable answer), the answer was cut off, or a check rejects the text
+ * (VoiceMentions, VoiceHygiene, VoiceGuard). Each rejection counts its
+ * reason codes (VoiceUsage), never the text.
+ *
+ * Facts: scalars and lists, public only. Keys that name a gamer tag, a game
+ * account or a Lightning address are dropped before anything else (user
+ * 2026-09-30: a mention never stands next to a gamer tag). People go in
+ * `people` (VoiceMentions); the model sees their names and role tokens,
+ * never a key.
+ *
+ * State between calls lives in the cache as scalars only (the production
+ * cache refuses objects, `cache.serializable_classes` = false): the canon
+ * IDs and texts of the channel's last posts, for rotation and variety.
+ */
+final class LeagueVoice
+{
+    /** How many recent posts per channel the near-copy check compares with. */
+    public const RECENT_TEXTS = 10;
+
+    /** How long the per-channel memory of recent posts lasts. */
+    private const RECENT_TTL_SECONDS = 7 * 86_400;
+
+    private const PRIVATE_FACT_KEYS = '/gamer|game_?account|gametag|lud16|lightning|ln_?address|wallet|email/i';
+
+    private ?VoicePrompt $prompt = null;
+
+    private ?VoiceGuard $guard = null;
+
+    public function __construct(
+        private readonly VoiceCanon $canon,
+        private readonly VoiceUsage $usage,
+        private readonly VoiceHygiene $hygiene = new VoiceHygiene,
+        private readonly VoiceMentions $mentions = new VoiceMentions,
+    ) {}
+
+    /**
+     * @param  array<array-key, mixed>  $facts
+     */
+    public function say(string $moment, array $facts, string $channel): ?VoiceLine
+    {
+        try {
+            return $this->attempt($moment, $facts, $channel);
+        } catch (Throwable $exception) {
+            // Class and channel only: an HTTP exception's message can carry the provider's response body.
+            Log::warning('League voice failed', ['channel' => $channel, 'exception' => $exception::class]);
+
+            try {
+                $this->usage->recordOutcome($channel, 'failed');
+            } catch (Throwable) {
+                // The counter is down as well; the template goes out either way.
+            }
+
+            return null;
+        }
+    }
+
+    /** The fixed, cached half of every prompt. */
+    public function prompt(): VoicePrompt
+    {
+        return $this->prompt ??= new VoicePrompt($this->canon);
+    }
+
+    public function guard(): VoiceGuard
+    {
+        return $this->guard ??= new VoiceGuard(
+            $this->canon,
+            array_values(array_map('strval', (array) config('esports.voice.blocklist', []))),
+            array_values(array_map('strval', (array) config('esports.voice.persons', []))),
+        );
+    }
+
+    /**
+     * The facts without anything private (see the class comment).
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @return array<array-key, mixed>
+     */
+    public static function publicFacts(array $facts): array
+    {
+        $public = [];
+
+        foreach ($facts as $key => $value) {
+            if (is_string($key) && preg_match(self::PRIVATE_FACT_KEYS, $key) === 1) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $public[$key] = self::publicFacts($value);
+            } elseif (is_scalar($value) || $value === null) {
+                $public[$key] = $value;
+            }
+        }
+
+        return $public;
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $facts
+     */
+    private function attempt(string $moment, array $facts, string $channel): ?VoiceLine
+    {
+        $settings = config("esports.voice.channels.{$channel}");
+
+        if (! is_array($settings) || ($settings['enabled'] ?? false) !== true || ! isset(VoiceCanon::MOMENTS[$moment])) {
+            return null;
+        }
+
+        if ($this->usage->attemptsToday($channel) >= (int) ($settings['daily_cap'] ?? 0)) {
+            return null;
+        }
+
+        if ($this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
+            return null;
+        }
+
+        $maxChars = (int) ($settings['max_chars'] ?? 280);
+        $language = (string) ($settings['language'] ?? 'de');
+        $multiline = ($settings['multiline'] ?? false) === true;
+        $facts = self::publicFacts($facts);
+        $modelFacts = VoiceMentions::forModel($facts);
+        $canonSettings = (array) config('esports.voice.canon', []);
+
+        $selection = $this->canon->select(
+            $moment,
+            $this->recent($channel, 'canon'),
+            (int) ($canonSettings['min'] ?? 50),
+            (int) ($canonSettings['max'] ?? 100),
+            (int) ($canonSettings['token_budget'] ?? 12_000),
+        );
+
+        $this->usage->recordAttempt($channel);
+
+        $response = (new VoiceAgent($this->prompt()->fixedPart()))
+            ->prompt($this->prompt()->variablePart($moment, $modelFacts, $channel, $maxChars, $language, $selection));
+
+        $this->usage->recordTokens(
+            $channel,
+            $response->usage->inputTokens,
+            $response->usage->outputTokens,
+            (int) $response->usage->cacheReadInputTokens,
+            (int) $response->usage->cacheWriteInputTokens,
+        );
+
+        $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
+        $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
+        $canonId = is_array($answer) && is_string($answer['canon_id'] ?? null) && trim($answer['canon_id']) !== '' ? trim($answer['canon_id']) : null;
+        $mood = is_array($answer) && is_string($answer['mood'] ?? null) ? $answer['mood'] : '';
+        $cutOff = $response->steps->last()?->finishReason === FinishReason::Length;
+
+        $text = $this->hygiene->clean($raw, $multiline, $language);
+        $named = $this->mentions->withNames($text, $facts);
+
+        $violations = [
+            ...$this->mentions->check($text, $facts),
+            ...$this->hygiene->check($named, $language, $this->recent($channel, 'texts'), $this->canon->find($canonId)['wording'] ?? null, $cutOff, isset($settings['max_sentences']) ? (int) $settings['max_sentences'] : null),
+            ...$this->guard()->check($named, $modelFacts, $maxChars, $canonId),
+        ];
+
+        if ($violations !== []) {
+            $this->usage->recordRejection($channel, $violations);
+            $this->usage->recordOutcome($channel, 'rejected');
+
+            return null;
+        }
+
+        [$posted, $tags] = $this->mentions->resolve($text, $facts);
+
+        $this->remember($channel, 'texts', $named, self::RECENT_TEXTS);
+        if ($canonId !== null) {
+            $this->remember($channel, 'canon', $canonId, (int) ($canonSettings['avoid_recent'] ?? 30));
+        }
+        $this->usage->recordOutcome($channel, 'accepted');
+
+        return new VoiceLine($posted, $tags, $canonId, $mood);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function recent(string $channel, string $kind): array
+    {
+        $stored = Cache::get("voice:recent:{$channel}:{$kind}");
+
+        return is_array($stored) ? array_values(array_filter($stored, 'is_string')) : [];
+    }
+
+    private function remember(string $channel, string $kind, string $value, int $keep): void
+    {
+        $list = array_slice([$value, ...$this->recent($channel, $kind)], 0, max(1, $keep));
+
+        Cache::put("voice:recent:{$channel}:{$kind}", $list, self::RECENT_TTL_SECONDS);
+    }
+}

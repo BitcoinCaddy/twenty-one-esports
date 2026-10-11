@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Vite;
+use Pest\Evals\Drivers\LaravelAiJudge;
 use Tests\Integration\Support\Stack;
 use Tests\Support\BrowserAssets;
 use Tests\Support\BrowserBodylessFraming;
@@ -145,6 +146,19 @@ pest()->extend(TestCase::class)
     ->beforeEach(fn () => Stack::instance()->boot()->attach())
     ->group('integration')
     ->in('Integration');
+
+/*
+| League voice evals (plan "KI-Stimme der Liga"): real Claude calls that cost
+| money, skipped unless run with `--evals` (`vendor/bin/pest tests/Evals
+| --evals`), never in the gate. The judge runs on Anthropic, not the plugin's
+| OpenAI default. Real network: no Http::preventStrayRequests() here.
+*/
+pest()->extend(TestCase::class)
+    ->use(RefreshDatabase::class)
+    ->group('evals')
+    ->in('Evals');
+
+pest()->evals()->judgeUsing(new LaravelAiJudge(provider: 'anthropic', model: 'claude-haiku-5-5'));
 
 /*
 |--------------------------------------------------------------------------
