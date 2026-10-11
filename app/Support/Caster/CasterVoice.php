@@ -606,43 +606,6 @@ final class CasterVoice
         return implode("\n\n", $parts);
     }
 
-    /**
-     * The league facts in a chat reply the facts do not support (ChatFactCheck: banter is no claim),
-     * counted under `caster_fact_check`; an unreadable answer is no clearance.
-     *
-     * @param  array<array-key, mixed>  $facts
-     * @return list<string>
-     */
-    private function unsupportedChatClaims(array $facts, string $message, string $spoken): array
-    {
-        if (! (bool) config('esports.voice.fact_check.enabled', true)) {
-            return [];
-        }
-
-        $this->usage->recordAttempt(self::FACT_CHECK);
-        $checked = [...$facts, 'league_basics' => [...self::leagueBasics(), ...self::flavourBasics()]];
-        $response = (new ChatFactCheck)->prompt(ChatFactCheck::message($checked, $message, $spoken));
-        $this->usage->recordTokens(self::FACT_CHECK, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
-
-        $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
-
-        if (! is_array($answer) || ! is_array($answer['claims'] ?? null)) {
-            $this->usage->recordOutcome(self::FACT_CHECK, 'rejected');
-
-            return ['unreadable fact check'];
-        }
-
-        $claims = [];
-        foreach ($answer['claims'] as $claim) {
-            if (! is_array($claim) || ($claim['supported'] ?? null) !== true) {
-                $claims[] = is_array($claim) && is_string($claim['claim'] ?? null) ? $claim['claim'] : 'unreadable claim';
-            }
-        }
-        $this->usage->recordOutcome(self::FACT_CHECK, $claims === [] ? 'accepted' : 'rejected');
-
-        return $claims;
-    }
-
     /** The system prompt: byte-identical on every call, so the provider's prompt cache serves it. */
     public function fixedPart(): string
     {
