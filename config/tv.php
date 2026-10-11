@@ -164,6 +164,15 @@ return [
             'target_seconds' => 240,
             'filler_below_seconds' => 30,
             // Music only between two clips, a random length in this range (user 2026-10-11); a live moment cuts it short.
+            // Quiet hours (user 2026-10-12: "zwischen 01:00 und 09:00 nur noch fix alle 10 Minuten ein Audio"): one clip every
+            // `every_minutes`, no runs, a small queue so the workstation GPU idles; chat reactions still answer.
+            'quiet_hours' => [
+                'from' => env('TV_COMMENTARY_QUIET_FROM', '01:00'),
+                'to' => env('TV_COMMENTARY_QUIET_TO', '09:00'),
+                'timezone' => env('TV_COMMENTARY_QUIET_TZ', 'Europe/Berlin'),
+                'every_minutes' => (float) env('TV_COMMENTARY_QUIET_EVERY_MINUTES', 10),
+                'ahead_seconds' => (int) env('TV_COMMENTARY_QUIET_AHEAD_SECONDS', 90),
+            ],
             'gap_seconds' => ['min' => (float) env('TV_COMMENTARY_GAP_MIN', 6), 'max' => (float) env('TV_COMMENTARY_GAP_MAX', 12)],
         ],
 

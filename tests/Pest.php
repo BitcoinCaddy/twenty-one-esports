@@ -75,6 +75,8 @@ pest()->extend(TestCase::class)
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
         ChatFactCheck::fake(fn (): array => ['claims' => []]);
+        // Quiet hours follow the wall clock: off by default so a run after one at night tests the day schedule (QuietHoursTest switches them on).
+        config(['tv.commentary.spool.quiet_hours.from' => '']);
         // The stream command refreshes the cover picture at config('twentyone.stream.cover.path'); with the fake renderer
         // (tests/Support/twentyone_stream.php) it wrote a 4-byte "PNG" into the checkout's real storage/app/stream/cover.png,
         // where /stream/cover.png then served it to whatever read it next (measured 2026-10-04: TwentyOneStreamTest, Part2, Part3).
@@ -134,6 +136,8 @@ pest()->extend(TestCase::class)
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
         ChatFactCheck::fake(fn (): array => ['claims' => []]);
+        // Quiet hours follow the wall clock: off by default so a run after one at night tests the day schedule (QuietHoursTest switches them on).
+        config(['tv.commentary.spool.quiet_hours.from' => '']);
         config(['session.expire_on_close' => true]);
         Vite::useHotFile(storage_path('framework/testing/vite-hot-disabled-for-browser-tests'));
         BrowserAssets::use();
