@@ -121,6 +121,9 @@ final class PatternScripts
     /** Canon lines per script at most (the user, 2026-10-11: more of the podcast's memes and sayings, not stats). */
     private const MAX_CANON = 2;
 
+    /** Canon lines tried for one joke slot before it stays empty (one that does not fit the room left passes on). */
+    private const JOKE_CANDIDATES = 4;
+
     /** A canon wording is spoken as a line of its own only up to this many words. */
     private const CANON_MAX_WORDS = 14;
 
@@ -549,7 +552,13 @@ final class PatternScripts
                     continue;
                 }
 
-                $joke = $this->jokeLine($used, $sequence + count($canonIds) * 101, $canonIds);
+                // A wording too long for the room left (several sentences) passes to the next one, a few at most:
+                // with the canon grown to 1,811 entries the stride landed on such a line and the script came out null.
+                $tried = [];
+                do {
+                    $joke = $this->jokeLine($used, $sequence + count($canonIds) * 101 + count($tried), [...$canonIds, ...$tried], array_values($parts));
+                    $tried[] = $joke['id'] ?? '';
+                } while ($joke !== null && ! $fits($joke['wording']) && count($tried) < self::JOKE_CANDIDATES);
                 $canonOffered = $canonOffered || $joke !== null;
 
                 if ($joke !== null && $fits($joke['wording'])) {
@@ -682,9 +691,10 @@ final class PatternScripts
      *
      * @param  array<string, mixed>  $used
      * @param  list<string>  $taken
+     * @param  list<string>  $lines  the script's lines so far
      * @return array{id: string, wording: string}|null
      */
-    private function jokeLine(array $used, int $sequence, array $taken): ?array
+    private function jokeLine(array $used, int $sequence, array $taken, array $lines = []): ?array
     {
         $recent = array_flip($this->recentCanon());
         $dropped = $this->dropped();
@@ -699,7 +709,7 @@ final class PatternScripts
 
         // A stride through the pool, so consecutive scripts quote far-apart entries.
         $id = $ids[($sequence * 37) % count($ids)];
-        $line = $this->spokenCanon($id, $sequence);
+        $line = $this->spokenCanon($id, $sequence, $lines);
 
         return $line === null ? null : ['id' => $id, 'wording' => $line];
     }
@@ -713,9 +723,13 @@ final class PatternScripts
      * kept in order, so the fact guard still finds it. The carrier is picked
      * by the entry and `$turn` (no side effect, the same id and turn give the
      * same line). Null for a wording of several sentences (one of them would
-     * be a fragment) or one the carrier would push over the word limit.
+     * be a fragment) or one the carrier would push over the word limit. A
+     * carrier that opens like one of `$taken` (the script's lines so far) is
+     * skipped: the no-repeat memory would drop the second one.
+     *
+     * @param  list<string>  $taken
      */
-    public function spokenCanon(string $id, int $turn = 0): ?string
+    public function spokenCanon(string $id, int $turn = 0, array $taken = []): ?string
     {
         $entry = $this->canon->find($id);
         $wording = trim((string) preg_replace('/\s+/u', ' ', (string) ($entry['wording'] ?? '')));
@@ -745,7 +759,7 @@ final class PatternScripts
 
             // A question stands only at the end; inside a sentence its mark would break it. Carrier and saying
             // together keep to one comma, or the script's comma rule (commaChain()) would turn the line down.
-            if (($question && ! $atEnd) || substr_count($carrier, ',') + substr_count($wording, ',') > 1) {
+            if (($question && ! $atEnd) || substr_count($carrier, ',') + substr_count($wording, ',') > 1 || self::opensLikeAny($carrier, $taken)) {
                 continue;
             }
 
@@ -758,6 +772,25 @@ final class PatternScripts
         }
 
         return null;
+    }
+
+    /**
+     * Whether a carrier opens with the same first words as one of the lines.
+     *
+     * @param  list<string>  $lines
+     */
+    private static function opensLikeAny(string $carrier, array $lines): bool
+    {
+        $opening = fn (string $text): string => implode(' ', array_slice(explode(' ', SpokenMemory::normalize($text)), 0, 3));
+        $mine = $opening(str_replace(self::SAYING_SLOT, '', $carrier));
+
+        foreach ($lines as $line) {
+            if ($opening($line) === $mine) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

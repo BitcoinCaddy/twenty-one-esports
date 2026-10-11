@@ -301,11 +301,13 @@ final class CasterVoice
      * the free rules only (FREE_RULES; the note is the model's data). `$german`: whether the note
      * reads as German; otherwise the prompt asks for a German retelling and no
      * quote. `$self`: the note is Markus' own (FollowedScripts::isSelf()), so
-     * he retells it in the first person.
+     * he retells it in the first person. `$when`: the note is from the
+     * backlog ("Im März zweitausenddreiundzwanzig", FollowedScripts::when()),
+     * the intro says so, and the take tells it as a look back.
      *
      * @return array{skip: bool, text: string|null, reasons: list<string>}|null null: off, capped, or the request failed
      */
-    public function followedNote(string $note, string $author, bool $german = true, bool $self = false): ?array
+    public function followedNote(string $note, string $author, bool $german = true, bool $self = false, ?string $when = null): ?array
     {
         if (! self::enabled()) {
             return null;
@@ -319,7 +321,7 @@ final class CasterVoice
                 return null;
             }
 
-            return $this->followedDraft($note, $author, $german, $self, $settings);
+            return $this->followedDraft($note, $author, $german, $self, $settings, $when);
         } catch (Throwable $exception) {
             if (Cache::add('caster:followed-voice-failed-logged', true, 600)) {
                 Log::warning('Caster followed-note voice failed', ['exception' => $exception::class]);
@@ -333,7 +335,7 @@ final class CasterVoice
      * @param  array<array-key, mixed>  $settings
      * @return array{skip: bool, text: string|null, reasons: list<string>}
      */
-    private function followedDraft(string $note, string $author, bool $german, bool $self, array $settings): array
+    private function followedDraft(string $note, string $author, bool $german, bool $self, array $settings, ?string $when = null): array
     {
         $range = (array) ($settings['sentences'] ?? []);
         $min = max(1, (int) ($range['min'] ?? 3));
@@ -348,7 +350,7 @@ final class CasterVoice
         }
 
         $this->usage->recordAttempt(self::FOLLOWED_CHANNEL);
-        $response = ($this->agent())->prompt(self::followedPrompt($note, $author, $german, $min, $max, $self));
+        $response = ($this->agent())->prompt(self::followedPrompt($note, $author, $german, $min, $max, $self, $when));
         $this->usage->recordTokens(self::FOLLOWED_CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -388,7 +390,7 @@ final class CasterVoice
     }
 
     /** The followed-note prompt: the note is data between delimiters, the voice is Markus Turm's, the limits are the house's. */
-    public static function followedPrompt(string $note, string $author, bool $german, int $min, int $max, bool $self = false): string
+    public static function followedPrompt(string $note, string $author, bool $german, int $min, int $max, bool $self = false, ?string $when = null): string
     {
         return implode("\n\n", [
             ($self
@@ -398,6 +400,8 @@ final class CasterVoice
                 .($self
                     ? ' zuerst ein oder zwei Sätze in der Ich-Form, was du geschrieben hast, dann zwei bis fünf Sätze deine Reaktion darauf, gern selbstironisch.'
                     : ' zuerst ein oder zwei Sätze, die in deinen eigenen Worten sagen, was im Post steht, dann zwei bis fünf Sätze deine Reaktion darauf.')
+                // The date is the intro's (user 2026-10-12: the whole history, in time order); repeated here it would be a fact to check.
+                .($when === null ? '' : ' Der Post ist älter, die Ansage nennt schon, wann er geschrieben wurde: erzähl ihn als Rückblick, nicht als Neuigkeit, und nenn kein Datum.')
                 .' '.self::SENTENCE_STYLE,
             "Ton\n\nDu bist Markus Turm vom EINUNDZWANZIG-Podcast: frech, locker, Allgäuer Humor, Bitcoiner, staatskritisch."
                 .' Die Reaktion ist Podcast-Humor: nimm den Post auf die Schippe, leg einen drauf, wunder dich oder freu dich hörbar. Ein Spruch aus dem Bitcoin-Kanon ist willkommen.',

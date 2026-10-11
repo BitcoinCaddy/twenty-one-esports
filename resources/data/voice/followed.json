@@ -1,5 +1,5 @@
 {
- "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note. Every spoken sentence is complete and has at least seven words (user 2026-10-12).",
+ "note": "TWENTY ONE TV followed-profile segment (App\\Support\\Caster\\FollowedScripts): an intro naming the profile ({name}, nominative: the display name or 'ein Nostr-Kollege'; self_intros when the profile is Markus' own; the dated_ variants, with {when} = 'Im März zweitausenddreiundzwanzig', for a note older than followed.dated_after_hours), then Markus' retelling and reaction by the league voice. When the voice is off or its draft fails a check, the attribution reads a short quote of the note and a reaction stands in. Reactions are opinion only: no facts, no names, no numbers, and they must fit any note. Every spoken sentence is complete and has at least seven words (user 2026-10-12).",
  "intros": [
   "Wir werfen einen kurzen Blick rüber auf Nostr, denn da hat {name} wieder etwas gepostet.",
   "Auf Nostr meldet sich gerade {name} zu Wort, und das will ich euch nicht vorenthalten.",
@@ -13,8 +13,22 @@
   "Auf Nostr hab ich mich mal wieder zu Wort gemeldet, und ihr dürft jetzt mithören.",
   "Jetzt kommt etwas ganz frisch von meinem eigenen Nostr-Profil, und ich bin selbst gespannt."
  ],
+ "dated_intros": [
+  "{when} hat {name} auf Nostr etwas gepostet, und das holen wir jetzt noch einmal hervor.",
+  "{when} hat sich {name} auf Nostr zu Wort gemeldet, und ich finde, das passt heute wieder.",
+  "{when} hat {name} auf Nostr das hier getippt, und wir werfen einen Blick ins Archiv.",
+  "{when} schrieb {name} auf Nostr etwas, und wir blättern jetzt gemeinsam im Archiv."
+ ],
+ "self_dated_intros": [
+  "{when} hab ich auf Nostr etwas geschrieben, und das schauen wir uns jetzt noch einmal an.",
+  "{when} hab ich auf Nostr mal etwas rausgehauen, und ich bin gespannt, wie es gealtert ist.",
+  "{when} hab ich das auf Nostr gepostet, und wir werfen einen Blick in mein Archiv.",
+  "{when} hab ich auf Nostr getippt, und das wird jetzt eine kleine Reise durch meine Geschichte."
+ ],
  "attribution": "Auf Nostr schreibt {name} gerade Folgendes:",
  "self_attribution": "Auf Nostr hab ich vor Kurzem Folgendes geschrieben:",
+ "dated_attribution": "{when} schrieb {name} auf Nostr Folgendes:",
+ "self_dated_attribution": "{when} hab ich auf Nostr Folgendes geschrieben:",
  "reactions": [
   "Na, das lass ich jetzt einfach mal so stehen, weil es eigentlich für sich selbst spricht.",
   "Das kann man durchaus so sehen, aber man muss es natürlich nicht unbedingt.",

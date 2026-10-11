@@ -9,7 +9,8 @@ use Illuminate\Support\Carbon;
 /**
  * A kind 1 note of a profile the TWENTY ONE TV commentary follows
  * (App\Support\Caster\FollowedNotes, App\Support\Caster\FollowedScripts):
- * reacted to at most once, deleted after `tv.commentary.followed.keep_days`.
+ * reacted to at most once; with a `tv.commentary.followed.fresh_hours` limit
+ * deleted after `keep_days`, without one (the default) kept for good.
  *
  * @property int $id
  * @property string $event_id the note's id (hex), unique: a note is stored once

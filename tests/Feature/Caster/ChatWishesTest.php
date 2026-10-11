@@ -174,7 +174,7 @@ it('does not tell the same Bauernkrieg episode twice within an hour', function (
 it('picks the episode told more than an hour ago, and grants no Bauernkrieg wish when every episode was told within the hour', function (int $minutesAgoOfLast, ?string $expected) {
     $episodes = array_column(HistoryScripts::data()['episodes'], 'id');
     foreach ($episodes as $index => $episode) {
-        $script = app(ScriptQueue::class)->enqueue(CasterScript::HISTORY, 'break', 'x', HistoryScripts::HASH_PREFIX.$episode, 0, CarbonImmutable::now());
+        $script = app(ScriptQueue::class)->enqueue(CasterScript::HISTORY, 'break', "Folge {$episode} vom Bauernkrieg.", HistoryScripts::HASH_PREFIX.$episode, 0, CarbonImmutable::now());
         $script->forceFill(['created_at' => now()->subMinutes($index === count($episodes) - 1 ? $minutesAgoOfLast : 20), 'status' => CasterScript::VOICED])->save();
     }
     wishChatter($this, 'Erzähl vom Bauernkrieg');

@@ -242,7 +242,7 @@ class ChatWishes
 
         $lines = [];
         foreach ($picked as $turn => $id) {
-            $lines[] = (string) $this->patterns->spokenCanon($id, $turn);
+            $lines[] = (string) $this->patterns->spokenCanon($id, $turn, $lines);
         }
 
         if (count($lines) < 2) {
