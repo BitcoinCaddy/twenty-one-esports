@@ -16,6 +16,8 @@ use App\Support\StreamBot\StreamBotCopy;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\Tournaments\TournamentChampion;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\VoiceAgent;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -195,4 +197,43 @@ test('a result post never names a sats amount from the tournament name', functio
         ->and(StreamBotCopy::resultName('21k sats Cup'))->toBe('Cup')
         ->and(StreamBotCopy::resultName('Blitz Night Berlin'))->toBe('Blitz Night Berlin')
         ->and(StreamBotCopy::resultName('Season 2 Finale'))->toBe('Season 2 Finale');
+});
+
+test('with its switches on, the league voice writes the champion note in English, the champion tagged, the link, naddr and slide kept', function () {
+    config(['esports.voice.functions.note_champion' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Wow. {@winner} takes Friday Blitz Cup.', 'canon_id' => null, 'mood' => 'hype']]);
+    $tournament = championTournament($this->league, ['name' => 'Friday Blitz Cup']);
+    $winner = app(TournamentChampion::class)->of($tournament)->user;
+
+    app(ChampionNotes::class)->run(now()->toImmutable());
+    $note = $this->published[0];
+
+    expect($note->content)->toStartWith('Wow. nostr:'.NostrKeys::hexToNpub($winner->pubkey)." takes Friday Blitz Cup.\n👉 ".route('tournaments.show', $tournament)."\n\nnostr:naddr1")
+        ->and(collect($note->tags)->where(0, 'p')->pluck(1)->all())->toBe([$winner->pubkey])
+        ->and(collect($note->tags)->firstWhere(0, 'q'))->not->toBeNull()
+        ->and(collect($note->tags)->firstWhere(0, 'imeta'))->not->toBeNull();
+});
+
+test('the champion note keeps its template when the voice request fails', function () {
+    config(['esports.voice.functions.note_champion' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
+    $tournament = championTournament($this->league, ['name' => 'Friday Blitz Cup']);
+    $winner = app(TournamentChampion::class)->of($tournament)->user;
+
+    app(ChampionNotes::class)->run(now()->toImmutable());
+
+    expect($this->published[0]->content)->toStartWith('🏆 nostr:'.NostrKeys::hexToNpub($winner->pubkey).' wins Friday Blitz Cup (Chess Blitz');
+});
+
+test('a champion who switched mentions off is named in the note, not tagged', function () {
+    $tournament = championTournament($this->league, ['name' => 'Friday Blitz Cup']);
+    $winner = app(TournamentChampion::class)->of($tournament)->user;
+    $winner->forceFill(['nostr_mentions' => false])->save();
+
+    app(ChampionNotes::class)->run(now()->toImmutable());
+    $note = $this->published[0];
+
+    expect($note->content)->toStartWith('🏆 '.$winner->displayName().' wins Friday Blitz Cup (Chess Blitz')
+        ->and($note->content)->not->toContain('nostr:npub')
+        ->and(collect($note->tags)->where(0, 'p')->all())->toBe([]);
 });

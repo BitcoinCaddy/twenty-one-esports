@@ -48,6 +48,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $profile_checked_at last time a browser handed in this profile, new or unchanged
  * @property string|null $locale
  * @property bool $is_member
+ * @property bool $nostr_mentions
  * @property Carbon|null $member_checked_at
  * @property string|null $avatar_path
  * @property Platform|null $platform
@@ -66,7 +67,7 @@ use Illuminate\Support\Str;
  * @property-read ClanMember|null $clanMember
  * @property-read Collection<int, PushSubscription> $pushSubscriptions
  */
-#[Fillable(['pubkey', 'npub', 'locale', 'avatar_path', 'platform', 'gamer_tags', 'timezone', 'looking_to_play', 'chess_settings'])]
+#[Fillable(['pubkey', 'npub', 'locale', 'avatar_path', 'platform', 'gamer_tags', 'timezone', 'looking_to_play', 'chess_settings', 'nostr_mentions'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -119,6 +120,7 @@ class User extends Authenticatable
             'nip05_changed_at' => 'datetime',
             'nip05_revoked_at' => 'datetime',
             'is_member' => 'boolean',
+            'nostr_mentions' => 'boolean',
             'member_checked_at' => 'datetime',
             'platform' => Platform::class,
             'gamer_tags' => 'array',
@@ -199,6 +201,15 @@ class User extends Authenticatable
     public function isTournamentOrganizer(): bool
     {
         return TournamentOrganizer::query()->where('pubkey', $this->pubkey)->exists();
+    }
+
+    /**
+     * Whether the league's bot may mention the player on Nostr (`nostr:npub1…`
+     * and a `p` tag). Settings, Account: on unless the player switched it off.
+     */
+    public function allowsMentions(): bool
+    {
+        return $this->nostr_mentions !== false;
     }
 
     /**

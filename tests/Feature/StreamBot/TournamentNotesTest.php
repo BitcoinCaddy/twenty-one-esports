@@ -10,6 +10,9 @@ use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\Tournaments\CasualCups;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\SpamGate;
+use App\Support\Voice\VoiceAgent;
+use App\Support\Voice\VoiceGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Carbon;
@@ -18,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
 
 use function BitWasp\Bech32\convertBits;
@@ -39,6 +43,8 @@ beforeEach(function () {
     $this->botKey = new TestSigner;
 
     config([
+        // The fixtures' notes read alike ("Backlog Cup 1…4"); the spam gate gets its own tests at the end of this file.
+        'esports.voice.spam.enabled' => false,
         'esports.league.nsec' => $this->league->secret,
         'esports.stream_bot.enabled' => true,
         'esports.stream_bot.nsec' => $this->botKey->secret,
@@ -536,4 +542,64 @@ test('corrections no relay answered do not use up the resends of the deletion a 
     expect($this->held)->toBe(['wss://one.test' => [$new => true], 'wss://two.test' => [$new => true]])
         ->and(BotPost::query()->where('kind', 5)->sole()->published_at)->not->toBeNull();
     Log::shouldNotHaveReceived('warning', ['Stream bot deletion given up for the relays that did not take it', Mockery::any()]);
+});
+
+test('with its switches on, the league voice writes the note in English, the start word for word, the link and naddr kept', function () {
+    config(['esports.voice.functions.note_tournament' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => "Hey! Friday Blitz Cup starts Sat, 3 Oct 2026, 9:00 PM CEST. Who's in?", 'canon_id' => null, 'mood' => 'call']]);
+    $tournament = openTournament(['name' => 'Friday Blitz Cup']);
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+    $note = $this->published[0];
+
+    expect($note->content)->toBe("Hey! Friday Blitz Cup starts Sat, 3 Oct 2026, 9:00 PM CEST. Who's in?\n👉 ".route('tournaments.show', $tournament)."\n\nnostr:".app(TournamentNotes::class)->naddr($tournament))
+        ->and($note->tags)->toHaveCount(1)
+        ->and($note->tag('q'))->toBe($tournament->address())
+        // stale() still finds the start in it.
+        ->and(app(TournamentNotes::class)->announcesStart(json_encode($note->toArray()), $tournament->refresh()))->toBeTrue();
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Englisch'));
+});
+
+test('a voiced note that leaves out the start goes out as the template', function () {
+    config(['esports.voice.functions.note_tournament' => true, 'esports.voice.channels.profile_note.enabled' => true]);
+    $noStart = ['text' => 'Hey! Friday Blitz Cup is open. Who is in?', 'canon_id' => null, 'mood' => 'call'];
+    VoiceAgent::fake([$noStart, $noStart]);
+    openTournament(['name' => 'Friday Blitz Cup']);
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+
+    expect($this->published[0]->content)->toStartWith('🏆 New tournament: Friday Blitz Cup')
+        ->and(DB::table('voice_rejections')->where('reason', VoiceGuard::MISSING_FACT)->value('count'))->toBe(2);
+});
+
+/*
+ * The spam gate on the profile (plan: "wiederholte Vorlage → Post fällt aus statt Wiederholung", "lieber ohne Link als
+ * mit wiederholtem"): a note whose text went out shortly before waits unsigned; a note whose link went out within the day
+ * goes without it, its naddr still points at the tournament.
+ */
+
+test('with the spam gate on, a note whose text went out shortly before waits unsigned', function () {
+    config(['esports.voice.spam.enabled' => true]);
+    $tournament = openTournament(['name' => 'Friday Blitz Cup']);
+    $body = explode("\n\nnostr:", app(TournamentNotes::class)->content($tournament), 2)[0];
+    app(SpamGate::class)->record(SpamGate::PROFILE, $body, 'signup_open', [], CarbonImmutable::now()->subHour());
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+
+    expect(Artisan::output())->toContain('held back by the spam gate')
+        ->and($this->published)->toBe([])
+        ->and(BotPost::query()->where('subject_id', $tournament->id)->value('event'))->toBeNull();
+});
+
+test('with the spam gate on, a note whose link went out within the day goes without it, naddr and q tag kept', function () {
+    config(['esports.voice.spam.enabled' => true]);
+    $tournament = openTournament(['name' => 'Friday Blitz Cup']);
+    app(SpamGate::class)->record(SpamGate::PROFILE, 'Another note 👉 '.route('tournaments.show', $tournament), 'general', [], CarbonImmutable::now()->subHour());
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+    $note = $this->published[0];
+
+    expect($note->content)->toStartWith("🏆 New tournament: Friday Blitz Cup\n🎮 Chess Blitz 5+3 · starts Sat, 3 Oct 2026, 9:00 PM CEST\n\nnostr:naddr1")
+        ->and($note->content)->not->toContain('https://')
+        ->and($note->tag('q'))->toBe($tournament->address());
 });

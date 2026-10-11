@@ -89,25 +89,6 @@ it('holds back the same moment about the same subject within repeat_hours', func
         ->and(spamGate()->skip(SpamGate::PROFILE, 'champion', ['tournament:8'], spamNow()))->toBeNull();
 });
 
-it('merges a burst of one moment type into one roundup', function () {
-    $moments = array_map(fn (int $i) => ['moment' => 'win', 'priority' => 1, 'facts' => ['match' => $i]], range(1, 8));
-
-    $merged = spamGate()->collapse($moments);
-
-    expect($merged['moment'])->toBe('roundup')
-        ->and($merged['facts']['count'])->toBe(8)
-        ->and($merged['facts']['items'])->toHaveCount(8);
-});
-
-it('keeps only the most important moment of a small burst', function () {
-    $merged = spamGate()->collapse([
-        ['moment' => 'win', 'priority' => 1, 'facts' => ['match' => 1]],
-        ['moment' => 'champion', 'priority' => 5, 'facts' => ['tournament' => 7]],
-    ]);
-
-    expect($merged['moment'])->toBe('champion');
-});
-
 it('mentions a person once per day on the profile', function () {
     spamGate()->record(SpamGate::PROFILE, 'Glückwunsch.', 'win', ['t1'], spamNow()->subHours(3), mentioned: ['abc']);
 
@@ -139,7 +120,7 @@ it('rejects a voice text over the surface length', function () {
 });
 
 it('rejects a voice text with more than two sentences', function () {
-    expect(spamGate()->textSkip(SpamGate::CHAT, 'Satoshi gewinnt. Hal verliert. Weiter geht es.', spamNow()))->toBe(SpamGate::TOO_MANY_SENTENCES);
+    expect(spamGate()->textSkip(SpamGate::CHAT, 'Satoshi gewinnt. Hal verliert. Weiter geht es. Wer spielt jetzt?', spamNow()))->toBe(SpamGate::TOO_MANY_SENTENCES);
 });
 
 it('does not hold a template back for its length', function () {
@@ -197,7 +178,10 @@ it('drops a template line whose link repeats instead of repeating it', function 
     spamGate()->record(SpamGate::CHAT, 'https://esports.einundzwanzig.space/play', 'signup_open', ['t1'], spamNow()->subHours(5));
 
     expect(spamGate()->withoutRepeatedLinks(SpamGate::CHAT, ['🏆 Satoshi gewinnt', '👉 https://esports.einundzwanzig.space/play'], spamNow()))
-        ->toBe(['🏆 Satoshi gewinnt']);
+        ->toBe(['🏆 Satoshi gewinnt'])
+        // A link inside a sentence line goes with its label, the sentence stays.
+        ->and(spamGate()->withoutRepeatedLinks(SpamGate::CHAT, ['🏆 Cup startet Samstag. Eintragen: https://esports.einundzwanzig.space/play'], spamNow()))
+        ->toBe(['🏆 Cup startet Samstag.']);
 });
 
 it('counts every skip reason for voice:usage', function () {

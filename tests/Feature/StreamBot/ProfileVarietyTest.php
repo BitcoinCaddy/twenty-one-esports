@@ -36,6 +36,8 @@ use Tests\Support\TestSigner;
 beforeEach(function () {
     Cache::flush();
     config([
+        // The spam gate's repetition rules (BotVoiceTest, TournamentNotesTest) are not what this file tests: its fixtures read alike.
+        'esports.voice.spam.enabled' => false,
         'esports.league.nsec' => (new TestSigner)->secret,
         'esports.stream_bot.enabled' => true,
         'esports.stream_bot.nsec' => (new TestSigner)->secret,

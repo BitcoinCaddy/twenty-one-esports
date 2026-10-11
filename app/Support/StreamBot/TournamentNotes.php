@@ -14,6 +14,8 @@ use App\Support\SeasonChain\LeagueKey;
 use App\Support\Tournaments\CasualCups;
 use App\Support\Tournaments\Lobbies;
 use App\Support\TwentyOne\EventBuilder;
+use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +94,7 @@ class TournamentNotes
         private StreamBotPublisher $publisher,
         private GameRegistry $games,
         private PrizePool $pools,
+        private BotVoice $voice,
     ) {}
 
     /**
@@ -177,7 +180,7 @@ class TournamentNotes
 
         Log::info('Stream bot tournament note deleted by its author, renewing', ['tournament' => $tournament->id, 'deleted' => $deletedId]);
 
-        return $this->post($key, $tournament, $relays, $now);
+        return $this->post($key, $tournament, $relays, $now, correction: true);
     }
 
     /**
@@ -547,24 +550,31 @@ class TournamentNotes
      */
     public function content(Tournament $tournament, ?int $variant = null): string
     {
+        return StreamBotCopy::render($this->template($tournament), $variant ?? $this->nextVariant($tournament), $this->values($tournament))
+            ."\n\nnostr:".$this->naddr($tournament);
+    }
+
+    /**
+     * The values of a tournament's note, in English.
+     *
+     * @return array<string, string|null>
+     */
+    private function values(Tournament $tournament): array
+    {
         $previous = app()->getLocale();
         app()->setLocale(self::LOCALE);
 
         try {
-            $template = $this->template($tournament);
-
-            $body = StreamBotCopy::render($template, $variant ?? $this->nextVariant($tournament), [
+            return [
                 'name' => StreamBotCopy::clean($tournament->name, self::NAME_LENGTH),
                 'game' => $this->gameLine($tournament),
                 'starts' => $this->startStamp($tournament),
                 'pot' => $this->pot($tournament),
                 'url' => route('tournaments.show', $tournament),
-            ]);
+            ];
         } finally {
             app()->setLocale($previous);
         }
-
-        return $body."\n\nnostr:".$this->naddr($tournament);
     }
 
     /** The template of a tournament's note, by its status when the note goes out. */
@@ -587,21 +597,35 @@ class TournamentNotes
      * The kind-1 note in the wording `$variant` (null: the next one): the
      * content and one NIP-18 `q` tag on the calendar event's address with
      * its relay hint. No `t` tag, no `#` (a standing rule of this project),
-     * no `p` (the league account is not pinged).
+     * no `p` (the league account is not pinged). With its switch on, the
+     * league voice writes the text from the same facts (BotVoice, function
+     * `note_tournament`); it must name the start word for word, which is how
+     * stale() finds a moved tournament's note.
      */
-    public function event(LeagueKey $key, Tournament $tournament, int $createdAt, ?int $variant = null): SignedEvent
+    public function event(LeagueKey $key, Tournament $tournament, int $createdAt, ?int $variant = null, bool $correction = false): SignedEvent
     {
         $address = $tournament->address() ?? throw new LogicException('An unpublished tournament has no note.');
-        $content = $this->content($tournament, $variant);
-        $tags = [['q', $address, $this->relayHint() ?? '']];
-        $body = explode("\n\nnostr:", $content, 2)[0];
-        $problems = StreamBotCopy::violations($body, $tags);
+        $composed = $this->voice->compose('note_tournament', $this->template($tournament), $variant ?? $this->nextVariant($tournament), $this->values($tournament),
+            [['q', $address, $this->relayHint() ?? '']], CarbonImmutable::createFromTimestamp($createdAt), [
+                'must_contain' => ['starts'],
+                // A correction replaces a note this bot deleted (NIP-09): it reads almost like the old one and must go out anyway.
+                'hold_template' => ! $correction && ! $this->corrects($tournament),
+                'link_optional' => true,
+            ])
+            ?? throw new HeldBack;
+        $problems = StreamBotCopy::violations($composed['content'], $composed['tags'], linkRequired: false);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own note: '.implode(', ', $problems));
         }
 
-        return $key->sign(self::KIND_NOTE, $tags, $content, $createdAt);
+        return $key->sign(self::KIND_NOTE, $composed['tags'], $composed['content']."\n\nnostr:".$this->naddr($tournament), $createdAt);
+    }
+
+    /** Whether the tournament's next note corrects one this bot deleted (a deletion row exists). */
+    private function corrects(Tournament $tournament): bool
+    {
+        return BotPost::query()->where(['subject_type' => BotPost::SUBJECT_TOURNAMENT, 'subject_id' => $tournament->id, 'kind' => self::KIND_DELETION])->exists();
     }
 
     /**
@@ -620,7 +644,7 @@ class TournamentNotes
      *
      * @param  list<string>  $relays
      */
-    private function post(LeagueKey $key, Tournament $tournament, array $relays, CarbonImmutable $now): string
+    private function post(LeagueKey $key, Tournament $tournament, array $relays, CarbonImmutable $now, bool $correction = false): string
     {
         $subject = ['subject_type' => BotPost::SUBJECT_TOURNAMENT, 'subject_id' => $tournament->id, 'kind' => self::KIND_NOTE];
 
@@ -640,7 +664,12 @@ class TournamentNotes
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
             $variant = $this->nextVariant($tournament);
-            $signed = $this->event($key, $tournament, $now->getTimestamp(), $variant);
+            try {
+                $signed = $this->event($key, $tournament, $now->getTimestamp(), $variant, $correction);
+            } catch (HeldBack $held) {
+                return 'tournament '.$tournament->id.': '.$held->getMessage();
+            }
+
             $post->forceFill([
                 'event_id' => $signed->id,
                 'event' => json_encode($signed->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
@@ -660,6 +689,10 @@ class TournamentNotes
             'relays_total' => count($results),
             'published_at' => $accepted > 0 ? $now : null,
         ])->save();
+
+        if ($accepted > 0) {
+            $this->voice->delivered('note_tournament', $this->template($tournament), $event->content, $event->tags, $now, subjects: ['tournament:'.$tournament->id]);
+        }
 
         Log::info('Stream bot tournament note', [
             'tournament' => $tournament->id,

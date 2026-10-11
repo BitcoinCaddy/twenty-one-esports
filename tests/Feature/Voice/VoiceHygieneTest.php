@@ -107,3 +107,99 @@ it('rejects a near copy of a recent post', function () {
 it('rejects more sentences than the channel allows', function () {
     expect((new VoiceHygiene)->check('Satoshi gewinnt. Hal verliert. Weiter geht es.', 'de', [], null, false, 2))->toContain(VoiceHygiene::TOO_MANY_SENTENCES);
 });
+
+/*
+| Everyday language (P2, user 2026-10-11: "Ein Mensch redet im Alltag nicht
+| in Schachtelsätzen"): words and commas per sentence, AI and officialese
+| phrases, and the stage directions of the spoken commentary.
+*/
+
+it('accepts short everyday sentences, one-word ones included', function (string $text, string $language) {
+    expect((new VoiceHygiene)->check($text, $language))->toBe([]);
+})->with([
+    'German' => ['Boah. Satoshi dreht das Ding noch. 3:1! Läuft.', 'de'],
+    'English' => ['Wow. Satoshi flips it late. 3-1! Yep.', 'en'],
+]);
+
+it('rejects a sentence of more than 14 words', function () {
+    expect((new VoiceHygiene)->check('Satoshi schlägt Hal heute Abend im Schach mit drei zu eins und bleibt damit weiter ganz oben dabei.', 'de'))
+        ->toContain(VoiceHygiene::LONG_SENTENCE);
+});
+
+it('rejects a sentence with more than one comma that joins clauses', function () {
+    expect((new VoiceHygiene)->check('Satoshi, der gestern verlor, gewinnt heute.', 'de'))->toContain(VoiceHygiene::COMMAS)
+        ->and((new VoiceHygiene)->check('Hal wins, Satoshi loses, which nobody saw coming.', 'en'))->toContain(VoiceHygiene::COMMAS);
+});
+
+it('lets a list of short items keep its commas', function () {
+    expect((new VoiceHygiene)->check('Schach, Pong, Blockli und Mühle heute. Wer spielt?', 'de'))->toBe([]);
+});
+
+it('counts a fact string as one word, its commas included', function () {
+    $start = 'Sat, 3 Oct 2026, 9:00 PM CEST';
+
+    expect((new VoiceHygiene)->check("Friday Blitz Cup starts {$start}. Who's in?", 'en', factStrings: [$start, 'Friday Blitz Cup']))->toBe([])
+        ->and((new VoiceHygiene)->check("Friday Blitz Cup starts {$start}. Who's in?", 'en'))->toContain(VoiceHygiene::COMMAS);
+});
+
+it('rejects a German AI or officialese phrase', function (string $text) {
+    expect((new VoiceHygiene)->check($text, 'de'))->toContain(VoiceHygiene::AI_PHRASE);
+})->with([
+    'Darüber hinaus gewinnt Satoshi.',
+    'Ein spannendes Finale für Satoshi!',
+    'Es ist erwähnenswert: Satoshi gewinnt.',
+    'Sei dabei beim Cup!',
+]);
+
+it('rejects an English AI phrase', function (string $text) {
+    expect((new VoiceHygiene)->check($text, 'en'))->toContain(VoiceHygiene::AI_PHRASE);
+})->with([
+    'It is worth noting that Satoshi wins.',
+    'What a thrilling final!',
+    'Satoshi showcases pure skill.',
+    'Let us delve into the bracket.',
+]);
+
+it('rejects the stage directions of the spoken commentary in a text post', function (string $text) {
+    expect((new VoiceHygiene)->check($text, 'de'))->toContain(VoiceHygiene::TTS_MARKER);
+})->with([
+    'Satoshi gewinnt. [laughter]',
+    '[surprise-oh] Satoshi gewinnt!',
+    'Satoshi gewinnt (lacht).',
+]);
+
+it('does not count a one-word exclamation as a sentence of the channel', function () {
+    expect((new VoiceHygiene)->check('Hey! Satoshi schlägt Hal 3:1. Wer will als Nächstes?', 'de', [], null, false, 2))->not->toContain(VoiceHygiene::TOO_MANY_SENTENCES)
+        ->and(VoiceHygiene::sentences('Boah. Läuft. Na also.'))->toBe(1);
+});
+
+it('rejects the opener of any of the channel\'s last five posts, and lets an older one come back', function () {
+    $recent = ['Hey! Satoshi gewinnt.', 'Boah. Hal verliert.', 'Klar. Läuft.', 'Wow. Knapp.', 'Na also. Weiter.', 'Stark. Wieder Satoshi.'];
+
+    expect((new VoiceHygiene)->check('Hey! Hal schlägt Satoshi 3:1.', 'de', $recent))->toContain(VoiceHygiene::OPENER_REPEAT)
+        ->and((new VoiceHygiene)->check('Na also. Hal schlägt Satoshi 3:1.', 'de', $recent))->toContain(VoiceHygiene::OPENER_REPEAT)
+        ->and((new VoiceHygiene)->check('Stark. Hal schlägt Satoshi 3:1.', 'de', $recent))->not->toContain(VoiceHygiene::OPENER_REPEAT)
+        ->and((new VoiceHygiene)->check('Hal schlägt Satoshi 3:1.', 'de', $recent))->not->toContain(VoiceHygiene::OPENER_REPEAT);
+});
+
+it('rejects a sign-off at the end of a post', function (string $text, string $language) {
+    expect((new VoiceHygiene)->check($text, $language))->toContain(VoiceHygiene::SIGN_OFF);
+})->with([
+    ['Ada hits 0:50.000. Stack sats. Ciao.', 'en'],
+    ['Satoshi gewinnt 3:1. Tschüss!', 'de'],
+]);
+
+it('drops trailing sentences of a text with too many, as long as the required facts stay', function () {
+    $start = 'Sat, 3 Oct 2026, 9:00 PM CEST';
+
+    expect(VoiceHygiene::trimSentences('Satoshi gewinnt 3:1. Hal kämpft lange. Stark gespielt von beiden. Wer will als Nächstes?', 2))
+        ->toBe('Satoshi gewinnt 3:1. Hal kämpft lange.')
+        ->and(VoiceHygiene::trimSentences("Hey! Cup starts {$start}. Two seats left. Who joins now?", 2, [$start]))->toBe("Hey! Cup starts {$start}. Two seats left.")
+        // The fact the text must carry sits in the last sentence: nothing is dropped, the check rejects it.
+        ->and(VoiceHygiene::trimSentences("Cup is open. Two seats left. Who joins? It starts {$start}.", 2, [$start]))->toBe("Cup is open. Two seats left. Who joins? It starts {$start}.")
+        ->and(VoiceHygiene::trimSentences('Satoshi gewinnt 3:1. Stark!', 2))->toBe('Satoshi gewinnt 3:1. Stark!');
+});
+
+it('keeps a clan tag in square brackets', function () {
+    expect((new VoiceHygiene)->check('Neuer Clan: Stacking Sats [SATS]. Hallo!', 'de'))->not->toContain(VoiceHygiene::TTS_MARKER);
+});

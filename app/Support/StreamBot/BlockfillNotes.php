@@ -7,6 +7,7 @@ use App\Models\Tournament;
 use App\Support\Scores\ScoreRuns;
 use App\Support\Stacker\BlockfillRules;
 use App\Support\Stacker\BlockfillWeeks;
+use App\Support\Voice\BotVoice;
 use Carbon\CarbonImmutable;
 
 /**
@@ -19,9 +20,9 @@ final class BlockfillNotes extends WeeklyBoardNotes
 {
     public const SUBJECT = 'blockfill_week';
 
-    public function __construct(TournamentNotes $notes, StreamBotPublisher $publisher, private BlockfillWeeks $weeks, ScoreRuns $runs)
+    public function __construct(TournamentNotes $notes, StreamBotPublisher $publisher, private BlockfillWeeks $weeks, ScoreRuns $runs, BotVoice $voice)
     {
-        parent::__construct($notes, $publisher, $runs);
+        parent::__construct($notes, $publisher, $runs, $voice);
     }
 
     protected function enabled(): bool

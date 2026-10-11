@@ -4,8 +4,10 @@ use App\Support\Nostr\NostrKeys;
 use App\Support\Voice\LeagueVoice;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
+use App\Support\Voice\VoiceFactCheck;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceHygiene;
+use App\Support\Voice\VoiceMentions;
 use App\Support\Voice\VoiceUsage;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Http\Client\ConnectionException;
@@ -121,12 +123,38 @@ it('returns null without an exception when the request fails', function (Closure
     '500' => fn () => fn () => throw new RequestException(new Response(new Psr7Response(500, [], '{"error":{"message":"boom"}}'))),
 ]);
 
-it('returns null and counts the reason when the guard rejects the text', function () {
-    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype']]);
+it('returns null and counts the reasons when the guard rejects the text twice', function () {
+    VoiceAgent::fake([
+        ['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype'],
+    ]);
 
     expect(leagueVoice()->say('win', voiceFacts(), 'stream_chat'))->toBeNull()
         ->and(DB::table('voice_rejections')->orderBy('reason')->pluck('reason')->all())->toBe([VoiceGuard::HASHTAG, VoiceGuard::NUMBER, VoiceHygiene::TRUNCATED])
-        ->and(DB::table('voice_usage')->value('rejected'))->toBe(1);
+        ->and(DB::table('voice_usage')->value('rejected'))->toBe(2)
+        ->and(DB::table('voice_usage')->value('attempts'))->toBe(2);
+    VoiceAgent::assertPromptedTimes(2);
+});
+
+it('writes once more after a rejection, telling the model why, and posts the second text', function () {
+    VoiceAgent::fake([
+        ['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Satoshi schlägt Hal 3:1. Stark!', 'canon_id' => null, 'mood' => 'hype'],
+    ]);
+
+    $line = leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect($line?->text)->toBe('Satoshi schlägt Hal 3:1. Stark!')
+        ->and(DB::table('voice_usage')->first(['attempts', 'accepted', 'rejected']))->toEqual((object) ['attempts' => 2, 'accepted' => 1, 'rejected' => 1]);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Dein erster Entwurf ging nicht durch') && str_contains($prompt->prompt, 'Kein # im Text.'));
+});
+
+it('asks no second time once the daily cap is used up by the first', function () {
+    config(['esports.voice.channels.stream_chat.daily_cap' => 1]);
+    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 7:0. #bitcoin', 'canon_id' => null, 'mood' => 'hype']]);
+
+    expect(leagueVoice()->say('win', voiceFacts(), 'stream_chat'))->toBeNull();
+    VoiceAgent::assertPromptedTimes(1);
 });
 
 it('returns null when the model mentions a person whose mentions are off', function () {
@@ -262,4 +290,89 @@ it('prints today\'s and the month\'s usage', function () {
         ->expectsOutputToContain('spam_chat: interval 1')
         ->expectsOutputToContain('Month estimate: $0.0006 of $60.00 soft budget')
         ->assertSuccessful();
+});
+
+/*
+| The fact check (P2): a second Haiku look lists claims the facts do not
+| support; one claim rejects the text, a failed check sends the template.
+*/
+
+it('rejects a text with a claim the facts do not support, writes once more and posts the clean one', function () {
+    VoiceAgent::fake([
+        ['text' => 'Satoshi schlägt Hal 3:1 und bleibt ungeschlagen.', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Satoshi schlägt Hal 3:1. Stark gespielt!', 'canon_id' => null, 'mood' => 'hype'],
+    ]);
+    VoiceFactCheck::fake([
+        ['claims' => [['claim' => 'Satoshi schlägt Hal 3:1', 'evidence' => '3:1', 'supported' => true], ['claim' => 'bleibt ungeschlagen', 'evidence' => '', 'supported' => false]]],
+        ['claims' => [['claim' => 'Satoshi schlägt Hal 3:1', 'evidence' => '3:1', 'supported' => true]]],
+    ]);
+
+    $line = leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect($line?->text)->toBe('Satoshi schlägt Hal 3:1. Stark gespielt!')
+        ->and(DB::table('voice_rejections')->where('reason', VoiceGuard::UNSUPPORTED_CLAIM)->value('count'))->toBe(1)
+        ->and(DB::table('voice_usage')->where('channel', LeagueVoice::FACT_CHECK)->value('attempts'))->toBe(2);
+    VoiceFactCheck::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Satoshi schlägt Hal 3:1 und bleibt ungeschlagen.') && str_contains($prompt->prompt, '"score": "3:1"'));
+});
+
+it('sends the template when the fact check fails or answers nothing readable', function (Closure|array $answer) {
+    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 3:1. Stark gespielt!', 'canon_id' => null, 'mood' => 'hype'], ['text' => 'Satoshi schlägt Hal 3:1. Stark gespielt!', 'canon_id' => null, 'mood' => 'hype']]);
+    VoiceFactCheck::fake($answer);
+
+    expect(leagueVoice()->say('win', voiceFacts(), 'stream_chat'))->toBeNull();
+})->with([
+    'timeout' => fn () => fn () => throw new ConnectionException('cURL error 28: Operation timed out'),
+    'unreadable' => fn () => [['claims' => 'none'], ['claims' => 'none']],
+]);
+
+it('asks no fact check for a text the guard already rejected, nor with the check switched off', function () {
+    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 7:0.', 'canon_id' => null, 'mood' => 'hype'], ['text' => 'Satoshi schlägt Hal 7:0.', 'canon_id' => null, 'mood' => 'hype']]);
+    VoiceFactCheck::fake();
+    leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+    VoiceFactCheck::assertNeverPrompted();
+
+    config(['esports.voice.fact_check.enabled' => false]);
+    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 3:1. Stark gespielt!', 'canon_id' => null, 'mood' => 'hype']]);
+
+    expect(leagueVoice()->say('win', voiceFacts(), 'stream_chat'))->not->toBeNull();
+    VoiceFactCheck::assertNeverPrompted();
+});
+
+it('tells the model the openers of the channel\'s last posts and rejects a repeated one', function () {
+    VoiceAgent::fake([
+        ['text' => 'Satoshi schlägt Hal 3:1. Stark gespielt!', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Satoshi gewinnt wieder, 3:1 gegen Hal.', 'canon_id' => null, 'mood' => 'fakten'],
+        ['text' => 'Hal verliert 3:1 gegen Satoshi.', 'canon_id' => null, 'mood' => 'fakten'],
+    ]);
+
+    leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+    $second = leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect($second?->text)->toBe('Hal verliert 3:1 gegen Satoshi.')
+        ->and(DB::table('voice_rejections')->where('reason', VoiceHygiene::OPENER_REPEAT)->value('count'))->toBe(1);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Die letzten Posts begannen mit „Satoshi“'));
+});
+
+it('repairs a draft before the checks: the name beside its token goes, a sentence too many is dropped, then the fact check reads the repaired text', function () {
+    config(['esports.voice.channels.stream_chat.max_sentences' => 2]);
+    VoiceAgent::fake([['text' => 'Satoshi {@winner} schlägt Hal 3:1. Stark gespielt. Wer will als Nächstes?', 'canon_id' => null, 'mood' => 'hype']]);
+
+    $line = leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect($line?->text)->toBe('nostr:'.NostrKeys::hexToNpub(str_repeat('a', 64)).' schlägt Hal 3:1. Stark gespielt.')
+        ->and(DB::table('voice_rejections')->where('channel', 'stream_chat_repaired')->orderBy('reason')->pluck('count', 'reason')->all())
+        ->toBe([VoiceMentions::REPEATED => 1, VoiceHygiene::TOO_MANY_SENTENCES => 1]);
+    VoiceAgent::assertPromptedTimes(1);
+    VoiceFactCheck::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Post:\nSatoshi schlägt Hal 3:1. Stark gespielt."));
+});
+
+it('counts the fact check\'s tokens into the monthly cost', function () {
+    VoiceAgent::fake([['text' => 'Satoshi schlägt Hal 3:1. Stark gespielt!', 'canon_id' => null, 'mood' => 'hype']]);
+    VoiceFactCheck::fake([new StructuredTextResponse(['claims' => []], '{}', new TextUsage(1200, 20, 0, 0), new Meta('anthropic', 'claude-haiku-5-5'))]);
+
+    leagueVoice()->say('win', voiceFacts(), 'stream_chat');
+
+    expect((array) DB::table('voice_usage')->where('channel', LeagueVoice::FACT_CHECK)->first(['input_tokens', 'output_tokens', 'accepted']))
+        ->toBe(['input_tokens' => 1200, 'output_tokens' => 20, 'accepted' => 1])
+        ->and(app(VoiceUsage::class)->monthCost())->toBeGreaterThan(0.0);
 });

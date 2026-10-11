@@ -17,6 +17,8 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\TwentyOne\Stream\SceneRenderer;
 use App\Support\TwentyOne\Stream\StreamStats;
 use App\Support\TwentyOne\Stream\TournamentLiveSlides;
+use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -70,6 +72,7 @@ class ChampionNotes
         private TournamentChampion $champions,
         private TournamentLiveSlides $slides,
         private StreamStats $stats,
+        private BotVoice $voice,
     ) {}
 
     /**
@@ -163,11 +166,13 @@ class ChampionNotes
     /**
      * The note's text and tags in the wording `$variant`: the copy, then
      * the calendar event as `nostr:naddr1…` after a blank line; null
-     * without a single champion.
+     * without a single champion. With `$voiceAt` (the note that goes out)
+     * and its switch on, the league voice writes the copy from the same
+     * facts (BotVoice, `note_champion`); without it, always the template.
      *
      * @return array{content: string, tags: list<list<string>>}|null
      */
-    public function compose(Tournament $tournament, int $variant): ?array
+    public function compose(Tournament $tournament, int $variant, ?CarbonImmutable $voiceAt = null): ?array
     {
         $champion = $this->champions->of($tournament);
         $address = $tournament->address();
@@ -181,19 +186,27 @@ class ChampionNotes
         app()->setLocale('en');
 
         try {
-            $body = StreamBotCopy::render(self::TEMPLATE, $variant, [
+            $values = [
                 'winner' => $this->winner($champion, $tags),
                 'name' => StreamBotCopy::clean($tournament->name, self::NAME_LENGTH),
                 'game' => $this->notes->gameLine($tournament),
                 'prize' => $this->prize($tournament),
                 'url' => route('tournaments.show', $tournament),
-            ]);
+            ];
         } finally {
             app()->setLocale($previous);
         }
 
         $tags[] = ['q', $address, $this->notes->relayHint() ?? ''];
-        $problems = StreamBotCopy::violations($body, $tags);
+        $body = StreamBotCopy::render(self::TEMPLATE, $variant, $values);
+
+        if ($voiceAt !== null) {
+            $composed = $this->voice->compose('note_champion', self::TEMPLATE, $variant, $values, $tags, $voiceAt, ['hold_template' => true, 'link_optional' => true])
+                ?? throw new HeldBack;
+            [$body, $tags] = [$composed['content'], $composed['tags']];
+        }
+
+        $problems = StreamBotCopy::violations($body, $tags, linkRequired: $voiceAt === null);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own champion note: '.implode(', ', $problems));
@@ -271,7 +284,12 @@ class ChampionNotes
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
             $variant = ProfileNotes::nextVariant(self::NOTE_TYPE, StreamBotCopy::variants(self::TEMPLATE));
-            $note = $this->compose($tournament, $variant) ?? throw new LogicException('Tournament '.$tournament->id.' has no single champion.');
+            try {
+                $note = $this->compose($tournament, $variant, $now) ?? throw new LogicException('Tournament '.$tournament->id.' has no single champion.');
+            } catch (HeldBack $held) {
+                return 'tournament '.$tournament->id.': champion note '.$held->getMessage();
+            }
+
             [$url, $imeta] = $this->image($tournament, $now);
             $signed = $key->sign(self::KIND_NOTE, [...$note['tags'], $imeta], $note['content']."\n\n".$url, $now->getTimestamp());
             $post->forceFill([
@@ -287,6 +305,10 @@ class ChampionNotes
         $results = $this->publisher->publish($event->toArray(), $relays);
         $accepted = count(array_filter($results, fn ($result): bool => $result->accepted));
         $post->forceFill(['relays_accepted' => $accepted, 'relays_total' => count($results), 'published_at' => $accepted > 0 ? $now : null])->save();
+
+        if ($accepted > 0) {
+            $this->voice->delivered('note_champion', self::TEMPLATE, $event->content, $event->tags, $now, subjects: ['tournament:'.$tournament->id]);
+        }
 
         Log::info('Stream bot champion note', [
             'tournament' => $tournament->id,

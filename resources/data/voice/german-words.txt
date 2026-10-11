@@ -1,0 +1,10 @@
+# Everyday German nouns and short forms the league voice uses that the canon, the example posts and the style guide
+# do not happen to contain (VoiceGuard vocabulary, plan "KI-Stimme der Liga", P2). The guard takes a capitalised word
+# it does not know for an invented name; German capitalises every noun. Add a word when a real post was turned down
+# for it (voice:usage counts `name`), never a person's name.
+Gratulation Glückwunsch Glückwünsche Bestzeit Bestzeiten Rekord Führung Spitze Platz Plätze Platzierung Podest
+Partie Partien Brett Bretter Zug Züge Runde Runden Strecke Zeit Sieg Siege Niederlage Remis Serie Finale Halbfinale
+Turnier Turniere Anmeldung Start Woche Wochen Tag Tage Stunde Stunden Minute Minuten Sekunde Sekunden Abend Nacht
+Spieler Spielerin Gegner Gegnerin Clan Clans Liga Saison Ladder Topf Preis Lauf Läufe Ergebnis Stand Messlatte
+Chat Stream Leute Frage Punkt Punkte Elo Rang Abzeichen Kampf Nerven Klasse Ansage Ding Sache Hammer Wahnsinn
+Mo Di Mi Do Fr Sa So Jan Feb Mär Apr Mai Jun Jul Aug Sep Sept Okt Nov Dez Uhr Std Min

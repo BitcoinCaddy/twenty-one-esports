@@ -249,6 +249,55 @@ test('the German gamer tag page fits a phone', function () {
     settingsClean($page);
 });
 
+test('the mention switch on the Account tab turns off, saves and stays off after a reload, measured at 390 and 1440 px', function () {
+    foreach ([390, 1440] as $width) {
+        $user = User::factory()->create(['locale' => 'en']);
+        $page = settingsOpen(route('settings.account', absolute: false), $width, $user);
+        $switch = '[data-test=account-mentions-switch]';
+
+        $row = $page->evaluate(<<<'JS'
+            () => {
+                const row = document.querySelector('[data-test=account-mentions]').getBoundingClientRect();
+                const sw = document.querySelector('[data-test=account-mentions-switch]').getBoundingClientRect();
+                const label = document.querySelector('#ac-mentions').getBoundingClientRect();
+                return {
+                    scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth,
+                    rowLeft: Math.round(row.left), rowRight: Math.round(row.right), rowHeight: Math.round(row.height),
+                    switchWidth: Math.round(sw.width), switchHeight: Math.round(sw.height), switchRight: Math.round(sw.right),
+                    labelWidth: Math.round(label.width), checked: document.querySelector('[data-test=account-mentions-switch]').getAttribute('aria-checked'),
+                };
+            }
+            JS);
+        fwrite(STDERR, "\n[settings] account mentions {$width}px: ".json_encode($row)."\n");
+
+        expect($row['scrollWidth'])->toBeLessThanOrEqual($row['clientWidth'])
+            ->and($row['rowLeft'])->toBeGreaterThanOrEqual(0)
+            ->and($row['switchRight'])->toBeLessThanOrEqual($row['rowRight'])
+            // The board's switch: 52 wide, its touch target 44 high (R16).
+            ->and($row['switchWidth'])->toBe(52)
+            ->and($row['switchHeight'])->toBe(44)
+            ->and($row['labelWidth'])->toBeGreaterThan(0)
+            ->and($row['rowHeight'])->toBeGreaterThanOrEqual(44)
+            ->and($row['checked'])->toBe('true');
+
+        $page->locator($switch)->click();
+        BrowserWait::until($page, '() => document.querySelector("[data-test=account-mentions-switch]").getAttribute("aria-checked") === "false"', 5_000);
+        $page->locator('[data-test=account-save]')->click();
+        BrowserWait::until($page, '() => getComputedStyle(document.querySelector("[data-test=account-saved]")).display !== "none"', 5_000);
+
+        expect($user->refresh()->nostr_mentions)->toBeFalse();
+
+        settingsShot($page, 'account-mentions-'.$width);
+        settingsClean($page);
+
+        $page->reload();
+        BrowserWait::until($page, '() => document.readyState === "complete" && document.querySelector("[data-test=account-mentions-switch]") !== null', 10_000);
+
+        expect($page->evaluate('() => document.querySelector("[data-test=account-mentions-switch]").getAttribute("aria-checked")'))->toBe('false');
+        settingsClean($page);
+    }
+});
+
 test('the collector sees a thrown error and a failed request on a settings page (positive control)', function () {
     $page = settingsOpen(route('gaming.edit', absolute: false), 1440, User::factory()->create(['locale' => 'en']));
 

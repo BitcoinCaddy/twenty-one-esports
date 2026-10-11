@@ -1915,10 +1915,15 @@ return [
             'Hosp', 'Kinski', 'Schnabel', 'Beppo', 'Kenobi', 'Roman Reher', 'Jack Mallers', 'Mises',
         ],
         'channels' => [
-            'stream_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_STREAM_CHAT', false), 'daily_cap' => 150, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
-            'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 2, 'language' => 'de'],
-            'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
-            'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 2, 'language' => 'de'],
+            // Languages per channel (user 2026-10-11, binding): the stream chat (kind 1311) German, the bot's Nostr profile
+            // notes (kind 1) English. A share post is the player's own note, in the player's language (BotVoice::sentence()).
+            // Three sentences (P2): short everyday sentences need one more than P1's two to say the same within the length.
+            'stream_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_STREAM_CHAT', false), 'daily_cap' => 150, 'max_chars' => 180, 'max_sentences' => 3, 'language' => 'de'],
+            'gg' => ['enabled' => (bool) env('ESPORTS_VOICE_GG', false), 'daily_cap' => 20, 'max_chars' => 180, 'max_sentences' => 3, 'language' => 'de'],
+            'nostr_note' => ['enabled' => (bool) env('ESPORTS_VOICE_NOSTR_NOTE', false), 'daily_cap' => 40, 'max_chars' => 280, 'max_sentences' => 3, 'language' => 'en'],
+            'profile_note' => ['enabled' => (bool) env('ESPORTS_VOICE_PROFILE_NOTE', false), 'daily_cap' => 30, 'max_chars' => 280, 'max_sentences' => 3, 'language' => 'en'],
+            'share_post' => ['enabled' => (bool) env('ESPORTS_VOICE_SHARE_POST', false), 'daily_cap' => 60, 'max_chars' => 200, 'max_sentences' => 3, 'language' => 'en',
+                'instruction' => 'The player posts this about their own moment, in the first person ("I", "ich"). No mention of other people.'],
             // Recap and weekly report go on the bot's profile (P3): English (user 2026-10-11, profile posts stay English)
             // and short enough for the spam gate's 280 characters once the app adds the link line.
             'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
@@ -1932,6 +1937,31 @@ return [
             // P5: a bot opponent's line in the game chat (App\Support\Memes\BotBanter), written ahead into a pool, never while a page waits.
             'bot_chat' => ['enabled' => (bool) env('ESPORTS_VOICE_BOT_CHAT', false), 'daily_cap' => 60, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de'],
         ],
+        // The posts that may speak with the voice (App\Support\Voice\BotVoice, plan "KI-Stimme der Liga", P2), each with
+        // its own switch, all off until the user approved its tone (P7). Off, a post keeps its template; on, it also
+        // needs its channel above switched on. The voice only replaces the wording of a post that goes out anyway.
+        'functions' => [
+            'chat_rotation' => (bool) env('ESPORTS_VOICE_FN_CHAT_ROTATION', false),
+            'chat_gg' => (bool) env('ESPORTS_VOICE_FN_CHAT_GG', false),
+            'note_tournament' => (bool) env('ESPORTS_VOICE_FN_NOTE_TOURNAMENT', false),
+            'note_free_places' => (bool) env('ESPORTS_VOICE_FN_NOTE_FREE_PLACES', false),
+            'note_champion' => (bool) env('ESPORTS_VOICE_FN_NOTE_CHAMPION', false),
+            'note_pride' => (bool) env('ESPORTS_VOICE_FN_NOTE_PRIDE', false),
+            'note_weekly' => (bool) env('ESPORTS_VOICE_FN_NOTE_WEEKLY', false),
+            'share_post' => (bool) env('ESPORTS_VOICE_FN_SHARE_POST', false),
+        ],
+        // The second look at a voice text (App\Support\Voice\VoiceFactCheck): Haiku lists claims the facts do not support
+        // ("Blockfill Week 42 is done" for a running week); one claim rejects the text. Its tokens count as channel `fact_check`.
+        'fact_check' => [
+            'enabled' => (bool) env('ESPORTS_VOICE_FACT_CHECK', true),
+        ],
+        // Everyday language (user 2026-10-11: "Ein Mensch redet im Alltag nicht in Schachtelsätzen"): words per sentence
+        // and commas per sentence (a list of short items is exempt), checked by VoiceHygiene; a text that breaks them
+        // is written once more, then the template goes out.
+        'style' => [
+            'max_words' => 14,
+            'max_commas' => 1,
+        ],
         // The spam gate (App\Support\Voice\SpamGate, user 2026-10-11: "damit alles nicht zu bloaty und chatty wird
         // und zu muting führt"). It can only hold a post back, never add one: the stream bot's own cadence
         // (`stream_bot.interval_minutes`, `daily_cap`, `profile_gap_minutes`, `quiet_hours`, `repeat_hours`) stays
@@ -1939,7 +1969,7 @@ return [
         'spam' => [
             'enabled' => (bool) env('ESPORTS_VOICE_SPAM_GATE', true),
             'max_chars' => ['chat' => 180, 'profile' => 280],
-            'max_sentences' => 2,
+            'max_sentences' => 3,
             // A person is mentioned at most once per `mention_hours` on the profile and once per stream session in
             // the chat; a champion or tournament-win moment may add one more.
             'mention_hours' => 24,
@@ -1956,8 +1986,6 @@ return [
             // Links: the same URL once per `link_hours`, the same kind of target (first path segment) `link_kind_per_day` times.
             'link_hours' => 24,
             'link_kind_per_day' => 2,
-            // A burst of at least this many moments of one type becomes one roundup post.
-            'roundup_min' => 3,
         ],
         // P5, meme moments (App\Support\Memes\MemeMoments) read from a finished match: `upset_elo`, the Elo the winner
         // was below the loser before the match at least; `comeback_points`, the points a Proof of Pong winner was behind

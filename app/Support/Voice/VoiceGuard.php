@@ -14,7 +14,14 @@ namespace App\Support\Voice;
  * posts, style guide) does not know. That is how an invented number or name
  * is caught without knowing in advance which names exist. The direction is
  * deliberate: a new German noun the vocabulary lacks costs a template post,
- * never a wrong fact.
+ * never a wrong fact. The vocabulary also holds the English of the league's
+ * own interface (the source strings of lang/de.json), so an English post's
+ * capitalised sentence openers are known words.
+ *
+ * English posts (plan "KI-Stimme der Liga", P2): only canon entries marked
+ * `en_ok` may be used, and only as a sense translation: never in quotation
+ * marks, never with the name of the person whose line it is (that would be
+ * a made-up quote), unless the original wording itself stands in the text.
  *
  * @phpstan-import-type CanonEntry from VoiceCanon
  */
@@ -52,6 +59,14 @@ final class VoiceGuard
 
     public const CANON_WITHOUT_ID = 'canon_without_id';
 
+    public const CANON_NOT_ENGLISH = 'canon_not_english';
+
+    public const CANON_UNTRANSLATED = 'canon_untranslated';
+
+    public const MISSING_FACT = 'missing_fact';
+
+    public const UNSUPPORTED_CLAIM = 'unsupported_claim';
+
     /** Most emoji one text may carry. */
     public const MAX_EMOJI = 2;
 
@@ -63,6 +78,9 @@ final class VoiceGuard
 
     /** @var array<string, true>|null */
     private ?array $vocabulary = null;
+
+    /** @var array<string, true>|null */
+    private ?array $english = null;
 
     /** @var array<string, string>|null canon ID => wording pattern, for the detectable wordings */
     private ?array $detectable = null;
@@ -76,15 +94,17 @@ final class VoiceGuard
         private readonly array $blocklist = [],
         private readonly array $persons = [],
         private readonly string $styleGuidePath = '',
+        private readonly string $interfacePath = '',
     ) {}
 
     /**
      * The rules the text breaks (empty: it may go out).
      *
      * @param  array<array-key, mixed>  $facts
+     * @param  list<string>  $mustContain  fact strings the text has to carry word for word (a tournament note names its start)
      * @return list<string>
      */
-    public function check(string $text, array $facts, int $maxChars, ?string $canonId): array
+    public function check(string $text, array $facts, int $maxChars, ?string $canonId, string $language = 'de', array $mustContain = []): array
     {
         $text = trim($text);
 
@@ -139,7 +159,14 @@ final class VoiceGuard
 
             if ($entry === null) {
                 $violations[] = self::CANON_UNKNOWN;
+            } elseif ($language === 'en' && ! $entry['en_ok']) {
+                $violations[] = self::CANON_NOT_ENGLISH;
             } elseif (preg_match(self::wordingPattern($entry['wording']), $residual) === 1) {
+                // In English only a wording that is English already stands word for word; a German one is carried over by its sense.
+                if ($language === 'en' && ! $this->isEnglish($entry['wording'])) {
+                    $violations[] = self::CANON_UNTRANSLATED;
+                }
+
                 $residual = (string) preg_replace(self::wordingPattern($entry['wording']), ' ', $residual);
             } elseif (self::quotesPartOf($text, $entry['wording'])) {
                 // An allusion ("Eins in den Chat für …", a 🤙) is fine; the wording half-quoted or altered is not.
@@ -199,9 +226,11 @@ final class VoiceGuard
             }
         }
 
-        // Real people: only as the speaker of the entry the text quotes, or named in its own wording.
+        // Real people: only as the speaker of the entry the text quotes, or named in its own wording. In English the
+        // line is a sense translation, and a translation beside its speaker's name is a quote they never said.
+        $quotesOriginal = $entry !== null && preg_match(self::wordingPattern($entry['wording']), $text) === 1;
         foreach ($this->persons as $person) {
-            $speaksHere = $entry !== null && str_contains(mb_strtolower(($entry['speaker'] ?? '').' '.$entry['wording']), mb_strtolower($person));
+            $speaksHere = $entry !== null && ($language !== 'en' || $quotesOriginal) && str_contains(mb_strtolower(($entry['speaker'] ?? '').' '.$entry['wording']), mb_strtolower($person));
 
             if (! $speaksHere && preg_match('/(?<![\p{L}\p{N}])'.preg_quote($person, '/').'(?![\p{L}\p{N}])/iu', $withoutFacts) === 1) {
                 $violations[] = self::PERSON;
@@ -209,10 +238,19 @@ final class VoiceGuard
             }
         }
 
-        // Names: no handle-like or unknown capitalised word outside the facts.
+        // Names: no handle-like or unknown capitalised word outside the facts. A fact name in another form ("Muller"
+        // for "Müller", "Adas" or "Ada's" for "Ada") is that fact, not an invented name (P2 yield round).
+        $factKeys = array_fill_keys(array_map(self::nameKey(...), self::words(implode(' ', $factStrings))), true);
         foreach (self::words($withoutFacts) as $word) {
-            if ($this->looksLikeInventedName($word, $entry)) {
+            if (! isset($factKeys[self::nameKey($word)]) && $this->looksLikeInventedName($word, $entry)) {
                 $violations[] = self::NAME;
+                break;
+            }
+        }
+
+        foreach ($mustContain as $required) {
+            if ($required !== '' && ! str_contains($text, $required)) {
+                $violations[] = self::MISSING_FACT;
                 break;
             }
         }
@@ -332,6 +370,18 @@ final class VoiceGuard
         return $count;
     }
 
+    /** A word's form for comparing names: lower case, no diacritics, no possessive ("Müller's" → "muller", "Adas" → "ada"). */
+    public static function nameKey(string $word): string
+    {
+        $key = mb_strtolower((string) preg_replace('/[\'’]+$/u', '', $word));
+        $key = str_replace(['ß', 'æ', 'ø'], ['ss', 'ae', 'o'], $key);
+        $decomposed = class_exists(\Normalizer::class) ? (string) \Normalizer::normalize($key, \Normalizer::FORM_D) : $key;
+        $key = (string) preg_replace('/\p{Mn}+/u', '', $decomposed);
+        $key = (string) preg_replace('/[\'’]s$/u', '', $key);
+
+        return mb_strlen($key) > 3 && str_ends_with($key, 's') ? mb_substr($key, 0, -1) : $key;
+    }
+
     /**
      * @param  CanonEntry|null  $entry
      */
@@ -390,6 +440,9 @@ final class VoiceGuard
         $styleGuide = $this->styleGuidePath !== '' ? $this->styleGuidePath : resource_path('data/voice/style-guide.md');
         $texts[] = is_file($styleGuide) ? (string) file_get_contents($styleGuide) : '';
 
+        $texts[] = implode(' ', array_keys($this->englishWords()));
+        $texts[] = implode(' ', self::wordList('german-words.txt'));
+
         $vocabulary = [];
         foreach (self::words(implode(' ', $texts)) as $word) {
             $word = mb_strtolower($word);
@@ -401,6 +454,64 @@ final class VoiceGuard
         }
 
         return $this->vocabulary = $vocabulary;
+    }
+
+    /**
+     * The lines of a word list in resources/data/voice/ without its # comments.
+     *
+     * @return list<string>
+     */
+    private static function wordList(string $file): array
+    {
+        $path = resource_path('data/voice/'.$file);
+
+        return array_values(array_filter(is_file($path) ? (file($path, FILE_IGNORE_NEW_LINES) ?: []) : [], fn (string $line): bool => ! str_starts_with(trim($line), '#')));
+    }
+
+    /** Whether every word of a canon wording is English ("Few understand" is, "Bester Mann" is not). */
+    private function isEnglish(string $wording): bool
+    {
+        $english = $this->englishWords();
+
+        foreach (self::words($wording) as $word) {
+            if (! isset($english[mb_strtolower($word)]) && preg_match('/\p{L}/u', $word) === 1) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * English words the league knows: the source strings (keys) of the German
+     * translation file, i.e. the English of its own interface, and the
+     * everyday openers of resources/data/voice/english-words.txt.
+     *
+     * @return array<string, true>
+     */
+    private function englishWords(): array
+    {
+        if ($this->english !== null) {
+            return $this->english;
+        }
+
+        $texts = [];
+        $interface = $this->interfacePath !== '' ? $this->interfacePath : lang_path('de.json');
+        $strings = is_file($interface) ? json_decode((string) file_get_contents($interface), true) : null;
+        foreach (is_array($strings) ? array_keys($strings) : [] as $source) {
+            $texts[] = (string) preg_replace('/:[a-z_]+/u', ' ', (string) $source);
+        }
+
+        foreach (self::wordList('english-words.txt') as $line) {
+            $texts[] = $line;
+        }
+
+        $english = [];
+        foreach (self::words(implode(' ', $texts)) as $word) {
+            $english[mb_strtolower($word)] = true;
+        }
+
+        return $this->english = $english;
     }
 
     /**

@@ -4,15 +4,19 @@ use App\Enums\TournamentFormat;
 use App\Models\BotPost;
 use App\Models\Tournament;
 use App\Support\Nostr\SignedEvent;
+use App\Support\StreamBot\FreePlaceNotes;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\Tournaments\TournamentPublisher;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\SpamGate;
+use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
 
 /*
@@ -105,6 +109,8 @@ function postedSlots(): array
 }
 
 test('a special tournament is reminded at 7 d, 3 d, 24 h and 3 h before its close, each slot once', function () {
+    // The slots alone: with the spam gate on, a reminder that reads like an earlier one falls out (see the end of this file).
+    config(['esports.voice.spam.enabled' => false]);
     $closes = CarbonImmutable::now()->addDays(8);
     $tournament = placesTournament($closes);
     $id = $tournament->id;
@@ -324,4 +330,39 @@ test('the dry run prints the due notes and stores nothing', function () {
         ->toContain('Dry run: 1 note(s)')
         ->and($this->published)->toBe([])
         ->and(BotPost::query()->count())->toBe(0);
+});
+
+test('with its switches on, the league voice writes the reminder in English; off, the template goes out', function (bool $on) {
+    config(['esports.voice.functions.note_free_places' => $on, 'esports.voice.channels.profile_note.enabled' => true]);
+    VoiceAgent::fake([['text' => 'Hey! 3 of 8 places left in Friday Blitz Cup. Who is in?', 'canon_id' => null, 'mood' => 'call']]);
+    $closes = CarbonImmutable::parse('2026-10-03 18:00:00', 'UTC');
+    $tournament = placesTournament($closes, ['name' => 'Friday Blitz Cup']);
+    signUpPlayers($tournament, 5);
+
+    $this->travelTo($closes->subHours(72));
+    runFreePlaces();
+    $body = explode("\n\nnostr:", $this->published[0]->content, 2)[0];
+
+    expect($body)->toBe($on
+        ? "Hey! 3 of 8 places left in Friday Blitz Cup. Who is in?\n👉 ".route('tournaments.show', $tournament)
+        : "🪑 3 of 8 places left: Friday Blitz Cup\n🎮 Chess Blitz 5+3 · starts Sat, 3 Oct 2026, 9:00 PM CEST\n⏳ Sign-up closes in 3 days\n👉 Grab a place: ".route('tournaments.show', $tournament))
+        ->and($this->published[0]->tags)->toHaveCount(1);
+    $on ? VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Englisch')) : VoiceAgent::assertNeverPrompted();
+})->with(['on' => true, 'off' => false]);
+
+test('with the spam gate on, a reminder that reads like a recent post waits, and falls out once its slot passed', function () {
+    $closes = CarbonImmutable::now()->addDays(8);
+    $tournament = placesTournament($closes, ['name' => 'Friday Blitz Cup']);
+    $this->travelTo($closes->subHours(3));
+    $body = explode("\n\nnostr:", app(FreePlaceNotes::class)->content($tournament->refresh(), 8, 8, CarbonImmutable::now()), 2)[0];
+    app(SpamGate::class)->record(SpamGate::PROFILE, $body, 'last_free_place', [], CarbonImmutable::now()->subHour());
+
+    expect(runFreePlaces())->toContain('held back by the spam gate');
+
+    // Within an hour of the close no slot is due any more: the 3 h reminder is gone, not posted late.
+    $this->travelTo($closes->subMinutes(30));
+    runFreePlaces();
+
+    expect(postedSlots())->toBe([])
+        ->and($this->published)->toBe([]);
 });

@@ -13,6 +13,8 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\TwentyOne\Stream\SceneRenderer;
 use App\Support\TwentyOne\Stream\StreamImages;
 use App\Support\TwentyOne\Stream\StreamStats;
+use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -66,6 +68,7 @@ class PrideNotes
         private PrideSlides $pride,
         private StreamImages $images,
         private StreamStats $stats,
+        private BotVoice $voice,
     ) {}
 
     /**
@@ -147,7 +150,7 @@ class PrideNotes
      * The note of a type from the current data: text (body, blank line, the
      * slide's URL) and tags; null when the type has nothing to show.
      *
-     * @return array{body: string, bodies: list<string>, tags: list<list<string>>, slide: array<string, mixed>}|null
+     * @return array{body: string, bodies: list<string>, tags: list<list<string>>, slide: array<string, mixed>, template: string, values: array<string, string|null>}|null
      */
     public function compose(int $type, int $variant): ?array
     {
@@ -205,7 +208,7 @@ class PrideNotes
             $bodies[] = StreamBotCopy::render($template, $other, $values);
         }
 
-        return ['body' => $body, 'bodies' => $bodies, 'tags' => $tags, 'slide' => $data];
+        return ['body' => $body, 'bodies' => $bodies, 'tags' => $tags, 'slide' => $data, 'template' => $template, 'values' => $values];
     }
 
     /**
@@ -420,13 +423,22 @@ class PrideNotes
 
         if ($post->event === null) {
             $note ??= $this->compose($type, $variant) ?? throw new LogicException('The pride note lost its data.');
+            // With its switch on, the league voice writes the copy (BotVoice, `note_pride`); mentions only as the players allow.
+            $composed = $this->voice->compose('note_pride', $note['template'], $variant, $note['values'], $note['tags'], $now, ['hold_template' => true]);
+
+            if ($composed === null) {
+                return $name.': '.(new HeldBack)->getMessage();
+            }
+
             [$url, $imeta] = $this->image($scene, $note['slide']);
-            $signed = $key->sign(self::KIND_NOTE, [...$note['tags'], $imeta], $note['body']."\n\n".$url, $now->getTimestamp());
+            $signed = $key->sign(self::KIND_NOTE, [...$composed['tags'], $imeta], $composed['content']."\n\n".$url, $now->getTimestamp());
             $post->forceFill([
                 'event_id' => $signed->id,
                 'event' => json_encode($signed->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
                 'note_type' => self::noteType($type),
                 'variant' => $variant,
+                // The template wording of the same facts, for lastBody(), when the note went out in other words.
+                'template_content' => $composed['content'] === $note['body'] ? null : $note['body'],
             ])->save();
         }
 
@@ -435,6 +447,10 @@ class PrideNotes
         $results = $this->publisher->publish($event->toArray(), $relays);
         $accepted = count(array_filter($results, fn ($result): bool => $result->accepted));
         $post->forceFill(['relays_accepted' => $accepted, 'relays_total' => count($results), 'published_at' => $accepted > 0 ? $now : null])->save();
+
+        if ($accepted > 0) {
+            $this->voice->delivered('note_pride', self::TYPES[$type][2], $event->content, $event->tags, $now, subjects: ['pride:'.$name]);
+        }
 
         Log::info('Stream bot pride note', ['type' => $name, 'id' => $event->id, 'relays' => array_map(fn ($result): string => $result->accepted ? 'ok' : 'failed: '.$result->message, $results)]);
 
@@ -448,12 +464,19 @@ class PrideNotes
     }
 
     /**
-     * The text of the type's last delivered note, without its image line.
+     * The text of the type's last delivered note, without its image line; its
+     * template wording when it went out in other words (the league voice).
      */
     private function lastBody(int $type): ?string
     {
-        $event = BotPost::query()->where(['subject_type' => self::SUBJECT, 'subject_id' => $type, 'kind' => self::KIND_NOTE])
-            ->whereNotNull('published_at')->latest('published_at')->value('event');
+        $last = BotPost::query()->where(['subject_type' => self::SUBJECT, 'subject_id' => $type, 'kind' => self::KIND_NOTE])
+            ->whereNotNull('published_at')->latest('published_at')->first(['event', 'template_content']);
+
+        if (is_string($last?->template_content) && $last->template_content !== '') {
+            return $last->template_content;
+        }
+
+        $event = $last?->event;
         $content = is_string($event) ? (json_decode($event, true)['content'] ?? null) : null;
 
         return is_string($content) ? explode("\n\n", $content, 2)[0] : null;

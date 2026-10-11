@@ -13,7 +13,9 @@ use Livewire\WithFileUploads;
 
 /*
  * The account tab (P51, split off the gaming profile): avatar, platform, time
- * zone, language, and deleting the account. The name always comes from the
+ * zone, language, Nostr mentions by the league's bot (plan "KI-Stimme der
+ * Liga", P2: on by default, off names the player without a tag), and
+ * deleting the account. The name always comes from the
  * user's Nostr profile; an avatar uploaded here replaces the Nostr picture on
  * this site only (User::avatarUrl()).
  */
@@ -28,6 +30,8 @@ new #[Title('Account')] class extends Component {
 
     public string $locale = '';
 
+    public bool $mentions = true;
+
     public bool $confirmDeletion = false;
 
     public function mount(): void
@@ -37,6 +41,7 @@ new #[Title('Account')] class extends Component {
         $this->platform = $user->platform->value ?? '';
         $this->timezone = $user->timezone ?? '';
         $this->locale = $user->locale ?? app()->getLocale();
+        $this->mentions = $user->allowsMentions();
     }
 
     public function save(): void
@@ -46,6 +51,7 @@ new #[Title('Account')] class extends Component {
             'platform' => ['nullable', Rule::enum(Platform::class)],
             'timezone' => ['nullable', 'timezone:all'],
             'locale' => ['required', Rule::in(config('app.supported_locales'))],
+            'mentions' => ['boolean'],
         ]);
 
         $user = $this->user();
@@ -65,6 +71,7 @@ new #[Title('Account')] class extends Component {
             'platform' => $validated['platform'] ?: null,
             'timezone' => $validated['timezone'] ?: null,
             'locale' => $validated['locale'],
+            'nostr_mentions' => $validated['mentions'],
         ])->save();
 
         session()->put('locale', $validated['locale']);
@@ -159,6 +166,14 @@ new #[Title('Account')] class extends Component {
                     <option value="de">Deutsch</option>
                 </select>
             </label>
+
+            <div class="flex min-h-[61px] items-center gap-4 border-t border-hairline pt-5" data-test="account-mentions">
+                <span class="flex min-w-0 grow flex-col gap-0.5">
+                    <span id="ac-mentions" class="text-sm">{{ __('Mention me on Nostr') }}</span>
+                    <span class="text-xs leading-normal text-ink-2">{{ __('The league bot tags you with your npub when it posts about your wins and tournaments. Off: it writes your name without a tag.') }}</span>
+                </span>
+                <x-ui.switch model="mentions" :checked="$mentions" labelledby="ac-mentions" data-test="account-mentions-switch" />
+            </div>
 
             <div class="flex flex-wrap items-center gap-4">
                 <x-button type="submit" data-test="account-save">{{ __('Save') }}</x-button>
