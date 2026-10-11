@@ -110,7 +110,7 @@ test('the board fills in the board games\' proposal on the chain draft and saves
     expect($label)->toBe($locale === 'de' ? 'Brettspiele' : 'Board games')
         ->and($filled)->toBe(['32', '36', '22', '10'])
         ->and($proposalGone)->toBeTrue()
-        ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 32, 'rocket-league' => 36, 'ea-sports-fc' => 22, 'board-games' => 10])
+        ->and(ChainDraft::stored()['shares'])->toBe(['chess' => 32, 'board-games' => 10, 'rocket-league' => 36, 'ea-sports-fc' => 22])
         ->and(ChainDraft::stored()['weights'])->toMatchArray(['chess/blitz' => 1000, 'chess/correspondence' => 2000, 'nine-mens-morris/correspondence' => 2000, 'checkers/correspondence' => 2000]);
 
     foreach (['before' => $before, 'after' => $after] as $where => $m) {
