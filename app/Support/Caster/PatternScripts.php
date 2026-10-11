@@ -45,6 +45,13 @@ use Throwable;
  * and logged once a day: a line without slots (an invitation, a canon line)
  * for the day, a line with slots for this fill only (the facts may be what
  * failed). Counted in VoiceUsage under `caster_pattern`, without tokens.
+ *
+ * A long variant (`$long`, LengthMix; user 2026-10-11: "dann öfters auch mal
+ * viel längere Texte"): a small monologue of `length.scene_long` sentences in
+ * one of the LONG_RECIPES (one fact, up to three canon lines, pride, a chat
+ * call, an emotion line, an invitation), under the same checks with its own
+ * sentence range and `length.max_chars`. A result or champion moment is never
+ * long: the moment itself is the news.
  */
 final class PatternScripts
 {
@@ -90,6 +97,20 @@ final class PatternScripts
         [self::JOKE, self::FACT, self::JOKE, self::ENGAGE],
         [self::FACT, self::JOKE, self::PRIDE, self::EMOTION, self::JOKE],
     ];
+
+    /**
+     * The orders of a long script (LengthMix), taking turns: one fact, the rest flavour.
+     *
+     * @var list<list<string>>
+     */
+    private const LONG_RECIPES = [
+        [self::OPENING, self::FACT, self::JOKE, self::EMOTION, self::PRIDE, self::JOKE, self::ENGAGE, self::PRIDE, self::JOKE, self::INVITE],
+        [self::JOKE, self::FACT, self::PRIDE, self::JOKE, self::ENGAGE, self::EMOTION, self::JOKE, self::PRIDE, self::INVITE, self::ENGAGE],
+        [self::EMOTION, self::FACT, self::JOKE, self::PRIDE, self::ENGAGE, self::JOKE, self::INVITE, self::PRIDE, self::JOKE, self::EMOTION],
+    ];
+
+    /** Canon lines a long script may quote. */
+    private const LONG_MAX_CANON = 3;
 
     /** A result or champion moment: two facts, then the flavour. */
     private const MOMENT_RECIPE = [self::FACT, self::FACT, self::JOKE, self::EMOTION, self::JOKE];
@@ -146,24 +167,25 @@ final class PatternScripts
 
     /**
      * A scene script for `$topic` in `$phase` from its facts, or null when
-     * the pool has nothing fresh that passes.
+     * the pool has nothing fresh that passes (or, `$long`, when the topic's
+     * facts make a result or champion moment, which is never long).
      *
      * @param  array<array-key, mixed>  $facts  SceneFacts::forTopic()
      * @return array{text: string, lines: list<string>, canon_id: string|null, canon_ids: list<string>, roles: array<string, string>, parts: array<string, string>, part_canons: array<string, string>}|null
      */
-    public function write(string $topic, string $phase, array $facts, ?CarbonImmutable $now = null): ?array
+    public function write(string $topic, string $phase, array $facts, ?CarbonImmutable $now = null, bool $long = false): ?array
     {
         $now ??= CarbonImmutable::now();
 
         try {
             for ($try = 0; $try < self::TRIES; $try++) {
-                $script = $this->assemble($topic, $phase, $facts, $try, $now);
+                $script = $this->assemble($topic, $phase, $facts, $try, $now, $long);
 
                 if ($script === null) {
                     return null;
                 }
 
-                $violations = $this->violations($script, $facts, $this->recentOpenings());
+                $violations = $this->violations($script, $facts, $this->recentOpenings(), $long);
 
                 if ($violations === []) {
                     $this->remember($topic, $script, $now);
@@ -447,11 +469,10 @@ final class PatternScripts
      * @param  array<array-key, mixed>  $facts
      * @return array{text: string, parts: array<string, string>, roles: array<string, string>, canon_id: string|null, canon_ids: list<string>, atoms: list<string>, persons: list<string>, entities: list<string>, names_allowed: int}|null
      */
-    private function assemble(string $topic, string $phase, array $facts, int $try, CarbonImmutable $now): ?array
+    private function assemble(string $topic, string $phase, array $facts, int $try, CarbonImmutable $now, bool $long = false): ?array
     {
-        $settings = (array) config('tv.commentary.patterns', []);
-        $max = (int) ($settings['sentences']['max'] ?? 6);
-        $min = (int) ($settings['sentences']['min'] ?? 3);
+        [$min, $max] = self::sentenceRange($long);
+        $maxCanon = $long ? self::LONG_MAX_CANON : self::MAX_CANON;
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 16);
         $sequence = (int) Cache::get(self::SEQUENCE_KEY, 0) + $try;
         $used = $this->recentFlavour();
@@ -461,7 +482,16 @@ final class PatternScripts
 
         $factLines = $this->factLines($pool[self::FACT], $slots, $phase, $sequence, $now);
         $moment = $factLines !== [] && ($phase === ScenePhase::AFTER_RESULT || $factLines[0]['champion']);
-        $recipe = $moment ? self::MOMENT_RECIPE : self::RECIPES[$sequence % count(self::RECIPES)];
+
+        if ($long && $moment) {
+            return null;
+        }
+
+        $recipe = match (true) {
+            $moment => self::MOMENT_RECIPE,
+            $long => self::LONG_RECIPES[$sequence % count(self::LONG_RECIPES)],
+            default => self::RECIPES[$sequence % count(self::RECIPES)],
+        };
 
         $parts = [];
         $roles = [];
@@ -502,7 +532,7 @@ final class PatternScripts
             }
 
             if ($role === self::JOKE) {
-                if (count($canonIds) >= self::MAX_CANON) {
+                if (count($canonIds) >= $maxCanon) {
                     continue;
                 }
 
@@ -531,7 +561,7 @@ final class PatternScripts
                 // A line that quotes a canon catchphrase counts as one of the script's canon lines.
                 $quotes = $this->lineCanon[$id] ?? null;
 
-                if ($line !== null && $fits($line) && ($quotes === null || (count($canonIds) < self::MAX_CANON && ! in_array($quotes, $canonIds, true) && $this->canon->find($quotes) !== null))) {
+                if ($line !== null && $fits($line) && ($quotes === null || (count($canonIds) < $maxCanon && ! in_array($quotes, $canonIds, true) && $this->canon->find($quotes) !== null))) {
                     $add($id, $line, $role);
                     if ($quotes !== null) {
                         $canonIds[] = $quotes;
@@ -707,11 +737,10 @@ final class PatternScripts
      * @param  list<string>  $openings
      * @return list<string>
      */
-    private function violations(array $script, array $facts, array $openings): array
+    private function violations(array $script, array $facts, array $openings, bool $long = false): array
     {
-        $settings = (array) config('tv.commentary.patterns', []);
-        $min = (int) ($settings['sentences']['min'] ?? 3);
-        $maxChars = (int) config('tv.commentary.scripts.max_chars', 900);
+        [$min, $max] = self::sentenceRange($long);
+        $maxChars = $long ? (int) config('tv.commentary.length.max_chars', 1_800) : (int) config('tv.commentary.scripts.max_chars', 900);
         $names = ScriptGuard::limitNames($script['text'], ScriptGuard::personNames($facts), $script['names_allowed'], [], $min) === $script['text'] ? [] : [ScriptGuard::NAME_COUNT];
         $repeats = ScriptGuard::dedupeEntities($script['text'], ScriptGuard::entityNames($facts), [], $min) === $script['text'] ? [] : [ScriptGuard::NAME_REPEAT];
         $guard = mb_strlen(ScriptGuard::withoutMarkers(str_replace("\n", ' ', $script['text']))) > $maxChars ? [VoiceGuard::TOO_LONG] : [];
@@ -721,11 +750,24 @@ final class PatternScripts
         }
 
         return array_values(array_unique([
-            ...$this->scriptGuard->check($script['text'], $min, (int) ($settings['sentences']['max'] ?? 6), (int) config('tv.commentary.scripts.max_words_per_sentence', 16), $openings),
+            ...$this->scriptGuard->check($script['text'], $min, $max, (int) config('tv.commentary.scripts.max_words_per_sentence', 16), $openings),
             ...$names,
             ...$repeats,
             ...$guard,
         ]));
+    }
+
+    /**
+     * The sentences a script has: `patterns.sentences`, or `length.scene_long` for a long one.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private static function sentenceRange(bool $long): array
+    {
+        $range = $long ? (array) config('tv.commentary.length.scene_long', []) : (array) config('tv.commentary.patterns.sentences', []);
+        $min = (int) ($range['min'] ?? ($long ? 8 : 3));
+
+        return [$min, max($min, (int) ($range['max'] ?? ($long ? 14 : 6)))];
     }
 
     /** The canon entry a part quotes: a joke ("canon:<id>") or a flavour line that carries one. */

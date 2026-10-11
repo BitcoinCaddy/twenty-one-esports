@@ -323,3 +323,56 @@ it('never stores an English headline as speakable, even from a feed configured a
     expect(app(NewsFeeds::class)->fetch(CarbonImmutable::now()))->toMatchArray(['stored' => 1, 'filtered' => 1])
         ->and(CasterNews::query()->where('skipped', NewsFilter::FOREIGN)->value('title'))->toStartWith('Saylor teases');
 });
+
+it('writes a long news segment: the same one model call, asking for four to eight sentences of comment, at most ten in all', function () {
+    config(['tv.commentary.length.shares.news' => 1.0]);
+    casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
+    $comment = implode("\n", [
+        'Noch eine Steuer, wie originell.',
+        'Ich hab schon fast drauf gewartet.',
+        'Irgendwann zahlen wir auch fürs Atmen.',
+        'Der Staat findet immer einen Grund.',
+        'Und am Ende heißt es wieder Gesundheit.',
+        'Ich bleib bei meinem Kaffee schwarz.',
+    ]);
+    VoiceAgent::fake([casterNewsDraft($comment)]);
+    NewsFactCheck::fake([['claims' => []]]);
+
+    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
+
+    $script = CasterScript::query()->where('kind', CasterScript::NEWS)->sole();
+    expect($script->sentences())->toHaveCount(8)
+        ->and(array_slice($script->sentences(), 2))->toBe(ScriptGuard::lines($comment))
+        ->and($script->source)->toBe(CasterScript::SOURCE_AI);
+    VoiceAgent::assertPromptedTimes(1);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, '4 bis 8 kurze Sätze'));
+});
+
+it('holds a long comment to four to eight sentences: fewer is turned down, more is trimmed to eight', function (int $sentences, bool $accepted) {
+    $comment = implode("\n", array_map(fn (int $i): string => "Das ist mein Gedanke Nummer {$i} dazu.", range(1, $sentences)));
+    $comment = str_replace(['1', '2', '3', '4', '5', '6', '7', '8', '9'], ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'], $comment);
+    VoiceAgent::fake([casterNewsDraft($comment)]);
+    NewsFactCheck::fake([['claims' => []]]);
+
+    $answer = app(CasterVoice::class)->news('Bundesregierung plant neue Zuckersteuer', 'tagesschau', CasterNews::GERMANY, long: true);
+
+    expect($answer['text'] !== null)->toBe($accepted)
+        ->and(count(ScriptGuard::lines((string) $answer['text'])))->toBe($accepted ? min(8, $sentences) : 0);
+})->with([
+    'three: too short' => [3, false],
+    'four' => [4, true],
+    'nine: trimmed to eight' => [9, true],
+]);
+
+it('stands in for a long comment with three different pattern reactions', function () {
+    config(['tv.commentary.ai' => false]);
+    $segment = app(NewsScripts::class)->write(casterNewsHeadline('Ausschuss prüft Vorlage'), CarbonImmutable::now(), false, long: true);
+    $reactions = array_slice(explode("\n", (string) $segment['text']), 2);
+    $known = array_merge(...array_map(ScriptGuard::lines(...), NewsScripts::data()['reactions']['germany']));
+
+    expect($segment['long'])->toBeTrue()
+        ->and(count(explode("\n", (string) $segment['text'])))->toBeLessThanOrEqual(10)
+        ->and(count($reactions))->toBeGreaterThanOrEqual(4)
+        ->and(array_diff($reactions, $known))->toBe([])
+        ->and(array_unique($reactions))->toBe($reactions);
+});

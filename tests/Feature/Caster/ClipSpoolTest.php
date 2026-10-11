@@ -51,8 +51,8 @@ it('refuses an upload that is not an Opus clip or over the per-clip limits', fun
     expect(fn () => casterSpool()->store(casterScript(), $body, $seconds, [], CarbonImmutable::now()))->toThrow(InvalidClip::class);
 })->with([
     'not ogg' => ['RIFF....WAVEfmt ', 5.0],
-    'too big' => [casterOpus(3 * 1024 * 1024), 5.0],
-    'too long' => [casterOpus(), 120.0],
+    'too big' => [casterOpus(4 * 1024 * 1024), 5.0],
+    'too long' => [casterOpus(), 131.0],
     'empty' => [casterOpus(), 0.0],
 ]);
 

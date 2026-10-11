@@ -21,11 +21,20 @@ use Illuminate\Support\Facades\Cache;
  * off, capped, failed or its draft was turned down, a pattern reaction from
  * resources/data/voice/news.json stands in (opinion only, fits any headline
  * of its section).
+ *
+ * A long segment (LengthMix; user 2026-10-11: "… auch an die News, die
+ * länger sein dürfen"): the same headline with a comment of
+ * `length.news_long` sentences, still the one model call per headline and
+ * still opinion only on top of the headline's facts; the pattern stand-in
+ * chains LONG_REACTIONS reactions of the section.
  */
 class NewsScripts
 {
     /** Pattern reactions (at least 15 per section) not repeated within this many news segments: they rotate. */
     private const REACTION_MEMORY = 12;
+
+    /** Pattern reactions a long segment's stand-in chains. */
+    private const LONG_REACTIONS = 3;
 
     public function __construct(private CasterVoice $voice) {}
 
@@ -54,10 +63,11 @@ class NewsScripts
     /**
      * The segment for a headline, or null when it must not be spoken (the
      * filter or the model turned it down). The headline is used either way.
+     * `$long`: the long variant (a comment of `length.news_long` sentences).
      *
-     * @return array{text: string, source: string}|null
+     * @return array{text: string, source: string, long: bool}|null
      */
-    public function write(CasterNews $news, CarbonImmutable $now, bool $ai): ?array
+    public function write(CasterNews $news, CarbonImmutable $now, bool $ai, bool $long = false): ?array
     {
         $news->update(['used_at' => $now]);
 
@@ -73,7 +83,7 @@ class NewsScripts
         $source = CasterScript::SOURCE_PATTERN;
 
         if ($ai) {
-            $answer = $this->voice->news($news->title, $news->source, $news->section);
+            $answer = $this->voice->news($news->title, $news->source, $news->section, $long);
 
             if ($answer !== null && $answer['skip']) {
                 $news->update(['skipped' => 'model']);
@@ -95,9 +105,10 @@ class NewsScripts
             'text' => implode("\n", [
                 $intros[$news->id % count($intros)],
                 $attribution.' '.self::asSentence(CasterVoice::withoutHashtags($news->title)),
-                $comment ?? $this->reaction($news->section, $data),
+                $comment ?? implode("\n", array_map(fn (int $turn): string => $this->reaction($news->section, $data), range(1, $long ? self::LONG_REACTIONS : 1))),
             ]),
             'source' => $source,
+            'long' => $long,
         ];
     }
 
