@@ -238,7 +238,7 @@ class HyperScene
      *
      * @return list<array{seat: int, faction: string, team: int|null, territories: int, banks: int, units: int, out: bool, bot: bool}>
      */
-    private function standing(HyperMatch $match): array
+    public function standing(HyperMatch $match): array
     {
         $state = (array) $match->state;
         $count = [];

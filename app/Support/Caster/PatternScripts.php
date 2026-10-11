@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use App\Support\Caster\GameMoments\GameMoments;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoiceGuard;
 use App\Support\Voice\VoiceUsage;
@@ -65,7 +66,7 @@ final class PatternScripts
     public const OPENING = 'opening';
 
     /** Slots whose value is a person: such a line is a name line. */
-    public const PERSON_SLOTS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw_a', 'draw_b', 'leader', 'second', 'first_entrant', 'champion', 'bf_leader', 'bf_second', 'leader_under'];
+    public const PERSON_SLOTS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw_a', 'draw_b', 'leader', 'second', 'first_entrant', 'champion', 'bf_leader', 'bf_second', 'leader_under', ...GameMoments::PERSON_SLOTS];
 
     /** Slots that only say which item a line is about; a fact's atoms leave them out when it has others. */
     private const CONTEXT_SLOTS = ['sender', 'website_spoken', 'game', 'mode', 'ladder', 'tournament', 'track', 'clan_name'];
@@ -285,6 +286,13 @@ final class PatternScripts
             ];
         }
 
+        // Game moments (GameMoments): each its own item, its fields the slots of the `moment_lines`, and `{mood_<mood>}`
+        // the player the moment is about, so a line can be written for one mood only.
+        foreach (self::listOf($facts['moments'] ?? null) as $moment) {
+            $mood = is_string($moment['mood'] ?? null) ? $moment['mood'] : null;
+            $items[] = [...array_diff_key($moment, ['kind' => true, 'mood' => true]), ...($mood !== null && isset($moment['lead']) ? ['mood_'.$mood => $moment['lead']] : [])];
+        }
+
         $items = array_map(fn (array $item): array => array_map('strval', array_filter($item, fn (mixed $value): bool => is_string($value) && $value !== '' || is_int($value))), $items);
 
         return ['global' => $global, 'items' => $items === [] ? [[]] : $items];
@@ -399,6 +407,12 @@ final class PatternScripts
                 $pool[self::FACT][(string) $row['id']] = $text;
             } elseif (in_array($role, [self::OPENING, self::INVITE], true) && in_array($phase, (array) ($row['phases'] ?? []), true)) {
                 $pool[$role][(string) $row['id']] = $text;
+            }
+        }
+
+        foreach ((array) ($data['moment_lines'] ?? []) as $row) {
+            if ($fits((array) ($row['topics'] ?? []))) {
+                $pool[self::FACT][(string) $row['id']] = (string) $row['text'];
             }
         }
 
@@ -776,6 +790,7 @@ final class PatternScripts
         return [
             ...array_column((array) ($section['openings'] ?? []), 'text', 'id'),
             ...array_column((array) ($section['facts'] ?? []), 'text', 'id'),
+            ...array_column((array) ($data['moment_lines'] ?? []), 'text', 'id'),
             ...array_column((array) $data['patterns'], 'template', 'id'),
             ...array_column((array) $data['topics'], 'example_de', 'id'),
             ...array_column((array) $data['promo'], 'text', 'id'),

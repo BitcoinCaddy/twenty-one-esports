@@ -7,6 +7,7 @@ use App\Enums\ChessGameStatus;
 use App\Models\ChessGame;
 use App\Models\Clan;
 use App\Models\User;
+use App\Support\Caster\GameMoments\GameMoments;
 use App\Support\TwentyOne\Stream\BlockfillSlides;
 use App\Support\TwentyOne\Stream\MempoolSlides;
 use App\Support\TwentyOne\Stream\StreamStats;
@@ -80,6 +81,9 @@ class SceneFacts
     /** Game names the slides carry in English, spoken in German. */
     private const GAME_NAMES = ['Chess' => 'Schach'];
 
+    /** @var list<array{game: ChessGame, white: string, black: string, moments: list<array<string, string|int>>}>|null the ranked chess games of the forTopic() call under way, null outside one */
+    private ?array $ranked = null;
+
     /** @var array<string, mixed>|null MempoolSlides::read() of this object */
     private ?array $mempoolData = null;
 
@@ -110,21 +114,61 @@ class SceneFacts
     public function forTopic(string $topic, bool $night = false): array
     {
         $facts = [...$this->basics(), 'slide' => SceneTopic::SLIDES[$topic] ?? $topic];
+        // The chess games worth talking about, ranked once for the live games and their moments alike.
+        $chess = in_array($topic, [SceneTopic::LIVE_GAMES, SceneTopic::MEMPOOL], true) ? $this->rankedChess() : null;
+        $this->ranked = $chess;
 
-        $data = match ($topic) {
-            SceneTopic::LIVE_GAMES => ['live_games' => $this->liveGames(), ...$this->liveCount()],
-            SceneTopic::RESULTS => ['results' => $this->results(), ...$this->todayCount()],
-            SceneTopic::TOURNAMENTS => ['tournaments_open' => $this->openTournaments($night)],
-            SceneTopic::LIVE_TOURNAMENT => ['tournaments_under_way' => $this->tournamentsUnderWay()],
-            SceneTopic::LADDERS => ['ladders' => $this->ladders()],
-            SceneTopic::CLANS => ['clan_spotlight' => $this->clanSpotlight()],
-            SceneTopic::MEMPOOL => ['live_games' => $this->liveGames(), 'results' => $this->results(), ...$this->liveCount(), ...$this->todayCount()],
-            SceneTopic::TMNF => ['tmnf_week' => $this->tmnfWeek()],
-            SceneTopic::BLOCKFILL => ['blockfill_week' => $this->blockfillWeek()],
-            default => $this->leagueTotals(),
-        };
+        try {
+            $data = match ($topic) {
+                SceneTopic::LIVE_GAMES => ['live_games' => $this->liveGames(), ...$this->liveCount()],
+                SceneTopic::RESULTS => ['results' => $this->results(), ...$this->todayCount()],
+                SceneTopic::TOURNAMENTS => ['tournaments_open' => $this->openTournaments($night)],
+                SceneTopic::LIVE_TOURNAMENT => ['tournaments_under_way' => $this->tournamentsUnderWay()],
+                SceneTopic::LADDERS => ['ladders' => $this->ladders()],
+                SceneTopic::CLANS => ['clan_spotlight' => $this->clanSpotlight()],
+                SceneTopic::MEMPOOL => ['live_games' => $this->liveGames(), 'results' => $this->results(), ...$this->liveCount(), ...$this->todayCount()],
+                SceneTopic::TMNF => ['tmnf_week' => $this->tmnfWeek()],
+                SceneTopic::BLOCKFILL => ['blockfill_week' => $this->blockfillWeek()],
+                default => $this->leagueTotals(),
+            };
+        } finally {
+            $this->ranked = null;
+        }
 
-        return [...$facts, ...$data];
+        return [...$facts, ...$data, ...$this->moments($topic, $night, $chess)];
+    }
+
+    /**
+     * What the topic's games are doing (GameMoments: material, race standing,
+     * leader and gap, comebacks, each with a mood), under `moments`; none
+     * when there are none or the read fails.
+     *
+     * @param  list<array{game: ChessGame, white: string, black: string, moments: list<array<string, string|int>>}>|null  $chess  rankedChess()
+     * @return array{moments?: list<array<string, string|int>>}
+     */
+    protected function moments(string $topic, bool $night, ?array $chess = null): array
+    {
+        try {
+            $moments = app(GameMoments::class)->forTopic($topic, $night, $chess);
+        } catch (Throwable) {
+            return [];
+        }
+
+        return $moments === [] ? [] : ['moments' => $moments];
+    }
+
+    /**
+     * The running chess games with the most to talk about (GameMoments::rankedChess()), or null when they cannot be read.
+     *
+     * @return list<array{game: ChessGame, white: string, black: string, moments: list<array<string, string|int>>}>|null
+     */
+    protected function rankedChess(): ?array
+    {
+        try {
+            return app(GameMoments::class)->rankedChess();
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -247,7 +291,9 @@ class SceneFacts
 
     /**
      * Chess games on now with their mode and move, then the other games the
-     * mempool shows running.
+     * mempool shows running. The chess games are those with the most to talk
+     * about (GameMoments::rankedChess(), ranked once per forTopic() call);
+     * when they cannot be ranked, the newest.
      *
      * @return list<array<string, mixed>>
      */
@@ -255,15 +301,23 @@ class SceneFacts
     {
         try {
             $games = [];
+            $ranked = $this->ranked ?? $this->rankedChess();
+            $chessGames = $ranked !== null ? array_map(fn (array $entry): array => [$entry['game'], $entry['white'], $entry['black']], $ranked) : [];
 
-            foreach (ChessGame::query()->with(['white', 'black'])->where('status', ChessGameStatus::Active)->whereNotNull('white_id')->whereNotNull('black_id')
-                ->orderByDesc('id')->limit(self::LIVE_GAMES * 2)->get() as $game) {
-                $white = self::spoken($game->white->displayName());
-                $black = self::spoken($game->black->displayName());
+            if ($ranked === null) {
+                foreach (ChessGame::query()->with(['white', 'black'])->where('status', ChessGameStatus::Active)->whereNotNull('white_id')->whereNotNull('black_id')
+                    ->orderByDesc('id')->limit(self::LIVE_GAMES * 2)->get() as $game) {
+                    $white = self::spoken($game->white->displayName());
+                    $black = self::spoken($game->black->displayName());
 
-                if ($white !== null && $black !== null && count($games) < self::LIVE_GAMES) {
-                    $games[] = ['game' => 'Schach', 'white' => $white, 'black' => $black, 'mode' => self::MODES[$game->mode] ?? ucfirst($game->mode), 'move' => intdiv((int) $game->ply, 2) + 1];
+                    if ($white !== null && $black !== null) {
+                        $chessGames[] = [$game, $white, $black];
+                    }
                 }
+            }
+
+            foreach (array_slice($chessGames, 0, self::LIVE_GAMES) as [$game, $white, $black]) {
+                $games[] = ['game' => 'Schach', 'white' => $white, 'black' => $black, 'mode' => self::MODES[$game->mode] ?? ucfirst($game->mode), 'move' => intdiv((int) $game->ply, 2) + 1];
             }
 
             foreach ($this->mempool()['running'] ?? [] as $cube) {
