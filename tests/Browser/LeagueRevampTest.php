@@ -432,3 +432,40 @@ test('the join link on clan management picks with the board dropdowns, whole lab
     $link = InviteLink::query()->latest('id')->first();
     expect($link)->not->toBeNull()->and($link->max_uses)->toBe(1);
 });
+
+test('the lineup seats on clan management are the board dropdowns, whole and inside the window at 390 and 1440', function () {
+    ['me' => $me, 'clan' => $clan] = leagueRevampWorld();
+    $rows = [];
+
+    foreach ([390, 1440] as $width) {
+        $page = leagueRevampOpen($me, route('clans.manage', $clan, false), $width);
+        $page->locator('[data-test=edit-lineup-2v2]')->first()->click();
+        BrowserWait::until($page, '() => document.querySelector("[data-test^=pick-] .v") !== null', 10_000);
+        $first = $page->evaluate('() => document.querySelector("[data-test^=pick-]").dataset.test');
+        $page->locator('[data-test='.$first.']')->click();
+        BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test='.$first.']")].some((b) => b.checkVisibility() && b.parentElement.querySelector("[role=listbox]")?.checkVisibility())', 5_000);
+        $m = $page->evaluate('() => {
+            const seats = [...document.querySelectorAll("[data-test^=pick-]")].filter((el) => el.tagName === "BUTTON" && el.checkVisibility());
+            const list = seats[0]?.parentElement.querySelector("[role=listbox]");
+            const r = (el) => { const b = el.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.right), Math.round(b.bottom)]; };
+            return {
+                native: document.querySelectorAll("main select").length,
+                seats: seats.map((el) => ({ box: r(el), cut: el.querySelector(".v").scrollWidth > el.querySelector(".v").clientWidth + 1 })),
+                list: list && list.checkVisibility() ? r(list) : null,
+                options: list ? [...list.querySelectorAll("[role=option]")].map((o) => o.innerText.trim()) : [],
+            };
+        }');
+        $rows[$width] = $m;
+        fwrite(STDERR, '[lineup seats '.$width.'] '.$first.' '.json_encode($m).PHP_EOL);
+
+        expect($m['native'])->toBe(0, "{$width}: no native select left on the page")
+            ->and($m['seats'])->not->toBe([])
+            ->and(collect($m['seats'])->every(fn (array $seat): bool => ! $seat['cut'] && $seat['box'][3] - $seat['box'][1] >= 44 && $seat['box'][0] >= 0 && $seat['box'][2] <= $width))->toBeTrue("{$width}: seats")
+            ->and($m['list'])->not->toBeNull()
+            ->and($m['list'][0])->toBeGreaterThanOrEqual(0)
+            ->and($m['list'][2])->toBeLessThanOrEqual($width)
+            ->and(count($m['options']))->toBe(4);
+        leagueRevampQuiet($page, "lineup seats {$width}");
+    }
+    fwrite(STDERR, '[lineup seats] '.json_encode($rows, JSON_UNESCAPED_UNICODE).PHP_EOL);
+});

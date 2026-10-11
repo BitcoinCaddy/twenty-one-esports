@@ -1136,15 +1136,14 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
                         <span class="text-xs leading-normal text-ink-2">{{ __('Pick from your roster. Joining the clan is their yes, so nobody has to confirm again; anyone can leave the clan at any time.') }}</span>
                         <div class="flex max-w-[640px] flex-col">
                             @foreach ($members as $member)
-                                <label wire:key="pick-{{ $rowGame }}-{{ $rowMode }}-{{ $member->user_id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_minmax(0,150px)] items-center gap-3 border-b border-hairline text-[13px]">
+                                {{-- The board's dropdown (x-ui.select-menu; rule: no native select), bound to the same picks.<id>. --}}
+                                <div wire:key="pick-{{ $rowGame }}-{{ $rowMode }}-{{ $member->user_id }}" class="grid min-h-[52px] grid-cols-[minmax(0,1fr)_minmax(0,170px)] items-center gap-3 border-b border-hairline text-[13px]">
                                     <span class="truncate">{{ $member->user->displayName() }}@if ($member->user->is(auth()->user())) ({{ __('you') }})@endif</span>
-                                    <select wire:model="picks.{{ $member->user_id }}" data-test="pick-{{ $member->user_id }}" aria-label="{{ __('Seat of :name', ['name' => $member->user->displayName()]) }}" class="h-11 w-full min-w-0 appearance-none rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                                        <option value="">{{ __('Not picked') }}</option>
-                                        <option value="captain">{{ __('Captain') }}</option>
-                                        <option value="player">{{ __('Player') }}</option>
-                                        <option value="substitute">{{ __('Sub') }}</option>
-                                    </select>
-                                </label>
+                                    <x-ui.select-menu :model="'picks.'.$member->user_id" :id="'pick-'.$rowGame.'-'.$rowMode.'-'.$member->user_id" :value="$picks[$member->user_id] ?? ''"
+                                                      :label="__('Seat of :name', ['name' => $member->user->displayName()])"
+                                                      :options="['' => __('Not picked'), 'captain' => __('Captain'), 'player' => __('Player'), 'substitute' => __('Sub')]"
+                                                      data-test="pick-{{ $member->user_id }}" />
+                                </div>
                             @endforeach
                         </div>
                         @error('lineup')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
