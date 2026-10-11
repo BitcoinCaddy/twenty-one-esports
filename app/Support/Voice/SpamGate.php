@@ -12,27 +12,25 @@ use Illuminate\Support\Facades\Cache;
  * one (config `esports.voice.spam`). The stream bot's own cadence stays the
  * upper bound; the voice replaces a template's wording, not its slot.
  *
- * The publishers (plan "KI-Stimme der Liga", P2) ask, in this order:
- *  1. skip() before building a post: switch, quiet hours, daily cap,
- *     interval (doubled in the chat after `silent_posts` unanswered posts),
- *     and the same moment about the same subject within `repeat_hours`;
- *  2. collapse() when several moments arrive at once: one roundup or the
- *     most important one;
- *  3. mentionAllowed() per person, to set `mentionable` in the facts;
- *  4. textSkip() on the finished text, the voice's or the template's
- *     (lengths only for the voice: a template is never shortened), and
- *     withoutRepeatedLinks() on a template's lines first;
- *  5. record() after a post went out, humanWrote() when the chat answered.
+ * The publishers (plan "KI-Stimme der Liga", P2, through BotVoice) ask:
+ *  1. skip() before a chat tick (StreamBot): switch, quiet hours, daily cap,
+ *     interval (doubled after `silent_posts` unanswered posts; with the
+ *     defaults the bot's own `alone_minutes` already waits longer), and the
+ *     same moment about the same subject within `repeat_hours`. The profile
+ *     notes keep their own pacing (ProfileNotes, the same config keys);
+ *  2. mentionAllowed() per person: a held-back mention is the plain name;
+ *  3. textSkip() on the finished text: the voice's (turned down, the
+ *     template goes out) and the template's (lengths only for the voice: a
+ *     template is never shortened). A repeated template falls out: the chat
+ *     rotation tries its next message, a profile note waits (HeldBack). A
+ *     note that carries its calendar event as naddr first loses a repeated
+ *     link line (withoutRepeatedLinks(): no link beats a repeated one);
+ *  4. record() after a post went out, humanWrote() when the chat answered.
  *
- * Wired in P2 through BotVoice: the chat rotation asks skip() before a tick
- * (StreamBot) and holds a repeated template back (textSkip(), the next
- * message is tried instead); every post asks mentionAllowed() per person
- * and textSkip() on the voice's text (turned down, the template goes out);
- * every delivered post is record()ed, and a human in the chat calls
- * humanWrote(). The profile notes keep their own pacing (ProfileNotes,
- * the same config keys) and are not held back as a repetition: each is
- * the one note of its subject. collapse() and withoutRepeatedLinks() have
- * no caller yet.
+ * The GG (ChampionChat) is never held back as a repetition: it is the one
+ * post of its tournament and only good within its window. Several moments
+ * at once need no merging here: the notes already bundle a burst into one
+ * note (WeeklyBoardNotes `*_top_burst`), the chat posts one message a tick.
  *
  * Every skip counts its reason (VoiceUsage, channel `spam_<surface>`).
  * State lives in the cache as scalars and arrays of scalars only; when the
@@ -124,34 +122,11 @@ final class SpamGate
 
         $minutes = max(1, (int) config('esports.stream_bot.interval_minutes', 22) - (int) config('esports.stream_bot.jitter_minutes', 6));
         $silent = (int) Cache::get($this->key(self::CHAT, 'silent'), 0);
+        // Shadowed with the defaults: 2 × (22 − 6) = 32 minutes, while the bot itself waits `alone_minutes` (45) for a
+        // human before its next post (StreamBot rule 6). It bites only with a shorter alone_minutes or a longer interval.
         $factor = $silent >= (int) config('esports.voice.spam.silent_posts', 3) ? max(1, (int) config('esports.voice.spam.backoff_factor', 2)) : 1;
 
         return 60 * $minutes * $factor;
-    }
-
-    /**
-     * Several moments at once (a round with eight results): one roundup when
-     * at least `roundup_min` share the most important moment type, otherwise
-     * the single most important moment. Never more than one post.
-     *
-     * @param  list<array{moment: string, priority: int, facts: array<array-key, mixed>}>  $moments
-     * @return array{moment: string, priority: int, facts: array<array-key, mixed>}|null
-     */
-    public function collapse(array $moments): ?array
-    {
-        if ($moments === []) {
-            return null;
-        }
-
-        usort($moments, fn (array $a, array $b): int => $b['priority'] <=> $a['priority']);
-        $top = $moments[0];
-        $same = array_values(array_filter($moments, fn (array $moment): bool => $moment['moment'] === $top['moment']));
-
-        if (count($same) >= (int) config('esports.voice.spam.roundup_min', 3)) {
-            return ['moment' => 'roundup', 'priority' => $top['priority'], 'facts' => ['of' => $top['moment'], 'count' => count($same), 'items' => array_column($same, 'facts')]];
-        }
-
-        return $top;
     }
 
     /**
@@ -221,8 +196,10 @@ final class SpamGate
     }
 
     /**
-     * A template's lines without those whose link went out too recently:
-     * no link is better than a repeated one.
+     * A template's lines without the links that went out too recently: no
+     * link is better than a repeated one. The link goes with the label in
+     * front of it ("Sign up:"), and a line left without words goes too, so
+     * "🏆 Cup starts Sat. Sign up: <url>" keeps "🏆 Cup starts Sat.".
      *
      * @param  list<string>  $lines
      * @return list<string>
@@ -234,8 +211,27 @@ final class SpamGate
         }
 
         $posts = $this->posts($surface);
+        $kept = [];
 
-        return array_values(array_filter($lines, fn (string $line): bool => $this->linkSkip($posts, self::links($line), $now) === null));
+        foreach ($lines as $line) {
+            $repeated = array_filter(self::links($line), fn (string $url): bool => $this->linkSkip($posts, [$url], $now) !== null);
+
+            if ($repeated !== []) {
+                $line = rtrim(str_replace($repeated, '', $line));
+
+                // The label of the link ("👉 Sign up:"): everything after the last sentence mark, or the whole line.
+                if (str_ends_with($line, ':')) {
+                    $cut = max((int) strrpos($line, '.'), (int) strrpos($line, '!'), (int) strrpos($line, '?'));
+                    $line = $cut === 0 ? '' : substr($line, 0, $cut + 1);
+                }
+            }
+
+            if (preg_match('/[\p{L}\p{N}]/u', $line) === 1) {
+                $kept[] = $line;
+            }
+        }
+
+        return $kept;
     }
 
     /**

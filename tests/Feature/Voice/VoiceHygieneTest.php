@@ -173,6 +173,22 @@ it('does not count a one-word exclamation as a sentence of the channel', functio
         ->and(VoiceHygiene::sentences('Boah. Läuft. Na also.'))->toBe(1);
 });
 
+it('rejects the opener of any of the channel\'s last five posts, and lets an older one come back', function () {
+    $recent = ['Hey! Satoshi gewinnt.', 'Boah. Hal verliert.', 'Klar. Läuft.', 'Wow. Knapp.', 'Na also. Weiter.', 'Stark. Wieder Satoshi.'];
+
+    expect((new VoiceHygiene)->check('Hey! Hal schlägt Satoshi 3:1.', 'de', $recent))->toContain(VoiceHygiene::OPENER_REPEAT)
+        ->and((new VoiceHygiene)->check('Na also. Hal schlägt Satoshi 3:1.', 'de', $recent))->toContain(VoiceHygiene::OPENER_REPEAT)
+        ->and((new VoiceHygiene)->check('Stark. Hal schlägt Satoshi 3:1.', 'de', $recent))->not->toContain(VoiceHygiene::OPENER_REPEAT)
+        ->and((new VoiceHygiene)->check('Hal schlägt Satoshi 3:1.', 'de', $recent))->not->toContain(VoiceHygiene::OPENER_REPEAT);
+});
+
+it('rejects a sign-off at the end of a post', function (string $text, string $language) {
+    expect((new VoiceHygiene)->check($text, $language))->toContain(VoiceHygiene::SIGN_OFF);
+})->with([
+    ['Ada hits 0:50.000. Stack sats. Ciao.', 'en'],
+    ['Satoshi gewinnt 3:1. Tschüss!', 'de'],
+]);
+
 it('keeps a clan tag in square brackets', function () {
     expect((new VoiceHygiene)->check('Neuer Clan: Stacking Sats [SATS]. Hallo!', 'de'))->not->toContain(VoiceHygiene::TTS_MARKER);
 });

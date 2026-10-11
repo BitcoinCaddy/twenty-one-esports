@@ -10,6 +10,7 @@ use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\Tournaments\CasualCups;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\SpamGate;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceGuard;
 use Carbon\CarbonImmutable;
@@ -42,6 +43,8 @@ beforeEach(function () {
     $this->botKey = new TestSigner;
 
     config([
+        // The fixtures' notes read alike ("Backlog Cup 1…4"); the spam gate gets its own tests at the end of this file.
+        'esports.voice.spam.enabled' => false,
         'esports.league.nsec' => $this->league->secret,
         'esports.stream_bot.enabled' => true,
         'esports.stream_bot.nsec' => $this->botKey->secret,
@@ -567,4 +570,36 @@ test('a voiced note that leaves out the start goes out as the template', functio
 
     expect($this->published[0]->content)->toStartWith('🏆 New tournament: Friday Blitz Cup')
         ->and(DB::table('voice_rejections')->where('reason', VoiceGuard::MISSING_FACT)->value('count'))->toBe(2);
+});
+
+/*
+ * The spam gate on the profile (plan: "wiederholte Vorlage → Post fällt aus statt Wiederholung", "lieber ohne Link als
+ * mit wiederholtem"): a note whose text went out shortly before waits unsigned; a note whose link went out within the day
+ * goes without it, its naddr still points at the tournament.
+ */
+
+test('with the spam gate on, a note whose text went out shortly before waits unsigned', function () {
+    config(['esports.voice.spam.enabled' => true]);
+    $tournament = openTournament(['name' => 'Friday Blitz Cup']);
+    $body = explode("\n\nnostr:", app(TournamentNotes::class)->content($tournament), 2)[0];
+    app(SpamGate::class)->record(SpamGate::PROFILE, $body, 'signup_open', [], CarbonImmutable::now()->subHour());
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+
+    expect(Artisan::output())->toContain('held back by the spam gate')
+        ->and($this->published)->toBe([])
+        ->and(BotPost::query()->where('subject_id', $tournament->id)->value('event'))->toBeNull();
+});
+
+test('with the spam gate on, a note whose link went out within the day goes without it, naddr and q tag kept', function () {
+    config(['esports.voice.spam.enabled' => true]);
+    $tournament = openTournament(['name' => 'Friday Blitz Cup']);
+    app(SpamGate::class)->record(SpamGate::PROFILE, 'Another note 👉 '.route('tournaments.show', $tournament), 'general', [], CarbonImmutable::now()->subHour());
+
+    Artisan::call('twentyone:stream-bot:tournaments');
+    $note = $this->published[0];
+
+    expect($note->content)->toStartWith("🏆 New tournament: Friday Blitz Cup\n🎮 Chess Blitz 5+3 · starts Sat, 3 Oct 2026, 9:00 PM CEST\n\nnostr:naddr1")
+        ->and($note->content)->not->toContain('https://')
+        ->and($note->tag('q'))->toBe($tournament->address());
 });

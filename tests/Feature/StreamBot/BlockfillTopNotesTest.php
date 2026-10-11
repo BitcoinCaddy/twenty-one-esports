@@ -38,7 +38,8 @@ beforeEach(function () {
     Cache::flush();
     $this->app->instance(Verifier::class, new FakeStackerVerifier);
     $this->relays = topNoteRelays();
-    config(['esports.league.nsec' => (new TestSigner)->secret]);
+    // The spam gate's repetition rules (BotVoiceTest, TournamentNotesTest) are not what this file tests: its weeks link the same page.
+    config(['esports.league.nsec' => (new TestSigner)->secret, 'esports.voice.spam.enabled' => false]);
     BlockfillOn::play();
 
     // Monday morning: week 41 (from Monday 2026-10-05 00:00 Berlin) opens with its 31923, and its week note goes out.

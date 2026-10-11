@@ -9,6 +9,7 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\SpamGate;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
@@ -28,6 +29,8 @@ beforeEach(function () {
     $this->botKey = new TestSigner;
 
     config([
+        // Four cups whose notes read alike: the spam gate's repetition rules are not what this file tests.
+        'esports.voice.spam.enabled' => false,
         'esports.league.nsec' => $this->league->secret,
         'esports.stream_bot.enabled' => true,
         'esports.stream_bot.nsec' => $this->botKey->secret,
@@ -211,6 +214,15 @@ test('a note is renewed once: a second renew of the same deleted id changes noth
     expect($first)->toContain('posted')
         ->and($second)->toBe("tournament {$three->id}: its note is not {$this->deletedNote} (renewed already)")
         ->and($this->notes)->toHaveCount(5);
+});
+
+test('a renewed note goes out with the spam gate on, though it reads like the note it replaces', function () {
+    config(['esports.voice.spam.enabled' => true]);
+    $three = $this->cups[2];
+    $deleted = json_decode((string) BotPost::query()->where('event_id', $this->deletedNote)->value('event'), true);
+    app(SpamGate::class)->record(SpamGate::PROFILE, explode("\n\n", $deleted['content'], 2)[0], 'signup_open', [], now()->subHour()->toImmutable());
+
+    expect(app(TournamentNotes::class)->renew($three, $this->deletedNote, now()->toImmutable()))->toContain('posted');
 });
 
 test('a current version that still carries t tags is re-signed without them, once', function () {

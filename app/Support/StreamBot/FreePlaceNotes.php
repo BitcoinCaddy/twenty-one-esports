@@ -12,6 +12,7 @@ use App\Support\Settings\LeagueSettings;
 use App\Support\Tournaments\CasualCups;
 use App\Support\Tournaments\TournamentSignups;
 use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -240,9 +241,9 @@ class FreePlaceNotes
     {
         $address = $tournament->address() ?? throw new LogicException('An unpublished tournament has no free-places note.');
         $composed = $this->voice->compose('note_free_places', self::TEMPLATE, $variant ?? self::nextVariant(), $this->values($tournament, $free, $places, $now),
-            [['q', $address, $this->notes->relayHint() ?? '']], $now)
-            ?? throw new LogicException('The voice returned no note.');
-        $problems = StreamBotCopy::violations($composed['content'], $composed['tags']);
+            [['q', $address, $this->notes->relayHint() ?? '']], $now, ['hold_template' => true, 'link_optional' => true])
+            ?? throw new HeldBack;
+        $problems = StreamBotCopy::violations($composed['content'], $composed['tags'], linkRequired: false);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own free-places note: '.implode(', ', $problems));
@@ -279,7 +280,12 @@ class FreePlaceNotes
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
             $variant = self::nextVariant();
-            $signed = $this->event($key, $tournament, $due['free'], $due['places'], $now, $variant);
+            try {
+                $signed = $this->event($key, $tournament, $due['free'], $due['places'], $now, $variant);
+            } catch (HeldBack $held) {
+                return $label.': '.$held->getMessage();
+            }
+
             $post->forceFill([
                 'event_id' => $signed->id,
                 'event' => json_encode($signed->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),

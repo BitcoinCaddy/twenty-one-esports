@@ -14,6 +14,7 @@ use App\Support\TwentyOne\Stream\SceneRenderer;
 use App\Support\TwentyOne\Stream\StreamImages;
 use App\Support\TwentyOne\Stream\StreamStats;
 use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -423,8 +424,12 @@ class PrideNotes
         if ($post->event === null) {
             $note ??= $this->compose($type, $variant) ?? throw new LogicException('The pride note lost its data.');
             // With its switch on, the league voice writes the copy (BotVoice, `note_pride`); mentions only as the players allow.
-            $composed = $this->voice->compose('note_pride', $note['template'], $variant, $note['values'], $note['tags'], $now)
-                ?? ['content' => $note['body'], 'tags' => $note['tags']];
+            $composed = $this->voice->compose('note_pride', $note['template'], $variant, $note['values'], $note['tags'], $now, ['hold_template' => true]);
+
+            if ($composed === null) {
+                return $name.': '.(new HeldBack)->getMessage();
+            }
+
             [$url, $imeta] = $this->image($scene, $note['slide']);
             $signed = $key->sign(self::KIND_NOTE, [...$composed['tags'], $imeta], $composed['content']."\n\n".$url, $now->getTimestamp());
             $post->forceFill([

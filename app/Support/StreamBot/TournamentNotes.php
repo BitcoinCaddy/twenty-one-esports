@@ -15,6 +15,7 @@ use App\Support\Tournaments\CasualCups;
 use App\Support\Tournaments\Lobbies;
 use App\Support\TwentyOne\EventBuilder;
 use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -179,7 +180,7 @@ class TournamentNotes
 
         Log::info('Stream bot tournament note deleted by its author, renewing', ['tournament' => $tournament->id, 'deleted' => $deletedId]);
 
-        return $this->post($key, $tournament, $relays, $now);
+        return $this->post($key, $tournament, $relays, $now, correction: true);
     }
 
     /**
@@ -601,19 +602,30 @@ class TournamentNotes
      * `note_tournament`); it must name the start word for word, which is how
      * stale() finds a moved tournament's note.
      */
-    public function event(LeagueKey $key, Tournament $tournament, int $createdAt, ?int $variant = null): SignedEvent
+    public function event(LeagueKey $key, Tournament $tournament, int $createdAt, ?int $variant = null, bool $correction = false): SignedEvent
     {
         $address = $tournament->address() ?? throw new LogicException('An unpublished tournament has no note.');
         $composed = $this->voice->compose('note_tournament', $this->template($tournament), $variant ?? $this->nextVariant($tournament), $this->values($tournament),
-            [['q', $address, $this->relayHint() ?? '']], CarbonImmutable::createFromTimestamp($createdAt), ['must_contain' => ['starts']])
-            ?? throw new LogicException('The voice returned no note.');
-        $problems = StreamBotCopy::violations($composed['content'], $composed['tags']);
+            [['q', $address, $this->relayHint() ?? '']], CarbonImmutable::createFromTimestamp($createdAt), [
+                'must_contain' => ['starts'],
+                // A correction replaces a note this bot deleted (NIP-09): it reads almost like the old one and must go out anyway.
+                'hold_template' => ! $correction && ! $this->corrects($tournament),
+                'link_optional' => true,
+            ])
+            ?? throw new HeldBack;
+        $problems = StreamBotCopy::violations($composed['content'], $composed['tags'], linkRequired: false);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own note: '.implode(', ', $problems));
         }
 
         return $key->sign(self::KIND_NOTE, $composed['tags'], $composed['content']."\n\nnostr:".$this->naddr($tournament), $createdAt);
+    }
+
+    /** Whether the tournament's next note corrects one this bot deleted (a deletion row exists). */
+    private function corrects(Tournament $tournament): bool
+    {
+        return BotPost::query()->where(['subject_type' => BotPost::SUBJECT_TOURNAMENT, 'subject_id' => $tournament->id, 'kind' => self::KIND_DELETION])->exists();
     }
 
     /**
@@ -632,7 +644,7 @@ class TournamentNotes
      *
      * @param  list<string>  $relays
      */
-    private function post(LeagueKey $key, Tournament $tournament, array $relays, CarbonImmutable $now): string
+    private function post(LeagueKey $key, Tournament $tournament, array $relays, CarbonImmutable $now, bool $correction = false): string
     {
         $subject = ['subject_type' => BotPost::SUBJECT_TOURNAMENT, 'subject_id' => $tournament->id, 'kind' => self::KIND_NOTE];
 
@@ -652,7 +664,12 @@ class TournamentNotes
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
             $variant = $this->nextVariant($tournament);
-            $signed = $this->event($key, $tournament, $now->getTimestamp(), $variant);
+            try {
+                $signed = $this->event($key, $tournament, $now->getTimestamp(), $variant, $correction);
+            } catch (HeldBack $held) {
+                return 'tournament '.$tournament->id.': '.$held->getMessage();
+            }
+
             $post->forceFill([
                 'event_id' => $signed->id,
                 'event' => json_encode($signed->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),

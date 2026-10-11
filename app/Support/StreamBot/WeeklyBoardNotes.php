@@ -17,6 +17,7 @@ use App\Support\Scores\ScoreWindow;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\TwentyOne\Stream\BlockfillSlides;
 use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -308,11 +309,11 @@ abstract class WeeklyBoardNotes
         $address = $week->address();
         $tags = $address === null ? $tags : [...$tags, ['q', $address, $this->notes->relayHint() ?? '']];
         // With its switch on, the league voice writes the copy (BotVoice, `note_weekly`); mentions only as the players allow.
-        $composed = $this->voice->compose('note_weekly', $template, $variant, $values, $tags, CarbonImmutable::createFromTimestamp($createdAt))
-            ?? throw new LogicException('The voice returned no note.');
+        $composed = $this->voice->compose('note_weekly', $template, $variant, $values, $tags, CarbonImmutable::createFromTimestamp($createdAt), ['hold_template' => true, 'link_optional' => $address !== null])
+            ?? throw new HeldBack;
         $tags = $composed['tags'];
         $content = $address === null ? $composed['content'] : $composed['content']."\n\nnostr:".$this->notes->naddr($week);
-        $problems = StreamBotCopy::violations($composed['content'], $tags);
+        $problems = StreamBotCopy::violations($composed['content'], $tags, linkRequired: $address === null);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own '.$this->label().' note: '.implode(', ', $problems));
@@ -563,7 +564,12 @@ abstract class WeeklyBoardNotes
 
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
-            ['event' => $signed, 'type' => $type, 'variant' => $variant] = $this->sign($key, $week, $slot, $now->getTimestamp());
+            try {
+                ['event' => $signed, 'type' => $type, 'variant' => $variant] = $this->sign($key, $week, $slot, $now->getTimestamp());
+            } catch (HeldBack $held) {
+                return $label.': '.$held->getMessage();
+            }
+
             $post->forceFill([
                 'event_id' => $signed->id,
                 'event' => json_encode($signed->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),

@@ -2,6 +2,7 @@
 
 namespace App\Support\Voice;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Responses\Data\FinishReason;
@@ -32,6 +33,9 @@ use Throwable;
  */
 final class LeagueVoice
 {
+    /** The VoiceUsage channel of the fact check's calls. */
+    public const FACT_CHECK = 'fact_check';
+
     /** How many recent posts per channel the near-copy check compares with. */
     public const RECENT_TEXTS = 10;
 
@@ -175,6 +179,7 @@ final class LeagueVoice
             (string) ($settings['instruction'] ?? ''),
             (string) ($options['instruction'] ?? ''),
             isset($settings['max_sentences']) ? 'Höchstens '.(int) $settings['max_sentences'].' Sätze; ein Ausruf aus einem Wort zählt nicht.' : '',
+            $this->openerLine($channel),
             ($options['must_contain'] ?? []) === [] ? '' : 'Diese Fakten stehen wörtlich im Text: '.implode(' · ', array_map(fn (string $fact): string => '„'.$fact.'“', $options['must_contain'])).'.',
         ])));
         $multiline = ($settings['multiline'] ?? false) === true;
@@ -219,6 +224,11 @@ final class LeagueVoice
             ...$this->guard()->check($named, $modelFacts, $maxChars, $canonId, $language, $options['must_contain'] ?? []),
         ];
 
+        // Only a text every deterministic check passed is read once more, for claims the facts do not support.
+        if ($violations === [] && $this->unsupportedClaims($moment, $modelFacts, $named, $this->canon->find($canonId)['wording'] ?? null) !== []) {
+            $violations[] = VoiceGuard::UNSUPPORTED_CLAIM;
+        }
+
         if ($violations !== []) {
             $this->usage->recordRejection($channel, $violations);
             $this->usage->recordOutcome($channel, 'rejected');
@@ -235,6 +245,62 @@ final class LeagueVoice
         $this->usage->recordOutcome($channel, 'accepted');
 
         return new VoiceLine($posted, $tags, $canonId, $mood);
+    }
+
+    /**
+     * The claims of the text its facts do not support (VoiceFactCheck), empty when
+     * the check is switched off. Its tokens are counted under `fact_check`, so
+     * they count against the monthly budget; a failed request throws, and say()
+     * sends the template.
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @return list<string>
+     */
+    private function unsupportedClaims(string $moment, array $facts, string $text, ?string $canonWording): array
+    {
+        if (! (bool) config('esports.voice.fact_check.enabled', true)) {
+            return [];
+        }
+
+        $this->usage->recordAttempt(self::FACT_CHECK);
+        $response = (new VoiceFactCheck)->prompt(VoiceFactCheck::message($facts, $text, $canonWording, $moment, CarbonImmutable::now()));
+        $this->usage->recordTokens(self::FACT_CHECK, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
+
+        $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
+
+        if (! is_array($answer) || ! is_array($answer['claims'] ?? null)) {
+            // An unreadable answer is no clearance.
+            return ['unreadable fact check'];
+        }
+
+        // Every claim with its evidence; the ones it found none for (or an answer of the wrong shape) reject the text.
+        $claims = [];
+        foreach ($answer['claims'] as $claim) {
+            if (! is_array($claim) || ($claim['supported'] ?? null) !== true) {
+                $claims[] = is_array($claim) && is_string($claim['claim'] ?? null) ? $claim['claim'] : 'unreadable claim';
+            }
+        }
+        $this->usage->recordOutcome(self::FACT_CHECK, $claims === [] ? 'accepted' : 'rejected');
+
+        return $claims;
+    }
+
+    /**
+     * The openers the channel's last posts used, for the model to avoid
+     * (VoiceHygiene rejects them): empty without recent posts.
+     */
+    private function openerLine(string $channel): string
+    {
+        $openers = [];
+        foreach (array_slice($this->recent($channel, 'texts'), 0, VoiceHygiene::OPENER_POSTS) as $recent) {
+            $first = preg_split('/[^\p{L}\p{N}]+/u', trim($recent), -1, PREG_SPLIT_NO_EMPTY)[0] ?? null;
+
+            if (is_string($first)) {
+                $openers[$first] = '„'.$first.'“';
+            }
+        }
+
+        return $openers === [] ? '' : 'Die letzten Posts begannen mit '.implode(', ', $openers).': fang mit einem anderen Wort an, am besten mit dem Fakt.';
     }
 
     /**

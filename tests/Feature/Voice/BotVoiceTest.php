@@ -134,6 +134,28 @@ it('holds a repeated template back where the caller has another post to offer, a
         ->and($voice->compose('chat_rotation', 'live_games', 0, $values, [], $this->now->addHour())['content'])->toBe($first['content']);
 });
 
+it('holds a profile note back whose template text went out shortly before', function () {
+    $voice = app(BotVoice::class);
+    $values = ['name' => 'Friday Blitz Cup', 'url' => 'https://esports.test/tournaments/7'];
+    $first = $voice->compose('note_tournament', 'tournament_note_running', 1, $values, [], $this->now, ['hold_template' => true, 'link_optional' => true]);
+    $voice->delivered('note_tournament', 'tournament_note_running', $first['content'], [], $this->now);
+
+    expect($voice->compose('note_tournament', 'tournament_note_running', 1, $values, [], $this->now->addHour(), ['hold_template' => true, 'link_optional' => true]))->toBeNull();
+});
+
+it('drops a repeated link line from a note that carries its naddr instead of dropping the note', function () {
+    $voice = app(BotVoice::class);
+    $voice->delivered('note_tournament', 'tournament_note_open', "Other note\n👉 https://esports.test/tournaments/7", [], $this->now->subHour());
+    $values = ['name' => 'Friday Blitz Cup', 'starts' => 'Sat, 3 Oct 2026, 9:00 PM CEST', 'url' => 'https://esports.test/tournaments/7'];
+
+    $note = $voice->compose('note_tournament', 'tournament_note_open', 1, $values, [], $this->now, ['hold_template' => true, 'link_optional' => true]);
+    $withLink = $voice->compose('note_tournament', 'tournament_note_open', 1, $values, [], $this->now, ['hold_template' => true]);
+
+    // Wording 1 is "🏆 :name starts :starts. Sign up: :url": the link goes with its label.
+    expect($note['content'])->toBe('🏆 Friday Blitz Cup starts Sat, 3 Oct 2026, 9:00 PM CEST.')
+        ->and($withLink)->toBeNull();
+});
+
 it('sends the template when the spam gate turns the voice\'s text down', function () {
     config(['esports.voice.functions.chat_rotation' => true, 'esports.voice.channels.stream_chat.enabled' => true]);
     app(SpamGate::class)->record(SpamGate::CHAT, "Hey! Drei Partien live. Schau rein.\n👉 https://esports.test/other", 'general', [], $this->now->subHour());

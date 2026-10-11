@@ -4,10 +4,12 @@ use App\Enums\TournamentFormat;
 use App\Models\BotPost;
 use App\Models\Tournament;
 use App\Support\Nostr\SignedEvent;
+use App\Support\StreamBot\FreePlaceNotes;
 use App\Support\StreamBot\StreamBotPublisher;
 use App\Support\StreamBot\TournamentNotes;
 use App\Support\Tournaments\TournamentPublisher;
 use App\Support\TwentyOne\PublishResult;
+use App\Support\Voice\SpamGate;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
@@ -107,6 +109,8 @@ function postedSlots(): array
 }
 
 test('a special tournament is reminded at 7 d, 3 d, 24 h and 3 h before its close, each slot once', function () {
+    // The slots alone: with the spam gate on, a reminder that reads like an earlier one falls out (see the end of this file).
+    config(['esports.voice.spam.enabled' => false]);
     $closes = CarbonImmutable::now()->addDays(8);
     $tournament = placesTournament($closes);
     $id = $tournament->id;
@@ -345,3 +349,20 @@ test('with its switches on, the league voice writes the reminder in English; off
         ->and($this->published[0]->tags)->toHaveCount(1);
     $on ? VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sprache: Englisch')) : VoiceAgent::assertNeverPrompted();
 })->with(['on' => true, 'off' => false]);
+
+test('with the spam gate on, a reminder that reads like a recent post waits, and falls out once its slot passed', function () {
+    $closes = CarbonImmutable::now()->addDays(8);
+    $tournament = placesTournament($closes, ['name' => 'Friday Blitz Cup']);
+    $this->travelTo($closes->subHours(3));
+    $body = explode("\n\nnostr:", app(FreePlaceNotes::class)->content($tournament->refresh(), 8, 8, CarbonImmutable::now()), 2)[0];
+    app(SpamGate::class)->record(SpamGate::PROFILE, $body, 'last_free_place', [], CarbonImmutable::now()->subHour());
+
+    expect(runFreePlaces())->toContain('held back by the spam gate');
+
+    // Within an hour of the close no slot is due any more: the 3 h reminder is gone, not posted late.
+    $this->travelTo($closes->subMinutes(30));
+    runFreePlaces();
+
+    expect(postedSlots())->toBe([])
+        ->and($this->published)->toBe([]);
+});

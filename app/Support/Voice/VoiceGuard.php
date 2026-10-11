@@ -65,6 +65,8 @@ final class VoiceGuard
 
     public const MISSING_FACT = 'missing_fact';
 
+    public const UNSUPPORTED_CLAIM = 'unsupported_claim';
+
     /** Most emoji one text may carry. */
     public const MAX_EMOJI = 2;
 

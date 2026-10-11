@@ -3,6 +3,8 @@
 use App\Models\User;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Voice\BotVoice;
+use App\Support\Voice\LeagueVoice;
+use App\Support\Voice\VoiceFactCheck;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +106,29 @@ it('writes five German chat posts and five English profile notes from real momen
     fwrite(STDERR, '[voice] rejections '.json_encode($usage->rejections($today, $today))."\n");
     fwrite(STDERR, sprintf("[voice] estimated cost \$%.6f, voiced chat %d/5, profile %d/5\n", $usage->monthCost(), $chat, array_sum($profile)));
 
+    fwrite(STDERR, sprintf("[voice] fact check: %d checks, %d with an unsupported claim\n",
+        (int) DB::table('voice_usage')->where('channel', LeagueVoice::FACT_CHECK)->value('attempts'),
+        (int) DB::table('voice_usage')->where('channel', LeagueVoice::FACT_CHECK)->value('rejected')));
+
     expect(DB::table('voice_usage')->sum('attempts'))->toBeGreaterThanOrEqual(10)
         ->and($chat + array_sum($profile))->toBeGreaterThan(0);
+});
+
+it('catches the invented claims of the earlier eval runs, and clears a post that keeps to the facts', function () {
+    $week = ['template' => "🥇 New first place in Blockfill Week 42, 2026: Ada\n⏱️ 0:50.000, 1.666 s faster than the first place before\n🗓️ The week runs until Mon, 19 Oct 2026, 12:00 AM CEST", 'name' => 'Blockfill Week 42, 2026', 'people' => [['role' => 'player', 'name' => 'Ada', 'mention' => '{@player}']], 'time' => '0:50.000', 'gap' => '1.666 s faster than the first place before', 'ends' => 'Mon, 19 Oct 2026, 12:00 AM CEST'];
+    $champion = ['template' => "🏆 BlockBauer wins Testnet Cup (Chess Blitz 5+3)\n🎉 Congratulations, champion!", 'winner' => 'BlockBauer', 'name' => 'Testnet Cup', 'game' => 'Chess Blitz 5+3'];
+    $cases = [
+        'week done' => [$week, 'Blockfill Week 42 is done. Ada hit 0:50.000, 1.666 s faster than the first place before.', true],
+        'no lost game' => [$champion, 'BlockBauer takes the Testnet Cup. Clean sweep, no lost game. Congrats!', true],
+        'clean' => [$week, 'Ada leads Blockfill Week 42 with 0:50.000. Who beats it?', false],
+    ];
+
+    foreach ($cases as $label => [$facts, $text, $invented]) {
+        $answer = (new VoiceFactCheck)->prompt(VoiceFactCheck::message($facts, $text, null, 'win', CarbonImmutable::parse('2026-10-14 12:00', 'Europe/Berlin')))->toArray();
+        $unsupported = array_values(array_filter((array) ($answer['claims'] ?? []), fn (mixed $claim): bool => ! is_array($claim) || ($claim['supported'] ?? null) !== true));
+        fwrite(STDERR, "[fact check] {$label}: ".json_encode($unsupported, JSON_UNESCAPED_UNICODE)."\n");
+
+        expect($answer['claims'] ?? null)->toBeArray()
+            ->and($unsupported !== [])->toBe($invented);
+    }
 });

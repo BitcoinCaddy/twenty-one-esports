@@ -124,15 +124,20 @@ final class BotVoice
      * The post a template becomes: the voice's wording when it may speak and
      * passes, else the template's; mentions only of players who allow them.
      * Null only with `hold_template` when the spam gate turns the template
-     * down as well (the caller offers another post instead).
+     * down as well (plan: "wiederholte Vorlage → Post fällt aus statt
+     * Wiederholung"): the chat rotation offers its next message instead, a
+     * profile note waits (HeldBack) and falls out once its moment passed.
      *
      * Options: `session` (the chat's stream session, for the mention pause),
-     * `hold_template` (see above), `must_contain` (value keys the voice's
-     * text must carry word for word).
+     * `hold_template` (see above), `link_optional` (a note that carries its
+     * calendar event as `nostr:naddr1…` loses a link line the spam gate
+     * would turn down instead of the whole note: "lieber ohne Link als mit
+     * wiederholtem"), `must_contain` (value keys the voice's text must carry
+     * word for word).
      *
      * @param  array<string, string|int|null>  $values  the template's values, people as `nostr:npub1…`
      * @param  list<list<string>>  $tags  the post's tags (`p` tags of the people in the values among them)
-     * @param  array{session?: string, hold_template?: bool, must_contain?: list<string>}  $options
+     * @param  array{session?: string, hold_template?: bool, link_optional?: bool, must_contain?: list<string>}  $options
      * @return array{content: string, tags: list<list<string>>, template_content: string, canon: ?string, form: ?string, voiced: bool}|null
      */
     public function compose(string $function, string $template, int $variant, array $values, array $tags, CarbonImmutable $now, array $options = []): ?array
@@ -142,9 +147,14 @@ final class BotVoice
         [$values, $tags, $names] = $this->mentionable($values, $tags, $surface, $moment, $now, $options['session'] ?? null);
         $templateContent = StreamBotCopy::render($template, $variant, $values);
 
-        if ($surface !== null && ($options['hold_template'] ?? false) === true
-            && $this->gate->textSkip($surface, $templateContent, $now, template: true) !== null) {
-            return null;
+        if ($surface !== null && ($options['hold_template'] ?? false) === true) {
+            if (($options['link_optional'] ?? false) === true) {
+                $templateContent = implode("\n", $this->gate->withoutRepeatedLinks($surface, explode("\n", $templateContent), $now));
+            }
+
+            if ($this->gate->textSkip($surface, $templateContent, $now, template: true) !== null) {
+                return null;
+            }
         }
 
         $voiced = $this->enabled($function) ? $this->voiced($function, $moment, $values, $tags, $names, $templateContent, $now, $options) : null;
@@ -238,6 +248,9 @@ final class BotVoice
         $maxChars = (int) config("esports.voice.channels.{$channel}.max_chars", 280) - ($url === null ? 0 : mb_strlen($url) + 3);
 
         [$facts, $people] = self::facts($values, $names);
+        // What the moment is, in the template's words without its link: a value alone ("0:50.000") does not say that it
+        // is a new first place, and the fact check (VoiceFactCheck) takes "leads the week" for invented without it.
+        $facts['template'] = self::withNames(trim((string) preg_replace('~\s*(?:👉\s*)?(?:[^\n:.!?]*:\s*)?https?://\S+~u', '', $templateContent)), $names);
         $facts['people'] = $people;
 
         $mustContain = [];
@@ -335,6 +348,20 @@ final class BotVoice
         $tags = array_values(array_filter($tags, fn (array $tag): bool => ! (($tag[0] ?? null) === 'p' && isset($dropped[$tag[1] ?? '']))));
 
         return [$values, $tags, $names];
+    }
+
+    /**
+     * A text with every mention of `$names` as the plain name.
+     *
+     * @param  array<string, string>  $names  pubkey => plain name
+     */
+    private static function withNames(string $text, array $names): string
+    {
+        foreach ($names as $pubkey => $name) {
+            $text = str_replace('nostr:'.NostrKeys::hexToNpub($pubkey), $name, $text);
+        }
+
+        return $text;
     }
 
     /**

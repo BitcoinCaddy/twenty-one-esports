@@ -337,7 +337,7 @@ final class StreamBotCopy
         'pride_note_signups' => [
             ['🙌 Welcome aboard: :players', '📝 :count new sign-ups', '❓ Who joins next?', '👉 :url'],
             ['📝 :players just signed up. 👉 :url'],
-            ['🙌 New faces: :players.', '📝 :count sign-ups', '👉 :url'],
+            ['🙌 New players: :players.', '📝 :count sign-ups', '👉 :url'],
             ['🆕 :count new players', '🙌 :players', '👉 Come in after them: :url'],
         ],
         'pride_note_prizes' => [
@@ -516,12 +516,14 @@ final class StreamBotCopy
 
     /**
      * What is wrong with a message, empty when nothing: a `#` (hashtag), a
-     * `t` tag, no http(s) link, too many lines, an empty text.
+     * `t` tag, no http(s) link (unless `$linkRequired` is false: a note whose
+     * calendar event follows as `nostr:naddr1…` may lose a repeated link),
+     * too many lines, an empty text.
      *
      * @param  list<list<string>>  $tags
      * @return list<string>
      */
-    public static function violations(string $content, array $tags = []): array
+    public static function violations(string $content, array $tags = [], bool $linkRequired = true): array
     {
         $problems = [];
 
@@ -539,7 +541,7 @@ final class StreamBotCopy
             }
         }
 
-        if (preg_match('~https?://\S+~', $content) !== 1) {
+        if ($linkRequired && preg_match('~https?://\S+~', $content) !== 1) {
             $problems[] = 'no link';
         }
 

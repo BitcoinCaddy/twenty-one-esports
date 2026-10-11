@@ -18,6 +18,7 @@ use App\Support\TwentyOne\Stream\SceneRenderer;
 use App\Support\TwentyOne\Stream\StreamStats;
 use App\Support\TwentyOne\Stream\TournamentLiveSlides;
 use App\Support\Voice\BotVoice;
+use App\Support\Voice\HeldBack;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -200,11 +201,12 @@ class ChampionNotes
         $body = StreamBotCopy::render(self::TEMPLATE, $variant, $values);
 
         if ($voiceAt !== null) {
-            $composed = $this->voice->compose('note_champion', self::TEMPLATE, $variant, $values, $tags, $voiceAt);
-            [$body, $tags] = $composed === null ? [$body, $tags] : [$composed['content'], $composed['tags']];
+            $composed = $this->voice->compose('note_champion', self::TEMPLATE, $variant, $values, $tags, $voiceAt, ['hold_template' => true, 'link_optional' => true])
+                ?? throw new HeldBack;
+            [$body, $tags] = [$composed['content'], $composed['tags']];
         }
 
-        $problems = StreamBotCopy::violations($body, $tags);
+        $problems = StreamBotCopy::violations($body, $tags, linkRequired: $voiceAt === null);
 
         if ($problems !== []) {
             throw new LogicException('The stream bot refused its own champion note: '.implode(', ', $problems));
@@ -282,7 +284,12 @@ class ChampionNotes
         // Signed once; a retry sends the stored event again, never a new one.
         if ($post->event === null) {
             $variant = ProfileNotes::nextVariant(self::NOTE_TYPE, StreamBotCopy::variants(self::TEMPLATE));
-            $note = $this->compose($tournament, $variant, $now) ?? throw new LogicException('Tournament '.$tournament->id.' has no single champion.');
+            try {
+                $note = $this->compose($tournament, $variant, $now) ?? throw new LogicException('Tournament '.$tournament->id.' has no single champion.');
+            } catch (HeldBack $held) {
+                return 'tournament '.$tournament->id.': champion note '.$held->getMessage();
+            }
+
             [$url, $imeta] = $this->image($tournament, $now);
             $signed = $key->sign(self::KIND_NOTE, [...$note['tags'], $imeta], $note['content']."\n\n".$url, $now->getTimestamp());
             $post->forceFill([

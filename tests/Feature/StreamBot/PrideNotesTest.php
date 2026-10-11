@@ -35,6 +35,8 @@ beforeEach(function () {
     $this->dir = storage_path('framework/testing/pride-'.bin2hex(random_bytes(4)));
 
     config([
+        // The spam gate's repetition rules (BotVoiceTest, TournamentNotesTest) are not what this file tests.
+        'esports.voice.spam.enabled' => false,
         'esports.league.nsec' => (new TestSigner)->secret,
         'esports.stream_bot.enabled' => true,
         'esports.stream_bot.nsec' => $this->botKey->secret,

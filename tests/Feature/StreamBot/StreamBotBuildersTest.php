@@ -129,6 +129,12 @@ test('no builder ever writes a hashtag, and every message has a link and 1 to 4 
     }
 })->with([0, 1]);
 
+test('no template speaks of faces or fees (pseudonymous league, players never pay)', function () {
+    $words = collect(StreamBotCopy::TEMPLATES)->flatten()->map(fn (string $line): string => mb_strtolower($line));
+
+    expect($words->filter(fn (string $line): bool => preg_match('/\b(?:faces?|gesichte?r?|fees?|gebühren?|startgeld)\b/u', $line) === 1)->values()->all())->toBe([]);
+});
+
 test('the copy guard refuses a hashtag, a t tag, a missing link and a fifth line', function () {
     expect(StreamBotCopy::violations("🏆 Join now #bitcoin\n👉 https://esports.test"))->toContain('contains # (hashtag)')
         ->and(StreamBotCopy::violations('👉 https://esports.test', [['t', 'bitcoin']]))->toContain('t tag')

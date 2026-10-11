@@ -52,6 +52,13 @@ final class VoiceHygiene
 
     public const TTS_MARKER = 'tts_marker';
 
+    public const OPENER_REPEAT = 'opener_repeat';
+
+    public const SIGN_OFF = 'sign_off';
+
+    /** A text may not open with the first word of any of the channel's last this many posts. */
+    public const OPENER_POSTS = 5;
+
     /**
      * Phrases of the AI and officialese register (user 2026-10-11: „darüber hinaus“, „es ist erwähnenswert“,
      * „spannend“-Floskeln), matched as whole words in any case, German and English alike.
@@ -158,6 +165,11 @@ final class VoiceHygiene
 
         array_push($violations, ...$this->style($prose, $factStrings));
 
+        // No sign-off: a post is no letter ("… Stack Sats and stay bullish. Ciao.", P2 eval run).
+        if (preg_match('/(?<![\p{L}])(?:ciao|tschüss|tschau|bye|cheers|bis dann|bis bald)[\s.!…]*$/iu', trim($prose)) === 1) {
+            $violations[] = self::SIGN_OFF;
+        }
+
         if ($this->isWrongLanguage($prose, $language)) {
             $violations[] = self::WRONG_LANGUAGE;
         }
@@ -176,6 +188,15 @@ final class VoiceHygiene
 
         if (! $this->balanced($text)) {
             $violations[] = self::UNBALANCED;
+        }
+
+        // The opener (its first word) of the channel's last OPENER_POSTS posts is not repeated: "Hey! … Klar." every time is a tic.
+        $opener = explode(' ', VoiceGuard::normalize($text))[0];
+        foreach (array_slice($recentTexts, 0, self::OPENER_POSTS) as $recent) {
+            if ($opener !== '' && explode(' ', VoiceGuard::normalize($recent))[0] === $opener) {
+                $violations[] = self::OPENER_REPEAT;
+                break;
+            }
         }
 
         $normalized = VoiceGuard::normalize($text);

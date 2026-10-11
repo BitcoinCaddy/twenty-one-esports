@@ -1914,6 +1914,11 @@ return [
             'note_weekly' => (bool) env('ESPORTS_VOICE_FN_NOTE_WEEKLY', false),
             'share_post' => (bool) env('ESPORTS_VOICE_FN_SHARE_POST', false),
         ],
+        // The second look at a voice text (App\Support\Voice\VoiceFactCheck): Haiku lists claims the facts do not support
+        // ("Blockfill Week 42 is done" for a running week); one claim rejects the text. Its tokens count as channel `fact_check`.
+        'fact_check' => [
+            'enabled' => (bool) env('ESPORTS_VOICE_FACT_CHECK', true),
+        ],
         // Everyday language (user 2026-10-11: "Ein Mensch redet im Alltag nicht in Schachtelsätzen"): words per sentence
         // and commas per sentence (a list of short items is exempt), checked by VoiceHygiene; a text that breaks them
         // is written once more, then the template goes out.
@@ -1945,8 +1950,6 @@ return [
             // Links: the same URL once per `link_hours`, the same kind of target (first path segment) `link_kind_per_day` times.
             'link_hours' => 24,
             'link_kind_per_day' => 2,
-            // A burst of at least this many moments of one type becomes one roundup post.
-            'roundup_min' => 3,
         ],
     ],
 
