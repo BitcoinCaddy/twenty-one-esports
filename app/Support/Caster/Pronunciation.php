@@ -29,7 +29,7 @@ final class Pronunciation
      */
     public static function spoken(string $sentence, array $terms): string
     {
-        $sentence = self::dates($sentence);
+        $sentence = self::withoutCommas(self::dates($sentence));
         uksort($terms, fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
 
         foreach ($terms as $term => $spoken) {
@@ -76,5 +76,14 @@ final class Pronunciation
         $sentence = (string) preg_replace_callback('/\b(\d{1,2}):(\d{2})\b/u', fn (array $m): string => (int) $m[1].' Uhr'.((int) $m[2] === 0 ? '' : ' '.(int) $m[2]), $sentence);
 
         return trim((string) preg_replace('/\s*\b(MESZ|MEZ|CEST|CET|EDT|EST|UTC)\b/u', '', $sentence));
+    }
+
+    /**
+     * No commas in the spoken text (user 2026-10-11: they make the voice pause mid-sentence); a decimal comma
+     * between digits ("16,25 Sekunden") stays.
+     */
+    public static function withoutCommas(string $sentence): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/(?<!\d),|,(?!\d)/u', '', $sentence)));
     }
 }

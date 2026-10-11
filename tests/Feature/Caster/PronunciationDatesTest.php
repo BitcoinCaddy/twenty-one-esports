@@ -12,3 +12,8 @@ it('speaks German dates, weekdays and times the way a person says them', functio
     ['Start um 20:06 CEST.', 'Start um 20 Uhr 6.'],
     ['Bis Sa, 3. Okt.', 'Bis Samstag, der dritte Oktober.'],
 ]);
+
+it('drops commas from the spoken text but keeps a decimal comma', function () {
+    expect(Pronunciation::withoutCommas('Hey, Markus, die Bestzeit liegt bei 16,25 Sekunden, stark.'))
+        ->toBe('Hey Markus die Bestzeit liegt bei 16,25 Sekunden stark.');
+});

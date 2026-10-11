@@ -134,7 +134,7 @@ return [
         'voicestudio' => [
             'url' => env('TV_VOICESTUDIO_URL', 'http://127.0.0.1:3900'),
             'profile_id' => env('TV_VOICESTUDIO_PROFILE', 'ee7a2a18'),
-            'speed' => 1.0,
+            'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
             'language' => 'de',
             'timeout_seconds' => 60,
             'retries' => 3,

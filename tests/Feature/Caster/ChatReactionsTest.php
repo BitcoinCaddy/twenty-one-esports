@@ -492,3 +492,14 @@ it('keeps every reaction line speakable: short sentences, known markers, no fees
     // A composed big bundle thank-you passes the script checks as a whole (at most two markers).
     expect((new ScriptGuard)->check($lines->zapThanks(3, 21_000, null, true), 1, 4, 16))->toBe([]);
 });
+
+it('reads the chat on the same relays as the /live chat, also when the bot has no chat relays (prod, 2026-10-11)', function () {
+    config(['esports.stream_bot.chat_relays' => []]);
+    $trusted = new TestSigner;
+    WotLevel::query()->create(['pubkey' => $trusted->pubkey, 'level' => 1, 'computed_at' => now()]);
+    VoiceAgent::fake([['text' => "Hey!\nSchön, dass du da bist.", 'canon_id' => null, 'mood' => 'call']]);
+    $this->reader->events = [casterChat($trusted, 'kannst du mal auf den chat reagieren')];
+
+    expect(casterReactions()->poll(CarbonImmutable::now()))->toBe(1)
+        ->and($this->reader->asked)->not->toBe([]);
+});

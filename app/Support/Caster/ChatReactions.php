@@ -10,6 +10,8 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\StreamBot\StreamCoordinates;
 use App\Support\StreamChat\StreamChat;
+use App\Support\TwentyOne\EventBuilder;
+use App\Support\TwentyOne\RelayPublisher;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
@@ -88,7 +90,9 @@ class ChatReactions
     public function poll(CarbonImmutable $now): int
     {
         $stream = StreamCoordinates::fromConfig();
-        $relays = array_values(array_filter((array) config('esports.stream_bot.chat_relays', []), 'is_string'));
+        // The same relays the /live chat reads (stream relays + the bot's chat relays): with only
+        // `stream_bot.chat_relays`, which prod leaves empty, no chat message was ever seen (2026-10-11).
+        $relays = $stream === null ? [] : array_values(array_filter(RelayPublisher::relayUrls([...$stream->relays, ...(array) config('esports.stream_bot.chat_relays', [])]), fn (string $relay): bool => EventBuilder::isRelayUrl($relay)));
 
         if (! self::enabled() || $stream === null || $relays === []) {
             return 0;

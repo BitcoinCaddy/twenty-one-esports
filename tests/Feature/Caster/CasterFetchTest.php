@@ -282,7 +282,7 @@ it('trims the quiet tail after the last word with a short fade', function () {
 
 it('respells league terms as whole words, longest first', function () {
     expect(Pronunciation::spoken('Zaps für Blockli und TMNF, nicht Blocklis', ['Zap' => 'Zäpp', 'Zaps' => 'Zäpps', 'Blockli' => 'Block-li', 'TMNF' => 'Trackmania']))
-        ->toBe('Zäpps für Block-li und Trackmania, nicht Blocklis');
+        ->toBe('Zäpps für Block-li und Trackmania nicht Blocklis');
 });
 
 it('keeps the fetcher online only while it asked recently', function () {
