@@ -244,12 +244,23 @@ return [
             'enabled' => (bool) env('TV_COMMENTARY_FOLLOWED', true),
             // At most one followed-profile segment within this many minutes.
             'every_minutes' => (int) env('TV_COMMENTARY_FOLLOWED_EVERY_MINUTES', 10),
-            // A note older than this is not spoken (nor read); rows older than `keep_days` are deleted, beyond `max_rows` the oldest.
-            'fresh_hours' => 24,
+            // A note older than this is not spoken (nor read); 0: no limit, the whole history (user 2026-10-12: "Die Kommentare
+            // für die Nostr-Posts des npubs dürfen bis an den Anfang aller je geposteten kind-1-Events gehen. Also ALL! … aber
+            // sortiert nach Zeit."). With a limit, rows older than `keep_days` are deleted, beyond `max_rows` the oldest; without
+            // one, nothing is ever deleted (a deleted row would be read back by the backfill and spoken twice).
+            'fresh_hours' => (int) env('TV_COMMENTARY_FOLLOWED_FRESH_HOURS', 0),
             'keep_days' => 7,
             'max_rows' => 500,
-            // Notes read per profile and run, newest first.
-            'per_profile' => 20,
+            // Notes asked per REQ while paging back through a profile's notes (relay `until` pagination).
+            'page_limit' => 200,
+            // Notes read per profile and run at most, and seconds per run (checked between pages; a page started reads every
+            // relay, each within `esports.relay_fetch_budget_seconds`): the backfill resumes at the oldest note next run.
+            'per_run' => 1000,
+            'run_seconds' => 120,
+            // Unused notes are spoken oldest first, from the very first one on; a note younger than this jumps ahead.
+            'jump_ahead_minutes' => 60,
+            // A note older than this is announced with its month and year ("Im März zweitausenddreiundzwanzig …").
+            'dated_after_hours' => 48,
             // A note with fewer words (links, references and markup left out) is not spoken.
             'min_words' => 5,
             // Replies (NIP-10 `e` tags other than a mention) are left out unless this is on.
