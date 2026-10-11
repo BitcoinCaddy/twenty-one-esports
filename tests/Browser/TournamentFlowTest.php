@@ -581,7 +581,8 @@ test('the prize pot: top-ups by QR code, sponsors, payouts, fixed prizes and the
 
         // Where players look: the index with the pot chips, the tournament page with what is still to be won.
         $page->goto(ComputeUrl::from(route('tournaments.index')));
-        BrowserWait::until($page, '() => document.querySelectorAll("[data-test=prize-chip]").length >= 3', 8_000);
+        // Each open pot's row carries its chip (Tournaments.dc.html, revamp P6); a finished cup lists in the archive now.
+        BrowserWait::until($page, '() => ['.$open->id.', '.$walletPot->id.'].every((id) => document.querySelector(`[data-test=open-row][data-tournament="${id}"] [data-test=prize-chip]`) !== null)', 8_000);
         $index = $page->evaluate(TOURNAMENT_STATE);
         tournamentShot($page, "p9-pot-index-{$width}");
         $page->goto(ComputeUrl::from(route('tournaments.show', $walletPot)));

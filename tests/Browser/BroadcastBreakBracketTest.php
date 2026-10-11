@@ -184,6 +184,8 @@ test('bracket: opaque full screen, pages that hold still for 8 s, a live result 
     sceneClean($page, 'bracket-positive-control');
 });
 
+// The view (data-bracket-view) sits on the element bracketView() governs: on the revamped detail page that is the
+// page body, so the 2D/3D toggle in the tab row and the bracket share it (TournamentDetail.dc.html, revamp P6).
 test('the tournament page: 3D loads on demand, is remembered without a layout shift and fits 1440 px; 2D comes back', function () {
     $tournament = sceneBracket();
     $admin = User::factory()->create(['locale' => 'de']);
@@ -193,12 +195,12 @@ test('the tournament page: 3D loads on demand, is remembered without a layout sh
     BrowserWebGL::on();
     $page = visit(route('tournaments.show', $tournament).'?lang=de')->page();
     $page->context()->addInitScript(BrowserConsole::COLLECTOR);
-    $page->context()->addInitScript("document.addEventListener('readystatechange', () => { if (document.readyState === 'interactive') window.__viewAtParse = document.querySelector('[data-test=bracket]')?.dataset.bracketView ?? null; }); window.__shifts = []; new PerformanceObserver((l) => l.getEntries().forEach((e) => { if (!e.hadRecentInput) window.__shifts.push(e); })).observe({ type: 'layout-shift', buffered: true });");
+    $page->context()->addInitScript("document.addEventListener('readystatechange', () => { if (document.readyState === 'interactive') window.__viewAtParse = document.querySelector('[data-test=bracket]')?.closest('[data-bracket-view]')?.dataset.bracketView ?? null; }); window.__shifts = []; new PerformanceObserver((l) => l.getEntries().forEach((e) => { if (!e.hadRecentInput) window.__shifts.push(e); })).observe({ type: 'layout-shift', buffered: true });");
     $page->setViewportSize(1440, 900);
     $page->goto(ComputeUrl::from(route('tournaments.show', $tournament, false).'?lang=de'));
     BrowserWait::until($page, '() => !!document.querySelector("[data-test=bracket-view-toggle]")', 10_000);
 
-    expect($page->evaluate('() => [!!window.THREE, document.querySelector("[data-test=bracket]").dataset.bracketView, document.querySelector("[data-test=bracket-2d]").offsetParent !== null]'))->toBe([false, '2d', true]);
+    expect($page->evaluate('() => [!!window.THREE, document.querySelector("[data-test=bracket]").closest("[data-bracket-view]").dataset.bracketView, document.querySelector("[data-test=bracket-2d]").offsetParent !== null]'))->toBe([false, '2d', true]);
 
     $page->evaluate('() => document.querySelector("[data-test=bracket-view-3d]").click()');
     BrowserWait::until($page, '() => window.bracket3d?.ready === true && window.bracket3d.state().count > 0', 30_000);
@@ -243,7 +245,7 @@ test('without WebGL a remembered 3D falls back to the 2D bracket and the 3D butt
     $page->goto(ComputeUrl::from(route('tournaments.show', $tournament, false).'?lang=en'));
     BrowserWait::until($page, '() => !!window.Alpine && document.querySelector("[data-test=bracket-view-3d]").disabled === true', 10_000);
 
-    expect($page->evaluate('() => [document.querySelector("[data-test=bracket]").dataset.bracketView, document.querySelector("[data-test=bracket-2d]").offsetParent !== null, document.querySelector("[data-test=bracket-3d]").offsetParent, !!window.THREE]'))->toBe(['2d', true, null, false])
+    expect($page->evaluate('() => [document.querySelector("[data-test=bracket]").closest("[data-bracket-view]").dataset.bracketView, document.querySelector("[data-test=bracket-2d]").offsetParent !== null, document.querySelector("[data-test=bracket-3d]").offsetParent, !!window.THREE]'))->toBe(['2d', true, null, false])
         ->and($page->evaluate(BrowserConsole::WIDTHS)[0])->toBeLessThanOrEqual($page->evaluate(BrowserConsole::WIDTHS)[1]);
     sceneClean($page, 'page-2d-positive-control');
 });
