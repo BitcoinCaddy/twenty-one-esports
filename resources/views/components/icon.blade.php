@@ -17,6 +17,8 @@
         'admin' => '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle>',
         'search' => '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>',
         'menu' => '<path d="M4 7h16M4 12h16M4 17h16"></path>',
+        // The logo strip of the clan form (ClanCreate.dc.html, P7).
+        'upload' => '<path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path>',
         // The language switch of the account menu (Profile.dc.html, P7).
         'globe' => '<circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path>',
         // Shell navigation (header concept B): the game hub, daily games, settings, rules.

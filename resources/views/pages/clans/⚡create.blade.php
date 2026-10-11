@@ -208,18 +208,23 @@ new #[Title('Start a clan')] #[Layout('layouts::app', ['section' => 'clans'])] c
     ];
 @endphp
 
-<div class="mx-auto flex w-full max-w-[1232px] grow flex-col gap-5 px-4 pb-6 lg:pb-7">
-    <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h1 class="m-0 font-display text-2xl font-bold lg:text-[28px]">{{ __('Start a clan') }}</h1>
+{{--
+    Start a clan (ClanCreate.dc.html, template "Formular", rule R11; P7): the form on the left in two cards (from your
+    meetup, the clan itself), the button under them; on the right how the clan shows up and what it starts with.
+--}}
+<div class="grid grow grid-cols-1 items-start gap-6 px-4 pt-4 pb-8 lg:grid-cols-12 lg:px-12 lg:pt-6">
+    <div class="flex min-w-0 flex-col gap-6 lg:col-span-8">
+    <div class="flex flex-col gap-1">
+        <h1 class="rv-h1 max-lg:text-[24px]">{{ __('Start a clan') }}</h1>
         <span class="text-[13px] text-ink-2">{{ __('Name and tag are required. You can change everything else later.') }}</span>
     </div>
 
-    <form wire:submit.prevent class="flex flex-col gap-[18px] rounded-lg bg-card p-4 lg:p-6"
+    <form wire:submit.prevent class="flex flex-col gap-6"
           x-data="nostrAction({ pubkey: @js(auth()->user()->pubkey), messages: @js(\App\Support\Nostr\SignerMessages::labels()) })">
 
         {{-- Portal meetup import (optional) --}}
-        <div class="flex flex-col gap-2.5 rounded-md bg-ground p-4 shadow-ring">
-            <label for="meetup" class="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[13px]"><b>{{ __('Start from your meetup') }}</b><span class="text-ink-3">{{ __('optional, fills in name, logo and text from the EINUNDZWANZIG portal') }}</span></label>
+        <div class="rv-card flex flex-col gap-3 p-4 lg:p-6" data-test="create-meetup">
+            <label for="meetup" class="rv-h3">{{ __('Start from your meetup') }}</label>
             <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
                 <div class="flex flex-col gap-1.5">
                     <span class="relative block">
@@ -260,10 +265,11 @@ new #[Title('Start a clan')] #[Layout('layouts::app', ['section' => 'clans'])] c
                     </div>
                 @endif
             </div>
-            <span class="text-xs text-ink-3">{{ __('Portal down? Create the clan anyway and fill in the fields yourself.') }}</span>
+            <span class="text-xs leading-normal text-ink-3">{{ __('optional, fills in name, logo and text from the EINUNDZWANZIG portal') }}. {{ __('Portal down? Create the clan anyway and fill in the fields yourself.') }}</span>
         </div>
 
-        <div class="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div class="rv-card flex flex-col gap-[18px] p-4 lg:p-6" data-test="create-clan">
+            <h2 class="rv-h3">{{ __('Clan') }}</h2>
             <div class="flex flex-col gap-[18px]">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
                     <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Name') }}</span>
@@ -290,16 +296,15 @@ new #[Title('Start a clan')] #[Layout('layouts::app', ['section' => 'clans'])] c
                     @error('description')<span class="text-xs text-loss">{{ $message }}</span>@enderror
                 </label>
             </div>
-            <div class="flex flex-col gap-2">
-                <span class="text-xs text-ink-2">{{ __('logo') }}</span>
-                {{-- Logo slot: own uploads come with the imagery pass. --}}
-                <span class="flex size-[132px] items-center justify-center overflow-hidden rounded-lg bg-[repeating-linear-gradient(135deg,#2A2016_0_8px,#1E1A12_8px_16px)] text-xs text-btc-hi">
-                    @if ($picture)<img src="{{ $picture }}" alt="" class="size-full object-cover" loading="lazy">@else{{ __('no logo yet') }}@endif
-                </span>
-                <div class="mt-1 flex flex-col gap-2">
-                    <span class="text-xs text-ink-2">{{ $picture ? __('Logo, taken from your meetup') : __('Logo, from your meetup') }}</span>
-                    <button type="button" disabled title="{{ __('Uploads come with the next update.') }}" class="flex h-11 cursor-not-allowed items-center justify-center rounded-lg border border-edge bg-well px-3.5 text-[13px] text-ink-3">{{ __('Upload image') }}</button>
-                </div>
+            {{-- Own uploads come with a later update: the strip says so, the meetup's logo shows in it once picked. --}}
+            <div class="flex min-h-11 items-center gap-3 rounded-[4px] border border-dashed border-edge px-3 py-2 text-[13px] text-ink-2" data-test="create-logo">
+                @if ($picture)
+                    <img src="{{ $picture }}" alt="" class="size-10 shrink-0 rounded-[4px] object-cover" loading="lazy">
+                    <span>{{ __('Logo, taken from your meetup') }}</span>
+                @else
+                    <x-icon name="upload" :size="16" class="shrink-0 text-ink-3" />
+                    <span>{{ __('no logo yet') }}. {{ __('Uploads come with the next update.') }}</span>
+                @endif
             </div>
         </div>
 
@@ -325,21 +330,22 @@ new #[Title('Start a clan')] #[Layout('layouts::app', ['section' => 'clans'])] c
             <span class="text-xs leading-normal text-ink-2">{{ __('We save the clan and make you its captain in one step.') }}</span>
         </div>
     </form>
+    </div>
 
-    <section aria-label="{{ __('Preview') }}" class="grid grid-cols-1 gap-7 rounded-lg bg-card px-4 py-5 lg:grid-cols-2 lg:px-6">
+    <section aria-label="{{ __('Preview') }}" class="rv-card flex min-w-0 flex-col gap-6 p-4 lg:col-span-4" data-test="create-preview">
         <div class="flex flex-col gap-3">
             <span class="flex items-baseline justify-between"><h2 class="m-0 text-[15px] font-bold">{{ __('How your clan shows up') }}</h2><span class="text-xs text-ink-3">{{ __('clan list') }}</span></span>
-            <div class="grid grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3.5 rounded-md bg-ground p-3.5 shadow-ring">
+            <div class="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-x-3.5 gap-y-2 rounded-[4px] border border-line bg-ground p-3.5">
                 <span class="flex size-11 items-center justify-center rounded-md bg-btc-tint text-xs font-bold text-btc">{{ $tag }}</span>
                 <span class="flex min-w-0 flex-col gap-1"><b class="truncate text-sm">{{ $name ?: __('Your clan') }}</b><span class="text-xs text-ink-3">{{ __('1 player, no lineups yet') }}</span></span>
-                <span class="flex flex-col items-end gap-1"><b class="font-display text-base">–</b><span class="hidden text-xs text-ink-3 sm:inline">{{ __('Clan Rating, needs 3 rated players') }}</span></span>
+                <span class="col-span-2 flex items-baseline gap-2 border-t border-hairline pt-2"><b class="font-display text-base">–</b><span class="text-xs text-ink-3">{{ __('Clan Rating, needs 3 rated players') }}</span></span>
             </div>
             <span class="text-xs leading-normal text-ink-3">{{ __('Once created, your clan link to share shows up here.') }}</span>
         </div>
         <div class="flex flex-col">
             <h2 class="m-0 pb-1.5 text-[15px] font-bold">{{ __('Your clan at the start') }}</h2>
             @foreach ([[__('Captain'), auth()->user()->displayName()], [__('Clan Rating'), __('average of your top 3 players, once 3 have a rating')], [__('Hashrate'), __('0, grows with every rated game a player plays')], [__('Lineups'), __('add them for Rocket League after creating')]] as [$key, $value])
-                <div class="grid min-h-9 grid-cols-[110px_minmax(0,1fr)] items-center gap-3 border-b border-hairline py-1 text-[13px] lg:grid-cols-[140px_minmax(0,1fr)]"><span class="text-ink-2">{{ $key }}</span><span>{{ $value }}</span></div>
+                <div class="flex flex-col gap-0.5 border-b border-hairline py-2 text-[13px]"><span class="text-xs text-ink-3">{{ $key }}</span><span>{{ $value }}</span></div>
             @endforeach
             <x-proof :rows="$proofRows" class="mt-3" />
         </div>

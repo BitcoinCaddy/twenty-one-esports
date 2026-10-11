@@ -848,9 +848,13 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
 
 <div class="mx-auto flex w-full max-w-[1232px] grow flex-col gap-5 px-4 pb-6"
      x-data="nostrAction({ pubkey: @js(auth()->user()->pubkey), messages: @js($messages) })">
+    {{--
+        ClanManage.dc.html (P7, template T-Settings): the head, the clan in numbers, then the roster and its lineups on the
+        left and the ways in (invite, applications, the join link) on the right, the clan's own details last.
+    --}}
     <div class="flex flex-wrap items-center gap-4">
         {{-- The clan logo, or the tag tile when there is none. --}}
-        <x-clan-tag :clan="$clan" :tile="52" class="flex size-[52px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#F9B25F,#F7931A_55%,#B9640A)] font-display text-[15px] font-extrabold text-on-btc" />
+        <x-clan-tag :clan="$clan" :tile="52" loading="eager" class="flex size-[52px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(135deg,#F9B25F,#F7931A_55%,#B9640A)] font-display text-[15px] font-extrabold text-on-btc" />
         <span class="flex min-w-0 flex-col gap-1.5">
             <span class="flex flex-wrap items-center gap-3">
                 <h1 class="m-0 font-display text-2xl font-bold lg:text-[28px]">{{ $clan->name }}</h1>
@@ -869,296 +873,13 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
         </span>
         <span class="hidden grow lg:block"></span>
         <span class="flex gap-2">
-            <button type="button" x-on:click="run('prepareLeave', 'leave')" x-bind:disabled="busy" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Leave clan') }}</button>
             <a href="{{ route('clans.show', $clan) }}" class="btn-w inline-flex h-11 items-center rounded-md border border-line bg-well px-4 text-[13px] whitespace-nowrap text-ink hover:text-ink">{{ __('Public clan page') }}</a>
+            <button type="button" x-on:click="run('prepareLeave', 'leave')" x-bind:disabled="busy" class="inline-flex h-11 cursor-pointer items-center rounded-[4px] border border-loss px-4 text-[13px] font-bold text-loss hover:bg-[color-mix(in_oklab,var(--color-loss)_12%,transparent)]">{{ __('Leave clan') }}</button>
         </span>
     </div>
 
     @error('clan')<p class="m-0 text-[13px] text-loss" role="alert">{{ $message }}</p>@enderror
     <p x-show="error" x-text="error" x-cloak class="m-0 text-[13px] text-loss" role="alert"></p>
-
-    {{-- Edit clan: a new version of the clan event, same d, same roster (layout of ClanCreate.dc.html) --}}
-    {{-- Opens and closes in the browser; its own actions render the island only, a save renders the page and closes it (clan-edited). --}}
-    <section id="edit-clan" aria-labelledby="edit-h" class="flex flex-col gap-3.5 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="edit-clan"
-             x-data="{ uploading: false, editOpen: false }" x-on:clan-edited.window="editOpen = false" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false"
-             x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false">
-        <span class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            <span class="flex flex-wrap items-baseline gap-x-4 gap-y-1"><h2 id="edit-h" class="m-0 text-[15px] font-bold">{{ __('Edit clan') }}</h2><span class="text-xs text-ink-3">{{ __('Name, tag, description, logo and meetup link') }}</span></span>
-            @if ($isOwner)
-                <button type="button" x-show="! editOpen" x-on:click="editOpen = true" data-test="open-edit" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Edit clan') }}</button>
-            @endif
-        </span>
-        @island(name: 'edit-clan', always: true)
-        @php($clan = $this->clan)
-        @if (! $this->isOwner)
-            <p class="m-0 text-[13px] text-ink-2">{{ __('Only the founder of :clan can edit it: the clan record is confirmed with their key.', ['clan' => $clan->name]) }}</p>
-        @else
-            @php($editMeetups = $this->meetups)
-            <div class="flex flex-col gap-3.5" x-show="editOpen" x-cloak data-test="edit-card">
-            <div class="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_260px]">
-                <div class="flex min-w-0 flex-col gap-[18px]">
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
-                        <label class="flex min-w-0 flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Name') }}</span>
-                            <input wire:model.blur="editName" required maxlength="64" data-test="edit-name" class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] text-ink">
-                            @error('editName')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
-                        </label>
-                        <label class="flex min-w-0 flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Tag, 2 to 4 characters') }}</span>
-                            <input wire:model.live.debounce.300ms="editClantag" required maxlength="4" aria-describedby="edit-tag-hint" data-test="edit-clantag" class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] font-bold text-ink uppercase">
-                        </label>
-                    </div>
-                    <div id="edit-tag-hint" class="-mt-2.5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 text-xs">
-                        <span class="text-ink-2">{{ __('Your tag shows on ladders, rankings and match cards.') }}</span>
-                        @switch($this->editTagStatus)
-                            @case('free')<span class="flex items-center gap-1.5 text-win"><x-icon name="check" :size="14" />{{ __(':tag is free', ['tag' => $editClantag]) }}</span>@break
-                            @case('taken')<span class="flex items-center gap-1.5 text-loss">{{ __(':tag is taken', ['tag' => $editClantag]) }}</span>@break
-                            @case('invalid')<span class="text-loss">{{ __('2 to 4 capital letters or digits.') }}</span>@break
-                            @default<span></span>
-                        @endswitch
-                        @if ($editClantag !== $clan->clantag)
-                            <span class="col-span-full text-ink-3">{{ __('The clan address stays the same. Links that use the old tag :tag stop working.', ['tag' => $clan->clantag]) }}</span>
-                        @endif
-                        @error('editClantag')<span class="col-span-full text-loss" role="alert">{{ $message }}</span>@enderror
-                    </div>
-                    <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Description, public') }}</span>
-                        <textarea wire:model.blur="editDescription" rows="3" maxlength="1000" data-test="edit-description" class="h-24 w-full resize-y rounded-lg border border-edge bg-ground px-3.5 py-3 text-[13px] leading-normal text-ink"></textarea>
-                        @error('editDescription')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
-                    </label>
-
-                    {{-- Meetup link: re-pick from the portal, or unlink --}}
-                    <div class="flex flex-col gap-2.5 rounded-md bg-ground p-4 shadow-ring">
-                        <label for="edit-meetup" class="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[13px]"><b>{{ __('Meetup') }}</b><span class="text-ink-3">{{ __('optional, links the clan to a meetup of the EINUNDZWANZIG portal') }}</span></label>
-                        @if ($editMeetupName)
-                            <span class="flex flex-wrap items-center justify-between gap-x-3 text-[13px]" data-test="edit-meetup-linked">
-                                <span class="min-w-0 truncate">{{ $editMeetupName }}@if ($editMeetupCity)<span class="text-ink-3">, {{ $editMeetupCity }}</span>@endif</span>
-                                <button type="button" wire:click="forgetMeetup" class="min-h-11 cursor-pointer text-xs text-ink-2 hover:text-ink">{{ __('Remove link') }}</button>
-                            </span>
-                        @endif
-                        <span class="relative block">
-                            <x-icon name="search" :size="16" class="pointer-events-none absolute top-3.5 left-3.5 text-ink-3" />
-                            <input id="edit-meetup" type="search" wire:model.live.debounce.400ms="meetupQuery" placeholder="{{ __('Search meetup or city') }}" autocomplete="off"
-                                   class="h-11 w-full rounded-lg border border-edge bg-card pr-3.5 pl-10 text-[13px] text-ink placeholder:text-ink-3">
-                        </span>
-                        @if ($editMeetups === null)
-                            <span class="text-xs text-loss" role="status">{{ __('The portal does not answer right now.') }}</span>
-                        @elseif (mb_strlen(trim($meetupQuery)) >= 2)
-                            <span class="text-xs text-ink-3">{{ trans_choice(':count match in the portal|:count matches in the portal', count($editMeetups)) }}</span>
-                            <ul class="m-0 flex list-none flex-col p-0">
-                                @foreach ($editMeetups as $meetup)
-                                    <li wire:key="edit-mu-{{ $meetup['id'] }}">
-                                        <button type="button" wire:click="pickMeetup({{ $meetup['id'] }})" @class(['tr flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-sm px-2 text-left text-[13px]', 'text-btc' => $editMeetupUrl !== null && $editMeetupUrl === $meetup['url']])>
-                                            <span class="truncate">{{ $meetup['name'] }}</span><span class="shrink-0 text-xs text-ink-3">{{ $meetup['city'] }}</span>
-                                        </button>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @endif
-                    </div>
-                </div>
-
-                {{-- Logo: live preview of the upload, square like the stored file --}}
-                <div class="flex flex-col gap-2">
-                    <span class="text-xs text-ink-2">{{ __('logo') }}</span>
-                    <span class="relative flex size-[132px] items-center justify-center overflow-hidden rounded-lg bg-[repeating-linear-gradient(135deg,#2A2016_0_8px,#1E1A12_8px_16px)] text-xs text-btc-hi" data-test="logo-preview">
-                        @if ($logo)
-                            <img src="{{ $logo->temporaryUrl() }}" alt="{{ __('Preview of the new logo') }}" class="size-full object-cover" data-test="logo-preview-upload">
-                        @elseif ($editPicture)
-                            <img src="{{ $editPicture }}" alt="{{ __('Current logo') }}" class="size-full object-cover" loading="lazy">
-                        @else
-                            {{ __('no logo yet') }}
-                        @endif
-                        <span wire:loading.flex wire:target="logo" class="absolute inset-0 items-center justify-center bg-ground/80 text-xs text-ink">{{ __('Uploading…') }}</span>
-                    </span>
-                    <span class="text-xs leading-normal text-ink-3">{{ __('PNG, JPG or WebP, up to 2 MB. Cropped to a square.') }}</span>
-                    @error('logo')<span class="text-xs text-loss" role="alert" data-test="logo-error">{{ $message }}</span>@enderror
-                    <div class="mt-1 flex flex-col gap-2">
-                        <label class="btn-w flex h-11 cursor-pointer items-center justify-center rounded-lg border border-edge bg-well px-3.5 text-[13px] text-ink focus-within:outline-2 focus-within:outline-btc">
-                            <input type="file" wire:model="logo" accept="image/png,image/jpeg,image/webp" class="sr-only" data-test="logo-input">
-                            {{ $logo || $editPicture ? __('Replace image') : __('Upload image') }}
-                        </label>
-                        @if ($editMeetupUrl)
-                            <button type="button" wire:click="useMeetupLogo" class="btn-w flex h-11 cursor-pointer items-center justify-center rounded-lg border border-edge bg-well px-3.5 text-[13px] text-ink">{{ __('Use meetup logo') }}</button>
-                        @endif
-                        @if ($logo || $editPicture)
-                            <button type="button" wire:click="removeLogo" data-test="remove-logo" class="min-h-11 cursor-pointer text-xs text-ink-2 hover:text-ink">{{ __('Remove logo') }}</button>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            @error('edit')<p class="m-0 text-[13px] text-loss" role="alert" data-test="edit-error">{{ $message }}</p>@enderror
-
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
-                <button type="button" x-on:click="run('prepareEdit', 'saveEdit')" x-bind:disabled="busy || uploading" data-test="save-edit"
-                        class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
-                    <x-icon name="shield-check" :size="18" />
-                    <span x-show="! busy">{{ __('Save changes') }}</span>
-                    <span x-show="busy" x-cloak>{{ __('Confirm in your signer…') }}</span>
-                </button>
-                <button type="button" wire:click="cancelEdit" x-on:click="editOpen = false" x-bind:disabled="busy" data-test="cancel-edit" class="min-h-11 cursor-pointer text-[13px] text-ink-2 hover:text-ink">{{ __('Cancel') }}</button>
-                <span class="basis-full text-xs leading-normal text-ink-2 sm:basis-auto">{{ __('You confirm a new clan record with your key. Members and lineups stay as they are.') }}</span>
-            </div>
-            </div>
-        @endif
-        @endisland
-    </section>
-
-    {{-- Invite a player: into the roster only --}}
-    <section id="invite" class="flex flex-col gap-3.5 rounded-lg bg-card px-4 py-5 lg:px-6">
-        <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 class="m-0 text-[15px] font-bold">{{ __('Invite a player') }}</h2><span class="text-xs text-ink-3">{{ __('They join the clan roster. You place them in lineups afterwards.') }}</span></span>
-        @if ($isOwner)
-            <div class="grid grid-cols-1 items-end gap-3.5 lg:grid-cols-[minmax(0,1fr)_auto]">
-                <x-player-picker id="invite-player" wire:model="player" allow-npub :label="__('Player')" :exclude="$members->pluck('user_id')->all()" :placeholder="__('Name, npub or profile link')"
-                                 input-class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] text-ink placeholder:text-ink-3" class="gap-2" />
-                <button type="button" x-on:click="run('prepareInvite', 'invite')" x-bind:disabled="busy" data-test="send-invite"
-                        class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
-                    <x-icon name="shield-check" :size="18" />{{ __('Send invite') }}
-                </button>
-            </div>
-            @error('player')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-            @if ($inviteLink)
-                <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-win" role="status">
-                    <x-icon name="check" :size="14" />{{ __('Invite ready. Send them this link:') }}
-                    <span class="min-w-0 truncate text-ink" data-test="invite-link">{{ $inviteLink }}</span>
-                    <button type="button" x-on:click="navigator.clipboard?.writeText(@js($inviteLink))" class="min-h-11 cursor-pointer text-btc">{{ __('Copy') }}</button>
-                </p>
-            @endif
-            <span class="flex items-start gap-2 text-xs leading-normal text-ink-2"><x-icon name="alert" :size="14" class="mt-px shrink-0 text-btc-hi" />{{ __('Only the invited player can accept. One player, one clan: accepting also leaves their current clan.') }}</span>
-        @else
-            <p class="m-0 text-[13px] text-ink-2">{{ __('Only the founder of :clan can add or remove players: the clan record is confirmed with their key.', ['clan' => $clan->name]) }}</p>
-        @endif
-    </section>
-
-    {{-- Join requests and the join link (P6b, States.dc.html "Join request, captain side") --}}
-    @php($requests = $this->joinRequests)
-    {{-- Applications (plan "Clan-Bewerbungen", P4) are join requests too: the form data on top, the same answers, a decline with an optional reply sent by the captain's signer as NIP-17. --}}
-    <section id="join-requests" aria-labelledby="jr-h" class="flex flex-col gap-3.5 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="join-requests"
-             x-data="clanDms({ me: @js(auth()->user()->pubkey), relays: @js(\App\Support\Nostr\NostrBar::browserRelays()), labels: @js([
-                 'sent' => __('Your reply went out as an encrypted Nostr message.'),
-                 'none' => __('Declined. Your reply did not reach the player as a Nostr message.'),
-                 'noSigner' => __('Declined. No Nostr signer was found to send your reply.'),
-                 'signer' => \App\Support\Nostr\SignerMessages::labels(),
-                 'no_nip44' => __("Your signer can't send private messages the modern way — update it or use one that supports NIP-44."),
-             ]) })">
-        <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 id="jr-h" class="m-0 text-[15px] font-bold">{{ __('Applications and join requests') }}</h2><span class="text-xs text-ink-3">{{ __(':clan, seen by captains only', ['clan' => $clan->name]) }}</span></span>
-        <label class="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-md bg-well px-3 py-2" data-test="applications-switch">
-            <span class="flex min-w-0 flex-col gap-0.5"><b class="text-[13px]">{{ __('Applications open') }}</b><span class="text-xs leading-normal text-ink-2">{{ $clan->applications_open ? __('Players can apply on the clan page and in the clan list.') : __('Nobody can apply right now. Join links still work.') }}</span></span>
-            <input type="checkbox" role="switch" @checked($clan->applications_open) wire:click="toggleApplications" data-test="applications-open"
-                   class="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:mt-0.5 before:block before:size-5 before:translate-x-0.5 before:rounded-full before:bg-ink-2 before:transition-transform checked:bg-btc checked:before:translate-x-[22px] checked:before:bg-on-btc motion-reduce:transition-none motion-reduce:before:transition-none">
-        </label>
-        @error('joinRequests')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-        <p class="m-0 text-xs text-ink-2" x-show="dmNote" x-text="dmNote" x-cloak role="status" data-test="decline-dm-note"></p>
-        <p class="m-0 text-xs text-loss" x-show="dmError" x-text="dmError" x-cloak role="alert" data-test="decline-dm-error"></p>
-        <p class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2" x-show="waiting.length > 0" x-cloak data-test="decline-dm-confirm">
-            <span x-text="@js(__('No DM inbox relays (NIP-17) for :count of them. Send it as an older NIP-04 message instead?')).replace(':count', waiting.length)"></span>
-            <button type="button" x-on:click="sendWaiting()" x-bind:disabled="dmBusy" data-test="decline-dm-nip04"
-                    class="inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Send as NIP-04') }}</button>
-        </p>
-        @forelse ($requests as $request)
-            @php($applicant = $request->user)
-            <div wire:key="jr-{{ $request->id }}" class="grid grid-cols-1 items-center gap-3 rounded-md px-3 py-3 shadow-ring lg:grid-cols-[minmax(0,1fr)_auto]" data-test="{{ $request->isApplication() ? 'application' : 'join-request' }}"
-                 x-data="{ replying: false, reply: '' }">
-                <span class="flex min-w-0 items-center gap-3">
-                    <x-avatar :user="$applicant" :size="40" class="rounded-md" />
-                    <span class="flex min-w-0 flex-col gap-0.5">
-                        <x-player-link :user="$applicant" class="inline-flex min-h-11 max-w-full items-center text-[15px] font-bold"><span class="truncate">{{ $applicant->displayName() }}</span></x-player-link>
-                        <span class="text-xs leading-normal text-ink-2">
-                            {{ trans_choice('Joined :count day ago|Joined :count days ago', (int) $applicant->created_at?->diffInDays(now())) }},
-                            {{ trans_choice(':count game played|:count games played', (int) $applicant->white_games_count + (int) $applicant->black_games_count) }}.
-                            {{ __('Asked :time.', ['time' => $request->created_at?->diffForHumans()]) }}
-                        </span>
-                        @if ($request->isApplication())
-                            <span class="flex flex-wrap gap-1.5 pt-1" data-test="application-fields">
-                                <span class="inline-flex h-6 items-center rounded-tag bg-btc-chip px-2 text-[11px] font-bold text-btc-hi">{{ __('Application') }}</span>
-                                @foreach ($request->games ?? [] as $slug)
-                                    <span class="inline-flex h-6 items-center rounded-tag bg-well px-2 text-[11px] text-ink">{{ app(GameRegistry::class)->name($slug) }}</span>
-                                @endforeach
-                                @foreach ($request->platforms ?? [] as $platform)
-                                    <span class="inline-flex h-6 items-center rounded-tag border border-line px-2 text-[11px] text-ink-2">{{ Platform::tryFrom($platform)?->label() ?? $platform }}</span>
-                                @endforeach
-                                @if ($request->timezone)
-                                    <span class="inline-flex h-6 items-center gap-1 rounded-tag border border-line px-2 text-[11px] text-ink-2"><x-icon name="clock" :size="12" />{{ $request->timezone }}</span>
-                                @endif
-                            </span>
-                            @if (filled($request->message))
-                                <span class="max-w-[68ch] text-[13px] leading-normal break-words text-ink" data-test="application-message">“{{ $request->message }}”</span>
-                            @endif
-                        @endif
-                        @if ($request->status === JoinRequestStatus::Approved)
-                            <span class="text-xs text-btc-hi" data-test="join-request-approved">{{ __('Approved by :name. Waiting for the founder to add them to the clan record.', ['name' => $request->decidedBy?->displayName() ?? '']) }}</span>
-                        @endif
-                    </span>
-                </span>
-                <span class="flex flex-wrap gap-2 lg:justify-end">
-                    @if ($isOwner)
-                        <button type="button" x-on:click="run('prepareListRequest', 'listRequest', {{ $request->id }})" x-bind:disabled="busy" data-test="approve-request"
-                                class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold text-on-btc disabled:cursor-wait disabled:opacity-70">
-                            <x-icon name="shield-check" :size="16" />{{ __('Approve') }}
-                        </button>
-                    @elseif ($request->status === JoinRequestStatus::Pending)
-                        <button type="button" wire:click="approveRequest({{ $request->id }})" data-test="approve-request"
-                                class="btn-p inline-flex h-11 cursor-pointer items-center justify-center rounded-md bg-btc px-5 text-sm font-bold text-on-btc">{{ __('Approve') }}</button>
-                    @endif
-                    @if ($request->isApplication())
-                        <button type="button" x-on:click="replying = true; $nextTick(() => $refs.reply.focus())" x-show="! replying" data-test="decline-request"
-                                class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
-                    @else
-                        <button type="button" wire:click="declineRequest({{ $request->id }})" data-test="decline-request"
-                                class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
-                    @endif
-                </span>
-                @if ($request->isApplication())
-                    <form x-show="replying" x-cloak class="flex flex-col gap-2 lg:col-span-2" data-test="decline-form"
-                          x-on:submit.prevent="const text = reply; deliver(await $wire.declineRequest({{ $request->id }}, text))">
-                        <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Reply to :name (optional, sent as an encrypted Nostr message from your signer)', ['name' => $applicant->displayName()]) }}</span>
-                            <textarea x-ref="reply" x-model="reply" maxlength="{{ ClanApplication::MESSAGE_MAX }}" rows="2" data-test="decline-reply"
-                                      class="w-full rounded-lg border border-edge bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink placeholder:text-ink-3"></textarea>
-                        </label>
-                        <span class="flex flex-wrap gap-2">
-                            <button type="submit" data-test="decline-confirm" x-bind:disabled="dmBusy"
-                                    class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] font-bold text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Decline application') }}</button>
-                            <button type="button" x-on:click="replying = false; reply = ''"
-                                    class="inline-flex h-11 cursor-pointer items-center rounded-md border-0 bg-transparent px-3 text-[13px] text-ink-2 hover:text-ink">{{ __('Cancel') }}</button>
-                        </span>
-                    </form>
-                @endif
-            </div>
-        @empty
-            <p class="m-0 text-[13px] text-ink-2">{{ $clan->applications_open ? __('No open applications. Players apply on your clan page or in the clan list, or share a join link below.') : __('No open requests. Share a join link and new players can ask to join.') }}</p>
-        @endforelse
-        <span class="text-xs leading-normal text-ink-3">{{ $isOwner
-            ? __('Approving adds the player to the clan record with your key; they join once they confirm their membership. Declining tells them plainly and closes the request.')
-            : __('Your yes goes to the founder, whose key adds the player to the clan record. Declining tells them plainly and closes the request.') }}</span>
-
-        <div class="flex flex-col gap-3 border-t border-hairline pt-4" data-test="join-link">
-            <span class="flex flex-col gap-1"><b class="text-[13px]">{{ __('Invite by link') }}</b><span class="text-xs leading-normal text-ink-2">{{ __('A join link for the roster. Everyone who uses it sends a request; a captain confirms each one. Lineups are set later, here.') }}</span></span>
-            <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Who can use it') }}</span>
-                    <select wire:model="joinLinkUses" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                        <option value="several">{{ __('Several players, one request each') }}</option>
-                        <option value="once">{{ __('One player') }}</option>
-                    </select>
-                </label>
-                <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Link works for') }}</span>
-                    <select wire:model.number="joinLinkHours" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
-                        @foreach (InviteLinkType::Clan->expiryChoices() as $hours)
-                            <option value="{{ $hours }}">{{ trans_choice(':count day|:count days', intdiv($hours, 24)) }}</option>
-                        @endforeach
-                    </select>
-                </label>
-                <button type="button" wire:click="createJoinLink" data-test="create-join-link"
-                        class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold whitespace-nowrap text-on-btc">
-                    <x-icon name="link" :size="16" />{{ __('Create join link') }}
-                </button>
-            </div>
-            @error('joinLink')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
-            @foreach ($this->joinLinks as $joinLink)
-                <a wire:key="jl-{{ $joinLink->id }}" href="{{ $joinLink->url() }}" class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline text-xs text-ink hover:text-ink">
-                    <span class="flex items-center gap-2"><x-icon name="link" :size="14" class="text-btc" />{{ __('Join link by :name', ['name' => $joinLink->inviter->displayName()]) }}</span>
-                    <span class="text-ink-2">{{ trans_choice('{0} not used yet|{1} used once|[2,*] used :count times', $joinLink->uses) }}, {{ __('open until :time', ['time' => $joinLink->expires_at->translatedFormat('M j, H:i')]) }}</span>
-                </a>
-            @endforeach
-        </div>
-    </section>
 
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div class="rounded-lg bg-card px-4 py-2 lg:px-6">
@@ -1185,8 +906,171 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
         </div>
     </div>
 
+    {{-- The ways in side by side (ClanManage.dc.html right column), then the roster with its lineups at full width:
+         its table needs the room (measured: at 7 of 12 columns the seats stacked and the roster labels overlapped). --}}
+    <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-2">
+        {{-- Invite a player: into the roster only --}}
+        <section id="invite" class="flex flex-col gap-3.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6">
+            <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 class="m-0 text-[15px] font-bold">{{ __('Invite a player') }}</h2><span class="text-xs text-ink-3">{{ __('They join the clan roster. You place them in lineups afterwards.') }}</span></span>
+            @if ($isOwner)
+                <div class="grid grid-cols-1 items-end gap-3.5 lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <x-player-picker id="invite-player" wire:model="player" allow-npub :label="__('Player')" :exclude="$members->pluck('user_id')->all()" :placeholder="__('Name, npub or profile link')"
+                                     input-class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] text-ink placeholder:text-ink-3" class="gap-2" />
+                    <button type="button" x-on:click="run('prepareInvite', 'invite')" x-bind:disabled="busy" data-test="send-invite"
+                            class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
+                        <x-icon name="shield-check" :size="18" />{{ __('Send invite') }}
+                    </button>
+                </div>
+                @error('player')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+                @if ($inviteLink)
+                    <p class="m-0 flex flex-wrap items-center gap-2 text-xs text-win" role="status">
+                        <x-icon name="check" :size="14" />{{ __('Invite ready. Send them this link:') }}
+                        <span class="min-w-0 truncate text-ink" data-test="invite-link">{{ $inviteLink }}</span>
+                        <button type="button" x-on:click="navigator.clipboard?.writeText(@js($inviteLink))" class="min-h-11 cursor-pointer text-btc">{{ __('Copy') }}</button>
+                    </p>
+                @endif
+                <span class="flex items-start gap-2 text-xs leading-normal text-ink-2"><x-icon name="alert" :size="14" class="mt-px shrink-0 text-btc-hi" />{{ __('Only the invited player can accept. One player, one clan: accepting also leaves their current clan.') }}</span>
+            @else
+                <p class="m-0 text-[13px] text-ink-2">{{ __('Only the founder of :clan can add or remove players: the clan record is confirmed with their key.', ['clan' => $clan->name]) }}</p>
+            @endif
+        </section>
+
+        {{-- Join requests and the join link (P6b, States.dc.html "Join request, captain side") --}}
+        @php($requests = $this->joinRequests)
+        {{-- Applications (plan "Clan-Bewerbungen", P4) are join requests too: the form data on top, the same answers, a decline with an optional reply sent by the captain's signer as NIP-17. --}}
+        <section id="join-requests" aria-labelledby="jr-h" class="flex flex-col gap-3.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="join-requests"
+                 x-data="clanDms({ me: @js(auth()->user()->pubkey), relays: @js(\App\Support\Nostr\NostrBar::browserRelays()), labels: @js([
+                     'sent' => __('Your reply went out as an encrypted Nostr message.'),
+                     'none' => __('Declined. Your reply did not reach the player as a Nostr message.'),
+                     'noSigner' => __('Declined. No Nostr signer was found to send your reply.'),
+                     'signer' => \App\Support\Nostr\SignerMessages::labels(),
+                     'no_nip44' => __("Your signer can't send private messages the modern way — update it or use one that supports NIP-44."),
+                 ]) })">
+            <span class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 id="jr-h" class="m-0 text-[15px] font-bold">{{ __('Applications and join requests') }}</h2><span class="text-xs text-ink-3">{{ __(':clan, seen by captains only', ['clan' => $clan->name]) }}</span></span>
+            <label class="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-md bg-well px-3 py-2" data-test="applications-switch">
+                <span class="flex min-w-0 flex-col gap-0.5"><b class="text-[13px]">{{ __('Applications open') }}</b><span class="text-xs leading-normal text-ink-2">{{ $clan->applications_open ? __('Players can apply on the clan page and in the clan list.') : __('Nobody can apply right now. Join links still work.') }}</span></span>
+                <input type="checkbox" role="switch" @checked($clan->applications_open) wire:click="toggleApplications" data-test="applications-open"
+                       class="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-raised transition-colors before:mt-0.5 before:block before:size-5 before:translate-x-0.5 before:rounded-full before:bg-ink-2 before:transition-transform checked:bg-btc checked:before:translate-x-[22px] checked:before:bg-on-btc motion-reduce:transition-none motion-reduce:before:transition-none">
+            </label>
+            @error('joinRequests')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+            <p class="m-0 text-xs text-ink-2" x-show="dmNote" x-text="dmNote" x-cloak role="status" data-test="decline-dm-note"></p>
+            <p class="m-0 text-xs text-loss" x-show="dmError" x-text="dmError" x-cloak role="alert" data-test="decline-dm-error"></p>
+            <p class="m-0 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-2" x-show="waiting.length > 0" x-cloak data-test="decline-dm-confirm">
+                <span x-text="@js(__('No DM inbox relays (NIP-17) for :count of them. Send it as an older NIP-04 message instead?')).replace(':count', waiting.length)"></span>
+                <button type="button" x-on:click="sendWaiting()" x-bind:disabled="dmBusy" data-test="decline-dm-nip04"
+                        class="inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Send as NIP-04') }}</button>
+            </p>
+            @forelse ($requests as $request)
+                @php($applicant = $request->user)
+                <div wire:key="jr-{{ $request->id }}" class="grid grid-cols-1 items-center gap-3 rounded-md px-3 py-3 shadow-ring lg:grid-cols-[minmax(0,1fr)_auto]" data-test="{{ $request->isApplication() ? 'application' : 'join-request' }}"
+                     x-data="{ replying: false, reply: '' }">
+                    <span class="flex min-w-0 items-center gap-3">
+                        <x-avatar :user="$applicant" :size="40" class="rounded-md" />
+                        <span class="flex min-w-0 flex-col gap-0.5">
+                            <x-player-link :user="$applicant" class="inline-flex min-h-11 max-w-full items-center text-[15px] font-bold"><span class="truncate">{{ $applicant->displayName() }}</span></x-player-link>
+                            <span class="text-xs leading-normal text-ink-2">
+                                {{ trans_choice('Joined :count day ago|Joined :count days ago', (int) $applicant->created_at?->diffInDays(now())) }},
+                                {{ trans_choice(':count game played|:count games played', (int) $applicant->white_games_count + (int) $applicant->black_games_count) }}.
+                                {{ __('Asked :time.', ['time' => $request->created_at?->diffForHumans()]) }}
+                            </span>
+                            @if ($request->isApplication())
+                                <span class="flex flex-wrap gap-1.5 pt-1" data-test="application-fields">
+                                    <span class="inline-flex h-6 items-center rounded-tag bg-btc-chip px-2 text-[11px] font-bold text-btc-hi">{{ __('Application') }}</span>
+                                    @foreach ($request->games ?? [] as $slug)
+                                        <span class="inline-flex h-6 items-center rounded-tag bg-well px-2 text-[11px] text-ink">{{ app(GameRegistry::class)->name($slug) }}</span>
+                                    @endforeach
+                                    @foreach ($request->platforms ?? [] as $platform)
+                                        <span class="inline-flex h-6 items-center rounded-tag border border-line px-2 text-[11px] text-ink-2">{{ Platform::tryFrom($platform)?->label() ?? $platform }}</span>
+                                    @endforeach
+                                    @if ($request->timezone)
+                                        <span class="inline-flex h-6 items-center gap-1 rounded-tag border border-line px-2 text-[11px] text-ink-2"><x-icon name="clock" :size="12" />{{ $request->timezone }}</span>
+                                    @endif
+                                </span>
+                                @if (filled($request->message))
+                                    <span class="max-w-[68ch] text-[13px] leading-normal break-words text-ink" data-test="application-message">“{{ $request->message }}”</span>
+                                @endif
+                            @endif
+                            @if ($request->status === JoinRequestStatus::Approved)
+                                <span class="text-xs text-btc-hi" data-test="join-request-approved">{{ __('Approved by :name. Waiting for the founder to add them to the clan record.', ['name' => $request->decidedBy?->displayName() ?? '']) }}</span>
+                            @endif
+                        </span>
+                    </span>
+                    <span class="flex flex-wrap gap-2 lg:justify-end">
+                        @if ($isOwner)
+                            <button type="button" x-on:click="run('prepareListRequest', 'listRequest', {{ $request->id }})" x-bind:disabled="busy" data-test="approve-request"
+                                    class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold text-on-btc disabled:cursor-wait disabled:opacity-70">
+                                <x-icon name="shield-check" :size="16" />{{ __('Approve') }}
+                            </button>
+                        @elseif ($request->status === JoinRequestStatus::Pending)
+                            <button type="button" wire:click="approveRequest({{ $request->id }})" data-test="approve-request"
+                                    class="btn-p inline-flex h-11 cursor-pointer items-center justify-center rounded-md bg-btc px-5 text-sm font-bold text-on-btc">{{ __('Approve') }}</button>
+                        @endif
+                        @if ($request->isApplication())
+                            <button type="button" x-on:click="replying = true; $nextTick(() => $refs.reply.focus())" x-show="! replying" data-test="decline-request"
+                                    class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
+                        @else
+                            <button type="button" wire:click="declineRequest({{ $request->id }})" data-test="decline-request"
+                                    class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Decline') }}</button>
+                        @endif
+                    </span>
+                    @if ($request->isApplication())
+                        <form x-show="replying" x-cloak class="flex flex-col gap-2 lg:col-span-2" data-test="decline-form"
+                              x-on:submit.prevent="const text = reply; deliver(await $wire.declineRequest({{ $request->id }}, text))">
+                            <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Reply to :name (optional, sent as an encrypted Nostr message from your signer)', ['name' => $applicant->displayName()]) }}</span>
+                                <textarea x-ref="reply" x-model="reply" maxlength="{{ ClanApplication::MESSAGE_MAX }}" rows="2" data-test="decline-reply"
+                                          class="w-full rounded-lg border border-edge bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink placeholder:text-ink-3"></textarea>
+                            </label>
+                            <span class="flex flex-wrap gap-2">
+                                <button type="submit" data-test="decline-confirm" x-bind:disabled="dmBusy"
+                                        class="btn-w inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-4 text-[13px] font-bold text-ink disabled:cursor-wait disabled:opacity-70">{{ __('Decline application') }}</button>
+                                <button type="button" x-on:click="replying = false; reply = ''"
+                                        class="inline-flex h-11 cursor-pointer items-center rounded-md border-0 bg-transparent px-3 text-[13px] text-ink-2 hover:text-ink">{{ __('Cancel') }}</button>
+                            </span>
+                        </form>
+                    @endif
+                </div>
+            @empty
+                <p class="m-0 text-[13px] text-ink-2">{{ $clan->applications_open ? __('No open applications. Players apply on your clan page or in the clan list, or share a join link below.') : __('No open requests. Share a join link and new players can ask to join.') }}</p>
+            @endforelse
+            <span class="text-xs leading-normal text-ink-3">{{ $isOwner
+                ? __('Approving adds the player to the clan record with your key; they join once they confirm their membership. Declining tells them plainly and closes the request.')
+                : __('Your yes goes to the founder, whose key adds the player to the clan record. Declining tells them plainly and closes the request.') }}</span>
+
+            <div class="flex flex-col gap-3 border-t border-hairline pt-4" data-test="join-link">
+                <span class="flex flex-col gap-1"><b class="text-[13px]">{{ __('Invite by link') }}</b><span class="text-xs leading-normal text-ink-2">{{ __('A join link for the roster. Everyone who uses it sends a request; a captain confirms each one. Lineups are set later, here.') }}</span></span>
+                <div class="grid grid-cols-1 items-end gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Who can use it') }}</span>
+                        <select wire:model="joinLinkUses" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
+                            <option value="several">{{ __('Several players, one request each') }}</option>
+                            <option value="once">{{ __('One player') }}</option>
+                        </select>
+                    </label>
+                    <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Link works for') }}</span>
+                        <select wire:model.number="joinLinkHours" class="h-11 w-full rounded-lg border border-edge bg-ground px-3 text-[13px] text-ink">
+                            @foreach (InviteLinkType::Clan->expiryChoices() as $hours)
+                                <option value="{{ $hours }}">{{ trans_choice(':count day|:count days', intdiv($hours, 24)) }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <button type="button" wire:click="createJoinLink" data-test="create-join-link"
+                            class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md bg-btc px-5 text-sm font-bold whitespace-nowrap text-on-btc">
+                        <x-icon name="link" :size="16" />{{ __('Create join link') }}
+                    </button>
+                </div>
+                @error('joinLink')<p class="m-0 text-xs text-loss" role="alert">{{ $message }}</p>@enderror
+                @foreach ($this->joinLinks as $joinLink)
+                    <a wire:key="jl-{{ $joinLink->id }}" href="{{ $joinLink->url() }}" class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-hairline text-xs text-ink hover:text-ink">
+                        <span class="flex items-center gap-2"><x-icon name="link" :size="14" class="text-btc" />{{ __('Join link by :name', ['name' => $joinLink->inviter->displayName()]) }}</span>
+                        <span class="text-ink-2">{{ trans_choice('{0} not used yet|{1} used once|[2,*] used :count times', $joinLink->uses) }}, {{ __('open until :time', ['time' => $joinLink->expires_at->translatedFormat('M j, H:i')]) }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+
+    </div>
+
     {{-- Lineups & members --}}
-    <section class="flex flex-col gap-2.5 rounded-lg bg-card px-4 py-5 lg:px-6">
+    <section class="flex flex-col gap-2.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6">
         <div class="flex flex-wrap items-end gap-x-6 border-b border-hairline">
             <h2 class="m-0 pb-3 font-display text-lg font-bold">{{ __('Lineups & members') }}</h2>
             <span role="tablist" aria-label="{{ __('Filter') }}" class="flex gap-1">
@@ -1348,4 +1232,130 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
             @endforelse
         </div>
     </section>
+
+    {{-- Edit clan: a new version of the clan event, same d, same roster (layout of ClanCreate.dc.html) --}}
+    {{-- Opens and closes in the browser; its own actions render the island only, a save renders the page and closes it (clan-edited). --}}
+    <section id="edit-clan" aria-labelledby="edit-h" class="flex flex-col gap-3.5 rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="edit-clan"
+             x-data="{ uploading: false, editOpen: false }" x-on:clan-edited.window="editOpen = false" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false"
+             x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false">
+        <span class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <span class="flex flex-wrap items-baseline gap-x-4 gap-y-1"><h2 id="edit-h" class="m-0 text-[15px] font-bold">{{ __('Edit clan') }}</h2><span class="text-xs text-ink-3">{{ __('Name, tag, description, logo and meetup link') }}</span></span>
+            @if ($isOwner)
+                <button type="button" x-show="! editOpen" x-on:click="editOpen = true" data-test="open-edit" class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-4 text-[13px] text-ink">{{ __('Edit clan') }}</button>
+            @endif
+        </span>
+        @island(name: 'edit-clan', always: true)
+        @php($clan = $this->clan)
+        @if (! $this->isOwner)
+            <p class="m-0 text-[13px] text-ink-2">{{ __('Only the founder of :clan can edit it: the clan record is confirmed with their key.', ['clan' => $clan->name]) }}</p>
+        @else
+            @php($editMeetups = $this->meetups)
+            <div class="flex flex-col gap-3.5" x-show="editOpen" x-cloak data-test="edit-card">
+            <div class="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_260px]">
+                <div class="flex min-w-0 flex-col gap-[18px]">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_200px]">
+                        <label class="flex min-w-0 flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Name') }}</span>
+                            <input wire:model.blur="editName" required maxlength="64" data-test="edit-name" class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] text-ink">
+                            @error('editName')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
+                        </label>
+                        <label class="flex min-w-0 flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Tag, 2 to 4 characters') }}</span>
+                            <input wire:model.live.debounce.300ms="editClantag" required maxlength="4" aria-describedby="edit-tag-hint" data-test="edit-clantag" class="h-11 w-full rounded-lg border border-edge bg-ground px-3.5 text-[13px] font-bold text-ink uppercase">
+                        </label>
+                    </div>
+                    <div id="edit-tag-hint" class="-mt-2.5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 text-xs">
+                        <span class="text-ink-2">{{ __('Your tag shows on ladders, rankings and match cards.') }}</span>
+                        @switch($this->editTagStatus)
+                            @case('free')<span class="flex items-center gap-1.5 text-win"><x-icon name="check" :size="14" />{{ __(':tag is free', ['tag' => $editClantag]) }}</span>@break
+                            @case('taken')<span class="flex items-center gap-1.5 text-loss">{{ __(':tag is taken', ['tag' => $editClantag]) }}</span>@break
+                            @case('invalid')<span class="text-loss">{{ __('2 to 4 capital letters or digits.') }}</span>@break
+                            @default<span></span>
+                        @endswitch
+                        @if ($editClantag !== $clan->clantag)
+                            <span class="col-span-full text-ink-3">{{ __('The clan address stays the same. Links that use the old tag :tag stop working.', ['tag' => $clan->clantag]) }}</span>
+                        @endif
+                        @error('editClantag')<span class="col-span-full text-loss" role="alert">{{ $message }}</span>@enderror
+                    </div>
+                    <label class="flex flex-col gap-2"><span class="text-xs text-ink-2">{{ __('Description, public') }}</span>
+                        <textarea wire:model.blur="editDescription" rows="3" maxlength="1000" data-test="edit-description" class="h-24 w-full resize-y rounded-lg border border-edge bg-ground px-3.5 py-3 text-[13px] leading-normal text-ink"></textarea>
+                        @error('editDescription')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
+                    </label>
+
+                    {{-- Meetup link: re-pick from the portal, or unlink --}}
+                    <div class="flex flex-col gap-2.5 rounded-md bg-ground p-4 shadow-ring">
+                        <label for="edit-meetup" class="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[13px]"><b>{{ __('Meetup') }}</b><span class="text-ink-3">{{ __('optional, links the clan to a meetup of the EINUNDZWANZIG portal') }}</span></label>
+                        @if ($editMeetupName)
+                            <span class="flex flex-wrap items-center justify-between gap-x-3 text-[13px]" data-test="edit-meetup-linked">
+                                <span class="min-w-0 truncate">{{ $editMeetupName }}@if ($editMeetupCity)<span class="text-ink-3">, {{ $editMeetupCity }}</span>@endif</span>
+                                <button type="button" wire:click="forgetMeetup" class="min-h-11 cursor-pointer text-xs text-ink-2 hover:text-ink">{{ __('Remove link') }}</button>
+                            </span>
+                        @endif
+                        <span class="relative block">
+                            <x-icon name="search" :size="16" class="pointer-events-none absolute top-3.5 left-3.5 text-ink-3" />
+                            <input id="edit-meetup" type="search" wire:model.live.debounce.400ms="meetupQuery" placeholder="{{ __('Search meetup or city') }}" autocomplete="off"
+                                   class="h-11 w-full rounded-lg border border-edge bg-card pr-3.5 pl-10 text-[13px] text-ink placeholder:text-ink-3">
+                        </span>
+                        @if ($editMeetups === null)
+                            <span class="text-xs text-loss" role="status">{{ __('The portal does not answer right now.') }}</span>
+                        @elseif (mb_strlen(trim($meetupQuery)) >= 2)
+                            <span class="text-xs text-ink-3">{{ trans_choice(':count match in the portal|:count matches in the portal', count($editMeetups)) }}</span>
+                            <ul class="m-0 flex list-none flex-col p-0">
+                                @foreach ($editMeetups as $meetup)
+                                    <li wire:key="edit-mu-{{ $meetup['id'] }}">
+                                        <button type="button" wire:click="pickMeetup({{ $meetup['id'] }})" @class(['tr flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-sm px-2 text-left text-[13px]', 'text-btc' => $editMeetupUrl !== null && $editMeetupUrl === $meetup['url']])>
+                                            <span class="truncate">{{ $meetup['name'] }}</span><span class="shrink-0 text-xs text-ink-3">{{ $meetup['city'] }}</span>
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Logo: live preview of the upload, square like the stored file --}}
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs text-ink-2">{{ __('logo') }}</span>
+                    <span class="relative flex size-[132px] items-center justify-center overflow-hidden rounded-lg bg-[repeating-linear-gradient(135deg,#2A2016_0_8px,#1E1A12_8px_16px)] text-xs text-btc-hi" data-test="logo-preview">
+                        @if ($logo)
+                            <img src="{{ $logo->temporaryUrl() }}" alt="{{ __('Preview of the new logo') }}" class="size-full object-cover" data-test="logo-preview-upload">
+                        @elseif ($editPicture)
+                            <img src="{{ $editPicture }}" alt="{{ __('Current logo') }}" class="size-full object-cover" loading="lazy">
+                        @else
+                            {{ __('no logo yet') }}
+                        @endif
+                        <span wire:loading.flex wire:target="logo" class="absolute inset-0 items-center justify-center bg-ground/80 text-xs text-ink">{{ __('Uploading…') }}</span>
+                    </span>
+                    <span class="text-xs leading-normal text-ink-3">{{ __('PNG, JPG or WebP, up to 2 MB. Cropped to a square.') }}</span>
+                    @error('logo')<span class="text-xs text-loss" role="alert" data-test="logo-error">{{ $message }}</span>@enderror
+                    <div class="mt-1 flex flex-col gap-2">
+                        <label class="btn-w flex h-11 cursor-pointer items-center justify-center rounded-lg border border-edge bg-well px-3.5 text-[13px] text-ink focus-within:outline-2 focus-within:outline-btc">
+                            <input type="file" wire:model="logo" accept="image/png,image/jpeg,image/webp" class="sr-only" data-test="logo-input">
+                            {{ $logo || $editPicture ? __('Replace image') : __('Upload image') }}
+                        </label>
+                        @if ($editMeetupUrl)
+                            <button type="button" wire:click="useMeetupLogo" class="btn-w flex h-11 cursor-pointer items-center justify-center rounded-lg border border-edge bg-well px-3.5 text-[13px] text-ink">{{ __('Use meetup logo') }}</button>
+                        @endif
+                        @if ($logo || $editPicture)
+                            <button type="button" wire:click="removeLogo" data-test="remove-logo" class="min-h-11 cursor-pointer text-xs text-ink-2 hover:text-ink">{{ __('Remove logo') }}</button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            @error('edit')<p class="m-0 text-[13px] text-loss" role="alert" data-test="edit-error">{{ $message }}</p>@enderror
+
+            <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
+                <button type="button" x-on:click="run('prepareEdit', 'saveEdit')" x-bind:disabled="busy || uploading" data-test="save-edit"
+                        class="btn-p inline-flex h-11 cursor-pointer items-center justify-center gap-2.5 rounded-md bg-btc px-[22px] text-sm font-bold whitespace-nowrap text-on-btc disabled:cursor-wait disabled:opacity-70">
+                    <x-icon name="shield-check" :size="18" />
+                    <span x-show="! busy">{{ __('Save changes') }}</span>
+                    <span x-show="busy" x-cloak>{{ __('Confirm in your signer…') }}</span>
+                </button>
+                <button type="button" wire:click="cancelEdit" x-on:click="editOpen = false" x-bind:disabled="busy" data-test="cancel-edit" class="min-h-11 cursor-pointer text-[13px] text-ink-2 hover:text-ink">{{ __('Cancel') }}</button>
+                <span class="basis-full text-xs leading-normal text-ink-2 sm:basis-auto">{{ __('You confirm a new clan record with your key. Members and lineups stay as they are.') }}</span>
+            </div>
+            </div>
+        @endif
+        @endisland
+    </section>
+
 </div>
