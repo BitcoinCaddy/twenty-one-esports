@@ -160,14 +160,14 @@ it('plays fillers in turn while less than a minute of commentary is ready', func
     expect(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($second->id);
 });
 
-it('shows the script as a lower third while the workstation is off, and nothing while it is on', function () {
+it('never shows a script as a text lower third, with the workstation off or on', function () {
     $now = CarbonImmutable::now();
     CasterScript::query()->create([
         'kind' => CasterScript::SCENE, 'phase' => ScenePhase::BREAK, 'priority' => 0, 'text' => "Hey.\nHier ist die Liga.\nDritter Satz.",
         'facts_hash' => 'h', 'status' => CasterScript::QUEUED, 'estimated_seconds' => 3, 'expires_at' => $now->addMinutes(10),
     ]);
 
-    expect(casterSpool()->next(ScenePhase::BREAK, $now))->toBe(['clip' => null, 'caption' => 'Hey. Hier ist die Liga.', 'source' => 'caption']);
+    expect(casterSpool()->next(ScenePhase::BREAK, $now))->toBe(['clip' => null, 'caption' => null, 'source' => 'none']);
 
     Cache::put(ClipSpool::FETCHER_SEEN, $now->getTimestamp(), 600);
 

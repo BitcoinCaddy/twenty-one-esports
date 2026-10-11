@@ -159,15 +159,7 @@ class ClipSpool
             }
         }
 
-        if (! $this->fetcherOnline($now)) {
-            $script = CasterScript::query()->where('status', CasterScript::QUEUED)->where('kind', CasterScript::SCENE)
-                ->where('phase', $phase)->where('expires_at', '>', $now)->orderBy('id')->first();
-
-            if ($script !== null) {
-                return ['clip' => null, 'caption' => implode(' ', array_slice($script->sentences(), 0, 2)), 'source' => 'caption'];
-            }
-        }
-
+        // No text lower third, ever (user 2026-10-11: "diese Banner wollten wir nicht"): the spoken commentary is never shown as text.
         return ['clip' => null, 'caption' => null, 'source' => 'none'];
     }
 

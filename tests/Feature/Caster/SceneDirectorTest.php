@@ -118,7 +118,7 @@ it('lets a champion moment in at the end of the sentence on air, never mid-sente
         ->and($planner->at($start + 12, [], [], 'off', $champion)['scene'])->toBe(RotationPlanner::CHAMPION_SCENE);
 });
 
-it('shows the script as a lower third while the workstation is off', function () {
+it('shows no text lower third while the workstation is off', function () {
     $now = CarbonImmutable::now();
     CasterScript::query()->create([
         'kind' => CasterScript::SCENE, 'phase' => ScenePhase::forSlot(['kind' => RotationPlanner::LOOP, 'scene' => null], $now), 'priority' => 0,
@@ -128,7 +128,7 @@ it('shows the script as a lower third while the workstation is off', function ()
 
     $caption = casterDirector()->tick($planner, $planner->at((float) $now->getTimestamp(), []), (float) $now->getTimestamp());
 
-    expect($caption)->toBe('Hey. Hier ist die Liga.');
+    expect($caption)->toBeNull();
 });
 
 it('appends the lower third to a rotation scene only when a caption is set', function () {
