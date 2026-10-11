@@ -91,10 +91,11 @@
         </ol>
 
         @if ($week !== null)
-            {{-- The week's own rules (BlockfillRules::chips): data the nerds read, kept from the old hero (hybrid density). --}}
+            {{-- The week's own rules (BlockfillRules::chips): data the nerds read, kept from the old hero (hybrid density). A tag
+                 wraps rather than run off a phone ("Wird schneller: 1,3 Reihen/s → 2,8 Reihen/s" was 324 px in a 247 px column). --}}
             <ul class="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="{{ __('Rules') }}">
                 @foreach (\App\Support\Stacker\BlockfillRules::chips(app(\App\Support\Stacker\BlockfillWeeks::class)->difficultyOf($week)) as $rule)
-                    <li class="rv-tag" data-test="chip-rule">{{ $rule }}</li>
+                    <li class="rv-tag h-auto min-h-5 max-w-full py-0.5 whitespace-normal" data-test="chip-rule">{{ $rule }}</li>
                 @endforeach
             </ul>
         @endif

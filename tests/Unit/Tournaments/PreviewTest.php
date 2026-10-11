@@ -33,3 +33,14 @@ test('double elimination draws the lower rounds the engine keeps, and the reset 
         ->and(count($reset['rects']) - count($single['rects']))->toBe(1)
         ->and(array_column($reset['texts'], 'text'))->toContain('if needed');
 });
+
+test('the top row labels leave the drawing as columns: the group stage left of 58 %, the final stage from there to the edge', function () {
+    $split = Preview::heads(Preview::for(TournamentFormat::TwoStage, 16, new FormatOptions, 326, 196), 326);
+    $single = Preview::heads(Preview::for(TournamentFormat::SingleElimination, 8, new FormatOptions, 326, 196), 326);
+
+    expect(array_map(fn (array $head): array => [$head['text'], $head['end'], $head['left'], $head['width']], $split['heads']))
+        ->toBe([[':count groups', false, 0.0, 58.01], ['Final stage, top :count of each group', false, 58.01, 41.99]])
+        ->and(array_filter($split['texts'], fn (array $text): bool => $text['y'] <= 12))->toBe([])
+        // An end label shares the row half way: "Round 1" on the left, "Final" right-aligned up to the last column.
+        ->and(array_map(fn (array $head): array => [$head['text'], $head['end'], $head['left']], $single['heads']))->toBe([['Round 1', false, 0.0], ['Final', true, $single['heads'][0]['width']]]);
+});

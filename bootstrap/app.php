@@ -9,6 +9,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Ahead of `auth` and `can:` in every route: a banned key is logged out first, so a page that needs a login sends it there.
         $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: EndBannedSessions::class);
+
+        // The visitor's language before route-model binding: a 404 thrown there (/tournaments/999999) rendered English
+        // with lang="en" for a German session, because SetLocale had not run yet.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetLocale::class);
 
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,

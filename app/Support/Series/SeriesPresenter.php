@@ -9,6 +9,7 @@ use App\Models\NostrEvent;
 use App\Models\SeriesMatch;
 use App\Models\User;
 use App\Support\Chess\ChessTeamMatches;
+use App\Support\FairPlay\AccountLinks;
 use App\Support\GameNames;
 use App\Support\Matches\MatchBlocks;
 use App\Support\Nostr\NostrKeys;
@@ -33,6 +34,37 @@ final class SeriesPresenter
         'done' => ['#0F2417', '#4ADE80', 'M5 12.5 10 17 19 7'],
         'disputed' => ['#2A1214', '#F87171', 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'],
         'closed' => ['#1A1A1E', '#8B8B90', 'M6 6l12 12M18 6 6 18'],
+    ];
+
+    /**
+     * The reason of a league decision in the viewer's language. The league stores (and attests on Nostr) its own
+     * reasons in English; the ones it writes itself are translated here, two with the minutes the series allowed.
+     * A reason an admin typed is shown as typed.
+     */
+    public static function resolutionReason(?string $reason): ?string
+    {
+        if ($reason === null || $reason === '') {
+            return $reason;
+        }
+
+        if (preg_match('/^No-show reported; the other side did not answer within (\d+) minutes\.$/', $reason, $found) === 1) {
+            return __('No-show reported; the other side did not answer within :minutes minutes.', ['minutes' => $found[1]]);
+        }
+
+        if (preg_match('/^Report not answered within (\d+) minutes; confirmed by the league, unrated\.$/', $reason, $found) === 1) {
+            return __('Report not answered within :minutes minutes; confirmed by the league, unrated.', ['minutes' => $found[1]]);
+        }
+
+        return in_array($reason, self::LEAGUE_REASONS, true) ? __($reason) : $reason;
+    }
+
+    /** The reasons the league writes word for word (SeriesService, TournamentRunner, AccountLinks). */
+    private const LEAGUE_REASONS = [
+        'Entered by the tournament director.',
+        'Neither side checked in to the lobby in time.',
+        'Disqualified from the tournament by its organizer or an admin.',
+        'Withdrawn from the tournament: no player of the side has an account any more.',
+        AccountLinks::VOID_REASON,
     ];
 
     /**

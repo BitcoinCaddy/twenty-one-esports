@@ -241,7 +241,7 @@ new #[Layout('layouts::app', ['section' => 'mining'])] class extends Component
             {{-- Block 0 waits for the board; blocks 1 to 4 follow it (dashed, not mined yet). --}}
             <div class="flex items-center max-lg:hidden" aria-label="{{ __('Chain: Block 0 waits, then block 1 to 4') }}" role="img">
                 <span class="sn-genesis"><span class="rv-cube-tp"></span><span class="rv-cube-sd"></span>
-                    <span class="sn-genesis-fr"><b class="text-[11px]">{{ __('Genesis') }}</b><span class="font-display text-[18px] leading-[1.2] font-bold whitespace-nowrap">{{ __('Block 0') }}</span><span class="text-[10px] leading-[1.3]">{{ $ended ? __('season ended') : __('waits for the board') }}</span></span>
+                    <span class="sn-genesis-fr" data-test="genesis-cube"><b class="text-xs">{{ __('Genesis') }}</b><span class="font-display text-[18px] leading-[1.2] font-bold whitespace-nowrap">{{ __('Block 0') }}</span><span class="text-xs leading-[1.2]">{{ $ended ? __('season ended') : __('waits for the board') }}</span></span>
                 </span>
                 @foreach ([66, 60, 54, 48] as $index => $size)
                     <span class="sn-link" aria-hidden="true"></span>
@@ -322,8 +322,10 @@ new #[Layout('layouts::app', ['section' => 'mining'])] class extends Component
             <h2 id="eras-h" class="rv-h2">{{ __('What a win pays') }}</h2>
             <span class="rv-m">{{ $live || $ended ? __('sats per winner; halving each era') : __('sats per winner; halving each era, values from the Pre-Season draft') }}</span>
         </div>
-        {{-- The table scrolls inside its card on a narrow screen, never the page (it ran 970 px wide at 390). --}}
-        <div class="overflow-x-auto" data-test="mining-eras-scroll">
+        {{-- The table scrolls inside its card, never the page (it ran 970 px wide at 390, 2430 px in a 1342 px card at
+             1440): the edge fades say there is more on that side (the chain viewport's pattern), the region takes the
+             keyboard. --}}
+        <x-ui.scroll-x :label="__('What a win pays, scrolls sideways')" data-test="mining-eras-scroll">
             <table class="rv-tb sn-tb">
                 <thead>
                     <tr>
@@ -372,7 +374,7 @@ new #[Layout('layouts::app', ['section' => 'mining'])] class extends Component
                     @endforeach
                 </tbody>
             </table>
-        </div>
+        </x-ui.scroll-x>
         <div class="flex flex-col gap-1 p-4 rv-m">
             @unless (collect(array_keys($chain['rewards_now']))->filter(fn (string $key): bool => str_starts_with($key, 'chess/'))->every(fn (string $key): bool => ChainOverview::mines($key)))
                 <span data-test="rated-chess-not-open">{{ __('Chess counts once rated chess opens; until then –.') }}</span>
@@ -420,10 +422,11 @@ new #[Layout('layouts::app', ['section' => 'mining'])] class extends Component
                     <tbody>
                         @foreach ($this->ladders as $ladder)
                             <tr data-test="mining-ladder-{{ $ladder['slug'] }}">
-                                <td class="w-[60px]"><x-game-cover :game="$ladder['slug']" size="thumb" class="h-6 w-[43px] rounded-[2px] object-cover" /></td>
+                                {{-- Phones: no cover and the link as a 44 px chevron, so "Hyperbitcoinization" and the link fit 320 px (the row ran 418 px at 390). --}}
+                                <td class="w-[60px] max-sm:hidden"><x-game-cover :game="$ladder['slug']" size="thumb" class="h-6 w-[43px] rounded-[2px] object-cover" /></td>
                                 <td class="max-sm:w-full">{{ $ladder['name'] }}</td>
                                 <td class="text-ink-2 max-sm:hidden">{{ $ladder['modes'] }}</td>
-                                <td class="is-r"><a href="{{ $ladder['href'] }}" class="rv-lk inline-flex min-h-11 items-center whitespace-nowrap">{{ __('Open the ladder') }}</a></td>
+                                <td class="is-r max-sm:py-0 max-sm:pr-1"><a href="{{ $ladder['href'] }}" class="rv-lk inline-flex min-h-11 items-center justify-center whitespace-nowrap max-sm:min-w-11" data-test="mining-ladder-link"><span class="max-sm:sr-only">{{ __('Open the ladder') }}</span><x-icon name="next" :size="16" class="sm:hidden" /></a></td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -450,7 +453,7 @@ new #[Layout('layouts::app', ['section' => 'mining'])] class extends Component
                         </figure>
                     @endif
                     <table class="rv-tb">
-                        <thead><tr><th>{{ match (true) { $live => __('Rules in force now'), $ended => __('Rules at the season end'), default => __('Rules of the Pre-Season draft') } }}</th><th class="is-r">{{ __('Value') }}</th></tr></thead>
+                        <thead><tr><th class="max-sm:whitespace-normal">{{ match (true) { $live => __('Rules in force now'), $ended => __('Rules at the season end'), default => __('Rules of the Pre-Season draft') } }}</th><th class="is-r">{{ __('Value') }}</th></tr></thead>
                         <tbody>
                             @foreach ([
                                 [__('Game weights, per winning player'), collect($inForce->weights)->map(fn ($milli, $key) => $shortKey((string) $key).' '.SeasonRelease::factor((int) $milli).'×')->implode(', ')],

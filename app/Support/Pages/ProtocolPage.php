@@ -123,6 +123,20 @@ final class ProtocolPage
         ];
     }
 
+    /**
+     * A cell of the NIP's kind tables in the viewer's language. The NIP is English and stays the source; its cells are
+     * translated under their own prefix ("NIP: Challenge"), so a kind name never borrows the translation of the same
+     * English word elsewhere ("Challenge" is the verb "Herausfordern" on the buttons). A cell the NIP gained since shows
+     * in English until it is translated.
+     */
+    public static function local(string $cell): string
+    {
+        $key = 'NIP: '.$cell;
+        $translated = __($key);
+
+        return $translated === $key ? $cell : $translated;
+    }
+
     private static function plain(string $cell): string
     {
         $cell = (string) preg_replace('/\[([^\]]+)\]\([^)]*\)/', '$1', $cell);

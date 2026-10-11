@@ -89,8 +89,9 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
         </x-slot:side>
     </x-tournaments.page-head>
 
-    <div class="grid gap-4 lg:grid-cols-2">
-        <section class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6">
+    {{-- minmax(0, 1fr): an "auto" track took the proof's one-line summary and ran 44 px past a 320 px phone. --}}
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+        <section class="flex min-w-0 flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6">
             <dl class="m-0 flex flex-col">
                 @foreach ($rows as [$term, $value])
                     <div class="flex justify-between gap-3 border-b border-hairline py-2 text-[13px]"><dt class="shrink-0 text-ink-2">{{ $term }}</dt><dd class="m-0 min-w-0 truncate text-right" title="{{ $value }}">{{ $value }}</dd></div>
@@ -143,7 +144,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
         @endif
     </section>
 
-    <div class="grid gap-4 lg:grid-cols-2">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
         <section class="flex flex-col gap-3 rounded-lg bg-card px-4 py-5 lg:px-6">
             <h2 class="m-0 text-[15px] font-bold">{{ __('How the draw works') }}</h2>
             <ol class="m-0 flex flex-col gap-2 pl-5 text-[13px] leading-normal text-ink-2">

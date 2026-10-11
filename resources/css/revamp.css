@@ -81,6 +81,12 @@
         border-color: var(--color-edge);
     }
 
+    /* The field drops its own outline (it sits flush in the box), so the box carries the 2 px focus ring (rule R16). */
+    .rv-srch:has(input:focus-visible) {
+        outline: 2px solid var(--color-btc-hi);
+        outline-offset: 2px;
+    }
+
     .rv-srch input {
         align-self: stretch;
         width: 100%;
@@ -454,6 +460,14 @@
         white-space: nowrap;
     }
 
+    /* On a touch screen each event (it fills the row inside the two hairlines) is a 44 px target (rule R16); a mouse
+       keeps the board's 32 px. */
+    @media (pointer: coarse) {
+        .rv-tick {
+            height: 46px;
+        }
+    }
+
     .rv-tick-sep {
         width: 1px;
         height: 14px;
@@ -644,6 +658,42 @@
     .rv-chain-fade.is-r {
         right: 0;
         background: linear-gradient(270deg, var(--color-ground), rgb(10 10 11 / 0));
+    }
+
+    /* A wide table inside a card (<x-ui.scroll-x>): it scrolls, the page does not; card-coloured edge fades. */
+    .rv-xs {
+        position: relative;
+        min-width: 0;
+    }
+
+    .rv-xs-vp {
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-color: var(--color-edge) var(--color-card);
+        scrollbar-width: thin;
+    }
+
+    .rv-xs-vp:focus-visible {
+        outline-offset: -2px;
+    }
+
+    .rv-xs-fade {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 48px;
+        pointer-events: none;
+        transition: opacity 150ms ease-out;
+    }
+
+    .rv-xs-fade.is-l {
+        left: 0;
+        background: linear-gradient(90deg, var(--color-card), rgb(18 18 21 / 0));
+    }
+
+    .rv-xs-fade.is-r {
+        right: 0;
+        background: linear-gradient(270deg, var(--color-card), rgb(18 18 21 / 0));
     }
 
     .rv-chain-div {

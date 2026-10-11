@@ -176,7 +176,7 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
         <div class="flex min-w-0 grow flex-col gap-2">
             <span class="flex flex-wrap gap-2">
                 <span class="rv-tag">{{ $team ? __('Team match :number', ['number' => $match->label()]) : __('Series :number', ['number' => $match->label()]) }}</span>
-                <span class="rv-tag">{{ \App\Support\GameNames::game($match->game) }} {{ $match->mode }}{{ $team ? '' : ', '.__('Best of :n', ['n' => $match->best_of]) }}</span>
+                <span class="rv-tag h-auto min-h-5 max-w-full py-0.5 whitespace-normal">{{ \App\Support\GameNames::game($match->game) }} {{ $match->mode }}{{ $team ? '' : ', '.__('Best of :n', ['n' => $match->best_of]) }}</span>
                 <span class="rv-tag">{{ $match->rated ? __('Rated') : __('Casual') }}</span>
                 @if ($match->tournamentMatch !== null)
                     <a href="{{ route('tournaments.show', $match->tournamentMatch->tournament_id) }}" class="rv-tag is-btc hover:text-btc-hi"><x-icon name="trophy" :size="12" />{{ $match->tournamentMatch->tournament?->name }}</a>
@@ -184,7 +184,7 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
             </span>
             <h1 id="match-h" class="m-0 font-display text-[26px] leading-[1.15] font-bold [overflow-wrap:anywhere] lg:text-[30px]">{{ __(':a against :b', ['a' => $match->sideName('challenger'), 'b' => $match->sideName('challenged')]) }}</h1>
             <span class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span @class(['rv-tag h-6', 'is-ok' => str_contains($banner[1], 'win'), 'is-bad' => str_contains($banner[1], 'loss'), 'is-btc' => str_contains($banner[1], 'btc')]) data-test="match-banner">@if (str_contains($banner[1], 'win'))<x-icon name="check" :size="12" />@endif{{ $banner[0] }}</span>
+                <span @class(['rv-tag h-auto min-h-6 max-w-full py-0.5 whitespace-normal [overflow-wrap:anywhere]', 'is-ok' => str_contains($banner[1], 'win'), 'is-bad' => str_contains($banner[1], 'loss'), 'is-btc' => str_contains($banner[1], 'btc')]) data-test="match-banner">@if (str_contains($banner[1], 'win'))<x-icon name="check" :size="12" />@endif{{ $banner[0] }}</span>
                 @unless ($team)
                     <b class="font-display text-[34px] leading-none font-bold tabular-nums" data-test="match-score">{{ $wins['challenger'] }} : {{ $wins['challenged'] }}</b>
                 @endunless
@@ -322,7 +322,7 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
                     @endunless
                 </dl>
                 @if ($match->resolution_reason)
-                    <p class="mt-3 mb-0 rounded-[4px] bg-ground px-3.5 py-2.5 text-xs leading-normal text-ink-2 shadow-ring">{{ __('Admin decision') }}: {{ $match->resolution_reason }}</p>
+                    <p class="mt-3 mb-0 rounded-[4px] bg-ground px-3.5 py-2.5 text-xs leading-normal text-ink-2 shadow-ring">{{ __('Admin decision') }}: {{ \App\Support\Series\SeriesPresenter::resolutionReason($match->resolution_reason) }}</p>
                 @endif
             </section>
 

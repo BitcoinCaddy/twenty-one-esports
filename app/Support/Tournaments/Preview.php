@@ -56,6 +56,46 @@ final class Preview
         return ['rects' => $preview->rects, 'lines' => $preview->lines, 'texts' => $preview->texts];
     }
 
+    /**
+     * The labels of the drawing's top row (y at most 12), taken out of the SVG: as HTML they wrap in their own column and
+     * keep 12 px type at any width. Inside the SVG they scaled with it and ran past its right edge ("Final stage, top 2
+     * of each group" ended at 441 px in a 357 px wide drawing at 390). Each label gets its column in percent of the
+     * width: a start label from its x to the next label, an end label from the label before it to its x (half way when
+     * the neighbour's anchor points the other way). The rest stays in the SVG.
+     *
+     * @param  array{rects: list<array<string, mixed>>, lines: list<array<string, mixed>>, texts: list<array{x: float, y: float, text: string, anchor: string, replace: array<string, int|string>}>}  $shape
+     * @return array{heads: list<array{text: string, replace: array<string, int|string>, end: bool, left: float, width: float}>, texts: list<array{x: float, y: float, text: string, anchor: string, replace: array<string, int|string>}>}
+     */
+    public static function heads(array $shape, float $width): array
+    {
+        $heads = array_values(array_filter($shape['texts'], fn (array $text): bool => $text['y'] <= 12));
+        usort($heads, fn (array $a, array $b): int => $a['x'] <=> $b['x']);
+        $columns = [];
+
+        foreach ($heads as $index => $head) {
+            $previous = $heads[$index - 1] ?? null;
+            $next = $heads[$index + 1] ?? null;
+
+            if ($head['anchor'] === 'end') {
+                $from = $previous === null ? 0.0 : ($previous['anchor'] === 'end' ? $previous['x'] : ($previous['x'] + $head['x']) / 2);
+                $to = $head['x'];
+            } else {
+                $from = $head['x'];
+                $to = $next === null ? $width : ($next['anchor'] === 'end' ? ($head['x'] + $next['x']) / 2 : $next['x']);
+            }
+
+            $columns[] = [
+                'text' => $head['text'],
+                'replace' => $head['replace'],
+                'end' => $head['anchor'] === 'end',
+                'left' => round(100 * $from / $width, 2),
+                'width' => round(100 * max(0.0, $to - $from) / $width, 2),
+            ];
+        }
+
+        return ['heads' => $columns, 'texts' => array_values(array_filter($shape['texts'], fn (array $text): bool => $text['y'] > 12))];
+    }
+
     private function single(int $n, FormatOptions $options): void
     {
         $tree = $this->tree($n, 0, $this->width, 16, $this->height - ($options->thirdPlace ? 30 : 4), 0);

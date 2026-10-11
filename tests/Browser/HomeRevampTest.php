@@ -2,6 +2,8 @@
 
 use App\Enums\ChessEndReason;
 use App\Enums\IncomingPaymentStatus;
+use App\Enums\SeriesResolution;
+use App\Enums\SeriesStatus;
 use App\Enums\StackerRunStatus;
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentStatus;
@@ -13,6 +15,7 @@ use App\Models\ChessGame;
 use App\Models\ChessMove;
 use App\Models\IncomingPayment;
 use App\Models\Rating;
+use App\Models\SeriesMatch;
 use App\Models\StackerRun;
 use App\Models\Tournament;
 use App\Models\TournamentSignup;
@@ -263,4 +266,229 @@ test('the mempool chain moves sideways under a drag and brings the present back'
     $page->locator('[data-test=chain-present]')->click();
     BrowserWait::until($page, '() => !document.querySelector("[data-test=chain-present]").checkVisibility()', 3_000);
     expect($page->evaluate('() => { const vp = document.querySelector(".rv-chain-vp"); const x = document.querySelector("[x-ref=divider]").offsetLeft - vp.scrollLeft; return x >= 0 && x <= vp.clientWidth; }'))->toBeTrue();
+});
+
+/*
+| Revamp P9, the live attack on prod (2026-10-11): pages that ran past a 320 or 390 px phone in German or English, a
+| bracket caption cut off inside its SVG, a stepper label running into the next icon, a 404 in English for a German
+| session, the ticker eating the Tab order, and the header search without its focus ring. Each page at 320, 390 and
+| 1440 in both languages: no horizontal overflow, the console and every response quiet, and the probe of its defect.
+*/
+
+/** Overflow of the document and the outermost boxes past the right edge (not inside a clipping scroller). */
+const P9_OVERFLOW = <<<'JS'
+() => {
+    const vw = document.documentElement.clientWidth;
+    const culprits = [];
+    for (const el of document.querySelectorAll('body *')) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.right <= vw + 1) continue;
+        let clipped = false;
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+            if (getComputedStyle(p).overflowX !== 'visible' && p.getBoundingClientRect().right <= vw + 1) { clipped = true; break; }
+        }
+        if (!clipped) culprits.push((el.dataset.test || el.tagName.toLowerCase()) + ' ' + Math.round(r.right));
+    }
+    return { lang: document.documentElement.lang, overflow: document.documentElement.scrollWidth - vw, culprits: culprits.slice(-3) };
+}
+JS;
+
+/** The defect probes: each is null where its page part is absent. */
+const P9_PROBES = <<<'JS'
+async () => {
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 350));
+    await settle();
+    const box = (el) => el.getBoundingClientRect();
+    const visible = (sel) => [...document.querySelectorAll(sel)].filter((el) => el.checkVisibility());
+    // A text's own right edge: a range around its text, not its box.
+    const textRight = (el) => { const range = document.createRange(); range.selectNodeContents(el); return Math.max(...[...range.getClientRects()].map((r) => r.right)); };
+    const preview = visible('[data-test=preview-mobile], [data-test=preview-desktop], [data-test=bracket-preview] svg.tf-preview')[0] ?? null;
+    const svg = preview ? (preview.tagName === 'svg' ? preview : preview.querySelector('svg')) : null;
+    // The labels: HTML above the drawing, or text inside it (where they ran past its edge before).
+    const heads = preview ? [...preview.querySelectorAll('[data-test=preview-head]'), ...(svg ? svg.querySelectorAll('text') : [])] : [];
+    const steps = visible('[data-test=stage-stepper] > li');
+    const eras = document.querySelector('[data-test=mining-eras-scroll] .rv-xs-vp');
+    const when = document.querySelector('[data-test=when-start]');
+    const how = document.querySelector('[data-test=how-it-works]');
+    return {
+        previewSpill: svg && heads.length ? Math.round(Math.max(...heads.map(textRight)) - box(svg).right) : null,
+        // The rendered type size: CSS px in HTML, the font-size attribute times the drawing's scale in the SVG.
+        previewFont: heads.length ? Math.round(10 * Math.min(...heads.map((el) => el instanceof SVGElement
+            ? parseFloat(el.getAttribute('font-size')) * box(svg).width / svg.viewBox.baseVal.width
+            : parseFloat(getComputedStyle(el).fontSize)))) / 10 : null,
+        stepSpill: steps.length ? Math.round(Math.max(...steps.map((li) => textRight(li) - (box(li).right - parseFloat(getComputedStyle(li).paddingRight))))) : null,
+        whenGap: when && how && when.checkVisibility() ? Math.round(box(when).top - box(how).bottom) : null,
+        eras: eras ? await (async () => {
+            const fade = (side) => getComputedStyle(document.querySelector(`[data-test=mining-eras-scroll] [data-test=scroll-fade-${side}]`)).opacity;
+            const start = { scroll: eras.scrollWidth, client: eras.clientWidth, fadeL: fade('l'), fadeR: fade('r') };
+            eras.scrollLeft = eras.scrollWidth;
+            await settle();
+            const end = { endL: fade('l'), endR: fade('r') };
+            eras.scrollLeft = 0;
+            await settle();
+            return { ...start, ...end };
+        })() : null,
+        ruleTags: visible('[data-test=chip-rule]').map((el) => Math.round(box(el).right)),
+        badgeFonts: visible('[title="EINUNDZWANZIG Member"], [title="EINUNDZWANZIG-Mitglied"]').map((el) => getComputedStyle(el).fontSize),
+    };
+}
+JS;
+
+/** A page in the given language at the given width, the console collector armed. */
+function p9Page(?User $user, string $locale, int $width): mixed
+{
+    $page = visit($user === null ? '/robots.txt' : BrowserLogin::url($user))->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $page->setViewportSize($width, 900);
+    $page->goto(ComputeUrl::from(route('locale.switch', $locale, false)));
+
+    return $page;
+}
+
+test('P9: the pages of the live attack fit 320, 390 and 1440 px in German and English, quiet, each defect probed', function () {
+    // Prod's week: levels 2 to 5, the longest rule tag ("Wird schneller: 1,3 Reihen/s → 2,8 Reihen/s", 324 px at 390).
+    leagueWeeksApproved(Blockfill::SLUG, ['difficulty' => 't60e5g2s1c5']);
+    $admin = revampLeague();
+
+    // A two-stage tournament before its draw: the preview's "Final stage, top 2 of each group" label.
+    $groups = openTournament(['name' => 'Group Stage Cup', 'format' => TournamentFormat::TwoStage, 'capacity' => 16, 'starts_at' => now()->addDays(6)]);
+    foreach (User::factory()->count(5)->create() as $user) {
+        TournamentSignup::query()->create(['tournament_id' => $groups->id, 'user_id' => $user->id, 'name' => $user->displayName(), 'members' => [$user->id]]);
+    }
+
+    // A series a long name won, decided by the league with one of its own reasons.
+    $series = SeriesMatch::factory()->accepted()->create();
+    $series->forceFill(['status' => SeriesStatus::Resolved, 'resolution' => SeriesResolution::Admin, 'winner' => 'challenger', 'challenger_name' => 'El Presidento Ben and the longest clan',
+        'result_games' => [['challenger' => 3, 'challenged' => 1, 'winner' => 'challenger']], 'finished_at' => now(),
+        'resolution_reason' => 'Report not answered within 30 minutes; confirmed by the league, unrated.'])->save();
+
+    $pages = [
+        'mining' => route('mining', [], false),
+        'scores blockfill' => route('scores.show', 'blockfill', false),
+        'tournament' => route('tournaments.show', $groups, false),
+        'draw' => route('tournaments.draw', $groups, false),
+        'match' => route('matches.show', $series, false),
+        'aoe ladder' => route('ladder.show', ['age-of-empires-2', '1v1'], false),
+        'protocol' => route('protocol', [], false),
+        'member' => route('players.show', User::factory()->member()->create(['name' => 'Mitglied Mia'])->npub, false),
+    ];
+    $seen = [];
+    $probes = [];
+    $quiet = [];
+    $texts = [];
+
+    foreach (['de', 'en'] as $locale) {
+        $page = p9Page($admin, $locale, 320);
+
+        foreach ($pages as $name => $path) {
+            $page->setViewportSize(320, 900);
+            $page->goto(ComputeUrl::from($path));
+            $page->waitForLoadState('networkidle');
+
+            foreach ([320, 390, 1440] as $width) {
+                $page->setViewportSize($width, 900);
+                $read = $page->evaluate(P9_OVERFLOW);
+                $seen["{$name} {$locale} {$width}"] = $read['overflow'] > 0 || $read['lang'] !== $locale ? $read : null;
+                $probes["{$name} {$locale} {$width}"] = array_filter($page->evaluate(P9_PROBES), fn ($value): bool => $value !== null && $value !== []);
+                revampShot($page, 'p9-'.str_replace(' ', '-', $name)."-{$locale}-{$width}");
+            }
+
+            $quiet["{$name} {$locale}"] = [...$page->evaluate('() => window.__errors'), ...$page->evaluate(BrowserConsole::BAD_RESPONSES)];
+            $texts["{$name} {$locale}"] = $page->evaluate('() => document.querySelector("main").innerText');
+        }
+    }
+
+    fwrite(STDERR, "\n[P9 overflow] ".json_encode(array_filter($seen))."\n[P9 probes] ".json_encode($probes));
+
+    expect(array_filter($seen))->toBe([])
+        ->and(array_filter($quiet))->toBe([])
+        // German where the league writes the text: its own decision reasons and the NIP's kind tables.
+        ->and($texts['match de'])->toContain('Meldung nicht innerhalb von 30 Minuten beantwortet; von der Liga bestätigt, ungewertet.')
+        ->and($texts['match en'])->toContain('Report not answered within 30 minutes; confirmed by the league, unrated.')
+        ->and($texts['protocol de'])->toContain('Herausforderung', 'handelnder Captain eines der beiden Lineups', 'adressierbar')
+        ->and($texts['protocol en'])->toContain('acting captain of either lineup');
+
+    foreach ($probes as $label => $probe) {
+        if (isset($probe['previewSpill'])) {
+            expect($probe['previewSpill'])->toBeLessThanOrEqual(1, "{$label}: a preview label runs past its drawing")
+                ->and($probe['previewFont'])->toBeGreaterThanOrEqual(12, "{$label}: preview label type (rule R16: 12 px and up)");
+        }
+        if (isset($probe['badgeFonts'])) {
+            expect(array_unique($probe['badgeFonts']))->toBe(['12px'], "{$label}: the member badge's type (rule R16: 12 px and up)");
+        }
+        if (isset($probe['stepSpill'])) {
+            expect($probe['stepSpill'])->toBeLessThanOrEqual(0, "{$label}: a stepper label runs into the next step");
+        }
+        if (isset($probe['whenGap'])) {
+            expect($probe['whenGap'])->toBeGreaterThanOrEqual(32, "{$label}: the date block under the steps");
+        }
+        if (isset($probe['eras']) && $probe['eras']['scroll'] > $probe['eras']['client']) {
+            expect([$probe['eras']['fadeL'], $probe['eras']['fadeR'], $probe['eras']['endL'], $probe['eras']['endR']])->toBe(['0', '1', '1', '0'], "{$label}: the eras table's edge fades follow its scroll");
+        }
+    }
+
+    // The probes saw their parts at all: the preview, the stepper, the date block, the eras table and the rule tags.
+    $saw = fn (string $key): int => collect($probes)->filter(fn (array $probe): bool => isset($probe[$key]))->count();
+    expect([$saw('previewSpill') >= 6, $saw('stepSpill') >= 2, $saw('whenGap') >= 6, $saw('eras') >= 6, $saw('ruleTags') >= 6, $saw('badgeFonts') >= 6])->toBe([true, true, true, true, true, true]);
+
+    // A model 404 answers in the session's language.
+    $page = p9Page(null, 'de', 390);
+    $page->goto(ComputeUrl::from('/tournaments/999999'));
+    expect($page->evaluate('() => [document.documentElement.lang, document.querySelector("h1")?.innerText.trim()]'))->toBe(['de', 'Diese Seite gibt es nicht']);
+});
+
+test('P9: the ticker is one tab stop that arrow keys walk, the header search shows its 2 px ring, the member link is 44 px tall', function () {
+    revampLeague();
+    $page = p9Page(null, 'en', 1440);
+    $page->goto(ComputeUrl::from('/'));
+    $page->waitForLoadState('networkidle');
+
+    $tab = $page->evaluate(<<<'JS'
+        () => {
+            const tabbable = [...document.querySelectorAll('a[href], button, input, select, textarea, summary, [tabindex]')]
+                .filter((el) => el.tabIndex >= 0 && !el.disabled && el.checkVisibility());
+            const items = [...document.querySelectorAll('[data-test=live-bar-item]')];
+            items[0].focus();
+            items[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+            const second = document.activeElement === items[1];
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+            const last = document.activeElement === items[items.length - 1];
+            return { items: items.length, inFirst22: tabbable.slice(0, 22).filter((el) => el.dataset.test === 'live-bar-item').length, second, last,
+                height: Math.round(items[0].getBoundingClientRect().height) };
+        }
+        JS);
+
+    $page->evaluate('() => document.querySelector("#site-search-inline").focus()');
+    $ring = $page->evaluate('() => { const s = getComputedStyle(document.querySelector("[data-test=search-inline]")); return [s.outlineStyle, s.outlineWidth, s.outlineColor]; }');
+
+    $login = p9Page(null, 'de', 390);
+    $login->goto(ComputeUrl::from('/login'));
+    $member = $login->evaluate('() => Math.round(document.querySelector("[data-test=login-member] a[href*=verein]").getBoundingClientRect().height)');
+
+    // On a touch screen each event is a 44 px target (rule R16); the mouse keeps the board's 32 px row.
+    $touch = visit('/')->on()->mobile()->page()->evaluate('() => [matchMedia("(pointer: coarse)").matches, Math.round(document.querySelector("[data-test=live-bar-item]").getBoundingClientRect().height)]');
+    expect($touch[0])->toBeTrue('the mobile device has a coarse pointer')
+        ->and($touch[1])->toBeGreaterThanOrEqual(44);
+
+    // "New here?" on a phone: the first step reads whole, clear of the 48 px edge fade (it was cut mid-word at 390).
+    $steps = [];
+    foreach (['de', 'en'] as $locale) {
+        foreach ([320, 390] as $width) {
+            $guest = p9Page(null, $locale, $width);
+            $guest->goto(ComputeUrl::from('/games'));
+            $steps["{$locale} {$width}"] = $guest->evaluate('() => { const ol = document.querySelector("[data-test=first-steps-list]"); if (!ol || !ol.checkVisibility()) return null; const r = ol.getBoundingClientRect(); return [...ol.children].map((li) => Math.round(r.right - 48 - li.getBoundingClientRect().right)); }');
+        }
+    }
+
+    fwrite(STDERR, "\n[P9 keyboard] ".json_encode(compact('tab', 'ring', 'member', 'steps', 'touch')));
+
+    expect(collect($steps)->filter(fn (?array $clearance): bool => $clearance === null || $clearance[0] < 0)->keys()->all())->toBe([]);
+
+    expect($tab['items'])->toBeGreaterThan(1)
+        ->and($tab['inFirst22'])->toBe(1)
+        ->and($tab['second'])->toBeTrue()
+        ->and($tab['last'])->toBeTrue()
+        ->and($tab['height'])->toBeGreaterThanOrEqual(24)
+        ->and($ring)->toBe(['solid', '2px', 'rgb(249, 178, 95)'])
+        ->and($member)->toBeGreaterThanOrEqual(44);
 });
