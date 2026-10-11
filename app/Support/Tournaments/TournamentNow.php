@@ -204,7 +204,8 @@ final class TournamentNow
             return [...$face, 'state' => 'room', 'title' => (string) __('Join your lobby'), 'context' => $context,
                 'line' => $series->start_at === null ? null : (string) __('Your match starts :time. Check in in the match room before.', ['time' => $series->start_at->copy()->setTimezone(self::zone($viewer))->translatedFormat('D j M, H:i')]),
                 'action' => ['label' => (string) __('Open your match room'), 'href' => route('matches.room', $series), 'icon' => 'next'],
-                'lobby' => ['name' => $series->lobby_name, 'password' => $series->lobby_password, 'chat' => $series->isCasualPairing()]];
+                // A casual cup with the league's lobby (LeagueLobby, P5) shows it here too; a chat-shared lobby is named in the chat only.
+                'lobby' => ['name' => $series->lobby_name, 'password' => $series->lobby_password, 'chat' => $series->isCasualPairing() && ! LeagueLobby::isLeagueMade($series)]];
         }
 
         if ($cup !== null && ($cup['series'] ?? false)) {

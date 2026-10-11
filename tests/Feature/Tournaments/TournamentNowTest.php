@@ -227,8 +227,9 @@ test('a Rocket League cup match the league started: "Join your lobby" with the r
     $hero = nowHero(nowPage($cup, $a));
     expect($hero)->toContain('data-state="room"')->toContain('Join your lobby')->toContain('Open your match room')
         ->toContain('href="'.route('matches.room', $series).'"')
-        // A cup series is casual: the host shares the lobby in the room's chat.
-        ->toContain('The host shares the lobby name and password in the match room chat.');
+        // A cup match carries the league's lobby (P5, user 2026-10-10): name and password right here, not in the chat.
+        ->toContain($series->lobby_name)->toContain($series->lobby_password)
+        ->not->toContain('The host shares the lobby name and password in the match room chat.');
 });
 
 test('the old cup match card is gone: one action, shown once', function () {

@@ -193,8 +193,8 @@ test('the host shares a Rocket League lobby card, the guest sees it drawn from t
             const chat = box("[data-test=room-chat]");
             const steps = box("[data-test=casual-steps]");
             const joined = box("[data-test=casual-joined]");
-            // The five stops of the timeline (P23 S3): what shows of each fits it; the rail between them overhangs on purpose.
-            const tiles = [...document.querySelectorAll("[data-test=casual-steps] ol li")].map((li) => [...li.children].filter((el) => el.checkVisibility() && getComputedStyle(el).position !== "absolute").every((el) => el.scrollWidth <= el.clientWidth + 1));
+            // The phone line of the four steps (P5 stepper): it fits its box.
+            const tiles = [...document.querySelectorAll("[data-test=room-step-line]")].filter((el) => el.checkVisibility()).map((el) => el.scrollWidth <= el.clientWidth + 1);
             return {
                 overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
                 cardInside: card.left >= chat.left && card.right <= chat.right,
@@ -207,7 +207,7 @@ test('the host shares a Rocket League lobby card, the guest sees it drawn from t
         cardRoomShot($guestPage, 'card-guest-steps-375', '[data-test=casual-steps]');
         cardRoomShot($guestPage, 'card-guest-chat-375', '[data-test=room-chat]');
 
-        expect($narrow)->toBe(['overflow' => 0, 'cardInside' => true, 'joinedInside' => true, 'tilesFit' => [true, true, true, true, true], 'stepsFirst' => true])
+        expect($narrow)->toBe(['overflow' => 0, 'cardInside' => true, 'joinedInside' => true, 'tilesFit' => [true], 'stepsFirst' => true])
             ->and($hostPage->evaluate('() => window.__errors'))->toBe([])
             ->and($guestPage->evaluate('() => window.__errors'))->toBe([])
             ->and($hostPage->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([])
@@ -406,13 +406,13 @@ test('the open lobby card is pinned in the steps for both players; a card from b
             ->and($guestBox)->toBe(['scrollY' => 0, 'visible' => true, 'inFold' => true, 'actionInFold' => true, 'joinedInFold' => null, 'inSteps' => true, 'overflow' => 0])
             ->and($hostPage->evaluate('() => document.querySelector("[data-test=lobby-pin-by]").textContent'))->toMatch('/^Shared by you at \d\d:\d\d$/')
             ->and($guestPage->evaluate('() => document.querySelector("[data-test=lobby-pin-by]").textContent'))->toMatch('/^Geteilt von .+ um \d\d:\d\d$/')
-            ->and($guestPage->evaluate('() => document.querySelector("[data-test=lobby-pin-card]").innerText'))->toContain('Tritt dieser Lobby in Rocket League bei')->toContain('bestätigt, dass die Lobby noch gilt');
+            ->and($guestPage->evaluate('() => document.querySelector("[data-test=lobby-pin-card]").textContent'))->toContain('Tritt dieser Lobby in Rocket League bei')->toContain('bestätigt, dass die Lobby noch gilt');
         cardRoomShot($hostPage, 'pin-host-confirm-375-en');
 
         // "Still valid": the card goes out again, the league counts it, the steps move on to "Joined" on both sides.
         $hostPage->locator('[data-test=lobby-pin-confirm]')->click();
         cardRoomFlag($hostPage, 'shared');
-        BrowserWait::until($hostPage, '() => document.querySelector("[data-test=casual-step-joined]")?.getAttribute("aria-current") === "step" && document.querySelector("[data-test=lobby-pin-confirm]") === null && document.querySelector("[data-test=lobby-pin-replace]") !== null', 10_000);
+        BrowserWait::until($hostPage, '() => document.querySelector("[data-test=casual-steps]")?.dataset.current === "joined" && document.querySelector("[data-test=lobby-pin-confirm]") === null && document.querySelector("[data-test=lobby-pin-replace]") !== null', 10_000);
         cardRoomFlag($guestPage, 'seen');
         cardPinRefresh($guestPage);
         BrowserWait::until($guestPage, '() => document.querySelector("[data-test=casual-joined]") !== null && document.querySelector("[data-test=lobby-pin-name]")?.textContent === '.json_encode($name), 10_000);
@@ -440,7 +440,7 @@ test('the open lobby card is pinned in the steps for both players; a card from b
 
         // "I am in the lobby" under the card: the step "Joined" is done, the card stays pinned.
         $guestPage->locator('[data-test=casual-joined]')->click();
-        BrowserWait::until($guestPage, '() => document.querySelector("[data-test=casual-step-joined]")?.dataset.done === "1" && document.querySelector("[data-test=casual-joined]") === null && document.querySelector("[data-test=lobby-pin-name]")?.textContent === '.json_encode($name), 10_000);
+        BrowserWait::until($guestPage, '() => document.querySelector("[data-test=casual-steps]")?.dataset.current === "report" && document.querySelector("[data-test=casual-joined]") === null && document.querySelector("[data-test=lobby-pin-name]")?.textContent === '.json_encode($name), 10_000);
         expect($match->refresh()->joined_at)->not->toBeNull();
 
         // Replace: the composer opens in the chat with the old name; the new card replaces the pin on both sides.
@@ -460,7 +460,7 @@ test('the open lobby card is pinned in the steps for both players; a card from b
         cardPinWait($hostPage, null);
         cardPinWait($guestPage, null);
         expect($hostPage->evaluate('() => document.querySelector("[data-test=casual-share]")?.checkVisibility()'))->toBeTrue()
-            ->and($guestPage->evaluate('() => document.querySelector("[data-test=casual-step-report]")?.getAttribute("aria-current")'))->toBe('step')
+            ->and($guestPage->evaluate('() => document.querySelector("[data-test=casual-steps]")?.dataset.current'))->toBe('report')
             ->and($guestPage->evaluate('() => document.querySelector("[data-test=room-chat] li[data-from=them] [data-test=chat-card][data-state=closed]") !== null'))->toBeTrue();
 
         // Nothing of either lobby went to the league: no request body, no Livewire answer, no websocket frame (the wraps are encrypted).

@@ -1,0 +1,434 @@
+/*
+ * Match room (T3/T13) and match view (T2) primitives, 1:1 from the design canvas of plan "Refactor und
+ * Design-Revamp" (canvas/project/MatchRoom-*.dc.html, TournamentMatchRoom, MatchBoards; board CSS
+ * `.step .sc .side .win .ck` and the room's stepper and lobby fields). Its own file, so the wave branches
+ * that extend revamp.css never meet here. Radius 4, targets ≥ 44 px (steppers 48), focus 2 px #F9B25F.
+ */
+@layer components {
+    /* The head band: cover, chips, the versus plate, the step's countdown on the right. */
+    .rv-room-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, var(--color-feature), var(--color-ground) 70%);
+    }
+
+    .rv-vs {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 12px;
+        min-width: 0;
+    }
+
+    /* One line per name on a desktop (the board's versus row), two on a phone; the full name is in its title. */
+    .rv-vs-name {
+        display: -webkit-box;
+        min-width: 0;
+        overflow: hidden;
+        font-family: var(--font-display);
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+    }
+
+    /* From 640 px the plate is one row whatever the names: avatar, name, mark, name, avatar; a long name gives way. */
+    @media (width >= 40rem) {
+        .rv-vs {
+            display: grid;
+            grid-template-columns: auto minmax(0, auto) auto minmax(0, auto) auto;
+            justify-content: start;
+        }
+    }
+
+    .rv-vs-mark {
+        flex: none;
+        padding: 2px 8px;
+        border: 1px solid var(--color-btc);
+        border-radius: 3px;
+        color: var(--color-btc);
+        font-family: var(--font-display);
+        font-size: 18px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .rv-av {
+        display: inline-grid;
+        flex: none;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--color-btc-press);
+        color: var(--color-btc);
+        font-family: var(--font-display);
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .rv-av.is-o {
+        background: var(--color-btc);
+        color: var(--color-on-btc);
+    }
+
+    /* The four steps (`ol` of the room boards): 48 px rows, a 3 px rule per step, green done, orange now. */
+    .rv-stepper {
+        display: flex;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .rv-stepper > li {
+        display: flex;
+        flex: 1 1 0;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        height: 48px;
+        padding: 0 12px;
+        border-bottom: 3px solid var(--color-line);
+        color: var(--color-ink-2);
+        font-size: 14px;
+        white-space: nowrap;
+    }
+
+    .rv-stepper > li > b {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .rv-stepper > li.is-done {
+        border-bottom-color: var(--color-win);
+        color: var(--color-ink);
+    }
+
+    .rv-stepper > li.is-now {
+        border-bottom-color: var(--color-btc);
+        background: linear-gradient(0deg, var(--color-btc-press), transparent 70%);
+        color: var(--color-ink);
+    }
+
+    .rv-stepper > li.is-bad {
+        border-bottom-color: var(--color-loss);
+        color: var(--color-loss);
+    }
+
+    /* Phone: four 4 px bars and "Step n of 4" under them. */
+    .rv-stepbar {
+        display: flex;
+        gap: 4px;
+    }
+
+    .rv-stepbar > i {
+        flex: 1 1 0;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--color-line);
+    }
+
+    .rv-stepbar > i.is-done {
+        background: var(--color-win);
+    }
+
+    .rv-stepbar > i.is-now {
+        background: var(--color-btc);
+    }
+
+    .rv-stepbar > i.is-bad {
+        background: var(--color-loss);
+    }
+
+    /* The pinned lobby card: a 4 px orange edge on the feature ground. */
+    .rv-lobby {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px 20px;
+        border: 1px solid var(--color-btc-ring);
+        border-left: 4px solid var(--color-btc);
+        border-radius: 4px;
+        background: var(--color-feature);
+    }
+
+    /* Name and password in plain mono, never hidden (user 2026-10-10: "Das PW muss nicht hidden sein!"). */
+    .rv-cred {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        min-height: 56px;
+        padding: 8px 16px;
+        flex: 1 1 auto;
+        border: 1px solid var(--color-edge);
+        border-radius: 4px;
+        background: var(--color-ground);
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+        user-select: all;
+    }
+
+    .rv-cred-copy {
+        height: 56px;
+        flex: none;
+    }
+
+    /* Phone (MatchRoom-*-Phone boards): the head is one compact block, the card keeps the first screen. */
+    @media (width < 40rem) {
+        .rv-cred {
+            height: auto;
+            min-height: 48px;
+            padding: 8px 12px;
+            font-size: 16px;
+            line-height: 1.3;
+        }
+
+        .rv-cred-copy {
+            height: 48px;
+        }
+
+        .rv-lobby {
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .rv-room-head {
+            gap: 8px;
+            padding: 10px 12px;
+        }
+
+        .rv-vs {
+            gap: 4px 8px;
+        }
+
+        /* Two lines at most per name; the full name stays in the scoreboard and the title attribute. */
+        .rv-vs-name {
+            display: -webkit-box;
+            overflow: hidden;
+            font-size: 20px;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+
+        .rv-vs-mark {
+            font-size: 14px;
+        }
+    }
+
+    /* The scoreboard result entry (T13): named sides, steppers ≥ 48 px, a big score field. */
+    .rv-sb {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 16px;
+    }
+
+    .rv-side {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        padding: 12px 16px;
+        border: 1px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-card);
+    }
+
+    .rv-side.is-lead {
+        border-color: var(--color-btc);
+        background: var(--color-btc-chip);
+    }
+
+    .rv-side > .rv-av {
+        width: 48px;
+        height: 48px;
+        border-radius: 4px;
+        font-size: 18px;
+    }
+
+    .rv-side-name {
+        min-width: 0;
+        color: var(--color-ink);
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+    }
+
+    .rv-step {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--color-edge);
+        border-radius: 4px;
+        background: var(--color-raised);
+        color: var(--color-ink);
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .rv-step:hover {
+        border-color: var(--color-ink-2);
+    }
+
+    .rv-step:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
+    .rv-sc {
+        display: block;
+        flex: none;
+        width: 64px;
+        height: 56px;
+        padding: 0;
+        border: 1px solid var(--color-edge);
+        border-radius: 4px;
+        background: var(--color-ground);
+        color: var(--color-ink);
+        font-family: var(--font-display);
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1;
+        text-align: center;
+        appearance: textfield;
+        -moz-appearance: textfield;
+    }
+
+    .rv-sc::-webkit-inner-spin-button,
+    .rv-sc::-webkit-outer-spin-button {
+        margin: 0;
+        -webkit-appearance: none;
+    }
+
+    .rv-sc::placeholder {
+        color: var(--color-dash);
+        text-align: center;
+    }
+
+    .rv-sc.is-lead {
+        border-color: var(--color-btc);
+        color: var(--color-btc);
+    }
+
+    .rv-sc.is-err {
+        border-color: var(--color-loss);
+    }
+
+    .rv-sc:disabled {
+        opacity: 0.6;
+    }
+
+    /* "Nur Sieger" (`.ck`): a switch drawn as the board's checkbox, never the native control. */
+    .rv-ck {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--color-ink-3);
+        font-size: 12px;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .rv-ck > i {
+        display: inline-grid;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        flex: none;
+        border: 1px solid var(--color-edge);
+        border-radius: 3px;
+        background: var(--color-ground);
+    }
+
+    .rv-ck[aria-checked="true"] > i {
+        border-color: var(--color-btc);
+        background: var(--color-btc);
+    }
+
+    .rv-ck[aria-checked="true"] > i::after {
+        width: 10px;
+        height: 5px;
+        border: 2px solid var(--color-on-btc);
+        border-top: 0;
+        border-right: 0;
+        content: "";
+        transform: rotate(-45deg) translate(1px, -1px);
+    }
+
+    .rv-win {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+        height: 56px;
+        padding: 0 12px;
+        border: 1px solid var(--color-edge);
+        border-radius: 4px;
+        background: var(--color-ground);
+        color: var(--color-ink);
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .rv-win > span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rv-win[aria-pressed="true"] {
+        border-color: var(--color-btc);
+        background: var(--color-btc);
+        color: var(--color-on-btc);
+    }
+
+    .rv-win:disabled {
+        cursor: default;
+    }
+
+    .rv-sum {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    @media (width < 40rem) {
+        .rv-sb {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 8px;
+        }
+
+        .rv-sum {
+            font-size: 18px;
+            text-align: center;
+        }
+    }
+
+    .rv-step:focus-visible,
+    .rv-sc:focus-visible,
+    .rv-ck:focus-visible,
+    .rv-win:focus-visible,
+    .rv-cred-copy:focus-visible {
+        outline: 2px solid var(--color-btc-hi);
+        outline-offset: 2px;
+    }
+}

@@ -15,21 +15,28 @@
 <div wire:key="lobby-pin-{{ $hostSide }}-{{ $running ? 'run' : 'wait' }}-{{ $pinShared ? 'shared' : 'open' }}-{{ $guestJoins ? 'join' : 'in' }}" wire:ignore
      x-data="lobbyPin(@js(['sharedBy' => __('Shared by :name at :time'), 'sharedByMe' => __('Shared by you at :time')]))" data-test="lobby-pin">
     <template x-if="card">
-        <div class="flex flex-col gap-2 rounded-md bg-well px-4 py-3 shadow-[inset_0_0_0_1px_#B9640A]" data-test="lobby-pin-card">
-            <span class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <b class="flex items-center gap-1.5 text-[13px]"><x-icon name="key" :size="14" class="shrink-0 text-btc-hi" />{{ __('Join this lobby in :game', ['game' => $isRl ? 'Rocket League' : 'Age of Empires II']) }}</b>
-                <span class="text-[11px] text-ink-2" x-text="sharedLine" data-test="lobby-pin-by"></span>
-            </span>
-            @foreach (['name' => __('Name'), 'password' => __('Password')] as $field => $label)
-                <span class="grid min-h-11 grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-2 border-t border-hairline pt-2 text-[13px]">
-                    <span class="text-xs text-ink-2">{{ $label }}</span>
-                    <b class="font-mono break-all" x-text="card.{{ $field }}" data-test="lobby-pin-{{ $field }}"></b>
-                    <button type="button" x-on:click="copy(card.{{ $field }}, '{{ $field }}')" aria-label="{{ $field === 'name' ? __('Copy lobby name') : __('Copy password') }}" data-test="lobby-pin-copy-{{ $field }}"
-                            class="btn-w inline-flex size-11 cursor-pointer items-center justify-center rounded-md border border-line bg-card text-ink-2">
-                        <span x-show="copied !== '{{ $field }}'"><x-icon name="copy" :size="16" /></span>
-                        <span x-show="copied === '{{ $field }}'" x-cloak class="text-win"><x-icon name="check" :size="16" /></span>
-                    </button>
+        {{-- Board MatchRoom-2c: the host's lobby, name and password in plain 22 px mono, each with its copy button. --}}
+        <div class="rv-lobby" data-test="lobby-pin-card">
+            <div class="flex items-start gap-3">
+                <x-game-cover :game="$m->game" size="thumb" class="h-10 w-[72px] shrink-0 rounded-[2px] object-cover max-sm:hidden" />
+                <span class="flex min-w-0 grow flex-col gap-0.5">
+                    <b class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[15px] text-ink [overflow-wrap:anywhere]"><x-icon name="lock" :size="14" class="shrink-0 text-btc-hi" /><span class="min-w-0">{{ __('Lobby of :name', ['name' => $m->sideName($hostSide)]) }} <span class="font-normal text-ink-2">({{ __('host') }})</span></span></b>
+                    <span class="rv-m text-[13px]" x-text="sharedLine" data-test="lobby-pin-by"></span>
                 </span>
+            </div>
+            <b class="text-[15px] max-sm:hidden">{{ __('Join this lobby in :game', ['game' => $isRl ? 'Rocket League' : 'Age of Empires II']) }}</b>
+            @foreach (['name' => __('Name'), 'password' => __('Password')] as $field => $label)
+                <div class="flex min-w-0 flex-col gap-1">
+                    <span class="rv-m text-[13px]">{{ $label }}</span>
+                    <div class="flex min-w-0 gap-2">
+                        <b class="rv-cred" x-text="card.{{ $field }}" data-test="lobby-pin-{{ $field }}"></b>
+                        <button type="button" x-on:click="copy(card.{{ $field }}, '{{ $field }}')" aria-label="{{ $field === 'name' ? __('Copy lobby name') : __('Copy password') }}" data-test="lobby-pin-copy-{{ $field }}"
+                                class="rv-b2 rv-cred-copy max-sm:w-11 max-sm:px-0">
+                            <span x-show="copied !== '{{ $field }}'" class="inline-flex items-center gap-2"><x-icon name="copy" :size="16" /><span class="max-sm:sr-only">{{ $field === 'name' ? __('Copy name') : __('Copy password') }}</span></span>
+                            <span x-show="copied === '{{ $field }}'" x-cloak class="inline-flex items-center gap-2 text-win"><x-icon name="check" :size="16" /><span class="max-sm:sr-only">{{ __('Copied') }}</span></span>
+                        </button>
+                    </div>
+                </div>
             @endforeach
             @if ($iHost)
                 @if ($running && ! $pinShared)
@@ -50,17 +57,34 @@
     </template>
     @if ($running)
         <template x-if="! card">
-            <div class="flex flex-col gap-3 text-[13px] leading-normal text-ink-2">
+            {{-- Boards 2a (host shares) and 2b (guest waits): the same card, with the two fields still empty. --}}
+            <div class="rv-lobby text-[13px] leading-normal text-ink-2" aria-busy="{{ ! $iHost && ! $pinShared ? 'true' : 'false' }}">
+                <div class="flex items-start gap-3">
+                    <x-game-cover :game="$m->game" size="thumb" class="h-10 w-[72px] shrink-0 rounded-[2px] object-cover max-sm:hidden" />
+                    <span class="flex min-w-0 grow flex-col gap-0.5">
+                        <b class="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[15px] text-ink [overflow-wrap:anywhere]"><x-icon name="lock" :size="14" class="shrink-0 text-btc-hi" /><span class="min-w-0">{{ __('Lobby of :name', ['name' => $m->sideName($hostSide)]) }} <span class="font-normal text-ink-2">({{ __('host') }})</span></span></b>
+                        @if ($iHost)
+                            @unless ($pinShared)
+                                <span class="rv-m text-[13px]">{{ $isRl ? __('Create a private match in Rocket League and share its name and password in the chat.') : __('Host a lobby in Age of Empires II with a password and spectators allowed, then share its name and password in the chat.') }}</span>
+                            @endunless
+                        @elseif (! $pinShared)
+                            <span class="rv-m text-[13px]">{{ __('Waiting for :name to share the lobby in the chat.', ['name' => $otherName]) }}</span>
+                        @elseif ($guestJoins)
+                            {{-- Shared, but no card on screen here (the chat is closed, or the host closed it): the steps' own words, and the action. --}}
+                            <span class="rv-m text-[13px]">{{ $isRl ? __('Join the private match with the name and password from the lobby card, then confirm here.') : __('Find the lobby by its name in the lobby browser, join with the password from the lobby card, then confirm here.') }}</span>
+                        @endif
+                    </span>
+                </div>
+                @if (! $iHost && ! $pinShared)
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-hidden="true">
+                        @foreach ([__('Name'), __('Password')] as $label)
+                            <span class="flex flex-col gap-1"><span class="rv-m text-[13px]">{{ $label }}</span><span class="block h-14 rounded-[4px] border border-dashed border-dash bg-card"></span></span>
+                        @endforeach
+                    </div>
+                @endif
                 @if ($iHost)
-                    @unless ($pinShared)
-                        <p class="m-0">{{ $isRl ? __('Create a private match in Rocket League and share its name and password in the chat.') : __('Host a lobby in Age of Empires II with a password and spectators allowed, then share its name and password in the chat.') }}</p>
-                    @endunless
                     <div><x-button icon="key" x-on:click="act('compose')" ::disabled="pin.busy" class="{{ $big }}" data-test="casual-share">{{ __('Share lobby') }}</x-button></div>
-                @elseif (! $pinShared)
-                    <p class="m-0">{{ __('Waiting for :name to share the lobby in the chat.', ['name' => $otherName]) }}</p>
                 @elseif ($guestJoins)
-                    {{-- Shared, but no card on screen here (the chat is closed, or the host closed it): the steps' own words, and the action. --}}
-                    <p class="m-0">{{ $isRl ? __('Join the private match with the name and password from the lobby card, then confirm here.') : __('Find the lobby by its name in the lobby browser, join with the password from the lobby card, then confirm here.') }}</p>
                     <div><x-button icon="check" x-on:click="$wire.casualJoined()" class="{{ $big }}" data-test="casual-joined">{{ __('I am in the lobby') }}</x-button></div>
                 @endif
             </div>

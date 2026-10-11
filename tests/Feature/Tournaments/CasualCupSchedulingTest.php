@@ -93,7 +93,7 @@ test('a proposed and accepted time starts the cup series when its check-in opens
 
     expect($series->origin)->toBe(SeriesMatch::ORIGIN_CUP)
         // A cup series never locks the site's live games: a player in two cups still starts the other's chess game.
-        ->and(App\Support\Series\CasualMatches::runningMatchOf($a))->toBeNull()
+        ->and(CasualMatches::runningMatchOf($a))->toBeNull()
         ->and($series->status)->toBe(SeriesStatus::Accepted)
         ->and($series->best_of)->toBe(3)
         ->and($series->rated)->toBeFalse()
@@ -344,7 +344,7 @@ test('a reminder names the time left in its largest whole unit, never thousands 
         ->and($reminder($a))->toStartWith('The league decides in '.trans_choice(':count day|:count days', intdiv($left, 1440), [], 'en').'.');
 });
 
-test('a Rocket League cup series room pins the lobby card in its steps, and counts a card only once both checked in', function () {
+test('a Rocket League cup series room pins the league lobby from the start; once both checked in the host opens it and the guest joins', function () {
     [, $match, $a, $b] = rlCupMatch();
     $schedules = app(CupSchedules::class);
     $at = now()->addHours(2)->getTimestamp();
@@ -355,21 +355,22 @@ test('a Rocket League cup series room pins the lobby card in its steps, and coun
     $series = cupSeriesOf($match);
     [$host, $guest] = $series->host_side === casualSideOf($series, $a) ? [$a, $b] : [$b, $a];
 
-    // Before the check-in: the chat may hold a card (`started`), the flow does not run, so no card counts yet.
+    // Before the check-in: the league's lobby (P5, user 2026-10-10) is there for both, no chat card to share, no action yet.
     $room = Livewire::actingAs($host)->test('pages::matches.room', ['match' => $series]);
     expect($series->origin)->toBe(SeriesMatch::ORIGIN_CUP)
         ->and($room->instance()->chatConfig()['casual'])->toMatchArray(['game' => 'rocket-league', 'isHost' => true, 'started' => true, 'underWay' => false])
-        ->and($room->html())->toContain('data-test="lobby-pin"')->not->toContain('data-test="casual-share"');
+        ->and($room->html())->toContain('data-test="room-lobby-pin" data-league="1"')->toContain($series->lobby_password)
+        ->not->toContain('data-test="casual-share"')->not->toContain('data-test="league-lobby-open"');
 
     app(CasualMatches::class)->checkIn($series, $a);
     app(CasualMatches::class)->checkIn($series, $b);
 
-    // Checked in: the pin offers Share lobby to the host (no card yet), and the guest waits for it there.
+    // Checked in: the host says the lobby is open; the guest sees the same card and waits for that.
     $hostHtml = Livewire::actingAs($host)->test('pages::matches.room', ['match' => $series])
         ->assertDispatched('casual-room', fn (string $name, array $params) => $params['state']['underWay'] === true)->html();
-    expect($hostHtml)->toContain('data-test="lobby-pin"')->toContain('data-test="casual-share"')->toContain('data-test="lobby-pin-confirm"')
-        ->and(Livewire::actingAs($guest)->test('pages::matches.room', ['match' => $series])->html())->toContain('data-test="lobby-pin"')
-        ->toContain('Waiting for '.$series->sideName((string) $series->host_side).' to share the lobby in the chat.');
+    expect($hostHtml)->toContain('data-test="league-lobby-open"')->not->toContain('data-test="casual-share"')->not->toContain('data-test="lobby-pin"')
+        ->and(Livewire::actingAs($guest)->test('pages::matches.room', ['match' => $series])->html())->toContain('data-test="room-lobby-pin" data-league="1"')
+        ->toContain($series->lobby_name)->not->toContain('data-test="casual-joined"');
 });
 
 test('a time left reads in its largest whole unit, rounded down', function (int $minutes, string $text) {
