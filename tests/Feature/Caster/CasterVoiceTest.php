@@ -172,6 +172,19 @@ it('states the hard limits in a system prompt that stays byte-identical', functi
         ->and($voice->variablePart('scene', ScenePhase::PRE_SHOW, ['tournaments_open' => [['name' => 'Cup Nummer 1']]], 2, 8, [], [], [], []))->not->toContain('#');
 });
 
+it('offers the model a small canon pick, not the posts\' fifty to a hundred entries', function () {
+    VoiceAgent::fake([['text' => "Die Liga hat 34 Spieler.\nAcht Clans sind dabei.\nSchaut rein.", 'canon_id' => null, 'mood' => 'fakten']]);
+
+    casterVoiceWrite();
+
+    VoiceAgent::assertPrompted(function (AgentPrompt $prompt): bool {
+        $section = explode('Kanon-Auswahl', $prompt->prompt)[1] ?? '';
+        $entries = preg_match_all('/^- \S+: „/mu', explode('Schreibe jetzt', $section)[0]);
+
+        return $entries >= 12 && $entries <= 15;
+    });
+});
+
 it('speaks a hash in the facts or the draft out instead of rejecting the script', function () {
     VoiceAgent::fake([['text' => "Der Cup #1 ist offen.\nAnmelden geht auf esports punkt einundzwanzig punkt space.\nDas wird #lustig.", 'canon_id' => null, 'mood' => 'fakten']]);
     $facts = [...casterVoiceQuietFacts(), 'tournaments_open' => [['name' => 'Cup #1']]];

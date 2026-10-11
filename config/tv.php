@@ -80,6 +80,9 @@ return [
             'chat_priority' => 50,
             'recent' => 10,
             'daily_cap' => (int) env('TV_COMMENTARY_DAILY_CAP', 400),
+            // The canon entries a scene script's prompt offers (fitting the phase first): the system prompt (guides,
+            // patterns, invitations) stays byte-identical and cached, only the facts and this pick vary.
+            'canon' => ['min' => 12, 'max' => 15, 'token_budget' => 2_000],
         ],
 
         // The deterministic scene scripts (App\Support\Caster\PatternScripts): at most `per_run` per fill() run,

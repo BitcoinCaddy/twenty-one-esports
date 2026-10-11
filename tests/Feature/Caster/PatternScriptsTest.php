@@ -87,6 +87,27 @@ it('talks about one item per script, so a line never borrows the name of another
     }
 });
 
+it('lets every fact line of a script say something the lines before did not', function () {
+    foreach ([SceneTopic::LIVE_GAMES, SceneTopic::RESULTS, SceneTopic::LADDERS, SceneTopic::TMNF, SceneTopic::TOURNAMENTS] as $topic) {
+        $facts = patternFactsByTopic()[$topic];
+        $values = array_values(array_unique(array_merge(...PatternScripts::slots($facts)['items'])));
+
+        for ($i = 0; $i < 2; $i++) {
+            $text = patternScripts()->write($topic, SceneTopic::phase($topic, now()->setTimezone('Europe/Berlin')->setTime(15, 0)->toImmutable()), $facts)['text'] ?? '';
+            $said = [];
+
+            foreach (ScriptGuard::lines($text) as $sentence) {
+                $here = array_values(array_filter($values, fn (string $value): bool => str_contains($sentence, $value)));
+
+                if ($here !== []) {
+                    expect(array_diff($here, $said))->not->toBe([], "{$topic}: \"{$sentence}\" says nothing new in\n{$text}");
+                    $said = [...$said, ...$here];
+                }
+            }
+        }
+    }
+});
+
 it('repeats no line within the last scripts, about the topic or in all', function () {
     config(['tv.commentary.patterns.recent' => 2]);
     $facts = patternFactsByTopic()[SceneTopic::LADDERS];

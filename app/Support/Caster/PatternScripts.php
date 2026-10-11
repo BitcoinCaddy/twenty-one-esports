@@ -334,15 +334,27 @@ final class PatternScripts
             $add($opening, $openings[$opening][0]);
         }
 
-        // Up to three fact lines, one sentence kept for the invitation.
-        $factCount = 0;
-        foreach ($factLines as $id => [$line]) {
-            if ($factCount >= 3 || $count + count(ScriptGuard::lines(ScriptGuard::splitSentences($line, $maxWords))) > $max - 1) {
-                continue;
+        // Up to three fact lines, one sentence kept for the invitation. Each line has to say a fact the lines before did
+        // not ("Live auf dem Brett: Wels gegen X." then "Wels spielt Weiß gegen X." says nothing new): the one with the
+        // most new slot values goes next, a line with none is left out.
+        $said = [];
+        for ($factCount = 0; $factCount < 3; $factCount++) {
+            $next = null;
+
+            foreach ($factLines as $id => [$line, , $values]) {
+                $new = count(array_diff($values, $said));
+
+                if (! isset($parts[$id]) && $new > 0 && $count + count(ScriptGuard::lines(ScriptGuard::splitSentences($line, $maxWords))) <= $max - 1 && ($next === null || $new > $next[1])) {
+                    $next = [$id, $new];
+                }
             }
 
-            $add($id, $line);
-            $factCount++;
+            if ($next === null) {
+                break;
+            }
+
+            $add($next[0], $factLines[$next[0]][0]);
+            $said = [...$said, ...$factLines[$next[0]][2]];
         }
 
         foreach ($invites as $id => [$line]) {
@@ -475,12 +487,12 @@ final class PatternScripts
     }
 
     /**
-     * The templates filled with the first slot set that fills them: id => [line, item index].
+     * The templates filled with the first slot set that fills them: id => [line, item index, the slot values it says].
      *
      * @param  array<string, string>  $templates
      * @param  array<int, array<string, string>>  $items
      * @param  array<string, string>  $global
-     * @return array<string, array{0: string, 1: int}>
+     * @return array<string, array{0: string, 1: int, 2: list<string>}>
      */
     private function filled(array $templates, array $items, array $global = []): array
     {
@@ -488,10 +500,12 @@ final class PatternScripts
 
         foreach ($templates as $id => $template) {
             foreach ($items as $index => $item) {
-                $line = self::fill($template, [...$global, ...$item]);
+                $values = [...$global, ...$item];
+                $line = self::fill($template, $values);
 
                 if ($line !== null) {
-                    $filled[$id] = [$line, $index];
+                    preg_match_all('/\{([a-z0-9_]+)\}/', $template, $slots);
+                    $filled[$id] = [$line, $index, array_values(array_unique(array_map(fn (string $slot): string => $values[$slot], $slots[1])))];
                     break;
                 }
             }

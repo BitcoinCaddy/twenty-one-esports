@@ -302,12 +302,15 @@ final class CasterVoice
     private function draft(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $settings, array $rejected): array
     {
         $canonSettings = (array) config('esports.voice.canon', []);
+        // A small pick for the phase's moment (`tv.commentary.scripts.canon`): the posts' 50 to 100 entries were
+        // about 10k of the 25k input tokens of every caster call (measured 2026-10-11), and a script quotes one at most.
+        $pick = (array) config('tv.commentary.scripts.canon', []);
         $selection = $this->canon->select(
             ScenePhase::MOMENTS[$phase] ?? 'general',
             $this->recent('canon'),
-            (int) ($canonSettings['min'] ?? 50),
-            (int) ($canonSettings['max'] ?? 100),
-            (int) ($canonSettings['token_budget'] ?? 12_000),
+            (int) ($pick['min'] ?? 12),
+            (int) ($pick['max'] ?? 15),
+            (int) ($pick['token_budget'] ?? 2_000),
         );
         $recentTexts = $this->recent('texts');
         $openings = array_map(ScriptGuard::opening(...), $recentTexts);
