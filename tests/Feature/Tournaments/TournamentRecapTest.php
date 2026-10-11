@@ -167,6 +167,20 @@ test('a forfeit or a result the league decided is no upset and no close match', 
         ->and($recap['played'])->toBe(1);
 });
 
+test('when the closest match is one of the upsets, the page draws it once with both tags', function () {
+    $this->withoutVite();
+    $tournament = recapCup($this->league);
+    recapMatchOf($tournament, 'Player 4', 'Player 1')->forceFill(['result' => [...recapMatchOf($tournament, 'Player 4', 'Player 1')->result, 'forfeit' => true]])->save();
+    recapMatchOf($tournament, 'Player 2', 'Player 3')->forceFill(['result' => [...recapMatchOf($tournament, 'Player 2', 'Player 3')->result, 'by' => 'league']])->save();
+
+    $html = $this->get(route('tournaments.show', ['tournament' => $tournament, 'lang' => 'en']))->assertOk()
+        ->assertSeeInOrder(['data-kind="upset"', 'data-closest', '20 Elo below', 'Closest match', 'Player 4', '>3<', 'Player 2', '>0<'], false)
+        ->getContent();
+
+    expect(substr_count($html, 'data-test="recap-match"'))->toBe(1)
+        ->and($html)->not->toContain('data-kind="closest"');
+});
+
 test('a running tournament and a league week have no recap', function () {
     $running = runningChess(TournamentFormat::SingleElimination, 4);
 
@@ -246,17 +260,22 @@ test('the recap waits for the champion note and stays off without its switch', f
         ->and($this->published)->toBe([]);
 });
 
-test('the tournament page shows the recap section only with its switch on', function () {
+test('the tournament page shows the recap section by default, as match boxes with the seeded Elo, and hides it with its switch off', function () {
     $this->withoutVite();
     $tournament = recapCup($this->league);
+
+    expect(config('esports.recap.page'))->toBeTrue();
+
+    // Upsets by gap first, each a box: round, gap tag, winner row (Elo, name, score), loser row; then the closest match as its own box.
+    $this->get(route('tournaments.show', ['tournament' => $tournament, 'lang' => 'en']))->assertOk()
+        ->assertSee('data-test="tournament-recap"', false)
+        ->assertSeeInOrder(['Recap', '30 Elo below', '1460', 'Player 4', '1490', 'Player 1', 'data-kind="closest"', 'Closest match', 'Player 2', '>2<', 'Player 3', '>1<'], false);
+
+    config(['esports.recap.page' => false]);
 
     $this->get(route('tournaments.show', ['tournament' => $tournament, 'lang' => 'en']))->assertOk()->assertDontSee('data-test="tournament-recap"', false);
 
     config(['esports.recap.page' => true]);
-
-    $this->get(route('tournaments.show', ['tournament' => $tournament, 'lang' => 'en']))->assertOk()
-        ->assertSee('data-test="tournament-recap"', false)
-        ->assertSeeInOrder(['Upsets', 'Player 4', 'beat', 'Player 1', '30 Elo below', '1460 vs 1490 Elo', 'Closest match', 'Player 2', '2:1', 'Player 3'], false);
 
     // A Livewire roundtrip renders it again without an error (a 500 there never reaches the browser console).
     Livewire::test('pages::tournaments.show', ['tournament' => $tournament])->assertSeeHtml('data-test="tournament-recap"')

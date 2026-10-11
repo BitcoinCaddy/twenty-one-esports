@@ -8469,9 +8469,6 @@
     "Switched from :from to :to on :date. Games already under way finish as they started.": "Am :date von :from auf :to umgestellt. Laufende Partien werden so zu Ende gespielt, wie sie begonnen haben.",
     "Recap": "Rückblick",
     "Upsets by the Elo each side was seeded with": "Überraschungen nach der Elo, mit der beide Seiten gesetzt waren",
-    "Upsets": "Überraschungen",
-    "beat": "schlägt",
     "Closest match": "Knappstes Match",
-    ":gap Elo below": ":gap Elo darunter",
-    ":winner vs :loser Elo": ":winner gegen :loser Elo"
+    ":gap Elo below": ":gap Elo darunter"
 }

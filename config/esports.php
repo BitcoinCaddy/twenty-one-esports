@@ -1827,8 +1827,9 @@ return [
     | App\Support\Tournaments\TournamentRecap reads a finished tournament's
     | upsets by Elo, its closest match and the champion's path.
     |
-    | page: the recap section on the tournament page. Off until the
-    | TournamentDetail board carries it (design 1:1 rule of the revamp).
+    | page: the recap section on the tournament page (TournamentDetail
+    | board, frame "Rückblick"). On by default; it shows facts only, no
+    | text of the league voice.
     |
     | notes: the recap note on the stream bot's profile
     | (App\Support\StreamBot\TournamentRecapNotes), once per tournament,
@@ -1839,7 +1840,7 @@ return [
     */
 
     'recap' => [
-        'page' => (bool) env('ESPORTS_RECAP_PAGE', false),
+        'page' => (bool) env('ESPORTS_RECAP_PAGE', true),
         'notes' => [
             'enabled' => (bool) env('ESPORTS_STREAM_BOT_RECAP_NOTES', false),
             'days' => 5,
