@@ -16,7 +16,7 @@
     <summary class="flex min-h-11 cursor-pointer items-center gap-2.5 px-3.5 text-[13px] text-ink-2">
         <x-icon name="shield-check" :size="16" class="text-proof" />
         <b class="text-ink">{{ __('Proof') }}</b>
-        <span>{{ $label ?? __('Verifiable record') }}</span>
+        <span class="min-w-0 truncate">{{ $label ?? __('Verifiable record') }}</span>
         <span class="grow"></span>
         @if ($toggle === 'show')
             <span class="text-xs text-proof group-open:hidden">{{ __('show') }}</span>

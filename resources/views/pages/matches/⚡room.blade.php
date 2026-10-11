@@ -951,7 +951,7 @@ new #[Title('Match room')] #[Layout('layouts::app', ['section' => 'matches', 'sc
             </span>
             <span class="flex flex-col gap-1 text-xs leading-normal text-ink-2 lg:items-end lg:text-right">
                 <span>{{ $m->rated ? __('The league record follows.') : __('Casual: casual Elo only, no Hashrate, no block. Rated series start at Block 0.') }}</span>
-                @if ($m->resolution_reason)<span>{{ __('Admin decision') }}: {{ $m->resolution_reason }}</span>@endif
+                @if ($m->resolution_reason)<span>{{ __('Admin decision') }}: {{ \App\Support\Series\SeriesPresenter::resolutionReason($m->resolution_reason) }}</span>@endif
                 <a href="{{ route('matches.show', $m) }}" class="inline-flex min-h-11 items-center">{{ __('Open the match page') }}</a>
             </span>
         </section>

@@ -15,7 +15,7 @@
     $seconds = $open ? max(0, (int) now()->diffInSeconds($window->end, false)) : 0;
     $days = intdiv($seconds, 86400);
     $countdown = ($days > 0 ? trans_choice(':count day|:count days', $days).' ' : '').sprintf('%02d:%02d:%02d', intdiv($seconds % 86400, 3600), intdiv($seconds % 3600, 60), $seconds % 60);
-    $chip = 'inline-flex h-8 items-center gap-2 rounded-md bg-raised px-3 text-xs text-ink';
+    $chip = 'inline-flex min-h-8 max-w-full items-center gap-2 rounded-md bg-raised px-3 py-1 text-xs text-ink';
 @endphp
 <section aria-labelledby="blockfill-hero-h" class="grid grid-cols-1 overflow-hidden rounded-lg bg-card lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:items-stretch" data-test="blockfill-hero">
     {{-- The art's own black behind it, so a taller text column never shows a seam above or below the picture --}}

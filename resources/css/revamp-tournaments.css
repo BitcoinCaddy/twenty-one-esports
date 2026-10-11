@@ -265,7 +265,8 @@
         font-size: 11px;
     }
 
-    /* Stage stepper (TournamentDetail.dc.html): done steps green, the current one orange, a 3 px rail under them. */
+    /* Stage stepper (TournamentDetail.dc.html): done steps green, the current one orange, a 3 px rail under them. A label
+       wraps onto a second line in its column ("Enter the tournament" ran into the next step's icon at 1440 next to the chat). */
     .rv-steps {
         display: grid;
         grid-auto-columns: minmax(0, 1fr);
@@ -277,13 +278,13 @@
         min-width: 0;
         align-items: center;
         gap: 8px;
-        height: 48px;
-        padding: 0 12px;
+        min-height: 48px;
+        padding: 4px 12px;
         border-bottom: 3px solid var(--color-line);
         color: var(--color-ink-2);
         font-size: 14px;
         font-weight: 700;
-        white-space: nowrap;
+        line-height: 1.2;
     }
 
     .rv-steps > li.is-done {

@@ -39,7 +39,7 @@
                         <x-icon :name="$store->platform->icon()" :size="16" />{{ $store->platform->label() }}
                         @if ($alone)
                             {{-- On the chip's top edge, so it costs no width: five chips keep their two rows on a phone. --}}
-                            <span class="absolute -top-1.5 right-1.5 rounded-xs bg-ground px-1 text-[10px] leading-3 font-bold whitespace-nowrap text-ink-2 shadow-ring" data-test="own-copy-no-crossplay">{{ __('no crossplay') }}</span>
+                            <span class="absolute -top-1.5 right-1.5 rounded-xs bg-ground px-1 text-xs leading-4 font-bold whitespace-nowrap text-ink-2 shadow-ring" data-test="own-copy-no-crossplay">{{ __('no crossplay') }}</span>
                         @endif
                     </{{ $store->url !== null ? 'a' : 'span' }}>
                 </li>

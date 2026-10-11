@@ -37,7 +37,8 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2" data-test="ladder-head">
                 <h1 class="m-0 font-display text-[30px] leading-[1.15] font-bold lg:text-[36px]">{{ $title }}</h1>
                 @if ($tag)
-                    <span class="rv-tag">{{ $tag }}</span>
+                    {{-- Wraps on a phone: "Age of Empires II: Definitive Edition 1v1" ran 5 px past 320. --}}
+                    <span class="rv-tag h-auto min-h-5 max-w-full py-0.5 whitespace-normal">{{ $tag }}</span>
                 @endif
                 @if ($leader !== null)
                     <span class="ms-auto flex items-center gap-2 text-[13px]" data-test="ladder-leader">

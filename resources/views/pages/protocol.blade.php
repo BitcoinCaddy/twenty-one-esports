@@ -37,9 +37,9 @@
                     @foreach ($kinds['own'] as $row)
                         <li class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 border-b border-hairline py-2.5 text-[13px] last:border-0 lg:grid-cols-[5rem_12rem_minmax(0,1fr)_7rem]">
                             <b class="font-display text-[15px] text-btc-hi lg:row-span-1">{{ $row['kind'] }}</b>
-                            <span class="font-bold">{{ $row['name'] }}</span>
-                            <span class="col-start-2 text-ink-2 lg:col-start-auto">{{ $row['signer'] }}</span>
-                            <span class="col-start-2 text-xs text-ink-3 lg:col-start-auto lg:text-right">{{ $row['class'] }}</span>
+                            <span class="font-bold">{{ ProtocolPage::local($row['name']) }}</span>
+                            <span class="col-start-2 text-ink-2 lg:col-start-auto">{{ ProtocolPage::local($row['signer']) }}</span>
+                            <span class="col-start-2 text-xs text-ink-3 lg:col-start-auto lg:text-right">{{ ProtocolPage::local($row['class']) }}</span>
                         </li>
                     @endforeach
                 </ul>
@@ -51,8 +51,8 @@
                     @foreach ($kinds['reused'] as $row)
                         <li class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 border-b border-hairline py-2.5 text-[13px] last:border-0 lg:grid-cols-[7rem_minmax(0,1fr)_minmax(0,16rem)_5rem]">
                             <b class="font-display text-[15px] break-words text-btc-hi">{{ $row['kind'] }}</b>
-                            <span>{{ $row['use'] }}</span>
-                            <span class="col-start-2 text-ink-2 lg:col-start-auto">{{ $row['signer'] }}</span>
+                            <span>{{ ProtocolPage::local($row['use']) }}</span>
+                            <span class="col-start-2 text-ink-2 lg:col-start-auto">{{ ProtocolPage::local($row['signer']) }}</span>
                             <span class="col-start-2 text-xs text-ink-3 lg:col-start-auto lg:text-right">NIP-{{ $row['nip'] }}</span>
                         </li>
                     @endforeach

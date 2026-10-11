@@ -1079,7 +1079,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             <ol class="rv-steps m-0 list-none p-0 max-sm:hidden" aria-label="{{ __('Stages') }}" data-test="stage-stepper">
                 @foreach ($stepper as $index => [$icon, $label])
                     <li @class(['is-done' => $index < $stepIndex]) @if ($index === $stepIndex) aria-current="step" @endif>
-                        <x-icon :name="$index < $stepIndex ? 'check' : $icon" :size="16" class="flex-none" />{{ $label }}
+                        <x-icon :name="$index < $stepIndex ? 'check' : $icon" :size="16" class="flex-none" /><span class="min-w-0">{{ $label }}</span>
                     </li>
                 @endforeach
             </ol>
@@ -1148,8 +1148,19 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                 @elseif ($projection !== null)
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" data-test="bracket-preview" data-format="{{ $planned->format->value }}" data-players="{{ $planned->capacity }}">
                         <figure class="rv-card m-0 flex flex-col gap-2 p-4" x-data x-ref="figure">
-                            @foreach ([['desktop', $preview, 480, 208, 'hidden lg:block'], ['mobile', $previewSmall, 326, 196, 'lg:hidden']] as [$size, $shape, $width, $height, $visibility])
-                                <svg viewBox="0 0 {{ $width }} {{ $height }}" class="tf-preview {{ $visibility }} h-auto w-full" role="img" wire:key="pv-{{ $size }}"
+                            @foreach ([['desktop', $preview, 480, 208, 'hidden lg:flex'], ['mobile', $previewSmall, 326, 196, 'flex lg:hidden']] as [$size, $shape, $width, $height, $visibility])
+                                {{-- The top row's labels sit above the drawing as HTML (Preview::heads): 12 px, wrapping in their column, never past the edge. --}}
+                                @php(['heads' => $heads, 'texts' => $inside] = \App\Support\Tournaments\Preview::heads($shape, $width))
+                                @php($top = $heads === [] ? 0 : 12)
+                                <div class="{{ $visibility }} flex-col gap-1" wire:key="pv-{{ $size }}" data-test="preview-{{ $size }}">
+                                @if ($heads !== [])
+                                    <div class="grid text-xs leading-[1.25] text-ink-3" aria-hidden="true" data-test="preview-heads">
+                                        @foreach ($heads as $head)
+                                            <span @class(['col-start-1 row-start-1 self-end [overflow-wrap:anywhere]', 'text-right' => $head['end']]) style="margin-left: {{ $head['left'] }}%; width: {{ $head['width'] }}%" data-test="preview-head">{{ __($head['text'], $head['replace']) }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                <svg viewBox="0 {{ $top }} {{ $width }} {{ $height - $top }}" class="tf-preview h-auto w-full" role="img"
                                      aria-label="{{ __('Preview of :format for :who', ['format' => $formatLabel, 'who' => $previewWho]) }}">
                                     @foreach ($shape['lines'] as $line)
                                         <path d="{{ $line['d'] }}" fill="none" stroke="#3A3A42" stroke-width="1" style="animation-delay: {{ $line['delay'] }}s" />
@@ -1159,10 +1170,11 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                                               fill="{{ $rect['ghost'] ? 'transparent' : '#F7931A' }}" stroke="{{ $rect['ghost'] ? '#8B8B90' : 'none' }}" @if ($rect['ghost']) stroke-dasharray="3 3" @endif
                                               style="animation-delay: {{ $rect['delay'] }}s" />
                                     @endforeach
-                                    @foreach ($shape['texts'] as $text)
-                                        <text x="{{ $text['x'] }}" y="{{ $text['y'] }}" text-anchor="{{ $text['anchor'] }}" fill="#8B8B90" font-size="10" font-family="JetBrains Mono, monospace">{{ __($text['text'], $text['replace']) }}</text>
+                                    @foreach ($inside as $text)
+                                        <text x="{{ $text['x'] }}" y="{{ $text['y'] }}" text-anchor="{{ $text['anchor'] }}" fill="#8B8B90" font-size="12" font-family="JetBrains Mono, monospace">{{ __($text['text'], $text['replace']) }}</text>
                                     @endforeach
                                 </svg>
+                                </div>
                             @endforeach
                             <figcaption class="flex items-start gap-3 text-xs leading-normal text-ink-2">
                                 <span class="grow" data-test="preview-caption">{{ __(':format for :who. Each block is one match, lit in the round it is played.', ['format' => $formatLabel, 'who' => $previewWho]) }}</span>
@@ -1355,7 +1367,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                         @endforeach
                     </ol>
                     @unless ($week)
-                        @include('pages.tournaments.partials.when', ['tournament' => $tournament, 'startsIn' => $landing->startsIn(), 'published' => $published])
+                        {{-- Its own block under the steps: a hairline between two 16 px steps, 33 px in all, not the steps' 16 px rhythm (the date read as step 4). --}}
+                        <div class="border-t border-hairline pt-4" data-test="when-block">
+                            @include('pages.tournaments.partials.when', ['tournament' => $tournament, 'startsIn' => $landing->startsIn(), 'published' => $published])
+                        </div>
                     @endunless
                     @if ($lobbies)
                         <div class="flex flex-col gap-2 rounded-card bg-card p-4 lg:p-5" data-test="lobby-rules">

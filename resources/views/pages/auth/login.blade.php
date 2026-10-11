@@ -105,12 +105,12 @@
 
             <span class="rv-m max-lg:hidden">{{ __('Nostr: for everyone with a key, by browser extension or app. By continuing you accept the') }} <a href="{{ route('rules') }}" class="rv-lk">{{ __('rules') }}</a>.</span>
 
-            <span class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[4px] border border-btc-ring bg-feature px-3 py-2.5 text-[13px] max-lg:order-4" data-test="login-member">
+            <span class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[4px] border border-btc-ring bg-feature px-3 py-1 text-[13px] max-lg:order-4" data-test="login-member">
                 <x-icon name="shield-check" :size="14" class="shrink-0 text-btc" />
                 <b>{{ __('Member of EINUNDZWANZIG?') }}</b>
                 <span class="rv-m max-lg:hidden">{{ __('Your badge comes by itself') }}</span>
                 <span class="grow"></span>
-                <a href="https://verein.einundzwanzig.space" class="rv-lk" rel="noopener">{{ __('Become a member') }}</a>
+                <a href="https://verein.einundzwanzig.space" class="rv-lk inline-flex min-h-11 items-center" rel="noopener" data-test="login-become-member">{{ __('Become a member') }}</a>
             </span>
 
             <h3 class="rv-h3 mt-4 hidden lg:block">{{ __('After that') }}</h3>
