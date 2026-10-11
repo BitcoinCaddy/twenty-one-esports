@@ -251,7 +251,8 @@ test('two players talk in the Rocket League channel, one starts a poll, both vot
 | action (which stays above the tab bar), with the newest message and the
 | unread count; a tap opens it in place. From 1280 it is a side column right
 | of the content: sticky under the header while the page scrolls, ending
-| above the dock (a daily game puts the dock on screen), open, nothing
+| above any visible dock box (since P7 the dock is a drawer behind the
+| header's "Aktionen", closed it covers nothing), open, nothing
 | sideways. Measured on /chess and a series page at 375, 1440 and 1920.
 */
 
@@ -315,7 +316,8 @@ const P21_RAIL = <<<'JS'
 test('the chat sits right under the head at 375, a bar opened in place, and in a sticky side column above the dock from 1280', function (string $path, string $game, string $primary, array $between) {
     $player = User::factory()->create();
     TestSigner::forBrowser($player);
-    // An open daily game: the dock is on screen, on the right at the bottom where the column ends.
+    // An open daily game: an entry on the action dock. Since P7 (ActionDock.dc.html) the dock is a drawer behind the
+    // header's "Aktionen" from lg, closed it puts nothing on screen; a dock box that is visible must stay off the chat.
     ChessGame::factory()->daily()->create(['white_id' => $player->id]);
     $other = new TestSigner;
     $root = ['e', (string) GameChannels::channelId($game), '', 'root'];
@@ -392,9 +394,8 @@ test('the chat sits right under the head at 375, a bar opened in place, and in a
                     ->and($m['template'] ? $m['chat']['width'] >= 360 : $m['chat']['width'] === ($width >= 1536 ? 400 : 360))->toBeTrue($label)
                     // Under the header; scrolled on a page no longer than the chat it goes along with the content.
                     ->and($where === 'top' || $top['rail']['height'] > $top['chat']['height'] + 16 ? $m['chat']['top'] >= $m['header'] : true)->toBeTrue($label)
-                    // Ends above the dock where the dock reaches into the column, and above the window's edge.
-                    ->and($m['dockTop'])->not->toBeNull($label)
-                    ->and($m['dockLeft'] < $m['chat']['right'] ? $m['chat']['bottom'] <= $m['dockTop'] : true)->toBeTrue($label.': '.json_encode($m))
+                    // Ends above a visible dock box where one reaches into the column, and above the window's edge.
+                    ->and($m['dockTop'] !== null && $m['dockLeft'] < $m['chat']['right'] ? $m['chat']['bottom'] <= $m['dockTop'] : true)->toBeTrue($label.': '.json_encode($m))
                     ->and($m['chat']['bottom'])->toBeLessThanOrEqual($m['vh'], $label)
                     ->and($m['messages'])->toBe(4, $label)
                     ->and($m['composer'])->not->toBeNull($label)
