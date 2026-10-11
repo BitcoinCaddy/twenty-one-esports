@@ -201,11 +201,16 @@ test('the invite sits in the first viewport of /chess at 375 and 1440 px and mak
             inviteHitAboveFloor($page, $tile, "chess {$tile} {$width}x{$height}");
         }
         ChessLobby::openBlitz($page);
+        // The opened panel scrolls itself into view (lobby template: the rows sit in a list, the panel under it); wait for
+        // that one scroll, then the same rule: "Find opponent" above the tab bar and not covered.
+        BrowserWait::until($page, '() => { const b = document.querySelector("[data-test=find-opponent-button]").getBoundingClientRect(); const bar = document.querySelector("[data-test=tab-bar]"); return b.bottom <= (bar && bar.checkVisibility() ? bar.getBoundingClientRect().top : innerHeight); }', 3_000);
         inviteHitAboveFloor($page, '[data-test=find-opponent-button]', "chess find-opponent {$width}x{$height}");
 
         // The invite tile opens the module in place: in the first viewport, its call to action free.
         $page->locator('[data-test=play-invite]')->click();
         BrowserWait::until($page, '() => document.querySelector("[data-test=invite-module]").checkVisibility()', 5_000);
+        // The opened panel scrolls itself into view one frame after it shows (pages/chess/partials/lobby-play): let it.
+        $page->evaluate('() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
         inviteInFirstViewport($page, "chess invite {$width}x{$height}");
         inviteShot($page, "chess-{$width}");
 
@@ -254,6 +259,7 @@ test('the invite sits in the first viewport of /chess at 375 and 1440 px and mak
     inviteHitAboveFloor($page, '[data-test=play-invite]', 'chess guest invite tile 375x667');
     $page->locator('[data-test=play-invite]')->click();
     BrowserWait::until($page, '() => document.querySelector("[data-test=invite-module]").checkVisibility()', 5_000);
+    $page->evaluate('() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))');
     inviteInFirstViewport($page, 'chess guest 375x667');
     expect($page->evaluate('() => document.querySelector("[data-test=invite-login]").getAttribute("href")'))->toEndWith('/login');
     inviteShot($page, 'chess-guest-375');

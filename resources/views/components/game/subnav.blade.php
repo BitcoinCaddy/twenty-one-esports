@@ -31,10 +31,12 @@
         @endforeach
     </div>
     @if ($slot->isNotEmpty() || $mode)
-        <div class="gs-act max-md:hidden">
+        {{-- The page's one primary action stays in the sticky bar on a phone too (R3: in the first screen, whatever the
+             page scrolled); GamePhone.dc.html puts it beside a chat handle at the bottom (T12, not built yet). --}}
+        <div class="gs-act">
             {{ $slot }}
             @if ($mode)
-                <span class="text-[13px] text-ink-3" data-test="game-subnav-mode">{{ $mode }}</span>
+                <span class="text-[13px] text-ink-3 max-md:hidden" data-test="game-subnav-mode">{{ $mode }}</span>
             @endif
         </div>
     @endif

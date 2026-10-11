@@ -238,8 +238,9 @@ test('the landing leads with one action in the first viewport, pulse links of 44
     gamePageSeed();
     $captain = SeriesMatch::query()->where('status', SeriesStatus::Open)->firstOrFail()->challengerLineup->clan->owner;
     $captain->update(['locale' => 'de']);
-    $en = 'Play alone or with your clan. Every series moves your Elo.';
-    $de = 'Spiel allein oder mit deinem Clan. Jede Serie bewegt dein Elo.';
+    // The hero's line of GameSeries.dc.html: "Eigenes Spiel. Casual 1v1 und Clan-Serien, Ergebnis meldet ihr selbst, die andere Seite bestätigt."
+    $en = 'Own copy. Casual 1v1 and clan series; you report the result yourselves, the other side confirms.';
+    $de = 'Eigenes Spiel. Casual 1v1 und Clan-Serien, Ergebnis meldet ihr selbst, die andere Seite bestätigt.';
 
     // Guests first: the browser keeps the login cookie across the helper's pages.
     $runs = [
@@ -277,11 +278,10 @@ test('the landing leads with one action in the first viewport, pulse links of 44
             ->and($page->evaluate('() => window.__errors'))->toBe([], $label)
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], $label);
 
-        // Below lg the invite follows the hero; from lg it heads the side column, level with the main one.
-        if ($width < 1024) {
-            expect($probe['order'][0])->toBeLessThan($probe['order'][1], $label)
-                ->and($probe['order'][1])->toBeLessThan($probe['order'][2], $label);
-        }
+        // The invite lives in the secondary slot, the main column's last block (T11 maps invite-link there; GameSeries.dc.html
+        // "Gefolgte, Kommentare"): after the action and after the matches, at every width.
+        expect($probe['order'][0])->toBeLessThan($probe['order'][1], $label)
+            ->and($probe['order'][2])->toBeLessThan($probe['order'][1], $label);
 
         expect($probe['pulse'])->toBe(str_starts_with($label, 'fc27')
             ? ['live:0', 'open:0', 'searching:0', 'clans:0', 'ranked:0']

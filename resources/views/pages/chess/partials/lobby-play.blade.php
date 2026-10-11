@@ -49,7 +49,7 @@
 <section aria-labelledby="play-h" class="@container flex flex-col gap-3" data-test="play"
          x-data="{ stage: @js($busy ? 'quick' : null), help: false, rated: false, either: false, refusals: @js($ratedRefusals) }"
          {{-- The search's own mode comes in here, never in the page's x-data: a changed root x-data restarts chessLobby and drops its notification question. --}}
-         x-init="if (@js($entry?->mode) !== null) liveMode = @js($entry?->mode); if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' }; $watch('stage', (open) => open && $nextTick(() => document.getElementById(open === 'quick' ? 'lobby-quick' : 'lobby-invite')?.scrollIntoView({ block: 'nearest' })))"
+         x-init="if (@js($entry?->mode) !== null) liveMode = @js($entry?->mode); if (stage === null && @js($liveModes).includes(location.hash.slice(1))) { liveMode = location.hash.slice(1); stage = 'quick' }; $watch('stage', (open) => open && $nextTick(() => requestAnimationFrame(() => document.getElementById(open === 'quick' ? 'lobby-quick' : 'lobby-invite')?.scrollIntoView({ block: 'nearest', behavior: 'instant' }))))"
          x-effect="if (refusals[liveMode] !== null) rated = false">
     {{-- "Spielarten" (template T1, GameLobby.dc.html): one row per way to play, rapid first (user, 2026-10-05). --}}
     <div class="gp-panel gp-modes">

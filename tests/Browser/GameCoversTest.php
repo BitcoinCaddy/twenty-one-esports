@@ -119,7 +119,11 @@ test('covers show on /tournaments, the games menu, the challenge form and the ma
         assertCleanPage($page, "/tournaments at {$width}");
 
         $landing = gameCoverPage($captain, route('tournaments.show', $cup, false), $width);
-        assertGameCovers($landing, ['ea-sports-fc-27'], '[data-test=game-cover]');
+        // The cover is the tournament hero's art (TournamentDetail.dc.html). On a phone an open own-copy tournament skips
+        // the art so its next step stays in the first screen (pages/tournaments/⚡show, user 2026-10-02/03).
+        if ($width >= 1024) {
+            assertGameCovers($landing, ['ea-sports-fc-27'], '[data-test=tournament-hero]');
+        }
         gameCoverShot($landing, "covers-tournament-landing-{$width}");
         assertCleanPage($landing, "tournament landing at {$width}");
 
