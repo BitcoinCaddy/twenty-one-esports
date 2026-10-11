@@ -87,7 +87,7 @@ final class SharePosts
     public const FORMAT = 'wide';
 
     /** The moments a share post can be about. */
-    public const TYPES = ['rank-up', 'block', 'tournament', 'wrapped', 'game', 'series', 'signup', 'blockfill', 'tmnf', 'hyper', 'hyper-table', 'pong', 'meme'];
+    public const TYPES = ['rank-up', 'block', 'tournament', 'wrapped', 'game', 'series', 'signup', 'blockfill', 'tmnf', 'hyper', 'hyper-table', 'pong', 'meme', ...PrideShares::TYPES];
 
     /** Opponents one post mentions at most: a team of five, never a whole bracket. */
     public const MAX_MENTIONS = 5;
@@ -112,6 +112,8 @@ final class SharePosts
             'hyper-table' => $this->hyperTable($user, $id),
             'pong' => $this->pong($user, $id),
             'meme' => app(MemeShares::class)->post($user, $id),
+            // The pride pictures (plan "KI-Stimme der Liga", P4): the player card and the tale of the tape.
+            'player-card', 'tape' => app(PrideShares::class)->post($user, $type, $id),
             default => null,
         };
 

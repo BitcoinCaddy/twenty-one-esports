@@ -81,6 +81,8 @@ return [
     'scores/⚡show.blade.php' => ['T1', 'GameScore › GameScore'],
     'scores/⚡tournament.blade.php' => ['T6 + T5', 'ScoresTournament › ScoresTournament'],
     'search.blade.php' => ['T14', 'Search › Search'],
+    // Plan "KI-Stimme der Liga", P4: Season Wrapped as a story (NEU, Scope), board SeasonWrapped.dc.html.
+    'season/wrapped.blade.php' => ['Story (NEU, Scope)', 'SeasonWrapped › Season-Rückblick als Story, 1440'],
     'settings/⚡account.blade.php' => ['T-Settings', 'SettingsAccount › SettingsAccount'],
     'settings/⚡badges.blade.php' => ['T-Settings', 'SettingsBadges › SettingsBadges'],
     'settings/⚡chess.blade.php' => ['T-Settings', 'SettingsChess › SettingsChess'],

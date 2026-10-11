@@ -115,6 +115,15 @@ const SWEEP_JSON_ENDPOINTS = ['players.search', 'lnurl.pay', 'lnurl.callback', '
 const SWEEP_SECRET_URLS = ['broadcast.overlay'];
 
 /**
+ * Pictures of a moment the sweep's fixtures do not have (plan "KI-Stimme der Liga", P4): the player card of a player
+ * with a result in a ladder that counts now, the tale of the tape of a final that waits with both sides known. Fetched,
+ * sized and refused (404) in tests/Feature/Cards/PrideCardsTest.
+ *
+ * @var list<string>
+ */
+const SWEEP_MOMENT_IMAGES = ['cards.player', 'cards.tape'];
+
+/**
  * @param  array<string, string>  $bound  route key per bound parameter, from sweepFixtures()
  * @return list<array{name: string, url: string}>
  */
@@ -128,6 +137,7 @@ function sweepRoutes(array $bound = []): array
         ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_DOWNLOADS, true))
         ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_JSON_ENDPOINTS, true))
         ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_SECRET_URLS, true))
+        ->reject(fn (RoutingRoute $route) => in_array($route->getName(), SWEEP_MOMENT_IMAGES, true))
         ->reject(function (RoutingRoute $route) {
             foreach (SWEEP_VENDOR_PREFIXES as $prefix) {
                 if (str_starts_with($route->uri(), $prefix)) {

@@ -1923,7 +1923,9 @@ return [
             // and short enough for the spam gate's 280 characters once the app adds the link line.
             'recap' => ['enabled' => (bool) env('ESPORTS_VOICE_RECAP', false), 'daily_cap' => 10, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
             'weekly' => ['enabled' => (bool) env('ESPORTS_VOICE_WEEKLY', false), 'daily_cap' => 4, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'en'],
-            'card' => ['enabled' => (bool) env('ESPORTS_VOICE_CARD', false), 'daily_cap' => 50, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de'],
+            // P4: one switch per pride picture on top of the channel's (App\Support\Cards\PrideVoice), each off by default.
+            'card' => ['enabled' => (bool) env('ESPORTS_VOICE_CARD', false), 'daily_cap' => 50, 'max_chars' => 120, 'max_sentences' => 2, 'language' => 'de',
+                'functions' => ['player' => (bool) env('ESPORTS_VOICE_CARD_PLAYER', false), 'wrapped' => (bool) env('ESPORTS_VOICE_CARD_WRAPPED', false), 'tape' => (bool) env('ESPORTS_VOICE_CARD_TAPE', false)]],
             'meme' => ['enabled' => (bool) env('ESPORTS_VOICE_MEME', false), 'daily_cap' => 30, 'max_chars' => 200, 'max_sentences' => 2, 'language' => 'de'],
             // The caster is the largest consumer: throttled hardest per call, capped per day.
             'caster' => ['enabled' => (bool) env('ESPORTS_VOICE_CASTER', false), 'daily_cap' => 300, 'max_chars' => 160, 'max_sentences' => 2, 'language' => 'de'],
