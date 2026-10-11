@@ -4,12 +4,14 @@ use App\Models\CasterScript;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\SceneFacts;
 use App\Support\Caster\ScenePhase;
+use App\Support\Caster\SceneTopic;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
 use App\Support\TwentyOne\Stream\TournamentSlides;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Laravel\Ai\Prompts\AgentPrompt;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,44 +31,103 @@ beforeEach(function () {
 });
 
 /**
- * Facts the queue's tests write for: no live games, no results, no tournaments.
+ * Facts the queue's tests write for: the league's size and, per topic, the
+ * slide data given (none by default: only the league topic has data).
+ *
+ * @param  array<string, mixed>  $data  reader name => what it returns (liveGames, results, openTournaments, ladders, …)
+ * @param  array<string, int>  $league
  */
-function casterQuietFacts(): SceneFacts
+function casterFactsWith(array $data = [], array $league = ['players' => 21, 'clans' => 3]): SceneFacts
 {
-    return new class(app(TournamentSlides::class)) extends SceneFacts
+    return new class(app(TournamentSlides::class), $data, $league) extends SceneFacts
     {
+        /**
+         * @param  array<string, mixed>  $data
+         * @param  array<string, int>  $league
+         */
+        public function __construct(TournamentSlides $tournaments, private array $data, private array $league)
+        {
+            parent::__construct($tournaments);
+        }
+
         protected function league(): array
         {
-            return ['players' => 21, 'clans' => 3];
+            return $this->league;
+        }
+
+        protected function leagueTotals(): array
+        {
+            return $this->data['leagueTotals'] ?? [];
+        }
+
+        protected function liveCount(): array
+        {
+            return $this->data['liveCount'] ?? [];
+        }
+
+        protected function todayCount(): array
+        {
+            return $this->data['todayCount'] ?? [];
         }
 
         protected function liveGames(): array
         {
-            return [];
+            return $this->data['liveGames'] ?? [];
         }
 
         protected function results(): array
         {
-            return [];
+            return $this->data['results'] ?? [];
         }
 
-        protected function openTournaments(): array
+        protected function openTournaments(bool $night = false): array
         {
-            return [];
+            return $this->data['openTournaments'] ?? [];
+        }
+
+        protected function tournamentsUnderWay(): array
+        {
+            return $this->data['tournamentsUnderWay'] ?? [];
+        }
+
+        protected function ladders(): array
+        {
+            return $this->data['ladders'] ?? [];
+        }
+
+        protected function clanSpotlight(): array
+        {
+            return $this->data['clanSpotlight'] ?? [];
+        }
+
+        protected function tmnfWeek(): array
+        {
+            return $this->data['tmnfWeek'] ?? [];
+        }
+
+        protected function blockfillWeek(): array
+        {
+            return $this->data['blockfillWeek'] ?? [];
         }
     };
 }
 
-function casterQueue(): ScriptQueue
+/** Facts with nothing on but the league's size. */
+function casterQuietFacts(): SceneFacts
 {
-    return new ScriptQueue(app(CasterVoice::class), casterQuietFacts());
+    return casterFactsWith();
+}
+
+function casterQueue(?SceneFacts $facts = null): ScriptQueue
+{
+    return new ScriptQueue(app(CasterVoice::class), $facts ?? casterQuietFacts());
 }
 
 /** A script the guards accept: short spoken German, one sentence per line. */
 const CASTER_GOOD_SCRIPT = "Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler.\nKlar, da geht noch mehr.\nSchaut einfach mal rein.";
 
-it('writes scene scripts ahead until the airtime target, at most per run', function () {
-    config(['tv.commentary.scripts.ahead_seconds' => 15, 'tv.commentary.scripts.per_run' => 4]);
+it('asks the league voice once per fill and fills the rest of the airtime with pattern scripts', function () {
+    config(['tv.commentary.scripts.ahead_seconds' => 20, 'tv.commentary.scripts.per_run_ai' => 1]);
     VoiceAgent::fake([
         ['text' => CASTER_GOOD_SCRIPT, 'canon_id' => null, 'mood' => 'fakten'],
         ['text' => "Läuft bei der Liga.\nEinundzwanzig Leute sind dabei.\nUnd ihr?\nRein da.", 'canon_id' => null, 'mood' => 'call'],
@@ -74,10 +135,42 @@ it('writes scene scripts ahead until the airtime target, at most per run', funct
 
     $written = casterQueue()->fill(CarbonImmutable::now());
 
-    expect($written)->toBe(2)
-        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->count())->toBe(2)
-        ->and(casterQueue()->airtimeAhead())->toBeGreaterThanOrEqual(15.0);
-    VoiceAgent::assertPromptedTimes(2);
+    expect($written)->toBeGreaterThan(1)
+        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->count())->toBe(1)
+        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBe($written - 1)
+        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->whereNull('topic')->count())->toBe(0)
+        ->and(casterQueue()->airtimeAhead())->toBeGreaterThanOrEqual(20.0);
+    VoiceAgent::assertPromptedTimes(1);
+});
+
+it('never asks the league voice while its switch is off, and the patterns still fill the airtime', function () {
+    config(['tv.commentary.ai' => false, 'tv.commentary.scripts.ahead_seconds' => 10]);
+    VoiceAgent::fake();
+
+    casterQueue()->fill(CarbonImmutable::now());
+
+    expect(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_PATTERN)->count())->toBeGreaterThan(0)
+        ->and(casterQueue()->airtimeAhead())->toBeGreaterThanOrEqual(10.0);
+    VoiceAgent::assertNeverPrompted();
+});
+
+it('asks the league voice about no topic whose slides have no data', function () {
+    config(['tv.commentary.scripts.ahead_seconds' => 60]);
+    VoiceAgent::fake();
+
+    expect(casterQueue(casterFactsWith(league: []))->fill(CarbonImmutable::now()))->toBe(0)
+        ->and(CasterScript::query()->where('kind', CasterScript::SCENE)->count())->toBe(0);
+    VoiceAgent::assertNeverPrompted();
+});
+
+it('gives the one league-voice script to a topic with data and its slide facts', function () {
+    config(['tv.commentary.scripts.ahead_seconds' => 5]);
+    VoiceAgent::fake([['text' => "Live auf dem Brett: Ada gegen Bob.\nBleibt dran.", 'canon_id' => null, 'mood' => 'fakten']]);
+
+    casterQueue(casterFactsWith(['liveGames' => [['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'mode' => 'Blitz', 'move' => 14]]]))->fill(CarbonImmutable::now());
+
+    expect(CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->value('topic'))->toBe(SceneTopic::LIVE_GAMES);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, '"white": "Ada"') && str_contains($prompt->prompt, 'Live-Partien der Liga'));
 });
 
 it('writes nothing and asks nobody while the commentary is off', function () {
@@ -118,10 +211,10 @@ it('expires a script after ten minutes unused', function () {
 it('expires scene scripts written for facts that changed', function () {
     $now = CarbonImmutable::now();
     $queue = casterQueue();
-    $old = $queue->enqueue(CasterScript::SCENE, ScenePhase::LIVE_MATCH, 'Alt.', 'old', 0, $now);
-    $other = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Pause.', 'old', 0, $now);
+    $old = $queue->enqueue(CasterScript::SCENE, ScenePhase::LIVE_MATCH, 'Alt.', 'old', 0, $now, topic: SceneTopic::LIVE_GAMES);
+    $other = $queue->enqueue(CasterScript::SCENE, ScenePhase::LIVE_MATCH, 'Turnier.', 'old', 0, $now, topic: SceneTopic::LIVE_TOURNAMENT);
 
-    expect($queue->supersede(ScenePhase::LIVE_MATCH, 'new'))->toBe(1)
+    expect($queue->supersedeTopic(SceneTopic::LIVE_GAMES, 'new'))->toBe(1)
         ->and($old->fresh()->status)->toBe(CasterScript::EXPIRED)
         ->and($other->fresh()->status)->toBe(CasterScript::QUEUED);
 });
@@ -171,7 +264,7 @@ it('seeds every filler once and never expires it', function () {
 });
 
 it('rejects scripts that break the spoken-text rules', function (string $text, string $reason) {
-    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.per_run' => 1]);
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.patterns.per_run' => 0]);
     VoiceAgent::fake([['text' => $text, 'canon_id' => null, 'mood' => 'fakten']]);
 
     expect(casterQueue()->fill(CarbonImmutable::now()))->toBe(0)
@@ -180,7 +273,7 @@ it('rejects scripts that break the spoken-text rules', function (string $text, s
     'unknown marker' => ["Hey, hier ist TWENTY ONE TV.\n[applause] Die Liga hat 21 Spieler.\nSchaut rein.", ScriptGuard::MARKER_UNKNOWN],
     'stage direction' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler.\nKlar, da geht noch mehr (lacht).", ScriptGuard::STAGE_DIRECTION],
     'too few sentences' => ['Hey, hier ist TWENTY ONE TV.', ScriptGuard::SENTENCE_COUNT],
-    'long sentence' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden zusammen.\nSchaut rein.", ScriptGuard::SENTENCE_LONG],
+    'long sentence' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 21 Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn zusammen im Park.\nSchaut rein.", ScriptGuard::SENTENCE_LONG],
     'invented number' => ["Hey, hier ist TWENTY ONE TV.\nDie Liga hat 500 Spieler.\nSchaut rein.", 'number'],
     'stock phrase' => ["Hey, hier ist TWENTY ONE TV.\nDarüber hinaus hat die Liga 21 Spieler.\nSchaut rein.", ScriptGuard::STOCK_PHRASE],
 ]);

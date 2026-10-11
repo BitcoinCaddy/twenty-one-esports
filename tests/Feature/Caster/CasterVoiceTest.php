@@ -62,6 +62,7 @@ it('puts every sentence on its own line and cuts long ones at clause boundaries'
 ]);
 
 it('leaves a sentence uncut where no cut keeps its meaning, so the guard still rejects it', function (string $draft) {
+    config(['tv.commentary.scripts.max_commas' => 1]);
     $repaired = ScriptGuard::splitSentences($draft, 12);
 
     expect($repaired)->toBe($draft)
@@ -82,6 +83,8 @@ it('drops sentences from the end down to the maximum, unless a required fact goe
 });
 
 it('repairs a one-line draft with long sentences and too many of them, and counts the repair', function () {
+    // The limits the drafts of 2026-10-11 were cut at; the repair itself does not depend on them.
+    config(['tv.commentary.scripts.max_words_per_sentence' => 12, 'tv.commentary.scripts.max_commas' => 1]);
     VoiceAgent::fake([[
         'text' => 'Die Lobby ist offen, die Bretter sind frei, und ihr könnt jederzeit rein. Heute sind 34 Spieler dabei. Acht Clans sind am Start. Gleich geht es weiter. Kurz durchatmen. Schaut rein. Na also, läuft. Bleibt dran, Leute. Bis gleich, ihr Lieben.',
         'canon_id' => null, 'mood' => 'fakten',
@@ -161,7 +164,30 @@ it('states the hard limits in a system prompt that stays byte-identical', functi
     $voice = app(CasterVoice::class);
 
     expect($voice->fixedPart())->toBe(app(CasterVoice::class)->fixedPart())
-        ->toContain('Höchstens 12 Wörter pro Satz.')
-        ->toContain('Höchstens 1 Komma pro Satz.')
-        ->toContain('3 bis 8 Sätze');
+        ->toContain('Höchstens 16 Wörter pro Satz.')
+        ->toContain('Höchstens 2 Kommas pro Satz.')
+        ->toContain('2 bis 8 Sätze')
+        // Nothing in the prompt shows the model a hash to copy (the hashtag rejections of 2026-10-11).
+        ->not->toContain('#')
+        ->and($voice->variablePart('scene', ScenePhase::PRE_SHOW, ['tournaments_open' => [['name' => 'Cup Nummer 1']]], 2, 8, [], [], [], []))->not->toContain('#');
+});
+
+it('speaks a hash in the facts or the draft out instead of rejecting the script', function () {
+    VoiceAgent::fake([['text' => "Der Cup #1 ist offen.\nAnmelden geht auf esports punkt einundzwanzig punkt space.\nDas wird #lustig.", 'canon_id' => null, 'mood' => 'fakten']]);
+    $facts = [...casterVoiceQuietFacts(), 'tournaments_open' => [['name' => 'Cup #1']]];
+
+    $script = app(CasterVoice::class)->write('scene', ScenePhase::PRE_SHOW, $facts, 2, 8);
+
+    expect($script['text'] ?? null)->toBe("Der Cup Nummer 1 ist offen.\nAnmelden geht auf esports punkt einundzwanzig punkt space.\nDas wird lustig.")
+        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL.'_repaired')->pluck('reason')->all())->toContain(VoiceGuard::HASHTAG)
+        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->count())->toBe(0);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Cup Nummer 1') && ! str_contains($prompt->prompt, '#'));
+});
+
+it('lets a spoken sentence run to sixteen words and two commas, a decimal comma not counted', function () {
+    $guard = new ScriptGuard;
+
+    expect($guard->check("Hey.\nEl-z fährt 16,13 Sekunden, schneller als die Autorenzeit, und das in der ersten Woche.", 2, 8, 16))->toBe([])
+        ->and($guard->check("Hey.\nEins, zwei, drei, vier.", 2, 8, 16))->toContain(ScriptGuard::COMMAS)
+        ->and((new VoiceHygiene)->check('Die Autorenzeit liegt bei 16,25 Sekunden. Platz zwei fährt 16,25 Sekunden.', 'de'))->not->toContain(VoiceHygiene::REPEATED);
 });

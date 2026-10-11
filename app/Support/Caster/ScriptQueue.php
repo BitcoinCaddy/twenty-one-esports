@@ -9,11 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The server's queue of commentary scripts (plan "Puffer und Länge", stage 1):
- * the league voice writes scene scripts ahead until `ahead_seconds` of
- * airtime are queued or spooled; live moments and chat reactions jump the
- * queue; a script expires unused after `max_age_minutes` or when the facts of
- * its phase changed. The workstation fetcher claims the next script, voices
- * it and uploads the clip (ClipSpool), or releases it.
+ * scene scripts are written ahead per slide topic (SceneTopic, with the
+ * facts its slides render) until `ahead_seconds` of airtime are queued or
+ * spooled: at most `per_run_ai` by the league voice (and none while
+ * `tv.commentary.ai` is off), the rest as pattern scripts (PatternScripts),
+ * so airtime never depends on the model; live moments and chat reactions
+ * jump the queue; a script expires unused after `max_age_minutes` or when
+ * the facts of its topic changed. The workstation fetcher claims the next
+ * script, voices it and uploads the clip (ClipSpool), or releases it.
  *
  * Bounded: expired and voiced rows older than a day are deleted, so the table
  * holds at most a day of scripts.
@@ -23,10 +26,21 @@ class ScriptQueue
     /** Rows that left the queue are kept this long (for the counters of `caster:script`), then deleted. */
     private const KEEP_HOURS = 24;
 
+    private PatternScripts $patterns;
+
     public function __construct(
         private CasterVoice $voice,
         private SceneFacts $facts,
-    ) {}
+        ?PatternScripts $patterns = null,
+    ) {
+        $this->patterns = $patterns ?? app(PatternScripts::class);
+    }
+
+    /** Whether the league voice writes scene scripts (TV_COMMENTARY_AI); off, the patterns fill the airtime alone. */
+    public static function aiEnabled(): bool
+    {
+        return config('tv.commentary.ai') === true;
+    }
 
     /** Airtime (seconds) queued, claimed or spooled and not yet played, fillers left out. */
     public function airtimeAhead(): float
@@ -39,8 +53,11 @@ class ScriptQueue
     }
 
     /**
-     * Write scene scripts until the airtime ahead reaches its target, at most
-     * `per_run`; each for the likely phase with the least airtime ready.
+     * Write scene scripts until the airtime ahead reaches its target, each
+     * for the topic with data that has the least airtime ready: first at
+     * most `per_run_ai` by the league voice, then pattern scripts, at most
+     * `patterns.per_run`. A topic without data of its own gets no script, so
+     * the model is never asked about an empty scene.
      *
      * @return int scripts written
      */
@@ -54,26 +71,56 @@ class ScriptQueue
         $this->seedFillers($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
-        $written = 0;
-        $attempts = 0;
-        $phases = $this->facts->likelyPhases($now);
-        $factsByPhase = [];
+        $sentences = (array) ($settings['sentences'] ?? []);
+        $night = ScenePhase::isNight($now);
+        $factsByTopic = [];
 
-        foreach ($phases as $phase) {
-            $factsByPhase[$phase] = $this->facts->for($phase);
-            $this->supersede($phase, SceneFacts::hash($factsByPhase[$phase]));
+        foreach (SceneTopic::ALL as $topic) {
+            $facts = $this->facts->forTopic($topic, $night);
+            $this->supersedeTopic($topic, SceneFacts::hash($facts));
+
+            if ((! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts)) {
+                $factsByTopic[$topic] = $facts;
+            }
         }
 
-        while ($this->airtimeAhead() < (float) ($settings['ahead_seconds'] ?? 300) && $attempts < (int) ($settings['per_run'] ?? 4)) {
-            $attempts++;
-            $phase = $this->thinnestPhase($phases);
-            $sentences = (array) ($settings['sentences'] ?? []);
-            $script = $this->voice->write(CasterScript::SCENE, $phase, $factsByPhase[$phase], (int) ($sentences['min'] ?? 3), (int) ($sentences['max'] ?? 8), [], $this->topics($phase, $now));
+        $written = 0;
+        $aiLeft = self::aiEnabled() ? max(0, (int) ($settings['per_run_ai'] ?? 1)) : 0;
+        $patternsLeft = max(0, (int) config('tv.commentary.patterns.per_run', 40));
+        $exhausted = [];
 
-            if ($script !== null) {
-                $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($factsByPhase[$phase]), 0, $now);
-                $written++;
+        while ($this->airtimeAhead() < (float) ($settings['ahead_seconds'] ?? 300) && ($candidates = array_diff(array_keys($factsByTopic), $exhausted)) !== []) {
+            $topic = $this->thinnestTopic(array_values($candidates));
+            $phase = SceneTopic::phase($topic, $now);
+            $facts = $factsByTopic[$topic] ?? [];
+
+            if ($aiLeft > 0) {
+                $aiLeft--;
+                $script = $this->voice->write(CasterScript::SCENE, $phase, $facts, (int) ($sentences['min'] ?? 2), (int) ($sentences['max'] ?? 8), [], $this->topics($phase, $now));
+
+                if ($script !== null) {
+                    $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_AI, topic: $topic);
+                    $written++;
+                }
+
+                continue;
             }
+
+            if ($patternsLeft <= 0) {
+                break;
+            }
+
+            $patternsLeft--;
+            $script = $this->patterns->write($topic, $phase, $facts);
+
+            if ($script === null) {
+                $exhausted[] = $topic;
+
+                continue;
+            }
+
+            $this->enqueue(CasterScript::SCENE, $phase, $script['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_PATTERN, topic: $topic);
+            $written++;
         }
 
         return $written;
@@ -98,7 +145,7 @@ class ScriptQueue
         return $script === null ? null : $this->enqueue($kind, $phase, $script['text'], SceneFacts::hash($facts), $priority, $now, $scene);
     }
 
-    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null): CasterScript
+    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null): CasterScript
     {
         $maxAge = (int) config('tv.commentary.scripts.max_age_minutes', 10);
 
@@ -106,6 +153,8 @@ class ScriptQueue
             'kind' => $kind,
             'phase' => $phase,
             'scene' => $scene,
+            'source' => $source,
+            'topic' => $topic,
             'priority' => $priority,
             'text' => $text,
             'facts_hash' => $factsHash,
@@ -165,10 +214,10 @@ class ScriptQueue
         return $expired;
     }
 
-    /** Scene scripts of a phase written for other facts than `$hash` expire: the scene they talk about is gone. */
-    public function supersede(string $phase, string $hash): int
+    /** Scene scripts of a topic written for other facts than `$hash` expire: the slide they talk about changed. */
+    public function supersedeTopic(string $topic, string $hash): int
     {
-        return CasterScript::query()->where('phase', $phase)->where('kind', CasterScript::SCENE)
+        return CasterScript::query()->where('topic', $topic)->where('kind', CasterScript::SCENE)
             ->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
             ->where('facts_hash', '!=', $hash)->update(['status' => CasterScript::EXPIRED]);
     }
@@ -201,15 +250,18 @@ class ScriptQueue
     }
 
     /**
-     * @param  list<string>  $phases
+     * The topic with the least airtime queued or spooled (the first of equals, in SceneTopic::ALL order).
+     *
+     * @param  list<string>  $topics
      */
-    private function thinnestPhase(array $phases): string
+    private function thinnestTopic(array $topics): string
     {
         $ready = [];
 
-        foreach ($phases as $phase) {
-            $ready[$phase] = (float) CasterScript::query()->where('phase', $phase)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->sum('estimated_seconds')
-                + (float) CasterClip::query()->where('phase', $phase)->where('status', CasterClip::READY)->where('kind', '!=', CasterScript::FILLER)->sum('duration_seconds');
+        foreach ($topics as $topic) {
+            $scripts = CasterScript::query()->where('topic', $topic)->where('kind', CasterScript::SCENE);
+            $ready[$topic] = (float) (clone $scripts)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->sum('estimated_seconds')
+                + (float) CasterClip::query()->whereIn('caster_script_id', (clone $scripts)->select('id'))->where('status', CasterClip::READY)->sum('duration_seconds');
         }
 
         asort($ready);

@@ -129,9 +129,11 @@ final class VoiceHygiene
      * @param  list<string>  $recentTexts  the channel's last posts
      * @param  string|null  $canonWording  the wording of the canon entry the text quotes (exempt from language and repetition checks)
      * @param  list<string>  $factStrings  the facts' strings: one word each for the everyday-language rules (a date's commas are no clause)
+     * @param  int|null  $maxWords  words per sentence, when the channel has its own limit (the spoken commentary)
+     * @param  int|null  $maxCommas  commas per sentence, likewise
      * @return list<string>
      */
-    public function check(string $text, string $language, array $recentTexts = [], ?string $canonWording = null, bool $cutOff = false, ?int $maxSentences = null, array $factStrings = []): array
+    public function check(string $text, string $language, array $recentTexts = [], ?string $canonWording = null, bool $cutOff = false, ?int $maxSentences = null, array $factStrings = [], ?int $maxWords = null, ?int $maxCommas = null): array
     {
         $violations = [];
 
@@ -163,7 +165,7 @@ final class VoiceHygiene
         $prose = $canonWording === null ? $text : (string) preg_replace(VoiceGuard::wordingPattern($canonWording), ' ', $text);
         $prose = (string) preg_replace('~https?://\S+~u', ' ', $prose);
 
-        array_push($violations, ...$this->style($prose, $factStrings));
+        array_push($violations, ...$this->style($prose, $factStrings, $maxWords, $maxCommas));
 
         // No sign-off: a post is no letter ("… Stack Sats and stay bullish. Ciao.", P2 eval run).
         if (preg_match('/(?<![\p{L}])(?:ciao|tschüss|tschau|bye|cheers|bis dann|bis bald)[\s.!…]*$/iu', trim($prose)) === 1) {
@@ -220,7 +222,7 @@ final class VoiceHygiene
      * @param  list<string>  $factStrings
      * @return list<string>
      */
-    public function style(string $prose, array $factStrings = []): array
+    public function style(string $prose, array $factStrings = [], ?int $maxWords = null, ?int $maxCommas = null): array
     {
         $violations = [];
         usort($factStrings, fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
@@ -230,8 +232,8 @@ final class VoiceHygiene
                 $prose = str_replace($fact, 'X', $prose);
             }
         }
-        $maxWords = (int) config('esports.voice.style.max_words', 14);
-        $maxCommas = (int) config('esports.voice.style.max_commas', 1);
+        $maxWords ??= (int) config('esports.voice.style.max_words', 14);
+        $maxCommas ??= (int) config('esports.voice.style.max_commas', 1);
 
         foreach (self::sentenceList($prose) as $sentence) {
             if (count(VoiceGuard::words($sentence)) > $maxWords) {
@@ -369,7 +371,8 @@ final class VoiceHygiene
 
         $clauses = array_values(array_filter(array_map(
             fn (string $clause): string => VoiceGuard::normalize($clause),
-            preg_split('/[.!?;,:–—]+/u', $prose) ?: [],
+            // A comma between digits is a decimal mark ("16,25 Sekunden"), not a clause boundary.
+            preg_split('/[.!?;:–—]+|,(?!\d)|(?<!\d),/u', $prose) ?: [],
         ), fn (string $clause): bool => substr_count($clause, ' ') >= 1));
 
         return count($clauses) !== count(array_unique($clauses));

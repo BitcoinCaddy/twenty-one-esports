@@ -29,9 +29,10 @@ use Illuminate\Support\Str;
  * next() is the fallback chain of the stream (plan: "Fällt der Spool unter
  * 60 s, nimmt der Sender vorproduzierte Füller … ist der Rechner aus,
  * Text-Bauchbinde"): a live clip first, then a clip of the slot's phase while
- * at least `filler_below_seconds` are ready, else a filler, else nothing; with
- * the workstation offline and no clip, the next queued script of the phase as
- * a text lower third.
+ * at least `filler_below_seconds` are ready (the clip about the slide's
+ * topic first, SceneTopic), else a filler, else nothing; with the
+ * workstation offline and no clip, the next queued script of the phase as a
+ * text lower third.
  */
 class ClipSpool
 {
@@ -116,11 +117,11 @@ class ClipSpool
     }
 
     /**
-     * What the stream says over a new slot of `$phase`.
+     * What the stream says over a new slot of `$phase` showing `$topic`.
      *
      * @return array{clip: CasterClip|null, caption: string|null, source: string}
      */
-    public function next(string $phase, CarbonImmutable $now): array
+    public function next(string $phase, CarbonImmutable $now, ?string $topic = null): array
     {
         $ready = CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now);
 
@@ -131,6 +132,16 @@ class ClipSpool
 
         if ($this->readySeconds() >= (float) config('tv.commentary.spool.filler_below_seconds', 60)) {
             $phases = in_array($phase, ScenePhase::CALM, true) ? [$phase, ...array_diff(ScenePhase::CALM, [$phase])] : [$phase];
+
+            // The clip about the slide on air first, within the phases it may stand in for.
+            if ($topic !== null) {
+                $clip = (clone $ready)->where('kind', CasterScript::SCENE)->whereIn('phase', $phases)
+                    ->whereIn('caster_script_id', CasterScript::query()->where('topic', $topic)->select('id'))->orderBy('id')->first();
+
+                if ($clip !== null) {
+                    return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
+                }
+            }
 
             foreach ($phases as $candidate) {
                 $clip = (clone $ready)->where('kind', CasterScript::SCENE)->where('phase', $candidate)->orderBy('id')->first();

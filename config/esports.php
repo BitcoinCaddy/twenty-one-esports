@@ -1954,6 +1954,8 @@ return [
         // ("Blockfill Week 42 is done" for a running week); one claim rejects the text. Its tokens count as channel `fact_check`.
         'fact_check' => [
             'enabled' => (bool) env('ESPORTS_VOICE_FACT_CHECK', true),
+            // 600 cut the answer about an eight-sentence caster script off (2 of 9 real checks unreadable, 2026-10-11).
+            'max_tokens' => 1200,
         ],
         // Everyday language (user 2026-10-11: "Ein Mensch redet im Alltag nicht in Schachtelsätzen"): words per sentence
         // and commas per sentence (a list of short items is exempt), checked by VoiceHygiene; a text that breaks them

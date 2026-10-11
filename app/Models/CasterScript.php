@@ -20,13 +20,15 @@ use Illuminate\Support\Carbon;
  * @property string $text
  * @property string $facts_hash
  * @property string $status queued, claimed, voiced, expired
+ * @property string $source ai (the league voice) or pattern (App\Support\Caster\PatternScripts)
+ * @property string|null $topic App\Support\Caster\SceneTopic, for a scene script
  * @property float $estimated_seconds
  * @property Carbon|null $claimed_at
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'estimated_seconds', 'claimed_at', 'expires_at'])]
+#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at'])]
 class CasterScript extends Model
 {
     public const QUEUED = 'queued';
@@ -44,6 +46,10 @@ class CasterScript extends Model
     public const CHAT = 'chat';
 
     public const FILLER = 'filler';
+
+    public const SOURCE_AI = 'ai';
+
+    public const SOURCE_PATTERN = 'pattern';
 
     protected function casts(): array
     {

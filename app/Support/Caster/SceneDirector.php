@@ -10,7 +10,8 @@ use Carbon\CarbonImmutable;
  * Scene and commentary as one unit (user 2026-10-11: "genug Zeit für den
  * Slide, bis der Kommentar passend dazu auch komplett ausgesprochen wurde"):
  * at the start of every slot the director takes the spool's clip for the
- * slot's phase (ClipSpool::next(), with its fallbacks), puts it on the
+ * slot's phase, the one about the slot's topic first (ClipSpool::next(),
+ * with its fallbacks), puts it on the
  * timeline `lead_in_seconds` later and holds the slot until the clip has been
  * spoken plus `tail_seconds`, at least `min_scene_seconds`, at most
  * `max_hold_seconds`. Without a clip the slot stands at least
@@ -79,7 +80,7 @@ final class SceneDirector
             return null;
         }
 
-        $decision = $this->spool->next(ScenePhase::forSlot($slot, CarbonImmutable::createFromTimestamp($now)), CarbonImmutable::createFromTimestamp($now));
+        $decision = $this->spool->next(ScenePhase::forSlot($slot, CarbonImmutable::createFromTimestamp($now)), CarbonImmutable::createFromTimestamp($now), SceneTopic::forSlot($slot));
         $pcm = $decision['clip'] === null ? null : $this->spool->pcm($decision['clip']);
 
         if ($decision['clip'] !== null && $pcm === null) {

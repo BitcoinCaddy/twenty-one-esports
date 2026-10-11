@@ -54,9 +54,10 @@ final class VoiceFactCheck implements Agent, HasProviderOptions, HasStructuredOu
         return (int) config('esports.voice.timeout_seconds', 15);
     }
 
+    /** Room for one claim per sentence of an eight-sentence script; a cut-off answer is unreadable and fails closed. */
     public function maxTokens(): int
     {
-        return 600;
+        return (int) config('esports.voice.fact_check.max_tokens', 1200);
     }
 
     /**
