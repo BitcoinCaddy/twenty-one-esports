@@ -11,12 +11,12 @@
                :when="\App\Support\Series\SeriesPresenter::when($match, $viewer)" :score="$score['text']" :score-sub="$score['sub'] !== '' ? $score['sub'] : null">
     <x-slot:sides>
         <span class="flex min-w-0 items-center gap-2">
-            <x-clan-tag :clan="$match->sideClan('challenger')" :tag="$match->challenger_tag" size="sm" compact class="max-lg:hidden" />
+            <x-clan-tag :clan="$match->sideClan('challenger')" :tag="$match->challenger_tag" size="sm" compact />
             <span @class(['truncate', 'font-bold' => $match->winner === 'challenger', 'text-ink-2' => $match->winner === 'challenged']) data-test="match-side-name">{{ $match->challenger_name }}</span>
         </span>
         <span class="text-ink-3">vs</span>
         <span class="flex min-w-0 items-center gap-2">
-            <x-clan-tag :clan="$match->sideClan('challenged')" :tag="$match->challenged_tag" size="sm" compact class="max-lg:hidden" />
+            <x-clan-tag :clan="$match->sideClan('challenged')" :tag="$match->challenged_tag" size="sm" compact />
             <span @class(['truncate', 'font-bold' => $match->winner === 'challenged', 'text-ink-2' => $match->winner === 'challenger']) data-test="match-side-name">{{ $match->challenged_name }}</span>
         </span>
     </x-slot:sides>

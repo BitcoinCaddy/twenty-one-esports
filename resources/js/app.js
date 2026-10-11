@@ -37,6 +37,7 @@ import './clanDmsUi.js';
 import './captured.js';
 import './sanNotation.js';
 import './tournamentLanding.js';
+import './focusMode.js';
 // The bracket's 2D / 3D switch; three.js and the 3D view load only when 3D is picked.
 import './bracketView.js';
 import './autoDecision.js';

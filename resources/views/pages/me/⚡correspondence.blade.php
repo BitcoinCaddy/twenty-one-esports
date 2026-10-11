@@ -240,6 +240,10 @@ new #[Title('Daily chess')] #[Layout('layouts::app', ['section' => 'chess', 'scr
 @endphp
 
 <div class="flex min-w-0 grow flex-col gap-5 px-4 pt-6 pb-8 lg:mx-auto lg:w-full lg:max-w-[1376px] lg:px-12 lg:pb-10" data-test="correspondence-list" x-data="{ show: 'all' }">
+    {{-- The player's own pages, one tab row (Profile.dc.html, P7): this is "Games". --}}
+    @auth
+        <x-account.tabs active="games" />
+    @endauth
     <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-[4px] border-l-4 border-chess bg-gradient-to-r from-card to-transparent px-4 py-3">
         <h1 class="m-0 font-display text-[28px] leading-tight font-bold lg:text-[34px]">{{ __('Your correspondence games') }}</h1>
         <span class="rv-m text-[13px]">{{ __('Chess, Blockli, nine men\'s morris, checkers: one list') }}</span>

@@ -8370,5 +8370,13 @@
     "From then on everyone with enough rated results stands here, with a Global Rating across all games.": "Ab dann stehen hier alle mit genug gewerteten Ergebnissen, mit einer Global Rating über alle Spiele.",
     "How it is counted": "So wird gerechnet",
     "Scan with a Lightning wallet or a Nostr client.": "Mit Lightning-Wallet oder Nostr-Client scannen.",
-    "Invitations": "Einladungen"
+    "Invitations": "Einladungen",
+    "Ratings": "Wertungen",
+    "Player since :year": "Spieler seit :year",
+    ":count action needs you: :what.|:count actions need you: :what.": ":count Aktion braucht dich: :what.|:count Aktionen brauchen dich: :what.",
+    "Open actions": "Aktionen öffnen",
+    "No results yet. Your last games show here.": "Noch keine Ergebnisse. Deine letzten Partien stehen hier.",
+    "Community": "Community",
+    "Show the navigation": "Navigation zeigen",
+    "Clan entry": "Clan-Eintrag"
 }

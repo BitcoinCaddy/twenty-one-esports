@@ -129,7 +129,8 @@ new class extends Component {
     entries are grouped Jetzt, Du bist dran, Einladungen, Demnächst, each one card with its one action. On a running game
     page the title row keeps its own button (from lg); a page that owns the bottom edge gets a tab on its bar (phones).
 --}}
-<div x-data="matchDock(@js($config))" data-need="{{ $counts['need'] }}" data-open="{{ $counts['open'] }}" data-cup="{{ $cup ? '1' : '0' }}" data-test="match-dock-root"
+{{-- The config rides in its own attribute, so the x-data expression never changes: a refresh morphs the dock instead of starting it anew (an open sheet stayed open, P7). --}}
+<div x-data="matchDock(JSON.parse($el.dataset.config))" data-config="{{ json_encode($config) }}" data-need="{{ $counts['need'] }}" data-open="{{ $counts['open'] }}" data-cup="{{ $cup ? '1' : '0' }}" data-test="match-dock-root"
      @if ($urgent) data-urgent='@json(['label' => $urgent->state, 'tick' => $urgent->tick])' @elseif ($cup && $cup['state'] === 'live') data-urgent='@json(['label' => $cup['short'], 'tick' => null])' @endif
      x-on:keydown.escape.window="close(true)" x-on:dock-open.window="openFromHeader() && $event.detail?.preventDefault()" x-on:bell-toggle.window="$event.detail && close(false)" x-on:chat-sheet-toggle.window="chatOpen = $event.detail; $event.detail && close(false)">
     <span class="sr-only" aria-live="polite" x-text="announcement"></span>

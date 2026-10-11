@@ -305,17 +305,17 @@ test('an opponent\'s reply from Amethyst, sent only to the player\'s DM relay an
 
 /*
 |--------------------------------------------------------------------------
-| The match dock (P5f)
+| The action dock (P5f, redrawn in P7 of plan "Refactor und Design-Revamp")
 |--------------------------------------------------------------------------
 |
-| Anna waits for Bert's daily move on another page. Bert moves: the tab turns
-| to "Your move" over the websocket (the game's watch channel), without a
-| reload. Opening the tab loads its panel (the island), and "Play your move"
-| opens the game, where the dock has no tab for it.
+| Anna waits for Bert's daily move on another page, the dock open from the
+| header's "Aktionen". Bert moves: her entry turns to "Your move" over the
+| websocket (the game's watch channel), without a reload, and moves into
+| "Du bist dran". Its action opens the game, where the dock has no entry for it.
 |
 */
 
-test('the match dock turns a daily tab live when the opponent moves, and its panel opens the game', function () {
+test('the action dock turns a daily entry live when the opponent moves, and its action opens the game', function () {
     expect(config('broadcasting.default'))->toBe('reverb', 'Run this through `composer test:browser`, which starts Reverb.');
 
     [$anna, $bert] = User::factory()->count(2)->create();
@@ -323,31 +323,27 @@ test('the match dock turns a daily tab live when the opponent moves, and its pan
     app(ChessGameService::class)->move($game, $anna, 'e2e4');
 
     $page = playerPage($anna, '/clans');
-    $tab = '[data-test=dock-tab][data-dock-tab="game-'.$game->id.'"]';
-    // Nothing on her yet: the dock starts folded to its grey count.
-    BrowserWait::until($page, '() => window.Echo?.connector?.pusher?.connection?.state === "connected" && (document.querySelector("[data-test=dock-handle]")?.getClientRects().length ?? 0) > 0', 10_000);
-    $before = $page->evaluate('() => [document.querySelector("[data-test=dock-handle]").innerText, document.querySelector('.json_encode($tab).').offsetParent === null, document.querySelector('.json_encode($tab).').textContent]');
+    $card = '[data-test=dock-card][data-key="game-'.$game->id.'"]';
+    BrowserWait::until($page, '() => window.Echo?.connector?.pusher?.connection?.state === "connected" && document.querySelector('.json_encode($card).') !== null', 10_000);
+    $page->locator('[data-test=nav-actions]')->click();
+    BrowserWait::until($page, '() => document.querySelector("[data-test=dock-sheet]")?.checkVisibility() === true', 5_000);
+    $before = $page->evaluate('() => { const card = document.querySelector('.json_encode($card).'); return [card.dataset.need, card.innerText, !!card.closest("[data-test=dock-sheet]")]; }');
 
     app(ChessGameService::class)->move($game->refresh(), $bert, 'e7e5');
-    // It unfolds on its own once something is on her.
-    BrowserWait::until($page, '() => document.querySelector('.json_encode($tab).')?.dataset.need === "1" && document.querySelector('.json_encode($tab).').offsetParent !== null', 10_000);
-    $after = $page->evaluate('() => document.querySelector('.json_encode($tab).').innerText');
+    // It turns on its own once something is on her: the entry needs her now, its action says so.
+    BrowserWait::until($page, '() => document.querySelector('.json_encode($card).')?.dataset.need === "1"', 10_000);
+    $after = $page->evaluate('() => document.querySelector('.json_encode($card).').innerText');
+    // The refresh morphs the dock, it does not start it anew: the open dock stays open (x-data never changes, P7).
+    $stillOpen = $page->evaluate('() => document.querySelector("[data-test=dock-sheet]")?.checkVisibility() === true');
 
-    // The panel is not there until the tab is opened.
-    $panelsBefore = $page->evaluate('() => document.querySelectorAll("[data-panel]").length');
-    $page->locator($tab)->click();
-    $panel = '[data-panel="game-'.$game->id.'"]';
-    // Bert's move also sends Anna a notification: a second refresh may redraw the open panel meanwhile.
-    BrowserWait::until($page, '() => document.querySelector('.json_encode($panel.' [data-test=dock-panel-cta]').')?.innerText === "Play your move"', 5_000);
-
-    $page->locator($panel.' [data-test=dock-panel-cta]')->click();
+    $page->locator($card.' [data-test=dock-card-action]')->click();
     BrowserWait::until($page, '() => location.pathname === "/games/'.$game->id.'" && window.Alpine && document.querySelector("[data-test=daily-game]") !== null', 10_000);
 
-    expect($before[0])->toContain('1')->toContain('waiting')
-        ->and($before[1])->toBeTrue()
-        ->and($before[2])->toContain($bert->displayName())->toContain('Their move')
-        ->and($after)->toContain('Your move')
-        ->and($panelsBefore)->toBe(0)
+    expect($stillOpen)->toBeTrue()
+        ->and($before[0])->toBe('0')
+        ->and($before[1])->toContain($bert->displayName())
+        ->and($before[2])->toBeTrue()
+        ->and($after)->toContain('Play')
         ->and($page->evaluate('() => document.querySelector("[data-dock-item=\"game-'.$game->id.'\"]")'))->toBeNull()
         ->and($page->evaluate('() => window.__errors'))->toBe([]);
 });

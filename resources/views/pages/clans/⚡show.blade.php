@@ -263,9 +263,20 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
     $peak = max(1, $contrib->max('points'));
 @endphp
 
-<div class="flex grow flex-col gap-4 px-4 pb-6 lg:gap-6 lg:px-12 lg:pb-8">
+{{--
+    The clan page (ClanShow.dc.html, template T7, P7): breadcrumb, the head as a card, then the main column (apply,
+    join link, players, Clan Rating and Hashrate, Elo, team matches, matches) and on the right the clan on Nostr and
+    its proof. The board's clan chat is not drawn: the league has no clan chat (design only real features).
+--}}
+<div class="grid grow grid-cols-1 gap-6 px-4 pt-4 pb-8 lg:grid-cols-12 lg:px-12 lg:pt-6">
+    <nav aria-label="{{ __('Breadcrumb') }}" class="flex flex-wrap items-center gap-2 text-[13px] text-ink-3 lg:col-span-12" data-test="clan-crumbs">
+        <a href="{{ route('home') }}" @navigate(route('home')) class="rv-lk">{{ __('Home') }}</a><span aria-hidden="true">/</span>
+        <a href="{{ route('clans.index') }}" @navigate(route('clans.index')) class="rv-lk">{{ __('Clans') }}</a>
+    </nav>
+
+    <div class="flex min-w-0 flex-col gap-6 lg:col-span-8">
     {{-- Header: tag cube, name, chips, manage --}}
-    <div class="flex flex-wrap items-end gap-5 pt-4 lg:flex-nowrap lg:gap-7">
+    <div class="flex flex-wrap items-end gap-5 rounded-[4px] border border-line bg-[linear-gradient(90deg,#14110C,var(--color-ground)_70%)] p-4 sm:p-6 lg:flex-nowrap lg:gap-7" data-test="clan-head">
         {{-- The clan logo, or the tag cube when there is none (x-clan-tag tile). --}}
         <x-clan-tag :clan="$clan" :tile="88" class="cube mr-4 flex size-16 shrink-0 items-center justify-center bg-[linear-gradient(180deg,#F9B25F,#F7931A)] font-display text-base font-extrabold text-on-btc lg:size-[88px] lg:text-[22px]" />
         <div class="flex min-w-0 basis-full flex-col gap-3 sm:basis-auto">
@@ -297,9 +308,6 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
         @endif
     </div>
 
-    {{-- P45: the clan on Nostr (its 32150), a message to its owner --}}
-    <x-nostr-bar :bar="\App\Support\Nostr\NostrBar::clan($clan)" />
-
     {{-- Apply to the clan (plan "Clan-Bewerbungen"): the form, then the status; nothing for its members. `?apply=1` (the clan list) opens the form. --}}
     <livewire:clan-apply :clan-id="$clan->id" :open="request()->boolean('apply')" />
 
@@ -307,7 +315,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
     <livewire:invite-link :clan-id="$clan->id" place="clan" />
 
     {{-- Players and lineup numbers --}}
-    <div class="grid grid-cols-1 gap-6 rounded-lg bg-card px-4 pt-2 pb-4 lg:grid-cols-2 lg:gap-12 lg:px-6">
+    <div class="grid grid-cols-1 gap-6 rounded-[4px] border border-hairline bg-card px-4 pt-2 pb-4 lg:px-6 xl:grid-cols-2 xl:gap-12">
         <div class="flex flex-col">
             <div class="flex h-11 items-center justify-between gap-3 border-b border-hairline text-sm"><span class="text-ink-2">{{ __('Players') }}</span><span class="hidden text-xs text-ink-3 sm:inline">{{ __('everyone joined with their own invite') }}</span></div>
             @foreach ($this->members as $member)
@@ -352,9 +360,9 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
         </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] lg:gap-6">
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] xl:gap-6">
         {{-- Clan Rating (P7) --}}
-        <section aria-labelledby="cr-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-4 lg:px-6 lg:py-5">
+        <section aria-labelledby="cr-h" class="flex flex-col gap-4 rounded-[4px] border border-hairline bg-card px-4 py-4 lg:px-6 lg:py-5">
             <span class="flex items-baseline justify-between gap-3"><h2 id="cr-h" class="m-0 text-[15px] font-bold">{{ __('Clan Rating · chess') }}</h2>
                 <span class="text-xs text-ink-3">{{ $ranks['rating'] ? __('#:rank of :of rated clans', ['rank' => $ranks['rating'], 'of' => $ranks['ratedClans']]) : __('not rated yet') }}</span></span>
             <div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -384,7 +392,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
         </section>
 
         {{-- Clan Hashrate (P7) --}}
-        <section aria-labelledby="hc-h" class="flex flex-col gap-4 rounded-lg bg-card px-4 py-4 lg:px-6 lg:py-5">
+        <section aria-labelledby="hc-h" class="flex flex-col gap-4 rounded-[4px] border border-hairline bg-card px-4 py-4 lg:px-6 lg:py-5">
             <span class="flex flex-wrap items-center justify-between gap-3">
                 <span class="flex flex-col gap-0.5"><h2 id="hc-h" class="m-0 text-[15px] font-bold">{{ __('Clan Hashrate') }}</h2><span class="text-xs text-ink-3">{{ __('points from every rated game, chess and Rocket League') }}</span></span>
                 {{-- The window switch names the live season; before Block 0 there is nothing to switch. --}}
@@ -425,7 +433,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
     </div>
 
     {{-- Elo over time (P6/P7) --}}
-    <section aria-labelledby="elo-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:px-6 lg:py-5">
+    <section aria-labelledby="elo-h" class="flex flex-col gap-3 rounded-[4px] border border-hairline bg-card px-4 py-4 lg:px-6 lg:py-5">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1"><h2 id="elo-h" class="m-0 text-[15px] font-bold">{{ __('Elo over time') }}</h2><span class="text-xs text-ink-3">{{ __('per lineup and rated series') }}</span></div>
         @if ($record !== null && $record['lines'] !== [])
             {{-- One line per series game the clan has a lineup in (ClanStats::record()). --}}
@@ -459,7 +467,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
     @php($rapid = $this->rapidLineup)
     @php($openTeam = $this->openTeamMatches)
     @if ($rapid !== null || $openTeam->isNotEmpty())
-        <section aria-labelledby="tm-h" class="flex flex-col gap-3 rounded-lg bg-card px-4 py-4 lg:px-6 lg:py-5" data-test="clan-team-matches">
+        <section aria-labelledby="tm-h" class="flex flex-col gap-3 rounded-[4px] border border-hairline bg-card px-4 py-4 lg:px-6 lg:py-5" data-test="clan-team-matches">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1"><h2 id="tm-h" class="m-0 text-[15px] font-bold">{{ __('Chess team matches') }}</h2><span class="text-xs text-ink-3">{{ __('Rapid 10+5 over 2 or 3 boards') }}</span></div>
                 @if ($teamChallenge = $this->teamChallengeUrl())
@@ -486,11 +494,11 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
                 @forelse ($openTeam as $teamMatch)
                     @php($theirSide = $this->clan->lineups->contains('id', $teamMatch->challenger_lineup_id) ? 'challenged' : 'challenger')
                     @php($cell = SeriesPresenter::score($teamMatch))
-                    <a href="{{ route('matches.show', $teamMatch) }}" class="tr grid h-11 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-sm px-2 text-[13px] text-ink hover:text-ink lg:grid-cols-[96px_minmax(0,1fr)_120px_150px_160px] lg:gap-4" data-test="team-match-row">
+                    <a href="{{ route('matches.show', $teamMatch) }}" class="tr grid h-11 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 rounded-sm px-2 text-[13px] text-ink hover:text-ink xl:grid-cols-[96px_minmax(0,1fr)_120px_150px_160px] xl:gap-4" data-test="team-match-row">
                         <span class="font-bold text-btc">{{ $teamMatch->label() }}</span>
                         <span class="flex min-w-0 items-center gap-2 whitespace-nowrap"><x-clan-tag :tag="$teamMatch->sideTag($theirSide)" size="sm" /><span class="truncate">{{ $teamMatch->sideName($theirSide) }}</span></span>
-                        <span class="hidden text-ink-2 lg:block">{{ SeriesPresenter::format($teamMatch) }}</span>
-                        <span class="hidden text-ink-2 lg:block">{{ $teamMatch->rated ? __('Rated') : __('Friendly') }}@if ($cell['text'] !== '–') · {{ $cell['text'] }}@endif</span>
+                        <span class="hidden text-ink-2 xl:block">{{ SeriesPresenter::format($teamMatch) }}</span>
+                        <span class="hidden text-ink-2 xl:block">{{ $teamMatch->rated ? __('Rated') : __('Friendly') }}@if ($cell['text'] !== '–') · {{ $cell['text'] }}@endif</span>
                         <span class="text-right whitespace-nowrap text-ink-2">{{ SeriesPresenter::when($teamMatch, auth()->user()) }}</span>
                     </a>
                 @empty
@@ -501,24 +509,24 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
     @endif
 
     {{-- Matches (P6) --}}
-    <section aria-labelledby="mt-h" class="flex flex-col rounded-lg bg-card px-4 pt-2 pb-4 lg:px-6">
+    <section aria-labelledby="mt-h" class="flex flex-col rounded-[4px] border border-hairline bg-card px-4 pt-2 pb-4 lg:px-6">
         <div class="flex h-[52px] items-center justify-between gap-3"><h2 id="mt-h" class="m-0 text-[15px] font-bold">{{ __('Matches') }}</h2><a href="{{ route('matches.index', ['clan' => $clan->slug]) }}" class="flex h-11 items-center truncate text-[13px]" data-test="clan-matches">{{ __('All :clan matches', ['clan' => $clan->name]) }}</a></div>
         @if ($record)
-            <div class="grid h-10 grid-cols-[48px_minmax(0,1fr)_52px_64px] items-center gap-3 border-b border-hairline px-2 text-[13px] font-bold text-ink-2 lg:grid-cols-[96px_minmax(0,1fr)_88px_120px_150px_88px_120px] lg:gap-4">
-                <span>{{ __('Match') }}</span><span>{{ __('Opponent') }}</span><span>{{ __('Score') }}</span><span class="hidden lg:block">{{ __('Format') }}</span><span>{{ __('Result') }}</span><span class="hidden text-right lg:block">Elo</span><span class="hidden text-right lg:block">{{ __('When') }}</span>
+            <div class="grid h-10 grid-cols-[48px_minmax(0,1fr)_52px_64px] items-center gap-3 border-b border-hairline px-2 text-[13px] font-bold text-ink-2 xl:grid-cols-[96px_minmax(0,1fr)_88px_120px_150px_88px_120px] xl:gap-4">
+                <span>{{ __('Match') }}</span><span>{{ __('Opponent') }}</span><span>{{ __('Score') }}</span><span class="hidden xl:block">{{ __('Format') }}</span><span>{{ __('Result') }}</span><span class="hidden text-right xl:block">Elo</span><span class="hidden text-right xl:block">{{ __('When') }}</span>
             </div>
             @foreach ($record['matches'] as [$height, $oppTag, $opponent, $score, $format, $result, $elo, $when])
-                <a href="{{ route('matches.show', ltrim($height, '#')) }}" class="tr grid h-11 grid-cols-[48px_minmax(0,1fr)_52px_64px] items-center gap-3 rounded-sm px-2 text-[13px] text-ink hover:text-ink lg:grid-cols-[96px_minmax(0,1fr)_88px_120px_150px_88px_120px] lg:gap-4">
+                <a href="{{ route('matches.show', ltrim($height, '#')) }}" class="tr grid h-11 grid-cols-[48px_minmax(0,1fr)_52px_64px] items-center gap-3 rounded-sm px-2 text-[13px] text-ink hover:text-ink xl:grid-cols-[96px_minmax(0,1fr)_88px_120px_150px_88px_120px] xl:gap-4">
                     <span class="font-bold text-btc">{{ $height }}</span>
                     <span class="flex min-w-0 items-center gap-2 whitespace-nowrap"><x-clan-tag :tag="$oppTag" size="sm" /><span class="truncate">{{ $opponent }}</span></span>
                     <span class="font-bold whitespace-nowrap">{{ $score }}</span>
-                    <span class="hidden text-ink-2 lg:block">{{ $format }}</span>
+                    <span class="hidden text-ink-2 xl:block">{{ $format }}</span>
                     <span @class(['flex items-center gap-1.5 font-bold', 'text-win' => $result === 'win', 'text-loss' => $result === 'loss', 'text-btc-hi' => $result === 'wait', 'text-ink-2' => $result === 'draw'])>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="shrink-0"><path d="{{ ['win' => 'M5 12.5 10 17 19 7', 'loss' => 'M6 6l12 12M18 6 6 18', 'wait' => 'M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', 'draw' => 'M5 12h14'][$result] }}"></path></svg>
                         <span class="truncate">{{ $result === 'wait' ? __('to confirm') : __($result) }}</span>
                     </span>
-                    <span @class(['hidden text-right font-bold lg:block', 'text-win' => str_starts_with($elo, '+'), 'text-loss' => str_starts_with($elo, '−'), 'text-ink-3' => ! str_starts_with($elo, '+') && ! str_starts_with($elo, '−')])>{{ __($elo) }}</span>
-                    <span class="hidden text-right text-ink-2 lg:block">{{ __($when) }}</span>
+                    <span @class(['hidden text-right font-bold xl:block', 'text-win' => str_starts_with($elo, '+'), 'text-loss' => str_starts_with($elo, '−'), 'text-ink-3' => ! str_starts_with($elo, '+') && ! str_starts_with($elo, '−')])>{{ __($elo) }}</span>
+                    <span class="hidden text-right text-ink-2 xl:block">{{ __($when) }}</span>
                 </a>
             @endforeach
         @else
@@ -526,7 +534,13 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component {
         @endif
     </section>
 
-    <x-proof :rows="$this->proof" toggle="show" class="rounded-lg !bg-proof-fill px-1.5 !shadow-[inset_0_0_0_1px_#3B2F5C]">
-        {{ __('Each player confirmed joining this clan from their own account.') }} <a href="{{ route('protocol') }}">{{ __('Open protocol') }}</a>
-    </x-proof>
+    </div>
+
+    <aside class="flex min-w-0 flex-col gap-4 lg:col-span-4" aria-label="{{ __('Clan entry') }}">
+        {{-- P45: the clan on Nostr (its 32150), a message to its owner --}}
+        <x-nostr-bar :bar="\App\Support\Nostr\NostrBar::clan($clan)" />
+        <x-proof :rows="$this->proof" toggle="show" class="rounded-[4px] !bg-proof-fill px-1.5 !shadow-[inset_0_0_0_1px_#3B2F5C]">
+            {{ __('Each player confirmed joining this clan from their own account.') }} <a href="{{ route('protocol') }}">{{ __('Open protocol') }}</a>
+        </x-proof>
+    </aside>
 </div>

@@ -226,6 +226,9 @@ registerAlpine(() => {
                 this.fitBoard();
             };
             addEventListener('resize', this.onResize);
+            // Focus mode (focusMode.js): the tab bar slid away or came back, so the first screen changed height.
+            this.onFocusMode = () => this.fitBoard();
+            addEventListener('focus-mode', this.onFocusMode);
             this.$watch('state.status', () => this.$nextTick(() => this.fitBoard()));
             this.$nextTick(() => this.fitBoard());
         },
@@ -234,6 +237,7 @@ registerAlpine(() => {
             clearInterval(this.ticker);
             clearInterval(this.poller);
             removeEventListener('resize', this.onResize);
+            removeEventListener('focus-mode', this.onFocusMode);
         },
 
         /**
@@ -252,12 +256,16 @@ registerAlpine(() => {
             const phone = matchMedia('(width < 64rem)').matches;
             const shown = (el) => !!el && el.checkVisibility() && el.getBoundingClientRect().height > 0;
             const fixed = (el) => getComputedStyle(el).position === 'fixed';
-            const tabbar = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+            // The tab bar's room, none while focus mode has slid it away (focusMode.js; the body keeps its padding).
+            const tabbar = document.documentElement.classList.contains('is-focus') ? 0 : parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
             const sheet = document.querySelector('[data-test=chat-sheet-toggle]')?.closest('section');
             const dock = this.$refs.dock;
             let edge = innerHeight - tabbar;
             if (shown(sheet) && fixed(sheet)) edge = Math.min(edge, sheet.getBoundingClientRect().top);
             if (shown(dock) && fixed(dock)) edge = Math.min(edge, dock.getBoundingClientRect().top);
+            // The action dock's tab on top of that bar (components/⚡match-dock, P7): nothing lies over the board.
+            const dockTab = document.querySelector('[data-test=dock-bar-tab]');
+            if (phone && shown(dockTab)) edge = Math.min(edge, dockTab.getBoundingClientRect().top);
             const drawn = board.getBoundingClientRect();
             // On a phone the game's actions under the board (abort, draw, resign) may follow below the first screen: the board keeps its size.
             const under = Math.max(drawn.bottom, ...[...column.children].filter((el) => shown(el) && !fixed(el) && !(phone && el.hasAttribute('data-fit-skip'))).map((el) => el.getBoundingClientRect().bottom)) - drawn.bottom;

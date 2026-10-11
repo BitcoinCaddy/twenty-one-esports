@@ -103,7 +103,7 @@
 
     .rv-dd-menu > [role="option"] {
         display: flex;
-        min-height: 40px;
+        min-height: 44px;
         flex: none;
         align-items: center;
         padding: 0 10px;
@@ -200,8 +200,9 @@
             column-gap: 16px;
         }
 
+        /* The board's 40 px row, 44 px as a link target (the house rule; the row is one link). */
         .mp-row {
-            min-height: 40px;
+            min-height: 44px;
             padding: 6px 12px;
         }
 
@@ -418,6 +419,36 @@
         background: var(--color-live);
     }
 
+    /* A result on /me (Profile.dc.html "Letzte Ergebnisse"): a card with its outcome as a 3 px edge on top. */
+    .me-tile {
+        display: flex;
+        height: 100%;
+        min-width: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 12px 8px 10px;
+        border: 1px solid var(--color-hairline);
+        border-top: 3px solid var(--color-line);
+        border-radius: 4px;
+        background: var(--color-card);
+        color: var(--color-ink);
+        text-align: center;
+    }
+
+    .me-tile:hover {
+        background: var(--color-row-hover);
+        color: var(--color-ink);
+    }
+
+    .me-tile.is-win {
+        border-top-color: var(--color-win);
+    }
+
+    .me-tile.is-loss {
+        border-top-color: var(--color-loss);
+    }
+
     /* The Mempool head: two big counts (Mempool.dc.html `.livebig`, Unbounded 48 tabular). */
     .mp-big {
         font-family: var(--font-display);
@@ -478,4 +509,104 @@
     .dk-drawer {
         animation: none;
     }
+}
+
+/*
+ * Focus mode on a phone's game page (resources/js/focusMode.js): the tab bar slides away while the player plays, and
+ * the page's own bottom bars (chat sheet, Blockli's bar: [data-page-bar]) sink with it; a 24 px strip at the bottom
+ * edge brings it back on a tap. The body keeps its room for the bar, so the document's height and everything on it
+ * stay put (no layout shift; BlitzGameTest measures the document height through 70 moves). The board takes the
+ * height in boardGame.js fitBoard. 200 ms, ease-out (R17).
+ */
+@media (width < 64rem) {
+    [data-test="tab-bar"],
+    [data-page-bar] {
+        transition: translate 200ms ease-out;
+    }
+
+    :root.is-focus [data-test="tab-bar"] {
+        translate: 0 100%;
+    }
+
+    :root.is-focus [data-page-bar] {
+        translate: 0 0;
+    }
+
+    :root.is-focus .focus-edge {
+        display: block;
+    }
+}
+
+.focus-edge {
+    position: fixed;
+    z-index: 41;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: none;
+    height: 24px;
+    border: 0;
+    background: linear-gradient(0deg, rgb(10 10 11 / 0.6), transparent);
+    cursor: pointer;
+}
+
+.focus-edge::after {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-edge);
+    content: "";
+    translate: -50% 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-test="tab-bar"],
+    [data-page-bar] {
+        transition: none;
+    }
+}
+
+/*
+ * A match room's score bar carries the dock's 44 px tab on its top edge (phones): the room chat ends above both,
+ * so its field is never under the tab (tests/Browser/UpcomingEventsTest.php "nothing covers the field", P7).
+ */
+@media (width < 64rem) {
+    :root:has([data-room-bar]):has([data-test="dock-bar-tab"]) {
+        --dock-h: 10.5rem;
+    }
+}
+
+/*
+ * The settings pages (Settings.dc.html, template T-Settings, P7): from lg two columns, the rail of
+ * components/settings/header on the left all the way down, the heading and the page's cards on the right (760 px).
+ * From xl: at 1024 the chess page's board choices need the whole width (measured: 1032 px page at 1024 with the rail).
+ */
+@media (width >= 80rem) {
+    :where(div):has(> [data-test="settings-header"]) {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 760px);
+        column-gap: 32px;
+        /* No row gap: the rail spans 30 implicit rows, and a gap per empty row would add height. */
+        row-gap: 0;
+        align-content: start;
+        padding-top: 24px;
+    }
+
+    :where(div):has(> [data-test="settings-header"]) > *,
+    :where(div):has(> [data-test="settings-header"]) > [data-test="settings-header"] > :not(.settings-rail) {
+        grid-column: 2;
+        margin-bottom: 20px;
+    }
+
+    :where(div):has(> [data-test="settings-header"]) > [data-test="settings-header"] > .settings-rail {
+        grid-row: 1 / span 30;
+        grid-column: 1;
+        align-self: start;
+        position: sticky;
+        top: calc(var(--shell-h) + 24px);
+    }
+
 }

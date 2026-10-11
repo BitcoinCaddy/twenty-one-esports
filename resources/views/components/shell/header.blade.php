@@ -98,13 +98,16 @@
         @if ($user)
             {{-- Aktionen: the match dock's entries (its own count, components/⚡match-dock), the dock opens on click; empty, the player's page. --}}
             {{-- An entry under its limit turns it red with its label and time (ActionDock.dc.html "Zu, Frist unter 15 Min"). --}}
-            <a href="{{ route('dashboard') }}" class="rv-act hidden lg:inline-flex" x-data="dockCount" x-on:click="openDock($event)" x-bind:class="urgentLabel && 'is-hot'"
+            {{-- The board's 36 px button inside a 44 px target (the header row is 56 px; WCAG 2.5.8 and the house 44 px rule). --}}
+            <a href="{{ route('dashboard') }}" class="hidden h-11 shrink-0 items-center lg:inline-flex" x-data="dockCount" x-on:click="openDock($event)"
                x-bind:aria-label="dockOpen > 0 ? @js(__('Actions')).concat(', ', dockOpen, ' ', @js(__('open'))) : @js(__('Actions'))" data-test="nav-actions">
-                <x-icon name="bolt" :size="14" class="text-btc" x-show="! urgentLabel" />
-                <span class="rv-live h-5 w-6 justify-center px-0" x-show="urgentLabel" x-cloak aria-hidden="true"><i></i></span>
-                <span class="max-xl:hidden" x-show="! urgentLabel">{{ __('Actions') }}</span>
-                <span class="whitespace-nowrap" x-show="urgentLabel" x-cloak data-test="actions-urgent"><span x-text="urgentLabel"></span> <b class="tabular-nums" x-text="urgentTime"></b></span>
-                <span class="rv-n is-o" x-show="dockOpen > 0" x-text="dockOpen" x-cloak data-test="actions-count"></span>
+                <span class="rv-act" x-bind:class="urgentLabel && 'is-hot'">
+                    <x-icon name="bolt" :size="14" class="text-btc" x-show="! urgentLabel" />
+                    <span class="rv-live h-5 w-6 justify-center px-0" x-show="urgentLabel" x-cloak aria-hidden="true"><i></i></span>
+                    <span class="max-xl:hidden" x-show="! urgentLabel">{{ __('Actions') }}</span>
+                    <span class="whitespace-nowrap" x-show="urgentLabel" x-cloak data-test="actions-urgent"><span x-text="urgentLabel"></span> <b class="tabular-nums" x-text="urgentTime"></b></span>
+                    <span class="rv-n is-o" x-show="dockOpen > 0" x-text="dockOpen" x-cloak data-test="actions-count"></span>
+                </span>
             </a>
 
             {{-- An open cup match on every page (CupMatchNow; user, 2026-10-03): pulsing while the game is live. --}}
@@ -142,16 +145,52 @@
                 <div id="account-menu" role="menu" aria-label="{{ __('Account') }}" tabindex="-1" x-ref="accountMenu" x-show="account" x-cloak data-nav-panel
                      x-on:keydown="accountKey($event)" data-test="account-menu"
                      class="absolute top-full right-0 z-50 mt-[5px] w-max max-w-72 min-w-48 rounded-[4px] border border-line bg-row-hover p-1 shadow-[0_8px_24px_rgba(0,0,0,.5)] focus:outline-hidden">
-                    <div class="flex items-center gap-2.5 px-2 pt-1.5 pb-2" data-test="account-menu-name">
-                        <x-avatar :user="$user" :size="32" class="shrink-0 rounded-full" />
-                        <span class="flex min-w-0 flex-col leading-tight">
-                            <span class="text-sm font-bold break-words text-ink">{{ $user->displayName() }}</span>
-                            <span class="text-[11px] text-ink-3">{{ $user->shortNpub() }}</span>
-                        </span>
+                    {{-- Profile.dc.html (P7): the name leads to the player's own page, then the links in three groups and the language. --}}
+                    @php
+                        $page = collect($account)->firstWhere('key', 'page');
+                        $groups = [
+                            'play' => [__('Play'), ['upcoming', 'daily', 'tournaments']],
+                            'community' => [__('Community'), ['clan', 'invite', 'invite-friend', 'badges']],
+                            'account' => [__('Account'), ['settings', 'notifications', 'chess-settings']],
+                        ];
+                        $grouped = collect($groups)->map(fn (array $group): array => [$group[0], array_values(array_filter($account, fn (array $link): bool => in_array($link['key'], $group[1], true)))]);
+                        $loose = array_values(array_filter($account, fn (array $link): bool => $link['key'] !== 'page' && ! collect($groups)->pluck(1)->flatten()->contains($link['key'])));
+                    @endphp
+                    <div data-test="account-menu-name">
+                        <a href="{{ $page['href'] ?? route('dashboard') }}" @navigate($page['href'] ?? route('dashboard')) role="menuitem" tabindex="-1" class="account-item h-auto! gap-2.5 py-2" data-test="account-page">
+                            <x-avatar :user="$user" :size="32" class="shrink-0 rounded-full" />
+                            <span class="flex min-w-0 flex-col leading-tight">
+                                <span class="text-sm font-bold break-words text-ink">{{ $user->displayName() }}</span>
+                                <span class="text-[11px] text-ink-3">{{ __('Your page') }}</span>
+                            </span>
+                        </a>
                     </div>
-                    <div class="-mx-1 my-1 h-px bg-line" role="separator"></div>
-                    @foreach ($account as $link)
-                        <a href="{{ $link['href'] }}" @navigate($link['href']) role="menuitem" tabindex="-1" class="account-item" @if ($link['test']) data-test="{{ $link['test'] }}" @endif><x-icon :name="$link['icon']" :size="16" class="me-2 text-ink-3" />{{ $link['label'] }}@isset($link['count'])<span class="rv-n ms-auto">{{ $link['count'] }}</span>@endisset</a>
+                    @foreach ($grouped as $key => [$heading, $links])
+                        @if ($links !== [] || $key === 'account')
+                            <div class="-mx-1 my-1 h-px bg-line" role="separator"></div>
+                            <span class="block px-2 pt-1 pb-0.5 text-[11px] text-ink-3" aria-hidden="true" data-test="account-group-{{ $key }}">{{ $heading }}</span>
+                            @foreach ($links as $link)
+                                <a href="{{ $link['href'] }}" @navigate($link['href']) role="menuitem" tabindex="-1" class="account-item" @if ($link['test']) data-test="{{ $link['test'] }}" @endif><x-icon :name="$link['icon']" :size="16" class="me-2 text-ink-3" />{{ $link['label'] }}@isset($link['count'])<span class="rv-n ms-auto">{{ $link['count'] }}</span>@endisset</a>
+                            @endforeach
+                            @if ($key === 'account')
+                                @foreach ($loose as $link)
+                                    <a href="{{ $link['href'] }}" @navigate($link['href']) role="menuitem" tabindex="-1" class="account-item" @if ($link['test']) data-test="{{ $link['test'] }}" @endif><x-icon :name="$link['icon']" :size="16" class="me-2 text-ink-3" />{{ $link['label'] }}</a>
+                                @endforeach
+                                {{-- The language, two links (the footer's switch as well). --}}
+                                <span class="flex items-center gap-2 px-2 py-1 text-[13px] text-ink-2" data-test="account-language">
+                                    <x-icon name="globe" :size="16" class="text-ink-3" />{{ __('Language') }}
+                                    <span class="grow"></span>
+                                    {{-- The language in use is a mark, not a link: only the other one switches (as the footer does). --}}
+                                    @foreach (['de' => 'DE', 'en' => 'EN'] as $locale => $code)
+                                        @if (app()->getLocale() === $locale)
+                                            <span class="flex h-9 min-w-9 items-center justify-center rounded-[4px] border border-btc bg-btc px-2 text-[12px] font-bold text-on-btc" aria-current="true" lang="{{ $locale }}">{{ $code }}</span>
+                                        @else
+                                            <a href="{{ route('locale.switch', $locale) }}" role="menuitem" tabindex="-1" class="flex h-9 min-w-9 items-center justify-center rounded-[4px] border border-line px-2 text-[12px] font-bold text-ink-2 hover:text-ink" lang="{{ $locale }}">{{ $code }}</a>
+                                        @endif
+                                    @endforeach
+                                </span>
+                            @endif
+                        @endif
                     @endforeach
                     <div class="-mx-1 my-1 h-px bg-line" role="separator"></div>
                     {{-- Forget a mill remote signer first, so the next person on this browser does not inherit it. --}}

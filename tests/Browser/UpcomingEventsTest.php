@@ -129,7 +129,8 @@ test('home\'s next-match card and the dock\'s chip show at 375 and 1440, clear o
 
         $m = $page->evaluate('() => {
             const rect = (s) => { const el = document.querySelector(s); if (!el || !el.checkVisibility()) return null; const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, left: r.left, right: r.right }; };
-            const chip = innerWidth >= 1024 ? rect("[data-dock-tab=\"series-'.$casual->number.'\"]") : rect("[data-test=dock-mobile-bar]");
+            // The action dock no longer floats (ActionDock.dc.html, P7): its chip is the header or tab bar entry Aktionen.
+            const chip = innerWidth >= 1024 ? rect("[data-test=nav-actions]") : rect("[data-test=tab-actions]");
             return {
                 card: rect("[data-test=upcoming-card]"), open: rect("[data-test=upcoming-open]"), chip,
                 state: document.querySelector("[data-test=upcoming-card] [data-test=upcoming-state]")?.innerText,
@@ -138,7 +139,8 @@ test('home\'s next-match card and the dock\'s chip show at 375 and 1440, clear o
             };
         }');
         $floaters = $page->evaluate(UPCOMING_FLOATERS);
-        $floor = min($height, ...array_map(fn (array $f): float => $f['top'], $floaters));
+        // Nothing floats at 1440 since the action dock opens from the header (P7): the window's bottom is the floor.
+        $floor = min([$height, ...array_map(fn (array $f): float => $f['top'], $floaters)]);
 
         expect($m['card'])->not->toBeNull($label)
             ->and($m['chip'])->not->toBeNull($label.': dock chip')
@@ -259,7 +261,8 @@ test('the room chat keeps a fixed height, opens at the newest message, loads old
 
             fwrite(STDERR, "\n[upcoming] {$label}: ".json_encode(['box' => $box, 'kept' => $kept, 'field' => $field, 'floaters' => $floaters])."\n");
 
-            expect($floaters)->not->toBeEmpty($label.': something floats (the dock at least)')
+            // On a phone the tab bar and the score bar float; at 1440 nothing does since P7 (the dock opens from the header).
+            expect($width < 1024 ? $floaters : ['none'])->not->toBeEmpty($label.': something floats on a phone')
                 ->and($covering)->toBe([], $label.': nothing covers the field')
                 ->and($field['top'])->toBeGreaterThanOrEqual(0);
 

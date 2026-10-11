@@ -14,6 +14,7 @@ use Tests\Support\BlockfillOn;
 use Tests\Support\BlockliOn;
 use Tests\Support\BrowserConsole;
 use Tests\Support\BrowserLogin;
+use Tests\Support\BrowserWait;
 use Tests\Support\FakeStackerVerifier;
 use Tests\Support\TestSigner;
 
@@ -273,6 +274,86 @@ test('on a board game page at 1440 x 900 with open matches nothing covers the ch
     leagueRevampQuiet($page, 'board chat 1440');
 });
 
+/** The board, the tab bar and the focus state of a phone's game page, after the bar's 200 ms slide and the board's refit. */
+const LEAGUE_FOCUS_PROBE = <<<'JS'
+() => new Promise((resolve) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+    const board = document.querySelector('[data-focus-board]').getBoundingClientRect();
+    const bar = document.querySelector('[data-test=tab-bar]').getBoundingClientRect();
+    const edge = document.querySelector('[data-test=focus-edge]');
+    // Whatever floats at the bottom (the dock's tab on Blockli's bar, the bar itself) against the board.
+    const floats = [...document.querySelectorAll('[data-test=dock-bar-tab], [data-test=block-input], [data-test=dock-row-tab]')].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect());
+    resolve({
+        covered: floats.filter((r) => r.top < board.bottom - 1 && r.bottom > board.top && r.left < board.right && r.right > board.left).length,
+        focus: document.documentElement.dataset.focus ?? null,
+        board: [Math.round(board.top), Math.round(board.width), Math.round(board.height)],
+        barTop: Math.round(bar.top),
+        edge: edge.checkVisibility(),
+        scrollY: Math.round(scrollY),
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    });
+})), 600))
+JS;
+
+test('focus mode: on a phone game page the tab bar slides away on a board tap and comes back on a scroll up or a tap on the edge, nowhere else', function () {
+    ['me' => $me] = leagueRevampWorld();
+    $game = mempoolBoard('blockli', ['mode' => 'correspondence', 'white_id' => $me->id, 'black_id' => User::factory()->create(['name' => 'Nidan21'])->id, 'ply' => 2,
+        'initial_ms' => 86_400_000, 'increment_ms' => 0, 'white_ms' => 86_400_000, 'black_ms' => 86_400_000]);
+    $tap = '() => document.querySelector("[data-focus-board]").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))';
+    $rows = [];
+
+    foreach ([[360, 740], [390, 664]] as [$width, $height]) {
+        $label = "{$width}x{$height}";
+        $page = leagueRevampOpen($me, route('board.show', $game, false), $width, $height);
+        $shown = $page->evaluate(LEAGUE_FOCUS_PROBE);
+        $page->evaluate($tap);
+        $hidden = $page->evaluate(LEAGUE_FOCUS_PROBE);
+        leagueRevampShot($page, "p7-focus-hidden-{$width}");
+        // Back on a tap on the bottom edge.
+        $page->locator('[data-test=focus-edge]')->click();
+        $back = $page->evaluate(LEAGUE_FOCUS_PROBE);
+        // Away on a scroll down, back on a scroll up.
+        $page->evaluate('() => { document.body.style.minHeight = (innerHeight * 2) + "px"; window.scrollTo(0, 120); }');
+        $down = $page->evaluate(LEAGUE_FOCUS_PROBE);
+        $page->evaluate('() => window.scrollTo(0, 40)');
+        $up = $page->evaluate(LEAGUE_FOCUS_PROBE);
+        $rows[$label] = compact('shown', 'hidden', 'back', 'down', 'up');
+        fwrite(STDERR, '[focus '.$label.'] '.json_encode($rows[$label]).PHP_EOL);
+
+        // Nothing that floats at the bottom lies over the board (PR #5's guarantee). One exception, measured: at 390 x 664
+        // with the dock's tab on Blockli's bar the board stands at its 200 px floor (boardGame.js fitBoard) and the tab
+        // still reaches its lowest row; PR #5 moves that tab into the chat bar's row, under the bar. Focus mode clears it.
+        $floor = fn (array $state): bool => $state['board'][1] <= 200;
+        expect($hidden['covered'])->toBe(0, $label.': nothing over the board in focus mode')
+            ->and($shown['covered'] === 0 || $floor($shown))->toBeTrue($label.': nothing over the board')
+            ->and($back['covered'] === 0 || $floor($back))->toBeTrue($label.': nothing over the board, back')
+            ->and($shown['focus'])->toBe('shown', $label)
+            ->and($shown['edge'])->toBeFalse($label)
+            ->and($hidden['focus'])->toBe('hidden', $label)
+            // The bar is off the screen, the edge strip is there to bring it back.
+            ->and($hidden['barTop'])->toBeGreaterThanOrEqual($height, $label)
+            ->and($hidden['edge'])->toBeTrue($label)
+            // The board takes the height the bar gave up and stays where it was: no shift of its top edge.
+            ->and($hidden['board'][2] - $shown['board'][2])->toBeGreaterThanOrEqual($floor($shown) ? 12 : 48, $label.': board taller')
+            ->and($hidden['board'][0])->toBe($shown['board'][0], $label.': board top unchanged')
+            ->and($hidden['overflow'])->toBeLessThanOrEqual(0, $label)
+            ->and($back['focus'])->toBe('shown', $label)
+            ->and($back['barTop'])->toBe($height - 64, $label)
+            ->and($back['board'])->toBe($shown['board'], $label.': board back to its size')
+            ->and($down['focus'])->toBe('hidden', $label)
+            ->and($up['focus'])->toBe('shown', $label);
+        leagueRevampQuiet($page, "focus {$label}");
+    }
+
+    // A page that is no game page never hides the bar: a tap and a scroll down leave it.
+    $page = leagueRevampOpen($me, '/clans', 390, 664);
+    $page->evaluate('() => { document.querySelector("main").dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); window.scrollTo(0, 300); }');
+    $other = $page->evaluate('() => new Promise((r) => setTimeout(() => r([document.documentElement.classList.contains("is-focus"), Math.round(document.querySelector("[data-test=tab-bar]").getBoundingClientRect().top)]), 350))');
+    $rows['clans'] = $other;
+    fwrite(STDERR, '[focus mode] '.json_encode($rows).PHP_EOL);
+
+    expect($other)->toBe([false, 664 - 64]);
+});
+
 test('the Mempool chain loads older blocks at its left end and keeps the cube it showed in place', function () {
     ['me' => $me] = leagueRevampWorld();
 
@@ -301,4 +382,18 @@ test('the Mempool chain loads older blocks at its left end and keeps the cube it
         ->and($after['scroll'])->toBeGreaterThan(0)
         ->and(abs($after['x'] - $before['x']))->toBeLessThanOrEqual(2);
     leagueRevampQuiet($page, 'chain history');
+});
+
+test('positive control: the collector of this file sees a thrown error and a 500 answer, and the squeeze detector a spill', function () {
+    ['me' => $me] = leagueRevampWorld();
+    $page = leagueRevampOpen($me, '/clans', 390);
+
+    $page->evaluate('() => { setTimeout(() => { throw new Error("league-probe"); }); return fetch("/__test/server-error").then((r) => r.text()).then(() => true); }');
+    BrowserWait::until($page, '() => (window.__errors ?? []).some((e) => e.includes("league-probe"))', 5_000);
+    // A button wider than its box and a box past the window: both are reported.
+    $page->evaluate('() => { const main = document.querySelector("main"); const b = document.createElement("button"); b.style.cssText = "width:40px;overflow:visible;white-space:nowrap"; b.textContent = "a label far wider than forty px"; b.dataset.test = "probe-spill"; main.append(b); const d = document.createElement("div"); d.style.cssText = "width:900px;height:4px"; d.dataset.test = "probe-wide"; main.append(d); return true; }');
+
+    expect($page->evaluate('() => window.__errors'))->not->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->not->toBe([])
+        ->and(implode(' | ', $page->evaluate(LEAGUE_REVAMP_SQUEEZE)))->toContain('spill probe-spill')->toContain('probe-wide');
 });

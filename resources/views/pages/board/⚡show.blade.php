@@ -309,7 +309,7 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
     $boardColumn = auth()->guest() ? 'lg:grid-cols-[minmax(0,min(560px,calc(100dvh-411px)))_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]';
 @endphp
 
-<div class="flex grow flex-col px-4 pb-8 lg:px-12 lg:pb-10" data-test="board-page">
+<div class="flex grow flex-col px-4 pb-8 lg:px-12 lg:pb-10" data-test="board-page" data-focus-page>
     {{-- A tournament game says so first, above everything else (user, 2026-10-03). --}}
     <x-tournaments.game-banner :banner="$boardGame->tournament_match_id !== null ? TournamentGameEnd::banner($boardGame) : null" class="mx-auto mb-4 w-full max-w-[1000px] lg:mb-5" />
 
@@ -347,7 +347,7 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                     <span class="flex shrink-0 items-baseline gap-1.5"><span class="text-[11px] text-ink-3" x-text="topSide === 'w' ? t.white : t.black"></span><span role="timer" class="shrink-0 font-display text-lg font-bold whitespace-nowrap tabular-nums max-lg:leading-6" :class="state.clock.running === topSide ? 'text-btc-hi' : 'text-ink-2'" x-text="clock(topSide)" data-test="clock-top"></span></span>
                 </div>
                 {{-- Black sees the board from its own side. --}}
-                <svg x-ref="board" viewBox="0 0 {{ $config['layout']['width'] ?? 100 }} {{ $config['layout']['height'] ?? 100 }}"
+                <svg x-ref="board" data-focus-board viewBox="0 0 {{ $config['layout']['width'] ?? 100 }} {{ $config['layout']['height'] ?? 100 }}"
                      x-on:click="pick($event)" x-on:keydown="pickKey($event)"
                      role="group" aria-label="{{ __('Game board') }}"
                      x-bind:class="color === 'b' ? 'rotate-180' : ''"

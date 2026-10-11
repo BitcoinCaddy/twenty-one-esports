@@ -64,18 +64,27 @@ const CUP_MEASURE = <<<'JS'
             const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
             return hit !== null && (el === hit || el.contains(hit));
         };
-        const bar = box('[data-test=dock-mobile-bar]') ?? box('[data-test=match-dock]');
-        return {
+        // Badge and banner with the page as it is; the dock's cup entry once the dock is open (P7: it opens from the
+        // header's or the tab bar's "Aktionen" and floats over nothing while closed), then closed again.
+        const frame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const page = {
             badge: box('[data-test=cup-badge]'),
-            dock: box('[data-test=dock-cup]'),
             banner: box('[data-test=cup-banner]'),
-            bar,
-            onTop: ['[data-test=cup-badge]', '[data-test=dock-cup]', '[data-test=cup-banner-open]'].map(onTop),
+            bar: null,
+            onTopPage: ['[data-test=cup-badge]', '[data-test=cup-banner-open]'].map(onTop),
             pulse: document.querySelector('[data-test=cup-badge] .animate-live') !== null,
             toasts: [...document.querySelectorAll('[role=status] > div')].map((el) => el.innerText.replace(/\s+/g, ' ').trim()),
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
             errors: window.__errors ?? ['collector missing'],
         };
+        window.dispatchEvent(new CustomEvent('dock-open'));
+        // After the sheet's 200 ms rise (dk-rise): measured mid-way it still sits lower.
+        return new Promise((resolve) => setTimeout(resolve, 300)).then(frame).then(() => {
+            const dock = box('[data-test=dock-cup]');
+            const dockOnTop = onTop('[data-test=dock-cup]');
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            return frame().then(() => ({ ...page, dock, onTop: [page.onTopPage[0], dockOnTop, page.onTopPage[1]] }));
+        });
     }
     JS;
 
