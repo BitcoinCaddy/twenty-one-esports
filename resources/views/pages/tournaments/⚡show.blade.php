@@ -888,13 +888,15 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                     @if ($hasPool)
                         <span class="flex flex-col" data-test="prize-pot">
                             <span class="rv-m">{{ __('Prize pot in sats') }}</span>
-                            <b class="font-display text-[26px] leading-tight font-bold whitespace-nowrap text-btc tabular-nums lg:text-[32px]" data-test="pool-sats">{{ \App\Support\Engagement\HomeBoard::sats($poolSats) }} Sats</b>
+                            <b class="font-display text-[26px] leading-tight font-bold whitespace-nowrap text-btc tabular-nums lg:text-[32px]"><span data-test="pool-sats">{{ \App\Support\Cards\ShareCard::sats($poolSats) }}</span> Sats</b>
                             @if ($poolZaps > 0)
-                                <span class="rv-m">{{ __(':base + :zaps from zaps', ['base' => \App\Support\Engagement\HomeBoard::sats($poolBase), 'zaps' => \App\Support\Engagement\HomeBoard::sats($poolZaps)]) }}</span>
+                                <span class="rv-m">{{ __(':base + :zaps from zaps', ['base' => \App\Support\Cards\ShareCard::sats($poolBase), 'zaps' => \App\Support\Cards\ShareCard::sats($poolZaps)]) }}</span>
                             @endif
                         </span>
                     @endif
                     @if ($heroChampion !== null)
+                        {{-- The winner of a finished tournament (badge pages link here); a shared 1st place keeps its own line below. --}}
+                        <span class="contents" @unless ($championMoment['shared']) data-test="tournament-winner" @endunless>
                         <span class="flex flex-col gap-1" data-test="champion-hero" data-viewer="{{ $championMoment['viewer']['state'] ?? 'guest' }}" data-shared="{{ $championMoment['shared'] ? '1' : '0' }}">
                             <span class="rv-m">{{ $championMoment['shared'] ? __('Shared 1st place') : __('Champion') }}</span>
                             <span class="flex items-center gap-2.5">
@@ -905,6 +907,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                                 @endif
                                 <b class="text-lg [overflow-wrap:anywhere]" data-test="champion-name">{{ implode(', ', array_column($championMoment['champions'], 'name')) }}</b>
                             </span>
+                        </span>
                         </span>
                     @endif
                     @if ($published && ! $week && $seatsAll > 0)

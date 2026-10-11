@@ -115,6 +115,11 @@ new #[Title('Tournaments')] #[Layout('layouts::app', ['section' => 'tournaments'
         <a href="{{ route('tournaments.archive') }}" class="rv-lk text-[13px] lg:hidden" data-test="to-archive-phone">{{ __('Archive') }}</a>
     </div>
 
+    {{-- The tournaments the viewer is signed up for, each with the way out while sign-up is open (2026-10-02). --}}
+    @auth
+        <livewire:upcoming-events only="tournament" wire:key="upcoming-tournaments" />
+    @endauth
+
     <div class="flex flex-col gap-2 lg:gap-3" data-test="tournament-filters">
         <x-ui.chips :label="__('Game title')" :items="$gameChips" test="filter-game" />
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 max-lg:hidden">
@@ -211,7 +216,8 @@ new #[Title('Tournaments')] #[Layout('layouts::app', ['section' => 'tournaments'
                                 </td>
                                 <td>
                                     @if ($row['pot'] !== null)
-                                        <span class="rv-tag is-btc" data-test="row-pot"><x-icon name="bolt" :size="12" />{{ $sats($row['pot']) }} Sats</span>
+                                        {{-- What is still to be won of the pot as set (PrizeChips, primed for the whole list). --}}
+                                        <x-prize-chip :tournament="$row['tournament']" />
                                     @elseif ($row['region'] !== null)
                                         <span class="rv-tag" data-test="row-region">{{ $row['region'] }}</span>
                                     @endif

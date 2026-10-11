@@ -246,7 +246,8 @@ test('fixed amounts: each place wins exactly its sats, the pot shows funded X of
     expect($pool['mode'])->toBe('fixed')
         ->and($pool['split'])->toBe([['place' => 1, 'percent' => null, 'sats' => 60_000], ['place' => 2, 'percent' => null, 'sats' => 25_000]])
         ->and($pool['target'])->toBe(85_000)->and($pool['have'])->toBe(49_150)->and($pool['funded'])->toBeFalse();
-    $this->get(route('tournaments.show', $tournament))->assertSee(__(':sats sats', ['sats' => ShareCard::sats(60_000)]))
+    // Place 1's fixed sats in the prize card (TournamentDetail.dc.html: the number, then "Sats" in the quiet tone).
+    $this->get(route('tournaments.show', $tournament))->assertSeeHtml('data-test="pool-place-sats">'.ShareCard::sats(60_000).'<')
         ->assertSee(__(':left of :total sats still to be won', ['left' => ShareCard::sats(85_000), 'total' => ShareCard::sats(85_000)]));
     $this->get(route('tournaments.index'))->assertSee(__(':sats sats pot', ['sats' => ShareCard::sats(85_000)]));
     // The TV lobby names each place's fixed sats, not a share of the balance.

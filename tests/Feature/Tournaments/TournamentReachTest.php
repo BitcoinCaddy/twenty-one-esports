@@ -7,7 +7,7 @@ use App\Models\IncomingPayment;
 use App\Models\Tournament;
 use App\Models\TournamentSponsor;
 use App\Models\User;
-use App\Support\Engagement\HomeBoard;
+use App\Support\Cards\ShareCard;
 use App\Support\LeagueTime;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
@@ -130,7 +130,7 @@ test('the prize pot heads the tournament page: the pot, the podium and the paid 
     // No paid sponsor yet: it says so, and anyone can add to the pot; "Add a sponsor" is the organizer's.
     $this->actingAs(User::factory()->create())->get(route('tournaments.show', $tournament))->assertOk()
         // The pot heads the hero beside the action (TournamentDetail.dc.html); the prize card below holds podium and sponsors.
-        ->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="pool-sats">'.HomeBoard::sats(100000).' Sats<', 'data-test="signup-cta"', 'data-test="prize-pool"',
+        ->assertSeeInOrder(['data-test="tournament-hero"', 'data-test="pool-sats">'.ShareCard::sats(100000).'<', 'data-test="signup-cta"', 'data-test="prize-pool"',
             'data-test="pool-left"', 'data-test="pool-podium"', 'data-test="pool-no-sponsor"', 'href="#pot-fill"', 'id="pot-fill"'], false)
         ->assertDontSeeHtml('data-test="pool-add-sponsor"');
     $this->actingAs($tournament->creator)->get(route('tournaments.show', $tournament))
