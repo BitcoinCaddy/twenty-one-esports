@@ -229,9 +229,11 @@ final class SceneDirector
             return;
         }
 
-        // Inside a run only a breath; after its last clip the music gap returns.
-        $inRun = $this->runPosition > 0 && $this->runLeft > 0;
-        $this->quietUntil = $now + ($inRun ? $this->between('breath_seconds') : $this->gap());
+        // Inside a run only a breath; after its last clip the music gap returns. In quiet hours one clip every
+        // `quiet_hours.every_minutes`, counted from the start of the clip that just ended, and no runs.
+        $quiet = QuietHours::active($at);
+        $inRun = ! $quiet && $this->runPosition > 0 && $this->runLeft > 0;
+        $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds) : ($inRun ? $this->between('breath_seconds') : $this->gap()));
         $this->runPosition = $inRun ? $this->runPosition : 0;
     }
 

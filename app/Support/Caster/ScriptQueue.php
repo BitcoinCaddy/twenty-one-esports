@@ -109,7 +109,8 @@ class ScriptQueue
 
         $this->expire($now);
         $this->seedFillers($now);
-        $written = $this->fillSegments($now);
+        $quiet = QuietHours::active($now);
+        $written = $quiet ? 0 : $this->fillSegments($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -129,7 +130,7 @@ class ScriptQueue
         $patternsLeft = max(0, (int) config('tv.commentary.patterns.per_run', 40));
         $exhausted = [];
 
-        while ($this->airtimeAhead() < (float) ($settings['ahead_seconds'] ?? 300) && ($candidates = array_diff(array_keys($factsByTopic), $exhausted)) !== []) {
+        while ($this->airtimeAhead() < ($quiet ? QuietHours::aheadSeconds() : (float) ($settings['ahead_seconds'] ?? 300)) && ($candidates = array_diff(array_keys($factsByTopic), $exhausted)) !== []) {
             $topic = $this->thinnestTopic(array_values($candidates));
             $phase = SceneTopic::phase($topic, $now);
             $facts = $factsByTopic[$topic] ?? [];
