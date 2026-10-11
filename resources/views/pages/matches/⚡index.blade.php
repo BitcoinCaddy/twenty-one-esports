@@ -17,6 +17,7 @@ use App\Models\PongMatch;
 use App\Models\ScoreRun;
 use App\Models\SeriesMatch;
 use App\Models\StackerRun;
+use App\Support\Engagement\HomeBoard;
 use App\Support\GameNames;
 use App\Support\Hyper\HyperTeams;
 use App\Support\Matches\MempoolStrip;
@@ -76,6 +77,81 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
 
     #[Url(except: 'all')]
     public string $chain = 'all';
+
+    /** The advanced statistics are read only once they are opened (rule R7: loaded only when opened). */
+    public bool $statsOpen = false;
+
+    /** How many finished blocks the chain shows; dragging it to the left end loads older ones (loadEarlier). */
+    public int $history = MempoolStrip::SIDE;
+
+    /** Older blocks for the chain's left end (canvas NEU (Scope) "Historie lädt links nach"), up to MempoolStrip::HISTORY. */
+    public function loadEarlier(): void
+    {
+        $this->history = min(MempoolStrip::HISTORY, $this->history + 10);
+        unset($this->strip);
+    }
+
+    /**
+     * The address of this page with one filter changed: the chips are links (the filter is the page's URL), a new
+     * filter starts on page 1.
+     *
+     * @param  array<string, string>  $change
+     */
+    public function filterUrl(array $change): string
+    {
+        $query = array_filter([...['game' => $this->game, 'clan' => $this->clan, 'status' => $this->status, 'chain' => $this->chain], ...$change],
+            fn (string $value, string $key): bool => $value !== '' && ! ($value === 'all' && $key !== 'clan'), ARRAY_FILTER_USE_BOTH);
+
+        return route('matches.index', $query);
+    }
+
+    /**
+     * The game chips in the registry's display order (rule R19: browser games first), the ones the table can show.
+     *
+     * @return list<string>
+     */
+    public function orderedGames(): array
+    {
+        $listable = $this->gameFilters();
+
+        return array_values(array_filter(array_keys(app(GameRegistry::class)->all()), fn (string $slug): bool => in_array($slug, $listable, true)));
+    }
+
+    /**
+     * The advanced statistics under the table (canvas NEU (Scope)): the rows of this page by kind, and today's
+     * checked Blockfill runs (count, fastest, median, slowest) while Blockfill is listed.
+     *
+     * @return array{kinds: list<array{label: string, count: int}>, runs: array{count: int, fastest: string, median: string, slowest: string}|null}
+     */
+    #[Computed]
+    public function stats(): array
+    {
+        $kinds = [];
+        foreach ($this->matches as $row) {
+            $model = $row['model'];
+            $label = match (true) {
+                $row['type'] === 'run' => __('highscore').' ('.GameNames::game(ScoreAttempts::game($model)).')',
+                $row['type'] === 'pong' => __('casual').' ('.GameNames::game(\App\Games\ProofOfPong::SLUG).')',
+                (bool) ($model->rated ?? false) => __('rated'),
+                default => __('casual'),
+            };
+            $kinds[$label] = ($kinds[$label] ?? 0) + 1;
+        }
+        arsort($kinds);
+
+        $runs = null;
+        if (ScoreAttempts::blockfill()) {
+            $today = ScoreAttempts::stacker('done')->whereNotNull('ticks')
+                ->where('verified_at', '>=', \Carbon\CarbonImmutable::now(\App\Support\Stacker\BlockfillWeeks::TIMEZONE)->startOfDay())
+                ->orderBy('ticks')->orderBy('id')->limit(500)->get();
+            if ($today->isNotEmpty()) {
+                $values = $today->map(fn (StackerRun $run): string => (string) ScoreAttempts::value($run))->values();
+                $runs = ['count' => $today->count(), 'fastest' => $values->first(), 'median' => $values[intdiv($values->count() - 1, 2)], 'slowest' => $values->last()];
+            }
+        }
+
+        return ['kinds' => array_map(fn (string $label, int $count): array => ['label' => $label, 'count' => $count], array_keys($kinds), $kinds), 'runs' => $runs];
+    }
 
     public function updatedClan(): void
     {
@@ -469,7 +545,7 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
     #[Computed]
     public function strip(): array
     {
-        return MempoolStrip::build(auth()->user(), $this->chain, runs: true);
+        return MempoolStrip::build(auth()->user(), $this->chain, runs: true, history: $this->history);
     }
 }; ?>
 
@@ -477,163 +553,109 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
     $viewer = auth()->user();
     $labels = SeriesPresenter::statusLabels();
     $strip = $this->strip;
-    $filterBtn = 'h-[42px] shrink-0 cursor-pointer border-0 px-3.5 text-[13px] whitespace-nowrap';
-    $gameFilters = array_intersect_key(app(GameRegistry::class)->all(), array_flip($this->gameFilters()));
-    // The strip's one line says what the chosen chain is; casual matches never mine, so their line never promises it.
-    // Highscore attempts are named while a score game may show them; the season chain never has any.
-    $attempts = ScoreAttempts::slugs() !== [];
-    $lead = match (true) {
-        $chain === 'casual' && $attempts => __('Casual matches and highscore attempts of every game, played and waiting. They mine no blocks; casual matches move the casual rating.'),
-        $chain === 'casual' => __('Casual matches of every game, played and waiting. They move the casual rating and mine no blocks.'),
-        $chain === 'season' => $strip['live'] ? __('Rated matches of every game, played and waiting. A fair rated win mines a block of the season chain.') : __('Rated matches of every game, played and waiting. Rated wins mine blocks only while a season runs.'),
-        $attempts && $strip['live'] => __('Matches and highscore attempts of every game, played and waiting. A fair rated win mines a block of the season chain.'),
-        $attempts => __('Matches and highscore attempts of every game, played and waiting. Rated wins mine blocks only while a season runs.'),
-        $strip['live'] => __('Matches of every game, played and waiting. A fair rated win mines a block of the season chain.'),
-        default => __('Matches of every game, played and waiting. Rated wins mine blocks only while a season runs.'),
-    };
-    $chains = ['all' => __('All'), 'season' => __('Season'), 'casual' => __('Casual')];
+    $counts = $this->counts;
+    $registry = app(GameRegistry::class);
+    $board = new HomeBoard($viewer);
+    $chainChips = array_map(fn (string $key, string $label): array => ['key' => $key, 'label' => $label, 'href' => $this->filterUrl(['chain' => $key]), 'active' => $chain === $key],
+        ['all', 'season', 'casual'], [__('All'), __('Season'), __('Casual')]);
+    $gameChips = [
+        ['key' => 'all', 'label' => __('All'), 'href' => $this->filterUrl(['game' => 'all']), 'active' => $game === 'all'],
+        ...array_map(fn (string $slug): array => ['key' => $slug, 'label' => __($registry->get($slug)->assets()->shortLabel), 'href' => $this->filterUrl(['game' => $slug]), 'active' => $game === $slug], $this->orderedGames()),
+        ['key' => 'team', 'label' => __('Team'), 'href' => $this->filterUrl(['game' => 'team']), 'active' => $game === 'team'],
+    ];
+    $statusChips = [
+        ['key' => 'all', 'label' => __('All'), 'href' => $this->filterUrl(['status' => 'all']), 'active' => $status === 'all'],
+        ...array_map(fn (string $key, int $count): array => ['key' => $key, 'label' => $labels[$key], 'count' => $count, 'href' => $this->filterUrl(['status' => $key]), 'active' => $status === $key], array_keys($counts), $counts),
+    ];
+    $clanOptions = ['' => __('All clans'), ...$this->clans->mapWithKeys(fn ($option) => [$option->slug => $option->name])->all()];
+    $matches = $this->matches;
 @endphp
 
-<div class="flex grow flex-col gap-6 pb-10" data-test="matches">
-    {{-- An open cup match comes first (CupMatchNow; user, 2026-10-03). --}}
+{{--
+    The Mempool (Mempool.dc.html, MempoolPhone.dc.html; template T14; rules R2, R8, R14): the head with its two counts,
+    the chain filter, "gerade eben", the chain of cubes (drag, wheel, keys; older blocks load at the left end), the
+    legend and the proud moments; then the matches with their game and status chips, the clan dropdown, one table
+    and the advanced statistics folded under it.
+--}}
+<div class="flex grow flex-col gap-6 px-4 pt-4 pb-10 lg:px-12 lg:pt-8" data-test="matches">
+    {{-- An open cup match and the viewer's open match rooms come first (users, 2026-10-02 and 2026-10-03). --}}
     @auth
-        <livewire:cup-match variant="banner" frame="block px-4 pt-4 lg:px-12" wire:key="cup-banner-matches" />
+        <livewire:cup-match variant="banner" frame="block" wire:key="cup-banner-matches" />
+        <livewire:upcoming-events only="series" frame="" wire:key="upcoming-rooms" />
     @endauth
 
-    {{-- The viewer's open match rooms first (2026-10-02: "Meine offenen Match Rooms gehen total unter"). --}}
-    @auth
-        <livewire:upcoming-events only="series" frame="px-4 pt-4 lg:px-12" wire:key="upcoming-rooms" />
-    @endauth
-
-    @if ($strip['finished'] !== [] || $strip['running'] !== [])
-        {{-- The copy promises mining only while a season runs: before Block 0 and between seasons no win mines. --}}
-        <x-block-strip :finished="$strip['finished']" :running="$strip['running']" :title="__('Mempool')" :chain-live="$strip['live']" :lead="$lead" />
-    @endif
-
-    <div class="flex flex-col gap-5 px-4 lg:px-12">
-        <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-            <h1 class="m-0 font-display text-[28px] font-bold lg:text-[34px]">{{ __('Matches') }}</h1>
-
-            <div class="flex min-w-0 max-w-full grow flex-wrap items-center justify-end gap-x-6 gap-y-3">
-                {{-- The game filter takes a row of its own and wraps: nine games with full names overflowed 2000 px (2026-10-03). --}}
-                <div class="flex min-w-0 basis-full items-start justify-end gap-2">
-                    <label for="f-game-select" id="f-game" class="text-xs text-ink-3 sm:mt-3.5">{{ __('Game title') }}</label>
-                    {{-- Below sm a select (the buttons do not fit a phone), from sm the buttons: short labels (RL, FC27, AoE2, Morris) below 2xl, cover and name from 2xl; seven buttons with covers overflowed 640 px (754 px document), five with full names 1280 px (1486 px document, Age of Empires II). The name drops its subtitle ("Age of Empires II"); the accessible name starts with the visible text (x-games.filter-label). --}}
-                    <select id="f-game-select" wire:change="pickGame($event.target.value)" data-test="game-filter-select"
-                            class="h-11 w-[200px] rounded-md border border-edge bg-ground px-3 text-[13px] text-ink sm:hidden">
-                        <option value="all" @selected($game === 'all')>{{ __('All') }}</option>
-                        @foreach ($gameFilters as $key => $option)
-                            <option value="{{ $key }}" @selected($game === $key)>{{ GameNames::game($key) }}</option>
-                        @endforeach
-                        <option value="team" @selected($game === 'team')>{{ __('Chess team matches') }}</option>
-                    </select>
-                    <div role="group" aria-labelledby="f-game" class="flex min-w-0 max-w-full flex-wrap justify-end gap-1.5 max-sm:hidden">
-                        <button type="button" wire:click="pickGame('all')" aria-pressed="{{ $game === 'all' ? 'true' : 'false' }}" data-test="game-all"
-                                @class([$filterBtn, 'rounded-md border border-line', 'bg-btc font-bold text-on-btc' => $game === 'all', 'bg-ground text-ink-2 hover:text-ink' => $game !== 'all'])>{{ __('All') }}</button>
-                        @foreach ($gameFilters as $key => $option)
-                            <button type="button" wire:click="pickGame('{{ $key }}')" aria-pressed="{{ $game === $key ? 'true' : 'false' }}" data-test="game-{{ $key }}"
-                                    @class([$filterBtn, 'inline-flex items-center gap-2 rounded-md border border-line', 'bg-btc font-bold text-on-btc' => $game === $key, 'bg-ground text-ink-2 hover:text-ink' => $game !== $key])><x-games.filter-label :game="$key" :short="__($option->assets()->shortLabel)" /></button>
-                        @endforeach
-                        {{-- Chess team matches of two clans, over 2 or 3 rapid boards. --}}
-                        <button type="button" wire:click="pickGame('team')" aria-pressed="{{ $game === 'team' ? 'true' : 'false' }}" data-test="game-team" aria-label="{{ __('Chess team matches') }}"
-                                @class([$filterBtn, 'rounded-md border border-line', 'bg-btc font-bold text-on-btc' => $game === 'team', 'bg-ground text-ink-2 hover:text-ink' => $game !== 'team'])>{{ __('Team') }}</button>
-                    </div>
-                </div>
-                {{-- Season: the rated matches, whose wins mine the season chain; Casual: the ones that never mine. Narrows strip and table. --}}
-                <div class="flex items-center gap-2">
-                    <span id="f-chain" class="text-xs text-ink-3">{{ __('Chain') }}</span>
-                    <div role="group" aria-labelledby="f-chain" class="flex max-w-full overflow-hidden rounded-md border border-line" data-test="chain-filter">
-                        @foreach ($chains as $key => $option)
-                            <button type="button" wire:click="pickChain('{{ $key }}')" aria-pressed="{{ $chain === $key ? 'true' : 'false' }}" data-test="chain-{{ $key }}"
-                                    @class([$filterBtn, 'border-l border-line' => ! $loop->first, 'bg-btc font-bold text-on-btc' => $chain === $key, 'bg-ground text-ink-2 hover:text-ink' => $chain !== $key])>{{ $option }}</button>
-                        @endforeach
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <label for="f-clan" class="text-xs text-ink-3">{{ __('Clan') }}</label>
-                    <select id="f-clan" wire:model.live="clan" data-test="clan-filter"
-                            class="h-11 w-[200px] rounded-md border border-edge bg-ground px-3 text-[13px] text-ink">
-                        <option value="">{{ __('All clans') }}</option>
-                        @foreach ($this->clans as $option)
-                            <option value="{{ $option->slug }}">{{ $option->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
+    <section class="flex flex-col gap-4" aria-labelledby="mempool-h" data-test="mempool-head">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <h1 id="mempool-h" class="rv-h1 max-lg:text-[24px]">{{ __('Mempool') }}</h1>
+            <span class="text-[13px] text-ink-2 max-lg:hidden">{{ __('Matches and highscore attempts of every game, done on the left, waiting on the right.') }}</span>
+            <span class="grow"></span>
+            <span class="flex items-end gap-6 max-lg:gap-3" data-test="mempool-counts">
+                <span class="flex flex-col items-start gap-1 max-lg:flex-row max-lg:items-center max-lg:gap-1.5">
+                    <span class="flex items-center gap-2"><i class="mp-dot max-lg:hidden" aria-hidden="true"></i><b class="mp-big max-lg:text-[20px]" data-test="mempool-live">{{ $counts['live'] }}</b></span>
+                    <span class="rv-m max-lg:order-first max-lg:hidden">{{ __('playing now') }}</span>
+                    <span class="rv-live h-5 lg:hidden max-lg:order-first"><i></i>{{ __('live') }}</span>
+                </span>
+                <span class="flex flex-col items-start gap-1 max-lg:flex-row max-lg:items-center max-lg:gap-1.5">
+                    <b class="mp-big max-lg:text-[20px]" data-test="mempool-done">{{ $counts['done'] }}</b>
+                    <span class="rv-m max-lg:order-first">{{ __('finished') }}</span>
+                </span>
+            </span>
+            <a href="{{ route('rules') }}#season-chain" class="rv-lk text-[13px] max-lg:hidden" data-test="mempool-rules">{{ __('How the mempool works') }}</a>
         </div>
 
-        <div class="flex items-center justify-end gap-2">
-            <span id="f-status" class="hidden text-xs text-ink-3 sm:inline">{{ __('Status') }}</span>
-            <div role="group" aria-labelledby="f-status" class="flex max-w-full overflow-x-auto rounded-md border border-line">
-                <button type="button" wire:click="pickStatus('all')" aria-pressed="{{ $status === 'all' ? 'true' : 'false' }}"
-                        @class([$filterBtn, 'bg-btc font-bold text-on-btc' => $status === 'all', 'bg-ground text-ink-2' => $status !== 'all'])>{{ __('All') }}</button>
-                @foreach ($this->counts as $key => $count)
-                    <button type="button" wire:click="pickStatus('{{ $key }}')" aria-pressed="{{ $status === $key ? 'true' : 'false' }}" data-test="status-{{ $key }}"
-                            @class([$filterBtn, 'border-l border-line', 'bg-btc font-bold text-on-btc' => $status === $key, 'bg-ground text-ink-2' => $status !== $key])>{{ $labels[$key] }} {{ $count }}</button>
-                @endforeach
+        <x-ui.chips :label="__('Chain')" :items="$chainChips" test="chain" />
+        <x-ui.live-bar :ticks="$board->ticker()" />
+
+        @if ($strip['finished'] !== [] || $strip['running'] !== [])
+            <x-ui.mempool-chain :finished="$strip['finished']" :running="$strip['running']" history="loadEarlier" stamps :more="count($strip['finished']) >= $history && $history < \App\Support\Matches\MempoolStrip::HISTORY" />
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 rv-m max-lg:hidden" data-test="mempool-legend">
+                <span class="flex items-center gap-1"><i class="block size-2.5 bg-ink-2" aria-hidden="true"></i>{{ __('done, a colour per game and the name') }}</span>
+                <span class="flex items-center gap-1"><i class="block size-2.5 border border-edge" aria-hidden="true"></i>{{ __('playing, fills with every move') }}</span>
+                <span class="flex items-center gap-1"><span class="rv-tag h-[18px]">{{ __('casual') }}</span>{{ __('not rated') }}</span>
+                <span>{{ __('Dashed: done and waiting part here') }}</span>
             </div>
+        @else
+            <p class="m-0 text-[13px] text-ink-2">{{ __('No match in the mempool yet.') }} <a href="{{ route('play') }}" class="rv-lk">{{ __('All games') }}</a></p>
+        @endif
+
+        <x-ui.pride-row :moments="$board->pride()" class="max-lg:hidden" />
+    </section>
+
+    <section class="flex flex-col gap-3" aria-labelledby="matches-h">
+        <h2 id="matches-h" class="rv-h2 mt-2 max-lg:sr-only">{{ __('Matches') }}</h2>
+        <x-ui.chips :label="__('Game title')" :items="$gameChips" test="game" />
+        <div class="flex flex-wrap items-end gap-x-4 gap-y-3">
+            <x-ui.chips :label="__('Status')" :items="$statusChips" test="status" class="min-w-0 grow" />
+            <x-ui.dropdown :label="__('Clan')" :options="$clanOptions" :value="$clan" model="clan" test="clan-filter" class="w-[200px]" />
         </div>
 
-        <div class="flex flex-col rounded-lg bg-card px-2 pt-2 pb-4 lg:px-6">
-            <div class="hidden h-11 grid-cols-[96px_minmax(0,1fr)_88px_120px_150px_200px_120px] items-center gap-4 border-b border-hairline px-2 text-[13px] font-bold text-ink-2 lg:grid">
-                <span>{{ __('Match') }}</span><span>{{ __('Sides') }}</span><span>{{ __('Score') }}</span><span>{{ __('Format') }}</span><span>{{ __('Status') }}</span><span>{{ __('Result') }}</span><span class="text-right">{{ __('When') }}</span>
+        <div class="rv-card overflow-hidden p-0" data-test="matches-table">
+            <div class="mp-th" aria-hidden="true">
+                <span>{{ __('Match') }}</span><span>{{ __('Kind') }}</span><span>{{ __('Sides') }}</span><span>{{ __('Result') }}</span><span>{{ __('Format') }}</span><span>{{ __('Status') }}</span><span>{{ __('Verification') }}</span><span class="text-right">{{ __('When') }}</span>
             </div>
-            @forelse ($this->matches as $row)
-                @if ($row['type'] === 'chess')
-                    @include('pages.matches.partials.chess-row', ['chessGame' => $row['model'], 'viewer' => $viewer])
-                    @continue
-                @endif
-                @if ($row['type'] === 'board')
-                    @include('pages.matches.partials.board-row', ['boardGame' => $row['model'], 'viewer' => $viewer])
-                    @continue
-                @endif
-                @if ($row['type'] === 'hyper')
-                    @include('pages.matches.partials.hyper-row', ['hyperMatch' => $row['model'], 'viewer' => $viewer])
-                    @continue
-                @endif
-                @if ($row['type'] === 'pong')
-                    @include('pages.matches.partials.pong-row', ['pongMatch' => $row['model'], 'viewer' => $viewer])
-                    @continue
-                @endif
-                @if ($row['type'] === 'run')
-                    @include('pages.matches.partials.score-row', ['run' => $row['model'], 'href' => $row['href']])
-                    @continue
-                @endif
-                @php($match = $row['model'])
-                @php($chip = SeriesPresenter::chip($match))
-                @php($result = SeriesPresenter::result($match, $viewer))
-                @php($score = SeriesPresenter::score($match))
-                <a href="{{ route('matches.show', $match) }}" wire:key="m-{{ $match->id }}" data-test="match-row"
-                   class="tr grid min-h-11 grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-sm px-2 py-2 text-[13px] text-ink hover:text-ink lg:h-11 lg:grid-cols-[96px_minmax(0,1fr)_88px_120px_150px_200px_120px] lg:gap-4 lg:py-0">
-                    <span class="font-bold text-btc">{{ $match->label() }}</span>
-                    {{-- Below lg one side per line, so each name keeps the full column; from lg one line. --}}
-                    <span class="flex min-w-0 flex-col gap-1 whitespace-nowrap lg:flex-row lg:items-center lg:gap-2">
-                        <span class="flex min-w-0 items-center gap-2">
-                            <x-clan-tag :clan="$match->sideClan('challenger')" :tag="$match->challenger_tag" size="sm" compact />
-                            <span @class(['truncate', 'font-bold' => $match->winner === 'challenger', 'text-ink-2' => $match->winner === 'challenged']) data-test="match-side-name">{{ $match->challenger_name }}</span>
-                        </span>
-                        <span class="flex min-w-0 items-center gap-2">
-                            <span class="text-ink-3">vs</span>
-                            <x-clan-tag :clan="$match->sideClan('challenged')" :tag="$match->challenged_tag" size="sm" compact />
-                            <span @class(['truncate', 'font-bold' => $match->winner === 'challenged', 'text-ink-2' => $match->winner === 'challenger']) data-test="match-side-name">{{ $match->challenged_name }}</span>
-                        </span>
-                    </span>
-                    <span class="flex flex-col leading-tight lg:order-none"><b>{{ $score['text'] }}</b>@if ($score['sub'] !== '')<span class="text-[11px] text-btc-hi">{{ $score['sub'] }}</span>@endif</span>
-                    <span class="col-span-2 flex items-center gap-1.5 text-ink-2 max-lg:col-start-2 max-lg:text-xs lg:col-span-1"><x-game-cover :game="$match->game" size="thumb" class="w-8 rounded-xs" title="{{ GameNames::game($match->game) }}" data-test="match-row-cover" /><span class="sr-only">{{ GameNames::game($match->game) }}</span>{{ SeriesPresenter::format($match) }}@if (! $match->rated)<span class="ml-1 rounded-xs border border-line px-1 text-[10px] lg:hidden">{{ __('casual') }}</span>@endif</span>
-                    <span class="max-lg:hidden">
-                        <span class="inline-flex h-[26px] items-center gap-1.5 rounded-sm px-2.5 text-xs font-bold" style="background: {{ $chip['bg'] }}; color: {{ $chip['color'] }}">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $chip['icon'] }}"></path></svg>{{ $chip['label'] }}
-                        </span>
-                    </span>
-                    <span class="relative block h-6 overflow-hidden rounded-sm bg-raised max-lg:col-span-3">
-                        <span class="absolute inset-y-0 left-0" style="width: {{ $result['width'] }}; background: {{ $result['color'] }}"></span>
-                        <span class="relative flex h-6 items-center justify-center text-xs font-bold">{{ $result['text'] }}</span>
-                    </span>
-                    <span class="text-right text-ink-2 max-lg:hidden">{{ SeriesPresenter::when($match, $viewer) }}</span>
-                </a>
+            @forelse ($matches as $row)
+                @switch($row['type'])
+                    @case('chess')
+                        @include('pages.matches.partials.chess-row', ['chessGame' => $row['model'], 'viewer' => $viewer])
+                        @break
+                    @case('board')
+                        @include('pages.matches.partials.board-row', ['boardGame' => $row['model'], 'viewer' => $viewer])
+                        @break
+                    @case('hyper')
+                        @include('pages.matches.partials.hyper-row', ['hyperMatch' => $row['model'], 'viewer' => $viewer])
+                        @break
+                    @case('pong')
+                        @include('pages.matches.partials.pong-row', ['pongMatch' => $row['model'], 'viewer' => $viewer])
+                        @break
+                    @case('run')
+                        @include('pages.matches.partials.score-row', ['run' => $row['model'], 'href' => $row['href']])
+                        @break
+                    @default
+                        @include('pages.matches.partials.series-row', ['match' => $row['model'], 'viewer' => $viewer])
+                @endswitch
             @empty
-                <div class="px-2 py-6">
-                    @if ($game !== 'all' && app(GameRegistry::class)->isScore($game))
+                <div class="px-4 py-6">
+                    @if ($game !== 'all' && $registry->isScore($game))
                         <x-empty-state :heading="__('No runs yet')" :text="__('The first run opens the list.')">
                             <x-button :href="GameNames::page($game)">{{ __('Play :game', ['game' => GameNames::game($game)]) }}</x-button>
                         </x-empty-state>
@@ -641,40 +663,91 @@ new #[Layout('layouts::app', ['section' => 'matches'])] class extends Component 
                         <x-empty-state :heading="__('No matches yet')" :text="__('The first match opens the list.')">
                             <x-button :href="GameNames::page($game)">{{ __('Play :game', ['game' => GameNames::game($game)]) }}</x-button>
                         </x-empty-state>
-                    @elseif ($game !== 'all' && app(GameRegistry::class)->isBoard($game))
+                    @elseif ($game !== 'all' && $registry->isBoard($game))
                         <x-empty-state :heading="__('No games yet')" :text="__('The first game opens the list.')">
-                            <x-button :href="\App\Support\GameNames::page($game)">{{ __('Play :game', ['game' => GameNames::game($game)]) }}</x-button>
+                            <x-button :href="GameNames::page($game)">{{ __('Play :game', ['game' => GameNames::game($game)]) }}</x-button>
                         </x-empty-state>
-                    @elseif ($game !== 'all' && ! app(GameRegistry::class)->isSeries($game))
+                    @elseif ($game !== 'all' && $game !== 'team' && ! $registry->isSeries($game))
                         <x-empty-state :heading="__('No games yet')" :text="__('The first chess game opens the list.')">
                             <x-button :href="route('chess.lobby')">{{ __('Play chess') }}</x-button>
                         </x-empty-state>
                     @else
                         <x-empty-state :heading="__('No matches yet')" :text="__('The first challenge opens the list.')">
-                            @auth<x-button :href="route('challenges.create', $game === 'all' ? [] : ['game' => $game])">{{ __('Challenge a clan') }}</x-button>@endauth
+                            @auth<x-button :href="route('challenges.create', in_array($game, ['all', 'team'], true) ? [] : ['game' => $game])">{{ __('Challenge a clan') }}</x-button>@endauth
                         </x-empty-state>
                     @endif
                 </div>
             @endforelse
+
+            @if ($matches->hasPages())
+                @php($page = $matches->currentPage())
+                @php($last = $matches->lastPage())
+                <nav aria-label="{{ __('Pages') }}" class="flex items-center justify-center gap-2 border-t border-hairline p-4" data-test="matches-pages">
+                    @if ($page > 1)
+                        <button type="button" wire:click="gotoPage({{ $page - 1 }})" aria-label="{{ __('Previous page') }}" class="rv-b2 size-11 p-0">‹</button>
+                    @endif
+                    @foreach (range(max(1, $page - 1), min($last, max(1, $page - 1) + 2)) as $number)
+                        <button type="button" wire:click="gotoPage({{ $number }})" @if ($number === $page) aria-current="page" @endif
+                                @class(['size-11 p-0', 'rv-b' => $number === $page, 'rv-b2' => $number !== $page])>{{ $number }}</button>
+                    @endforeach
+                    @if ($page < $last)
+                        <button type="button" wire:click="gotoPage({{ $page + 1 }})" aria-label="{{ __('Next page') }}" class="rv-b2 size-11 p-0">›</button>
+                    @endif
+                    <span class="rv-m">{{ __('of :count pages', ['count' => $last]) }}</span>
+                </nav>
+            @endif
         </div>
 
-        @if ($this->matches->hasPages())
-            @php($page = $this->matches->currentPage())
-            @php($last = $this->matches->lastPage())
-            <nav aria-label="{{ __('Pages') }}" class="flex justify-center">
-                <div class="flex gap-0.5 overflow-hidden rounded-md">
-                    @foreach ([['«', 1, __('First page')], ['‹', max(1, $page - 1), __('Previous page')]] as [$glyph, $target, $label])
-                        <button type="button" wire:click="gotoPage({{ $target }})" aria-label="{{ $label }}" @disabled($page === 1) class="flex size-11 cursor-pointer items-center justify-center border-0 bg-card text-[13px] text-ink-2 disabled:cursor-default disabled:text-[#4A4A50]">{{ $glyph }}</button>
-                    @endforeach
-                    @foreach (range(max(1, $page - 2), min($last, $page + 2)) as $number)
-                        <button type="button" wire:click="gotoPage({{ $number }})" @if ($number === $page) aria-current="page" @endif
-                                @class(['flex size-11 cursor-pointer items-center justify-center border-0 text-[13px]', 'bg-btc font-bold text-on-btc' => $number === $page, 'bg-card text-ink-2' => $number !== $page])>{{ $number }}</button>
-                    @endforeach
-                    @foreach ([['›', min($last, $page + 1), __('Next page')], ['»', $last, __('Last page')]] as [$glyph, $target, $label])
-                        <button type="button" wire:click="gotoPage({{ $target }})" aria-label="{{ $label }}" @disabled($page === $last) class="flex size-11 cursor-pointer items-center justify-center border-0 bg-card text-[13px] text-ink-2 disabled:cursor-default disabled:text-[#4A4A50]">{{ $glyph }}</button>
-                    @endforeach
+        {{-- Advanced statistics (canvas NEU (Scope)): the same data as the chain and the table, folded until asked for. --}}
+        <details class="rv-adv mt-3" data-test="mempool-stats" @if ($statsOpen) open @endif x-on:toggle="if ($el.open && ! $wire.statsOpen) $wire.set('statsOpen', true)">
+            <summary><x-icon name="chevron-down" :size="16" />{{ __('Advanced statistics') }} <span class="rv-m font-normal max-lg:hidden">{{ __('from the same data as the chain and the table') }}</span></summary>
+            @if (! $statsOpen)
+                <div class="h-24 animate-pulse p-4 motion-reduce:animate-none" aria-busy="true"><span class="sr-only">{{ __('Loading…') }}</span></div>
+            @else
+            @php($stats = $this->stats)
+            <div class="grid gap-6 p-4 lg:grid-cols-3">
+                <div class="flex flex-col gap-2">
+                    <h3 class="rv-h3">{{ __('Status of all matches') }}</h3>
+                    @php($total = max(1, array_sum($counts)))
+                    <div class="flex h-6 gap-0.5 overflow-hidden rounded-[2px] bg-raised" role="img" aria-label="{{ collect($counts)->map(fn ($count, $key) => $labels[$key].' '.$count)->implode(', ') }}">
+                        @foreach (['live' => 'bg-btc', 'to_confirm' => 'bg-btc-hi', 'disputed' => 'bg-loss', 'done' => 'bg-ink-2'] as $key => $colour)
+                            @if (($counts[$key] ?? 0) > 0)
+                                <span class="{{ $colour }}" style="width: {{ round(100 * $counts[$key] / $total, 2) }}%"></span>
+                            @endif
+                        @endforeach
+                    </div>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 rv-m">
+                        @foreach ($counts as $key => $count)
+                            <span>{{ $labels[$key] }} <b class="text-ink tabular-nums">{{ $count }}</b> ({{ \Illuminate\Support\Number::format(100 * $count / $total, 1) }} %)</span>
+                        @endforeach
+                    </div>
                 </div>
-            </nav>
-        @endif
-    </div>
+                <div class="flex flex-col gap-2">
+                    <h3 class="rv-h3">{{ __('Page :page by kind', ['page' => $matches->currentPage()]) }}</h3>
+                    <table class="rv-tb">
+                        <tbody>
+                            @foreach ($stats['kinds'] as $kind)
+                                <tr><td>{{ $kind['label'] }}</td><td class="is-r tabular-nums">{{ $kind['count'] }}</td></tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if ($stats['runs'] !== null)
+                    <div class="flex flex-col gap-2">
+                        <h3 class="rv-h3">{{ __('Blockfill today') }}</h3>
+                        <table class="rv-tb">
+                            <tbody>
+                                <tr><td>{{ __('Runs') }}</td><td class="is-r tabular-nums">{{ $stats['runs']['count'] }}</td></tr>
+                                <tr><td>{{ __('Fastest') }}</td><td class="is-r tabular-nums">{{ $stats['runs']['fastest'] }}</td></tr>
+                                <tr><td>{{ __('Median') }}</td><td class="is-r tabular-nums">{{ $stats['runs']['median'] }}</td></tr>
+                                <tr><td>{{ __('Slowest') }}</td><td class="is-r tabular-nums">{{ $stats['runs']['slowest'] }}</td></tr>
+                            </tbody>
+                        </table>
+                        <a href="{{ GameNames::page(Blockfill::SLUG) }}" class="rv-lk text-[13px]">{{ __('The spread on the Blockfill page') }}</a>
+                    </div>
+                @endif
+            </div>
+            @endif
+        </details>
+    </section>
 </div>

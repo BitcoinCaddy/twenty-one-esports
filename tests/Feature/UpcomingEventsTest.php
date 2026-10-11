@@ -323,7 +323,7 @@ test('home, /matches, /tournaments, the game page of that game and the account m
         ->and($card)->toContain('data-test="upcoming-open"')->toContain('data-test="upcoming-more"');
     $this->actingAs($me);
     $this->get(route('matches.index'))->assertOk()
-        ->assertSeeInOrder(['data-test="matches"', 'data-test="upcoming-list"', 'data-test="upcoming-row" data-key="series-'.$room->number.'"', 'data-test="game-filter-select"'], false)
+        ->assertSeeInOrder(['data-test="matches"', 'data-test="upcoming-list"', 'data-test="upcoming-row" data-key="series-'.$room->number.'"', 'data-test="game"'], false)
         ->assertDontSee('data-test="upcoming-row" data-key="tournament-', false);
     $this->get(route('tournaments.index'))->assertOk()
         ->assertSee('data-test="upcoming-list"', false)

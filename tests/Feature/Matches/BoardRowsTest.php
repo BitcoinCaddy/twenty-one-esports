@@ -31,7 +31,7 @@ test('the table lists the board games next to series and chess, filtered by game
         ->assertSeeHtml($row('b-'.$rated->id))->assertSeeHtml($row('b-'.$casual->id))
         ->assertSeeHtml('data-test="game-'.NineMensMorris::SLUG.'"')->assertSeeHtml('data-test="game-'.Checkers::SLUG.'"')
         // A rated board game carries its match number, a casual one says so.
-        ->assertSeeHtml('<span class="font-bold text-btc">#'.$rated->number.'</span>')
+        ->assertSeeHtml('<span class="mp-num max-lg:hidden">#'.$rated->number.'</span>')
         ->assertSeeHtml('href="'.route('board.show', $casual).'"');
 
     expect($rated->number)->toBeInt()->and($casual->number)->toBeNull()

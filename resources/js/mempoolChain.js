@@ -5,6 +5,10 @@
  * It opens with the divider between done and waiting in view; once it is out of view, "Zur Gegenwart" brings it
  * back. The edge fades show on the side that has more. A drag never opens the cube it started on. With reduced
  * motion every jump is instant.
+ *
+ * History (Mempool page, plan "Refactor und Design-Revamp" P7, canvas NEU (Scope) "Historie lädt links nach"): with
+ * data-history="<Livewire method>" and data-more="1" on the root, reaching the left end asks the page for older
+ * blocks; once they are in, the view stays on the cube it showed (the new width is added to the scroll offset).
  */
 export default function mempoolChain() {
     // Closure, not `this.*`: Alpine writes a property a parent scope also has to that parent.
@@ -15,6 +19,7 @@ export default function mempoolChain() {
         right: false,
         away: false,
         dragging: false,
+        loading: false,
 
         init() {
             const viewport = this.$refs.viewport;
@@ -22,7 +27,7 @@ export default function mempoolChain() {
             let start = null;
             let moved = false;
 
-            viewport.addEventListener('scroll', () => this.measure(), { passive: true, signal });
+            viewport.addEventListener('scroll', () => { this.measure(); this.history(); }, { passive: true, signal });
             window.addEventListener('resize', () => this.measure(), { signal });
 
             viewport.addEventListener('pointerdown', (event) => {
@@ -37,11 +42,16 @@ export default function mempoolChain() {
                 moved = true;
                 this.dragging = true;
                 viewport.scrollLeft = start.scroll - dx;
+                if (start.scroll - dx < 0) this.history();
             }, { signal });
             window.addEventListener('pointerup', () => {
                 start = null;
                 // The click that ends a drag lands after pointerup: let it see `dragging` first.
                 setTimeout(() => { this.dragging = false; }, 0);
+            }, { signal });
+            // At the left end an arrow key (or a horizontal swipe that cannot move further) asks for older blocks.
+            viewport.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowLeft' && viewport.scrollLeft <= 0) this.history();
             }, { signal });
             viewport.addEventListener('click', (event) => {
                 if (moved) {
@@ -55,7 +65,11 @@ export default function mempoolChain() {
                 if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
                 const max = viewport.scrollWidth - viewport.clientWidth;
                 const next = viewport.scrollLeft + event.deltaY;
-                if ((event.deltaY < 0 && viewport.scrollLeft <= 0) || (event.deltaY > 0 && viewport.scrollLeft >= max)) return;
+                if (event.deltaY < 0 && viewport.scrollLeft <= 0) {
+                    this.history();
+                    return;
+                }
+                if (event.deltaY > 0 && viewport.scrollLeft >= max) return;
                 event.preventDefault();
                 viewport.scrollLeft = Math.max(0, Math.min(max, next));
             }, { passive: false, signal });
@@ -85,6 +99,30 @@ export default function mempoolChain() {
             if (divider) {
                 const x = divider.offsetLeft - viewport.scrollLeft;
                 this.away = x < 0 || x > viewport.clientWidth;
+            }
+        },
+
+        async history() {
+            const viewport = this.$refs.viewport;
+            const method = this.$el.dataset.history;
+            if (!method || this.loading || this.$el.dataset.more !== '1' || viewport.scrollLeft > 120 || !this.$wire) return;
+            this.loading = true;
+            // Anchor on the first cube in view: after the older blocks are in, it sits where it sat.
+            const edge = viewport.getBoundingClientRect().left;
+            const anchor = [...viewport.querySelectorAll('[data-test=chain-cube]')].find((cube) => cube.getBoundingClientRect().right > edge);
+            const href = anchor?.getAttribute('href');
+            const offset = anchor ? anchor.getBoundingClientRect().left - edge : 0;
+            try {
+                await this.$wire.call(method);
+                // The morph lands after the call resolves: wait for its frame before measuring.
+                await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const same = [...viewport.querySelectorAll('[data-test=chain-cube]')].find((cube) => cube.getAttribute('href') === href);
+                if (same) {
+                    viewport.scrollLeft += same.getBoundingClientRect().left - edge - offset;
+                }
+            } finally {
+                this.loading = false;
+                this.measure();
             }
         },
 

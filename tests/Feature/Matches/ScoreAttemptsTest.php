@@ -71,7 +71,7 @@ test('a verified Blockfill run shows in the strip and in the done list, with fac
     Livewire::withQueryParams(['status' => 'done'])->test('pages::matches.index')
         ->assertSeeHtml('wire:key="run-'.$run->id.'"')
         ->assertSeeHtml('data-test="status-done"')
-        ->assertSee(__('done').' 1');
+        ->assertSeeHtmlInOrder(['data-test="status-done"', '<span class="rv-m">1</span>']);
     Livewire::withQueryParams(['status' => 'to_confirm'])->test('pages::matches.index')
         ->assertDontSeeHtml('wire:key="run-'.$run->id.'"');
 });
@@ -99,8 +99,8 @@ test('a run waiting for the verifier waits to confirm, unconfirmed and without i
     $waiting = Livewire::withQueryParams(['status' => 'to_confirm'])->test('pages::matches.index')
         ->assertSeeHtml('wire:key="run-'.$pending->id.'"')
         ->assertSeeHtml('wire:key="run-'.$verifying->id.'"')
-        ->assertSee(__('to confirm').' 2')
-        ->assertSee(__('done').' 0');
+        ->assertSeeHtmlInOrder(['data-test="status-to_confirm"', '<span class="rv-m">2</span>'])
+        ->assertSeeHtmlInOrder(['data-test="status-done"', '<span class="rv-m">0</span>']);
 
     $waiting->call('pickStatus', 'done')->assertDontSeeHtml('wire:key="run-'.$pending->id.'"');
 });
@@ -119,7 +119,7 @@ test('practice, rejected, abandoned and issued runs never show, next to a verifi
         ->and(attemptRows($html))->toBe([Blockfill::SLUG.':done'])
         ->and($html)->toContain('wire:key="run-'.$verified->id.'"')->not->toContain('5:06.500');
 
-    Livewire::test('pages::matches.index')->assertSee(__('to confirm').' 0')->assertSee(__('done').' 1');
+    Livewire::test('pages::matches.index')->assertSeeHtmlInOrder(['data-test="status-to_confirm"', '<span class="rv-m">0</span>'])->assertSeeHtmlInOrder(['data-test="status-done"', '<span class="rv-m">1</span>']);
 });
 
 test('the game filter has Blockfill and shows only its runs; the season chain has none', function () {
@@ -160,7 +160,7 @@ test('the clan filter keeps the runs of its members', function () {
     Livewire::withQueryParams(['clan' => $clan->slug])->test('pages::matches.index')
         ->assertSeeHtml('wire:key="run-'.$mine->id.'"')
         ->assertDontSeeHtml('wire:key="run-'.$other->id.'"')
-        ->assertSee(__('done').' 1')
+        ->assertSeeHtmlInOrder(['data-test="status-done"', '<span class="rv-m">1</span>'])
         ->set('clan', '')
         ->assertSeeHtml('wire:key="run-'.$mine->id.'"')
         ->assertSeeHtml('wire:key="run-'.$other->id.'"');
@@ -222,8 +222,8 @@ test('every other score game shows its runs: a verified one done, a manual one w
         ->assertDontSeeHtml('wire:key="score-'.$nobody->id.'"')
         ->assertSee('1:01.250')
         ->assertDontSee('0:59.000')
-        ->assertSee(__('to confirm').' 1')
-        ->assertSee(__('done').' 1');
+        ->assertSeeHtmlInOrder(['data-test="status-to_confirm"', '<span class="rv-m">1</span>'])
+        ->assertSeeHtmlInOrder(['data-test="status-done"', '<span class="rv-m">1</span>']);
 
     expect(attemptRows($page->html()))->toEqualCanonicalizing([ScoreDemo::SLUG.':done', ScoreDemo::SLUG.':waiting'])
         ->and(stripCubes($this->get(route('matches.index'))->getContent()))->toBe([ScoreDemo::SLUG.':fin', ScoreDemo::SLUG.':live']);
@@ -279,7 +279,7 @@ test('attempts take at most two cubes a side of the strip: a busy week never pus
         ->and($kinds($strip['running']))->toBe(['run', 'run', 'match', 'match', 'match']);
 
     // The cap is the strip's, not the table's: every attempt is still in it.
-    Livewire::test('pages::matches.index')->assertSee(__('done').' 10')->assertSee(__('to confirm').' 5');
+    Livewire::test('pages::matches.index')->assertSeeHtmlInOrder(['data-test="status-done"', '<span class="rv-m">10</span>'])->assertSeeHtmlInOrder(['data-test="status-to_confirm"', '<span class="rv-m">5</span>']);
 });
 
 test('the header\'s mempool count includes the attempts waiting for the verifier or an admin, and only while their game shows', function () {
