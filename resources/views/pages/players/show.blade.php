@@ -180,6 +180,9 @@
             <livewire:rank-badges :player="$user" />
         </div>
 
+        {{-- The player card and the Wrapped story (plan "KI-Stimme der Liga", P4). --}}
+        <livewire:pride-card :player="$user" :wire:key="'pride-card-'.$user->id" />
+
         @include('pages.players.partials.stats', ['stats' => $stats, 'tournaments' => $tournaments, 'name' => $name, 'isMe' => $isMe])
     </div>
 </x-layouts::app>

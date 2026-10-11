@@ -15,6 +15,7 @@ use App\Http\Controllers\OnSitePingController;
 use App\Http\Controllers\PageCardController;
 use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\PlayerSearchController;
+use App\Http\Controllers\PrideController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RobotsController;
 use App\Http\Controllers\SearchController;
@@ -227,6 +228,8 @@ Route::get('search', SearchController::class)->middleware('throttle:search')->na
 Route::get('search/players', PlayerSearchController::class)->middleware(['auth', 'throttle:player-search'])->name('players.search');
 Route::get('players/{npub}', [PlayerController::class, 'show'])->name('players.show');
 Route::get('players/{npub}/card', [PlayerController::class, 'card'])->name('players.card');
+// A player's Season Wrapped as a story to click through (plan "KI-Stimme der Liga", P4); public like its card.
+Route::get('season/{season}/wrapped/{npub}', [PrideController::class, 'wrapped'])->where(['season' => '[a-z0-9-]{1,64}', 'npub' => 'npub1[0-9a-z]{58}'])->name('season.wrapped');
 Route::get('avatars/{pubkey}.svg', GeneratedAvatarController::class)
     ->where('pubkey', '[0-9a-f]{64}')
     ->withoutMiddleware('web')
@@ -266,6 +269,9 @@ Route::prefix('cards/{locale}')
         Route::get('tournament/{finished}-{format}.png', [ShareCardController::class, 'tournament'])->where('finished', '[0-9]{1,18}')->name('cards.tournament');
         Route::get('tournament-invite/{tournament}-{format}.png', [ShareCardController::class, 'tournamentInvite'])->where('tournament', '[0-9]{1,18}')->name('cards.tournament-invite');
         Route::get('wrapped/{season}/{npub}-{format}.png', [ShareCardController::class, 'wrapped'])->where(['season' => '[a-z0-9-]{1,64}', 'npub' => 'npub1[0-9a-z]{58}'])->name('cards.wrapped');
+        // The pride pictures of plan "KI-Stimme der Liga", P4 (PrideCard): the player card and the tale of the tape before a final.
+        Route::get('player/{npub}-{format}.png', [PrideController::class, 'playerCard'])->where('npub', 'npub1[0-9a-z]{58}')->name('cards.player');
+        Route::get('tape/{tournament}-{format}.png', [PrideController::class, 'tapeCard'])->where('tournament', '[0-9]{1,18}')->name('cards.tape');
         // A Blockfill moment (BlockfillMoments::card()), also while Blockfill is off: a posted note keeps its picture.
         Route::get('blockfill/{run}-{format}.png', [ShareCardController::class, 'blockfill'])->where('run', '[0-9]{1,18}')->name('cards.blockfill');
         // A TMNF moment (TmnfMoments::card()), only while TMNF is on: its place is read from the running game.
