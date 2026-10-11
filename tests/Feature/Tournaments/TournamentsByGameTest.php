@@ -44,7 +44,7 @@ test('?game=rocket-league shows only Rocket League tournaments, as hero, cards a
     expect(str($html)->after('data-test="featured-tournament"')->before('</section>')->toString())->toContain('RL Open Signup')
         ->and($html)->not->toContain('Chess Open Signup')->not->toContain('Chess Finished')->not->toContain('RL Finished Cup')
         ->and($html)->toMatch('/aria-current="page"\s+class="rv-chip"\s+data-test="filter-game-rocket-league"/')
-        ->and($html)->toContain('href="'.route('tournaments.index').'" data-chip="0"');
+        ->and($html)->toMatch('#href="'.preg_quote(route('tournaments.index'), '#').'"\s+data-chip="0"#');
 
     // The ended ones are on the archive, narrowed the same way.
     $archive = (string) $this->get(route('tournaments.archive', ['game' => 'rocket-league']))->assertOk()->getContent();
