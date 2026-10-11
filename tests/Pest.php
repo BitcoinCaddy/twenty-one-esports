@@ -9,6 +9,7 @@ use App\Support\SeasonChain\ChainDraft;
 use App\Support\SeasonChain\LadderEvents;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\SeasonChain\SeasonChains;
+use App\Support\Voice\ChatFactCheck;
 use App\Support\Voice\VoiceFactCheck;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -73,6 +74,7 @@ pest()->extend(TestCase::class)
         Http::preventStrayRequests();
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
+        ChatFactCheck::fake(fn (): array => ['claims' => []]);
         // The stream command refreshes the cover picture at config('twentyone.stream.cover.path'); with the fake renderer
         // (tests/Support/twentyone_stream.php) it wrote a 4-byte "PNG" into the checkout's real storage/app/stream/cover.png,
         // where /stream/cover.png then served it to whatever read it next (measured 2026-10-04: TwentyOneStreamTest, Part2, Part3).
@@ -131,6 +133,7 @@ pest()->extend(TestCase::class)
         Http::preventStrayRequests();
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
+        ChatFactCheck::fake(fn (): array => ['claims' => []]);
         config(['session.expire_on_close' => true]);
         Vite::useHotFile(storage_path('framework/testing/vite-hot-disabled-for-browser-tests'));
         BrowserAssets::use();

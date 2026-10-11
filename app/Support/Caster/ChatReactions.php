@@ -42,10 +42,14 @@ use Illuminate\Support\Facades\Cache;
  * a thank-you instead (its checks and fact check included), and the pattern
  * text stays the fallback.
  *
- * The message itself is data: the model gets its keywords (letters only, no
- * names in capitals, no digits, no links) and the persona card as hints that
- * never count as facts, so nothing from the chat can reach the spoken text
- * through the guard. Skips are counted per reason in VoiceUsage
+ * The message itself is data: a trusted chatter's message, sanitised
+ * (sanitizeMessage(): no links, keys, markup, at most 200 characters), goes
+ * to the model between delimiters, never as a fact or an instruction, and
+ * Markus answers what was written (CasterVoice::chatReply(), user
+ * 2026-10-11: "reagiert gar nicht auf den Inhalt der Chat-Nachricht! Das
+ * will ich aber!"); without the model ReactionLines::reply() picks a line
+ * for the message's intent. Banter passes, an invented league fact does
+ * not (ChatFactCheck). An untrusted chatter's message is never read. Skips are counted per reason in VoiceUsage
  * (`chat_reaction`), never the text.
  */
 class ChatReactions
@@ -65,6 +69,9 @@ class ChatReactions
     private const ZAP_OVERLAP_SECONDS = 300;
 
     private const ZAP_SEEN = 'caster:zap_seen:';
+
+    /** The longest chat message the reply prompt sees (sanitizeMessage()). */
+    public const MESSAGE_CHARS = 200;
 
     /** Chat messages and zap receipts read per poll at most. */
     private const LIMIT = 50;
@@ -189,7 +196,28 @@ class ChatReactions
             return 'hourly_cap';
         }
 
-        return self::keywords($event->content) === [] ? 'no_content' : null;
+        return preg_match('/\p{L}/u', self::sanitizeMessage($event->content)) === 1 ? null : 'no_content';
+    }
+
+    /**
+     * A trusted chat message as the reply prompt and the pattern lines see
+     * it: links, nostr references, bech32 keys and ids, markup and control
+     * characters out, whitespace collapsed, at most `MESSAGE_CHARS`
+     * characters. Still user data: the prompt puts it between delimiters
+     * as data, never as a fact or an instruction.
+     */
+    public static function sanitizeMessage(string $message): string
+    {
+        $message = (string) preg_replace([
+            '~(?:https?://|nostr:|www\.)\S+~iu',
+            '/\b(?:npub|nsec|note|nevent|nprofile|naddr|nrelay|lnurl|lnbc)1[02-9ac-hj-np-z]{6,}\b/iu',
+            '/<[^>]*>/u',
+            '/[<>`*_~#\[\]{}|\\\\]+/u',
+            '/[\p{Cc}\p{Cf}]+/u',
+        ], ' ', $message);
+        $message = trim((string) preg_replace('/\s+/u', ' ', $message));
+
+        return mb_strlen($message) > self::MESSAGE_CHARS ? rtrim(mb_substr($message, 0, self::MESSAGE_CHARS)).'…' : $message;
     }
 
     /**
@@ -223,7 +251,7 @@ class ChatReactions
         $keywords = self::keywords($event->content);
         $name = self::speakableName($profile->name);
 
-        $hints = ['chat_stichworte' => implode(', ', $keywords)];
+        $hints = [];
         if ($persona !== null) {
             $hints['persona'] = $persona;
         }
@@ -231,19 +259,19 @@ class ChatReactions
             $hints['frühere_wortwechsel'] = implode(' | ', $earlier);
         }
 
-        // The greeting's name is the one fact from the chatter: their own public kind 0 name (never a gamer tag).
+        // The reply answers what was written (user 2026-10-11: "reagiert gar nicht auf den Inhalt der Chat-Nachricht!");
+        // the name stays the one fact from the chatter: their own public kind 0 name (never a gamer tag).
+        $message = self::sanitizeMessage($event->content);
         $facts = $name === null ? ['chat' => 'eine Nachricht im Stream-Chat'] : ['chatter_name' => $name];
         $priority = (int) config('tv.commentary.scripts.chat_priority', 50);
-        $script = ScriptQueue::aiEnabled() ? $this->queue->pushLive(CasterScript::CHAT, ScenePhase::BREAK, $facts, $priority, $now, $hints) : null;
+        $text = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, $hints) : null;
 
-        if ($script === null) {
-            // The model is off or its draft did not pass: the hello from the pattern lines, never silence.
-            if (ScriptQueue::aiEnabled()) {
-                $this->usage->recordRejection(self::SKIPS, ['voice_rejected']);
-            }
-
-            $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $this->lines->hello($name), SceneFacts::hash($facts), $priority, $now, source: CasterScript::SOURCE_PATTERN);
+        if ($text === null && ScriptQueue::aiEnabled()) {
+            $this->usage->recordRejection(self::SKIPS, ['voice_rejected']);
         }
+
+        // The model is off or its draft did not pass: a pattern reply to the message's intent, never silence.
+        $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $text ?? $this->lines->reply($message, $name), SceneFacts::hash($facts), $priority, $now, source: $text === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
 
         $profile->last_reaction_at = Carbon::instance($now);
         $profile->save();

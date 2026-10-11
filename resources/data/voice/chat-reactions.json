@@ -1,5 +1,5 @@
 {
- "note": "Pattern lines of the TWENTY ONE TV reactions to the stream chat and to zaps (App\\Support\\Caster\\ReactionLines): spoken German, one sentence per line, at most 16 words and two commas, no hashtags, no fees, no Lightning address, no 'Gesicht'. Placeholders: {wer} (a trusted zapper's name or 'Jemand im Chat'/'Ein Zuschauer', always opens the sentence), {sats} (the amount spelled out with 'Sats'), {anzahl} (the number of zaps, spelled out), {name} (a trusted chatter's name). Nothing a chatter wrote is ever read out.",
+ "note": "Pattern lines of the TWENTY ONE TV reactions to the stream chat and to zaps (App\\Support\\Caster\\ReactionLines): spoken German, one sentence per line, at most 16 words and two commas, no hashtags, no fees, no Lightning address, no 'Gesicht'. Placeholders: {wer} (a trusted zapper's name or 'Jemand im Chat'/'Ein Zuschauer', always opens the sentence), {sats} (the amount spelled out with 'Sats'), {anzahl} (the number of zaps, spelled out), {name} (a trusted chatter's name). reply_* pools answer a trusted chatter's message by its intent (ReactionLines::intent()): {name} opens the line ('{name}, …'), follows a greeting word ('Servus {name}, …') or closes it (', {name}.'), so it can be taken out when there is no speakable name; at most one marker. Nothing a chatter wrote is ever read out.",
  "zap_single": [
   "{wer} hat gerade {sats} gezappt.",
   "{wer} schickt {sats} rüber.",
@@ -103,5 +103,62 @@
   "Servus {name}, danke für deine Nachricht.",
   "Grüße an {name} im Chat!",
   "Hey {name}, schön, dich im Chat zu sehen."
+ ],
+ "reply_react": [
+  "Klar reagier ich auf den Chat, {name}, dafür bin ich ja da.",
+  "{name}, ich reagiere ja schon, nur nicht so schnell wie ein Zap.",
+  "[laughter] Erwischt, {name}, ab jetzt lese ich den Chat noch genauer.",
+  "Na klar reagier ich, {name}, der Chat ist mir heilig.",
+  "{name}, Wunsch angekommen, ich hab den Chat fest im Blick.",
+  "Ich bin ganz Ohr für den Chat, {name}, versprochen.",
+  "Klar reagier ich, {name}, ohne euch wär das hier nur ein Selbstgespräch."
+ ],
+ "reply_sleep": [
+  "Rund um die Uhr, {name}, das Schlafen übernimmt bei mir die Grafikkarte.",
+  "{name}, der Markus schläft nie, das macht die Grafikkarte für mich.",
+  "Schlafen kann ich nach dem nächsten Halving, {name}.",
+  "[laughter] Vierundzwanzig sieben, {name}, genau wie die Blockchain.",
+  "Tick tock next block, {name}, ich bin immer noch wach.",
+  "{name}, Bitcoin schläft nie, und ich versuch einfach mitzuhalten.",
+  "Pause gibt's bei mir erst, wenn der Mempool leer ist, {name}."
+ ],
+ "reply_work": [
+  "{name}, das hier ist meine Arbeit, und zwar die schönste.",
+  "Arbeiten, {name}, ich nenn das Proof of Work am Mikrofon.",
+  "[laughter] Psst, {name}, mein Chef schaut vielleicht gerade zu.",
+  "{name}, Kommentieren ist harte Arbeit, frag mal meine Grafikkarte.",
+  "Das hier ist Arbeit, {name}, nur mit besserer Musik als im Büro.",
+  "Feierabend gibt's erst nach dem nächsten Block, {name}."
+ ],
+ "reply_sats": [
+  "{name}, Sats sind hier immer ein Thema, das gefällt mir.",
+  "Zaps sind Tips, {name}, und du kennst dich aus.",
+  "Stack Sats und bleib bullisch, {name}.",
+  "{name}, ein Zap sagt mehr als tausend Emojis.",
+  "Bei Sats werd ich sofort hellhörig, {name}."
+ ],
+ "reply_thanks": [
+  "Danke dir, {name}, das geht runter wie Öl.",
+  "{name}, du machst mich ganz verlegen, danke schön.",
+  "[laughter] Hör auf, {name}, sonst werd ich noch rot.",
+  "Merci, {name}, so ein Chat macht richtig Laune.",
+  "Das freut mich riesig, {name}, danke dir.",
+  "{name}, Komplimente nehme ich auch in Sats, aber danke schön."
+ ],
+ "reply_question": [
+  "Gute Frage, {name}, da muss selbst meine Grafikkarte kurz nachdenken.",
+  "[question-ah] Hm, {name}, das kläre ich gleich mit meinem inneren Node.",
+  "Da fragst du genau den Richtigen, {name}, meistens jedenfalls.",
+  "{name}, die ehrliche Antwort lautet wie immer, Bitcoin regelt das.",
+  "Frag mich nach der nächsten Partie nochmal, {name}, dann bin ich schlauer.",
+  "Puh, {name}, die Frage nehm ich mit in die nächste Folge."
+ ],
+ "reply_greeting": [
+  "Servus {name}, schön, dass du vorbeischaust.",
+  "Hallo {name}, GM, egal wie spät es ist.",
+  "Griaß di, {name}, mach's dir gemütlich.",
+  "Hey {name}, willkommen im Wohnzimmer der Liga.",
+  "Moin {name}, auch wenn wir hier eher Servus sagen.",
+  "Grüß dich, {name}, schön dich zu sehen."
  ]
 }
