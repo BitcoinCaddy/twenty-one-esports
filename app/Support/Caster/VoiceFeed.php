@@ -4,9 +4,16 @@ namespace App\Support\Caster;
 
 /**
  * The voice input of one encoder run: a named pipe ffmpeg reads raw PCM from
- * (`-f s16le -ar <rate> -ac 1 -i <fifo>`), written by the stream daemon from
+ * (`-f s16le -ar <rate> -ac 2 -i <fifo>`), written by the stream daemon from
  * the CommentaryTimeline, silence included, `lead` seconds ahead of the wall
  * clock so a slow daemon tick never starves the mix.
+ *
+ * Left is the voice, right the music duck of news mode
+ * (CommentaryTimeline::musicDuck(), FfmpegCommands::voiceMix()): in the same
+ * frames as the voice, the duck can never drift from the audio it belongs
+ * to, however far ahead the feed writes, and a second pipe that could stall
+ * the encoder does not exist. Pending audio is only ever dropped in whole
+ * frames, so left and right never swap.
  *
  * The pipe is opened read-write ("r+"): on Linux that never blocks, whether
  * ffmpeg has opened its end yet or not, and writes are non-blocking; what the
@@ -24,6 +31,12 @@ final class VoiceFeed
     private ?int $nextSample = null;
 
     private string $pending = '';
+
+    /** Bytes written so far, modulo the frame: a write may end inside a frame. */
+    private int $writtenInFrame = 0;
+
+    /** Bytes per frame: one s16 sample of voice, one of the music duck. */
+    private const FRAME_BYTES = 2 * Pcm::BYTES_PER_SAMPLE;
 
     private function __construct(
         public readonly string $path,
@@ -63,13 +76,17 @@ final class VoiceFeed
         $this->nextSample ??= (int) round($now * $this->rate);
 
         if ($target > $this->nextSample) {
-            $this->pending .= $timeline->samples($this->nextSample, $target);
+            $this->pending .= Pcm::interleave($timeline->samples($this->nextSample, $target), $timeline->musicDuck($this->nextSample, $target));
             $this->nextSample = $target;
         }
 
-        $max = self::MAX_PENDING_SECONDS * $this->rate * Pcm::BYTES_PER_SAMPLE;
+        $max = self::MAX_PENDING_SECONDS * $this->rate * self::FRAME_BYTES;
         if (strlen($this->pending) > $max) {
-            $this->pending = substr($this->pending, -$max);
+            // The rest of a frame already begun is kept; behind it only whole frames are dropped.
+            $head = (self::FRAME_BYTES - $this->writtenInFrame) % self::FRAME_BYTES;
+            $drop = strlen($this->pending) - $max;
+            $drop += (self::FRAME_BYTES - $drop % self::FRAME_BYTES) % self::FRAME_BYTES;
+            $this->pending = substr($this->pending, 0, $head).substr($this->pending, $head + $drop);
         }
 
         while ($this->pending !== '') {
@@ -80,6 +97,7 @@ final class VoiceFeed
             }
 
             $this->pending = (string) substr($this->pending, $written);
+            $this->writtenInFrame = ($this->writtenInFrame + $written) % self::FRAME_BYTES;
         }
     }
 

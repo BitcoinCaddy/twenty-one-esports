@@ -261,10 +261,11 @@ it('writes the voice into a named pipe ahead of the clock without blocking', fun
     $feed->pump($timeline, 10.5);
     $read = (string) fread($reader, 10_000);
 
-    // 1.5 s of samples (0..150): the clip's 50 samples first, then silence; nothing twice, nothing missing.
-    expect(strlen($read))->toBe(150 * 2)
-        ->and(substr($read, 0, 100))->toBe(str_repeat("\7\0", 50))
-        ->and(substr($read, 100))->toBe(str_repeat("\0\0", 100));
+    // 1.5 s of stereo frames (0..150), the voice left, no news duck right: the clip's 50 samples first, then
+    // silence; nothing twice, nothing missing.
+    expect(strlen($read))->toBe(150 * 4)
+        ->and(substr($read, 0, 200))->toBe(str_repeat("\7\0\0\0", 50))
+        ->and(substr($read, 200))->toBe(str_repeat("\0\0\0\0", 100));
 
     fclose($reader);
     $feed->close();

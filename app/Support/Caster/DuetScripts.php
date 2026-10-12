@@ -260,12 +260,22 @@ final class DuetScripts
         $parts = [
             "Auftrag\n\nEin Wortwechsel auf TWENTY ONE TV für die Programmphase {$phase}: Markus Turm kommentiert, Sirius ist sein Side-Kommentator. Genau ".count($sequence)." Wortmeldungen in dieser Reihenfolge:\n{$order}"
                 ."\n\nJeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt, also „Markus: …“ oder „Sirius: …“; hat eine Wortmeldung zwei Sätze, beginnen beide Zeilen mit demselben Namen. Gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE
-                ."\nJede spätere Wortmeldung greift den Inhalt der Wortmeldung direkt davor auf: zustimmen, frotzeln, widersprechen, einen Fakt aus dem Fakten-Block nachlegen, ein Bier- oder Düsseldorf-Köln-Witz. Die beiden reden miteinander, duzen sich, und im ganzen Wortwechsel fällt höchstens ein Name."
-                ."\nBeide klingen wie in ihren Persona-Blöcken oben: Markus mit seinen Themen und Wendungen, Sirius ausführlich und mit eigener Meinung aus seinen Themengebieten, mit eigener kleiner Geschichte oder einem Seitenhieb, mit dem er Markus aufzieht; seine Wortmeldungen sind so lang wie die von Markus."
+                ."\nJede spätere Wortmeldung greift den Inhalt der Wortmeldung direkt davor auf: zustimmen, frotzeln, widersprechen, einen Fakt aus dem Fakten-Block nachlegen oder eine eigene Geschichte erzählen. Die beiden reden miteinander, duzen sich, und im ganzen Wortwechsel fällt höchstens ein Name."
+                ."\nBeide klingen wie in ihren Persona-Blöcken oben: Markus mit seinen Themen und Wendungen, Sirius ausführlich und mit eigener Meinung aus seinen Themengebieten, mit eigener kleiner Geschichte oder einem Seitenhieb, mit dem er Markus aufzieht; jede seiner Wortmeldungen hat mindestens drei lange, ganze Sätze und ist so lang wie die von Markus oder länger."
                 ."\nSirius beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“, „Richtig“ oder dem Namen Markus, und jede seiner Wortmeldungen fängt anders an als die davor."
                 ."\nHöchstens EIN Fakt aus dem Fakten-Block im ganzen Wortwechsel, keine Spielernamen, höchstens zwei Marker. Kein Abschied, keine Begrüßung und keine Ansage wie „und jetzt zu …“.",
             "Fakten (die einzige Quelle für Zahlen, Namen und Links)\n\n".json_encode($facts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
+
+        // Sirius' own topic this time, drawn from his persona (user 2026-10-12: "Sirius redet immer nur über Bier? Warum?"):
+        // beer was his first-ranked topic and a named example in this prompt, so it came up in nearly every duet.
+        // Beer stays a running gag, now and then (user 2026-10-12: "Bier darf schon als Witz ab und an vorkommen … nur nicht ständig").
+        $beerNow = random_int(1, 100) <= (int) config('tv.commentary.duet.beer_percent', 15);
+        $siriusTopics = array_values(array_filter(CasterPersonas::topics(DuetDirector::SIRIUS), fn (array $topic): bool => (preg_match('/bier|alt\b|kölsch/iu', $topic['name'].' '.$topic['what']) === 1) === $beerNow));
+        if ($siriusTopics !== []) {
+            $pick = $siriusTopics[random_int(0, count($siriusTopics) - 1)];
+            $parts[] = "Sirius' Thema in diesem Wortwechsel (eigener Blick".($beerNow ? ', diesmal darf ein Bier-Witz sein' : ', diesmal kein Bier-Thema').")\n\n{$pick['name']}: {$pick['what']}";
+        }
 
         if ($topics !== []) {
             $parts[] = "Themenvorschläge (nimm eins)\n\n".implode("\n", array_map(fn (string $topic): string => '- '.$topic, $topics));
@@ -290,6 +300,6 @@ final class DuetScripts
 
     private static function count(int $number): string
     {
-        return ['null', 'ein', 'zwei', 'drei', 'vier', 'fünf'][$number] ?? (string) $number;
+        return ['null', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht'][$number] ?? (string) $number;
     }
 }

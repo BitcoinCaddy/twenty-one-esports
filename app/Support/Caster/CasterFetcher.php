@@ -233,7 +233,9 @@ class CasterFetcher
             }
 
             $rate = $partRate;
-            $pcm .= Pcm::trimEdges($part, $rate, (int) ($settings['silence_threshold'] ?? 150), (int) ($settings['pad_ms'] ?? 140), (int) ($settings['fade_ms'] ?? 100));
+            // Every chunk at one speech level, Sirius' clone was much louder than Markus' (user 2026-10-12); `levels` fine-tunes a speaker in dB.
+            $level = (float) ($settings['speech_dbfs'] ?? -20.0) + (float) ($settings['levels'][$speaker] ?? 0.0);
+            $pcm .= Pcm::trimEdges(Pcm::levelled($part, $level), $rate, (int) ($settings['silence_threshold'] ?? 150), (int) ($settings['pad_ms'] ?? 140), (int) ($settings['fade_ms'] ?? 100));
             $ends[] = round(Pcm::seconds($pcm, $rate), 3);
 
             if ($index < count($chunks) - 1 && $chunks[$index + 1][0] !== $speaker) {

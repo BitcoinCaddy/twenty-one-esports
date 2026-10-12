@@ -87,7 +87,7 @@ return [
         'ai' => (bool) env('TV_COMMENTARY_AI', true),
 
         'scripts' => [
-            'ahead_seconds' => 300,
+            'ahead_seconds' => (int) env('TV_COMMENTARY_AHEAD_SECONDS', 600),
             'words_per_second' => 2.4,
             'sentences' => ['min' => (int) env('TV_COMMENTARY_AI_SENTENCES_MIN', 2), 'max' => (int) env('TV_COMMENTARY_AI_SENTENCES_MAX', 8)],
             'live_sentences' => ['min' => 1, 'max' => 3],
@@ -164,7 +164,7 @@ return [
             'disk' => 'local',
             'dir' => 'caster/spool',
             'max_bytes' => (int) env('TV_COMMENTARY_SPOOL_MAX_BYTES', 50 * 1024 * 1024),
-            'max_seconds' => 600,
+            'max_seconds' => (int) env('TV_COMMENTARY_SPOOL_MAX_SECONDS', 1200),
             // A long Bauernkrieg segment of four minutes is about 1.5 MB at `opus_kbps` 48.
             'max_clip_bytes' => 3 * 1024 * 1024,
             'max_clip_seconds' => 90,
@@ -175,7 +175,7 @@ return [
             'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
             // airtime it did before the gap (180 and 60), and the queue writes half as much ahead (ahead_seconds).
-            'target_seconds' => 240,
+            'target_seconds' => (int) env('TV_COMMENTARY_TARGET_SECONDS', 480),
             'filler_below_seconds' => 30,
             // Music only between two clips, a random length in this range (user 2026-10-11); a live moment cuts it short.
             // Quiet hours (user 2026-10-12: "zwischen 01:00 und 09:00 nur noch fix alle 10 Minuten ein Audio"): one clip every
@@ -204,6 +204,9 @@ return [
             'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
             // Sirius' clone speaks faster than Markus' at the same speed (user 2026-10-12: "Er redet schneller als Markus").
             'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92)],
+            // Speech level of every chunk (RMS dBFS) and a per-speaker offset in dB (Pcm::levelled()).
+            'speech_dbfs' => (float) env('TV_VOICESTUDIO_SPEECH_DBFS', -20),
+            'levels' => ['markus' => (float) env('TV_VOICESTUDIO_LEVEL_MARKUS', 0), 'sirius' => (float) env('TV_VOICESTUDIO_LEVEL_SIRIUS', -1)],
             'language' => 'de',
             'timeout_seconds' => 60,
             'retries' => 3,
@@ -236,6 +239,12 @@ return [
             'sample_rate' => 24000,
             // The voice is written into the encoder this far ahead of real time, so a slow tick of the daemon never starves it.
             'lead_seconds' => 1.0,
+            // News mode (user 2026-10-12: "so viel ducken im News-Modus, dass man die BG-Music nicht mehr hört"): under a
+            // bulletin, stinger and bed included, the music fades to this level within the fade down and comes back with
+            // the fade up after it, on the voice feed's own timeline (CommentaryTimeline::musicDuck()). 0 switches it off.
+            'news_music_db' => (float) env('TV_COMMENTARY_NEWS_MUSIC_DB', -60),
+            'news_fade_down_seconds' => (float) env('TV_COMMENTARY_NEWS_FADE_DOWN_SECONDS', 1.0),
+            'news_fade_up_seconds' => (float) env('TV_COMMENTARY_NEWS_FADE_UP_SECONDS', 2.0),
         ],
 
         // The station sound (App\Support\Caster\Idents, plan "TWENTY ONE Radio" P4): own synthesized stingers and a news
@@ -247,7 +256,8 @@ return [
             'stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
             'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident', 'rubric' => 'ident'],
             'bed' => 'news-bed.opus',
-            'bed_kinds' => ['bulletin'],
+            // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
+            'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
             'bed_gain_db' => 0,
             'bed_fade_seconds' => 1.5,
             'bed_at_night' => false,
@@ -496,7 +506,8 @@ return [
         'parts' => [
             'sentences' => (int) env('TV_COMMENTARY_PART_SENTENCES', 5),
             'breath_seconds' => 0.0,
-            'wait_seconds' => 20,
+            // Voicing a part with a profile switch takes 30–60 s on the workstation; 20 s ended stories mid-way (2026-10-12).
+            'wait_seconds' => (int) env('TV_COMMENTARY_PART_WAIT_SECONDS', 120),
         ],
 
         // Duets (App\Support\Caster\DuetDirector, user 2026-10-12: "Sirius ist so ein Side-Kommentator, der jeweils immer
@@ -525,8 +536,10 @@ return [
             'cooldown' => 0.35,
             // The previous duet's last turns a follow-up may pick up, if it ran within this many minutes.
             'follow_up_minutes' => 30,
-            'sentences' => ['markus' => ['min' => 2, 'max' => 4], 'sirius' => ['min' => 2, 'max' => 4]],
+            'sentences' => ['markus' => ['min' => 2, 'max' => 4], 'sirius' => ['min' => 3, 'max' => 6]],
             'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 1000),
+            // Share of duets in which Sirius may pick his beer topic (the running gag, not every time).
+            'beer_percent' => (int) env('TV_COMMENTARY_DUET_BEER_PERCENT', 15),
         ],
 
         // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen
