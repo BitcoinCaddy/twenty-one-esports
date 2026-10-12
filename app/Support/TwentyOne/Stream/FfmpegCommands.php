@@ -233,12 +233,21 @@ final class FfmpegCommands
      *
      * @return list<string>
      */
-    public function relay(string $playlist, string $target): array
+    public function relay(string $playlist, string $target, int $videoKbps = 0, int $fps = 30): array
     {
+        // YouTube Studio warned "um flüssig zu streamen, werden mehr Videodaten benötigt" for the copied 1 fps scene at
+        // about 300 kbit/s (2026-10-12); with `$videoKbps` the video is re-encoded to `$fps` at a constant bitrate.
+        // zerolatency keeps x264 from buffering its lookahead, so the ingest gets data at once.
+        $video = $videoKbps <= 0 ? ['-c:v', 'copy'] : [
+            '-vf', 'fps='.$fps, '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-pix_fmt', 'yuv420p',
+            '-b:v', $videoKbps.'k', '-minrate', $videoKbps.'k', '-maxrate', $videoKbps.'k', '-bufsize', (2 * $videoKbps).'k',
+            '-g', (string) (2 * $fps), '-keyint_min', (string) (2 * $fps), '-sc_threshold', '0', '-x264-params', 'nal-hrd=cbr',
+        ];
+
         return [
             $this->ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
             '-re', '-live_start_index', '-1', '-i', $playlist,
-            '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy',
+            '-map', '0:v:0', '-map', '0:a:0', ...$video, '-c:a', 'copy',
             '-rw_timeout', '10000000', '-f', 'flv', '-flvflags', 'no_duration_filesize', $target,
         ];
     }

@@ -147,7 +147,7 @@ final class YouTubeRelay
     {
         try {
             $this->process = Process::forever()->env(ChildEnvironment::withoutSecrets())
-                ->start($this->ffmpeg->relay($playlist, $this->url.'/'.$this->key));
+                ->start($this->ffmpeg->relay($playlist, $this->url.'/'.$this->key, (int) config('twentyone.stream.youtube.video_kbps', 0), (int) config('twentyone.stream.youtube.fps', 30)));
         } catch (Throwable $e) {
             $delay = $this->backoff->next();
             $this->nextStartAt = $now + $delay;

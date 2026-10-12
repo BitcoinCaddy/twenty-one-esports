@@ -36,8 +36,12 @@ it('drops a sentence said within repeat_hours from any later script, and lets it
     $first = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, MEMORY_SENTENCE."\nDie Lobby ist rund um die Uhr offen, und jeder kann jederzeit einsteigen.", 'a', 0, $now);
     $second = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, "Aus Berlin kommt heute eine Meldung, bei der man nur staunen kann.\n".MEMORY_SENTENCE, 'b', 0, $now->addMinutes(5));
 
+    $third = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, "Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.\n".MEMORY_SENTENCE, 'b2', 0, $now->addMinutes(5));
+
+    // The script ends before the repeat (P8): one sentence left is a setup without its point and is not queued.
     expect($first?->text)->toContain(MEMORY_SENTENCE)
-        ->and($second?->text)->toBe('Aus Berlin kommt heute eine Meldung, bei der man nur staunen kann.');
+        ->and($second)->toBeNull()
+        ->and($third?->text)->toBe("Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.");
 
     // A script of nothing but repeats is not queued at all.
     expect($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, MEMORY_SENTENCE, 'c', 50, $now->addMinutes(6)))->toBeNull();

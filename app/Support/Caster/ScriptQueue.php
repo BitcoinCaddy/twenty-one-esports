@@ -16,6 +16,7 @@ use App\Support\Caster\Programme\RoastScripts;
 use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\Programme\RubricScripts;
 use App\Support\Caster\Programme\SportWeather;
+use App\Support\Voice\VoiceHygiene;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -77,6 +78,9 @@ class ScriptQueue
 {
     /** Rows that left the queue are kept this long (for the counters of `caster:script`), then deleted. */
     private const KEEP_HOURS = 24;
+
+    /** The fewest sentences a script keeps before its first repeat or sign-off (enqueue()); a chat reply or live line needs one. */
+    public const MIN_COHERENT = 2;
 
     private PatternScripts $patterns;
 
@@ -626,13 +630,19 @@ class ScriptQueue
      * Queues a script; a long scene, segment or wished segment as its parts
      * (parts()), all with the same expiry. Returns the script, or its first
      * part; null for template text or a filler while the pattern fallback is
-     * off (PatternScripts::enabled()), and when every sentence of it was said within `repeat_hours`
-     * (SpokenMemory: from any source, chat replies and fallbacks included;
-     * the sentences said before leave a script, the rest is queued).
+     * off (PatternScripts::enabled()), and when too little of it is left
+     * before its first sentence said within `repeat_hours` (SpokenMemory: from
+     * any source, chat replies and fallbacks included) or its first sign-off.
+     * The script ends before such a sentence instead of losing it from the
+     * middle (plan "TWENTY ONE Radio" P8: the hole left the next sentence
+     * without its setup); a chat reply or a live line needs one sentence
+     * before it, every other kind MIN_COHERENT. A pattern script is a row of
+     * template lines that stand on their own: a repeated line just leaves it.
      *
      * `$speakers` (a duet, DuetDirector): the speaker of each line of `$text`;
-     * sign-offs and repeats then leave it line by line, each line keeping its
-     * speaker, and every part stores the speakers of its own lines.
+     * the duet likewise ends before its first sign-off or repeated line, each
+     * line keeping its speaker, and a scene duet needs both speakers in what
+     * is left; every part stores the speakers of its own lines.
      *
      * A bulletin (`$airsAt`, `$expiresAt`; fillBulletin()) is queued as it
      * was written: its sentences are news and its ritual lines come back on
@@ -672,22 +682,37 @@ class ScriptQueue
         } elseif ($speakers !== null) {
             [$text, $speakers] = $this->duetLines($text, $speakers, $now);
 
-            if ($text === '') {
+            if ($text === '' || ($kind === CasterScript::SCENE && count(array_unique($speakers)) < 2)) {
                 return null;
             }
-        }
-
-        $text = $kind === CasterScript::BULLETIN ? $text : self::withoutSignOffs($text);
-
-        if ($kind !== CasterScript::FILLER && $kind !== CasterScript::BULLETIN && $speakers === null) {
+        } elseif ($kind === CasterScript::FILLER) {
+            $text = self::beforeSignOff($text);
+        } elseif ($source === CasterScript::SOURCE_PATTERN) {
+            // Template lines stand on their own (an intro, a carrier with a canon joke): a repeated one leaves, the rest stays.
             $this->memory ??= new SpokenMemory;
-            $text = $this->memory->withoutRepeats($text, $now);
+            $text = $this->memory->withoutRepeats(self::withoutSignOffs($text), $now);
 
             if (trim(ScriptGuard::withoutMarkers($text)) === '') {
                 return null;
             }
 
             $this->memory->remember($text, $now);
+        } else {
+            $this->memory ??= new SpokenMemory;
+            $min = in_array($kind, [CasterScript::CHAT, CasterScript::LIVE, CasterScript::TEASER], true) ? 1 : self::MIN_COHERENT;
+            $whole = self::beforeSignOff($text, $signedOff);
+            $text = $this->memory->coherent($whole, $now, $min);
+
+            // A sign-off that cut the script counts like a repeat: a single setup sentence is no bit.
+            if (trim(ScriptGuard::withoutMarkers($text)) === '' || ($signedOff && count(VoiceHygiene::sentenceList(ScriptGuard::withoutMarkers($text))) < $min)) {
+                return null;
+            }
+
+            $this->memory->remember($text, $now);
+        }
+
+        if (trim(ScriptGuard::withoutMarkers($text)) === '') {
+            return null;
         }
 
         $inParts = in_array($kind, [CasterScript::SCENE, CasterScript::RUBRIC, ...CasterScript::SEGMENTS], true) || $scene === ChatWishes::SCENE;
@@ -743,21 +768,20 @@ class ScriptQueue
         [$lines, $kept] = [[], []];
 
         foreach (ScriptGuard::lines($text) as $index => $line) {
-            $line = self::withoutSignOffs($line);
+            $line = self::beforeSignOff(trim($line), $signedOff);
+            $repeated = false;
+            $line = $line === '' ? '' : trim($this->memory->coherent($line, $now, 1, $repeated));
 
-            if (preg_match(self::SIGN_OFF, $line) === 1) {
-                continue;
+            if (trim(ScriptGuard::withoutMarkers($line)) !== '') {
+                $this->memory->remember($line, $now);
+                $lines[] = str_replace("\n", ' ', $line);
+                $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
             }
 
-            $line = trim($this->memory->withoutRepeats($line, $now));
-
-            if (trim(ScriptGuard::withoutMarkers($line)) === '') {
-                continue;
+            // A sign-off or a repeat ends the duet here: the next speaker would answer a line nobody heard (P8).
+            if ($signedOff || $repeated) {
+                break;
             }
-
-            $this->memory->remember($line, $now);
-            $lines[] = str_replace("\n", ' ', $line);
-            $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
         }
 
         return [implode("\n", $lines), $kept];
@@ -955,6 +979,48 @@ class ScriptQueue
         }
 
         return array_values($picked);
+    }
+
+    /**
+     * The script up to its first sentence with a goodbye (SIGN_OFF), without sentences that carry no word: a
+     * goodbye after the first kept sentence ends the script there instead of leaving a hole in it (plan
+     * "TWENTY ONE Radio" P8); one before it only leaves, as nothing builds on it yet. `$cut`: whether a goodbye ended it.
+     *
+     * @param-out bool $cut
+     */
+    public static function beforeSignOff(string $text, ?bool &$cut = null): string
+    {
+        $lines = [];
+        $cut = false;
+
+        foreach (ScriptGuard::lines($text) as $line) {
+            $kept = [];
+
+            foreach (preg_split('/(?<=[.!?])\s+/u', $line) ?: [] as $sentence) {
+                if (preg_match(self::SIGN_OFF, $sentence) === 1) {
+                    if ($lines === [] && $kept === []) {
+                        continue;
+                    }
+
+                    if ($kept !== []) {
+                        $lines[] = implode(' ', $kept);
+                    }
+                    $cut = true;
+
+                    return implode("\n", $lines);
+                }
+
+                if (preg_match('/\p{L}/u', (string) preg_replace('/\[[^\]]*\]/u', '', $sentence)) === 1) {
+                    $kept[] = $sentence;
+                }
+            }
+
+            if ($kept !== []) {
+                $lines[] = implode(' ', $kept);
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     /** A goodbye anywhere in a sentence: "ciao", "peace out", "bis zum nächsten Mal", "macht's gut", "gute Nacht" … */
