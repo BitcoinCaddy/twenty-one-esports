@@ -269,10 +269,12 @@ final class DuetScripts
 
         // Sirius' own topic this time, drawn from his persona (user 2026-10-12: "Sirius redet immer nur über Bier? Warum?"):
         // beer was his first-ranked topic and a named example in this prompt, so it came up in nearly every duet.
-        $siriusTopics = array_values(array_filter(CasterPersonas::topics(DuetDirector::SIRIUS), fn (array $topic): bool => preg_match('/bier|alt\b|kölsch/iu', $topic['name'].' '.$topic['what']) !== 1));
+        // Beer stays a running gag, now and then (user 2026-10-12: "Bier darf schon als Witz ab und an vorkommen … nur nicht ständig").
+        $beerNow = random_int(1, 100) <= (int) config('tv.commentary.duet.beer_percent', 15);
+        $siriusTopics = array_values(array_filter(CasterPersonas::topics(DuetDirector::SIRIUS), fn (array $topic): bool => (preg_match('/bier|alt\b|kölsch/iu', $topic['name'].' '.$topic['what']) === 1) === $beerNow));
         if ($siriusTopics !== []) {
             $pick = $siriusTopics[random_int(0, count($siriusTopics) - 1)];
-            $parts[] = "Sirius' Thema in diesem Wortwechsel (eigener Blick, keine Bier-Witze)\n\n{$pick['name']}: {$pick['what']}";
+            $parts[] = "Sirius' Thema in diesem Wortwechsel (eigener Blick".($beerNow ? ', diesmal darf ein Bier-Witz sein' : ', diesmal kein Bier-Thema').")\n\n{$pick['name']}: {$pick['what']}";
         }
 
         if ($topics !== []) {
