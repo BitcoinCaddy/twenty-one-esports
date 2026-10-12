@@ -210,7 +210,7 @@ class RoastMaterial
             ->whereNotNull('ended_at')->where('ended_at', '>=', $now->subDays(max(1, (int) ($settings['days'] ?? 7))))->where('ended_at', '<=', $now)
             ->orderBy('ended_at')->orderBy('id')->limit(2000)->get()
             ->filter(fn (ChessGame $game): bool => ! in_array($game->end_reason instanceof ChessEndReason ? $game->end_reason->value : null, ['aborted', 'voided', 'forfeit'], true)
-                && in_array($game->result, ['1-0', '0-1', '1/2-1/2'], true) && $game->white !== null && $game->black !== null)->values();
+                && in_array($game->result, ['1-0', '0-1', '1/2-1/2'], true))->values();
 
         if ($games->count() < max(1, (int) ($settings['min_games'] ?? 3))) {
             return null;
@@ -321,7 +321,7 @@ class RoastMaterial
             $candidates[] = ['row' => $row, 'score' => $score];
         }
 
-        usort($candidates, fn (array $a, array $b): int => [$b['score'], $b['row']->published_at?->getTimestamp()] <=> [$a['score'], $a['row']->published_at?->getTimestamp()]);
+        usort($candidates, fn (array $a, array $b): int => [$b['score'], $b['row']->published_at->getTimestamp()] <=> [$a['score'], $a['row']->published_at->getTimestamp()]);
         $picked = [];
 
         foreach ($candidates as $candidate) {
@@ -335,7 +335,7 @@ class RoastMaterial
             return null;
         }
 
-        $lines = array_map(fn (CasterNews $row): string => '- '.$row->source.', '.WorldMemory::relative((int) $row->published_at?->getTimestamp(), $now).': Schlagzeile „'
+        $lines = array_map(fn (CasterNews $row): string => '- '.$row->source.', '.WorldMemory::relative($row->published_at->getTimestamp(), $now).': Schlagzeile „'
             .RoastFacts::spell(CasterVoice::withoutHashtags($row->title)).'“'.($row->summary !== null ? ' Anriss: '.RoastFacts::spell($row->summary) : ''), $picked);
 
         return self::material(implode("\n", $lines), [], array_values(array_unique(array_map(fn (CasterNews $row): string => $row->source, $picked))),
@@ -514,7 +514,7 @@ class RoastMaterial
 
         foreach ($picked as $price) {
             $lines[] = '- Preisvergleich: '.$price['item'].' kostete '.RoastFacts::spell((string) $price['then']['year']).' '.RoastFacts::spell((string) $price['then']['euro']).' Euro und '
-                .RoastFacts::spell((string) $price['now']['year']).' '.RoastFacts::spell((string) $price['now']['euro']).' Euro (Quelle: '.$price['source'].')';
+                .RoastFacts::spell((string) $price['now']['year']).' '.RoastFacts::spell((string) $price['now']['euro']).' Euro (Quelle: '.RoastFacts::spell((string) $price['source']).')';
         }
 
         $data = implode("\n", $lines);

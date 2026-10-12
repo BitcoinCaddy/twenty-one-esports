@@ -104,25 +104,62 @@ final class RoastFacts
     {
         preg_match_all('/„([^“”"]+)[“”"]|"([^"]+)"|»([^«]+)«|«([^»]+)»/u', $text, $matches, PREG_SET_ORDER);
 
-        return array_values(array_filter(array_map(fn (array $match): string => trim((string) ($match[1] ?: ($match[2] ?? '') ?: ($match[3] ?? '') ?: ($match[4] ?? ''))), $matches)));
+        return array_values(array_filter(array_map(fn (array $match): string => trim(($match[1] ?? '') ?: ($match[2] ?? '') ?: ($match[3] ?? '') ?: ($match[4] ?? '')), $matches)));
     }
 
     /** Whether a number word before a unit is one the material does not have. */
     private static function inventedAmount(string $text, string $lowerData): bool
     {
         $units = implode('|', array_map(fn (string $unit): string => str_ends_with($unit, '*') ? preg_quote(rtrim($unit, '*'), '/').'\p{L}*' : preg_quote($unit, '/'), self::UNITS));
-        preg_match_all('/(?<![\p{L}])([\p{L}]+)\s+(?:komma\s+(?:[\p{L}]+\s+){1,3})?(?:'.$units.')(?![\p{L}])/iu', $text, $matches, PREG_SET_ORDER);
-        $dataWords = array_flip(preg_split('/[^\p{L}]+/u', $lowerData, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        preg_match_all('/(?<![\p{L}])([\p{L}]+(?:\s+komma(?:\s+[\p{L}]+){1,3}?)?)\s+(?:'.$units.')(?![\p{L}])/iu', $text, $matches, PREG_SET_ORDER);
+        $known = self::numberPhrases($lowerData);
 
         foreach ($matches as $match) {
-            $word = mb_strtolower($match[1]);
+            $phrase = trim((string) preg_replace('/\s+/u', ' ', mb_strtolower($match[1])));
+            $first = explode(' ', $phrase)[0];
 
-            if (self::isNumberWord($word) && ! in_array($word, ['ein', 'eine', 'einen', 'einem', 'einer', 'eins'], true) && ! isset($dataWords[$word])) {
+            if (self::isNumberWord($first) && ! in_array($phrase, ['ein', 'eine', 'einen', 'einem', 'einer', 'eins'], true) && ! isset($known[$phrase])) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * The whole numbers a text says ("drei komma sieben fünf", "zwölf"), lower case: a number word, then "komma" and its
+     * digits; "sieben" inside "drei komma sieben fünf" is no number of its own.
+     *
+     * @return array<string, true>
+     */
+    public static function numberPhrases(string $text): array
+    {
+        $tokens = preg_split('/[^\p{L}]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $phrases = [];
+
+        for ($i = 0, $n = count($tokens); $i < $n; $i++) {
+            if (! self::isNumberWord($tokens[$i]) && ! in_array($tokens[$i], ['ein', 'eine', 'eins', 'null'], true)) {
+                continue;
+            }
+
+            $phrase = $tokens[$i];
+            if (($tokens[$i + 1] ?? '') === 'komma') {
+                $j = $i + 2;
+                $digits = [];
+                while ($j < $n && count($digits) < 3 && (self::isNumberWord($tokens[$j]) || in_array($tokens[$j], ['null', 'eins'], true))) {
+                    $digits[] = $tokens[$j];
+                    $j++;
+                }
+                // Every shorter reading too: "drei komma sieben" of "drei komma sieben fünf" is the same figure, rounded.
+                for ($k = 1; $k <= count($digits); $k++) {
+                    $phrases[$phrase.' komma '.implode(' ', array_slice($digits, 0, $k))] = true;
+                }
+                $i = $j - 1;
+            }
+            $phrases[$phrase] = true;
+        }
+
+        return $phrases;
     }
 
     /** Whether a lower-case word is a German number word from zwei to neunhundertneunundneunzigtausend (or a round million word). */
