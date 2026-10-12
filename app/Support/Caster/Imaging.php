@@ -216,14 +216,15 @@ final class Imaging
 
     /**
      * The power intro over the first seconds of a music gap (P11): after a talk clip by day, on `power_intro_share`
-     * of the gaps, never when a bulletin or rubric slot starts within two minutes (its opener comes first), never
-     * right after another jingle; picked and remembered as played, null when none is due.
+     * of the gaps, never when a bulletin or rubric slot starts within two minutes (its opener comes first); only a
+     * talk clip leads to one, and a talk clip never closes with a jingle, so it never follows another. Picked and
+     * remembered as played, null when none is due.
      *
      * @return array{id: string, line: string, category: string, file: string, seconds: float}|null
      */
     public function powerIntro(CasterClip $ended, CarbonImmutable $now): ?array
     {
-        if (! in_array($ended->kind, self::TALK_KINDS, true) || $ended->isBlock() || QuietHours::active($now) || $this->tailEndsAt !== null
+        if (! in_array($ended->kind, self::TALK_KINDS, true) || $ended->isBlock() || QuietHours::active($now)
             || ($this->random)() >= (float) ($this->settings['power_intro_share'] ?? 0.3)) {
             return null;
         }
