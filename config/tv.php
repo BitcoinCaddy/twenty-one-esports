@@ -701,7 +701,7 @@ return [
             // A question in the chat is first looked up on the web (WebLookupAgent with Anthropic's server-side web
             // search, at most `max_searches` searches), the finding goes into the reply prompt as data.
             'web_search' => (bool) env('TV_COMMENTARY_CHAT_WEB_SEARCH', true),
-            'max_searches' => 1,
+            'max_searches' => (int) env('TV_COMMENTARY_CHAT_MAX_SEARCHES', 2),
             // The rolling chat memory (App\Support\Caster\ChatMemory): every trusted message the caster saw and its
             // reply, kept `memory_hours`; a reply prompt sees the asker's thread and the others' latest lines, each
             // block at most `memory_tokens` (characters / 4).
