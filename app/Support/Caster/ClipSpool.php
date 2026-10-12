@@ -92,7 +92,7 @@ class ClipSpool
         }
 
         // A later part is never refused for airtime: the part before it may already be on air.
-        $airtimeCapped = ! in_array($script->kind, [CasterScript::FILLER, CasterScript::BULLETIN, ...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true)
+        $airtimeCapped = ! in_array($script->kind, [CasterScript::FILLER, ...CasterScript::PROGRAMME, ...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true)
             && ! $script->isContinuation();
 
         if ($this->bytes() + strlen($opus) > (int) ($settings['max_bytes'] ?? 0)
@@ -138,7 +138,7 @@ class ClipSpool
     public function readySeconds(): float
     {
         return (float) CasterClip::query()->where('status', CasterClip::READY)
-            ->whereNotIn('kind', [CasterScript::FILLER, CasterScript::BULLETIN, ...CasterScript::SEGMENTS])->sum('duration_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::PROGRAMME, ...CasterScript::SEGMENTS])->sum('duration_seconds');
     }
 
     /**
@@ -151,6 +151,38 @@ class ClipSpool
         $now = $now->utc();
 
         return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::BULLETIN)->where('expires_at', '>', $now)
+            ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)->select('id'))
+            ->orderBy('id')->first();
+    }
+
+    /**
+     * The rubric whose slot has come (`airs_at` at or before `$now`, at most
+     * `$lateSeconds` before it, its first part or the whole of it; the news
+     * talk after a bulletin is one too) and that has not expired: SceneDirector
+     * plays it at its slot, its later parts follow as a story. next(),
+     * nextLive() and nextSegment() never pick a rubric.
+     */
+    public function rubric(CarbonImmutable $now, ?int $lateSeconds = null): ?CasterClip
+    {
+        $now = $now->utc();
+
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::RUBRIC)->where('expires_at', '>', $now)
+            ->whereNotIn('caster_script_id', self::continuations())
+            ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)
+                ->when($lateSeconds !== null, fn ($query) => $query->where('airs_at', '>=', $now->subSeconds((int) $lateSeconds)))->select('id'))
+            ->orderBy('id')->first();
+    }
+
+    /**
+     * The programme teaser due now (`airs_at` at or before `$now`, not
+     * expired): SceneDirector plays it at the next clip boundary, so it ends
+     * the segment before its slot. Never picked by next() or nextLive().
+     */
+    public function teaser(CarbonImmutable $now): ?CasterClip
+    {
+        $now = $now->utc();
+
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::TEASER)->where('expires_at', '>', $now)
             ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)->select('id'))
             ->orderBy('id')->first();
     }
