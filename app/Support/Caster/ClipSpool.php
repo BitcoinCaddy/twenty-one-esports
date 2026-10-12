@@ -216,7 +216,7 @@ class ClipSpool
     {
         $count = count($chunks);
 
-        foreach (array_values($chunks) as $index => $chunk) {
+        foreach ($chunks as $index => $chunk) {
             $ends = array_values(array_unique(array_map(fn (float $end): float => round(max(0.0, min((float) $chunk['seconds'], $end)), 3), array_map('floatval', $chunk['pauses']))));
             sort($ends);
 

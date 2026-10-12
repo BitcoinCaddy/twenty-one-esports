@@ -321,7 +321,7 @@ final class SceneDirector
             $at = CarbonImmutable::createFromTimestamp($now);
             $podcast = $this->spool->podcast($at);
             // Its first chunk comes after Markus' and Sirius' announcement, when that is voiced.
-            $intro = $podcast !== null && (int) ($podcast->block['podcast']['index'] ?? 0) === 1 ? $this->spool->podcastFrame($podcast, CasterScript::PODCAST_INTRO, $at) : null;
+            $intro = $podcast !== null && ($podcast->podcastChunk()['index'] ?? 0) === 1 ? $this->spool->podcastFrame($podcast, CasterScript::PODCAST_INTRO, $at) : null;
 
             if ($intro !== null && $this->play($planner, $intro, $now)) {
                 $this->podcastFollows = true;
@@ -440,7 +440,7 @@ final class SceneDirector
         $cut = $this->timeline->isCut();
 
         // The last chunk of a podcast played to its end: the back-announce comes next (P12).
-        if ($this->isPodcast($clip) && ! $cut && (int) ($clip->block['podcast']['index'] ?? 0) === (int) ($clip->block['podcast']['count'] ?? -1)) {
+        if ($this->isPodcast($clip) && ! $cut && $clip->podcastChunk() !== null && $clip->podcastChunk()['index'] === $clip->podcastChunk()['count']) {
             $this->podcastEnded = $clip;
         }
         $this->logPiece($clip, (float) ($this->timeline->endsAt() ?? $now));

@@ -300,11 +300,10 @@ final class Imaging
      */
     private function podcast(CasterClip $clip, CarbonImmutable $now): array
     {
-        $podcast = (array) ($clip->block['podcast'] ?? []);
-        $source = is_string($podcast['source'] ?? null) ? $podcast['source'] : '';
-        $index = (int) ($podcast['index'] ?? 0);
-        $first = $index === 1;
-        $last = $index > 0 && $index === (int) ($podcast['count'] ?? 0);
+        $podcast = $clip->podcastChunk() ?? ['source' => '', 'index' => 0, 'count' => 0];
+        $source = $podcast['source'];
+        $first = $podcast['index'] === 1;
+        $last = $podcast['index'] > 0 && $podcast['index'] === $podcast['count'];
         $library = $this->library()->items() === [] ? null : $this->library();
 
         // The opener belongs to the episode: it plays even right after another jingle.

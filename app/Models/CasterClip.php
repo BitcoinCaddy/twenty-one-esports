@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int $bytes
  * @property list<float> $sentence_ends seconds into the clip where each sentence ends
  * @property string $status ready or playing
- * @property array{dressed?: bool, scripts?: list<int>, boundaries?: list<float>, protected_seconds?: float, replay?: bool, stock?: bool}|null $block a programme block rendered on the workstation (plan "TWENTY ONE Radio", P6): the scripts it covers (the first is `caster_script_id`), its segment boundaries in seconds, the opening stretch nothing cuts into, and that it carries its own station sound; null for a plain clip
+ * @property array{dressed?: bool, scripts?: list<int>, boundaries?: list<float>, protected_seconds?: float, replay?: bool, stock?: bool, podcast?: array{source: string, index: int, count: int}}|null $block a programme block rendered on the workstation (plan "TWENTY ONE Radio", P6): the scripts it covers (the first is `caster_script_id`), its segment boundaries in seconds, the opening stretch nothing cuts into, and that it carries its own station sound; null for a plain clip
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -82,6 +82,19 @@ class CasterClip extends Model
     public function isStock(): bool
     {
         return is_array($this->block) && ($this->block['stock'] ?? false) === true;
+    }
+
+    /**
+     * Where a podcast replay's chunk stands in its airing (P12, ClipSpool::storePodcast()): its source, its position from
+     * 1 and the number of chunks; null for any other clip.
+     *
+     * @return array{source: string, index: int, count: int}|null
+     */
+    public function podcastChunk(): ?array
+    {
+        $podcast = is_array($this->block) ? ($this->block['podcast'] ?? null) : null;
+
+        return is_array($podcast) ? $podcast : null;
     }
 
     /** Seconds at the start of a block nothing cuts into (the news of a news block); 0 for any other clip. */

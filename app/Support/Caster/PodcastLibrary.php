@@ -69,7 +69,11 @@ class PodcastLibrary
     /** The source refreshSource() is working on. */
     private string $measuring = '';
 
-    /** The settings of `tv.commentary.podcast_replay`. */
+    /**
+     * The settings of `tv.commentary.podcast_replay`.
+     *
+     * @return array<array-key, mixed>
+     */
     public static function settings(): array
     {
         return (array) config('tv.commentary.podcast_replay', []);
@@ -442,7 +446,7 @@ class PodcastLibrary
         $seconds = fn (string $h, string $m, string $s): float => 3600 * (int) $h + 60 * (int) $m + (float) $s;
 
         if (preg_match_all('/time=(\d+):(\d{2}):(\d{2}(?:\.\d+)?)/', $log, $times, PREG_SET_ORDER) > 0) {
-            $last = end($times);
+            $last = $times[count($times) - 1];
 
             return $seconds($last[1], $last[2], $last[3]);
         }
@@ -505,8 +509,7 @@ class PodcastLibrary
      */
     private function playingDirectories(): array
     {
-        return CasterClip::query()->where('path', 'like', $this->dir().'/%')->pluck('path')
-            ->map(fn (string $path): string => dirname($path))->unique()->values()->all();
+        return array_values(array_unique(array_map(fn (string $path): string => dirname($path), CasterClip::query()->where('path', 'like', $this->dir().'/%')->pluck('path')->all())));
     }
 
     private function directoryBytes(string $directory): int
