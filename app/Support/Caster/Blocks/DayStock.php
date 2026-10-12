@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster\Blocks;
 
+use App\Support\Caster\AtomicFile;
 use App\Support\Caster\QuietHours;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -102,8 +103,12 @@ final class DayStock
         }
 
         $name = $now->format('Ymd-His').'-'.(int) ($scripts[0]['id'] ?? 0);
-        file_put_contents($this->dir.'/'.$name.'.opus', $opus);
-        file_put_contents($this->dir.'/'.$name.'.json', (string) json_encode([
+        // Atomic, the audio first: the JSON twin is the commit mark entries() reads, so a kill mid-way leaves no half pair (P18).
+        if (! AtomicFile::put($this->dir.'/'.$name.'.opus', $opus)) {
+            return null;
+        }
+
+        AtomicFile::put($this->dir.'/'.$name.'.json', (string) json_encode([
             'scripts' => $scripts,
             'rendered_at' => $now->getTimestamp(),
             'seconds' => $block['seconds'],

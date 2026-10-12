@@ -164,6 +164,12 @@ Route::post('api/caster/stock/stored', [CasterFetchController::class, 'stockStor
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.stock-stored');
 Route::post('api/caster/stock/blocks', [CasterFetchController::class, 'stockBlock'])
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.stock-block');
+Route::post('api/caster/stock/library', [CasterFetchController::class, 'stockLibrary'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.stock-library');
+Route::post('api/caster/stock/library/{hash}', [CasterFetchController::class, 'stockLibraryBlock'])->where('hash', '[0-9a-f]{40}')
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.stock-library-block');
+Route::post('api/caster/heartbeat', [CasterFetchController::class, 'heartbeat'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.heartbeat');
 Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
 Route::post('api/caster/podcast-transcript/status', [CasterFetchController::class, 'podcastStatus'])

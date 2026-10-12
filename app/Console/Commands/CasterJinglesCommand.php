@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\AtomicFile;
 use App\Support\Caster\Blocks\JingleSynth;
 use App\Support\Caster\CasterFetcher;
 use App\Support\Caster\Pcm;
@@ -135,8 +136,8 @@ class CasterJinglesCommand extends Command
                 $wav = $this->generate($fetcher, $spoken, $profile, (float) ($settings['anchor']['speed'] ?? 1.0), (string) ($line['language'] ?? 'en'), $duration);
 
                 if ($wav !== null) {
-                    file_put_contents($voice, $wav);
-                    file_put_contents($dir.'/voice/'.$id.'.json', (string) json_encode(['hash' => $hash, 'spoken' => $spoken, 'duration' => $duration], JSON_UNESCAPED_UNICODE));
+                    AtomicFile::put($voice, $wav);
+                    AtomicFile::put($dir.'/voice/'.$id.'.json', (string) json_encode(['hash' => $hash, 'spoken' => $spoken, 'duration' => $duration], JSON_UNESCAPED_UNICODE));
                 }
             }
 
@@ -188,7 +189,7 @@ class CasterJinglesCommand extends Command
 
         $this->prune($dir, $keep);
 
-        file_put_contents($dir.'/manifest.json', json_encode([
+        AtomicFile::put($dir.'/manifest.json', (string) json_encode([
             'about' => 'TWENTY ONE ESPORTS RADIO jingles: voice "The Anchor" (VoiceStudio personality us_news_anchor, a designed voice, no person\'s clone), music own work CC0 (App\Support\Caster\Blocks\JingleSynth). Rendered by php artisan caster:jingles.',
             'generated_at' => now()->toIso8601String(),
             'profile_id' => $profile,

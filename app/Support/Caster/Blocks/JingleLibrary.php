@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster\Blocks;
 
+use App\Support\Caster\AtomicFile;
 use App\Support\Caster\Pcm;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
 use Carbon\CarbonImmutable;
@@ -180,6 +181,6 @@ final class JingleLibrary
 
         $played = $this->played();
         $played[] = ['line' => $line, 'at' => $now->getTimestamp()];
-        @file_put_contents($this->dir().'/rotation.json', json_encode(['played' => array_slice($played, -self::KEEP_PLAYED)]), LOCK_EX);
+        AtomicFile::put($this->dir().'/rotation.json', (string) json_encode(['played' => array_slice($played, -self::KEEP_PLAYED)]));
     }
 }

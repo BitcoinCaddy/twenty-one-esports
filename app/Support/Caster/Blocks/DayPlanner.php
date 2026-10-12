@@ -4,6 +4,7 @@ namespace App\Support\Caster\Blocks;
 
 use App\Support\Caster\AirLog;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * The hourly airtime budget of TWENTY ONE Radio (user 2026-10-12: current
@@ -38,6 +39,12 @@ final class DayPlanner
 {
     public const UPLOAD_STOCK = 'upload_stock';
 
+    /** A finished stock block goes up into the server's stock library (P18), whatever the spool holds. */
+    public const UPLOAD_LIBRARY = 'upload_library';
+
+    /** The workstation's mark that the server has no stock library (404/409): the day-stock path is used for an hour. */
+    public const LIBRARY_MISSING = 'caster:stock_library_missing';
+
     public const REPLAY = 'replay';
 
     public const RENDER_STOCK = 'render_stock';
@@ -50,22 +57,30 @@ final class DayPlanner
      *
      * @return list<string>
      */
-    public static function whenIdle(float $spoolSeconds, bool $hasStock, bool $stockFull, bool $quiet, bool $stockWindow, ?string $podcastGpu = null): array
+    public static function whenIdle(float $spoolSeconds, bool $hasStock, bool $stockFull, bool $quiet, bool $stockWindow, ?string $podcastGpu = null, bool $libraryFull = false): array
     {
         $stock = (array) config('tv.commentary.blocks.stock', []);
         $replay = (array) config('tv.commentary.blocks.replay', []);
         $stockOn = DayStock::enabled();
+        $library = $stockOn && self::libraryInUse();
+        // With the server's library (P18) the workstation's stock is a staging area: it pauses at the library's target.
+        $stockFull = $stockFull || ($library && $libraryFull);
         $steps = [];
 
-        if ($podcastGpu !== null) {
-            return $podcastGpu === 'stock' && $stockOn && ! $stockFull ? [self::RENDER_STOCK, self::WAIT] : [self::WAIT];
+        // A finished block goes up at once, day and night, whatever the spool holds: the server feeds itself from it.
+        if ($library && $hasStock) {
+            $steps[] = self::UPLOAD_LIBRARY;
         }
 
-        if ($stockOn && ! $quiet && $hasStock && $spoolSeconds < (float) ($stock['upload_below_seconds'] ?? 900)) {
+        if ($podcastGpu !== null) {
+            return [...$steps, ...($podcastGpu === 'stock' && $stockOn && ! $stockFull ? [self::RENDER_STOCK, self::WAIT] : [self::WAIT])];
+        }
+
+        if ($stockOn && ! $library && ! $quiet && $hasStock && $spoolSeconds < (float) ($stock['upload_below_seconds'] ?? 900)) {
             $steps[] = self::UPLOAD_STOCK;
         }
 
-        if (ReplayArchive::enabled() && ($quiet || ($replay['day_reserve'] ?? false) === true) && ! ($stockOn && ! $quiet && $hasStock)
+        if (ReplayArchive::enabled() && ($quiet || ($replay['day_reserve'] ?? false) === true) && ! ($stockOn && ! $library && ! $quiet && $hasStock)
             && $spoolSeconds < (float) ($replay['below_seconds'] ?? 120)) {
             $steps[] = self::REPLAY;
         }
@@ -75,6 +90,15 @@ final class DayPlanner
         }
 
         return [...$steps, self::WAIT];
+    }
+
+    /**
+     * Whether the stock goes to the server's library (P18): on, and the server has not answered 404 or 409 to it
+     * within the hour (an older server, or its library switched off: the day-stock path as before).
+     */
+    public static function libraryInUse(): bool
+    {
+        return StockLibrary::enabled() && ! Cache::has(self::LIBRARY_MISSING);
     }
 
     /** Whether a stock block goes up before a fresh script is voiced (the server runs low meanwhile). */
@@ -128,12 +152,15 @@ final class DayPlanner
 
     /**
      * Whether the server writes stock scripts ahead now: the stock on, its window, and the workstation reporting
-     * room in its stock lately (no report, no writing: the model is never paid for a stock nobody renders).
+     * room in its stock lately (no report, no writing: the model is never paid for a stock nobody renders), and the
+     * server's stock library below its target.
      *
      * @param  array<string, mixed>|null  $report  DayStock::report()
      */
     public static function writeStockAhead(CarbonImmutable $now, ?array $report): bool
     {
-        return DayStock::enabled() && DayStock::windowActive($now) && is_array($report) && ($report['full'] ?? true) === false;
+        return DayStock::enabled() && DayStock::windowActive($now) && is_array($report) && ($report['full'] ?? true) === false
+            // The server's library holds its target (P18): nothing more to render.
+            && ! (StockLibrary::enabled() && StockLibrary::fromConfig()->isFull());
     }
 }

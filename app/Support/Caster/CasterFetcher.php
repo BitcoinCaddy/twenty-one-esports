@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\Blocks\BlockFetcher;
 use App\Support\Caster\Blocks\DayPlanner;
 use App\Support\Caster\Blocks\DayStock;
@@ -53,6 +54,18 @@ class CasterFetcher
     /** A block went into the workstation's day stock (DayStock). */
     public const STOCKED = 'stocked';
 
+    /** VoiceStudio does not answer (not started yet after a boot, crashed): nothing claimed, the server told (P18). */
+    public const VOICE_DOWN = 'voicestudio_down';
+
+    /** A stop was asked for (SIGTERM, SIGINT): nothing claimed any more. */
+    public const STOPPED = 'stopped';
+
+    /** Whether a stop was asked for (stop()): no claim, no VoiceStudio call any more; what is half voiced is released. */
+    private bool $stopping = false;
+
+    /** Whether VoiceStudio could not be reached at all on the last call (every try a connection error). */
+    private bool $voiceDown = false;
+
     /** @var Closure(float): void */
     private Closure $sleep;
 
@@ -66,8 +79,78 @@ class CasterFetcher
         };
     }
 
+    /**
+     * Asks the fetcher to stop (P18; user 2026-10-13: "den Laptop ohne Probleme
+     * runterfahren … das Runterfahren macht nichts kaputt"): from now on no
+     * claim and no VoiceStudio call; the chunk in VoiceStudio's hands ends on
+     * its own (one call, seconds), the block in the making is abandoned and
+     * every script it held is released to the server, the local stock stays as
+     * it was (written atomically). The command exits after the current run.
+     */
+    public function stop(): void
+    {
+        $this->stopping = true;
+    }
+
+    /** @phpstan-impure the signal handler sets it at any moment */
+    public function stopping(): bool
+    {
+        return $this->stopping;
+    }
+
+    /**
+     * Whether VoiceStudio can be used: true until a call found it unreachable (every try a connection error: not
+     * started yet after a boot, crashed); from then on GET /profiles must answer within three seconds again.
+     */
+    public function voiceStudioUp(): bool
+    {
+        if (! $this->voiceDown) {
+            return true;
+        }
+
+        try {
+            $this->voiceDown = ! Http::connectTimeout(2)->timeout(3)->get(rtrim((string) $this->settings()['url'], '/').'/profiles')->successful();
+        } catch (ConnectionException) {
+            $this->voiceDown = true;
+        }
+
+        return ! $this->voiceDown;
+    }
+
+    /**
+     * Tells the server the workstation is alive but its VoiceStudio is down (`POST api/caster/heartbeat`): the
+     * autopilot takes over until a claim says it is up again. false when the server is unreachable.
+     */
+    public function heartbeat(bool $voiceUp): bool
+    {
+        try {
+            return $this->server()->timeout(10)->withHeaders([AutoPilot::HEADER => $voiceUp ? 'up' : 'down'])
+                ->post($this->settings()['server'].'/api/caster/heartbeat')->successful();
+        } catch (ConnectionException) {
+            return false;
+        }
+    }
+
     public function runOnce(): string
     {
+        if ($this->stopping) {
+            return self::STOPPED;
+        }
+
+        // VoiceStudio not up yet (the fetcher starts at boot) or crashed: nothing is claimed, the server runs the autopilot,
+        // and the stock already rendered still goes up to the server's library (no GPU needed).
+        if (! $this->voiceStudioUp()) {
+            if (! $this->heartbeat(false)) {
+                return self::OFFLINE;
+            }
+
+            if (config('tv.commentary.blocks.enabled') === true && DayPlanner::libraryInUse()) {
+                app(BlockFetcher::class)->uploadLibrary($this);
+            }
+
+            return self::VOICE_DOWN;
+        }
+
         $claim = $this->claim();
 
         if ($claim === null) {
@@ -82,14 +165,16 @@ class CasterFetcher
             // A podcast replay on air (P12): the server says what the GPU does meanwhile, stock or idle.
             $podcast = $claim->json('podcast.gpu');
 
-            return config('tv.commentary.blocks.enabled') === true ? $this->whenIdle($spool, $full, is_string($podcast) ? $podcast : null) : ($full ? self::FULL : self::IDLE);
+            return config('tv.commentary.blocks.enabled') === true
+                ? $this->whenIdle($spool, $full, is_string($podcast) ? $podcast : null, $claim->json('stock_library.full') === true)
+                : ($full ? self::FULL : self::IDLE);
         }
 
         /** @var array<string, string> $terms */
         $terms = array_filter((array) $claim->json('pronunciation', []), 'is_string');
 
         // The hourly airtime budget (DayPlanner): a fresh script keeps the GPU, but a server running low gets a stock block first.
-        if (config('tv.commentary.blocks.enabled') === true && DayStock::enabled()
+        if (config('tv.commentary.blocks.enabled') === true && DayStock::enabled() && ! DayPlanner::libraryInUse()
             && DayPlanner::topUpBeforeFresh($spool, DayStock::fromConfig()->entries() !== [], QuietHours::active(CarbonImmutable::now()))) {
             app(BlockFetcher::class)->uploadStock($this);
         }
@@ -109,14 +194,15 @@ class CasterFetcher
      * renders day stock, else the fetcher waits. A refused step falls
      * through to the next.
      */
-    private function whenIdle(float $spool, bool $full, ?string $podcastGpu = null): string
+    private function whenIdle(float $spool, bool $full, ?string $podcastGpu = null, bool $libraryFull = false): string
     {
         $now = CarbonImmutable::now();
         $stock = DayStock::enabled() ? DayStock::fromConfig() : null;
         $blocks = app(BlockFetcher::class);
 
-        foreach (DayPlanner::whenIdle($spool, $stock !== null && $stock->entries() !== [], $stock === null || $stock->isFull(), QuietHours::active($now), DayStock::windowActive($now), $podcastGpu) as $step) {
+        foreach (DayPlanner::whenIdle($spool, $stock !== null && $stock->entries() !== [], $stock === null || $stock->isFull(), QuietHours::active($now), DayStock::windowActive($now), $podcastGpu, $libraryFull) as $step) {
             $outcome = match ($step) {
+                DayPlanner::UPLOAD_LIBRARY => $blocks->uploadLibrary($this),
                 DayPlanner::UPLOAD_STOCK => $blocks->uploadStock($this),
                 DayPlanner::REPLAY => $blocks->replay($this, $spool),
                 DayPlanner::RENDER_STOCK => $blocks->stock($this),
@@ -139,7 +225,12 @@ class CasterFetcher
      */
     public function claim(bool $urgent = false, bool $stock = false): ?Response
     {
-        $request = $this->server();
+        if ($this->stopping) {
+            return null;
+        }
+
+        // A claim means VoiceStudio is up (runOnce() checked): the server ends its autopilot (P18).
+        $request = $this->server()->withHeaders([AutoPilot::HEADER => 'up']);
 
         if (DayStock::enabled()) {
             $request = $request->withHeaders([DayStock::HEADER => DayStock::fromConfig()->header()]);
@@ -415,8 +506,14 @@ class CasterFetcher
     {
         $settings = $this->settings();
         $attempts = max(1, (int) $settings['retries'] + 1);
+        $unreachable = 0;
 
         for ($attempt = 1; $attempt <= $attempts; $attempt++) {
+            // A stop was asked for: no new VoiceStudio call, the block in the making is abandoned and released.
+            if ($this->stopping) {
+                return null;
+            }
+
             try {
                 $response = Http::asMultipart()->timeout((int) $settings['timeout_seconds'])->post(rtrim((string) $settings['url'], '/').'/generate', [
                     'text' => $text,
@@ -437,12 +534,16 @@ class CasterFetcher
                 }
             } catch (ConnectionException) {
                 // VoiceStudio is restarting or busy: wait and try again.
+                $unreachable++;
             }
 
-            if ($attempt < $attempts) {
+            if ($attempt < $attempts && ! $this->stopping) {
                 ($this->sleep)((float) $settings['retry_seconds'] * $attempt);
             }
         }
+
+        // Not one try reached it: VoiceStudio is down (P18); the next run asks /profiles before it claims again.
+        $this->voiceDown = $this->voiceDown || $unreachable === $attempts;
 
         return null;
     }
@@ -484,7 +585,8 @@ class CasterFetcher
     public function release(int $id): void
     {
         try {
-            $this->server()->post($this->settings()['server'].'/api/caster/scripts/'.$id.'/release');
+            // While stopping, every release must get through within the stop timeout.
+            $this->server()->timeout($this->stopping ? 5 : 30)->post($this->settings()['server'].'/api/caster/scripts/'.$id.'/release');
         } catch (ConnectionException) {
             // The server frees an unanswered claim after `claim_seconds` anyway.
         }

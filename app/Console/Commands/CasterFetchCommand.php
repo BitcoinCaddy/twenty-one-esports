@@ -34,7 +34,10 @@ use Illuminate\Support\Facades\Process;
 class CasterFetchCommand extends Command
 {
     /** Waits after an outcome, in multiples of `idle_seconds`; FULL waits `full_seconds` instead. */
-    private const WAITS = [CasterFetcher::VOICED => 0, CasterFetcher::STOCKED => 0, CasterFetcher::IDLE => 1, CasterFetcher::RELEASED => 3, CasterFetcher::OFFLINE => 6];
+    private const WAITS = [CasterFetcher::VOICED => 0, CasterFetcher::STOCKED => 0, CasterFetcher::IDLE => 1, CasterFetcher::RELEASED => 3, CasterFetcher::OFFLINE => 6, CasterFetcher::STOPPED => 0];
+
+    /** VoiceStudio down (P18): waits growing by this factor per run in a row, at most `MAX_VOICE_DOWN_WAIT` seconds. */
+    private const MAX_VOICE_DOWN_WAIT = 120;
 
     private bool $stopping = false;
 
@@ -45,12 +48,16 @@ class CasterFetchCommand extends Command
 
     public function handle(CasterFetcher $fetcher): int
     {
-        $this->trap([SIGTERM, SIGINT], function (): void {
+        // A shutdown (systemd sends SIGTERM, then SIGKILL after TimeoutStopSec) or Ctrl-C: the fetcher stops claiming and
+        // calling VoiceStudio at once, the run in progress releases what it holds, and the command exits 0 (P18).
+        $this->trap([SIGTERM, SIGINT], function () use ($fetcher): void {
             $this->stopping = true;
+            $fetcher->stop();
         });
 
         $idle = max(1, (int) config('tv.commentary.voicestudio.idle_seconds', 10));
         $last = null;
+        $downRuns = 0;
 
         do {
             if (! $this->option('once') && self::podcastDue(CarbonImmutable::now(), $this->podcast?->running() ?? false)) {
@@ -64,16 +71,33 @@ class CasterFetchCommand extends Command
                 $last = $outcome;
             }
 
-            if ($this->option('once')) {
+            if ($this->option('once') || $outcome === CasterFetcher::STOPPED) {
                 break;
             }
 
-            for ($waited = 0; $waited < self::waitSeconds($outcome, $idle) && ! $this->stopping; $waited++) {
+            $downRuns = $outcome === CasterFetcher::VOICE_DOWN ? $downRuns + 1 : 0;
+            $wait = $outcome === CasterFetcher::VOICE_DOWN ? self::voiceDownWait($downRuns, $idle) : self::waitSeconds($outcome, $idle);
+
+            for ($waited = 0; $waited < $wait && ! $this->stopping && ! $fetcher->stopping(); $waited++) {
                 sleep(1);
             }
-        } while (! $this->stopping);
+        } while (! $this->stopping && ! $fetcher->stopping());
+
+        if ($this->stopping || $fetcher->stopping()) {
+            $this->line(now()->toDateTimeString().' stopped');
+        }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The wait after the `$runs`-th run in a row that found VoiceStudio down: `idle_seconds`, doubling, at most
+     * MAX_VOICE_DOWN_WAIT (a boot before VoiceStudio is up never becomes a tight loop, and its start is noticed
+     * within two minutes).
+     */
+    public static function voiceDownWait(int $runs, int $idle): int
+    {
+        return (int) min(self::MAX_VOICE_DOWN_WAIT, $idle * 2 ** max(0, min(10, $runs - 1)));
     }
 
     /**

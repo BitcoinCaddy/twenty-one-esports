@@ -3,6 +3,7 @@
 namespace App\Support\Caster\Blocks;
 
 use App\Models\CasterScript;
+use App\Support\Caster\AtomicFile;
 use App\Support\Caster\ChatReactions;
 use App\Support\Caster\ChatWishes;
 use App\Support\Caster\Programme\ProgrammePreview;
@@ -115,8 +116,11 @@ final class ReplayArchive
         }
 
         $name = $now->format('Ymd-His').'-'.(int) ($scripts[0]['id'] ?? 0);
-        file_put_contents($this->dir.'/'.$name.'.opus', $opus);
-        file_put_contents($this->dir.'/'.$name.'.json', (string) json_encode([
+        if (! AtomicFile::put($this->dir.'/'.$name.'.opus', $opus)) {
+            return null;
+        }
+
+        AtomicFile::put($this->dir.'/'.$name.'.json', (string) json_encode([
             'scripts' => array_map(fn (array $script): int => (int) ($script['id'] ?? 0), $scripts),
             'kinds' => array_values(array_unique(array_map(fn (array $script): string => (string) ($script['kind'] ?? ''), $scripts))),
             'topics' => array_values(array_unique(array_filter(array_map(fn (array $script): ?string => is_string($script['topic'] ?? null) ? $script['topic'] : null, $scripts)))),
@@ -170,7 +174,7 @@ final class ReplayArchive
 
         if ($meta !== null) {
             $meta['replayed_at'] = $now->getTimestamp();
-            file_put_contents($this->dir.'/'.$name.'.json', (string) json_encode($meta, JSON_UNESCAPED_UNICODE));
+            AtomicFile::put($this->dir.'/'.$name.'.json', (string) json_encode($meta, JSON_UNESCAPED_UNICODE));
         }
     }
 

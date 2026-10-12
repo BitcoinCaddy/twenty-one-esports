@@ -865,3 +865,6 @@ Schedule::command('caster:prune')->everyTenMinutes()->withoutOverlapping()->onOn
 // The podcast replay (plan "TWENTY ONE Radio", P12): a newer episode is stored (download and transcode take minutes, so in
 // the background) and the day's airings go into the spool before their slots.
 Schedule::command('caster:podcasts')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.podcast_replay.enabled') === true);
+// The server's stock library (plan "TWENTY ONE Radio", P18): the spool is fed from it when it runs low by day, and the
+// autopilot keeps the programme going from it while the workstation is gone (in the background: it looks every 15 s).
+Schedule::command('caster:stock-feed')->everyMinute()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.blocks.enabled') === true && config('tv.commentary.blocks.stock.enabled') === true);
