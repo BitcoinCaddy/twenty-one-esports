@@ -232,7 +232,7 @@ it('tells EINUNDZWANZIG lore from the canon for a canon wish', function () {
     [$reply, $segment] = wishQueue();
 
     expect(strtok($reply->text, "\n"))->toBeIn(wishAcks(ChatWishes::CANON))
-        ->and(count(ScriptGuard::lines($segment->text)))->toBeGreaterThanOrEqual(5)
+        ->and(count(ScriptGuard::lines($segment->text)))->toBeGreaterThanOrEqual(3) // the 24 h no-repeat guard may drop a line whose carrier repeats a phrase
         ->and((new ScriptGuard)->check($segment->text, 1, 12, 32))->toBe([], $segment->text);
 });
 
