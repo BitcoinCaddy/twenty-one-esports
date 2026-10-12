@@ -21,7 +21,8 @@ use Illuminate\Support\Str;
  *
  * The long segments (news, "Markus erzählt vom Bauernkrieg", a followed
  * profile's Nostr note) are written here too, each when it is due
- * (NewsScripts, HistoryScripts, FollowedScripts): normal
+ * (NewsScripts, HistoryScripts, FollowedScripts), and a "Rückblick-Spitze"
+ * on the world memory (fillCallback(), a short scene): normal
  * priority, so live moments and reactions still jump ahead of them, and
  * ClipSpool plays them on calm slots only. They do not count as airtime
  * ahead: a long Bauernkrieg segment waiting for a calm slot must not starve
@@ -232,6 +233,8 @@ class ScriptQueue
             }
         }
 
+        $written += $this->fillCallback($now);
+
         $since = $now->subMinutes((int) config('tv.commentary.followed.every_minutes', 10));
 
         if (config('tv.commentary.followed.enabled') === true && ! CasterScript::query()->where('kind', CasterScript::FOLLOWED)->where('created_at', '>', $since)->exists()) {
@@ -245,6 +248,37 @@ class ScriptQueue
         }
 
         return $written;
+    }
+
+    /**
+     * A "Rückblick-Spitze" (user 2026-10-12): every `world.callback_every_minutes` one or two real items of the world
+     * memory (WorldMemory::pickForCallback()) called back with a sarcastic remark by the league voice; AI only. A
+     * scene of topic WorldMemory::CALLBACK_TOPIC; its items are marked once it is queued, so none comes back within
+     * `callback_repeat_hours`. fillSegments() runs outside the quiet hours only.
+     *
+     * @return int callbacks written (0 or 1)
+     */
+    public function fillCallback(CarbonImmutable $now): int
+    {
+        $every = (int) config('tv.commentary.world.callback_every_minutes', 12);
+
+        if (! self::aiEnabled() || $every <= 0
+            || CasterScript::query()->where('topic', WorldMemory::CALLBACK_TOPIC)->where('created_at', '>', $now->subMinutes($every))->exists()) {
+            return 0;
+        }
+
+        $world = app(WorldMemory::class);
+        $items = $world->pickForCallback($now, random_int(1, 2));
+        $text = $items === [] ? null : $this->voice->callback($items);
+
+        if ($text === null || $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $text, 'callback:'.implode(',', array_column($items, 'key')), 0, $now,
+            source: CasterScript::SOURCE_AI, topic: WorldMemory::CALLBACK_TOPIC) === null) {
+            return 0;
+        }
+
+        $world->markCalledBack(array_column($items, 'key'), $now);
+
+        return 1;
     }
 
     /**

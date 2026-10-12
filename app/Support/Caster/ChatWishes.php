@@ -219,7 +219,7 @@ class ChatWishes
 
             // The league voice first (user 2026-10-12: "FREIE KI-generierte Rede!!!"), the pattern scene as the fallback.
             $range = (array) config('tv.commentary.scripts.sentences', []);
-            $ai = ScriptQueue::aiEnabled() ? $this->voice->write(CasterScript::SCENE, SceneTopic::phase($topic, $now), $facts, (int) ($range['min'] ?? 2), (int) ($range['max'] ?? 8)) : null;
+            $ai = ScriptQueue::aiEnabled() ? $this->voice->write(CasterScript::SCENE, SceneTopic::phase($topic, $now), $facts, (int) ($range['min'] ?? 2), (int) ($range['max'] ?? 8), material: CasterVoice::LEAGUE) : null;
 
             if ($ai !== null) {
                 return ['kind' => CasterScript::LIVE, 'text' => $ai['text'], 'facts_hash' => SceneFacts::hash($facts), 'source' => CasterScript::SOURCE_AI, 'topic' => $topic];

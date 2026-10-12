@@ -136,6 +136,56 @@ class PodcastFeed
     }
 
     /**
+     * The newest item of an RSS 2.0 podcast feed with an audio enclosure, for
+     * the transcript (PodcastTranscriber): its guid (the enclosure URL when it
+     * has none), title, publication time, enclosure URL (https only) and
+     * episode number (`itunes:episode`, else "#335 - …" or "Folge 123" in the
+     * title, else null); null for an unreadable feed or no such item. No network and no
+     * entity expansion while parsing.
+     *
+     * @return array{guid: string, title: string, published_at: int, url: string, episode_number: int|null}|null
+     */
+    public static function newestAudio(string $xml): ?array
+    {
+        $previous = libxml_use_internal_errors(true);
+
+        try {
+            $document = simplexml_load_string($xml, SimpleXMLElement::class, LIBXML_NONET | LIBXML_NOCDATA);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+
+        if (! $document instanceof SimpleXMLElement || ! isset($document->channel->item)) {
+            return null;
+        }
+
+        foreach ($document->channel->item as $item) {
+            $url = trim((string) ($item->enclosure['url'] ?? ''));
+            $title = self::plain((string) $item->title);
+
+            if ($title === '' || ! str_starts_with($url, 'https://')) {
+                continue;
+            }
+
+            try {
+                $published = trim((string) $item->pubDate) === '' ? 0 : CarbonImmutable::parse(trim((string) $item->pubDate))->getTimestamp();
+            } catch (Throwable) {
+                $published = 0;
+            }
+
+            $itunes = $item->children('http://www.itunes.com/dtds/podcast-1.0.dtd');
+            $number = ctype_digit(trim((string) $itunes->episode)) ? (int) trim((string) $itunes->episode)
+                : (preg_match('/^#\s*(\d{1,5})\b|\b(?:Folge|Episode|Nr\.?)\s*(\d{1,5})\b/iu', $title, $match) === 1 ? (int) ($match[1] !== '' ? $match[1] : $match[2]) : null);
+            $guid = trim((string) $item->guid);
+
+            return ['guid' => mb_substr($guid === '' ? $url : $guid, 0, 255), 'title' => mb_substr($title, 0, 255), 'published_at' => $published, 'url' => $url, 'episode_number' => $number];
+        }
+
+        return null;
+    }
+
+    /**
      * Shownotes as plain text: list items joined by "; ", everything from the
      * sponsor block on left out, tags, links, nostr references and keys gone,
      * whitespace collapsed, at most `$chars` characters (cut at a word).

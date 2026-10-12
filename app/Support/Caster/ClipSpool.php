@@ -191,11 +191,10 @@ class ClipSpool
             }
 
             // Nothing for this phase: any ready commentary beats silence (user 2026-10-11: "große Lücken immer" — clips
-            // of another phase waited while the stream played only music).
-            // A clip about a live match stays with live match slides: wrong context is worse than music.
-            $clip = (clone $ready)->where('kind', CasterScript::SCENE)
-                ->when($phase !== ScenePhase::LIVE_MATCH, fn ($query) => $query->where('phase', '!=', ScenePhase::LIVE_MATCH))
-                ->orderBy('id')->first();
+            // of another phase waited while the stream played only music). No scene is held back for its slide any more
+            // (user 2026-10-12: "Das mit den Slide-Fakten ist nicht stimmig"): a scene is no slide commentary, and a
+            // comment on a running game names its match in its first sentence (CasterVoice::ANCHOR_RULE).
+            $clip = (clone $ready)->where('kind', CasterScript::SCENE)->orderBy('id')->first();
             if ($clip !== null) {
                 return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
             }

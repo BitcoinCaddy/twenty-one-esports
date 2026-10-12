@@ -115,8 +115,9 @@ it('plays a live clip first, then a clip of the slot\'s phase', function () {
     casterSpool()->played($live);
 
     expect(casterSpool()->next(ScenePhase::LIVE_MATCH, $now)['clip']?->id)->toBe($scene->id)
-        // A match clip never plays over a break: wrong context is worse than music.
-        ->and(casterSpool()->next(ScenePhase::BREAK, $now)['clip'])->toBeNull();
+        // No scene is held back for its slide (user 2026-10-12: "Das mit den Slide-Fakten ist nicht stimmig"): a match
+        // clip names its match in its first sentence (CasterVoice::ANCHOR_RULE), so it plays over a break too.
+        ->and(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($scene->id);
 });
 
 it('plays the clip about the slide on air first, and any clip of the phase without one', function () {

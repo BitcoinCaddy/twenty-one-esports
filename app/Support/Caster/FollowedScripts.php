@@ -138,6 +138,24 @@ class FollowedScripts
         ];
     }
 
+    /**
+     * One of Markus' own stored notes, drawn at random, as material for a
+     * scene (CasterVoice::MATERIALS `nostr`): when he wrote it and its first
+     * forty words; none that the filters turned down, null when there is none.
+     */
+    public static function ownNote(CarbonImmutable $now): ?string
+    {
+        $own = array_values(array_filter(FollowedNotes::pubkeys(), fn (string $pubkey): bool => self::isSelf(FollowedNotes::displayName($pubkey))));
+        $note = $own === [] ? null : CasterFollowedNote::query()->whereIn('pubkey', $own)->whereNull('skipped')
+            ->inRandomOrder()->first();
+
+        if ($note === null || FollowedNotes::isExplicit($note->content) || NewsFilter::unfit($note->content) !== null) {
+            return null;
+        }
+
+        return (self::when($note, $now) ?? 'Vor kurzem').' hast du auf Nostr geschrieben: „'.ChatMemory::firstWords($note->content, 40).'“';
+    }
+
     /** Whether a display name is the caster's own ("markusturm", "Markus Turm"). */
     public static function isSelf(string $name): bool
     {

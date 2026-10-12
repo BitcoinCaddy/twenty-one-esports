@@ -8,6 +8,7 @@ use App\Models\ChessGame;
 use App\Models\Clan;
 use App\Models\User;
 use App\Support\Caster\GameMoments\GameMoments;
+use App\Support\Caster\GameMoments\MatchAnchor;
 use App\Support\TwentyOne\Stream\BlockfillSlides;
 use App\Support\TwentyOne\Stream\MempoolSlides;
 use App\Support\TwentyOne\Stream\StreamStats;
@@ -63,7 +64,7 @@ class SceneFacts
     private const LADDERS = 3;
 
     /** How a chess game ended, spoken ("… verliert durch Aufgabe"). */
-    private const END_REASONS = [
+    public const END_REASONS = [
         'checkmate' => 'Matt',
         'resignation' => 'Aufgabe',
         'timeout' => 'Zeitüberschreitung',
@@ -72,7 +73,7 @@ class SceneFacts
     ];
 
     /** Chess modes, spoken. */
-    private const MODES = ['blitz' => 'Blitz', 'rapid' => 'Schnellschach', 'bullet' => 'Bullet', ChessGame::CORRESPONDENCE => 'Fernschach'];
+    public const MODES = ['blitz' => 'Blitz', 'rapid' => 'Schnellschach', 'bullet' => 'Bullet', ChessGame::CORRESPONDENCE => 'Fernschach'];
 
     private const WEEKDAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
@@ -317,7 +318,7 @@ class SceneFacts
             }
 
             foreach (array_slice($chessGames, 0, self::LIVE_GAMES) as [$game, $white, $black]) {
-                $games[] = ['game' => 'Schach', 'white' => $white, 'black' => $black, 'mode' => self::MODES[$game->mode] ?? ucfirst($game->mode), 'move' => intdiv((int) $game->ply, 2) + 1];
+                $games[] = ['game' => 'Schach', 'match' => MatchAnchor::of($game, 'Schach', self::MODES[$game->mode] ?? null), 'white' => $white, 'black' => $black, 'mode' => self::MODES[$game->mode] ?? ucfirst($game->mode), 'move' => intdiv((int) $game->ply, 2) + 1];
             }
 
             foreach ($this->mempool()['running'] ?? [] as $cube) {

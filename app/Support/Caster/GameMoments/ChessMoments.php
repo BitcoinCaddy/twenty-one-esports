@@ -4,6 +4,7 @@ namespace App\Support\Caster\GameMoments;
 
 use App\Models\ChessGame;
 use App\Models\ChessMove;
+use App\Support\Caster\SceneFacts;
 use App\Support\Chess\ChessGameService;
 
 /**
@@ -27,7 +28,7 @@ use App\Support\Chess\ChessGameService;
  *   (our rule of thumb, see phase()).
  * - `losses`: what each side has lost so far, counted from the captures.
  *
- * Every moment carries the game and both players' spoken names, its `kind`,
+ * Every moment carries the game, the match it is (`match`, MatchAnchor) and both players' spoken names, its `kind`,
  * a `mood` (Mood) where the rule gives one and `lead`, the player the moment
  * is about. At most PER_GAME moments, in the order above.
  */
@@ -78,7 +79,8 @@ final class ChessMoments
     public function of(ChessGame $game, string $white, string $black, int $nowMs): array
     {
         $names = ['w' => $white, 'b' => $black];
-        $base = ['game' => 'Schach', 'white' => $white, 'black' => $black];
+        // `match` says which match this is (MatchAnchor), so a comment can name it before it says "Weiß" or "Schwarz".
+        $base = ['game' => 'Schach', 'match' => MatchAnchor::of($game, 'Schach', SceneFacts::MODES[$game->mode] ?? null), 'white' => $white, 'black' => $black];
         $moves = array_values($game->moves()->orderBy('ply')->get(['ply', 'san', 'fen'])->all());
         $history = self::history($game->startFen(), $moves);
         $pieces = self::pieces($game->fen);

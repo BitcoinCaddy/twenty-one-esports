@@ -52,7 +52,7 @@ final class BoardMoments
     {
         $rules = $this->boards->rulesOf($game);
         $names = ['w' => $white, 'b' => $black];
-        $base = ['game' => self::NAMES[$game->game] ?? $game->game, 'a' => $white, 'b' => $black];
+        $base = ['game' => self::NAMES[$game->game] ?? $game->game, 'match' => MatchAnchor::of($game, self::NAMES[$game->game] ?? $game->game), 'a' => $white, 'b' => $black];
 
         return match (true) {
             $rules instanceof BlockliRules => self::race($rules->standing($rules->deserialize($game->position)), $names, $base),
