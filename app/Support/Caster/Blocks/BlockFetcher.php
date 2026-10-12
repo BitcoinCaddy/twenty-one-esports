@@ -25,7 +25,8 @@ use Illuminate\Http\Client\ConnectionException;
  *  - a script the broadcast clock places (`airs_at`): it leads a block of
  *    its own after this one (the block then airs at its slot); a block it
  *    leads takes only the rest of its own story, and after a bulletin the
- *    news talk of `blocks.news_talk_topics`;
+ *    scripts of `blocks.news_talk_topics` (Sport und Wetter, the news talk),
+ *    one claim per topic;
  *  - a later part whose part before it went out in an earlier block: it
  *    leads the next block, so the server plays it right after that one.
  *
@@ -61,13 +62,13 @@ final class BlockFetcher
         $deferred = null;
         $exhausted = false;
         $anchored = is_string($first['airs_at'] ?? null);
-        $triedNewsTalk = false;
+        $newsTalkTries = 0;
 
         while (count($batch) < $maxScripts) {
             $last = $batch[count($batch) - 1];
             $continues = is_array($last['part'] ?? null) && ($last['part']['continues'] ?? false) === true;
             $estimate = self::estimate($batch);
-            $wantsNewsTalk = $anchored && ($first['kind'] ?? null) === CasterScript::BULLETIN && $newsTalk !== [] && ! $triedNewsTalk;
+            $wantsNewsTalk = $anchored && ($first['kind'] ?? null) === CasterScript::BULLETIN && $newsTalkTries < count($newsTalk);
 
             if (! $continues && ! $wantsNewsTalk && ($anchored || $estimate >= $min)) {
                 break;
@@ -77,7 +78,7 @@ final class BlockFetcher
                 break;
             }
 
-            $triedNewsTalk = $triedNewsTalk || ($wantsNewsTalk && ! $continues);
+            $newsTalkTries += $wantsNewsTalk && ! $continues ? 1 : 0;
             $claim = $fetcher->claim();
             $script = $claim?->json('script');
 
@@ -150,7 +151,8 @@ final class BlockFetcher
             return false;
         }
 
-        // The news talk after a bulletin joins its block (anchored itself, it would air at its own slot anyway).
+        // Sport und Wetter and the news talk after a bulletin join its block (anchored themselves, they would air right
+        // after it anyway).
         if ($anchored) {
             return ($batch[0]['kind'] ?? null) === CasterScript::BULLETIN && in_array($script['topic'] ?? null, $newsTalk, true);
         }

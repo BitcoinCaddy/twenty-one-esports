@@ -496,6 +496,57 @@ return [
                 'max_output_tokens' => 5_000,
                 'daily_cap' => (int) env('TV_COMMENTARY_NEWS_TALK_DAILY_CAP', 60),
             ],
+            // Sport und Wetter (App\Support\Caster\Programme\SportWeather; user 2026-10-12: "Wetter und Sport im Radio Programm aus
+            // echten Daten … sehr sarkastisch und toxisch darüber sprechen. Sport und Wetter immer im Anschluss der News zur vollen
+            // Stunde."): right after the :00 bulletin and before the news talk, `seconds` long, Markus and Sirius (`duet`) or
+            // Markus alone, from real data only: Open-Meteo for `weather.cities` (WeatherReport, cached `cache_minutes`) and
+            // OpenLigaDB for `sport.leagues` plus the league's own results of the last `esports_minutes` (SportResults). A source
+            // that is down leaves its half out, both down leave the segment out. In the quiet hours `quiet` decides: off, weather
+            // (the weather alone, `quiet_seconds`, Markus alone) or full (both halves, short, Markus alone).
+            'sport_weather' => [
+                'enabled' => (bool) env('TV_COMMENTARY_SPORT_WEATHER', true),
+                'duet' => (bool) env('TV_COMMENTARY_SPORT_WEATHER_DUET', true),
+                'quiet' => (string) env('TV_COMMENTARY_SPORT_WEATHER_QUIET', 'weather'),
+                'seconds' => ['min' => 60, 'max' => 120],
+                'sentences' => ['min' => 8, 'max' => 14],
+                'quiet_seconds' => ['min' => 20, 'max' => 50],
+                'quiet_sentences' => ['min' => 2, 'max' => 5],
+                'priority' => 70,
+                'late_seconds' => 240,
+                'daily_cap' => (int) env('TV_COMMENTARY_SPORT_WEATHER_DAILY_CAP', 60),
+                'weather' => [
+                    'enabled' => (bool) env('TV_COMMENTARY_WEATHER', true),
+                    'url' => 'https://api.open-meteo.com/v1/forecast',
+                    'cache_minutes' => 30,
+                    'retry_seconds' => 60,
+                    'timeout_seconds' => 8,
+                    'cities' => [
+                        ['name' => 'Berlin', 'lat' => 52.52, 'lon' => 13.41],
+                        ['name' => 'Hamburg', 'lat' => 53.55, 'lon' => 9.99],
+                        ['name' => 'München', 'lat' => 48.14, 'lon' => 11.58],
+                        ['name' => 'Kempten', 'lat' => 47.73, 'lon' => 10.31],
+                        ['name' => 'Wien', 'lat' => 48.21, 'lon' => 16.37],
+                        ['name' => 'Zürich', 'lat' => 47.37, 'lon' => 8.54],
+                    ],
+                ],
+                'sport' => [
+                    'enabled' => (bool) env('TV_COMMENTARY_SPORT', true),
+                    'url' => 'https://api.openligadb.de',
+                    'cache_minutes' => 15,
+                    'retry_seconds' => 60,
+                    'timeout_seconds' => 8,
+                    'leagues' => [
+                        ['shortcut' => 'bl1', 'name' => 'Bundesliga'],
+                        ['shortcut' => 'bl2', 'name' => 'Zweite Bundesliga'],
+                        ['shortcut' => 'dfb', 'name' => 'DFB-Pokal', 'round' => 'Runde', 'table' => false],
+                    ],
+                    'results' => 9,
+                    // A finished match older than this is old news (a cup round from August, the summer break): left out.
+                    'results_max_days' => 8,
+                    'fixtures' => 4,
+                    'esports_minutes' => 60,
+                ],
+            ],
             // Programme announcements (P5; App\Support\Caster\Programme\Announcements): written by the model from the rundown as
             // data, and a line goes on air only when it names a bulletin or rubric that really follows, at the time it
             // says. A teaser for the next slot plays at the first clip boundary within `before_minutes` of it (written a

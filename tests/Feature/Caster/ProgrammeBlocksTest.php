@@ -12,6 +12,7 @@ use App\Support\Caster\CommentaryTimeline;
 use App\Support\Caster\Idents;
 use App\Support\Caster\Pcm;
 use App\Support\Caster\Programme\BroadcastClock;
+use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\SceneDirector;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
@@ -389,6 +390,64 @@ it('composes a news block: news jingle, bulletin, back-announce, then the talk',
 
     $headlines = BlockComposer::plan([['id' => 1, 'kind' => CasterScript::BULLETIN, 'airs_at' => $slot->addMinutes(30)->toIso8601String()]], $slot, 0.0, fn (): float => 0.0, $clock);
     expect($headlines[0]['categories'])->toBe(['headlines', 'news']);
+});
+
+it('composes a news block with Sport und Wetter: news jingle, bulletin, Sport und Wetter, back-announce, then the talk', function () {
+    $clock = new BroadcastClock((array) config('tv.commentary.programme.slots'));
+    $slot = CarbonImmutable::parse('2026-10-12 14:00', 'Europe/Berlin');
+    $steps = BlockComposer::plan([
+        ['id' => 1, 'kind' => CasterScript::BULLETIN, 'airs_at' => $slot->toIso8601String()],
+        ['id' => 2, 'kind' => 'rubric', 'topic' => SportWeather::TOPIC, 'airs_at' => $slot->toIso8601String(), 'part' => ['group' => 'sw', 'index' => 1, 'continues' => true]],
+        ['id' => 3, 'kind' => 'rubric', 'topic' => SportWeather::TOPIC, 'airs_at' => $slot->toIso8601String(), 'part' => ['group' => 'sw', 'index' => 2, 'continues' => false]],
+        ['id' => 4, 'kind' => 'rubric', 'topic' => 'nachrichten_talk', 'airs_at' => $slot->toIso8601String(), 'speakers' => ['markus', 'sirius']],
+    ], $slot, 0.0, fn (): float => 0.0, $clock);
+
+    expect($steps)->toBe([
+        ['type' => 'jingle', 'categories' => ['news']],
+        ['type' => 'script', 'index' => 0],
+        ['type' => 'script', 'index' => 1],
+        ['type' => 'script', 'index' => 2],
+        ['type' => 'jingle', 'categories' => ['back-announce', 'sweeper']],
+        ['type' => 'script', 'index' => 3],
+    ]);
+
+    // Leading a block of its own (not joined to the news), it opens with its rubric jingle or a sweeper.
+    $alone = BlockComposer::plan([['id' => 2, 'kind' => 'rubric', 'topic' => SportWeather::TOPIC, 'airs_at' => $slot->toIso8601String()]], $slot, 0.0, fn (): float => 0.0, $clock);
+    expect($alone[0]['categories'])->toBe(['rubric-sport_wetter', 'sweeper']);
+});
+
+it('joins Sport und Wetter and the news talk to the bulletin\'s block and leaves the next script in the queue', function () {
+    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.seconds' => ['min' => 30, 'max' => 600], 'tv.commentary.blocks.jingles.dir' => programmeBlockJingleDir(['s1', 's2']),
+        'tv.commentary.blocks.news_talk_topics' => [SportWeather::TOPIC, 'nachrichten_talk']]);
+    $slot = CarbonImmutable::now()->addMinutes(5)->toIso8601String();
+    $claims = [
+        ['id' => 31, 'kind' => CasterScript::BULLETIN, 'airs_at' => $slot, 'sentences' => ['Das ist die Nachricht.'], 'estimated_seconds' => 60],
+        ['id' => 32, 'kind' => 'rubric', 'topic' => SportWeather::TOPIC, 'airs_at' => $slot, 'sentences' => ['Das ist der Sport.'], 'estimated_seconds' => 40, 'part' => ['group' => 'sw', 'index' => 1, 'continues' => true]],
+        ['id' => 33, 'kind' => 'rubric', 'topic' => SportWeather::TOPIC, 'airs_at' => $slot, 'sentences' => ['Das ist das Wetter.'], 'estimated_seconds' => 40, 'part' => ['group' => 'sw', 'index' => 2, 'continues' => false]],
+        ['id' => 34, 'kind' => 'rubric', 'topic' => 'nachrichten_talk', 'airs_at' => $slot, 'sentences' => ['Das ist der Talk.'], 'estimated_seconds' => 200],
+        ['id' => 35, 'kind' => 'rubric', 'topic' => SportWeather::TOPIC, 'airs_at' => $slot, 'sentences' => ['Das ist nochmal Sport.'], 'estimated_seconds' => 40],
+    ];
+    Http::fake(function (Request $request) use (&$claims) {
+        return match (true) {
+            str_ends_with($request->url(), '/api/caster/claim') => Http::response(['script' => array_shift($claims), 'full' => false, 'spool_seconds' => 0, 'pronunciation' => []]),
+            str_ends_with($request->url(), '/generate') => Http::response(programmeBlockWav(1.0)),
+            str_ends_with($request->url(), '/clip'), str_ends_with($request->url(), '/blocks') => Http::response(['clip' => 1], 201),
+            default => Http::response([]),
+        };
+    });
+    Process::fake(function ($process) {
+        if (in_array('loudnorm=I=-16:TP=-1.5:LRA=11', $process->command, true)) {
+            return Process::result(output: casterOpus());
+        }
+
+        return Process::result(output: str_repeat(pack('v', 2), 24000));
+    });
+
+    (new CasterFetcher(fn () => null))->runOnce();
+
+    Http::assertSent(fn (Request $request): bool => $request->url() === 'https://tv.test/api/caster/blocks' && $request->header('X-Caster-Scripts')[0] === '31,32,33,34');
+    // At most one claim per follow-up topic: the next script stays in the queue for the next block.
+    expect($claims)->toHaveCount(1);
 });
 
 it('composes a talk block: an opener, a rubric opener before a history segment, sweepers, never a jingle inside a story', function () {

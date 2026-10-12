@@ -10,6 +10,7 @@ use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
 use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
+use App\Support\Caster\Programme\SportWeather;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -148,6 +149,7 @@ class ScriptQueue
         $this->seedFillers($now);
         $quiet = QuietHours::active($now);
         $written = $this->fillBulletin($now);
+        $written += $this->fillSportWeather($now);
         $written += $quiet ? 0 : $this->fillNewsTalk($now);
         $written += $this->fillRubric($now);
         $written += $quiet ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
@@ -311,12 +313,55 @@ class ScriptQueue
         return 1;
     }
 
+    /** When a bulletin of `$text` on air from `$slotStart` ends: its spoken length plus the stinger in front of it. */
+    public static function bulletinEnd(CarbonImmutable $slotStart, string $text): CarbonImmutable
+    {
+        return $slotStart->addSeconds((int) ceil(self::estimateSeconds($text) + 4));
+    }
+
+    /**
+     * Sport und Wetter after the next :00 bulletin (SportWeather), once per
+     * slot: written once that bulletin is queued, before the news talk is
+     * (a talk already written keeps its place, the segment is then left out)
+     * and while the slot is at least a minute away, AI only; also in the
+     * quiet hours (`sport_weather.quiet`). Queued in parts as a rubric (topic
+     * SportWeather::TOPIC) airing when the bulletin ends; the news talk airs
+     * after it (fillNewsTalk()). A source that is down leaves its half out,
+     * both down leave the segment out.
+     *
+     * @return int segments written (0 or 1)
+     */
+    public function fillSportWeather(CarbonImmutable $now): int
+    {
+        $slot = self::aiEnabled() && SportWeather::enabled() && config('tv.commentary.news.enabled') === true ? BroadcastClock::fromConfig()->nextBulletin($now) : null;
+
+        if ($slot === null || $slot['type'] !== BroadcastClock::NEWS || $slot['key'] - $now->getTimestamp() < 60) {
+            return 0;
+        }
+
+        $hash = 'sport_weather:'.$slot['key'];
+        $bulletin = CasterScript::query()->where('kind', CasterScript::BULLETIN)->where('facts_hash', 'bulletin:'.$slot['key'])->orderBy('id')->first();
+
+        if ($bulletin === null || CasterScript::query()->where('kind', CasterScript::RUBRIC)->whereIn('facts_hash', [$hash, 'news_talk:'.$slot['key']])->exists()) {
+            return 0;
+        }
+
+        $settings = (array) config('tv.commentary.programme.sport_weather', []);
+        $segment = app(SportWeather::class)->write($slot, $now);
+        $airsAt = self::bulletinEnd($slot['starts_at'], $bulletin->text);
+
+        return $segment !== null && $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $segment['text'], $hash, (int) ($settings['priority'] ?? 70), $now,
+            source: CasterScript::SOURCE_AI, topic: SportWeather::TOPIC, speakers: $segment['speakers'], airsAt: $airsAt,
+            expiresAt: $airsAt->addSeconds((int) ($settings['late_seconds'] ?? 240) + 600)) !== null ? 1 : 0;
+    }
+
     /**
      * The news talk after the next :00 bulletin (NewsTalk), once per slot:
      * written once that bulletin is queued (its items, NewsBulletin) and the
      * slot is at least a minute away, AI only; queued in parts as a rubric
      * (topic NewsTalk::TOPIC) airing when the bulletin ends (its estimated
-     * length after the slot), at most `news_talk.late_seconds` late.
+     * length after the slot) and Sport und Wetter after it (its estimated
+     * length, when one was written), at most `news_talk.late_seconds` late.
      *
      * @return int talks written (0 or 1)
      */
@@ -337,8 +382,10 @@ class ScriptQueue
         }
 
         $settings = (array) config('tv.commentary.programme.news_talk', []);
-        // When the bulletin ends: its spoken length plus the stinger in front of it.
-        $airsAt = $slot['starts_at']->addSeconds((int) ceil(self::estimateSeconds($bulletin->text) + 4));
+        // When the bulletin ends (its spoken length plus the stinger in front of it), and Sport und Wetter after it.
+        $sportWeather = (float) CasterScript::query()->where('kind', CasterScript::RUBRIC)->where('facts_hash', 'sport_weather:'.$slot['key'])
+            ->where('status', '!=', CasterScript::EXPIRED)->sum('estimated_seconds');
+        $airsAt = self::bulletinEnd($slot['starts_at'], $bulletin->text)->addSeconds((int) ceil($sportWeather));
         $talk = app(NewsTalk::class)->write($slot, $items, $airsAt, $now);
 
         return $talk !== null && $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], $hash, (int) ($settings['priority'] ?? 70), $now,
