@@ -149,10 +149,10 @@ it('lists the next hour as a rundown, so a teaser names only a slot that really 
         ->and($rundown->nextOf('nonsense', $now))->toBeNull();
 });
 
-/** Fresh headlines of four outlets in two sections, enough for a few hours of bulletins. */
+/** Fresh headlines of six outlets in three sections (Deutschland, Bitcoin, Technik: the balance of NewsMix), enough for a few hours of bulletins. */
 function radioHeadlines(int $perOutlet = 12): void
 {
-    $outlets = [['tagesschau', CasterNews::GERMANY], ['Spiegel', CasterNews::GERMANY], ['BTC-Echo', CasterNews::BITCOIN], ['Blocktrainer', CasterNews::BITCOIN]];
+    $outlets = [['tagesschau', CasterNews::GERMANY], ['Spiegel', CasterNews::GERMANY], ['BTC-Echo', CasterNews::BITCOIN], ['Blocktrainer', CasterNews::BITCOIN], ['heise online', CasterNews::TECH], ['Golem', CasterNews::TECH]];
     foreach ($outlets as $o => [$source, $section]) {
         foreach (range(1, $perOutlet) as $i) {
             // Three words of its own per headline, so no two tell the same story (NewsBulletin::sameStory()).

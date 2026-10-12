@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\HistoryScripts;
 use App\Support\Caster\NewsFilter;
+use App\Support\Caster\NewsMix;
 use App\Support\Caster\PodcastFeed;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\SceneFacts;
@@ -296,24 +297,30 @@ class Rubrics
     }
 
     /**
-     * Three headlines of the last `bulletin.fresh_hours` from three outlets (Deutschland first, then Bitcoin): the
-     * outlets of one story first (the best comparison), the rest of other outlets; none a Presseschau had within
-     * a day. null with fewer than three outlets.
+     * Three headlines from three outlets, each fresh by its feed's window (NewsMix::fresh()), in the balance of the
+     * bulletins (P15): the outlets of one story first (the best comparison; a Bitcoin, tech or money story before a
+     * political one of as many outlets, a political story with at most two of them), the rest Bitcoin, tech, money
+     * and politics taking turns, at most one political headline outside the story; none a Presseschau had within a
+     * day, no altcoin hype. null with fewer than three outlets.
      *
      * @return RubricMaterial|null
      */
     private function press(CarbonImmutable $now): ?array
     {
         $used = $this->used(self::PRESS_USED, $now);
-        $rows = CasterNews::query()->whereNull('skipped')
-            ->where('published_at', '>=', $now->utc()->subHours((int) config('tv.commentary.programme.bulletin.fresh_hours', 12)))->where('published_at', '<=', $now->utc())
-            ->orderByRaw("case when section = 'germany' then 0 else 1 end")->orderByDesc('published_at')->orderByDesc('id')->limit(200)->get()
-            ->filter(fn (CasterNews $row): bool => ! isset($used['news:'.$row->id]) && NewsFilter::reason($row->title, $row->language) === null)->values();
+        $rows = NewsMix::fresh(CasterNews::query()->whereNull('skipped'), $now)
+            ->orderByDesc('published_at')->orderByDesc('id')->limit(300)->get()
+            ->filter(fn (CasterNews $row): bool => ! isset($used['news:'.$row->id]) && NewsFilter::reason($row->title, $row->language) === null
+                && ! ($row->section === CasterNews::BITCOIN && NewsMix::altcoinHype($row->title)));
+        $tier = fn (CasterNews $row): string => NewsMix::tier($row->section, $row->title, $row->summary);
+        // The first outlets of a tier first (EINUNDZWANZIG News, Blocktrainer; heise), else newest first.
+        $rows = $rows->sortBy(fn (CasterNews $row): int => NewsMix::firstRank($tier($row), $row->source))->values();
 
         $picked = [];
 
-        // One story told by the most outlets first.
+        // One story told by the most outlets first; a non-political one wins a tie.
         $best = [];
+        $bestScore = 0.0;
         foreach ($rows as $index => $row) {
             $story = [$row];
             foreach ($rows as $other => $candidate) {
@@ -322,8 +329,12 @@ class Rubrics
                     $story[] = $candidate;
                 }
             }
-            if (count($story) > count($best)) {
+            $political = $tier($row) === NewsMix::POLITICS;
+            $story = $political ? array_slice($story, 0, 2) : array_slice($story, 0, 3);
+            $score = count($story) + ($political ? 0.0 : 0.5);
+            if ($score > $bestScore) {
                 $best = $story;
+                $bestScore = $score;
             }
         }
 
@@ -331,13 +342,29 @@ class Rubrics
             $picked = array_slice($best, 0, 3);
         }
 
-        foreach ($rows as $row) {
-            if (count($picked) >= 3) {
-                break;
-            }
-            if (! in_array($row->source, array_map(fn (CasterNews $taken): string => $taken->source, $picked), true)
-                && array_filter($picked, fn (CasterNews $taken): bool => NewsBulletin::sameStory($taken->title, $row->title)) === []) {
-                $picked[] = $row;
+        $politics = count(array_filter($picked, fn (CasterNews $row): bool => $tier($row) === NewsMix::POLITICS));
+        $order = [NewsMix::BITCOIN, NewsMix::TECH, NewsMix::MONEY, NewsMix::POLITICS];
+
+        for ($round = 0; count($picked) < 3 && $round < 3; $round++) {
+            // A tier the story already has goes after the others (a Bitcoin story is followed by tech, then money).
+            $had = array_count_values(array_map($tier, $picked));
+            $turn = $order;
+            usort($turn, fn (string $a, string $b): int => ($had[$a] ?? 0) <=> ($had[$b] ?? 0));
+
+            foreach ($turn as $wanted) {
+                foreach ($rows as $row) {
+                    if (count($picked) >= 3) {
+                        break 2;
+                    }
+                    if ($tier($row) === $wanted && ($wanted !== NewsMix::POLITICS || $politics < 1)
+                        && ! in_array($row->source, array_map(fn (CasterNews $taken): string => $taken->source, $picked), true)
+                        && array_filter($picked, fn (CasterNews $taken): bool => NewsBulletin::sameStory($taken->title, $row->title)) === []) {
+                        $picked[] = $row;
+                        $politics += $wanted === NewsMix::POLITICS ? 1 : 0;
+
+                        continue 2;
+                    }
+                }
             }
         }
 
