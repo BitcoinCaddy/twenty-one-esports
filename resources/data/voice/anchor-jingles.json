@@ -1,0 +1,60 @@
+{
+    "about": "The Anchor's lines for TWENTY ONE ESPORTS RADIO (plan \"TWENTY ONE Radio\", P6). One VoiceStudio call per line (caster:jingles), each line rendered in two variants over different self-made stingers and beds. Voice: VoiceStudio personality us_news_anchor, a designed voice (male, middle-aged, American accent), no person's clone. Categories are what App\\Support\\Caster\\Blocks\\BlockComposer asks for.",
+    "lines": [
+        {"id": "station-01", "category": "station", "language": "en", "text": "TWENTY ONE ESPORTS RADIO."},
+        {"id": "station-02", "category": "station", "language": "en", "text": "You're listening to TWENTY ONE ESPORTS RADIO."},
+        {"id": "station-03", "category": "station", "language": "de", "text": "TWENTY ONE ESPORTS RADIO. Das Programm für Bitcoiner und Gamer."},
+        {"id": "station-04", "category": "station", "language": "en", "text": "This is TWENTY ONE ESPORTS RADIO. Live, loud and on Nostr."},
+        {"id": "station-05", "category": "station", "language": "de", "text": "Ihr hört TWENTY ONE ESPORTS RADIO."},
+        {"id": "station-06", "category": "station", "language": "en", "text": "Twenty-four seven. TWENTY ONE ESPORTS RADIO."},
+        {"id": "station-07", "category": "station", "language": "de", "text": "Rund um die Uhr. TWENTY ONE ESPORTS RADIO."},
+
+        {"id": "time-morning-01", "category": "time-morning", "language": "en", "text": "Good morning, Bitcoiners. TWENTY ONE ESPORTS RADIO."},
+        {"id": "time-morning-02", "category": "time-morning", "language": "de", "text": "Guten Morgen! Hier ist TWENTY ONE ESPORTS RADIO."},
+        {"id": "time-day-01", "category": "time-day", "language": "de", "text": "Mittendrin im Tag. TWENTY ONE ESPORTS RADIO."},
+        {"id": "time-day-02", "category": "time-day", "language": "en", "text": "Good afternoon. You're tuned in to TWENTY ONE ESPORTS RADIO."},
+        {"id": "time-evening-01", "category": "time-evening", "language": "de", "text": "Guten Abend. TWENTY ONE ESPORTS RADIO am Abend."},
+        {"id": "time-evening-02", "category": "time-evening", "language": "en", "text": "Prime time on TWENTY ONE ESPORTS RADIO."},
+        {"id": "time-night-01", "category": "time-night", "language": "en", "text": "Late night on TWENTY ONE ESPORTS RADIO."},
+        {"id": "time-night-02", "category": "time-night", "language": "de", "text": "Die Nacht gehört euch. TWENTY ONE ESPORTS RADIO."},
+
+        {"id": "news-01", "category": "news", "language": "de", "text": "TWENTY ONE ESPORTS RADIO. Die Nachrichten."},
+        {"id": "news-02", "category": "news", "language": "en", "text": "TWENTY ONE ESPORTS RADIO News."},
+        {"id": "news-03", "category": "news", "language": "de", "text": "Hier sind die Nachrichten auf TWENTY ONE ESPORTS RADIO."},
+        {"id": "headlines-01", "category": "headlines", "language": "de", "text": "Die Kurznachrichten zur halben Stunde."},
+        {"id": "headlines-02", "category": "headlines", "language": "en", "text": "The headlines. TWENTY ONE ESPORTS RADIO."},
+        {"id": "back-announce-01", "category": "back-announce", "language": "de", "text": "Das waren die Nachrichten. TWENTY ONE ESPORTS RADIO."},
+        {"id": "back-announce-02", "category": "back-announce", "language": "de", "text": "So weit die Nachrichten. Weiter im Programm."},
+        {"id": "back-announce-03", "category": "back-announce", "language": "en", "text": "That was the news. Stay with us, TWENTY ONE ESPORTS RADIO."},
+        {"id": "breaking-01", "category": "breaking", "language": "en", "text": "Breaking news."},
+        {"id": "breaking-02", "category": "breaking", "language": "de", "text": "Eilmeldung auf TWENTY ONE ESPORTS RADIO."},
+
+        {"id": "sweeper-01", "category": "sweeper", "language": "en", "text": "Stay humble, stack sats. TWENTY ONE ESPORTS RADIO."},
+        {"id": "sweeper-02", "category": "sweeper", "language": "de", "text": "Mehr Talk, mehr Liga, mehr Bitcoin. TWENTY ONE ESPORTS RADIO."},
+        {"id": "sweeper-03", "category": "sweeper", "language": "en", "text": "Tick tock, next block. TWENTY ONE ESPORTS RADIO."},
+        {"id": "sweeper-04", "category": "sweeper", "language": "de", "text": "Von Bitcoinern, für Bitcoiner. TWENTY ONE ESPORTS RADIO."},
+        {"id": "sweeper-05", "category": "sweeper", "language": "de", "text": "Gamer, Plebs und Stacker. Ihr hört TWENTY ONE ESPORTS RADIO."},
+        {"id": "sweeper-06", "category": "sweeper", "language": "de", "text": "Der Sound der Liga. TWENTY ONE ESPORTS RADIO."},
+        {"id": "sweeper-07", "category": "sweeper", "language": "en", "text": "Turn it up. TWENTY ONE ESPORTS RADIO."},
+
+        {"id": "coming-up-01", "category": "coming-up", "language": "de", "text": "Gleich auf TWENTY ONE ESPORTS RADIO."},
+        {"id": "coming-up-02", "category": "coming-up", "language": "en", "text": "Coming up next on TWENTY ONE ESPORTS RADIO."},
+        {"id": "coming-up-03", "category": "coming-up", "language": "de", "text": "Bleibt dran. Gleich geht's weiter auf TWENTY ONE ESPORTS RADIO."},
+        {"id": "talk-01", "category": "talk", "language": "de", "text": "Markus und Sirius. Talk auf TWENTY ONE ESPORTS RADIO."},
+
+        {"id": "rubric-liga-01", "category": "rubric-liga", "language": "de", "text": "Die Liga-Rubrik. Ergebnisse, Turniere, Tabellen."},
+        {"id": "rubric-liga-02", "category": "rubric-liga", "language": "de", "text": "TWENTY ONE ESPORTS RADIO. Die Liga-Rubrik."},
+        {"id": "rubric-presseschau-01", "category": "rubric-presseschau", "language": "de", "text": "Die Presseschau. Drei Blätter, drei Meinungen."},
+        {"id": "rubric-presseschau-02", "category": "rubric-presseschau", "language": "de", "text": "TWENTY ONE ESPORTS RADIO. Die Presseschau."},
+        {"id": "rubric-podcast-01", "category": "rubric-podcast", "language": "de", "text": "Die Podcast-Ecke. Das Wichtigste aus dem EINUNDZWANZIG Podcast."},
+        {"id": "rubric-podcast-02", "category": "rubric-podcast", "language": "de", "text": "TWENTY ONE ESPORTS RADIO. Die Podcast-Ecke."},
+        {"id": "rubric-geschichte-01", "category": "rubric-geschichte", "language": "de", "text": "Die Geschichtsstunde auf TWENTY ONE ESPORTS RADIO."},
+        {"id": "rubric-geschichte-02", "category": "rubric-geschichte", "language": "de", "text": "Zurück in der Zeit. Die Geschichtsstunde."},
+        {"id": "rubric-chat-01", "category": "rubric-chat", "language": "de", "text": "Die Chat-Stunde. Eure Fragen, unsere Antworten."},
+        {"id": "rubric-chat-02", "category": "rubric-chat", "language": "de", "text": "TWENTY ONE ESPORTS RADIO. Die Chat-Stunde."}
+    ],
+    "blips": {
+        "markus": ["Hm.", "Ja.", "Stimmt.", "Genau.", "Ja, ja.", "[laughter]"],
+        "sirius": ["Hm.", "Ja.", "Stimmt.", "Genau.", "Absolut.", "[laughter]"]
+    }
+}

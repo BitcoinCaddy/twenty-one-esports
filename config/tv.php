@@ -87,7 +87,7 @@ return [
         'ai' => (bool) env('TV_COMMENTARY_AI', true),
 
         'scripts' => [
-            'ahead_seconds' => (int) env('TV_COMMENTARY_AHEAD_SECONDS', 600),
+            'ahead_seconds' => (int) env('TV_COMMENTARY_AHEAD_SECONDS', 960),
             'words_per_second' => 2.4,
             'sentences' => ['min' => (int) env('TV_COMMENTARY_AI_SENTENCES_MIN', 2), 'max' => (int) env('TV_COMMENTARY_AI_SENTENCES_MAX', 8)],
             'live_sentences' => ['min' => 1, 'max' => 3],
@@ -157,7 +157,8 @@ return [
             'online_seconds' => 120,
             // A claimed script that came back neither as a clip nor released is free again after this long (a long
             // Bauernkrieg segment is 15 to 30 sentences, about ten VoiceStudio calls).
-            'claim_seconds' => (int) env('TV_COMMENTARY_CLAIM_SECONDS', 90),
+            // A programme block (P6) of up to six minutes holds its claims while all of it is voiced.
+            'claim_seconds' => (int) env('TV_COMMENTARY_CLAIM_SECONDS', 1200),
         ],
 
         'spool' => [
@@ -175,7 +176,7 @@ return [
             'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
             // airtime it did before the gap (180 and 60), and the queue writes half as much ahead (ahead_seconds).
-            'target_seconds' => (int) env('TV_COMMENTARY_TARGET_SECONDS', 480),
+            'target_seconds' => (int) env('TV_COMMENTARY_TARGET_SECONDS', 600),
             'filler_below_seconds' => 30,
             // Music only between two clips, a random length in this range (user 2026-10-11); a live moment cuts it short.
             // Quiet hours (user 2026-10-12: "zwischen 01:00 und 09:00 nur noch fix alle 10 Minuten ein Audio"): one clip every
@@ -256,6 +257,70 @@ return [
             'bed_fade_seconds' => 1.5,
             'bed_at_night' => false,
             'pause_seconds' => 0.3,
+        ],
+
+        // Programme blocks (plan "TWENTY ONE Radio", P6; user 2026-10-12: "Die Composition soll lokal erfolgen … Der Server
+        // bekommt am besten vorgerenderte Programme hochgeladen, trotzdem in Häppchen"). With `enabled` the workstation
+        // (App\Support\Caster\Blocks\BlockRenderer) claims consecutive scripts until about `seconds.min` to `seconds.max`
+        // of airtime, voices them in one batch per speaker (a profile switch costs VoiceStudio time), and renders one
+        // block: the Anchor's jingles (`jingles`, storage/app/jingles, caster:jingles), the speech with short agreeing
+        // blips of the other speaker under it (`blips`), crossfades, one loudness pass. A live moment or chat reaction is
+        // still voiced alone; a script the clock places (`airs_at`: bulletin, rubric) leads a block of its own.
+        // The stream (SceneDirector) plays a block whole, adds no stinger, joins the next block after `join_seconds`, and
+        // lets a reaction cut in only at the next segment boundary, waiting at most `reaction_wait_seconds` (then at a
+        // sentence end), and resumes the block from there. Below `starve_seconds` of ready audio a shorter block goes out.
+        'blocks' => [
+            'enabled' => (bool) env('TV_COMMENTARY_BLOCKS', false),
+            'seconds' => ['min' => (float) env('TV_COMMENTARY_HAEPPCHEN_SECONDS_MIN', 180), 'max' => (float) env('TV_COMMENTARY_HAEPPCHEN_SECONDS_MAX', 360)],
+            'starve_seconds' => (float) env('TV_COMMENTARY_BLOCKS_STARVE_SECONDS', 150),
+            // While a block is voiced, the server is asked this often for a reaction, live moment or bulletin, voiced at once.
+            'urgent_poll_seconds' => 15,
+            'max_scripts' => 40,
+            // Topics of a script that joins the block of the bulletin before it (the news talk of plan P5:
+            // nachrichten_talk), so the news block runs jingle, bulletin, back-announce, talk in one piece. Off by default:
+            // voicing three to six minutes of talk with the bulletin would make the bulletin miss its slot at
+            // VoiceStudio's pace (2026-10-12, P6 demo: rtf in the Phasen-Status); its own block follows the news anyway.
+            'news_talk_topics' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BLOCKS_NEWS_TALK', '')))),
+            'max_clip_seconds' => 600,
+            'max_clip_bytes' => 6 * 1024 * 1024,
+            'join_seconds' => ['min' => 0.35, 'max' => 0.7],
+            'reaction_wait_seconds' => (float) env('TV_COMMENTARY_REACTION_WAIT_SECONDS', 90),
+            // A block holds the slide only this long; the slides rotate under a block of several minutes.
+            'hold_seconds' => 30,
+            // A block cut for a reaction, a takeover or a bulletin resumes from its cut within this long, else it is dropped.
+            'resume_within_seconds' => 600,
+            // Seconds of quiet between two scripts of a block when no jingle stands between them, and around a jingle.
+            'pause_seconds' => ['min' => 0.5, 'max' => 0.9],
+            // The tail of a jingle the next speech starts over (the jingle fades out under it).
+            'crossfade_seconds' => 0.45,
+            'jingles' => [
+                'dir' => env('TV_COMMENTARY_JINGLES_DIR', storage_path('app/jingles')),
+                // Relative to the speech (jingles are mastered at -16 LUFS, the speech sits at speech_dbfs).
+                'gain_db' => -3.0,
+                // Never the same jingle within this many minutes, never twice in a row.
+                'repeat_minutes' => 30,
+                // A sweeper between two talk scripts on about this share of the transitions without a jingle of their own.
+                'sweeper_share' => 0.5,
+            ],
+            'blips' => [
+                // Share of long-enough duet turns that get one agreeing sound of the other speaker, at least
+                // `min_gap_seconds` apart, `gain_db` under the speech, `at` (share of the turn) into a turn of `min_turn_seconds`.
+                'share' => (float) env('TV_COMMENTARY_BLIPS_SHARE', 0.35),
+                'min_gap_seconds' => 25,
+                'gain_db' => -12.0,
+                'min_turn_seconds' => 3.5,
+                'at' => ['min' => 0.55, 'max' => 0.8],
+            ],
+            // The Anchor (VoiceStudio personality us_news_anchor, a designed voice, no person's clone), made into a profile
+            // by caster:jingles; TV_ANCHOR_PROFILE pins an existing one.
+            'anchor' => [
+                'profile_id' => env('TV_ANCHOR_PROFILE'),
+                'name' => 'The Anchor (TWENTY ONE)',
+                'personality' => 'us_news_anchor',
+                'instruct' => 'male, middle-aged, moderate pitch, american accent',
+                'seed' => 2121,
+                'speed' => 1.0,
+            ],
         ],
 
         'scenes' => [

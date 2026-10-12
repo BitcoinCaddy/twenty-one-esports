@@ -152,6 +152,8 @@ Route::get('stream/pride/{hash}.png', StreamPrideImageController::class)->where(
 Route::post('api/caster/claim', [CasterFetchController::class, 'claim'])->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.claim');
 Route::post('api/caster/scripts/{id}/clip', [CasterFetchController::class, 'clip'])->whereNumber('id')
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.clip');
+Route::post('api/caster/blocks', [CasterFetchController::class, 'block'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.block');
 Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
 Route::post('api/caster/podcast-transcript/status', [CasterFetchController::class, 'podcastStatus'])

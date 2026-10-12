@@ -236,6 +236,7 @@ it('expires scene scripts written for facts that changed', function () {
 });
 
 it('frees a claim that never came back', function () {
+    config(['tv.commentary.fetch.claim_seconds' => 90]);
     $now = CarbonImmutable::now();
     $queue = casterQueue();
     $script = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Eins.', 'h', 0, $now);

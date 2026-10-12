@@ -46,13 +46,22 @@ final class CasterFetchController
         $atByteCap = $spool->bytes() >= (int) config('tv.commentary.spool.max_bytes', 0);
         $full = $ready >= $target || $atByteCap;
 
+        // `?only=urgent` (P6): the workstation asks in the middle of rendering a block for what cannot wait for it.
+        $urgent = $request->query('only') === 'urgent';
+
         // A full spool still takes live moments and reactions (they play next) and the news bulletin (it airs at its
         // slot, whatever else waits); only the byte cap stops them too.
         $script = match (true) {
             config('tv.commentary.enabled') !== true, $atByteCap => null,
-            $full => $queue->claim($now, [...ClipSpool::LIVE_KINDS, CasterScript::BULLETIN]),
+            $full || $urgent => $queue->claim($now, [...ClipSpool::LIVE_KINDS, CasterScript::BULLETIN]),
             default => $queue->claim($now),
         };
+
+        // The kinds filter also lets later parts of a story through; one of those waits for the block in the making.
+        if ($urgent && $script !== null && $script->isContinuation()) {
+            $queue->release($script);
+            $script = null;
+        }
 
         return response()->json([
             'script' => $script === null ? null : [
@@ -61,6 +70,17 @@ final class CasterFetchController
                 'sentences' => $script->sentences(),
                 // A duet (DuetDirector): the speaker of each sentence; null when Markus speaks alone.
                 'speakers' => $script->lineSpeakers(),
+                // What the workstation's block renderer composes by (P6): the scene and topic (a rubric's), the
+                // airtime, the slot it is anchored to, and where it stands in a story told in parts.
+                'scene' => $script->scene,
+                'topic' => $script->topic,
+                'estimated_seconds' => $script->estimated_seconds,
+                'airs_at' => $script->airs_at?->toIso8601String(),
+                'part' => $script->part_group === null ? null : [
+                    'group' => $script->part_group,
+                    'index' => (int) $script->part_index,
+                    'continues' => CasterScript::query()->where('part_group', $script->part_group)->where('part_index', '>', (int) $script->part_index)->exists(),
+                ],
             ],
             'spool_seconds' => round($ready, 1),
             'target_seconds' => $target,
@@ -98,6 +118,59 @@ final class CasterFetchController
         }
 
         return response()->json(['clip' => $clip->id, 'spool_seconds' => round($spool->readySeconds(), 1)], 201);
+    }
+
+    /**
+     * A programme block (P6, `POST api/caster/blocks`): the raw Opus body,
+     * the covered script ids in order (`X-Caster-Scripts`, all claimed,
+     * the first is the lead), the length, the sentence ends, the segment
+     * boundaries (`X-Caster-Boundaries`) and the stretch at the start nothing
+     * may cut into (`X-Caster-Protected`). A live moment or chat reaction is
+     * never part of a block (they are voiced alone, to play next), and a
+     * script the clock anchors (`airs_at`) only leads one.
+     */
+    public function block(Request $request, ClipSpool $spool): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $ids = array_map('intval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header('X-Caster-Scripts', ''))), 'ctype_digit')));
+
+        if ($ids === [] || count($ids) !== count(array_unique($ids)) || count($ids) > (int) config('tv.commentary.blocks.max_scripts', 40)) {
+            return response()->json(['error' => 'invalid_scripts'], 422);
+        }
+
+        $found = CasterScript::query()->whereKey($ids)->get()->keyBy('id');
+        $scripts = array_values(array_filter(array_map(fn (int $id): ?CasterScript => $found->get($id), $ids)));
+
+        if (count($scripts) !== count($ids)) {
+            return response()->json(['error' => 'not_found'], 404);
+        }
+
+        foreach ($scripts as $index => $script) {
+            if ($script->status !== CasterScript::CLAIMED) {
+                return response()->json(['error' => 'not_claimed', 'script' => $script->id], 409);
+            }
+
+            // A slot-placed script joins only a block that is placed itself (the news talk after its bulletin).
+            if (in_array($script->kind, ClipSpool::LIVE_KINDS, true) || ($index > 0 && $script->airs_at !== null && $scripts[0]->airs_at === null)) {
+                return response()->json(['error' => 'invalid_scripts', 'script' => $script->id], 422);
+            }
+        }
+
+        $times = fn (string $header): array => array_map('floatval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header($header, ''))), 'is_numeric')));
+
+        try {
+            $clip = $spool->storeBlock($scripts, (string) $request->getContent(), (float) $request->header('X-Caster-Duration', '0'),
+                $times('X-Caster-Sentence-Ends'), $times('X-Caster-Boundaries'), (float) $request->header('X-Caster-Protected', '0'), CarbonImmutable::now());
+        } catch (SpoolFull) {
+            return response()->json(['error' => 'spool_full'], 507);
+        } catch (InvalidClip $exception) {
+            return response()->json(['error' => 'invalid_clip', 'reason' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['clip' => $clip->id, 'kind' => $clip->kind, 'spool_seconds' => round($spool->readySeconds(), 1)], 201);
     }
 
     public function release(Request $request, string $id, ScriptQueue $queue): JsonResponse

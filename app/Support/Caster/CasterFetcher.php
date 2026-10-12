@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use App\Support\Caster\Blocks\BlockFetcher;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
@@ -61,15 +62,9 @@ class CasterFetcher
 
     public function runOnce(): string
     {
-        $settings = $this->settings();
+        $claim = $this->claim();
 
-        try {
-            $claim = $this->server()->post($settings['server'].'/api/caster/claim');
-        } catch (ConnectionException) {
-            return self::OFFLINE;
-        }
-
-        if (! $claim->successful()) {
+        if ($claim === null) {
             return self::OFFLINE;
         }
 
@@ -79,7 +74,42 @@ class CasterFetcher
             return $claim->json('full') === true ? self::FULL : self::IDLE;
         }
 
-        $id = $script['id'];
+        /** @var array<string, string> $terms */
+        $terms = array_filter((array) $claim->json('pronunciation', []), 'is_string');
+
+        // Programme blocks (plan "TWENTY ONE Radio", P6): everything but a live moment or a chat reaction is rendered
+        // into a block of several scripts with jingles; those two are still voiced alone, to play next.
+        if (config('tv.commentary.blocks.enabled') === true && ! in_array($script['kind'] ?? null, ClipSpool::LIVE_KINDS, true)) {
+            return app(BlockFetcher::class)->run($this, $script, $terms, (float) $claim->json('spool_seconds', 0));
+        }
+
+        return $this->voiceAndUpload($script, $terms);
+    }
+
+    /**
+     * One claim call: the server's answer, or null when it is unreachable or refuses. `$urgent`: only a live moment,
+     * a reaction, a wish or a bulletin (asked while a block is being rendered).
+     */
+    public function claim(bool $urgent = false): ?Response
+    {
+        try {
+            $claim = $this->server()->post($this->settings()['server'].'/api/caster/claim'.($urgent ? '?only=urgent' : ''));
+        } catch (ConnectionException) {
+            return null;
+        }
+
+        return $claim->successful() ? $claim : null;
+    }
+
+    /**
+     * The sentences and their speakers of a claimed script (the claim's `script`), Markus for a line without one;
+     * `duet` when the server named speakers.
+     *
+     * @param  array<array-key, mixed>  $script
+     * @return array{sentences: list<string>, speakers: list<string>, duet: bool}
+     */
+    public static function lines(array $script): array
+    {
         $given = is_array($script['speakers'] ?? null) ? array_values($script['speakers']) : [];
         [$sentences, $speakers] = [[], []];
 
@@ -90,9 +120,23 @@ class CasterFetcher
             }
         }
 
-        $terms = array_filter((array) $claim->json('pronunciation', []), 'is_string');
+        return ['sentences' => $sentences, 'speakers' => $speakers, 'duet' => $given !== []];
+    }
 
-        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $given === [] ? null : $speakers);
+    /**
+     * Voices one claimed script alone and uploads its clip (a live moment, a
+     * chat reaction, or every script while blocks are off).
+     *
+     * @param  array<array-key, mixed>  $script
+     * @param  array<string, string>  $terms
+     */
+    public function voiceAndUpload(array $script, array $terms): string
+    {
+        $settings = $this->settings();
+        $id = (int) $script['id'];
+        ['sentences' => $sentences, 'speakers' => $speakers, 'duet' => $duet] = self::lines($script);
+
+        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $duet ? $speakers : null);
         $opus = $voiced === null ? null : $this->encode($voiced['pcm'], $voiced['rate']);
 
         if ($voiced === null || $opus === null) {
@@ -187,55 +231,21 @@ class CasterFetcher
         $settings = $this->settings();
         $pause = (array) $settings['pause'];
         $speakerPause = (array) ($settings['speaker_pause'] ?? []);
-        $chunk = (array) ($settings['chunk'] ?? []);
-        $runs = [];
-
-        // Consecutive sentences of one speaker form a run; the chunks are cut within a run only.
-        foreach ($sentences as $index => $sentence) {
-            $speaker = $speakers[$index] ?? DuetDirector::MARKUS;
-            $last = array_key_last($runs);
-
-            if ($last !== null && $runs[$last][0] === $speaker) {
-                $runs[$last][1][] = $sentence;
-            } else {
-                $runs[] = [$speaker, [$sentence]];
-            }
-        }
-
-        $chunks = [];
-
-        foreach ($runs as [$speaker, $lines]) {
-            foreach (self::chunks($lines, max(1, (int) ($chunk['max_sentences'] ?? 3)), max(1, (int) ($chunk['max_words'] ?? 25))) as $lines) {
-                $chunks[] = [$speaker, $lines];
-            }
-        }
-
+        $chunks = $this->plannedChunks($sentences, $speakers);
         $pcm = '';
         $rate = null;
         $ends = [];
 
         foreach ($chunks as $index => [$speaker, $lines]) {
             $sentence = (string) end($lines);
-            $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $this->profile($speaker), $this->speed($speaker));
+            $voiced = $this->voiceChunk($lines, $speaker, $terms);
 
-            if ($wav === null) {
+            if ($voiced === null || ($rate !== null && $voiced['rate'] !== $rate)) {
                 return null;
             }
 
-            try {
-                ['pcm' => $part, 'rate' => $partRate] = Pcm::fromWav($wav);
-            } catch (InvalidArgumentException) {
-                return null;
-            }
-
-            if ($rate !== null && $partRate !== $rate) {
-                return null;
-            }
-
-            $rate = $partRate;
-            // Every chunk at one speech level, Sirius' clone was much louder than Markus' (user 2026-10-12); `levels` fine-tunes a speaker in dB.
-            $level = (float) ($settings['speech_dbfs'] ?? -20.0) + (float) ($settings['levels'][$speaker] ?? 0.0);
-            $pcm .= Pcm::trimEdges(Pcm::levelled($part, $level), $rate, (int) ($settings['silence_threshold'] ?? 150), (int) ($settings['pad_ms'] ?? 140), (int) ($settings['fade_ms'] ?? 100));
+            $rate = $voiced['rate'];
+            $pcm .= $voiced['pcm'];
             $ends[] = round(Pcm::seconds($pcm, $rate), 3);
 
             if ($index < count($chunks) - 1 && $chunks[$index + 1][0] !== $speaker) {
@@ -252,6 +262,72 @@ class CasterFetcher
     }
 
     /**
+     * One chunk (the lines of one speaker for one /generate call) in the
+     * speaker's voice and tempo, at the common speech level (Sirius' clone
+     * was much louder than Markus', user 2026-10-12; `levels` fine-tunes a
+     * speaker in dB) and trimmed to its speech. null when VoiceStudio failed
+     * past its retries or answered no WAV.
+     *
+     * @param  list<string>  $lines
+     * @param  array<string, string>  $terms
+     * @return array{pcm: string, rate: int}|null
+     */
+    public function voiceChunk(array $lines, string $speaker, array $terms = [], ?string $profileId = null, ?float $speed = null): ?array
+    {
+        $settings = $this->settings();
+        $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $profileId ?? $this->profile($speaker), $speed ?? $this->speed($speaker));
+
+        if ($wav === null) {
+            return null;
+        }
+
+        try {
+            ['pcm' => $part, 'rate' => $rate] = Pcm::fromWav($wav);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+
+        $level = (float) ($settings['speech_dbfs'] ?? -20.0) + (float) ($settings['levels'][$speaker] ?? 0.0);
+
+        return ['pcm' => Pcm::trimEdges(Pcm::levelled($part, $level), $rate, (int) ($settings['silence_threshold'] ?? 150), (int) ($settings['pad_ms'] ?? 140), (int) ($settings['fade_ms'] ?? 100)), 'rate' => $rate];
+    }
+
+    /**
+     * The chunks of a script in speaking order: consecutive sentences of one
+     * speaker form a run, and the chunks (chunks()) are cut within a run only.
+     *
+     * @param  list<string>  $sentences
+     * @param  list<string>|null  $speakers  null: Markus alone
+     * @return list<array{0: string, 1: list<string>}> speaker and lines of each chunk
+     */
+    public function plannedChunks(array $sentences, ?array $speakers = null): array
+    {
+        $chunk = (array) ($this->settings()['chunk'] ?? []);
+        $runs = [];
+
+        foreach ($sentences as $index => $sentence) {
+            $speaker = $speakers[$index] ?? DuetDirector::MARKUS;
+            $last = array_key_last($runs);
+
+            if ($last !== null && $runs[$last][0] === $speaker) {
+                $runs[$last][1][] = $sentence;
+            } else {
+                $runs[] = [$speaker, [$sentence]];
+            }
+        }
+
+        $chunks = [];
+
+        foreach ($runs as [$speaker, $lines]) {
+            foreach (self::chunks($lines, max(1, (int) ($chunk['max_sentences'] ?? 3)), max(1, (int) ($chunk['max_words'] ?? 25))) as $part) {
+                $chunks[] = [$speaker, $part];
+            }
+        }
+
+        return $chunks;
+    }
+
+    /**
      * Loudness to -16 LUFS and Opus at speech bitrate, ffmpeg from stdin to
      * stdout (no file). null when ffmpeg fails.
      */
@@ -260,7 +336,8 @@ class CasterFetcher
         $settings = $this->settings();
 
         try {
-            $result = Process::timeout(60)->env(ChildEnvironment::withoutSecrets())->input($pcm)->run([
+            // A programme block of six minutes takes a few seconds; a single clip well under one.
+            $result = Process::timeout(240)->env(ChildEnvironment::withoutSecrets())->input($pcm)->run([
                 (string) $settings['ffmpeg'], '-nostdin', '-hide_banner', '-loglevel', 'error',
                 '-f', 's16le', '-ar', (string) $rate, '-ac', '1', '-i', 'pipe:0',
                 '-af', 'loudnorm=I='.(int) $settings['loudness_lufs'].':TP=-1.5:LRA=11',
@@ -279,7 +356,7 @@ class CasterFetcher
      * `$profileId` at `$speed`, retried on connection errors and 5xx; its
      * history entry deleted right after.
      */
-    private function generate(string $text, string $profileId, float $speed): ?string
+    public function generate(string $text, string $profileId, float $speed, ?string $language = null): ?string
     {
         $settings = $this->settings();
         $attempts = max(1, (int) $settings['retries'] + 1);
@@ -290,7 +367,7 @@ class CasterFetcher
                     'text' => $text,
                     'profile_id' => $profileId,
                     'speed' => (string) $speed,
-                    'language' => (string) $settings['language'],
+                    'language' => $language ?? (string) $settings['language'],
                 ]);
 
                 $this->forget($response);
@@ -348,7 +425,7 @@ class CasterFetcher
         return is_numeric($speed) ? (float) $speed : (float) ($settings['speed'] ?? 1.0);
     }
 
-    private function release(int $id): void
+    public function release(int $id): void
     {
         try {
             $this->server()->post($this->settings()['server'].'/api/caster/scripts/'.$id.'/release');
@@ -357,7 +434,7 @@ class CasterFetcher
         }
     }
 
-    private function server(): PendingRequest
+    public function server(): PendingRequest
     {
         return Http::withToken((string) config('tv.commentary.fetch.token'))->acceptJson()->timeout(30);
     }
@@ -365,7 +442,7 @@ class CasterFetcher
     /**
      * @return array<string, mixed>
      */
-    private function settings(): array
+    public function settings(): array
     {
         $settings = (array) config('tv.commentary.voicestudio', []);
         $settings['server'] = rtrim((string) ($settings['server'] ?? ''), '/');

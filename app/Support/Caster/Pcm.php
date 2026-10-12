@@ -169,6 +169,52 @@ final class Pcm
         return $peak;
     }
 
+    /** The PCM scaled by `$gainDb`, clipped at full scale. */
+    public static function gained(string $pcm, float $gainDb): string
+    {
+        if ($gainDb === 0.0 || $pcm === '') {
+            return $pcm;
+        }
+
+        $gain = 10 ** ($gainDb / 20);
+
+        return pack('v*', ...array_map(fn (int $raw): int => max(-32768, min(32767, (int) round(($raw >= 32768 ? $raw - 65536 : $raw) * $gain))) & 0xFFFF, unpack('v*', $pcm) ?: []));
+    }
+
+    /**
+     * `$over` mixed into `$base` from sample `$atSample` on, at `$gainDb`,
+     * clipped at full scale: the overlap is summed, the rest of either one
+     * kept as it is (the result is as long as the longer reach). A start
+     * past the end of `$base` pads it with silence.
+     */
+    public static function overlay(string $base, string $over, int $atSample, float $gainDb = 0.0): string
+    {
+        $at = max(0, $atSample) * self::BYTES_PER_SAMPLE;
+        $over = self::gained($over, $gainDb);
+
+        if ($at > strlen($base)) {
+            $base .= str_repeat("\0", $at - strlen($base));
+        }
+
+        $overlap = min(strlen($base) - $at, strlen($over));
+        $overlap -= $overlap % self::BYTES_PER_SAMPLE;
+
+        if ($overlap <= 0) {
+            return $base.$over;
+        }
+
+        $a = unpack('v*', substr($base, $at, $overlap)) ?: [];
+        $b = unpack('v*', substr($over, 0, $overlap)) ?: [];
+        $mixed = [];
+
+        foreach ($a as $index => $raw) {
+            $other = $b[$index] ?? 0;
+            $mixed[] = max(-32768, min(32767, ($raw >= 32768 ? $raw - 65536 : $raw) + ($other >= 32768 ? $other - 65536 : $other))) & 0xFFFF;
+        }
+
+        return substr($base, 0, $at).pack('v*', ...$mixed).substr($base, $at + $overlap).substr($over, $overlap);
+    }
+
     /** The first `$samplesToFade` samples ramped up linearly from silence. */
     public static function fadeIn(string $pcm, int $samplesToFade): string
     {

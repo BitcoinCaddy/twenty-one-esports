@@ -29,3 +29,28 @@ scripts/make-idents.sh /some/other/dir # or anywhere else
 The script holds the exact generator expressions, filters and mastering
 steps (ebur128 measurement, gain to target, `alimiter` at -1 dBFS, libopus).
 Requirements: ffmpeg with libopus and awk. Generated with ffmpeg n9.0.2.
+
+## The Anchor's jingles (programme blocks, P6)
+
+The station-ID, time-of-day, news, rubric and sweeper jingles of TWENTY ONE
+ESPORTS RADIO are rendered on the workstation by `php artisan caster:jingles`
+into `storage/app/jingles` (not in git; about 90 small Ogg Opus files plus a
+`manifest.json` naming every file's line, category, music recipe and measured
+loudness). Provenance:
+
+- **Voice:** "The Anchor (TWENTY ONE)", a VoiceStudio profile made from the
+  built-in personality `us_news_anchor` ("The Anchor": male, middle-aged,
+  moderate pitch, American accent). It is a *designed* voice generated from
+  that description, not a clone of any real person's recording.
+- **Words:** our own lines, `resources/data/voice/anchor-jingles.json`.
+- **Music:** own work, synthesized from ffmpeg's built-in generators by
+  `App\Support\Caster\Blocks\JingleSynth` (same method as
+  `scripts/make-idents.sh`: sine/FM expressions and deterministic noise, no
+  sample, no other station's jingle as a model), **CC0 1.0**.
+- **Agreeing blips** ("hm", "ja", "stimmt", a laugh) under the other speaker:
+  voiced with the same VoiceStudio profiles as the commentary (Markus Turm,
+  Sirius, consent as for the commentary), stored as `blips/<speaker>/*.wav`.
+
+Each jingle is mastered to -16 LUFS (ebur128 measured, gained, `alimiter` at
+-1 dBFS, one correction pass); the values are in the manifest. Re-render
+without any VoiceStudio call: `php artisan caster:jingles --mix-only`.

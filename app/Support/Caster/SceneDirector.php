@@ -123,8 +123,28 @@ final class SceneDirector
 
     private readonly BroadcastClock $clock;
 
+    /** When the clip on air starts on the wall clock (the air log). */
+    private float $airStart = 0.0;
+
+    /** @var list<float> the sentence ends of the clip on air, wall clock */
+    private array $airEnds = [];
+
+    /** @var list<float> the segment boundaries of the block on air, wall clock */
+    private array $airBoundaries = [];
+
+    /** Until when nothing cuts into the block on air (the news of a news block), wall clock. */
+    private float $protectedUntil = 0.0;
+
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int}  $settings
+     * The rest of a block that was cut for a reaction, a takeover or a bulletin: it resumes from its cut once they
+     * are over (P6). Its PCM, sentence ends and boundaries are relative to the cut.
+     *
+     * @var array{clip: CasterClip, pcm: string, ends: list<float>, boundaries: list<float>, part: bool, since: float}|null
+     */
+    private ?array $held = null;
+
+    /**
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, blocks?: array<string, mixed>}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -138,8 +158,8 @@ final class SceneDirector
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int} $settings */
-        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120)];
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, blocks?: array<string, mixed>} $settings */
+        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120), 'blocks' => (array) config('tv.commentary.blocks', [])];
 
         return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings, Idents::fromConfig());
     }
@@ -153,7 +173,16 @@ final class SceneDirector
     public function tick(RotationPlanner $planner, array $slot, float $now): ?string
     {
         if ($this->clip !== null && ! $this->timeline->isPlaying($now)) {
-            $this->clipEnded($this->clip, $now);
+            if ($this->held !== null && $this->held['clip']->is($this->clip)) {
+                $this->park($now);
+            } else {
+                $this->clipEnded($this->clip, $now);
+            }
+        }
+
+        // A programme block about to end: the next block joins it seamlessly, a breath after its last word (P6).
+        if ($this->clip !== null && $this->clip->isBlock()) {
+            $this->joinNextBlock($planner, $now);
         }
 
         // The bulletin's slot has come: it plays at the next clip boundary, before the next part, a live moment or the
@@ -164,9 +193,10 @@ final class SceneDirector
                 if ($this->play($planner, $bulletin, $now)) {
                     return null;
                 }
-            } elseif (! $this->timeline->isCut() && ! $this->clipIsPart && ! in_array($this->clip->kind, ClipSpool::LIVE_KINDS, true)) {
-                $end = $this->timeline->nextSentenceEnd($now) ?? $now;
-                $this->timeline->cutAt($end);
+            } elseif (! $this->timeline->isCut() && ($this->clip->isBlock() || ! $this->clipIsPart) && ! in_array($this->clip->kind, ClipSpool::LIVE_KINDS, true)) {
+                // A block is cut at the end of its sentence on air too, and resumes from there after the news.
+                $end = $this->timeline->nextSentenceEnd($this->earliestCut($now)) ?? $now;
+                $this->cut($end, $now);
                 $planner->hold($end + 0.3);
             }
         }
@@ -186,10 +216,27 @@ final class SceneDirector
             }
         }
 
-        // A takeover waits for the end of the sentence on air, never longer; it never cuts into a bulletin.
-        if ($this->clip !== null && $this->bulletinSlot === null && ! $this->timeline->isCut() && $planner->urgentPending()) {
-            $end = $this->timeline->nextSentenceEnd($now) ?? $now;
-            $this->timeline->cutAt($end);
+        // The rest of a block cut for a reaction, a takeover or the news comes back once they are over.
+        if ($this->clip === null && $this->held !== null && $this->resumeHeld($planner, $now)) {
+            return null;
+        }
+
+        // A reaction while a block is on air: it waits for the block's next segment boundary (P6), never cuts a sentence.
+        if ($this->clip !== null && $this->clip->isBlock() && $this->held === null && ! $this->timeline->isCut()
+            && $this->spool->nextLive(CarbonImmutable::createFromTimestamp($now)) !== null) {
+            $at = $this->reactionCut($now);
+
+            if ($at !== null) {
+                $this->cut($at, $now);
+            }
+        }
+
+        // A takeover waits for the end of the sentence on air, never longer; it never cuts into a bulletin (a news
+        // block's talk after its news it may).
+        if ($this->clip !== null && ($this->bulletinSlot === null || ($this->clip->isBlock() && $now >= $this->protectedUntil))
+            && ! $this->timeline->isCut() && $planner->urgentPending()) {
+            $end = $this->timeline->nextSentenceEnd($this->earliestCut($now)) ?? $now;
+            $this->cut($end, $now);
             $planner->hold($end + 0.3);
         }
 
@@ -248,6 +295,7 @@ final class SceneDirector
         $at = CarbonImmutable::createFromTimestamp($now);
         $part = $this->clipIsPart ? $this->spool->partOf($clip) : null;
         $cut = $this->timeline->isCut();
+        $this->logPiece($clip, (float) ($this->timeline->endsAt() ?? $now));
         $this->spool->played($clip);
         $this->clip = null;
         $this->clipIsPart = false;
@@ -283,6 +331,15 @@ final class SceneDirector
         if ($this->part !== null) {
             // Only the next part may end this quiet (a live moment still cuts in).
             $this->quietUntil = $this->part['until'];
+
+            return;
+        }
+
+        // A block that could not be joined seamlessly (a reaction or the news came between): the programme runs on
+        // with the next block, without the music gap.
+        if ($clip->isBlock() && $this->spool->nextBlock($at) !== null) {
+            $this->quietUntil = $now;
+            $this->runPosition = 0;
 
             return;
         }
@@ -351,8 +408,9 @@ final class SceneDirector
             $slot = $airsAt === null ? null : $this->clock->slotAt($airsAt);
             $bulletinSlot = $slot['type'] ?? BroadcastClock::NEWS;
 
-            // Without the station sound only a pause stands in for the stinger; with Idents the stinger is part of the PCM below.
-            if ($this->idents === null && ($slot['stinger'] ?? false) === true) {
+            // Without the station sound only a pause stands in for the stinger; with Idents the stinger is part of the PCM
+            // below; a rendered block carries its own.
+            if ($this->idents === null && ! $clip->isDressed() && ($slot['stinger'] ?? false) === true) {
                 $start += max(0.0, (float) ($this->settings['stinger_seconds'] ?? 0.0));
                 $this->stinger = ['slot' => $bulletinSlot, 'at' => $now, 'voice_at' => $start];
             }
@@ -361,7 +419,8 @@ final class SceneDirector
         // The station sound (Idents): a segment or bulletin opens with its stinger, never a later part of its story.
         // The ffmpeg calls take real time while the feed keeps writing ahead: the start moves by it, so the stinger's
         // first beat is not lost to silence already written.
-        if ($this->idents !== null && ! $continuation) {
+        // A block rendered on the workstation is dressed already (P6): never a second stinger or bed.
+        if ($this->idents !== null && ! $continuation && ! $clip->isDressed()) {
             $dressing = microtime(true);
             $dressed = $this->idents->dress($clip, $pcm, $ends, CarbonImmutable::createFromTimestamp($now));
             ['pcm' => $pcm, 'ends' => $ends] = $dressed;
@@ -375,6 +434,16 @@ final class SceneDirector
         $this->clipIsPart = $continuation || ($clip->kind !== CasterScript::BULLETIN && $this->spool->partOf($clip) !== null);
         $this->bulletinSlot = $bulletinSlot;
         $this->quietUntil = 0.0;
+        $this->onAir($clip, $start, $ends);
+
+        if ($clip->isBlock()) {
+            // A block is a stretch of programme: it ends a run and holds the slide only briefly, the slides rotate under it.
+            $this->runPosition = 0;
+            $this->runLeft = 0;
+            $planner->hold($now + (float) ($this->settings['blocks']['hold_seconds'] ?? 30));
+
+            return true;
+        }
 
         if ($bulletinSlot !== null) {
             // The bulletin ends a run on air and is no run clip.
@@ -392,6 +461,216 @@ final class SceneDirector
         ));
 
         return true;
+    }
+
+    /**
+     * Remembers where the clip on air starts and, on the wall clock, where its
+     * sentences end, its segment boundaries lie and its protected opening ends.
+     *
+     * @param  list<float>  $ends  seconds into the PCM that starts at `$start`
+     * @param  float  $offset  where the clip itself starts within that PCM (a joined block follows the tail of the one before)
+     */
+    private function onAir(CasterClip $clip, float $start, array $ends, float $offset = 0.0): void
+    {
+        $this->airStart = $start + $offset;
+        $this->airEnds = array_map(fn (float $end): float => $start + $end, $ends);
+        $this->airBoundaries = array_map(fn (float $boundary): float => $this->airStart + $boundary, $clip->boundaries());
+        $this->protectedUntil = $this->airStart + $clip->protectedSeconds();
+    }
+
+    /**
+     * The earliest moment a clip may be cut at: now for a single clip; for a
+     * block past what the voice feed has already written (`feed_lead_seconds`
+     * and a poll) and past its protected opening, so its rest resumes exactly
+     * where it stopped.
+     */
+    private function earliestCut(float $now): float
+    {
+        if ($this->clip === null || ! $this->clip->isBlock()) {
+            return $now;
+        }
+
+        return max($now + (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.35, $this->protectedUntil);
+    }
+
+    /**
+     * Cuts the clip on air at `$at` (a sentence end or a segment boundary).
+     * A block keeps its rest (held) and resumes from there; a single clip is
+     * over at the cut, as before.
+     */
+    private function cut(float $at, float $now): void
+    {
+        if ($this->clip !== null && $this->clip->isBlock()) {
+            $end = (float) $this->timeline->endsAt();
+            $rest = $end - $at > 1.0 ? $this->timeline->samples((int) round($at * $this->timeline->rate), (int) round($end * $this->timeline->rate)) : '';
+
+            if ($rest !== '') {
+                $this->held = [
+                    'clip' => $this->clip,
+                    'pcm' => $rest,
+                    'ends' => array_values(array_map(fn (float $time): float => round($time - $at, 3), array_filter($this->airEnds, fn (float $time): bool => $time > $at + 0.05))),
+                    'boundaries' => array_values(array_map(fn (float $time): float => round($time - $at, 3), array_filter($this->airBoundaries, fn (float $time): bool => $time > $at + 0.05))),
+                    'part' => $this->clipIsPart,
+                    'since' => $now,
+                ];
+            }
+        }
+
+        $this->timeline->cutAt($at);
+    }
+
+    /**
+     * Where a block on air makes way for a waiting reaction: its next segment
+     * boundary within `blocks.reaction_wait_seconds`, else the last sentence
+     * end within that wait, else its next sentence end; never inside its
+     * protected opening, never closer than the feed lead. Null when the block
+     * ends before that anyway (the reaction follows it).
+     */
+    private function reactionCut(float $now): ?float
+    {
+        $earliest = $this->earliestCut($now);
+        $latest = $now + (float) ($this->settings['blocks']['reaction_wait_seconds'] ?? 90);
+        $end = (float) $this->timeline->endsAt();
+        $within = fn (array $times): array => array_values(array_filter($times, fn (float $time): bool => $time >= $earliest && $time <= $latest));
+
+        $at = $within($this->airBoundaries)[0] ?? null;
+
+        if ($at === null) {
+            $ends = $within($this->airEnds);
+            $at = $ends === [] ? null : end($ends);
+        }
+
+        if ($at === null) {
+            $later = array_values(array_filter($this->airEnds, fn (float $time): bool => $time >= $earliest));
+            $at = $later[0] ?? null;
+        }
+
+        return $at === null || $at >= $end - 1.0 ? null : $at;
+    }
+
+    /** The cut block stopped: it waits off air (held) while the reaction, takeover or news plays. */
+    private function park(float $now): void
+    {
+        if ($this->clip !== null) {
+            $this->logPiece($this->clip, (float) ($this->timeline->endsAt() ?? $now));
+        }
+
+        $this->clip = null;
+        $this->clipIsPart = false;
+        $this->bulletinSlot = null;
+        $this->timeline->clear();
+        $this->quietUntil = $now;
+    }
+
+    /**
+     * Resumes the held rest of a block once no bulletin, live moment or
+     * reaction waits any more; drops it after `blocks.resume_within_seconds`.
+     */
+    private function resumeHeld(RotationPlanner $planner, float $now): bool
+    {
+        if ($this->held === null) {
+            return false;
+        }
+
+        $held = $this->held;
+        $at = CarbonImmutable::createFromTimestamp($now);
+
+        if ($now - $held['since'] > (float) ($this->settings['blocks']['resume_within_seconds'] ?? 600)) {
+            $this->held = null;
+            $this->spool->played($held['clip']);
+
+            return false;
+        }
+
+        if ($this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null) {
+            return false;
+        }
+
+        $this->held = null;
+        $start = $now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
+        $this->timeline->start($held['pcm'], $held['ends'], $start);
+        // Its playing mark starts again, so the spool does not take it for one a crash left behind.
+        $held['clip']->touch();
+        $this->clip = $held['clip'];
+        $this->clipIsPart = $held['part'];
+        $this->quietUntil = 0.0;
+        $this->airStart = $start;
+        $this->airEnds = array_map(fn (float $end): float => $start + $end, $held['ends']);
+        $this->airBoundaries = array_map(fn (float $boundary): float => $start + $boundary, $held['boundaries']);
+        $this->protectedUntil = 0.0;
+        $planner->hold($now + (float) ($this->settings['blocks']['hold_seconds'] ?? 30));
+
+        return true;
+    }
+
+    /**
+     * Joins the next block to the block on air, `blocks.join_seconds` after
+     * its end, when it ends within the next two polls: the timeline restarts
+     * now with the identical rest of the block on air, the breath and the
+     * next block, so not a sample changes of what is already playing and no
+     * poll or feed lead widens the gap. The next part of a story the block
+     * ended in comes first; nothing joins while a bulletin, a reaction or a
+     * held rest waits (they take the boundary).
+     */
+    private function joinNextBlock(RotationPlanner $planner, float $now): void
+    {
+        $end = $this->timeline->endsAt();
+
+        if ($this->clip === null || $end === null || $this->timeline->isCut() || $this->held !== null || $end - $now > 2.5 || $end <= $now) {
+            return;
+        }
+
+        $at = CarbonImmutable::createFromTimestamp($now);
+
+        if ($this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null) {
+            return;
+        }
+
+        $part = $this->clipIsPart ? $this->spool->partOf($this->clip) : null;
+        $continues = $part !== null && $this->spool->partPending($part['group'], $part['index'] + 1, $at);
+        $next = $continues ? $this->spool->part($part['group'], $part['index'] + 1, $at) : $this->spool->nextBlock($at);
+
+        if ($next === null || ! $next->isBlock()) {
+            return;
+        }
+
+        $pcm = $this->spool->pcm($next);
+
+        if ($pcm === null) {
+            $this->spool->played($next);
+
+            return;
+        }
+
+        $rate = $this->timeline->rate;
+        $from = (int) round($now * $rate);
+        $tail = $this->timeline->samples($from, (int) round($end * $rate));
+        $range = (array) ($this->settings['blocks']['join_seconds'] ?? []);
+        $offset = Pcm::seconds($tail, $rate) + self::random($range === [] ? ['min' => 0.4, 'max' => 0.4] : $range);
+        $joined = $tail.Pcm::silence($offset - Pcm::seconds($tail, $rate), $rate).$pcm;
+        $offset = Pcm::seconds($joined, $rate) - Pcm::seconds($pcm, $rate);
+        $ends = [round(Pcm::seconds($tail, $rate), 3), ...array_map(fn (float $time): float => round($offset + $time, 3), $next->sentence_ends)];
+
+        $this->logPiece($this->clip, $end);
+        $this->spool->played($this->clip);
+        $this->part = null;
+
+        $start = $from / $rate;
+        $this->timeline->start($joined, $ends, $start);
+        $this->spool->playing($next);
+        $this->clip = $next;
+        $this->clipIsPart = $continues || ($next->kind !== CasterScript::BULLETIN && $this->spool->partOf($next) !== null);
+        $this->bulletinSlot = null;
+        $this->ident = null;
+        $this->quietUntil = 0.0;
+        $this->onAir($next, $start, $ends, $offset);
+        $planner->hold($now + (float) ($this->settings['blocks']['hold_seconds'] ?? 30));
+    }
+
+    /** One stretch of voice that was on air, for the air log (caster:gaps). */
+    private function logPiece(CasterClip $clip, float $end): void
+    {
+        AirLog::record(['clip' => $clip->id, 'kind' => $clip->kind, 'block' => $clip->isBlock(), 'start' => round($this->airStart, 3), 'end' => round($end, 3)]);
     }
 
     /**

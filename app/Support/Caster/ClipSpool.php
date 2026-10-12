@@ -123,6 +123,92 @@ class ClipSpool
         return $clip;
     }
 
+    /**
+     * A programme block the workstation rendered whole (plan "TWENTY ONE
+     * Radio", P6; BlockRenderer): one clip for all of `$scripts`, the first
+     * one its lead. A block led by a script the broadcast clock places
+     * (`airs_at`: a bulletin, a rubric) keeps the lead's kind, so it airs at
+     * its slot like the lead would; any other block is a CasterClip::BLOCK
+     * and plays in the order it came (nextBlock()). Every covered script is
+     * voiced; the clip lives as long as the longest-living of them.
+     * Bounded by `blocks.max_clip_bytes` and `blocks.max_clip_seconds` and
+     * the spool's `max_bytes`, never by the airtime cap (the fetcher stops
+     * claiming at `target_seconds`).
+     *
+     * @param  list<CasterScript>  $scripts
+     * @param  list<float>  $sentenceEnds
+     * @param  list<float>  $boundaries  where a segment ends inside the block (a reaction may cut in there)
+     *
+     * @throws SpoolFull when the byte cap is reached
+     * @throws InvalidClip when the upload is not an Opus clip within the limits
+     */
+    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now): CasterClip
+    {
+        $lead = $scripts[0] ?? null;
+        $blocks = (array) config('tv.commentary.blocks', []);
+
+        if ($lead === null) {
+            throw new InvalidClip('scripts');
+        }
+
+        if (! str_starts_with($opus, 'OggS') || ! str_contains(substr($opus, 0, 200), 'OpusHead')) {
+            throw new InvalidClip('format');
+        }
+
+        if (strlen($opus) > (int) ($blocks['max_clip_bytes'] ?? 0) || $durationSeconds <= 0 || $durationSeconds > (float) ($blocks['max_clip_seconds'] ?? 0)) {
+            throw new InvalidClip('size');
+        }
+
+        if ($this->bytes() + strlen($opus) > (int) config('tv.commentary.spool.max_bytes', 0)) {
+            throw new SpoolFull;
+        }
+
+        $path = $this->dir().'/'.$lead->id.'-block-'.Str::lower(Str::random(10)).'.opus';
+        $this->disk()->put($path, $opus);
+
+        $clamp = function (array $times) use ($durationSeconds): array {
+            $times = array_values(array_unique(array_map(fn (float $time): float => round(max(0.0, min($durationSeconds, $time)), 3), $times)));
+            sort($times);
+
+            return $times;
+        };
+        $ends = $clamp($sentenceEnds);
+        $expires = collect($scripts)->max(fn (CasterScript $script): int => $script->expires_at->getTimestamp());
+
+        $clip = CasterClip::query()->create([
+            'caster_script_id' => $lead->id,
+            'phase' => $lead->phase,
+            'kind' => $lead->airs_at !== null ? $lead->kind : CasterClip::BLOCK,
+            'path' => $path,
+            'duration_seconds' => round($durationSeconds, 3),
+            'bytes' => strlen($opus),
+            'sentence_ends' => $ends === [] ? [round($durationSeconds, 3)] : $ends,
+            'status' => CasterClip::READY,
+            // The anchored lead's own expiry (a bulletin expires shortly after its slot), else the longest-living script's.
+            'expires_at' => $lead->airs_at !== null ? $lead->expires_at : CarbonImmutable::createFromTimestamp((int) $expires),
+            'block' => [
+                'dressed' => true,
+                'scripts' => array_map(fn (CasterScript $script): int => $script->id, $scripts),
+                'boundaries' => $clamp($boundaries),
+                'protected_seconds' => round(max(0.0, min($durationSeconds, $protectedSeconds)), 3),
+            ],
+        ]);
+
+        CasterScript::query()->whereKey(array_map(fn (CasterScript $script): int => $script->id, $scripts))->update(['status' => CasterScript::VOICED]);
+
+        return $clip;
+    }
+
+    /**
+     * The oldest ready talk block (CasterClip::BLOCK), never one that starts
+     * with a later part of a story (it follows the block before it, part()).
+     */
+    public function nextBlock(CarbonImmutable $now): ?CasterClip
+    {
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterClip::BLOCK)->where('expires_at', '>', $now)
+            ->whereNotIn('caster_script_id', self::continuations())->orderBy('id')->first();
+    }
+
     /** Bytes of every clip in the spool (fillers included). */
     public function bytes(): int
     {
@@ -185,6 +271,12 @@ class ClipSpool
         $live = $this->nextLive($now);
         if ($live !== null) {
             return ['clip' => $live, 'caption' => null, 'source' => 'live'];
+        }
+
+        // A rendered programme block (P6) plays before any single clip: the programme runs on.
+        $block = $this->nextBlock($now);
+        if ($block !== null) {
+            return ['clip' => $block, 'caption' => null, 'source' => 'block'];
         }
 
         $segment = in_array($phase, ScenePhase::CALM, true) ? $this->nextSegment($now) : null;
@@ -271,7 +363,11 @@ class ClipSpool
      */
     public function partOf(CasterClip $clip): ?array
     {
-        $script = CasterScript::query()->find($clip->caster_script_id);
+        // A block ends with the last part it covers: the story goes on with the part after that one.
+        $covered = $clip->isBlock() ? array_values(array_filter((array) ($clip->block['scripts'] ?? []), 'is_int')) : [];
+        $script = $covered !== []
+            ? CasterScript::query()->whereKey($covered)->whereNotNull('part_group')->get()->sortByDesc(fn (CasterScript $script): int|false => array_search($script->id, $covered, true))->first()
+            : CasterScript::query()->find($clip->caster_script_id);
 
         return $script?->part_group === null ? null : ['group' => $script->part_group, 'index' => (int) $script->part_index];
     }
