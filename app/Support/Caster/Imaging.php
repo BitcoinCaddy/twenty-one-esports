@@ -30,7 +30,7 @@ use Throwable;
  *  - quiet hours: a station ID only, when one is due;
  *  - a bulletin opens with the news open of its slot (headlines at :30) and
  *    closes with the news close (back-announce);
- *  - a rubric opens with its format opener (rubric-<topic>, opener-<topic>),
+ *  - a rubric opens with its format opener (opener-<topic>, else rubric-<topic>),
  *    a history segment with the Geschichtsstunde, a teaser with coming-up,
  *    where the library has a jingle of that category;
  *  - a teaser opens with the promo of the format it teases (promo-<topic>),
@@ -154,8 +154,9 @@ final class Imaging
             $topic = in_array($kind, [CasterScript::RUBRIC, CasterScript::TEASER], true) ? (string) $clip->script()->value('topic') : '';
             $specific = match ($kind) {
                 CasterScript::BULLETIN => $this->newsOpen($clip),
-                CasterScript::RUBRIC => $topic === '' ? null : ['rubric-'.$topic, 'opener-'.$topic],
-                CasterScript::HISTORY => ['rubric-geschichte', 'opener-geschichte'],
+                // The long produced opener (anchor-imaging.json) first, the short block jingle of the rubric else.
+                CasterScript::RUBRIC => $topic === '' ? null : ['opener-'.$topic, 'rubric-'.$topic],
+                CasterScript::HISTORY => ['opener-geschichte', 'rubric-geschichte'],
                 CasterScript::TEASER => [...($topic === '' ? [] : ['promo-'.$topic]), 'coming-up', 'promo'],
                 default => null,
             };

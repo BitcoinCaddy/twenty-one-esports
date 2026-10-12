@@ -286,13 +286,19 @@ it('puts the jingle in front of a scene clip on the timeline in place of the sti
         $director->tick($planner, $planner->at($t, []), $t);
     }
 
-    $jingleSeconds = Pcm::seconds((string) Process::run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-i', $jingle, '-ac', '1', '-ar', '24000', '-f', 's16le', 'pipe:1'])->output(), 24000);
+    $decoded = (string) Process::run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-i', $jingle, '-ac', '1', '-ar', '24000', '-f', 's16le', 'pipe:1'])->output();
+    $jingleSeconds = Pcm::seconds($decoded, 24000);
     $timeline = $director->timeline;
+    $from = (int) round((float) $timeline->startsAt() * 24000);
 
     expect($director->clip()?->is($clip))->toBeTrue()
         ->and($director->imagingOnAir())->toBe(['station'])
         ->and($director->ident())->toBeNull()
-        ->and((float) $timeline->endsAt() - (float) $timeline->startsAt())->toEqualWithDelta($jingleSeconds + 0.3 + 10.0, 0.05);
+        ->and((float) $timeline->endsAt() - (float) $timeline->startsAt())->toEqualWithDelta($jingleSeconds + 0.3 + 10.0, 0.05)
+        // The jingle plays to its full length (user 2026-10-12: "werden am Ende abgekürzt und brechen ab"): every sample
+        // of it is on the timeline, its ring-out included, and the first point a takeover may cut at is its very end.
+        ->and(sha1($timeline->samples($from, $from + intdiv(strlen($decoded), 2))))->toBe(sha1($decoded))
+        ->and($timeline->nextSentenceEnd((float) $timeline->startsAt() + 0.1))->toEqualWithDelta((float) $timeline->startsAt() + $jingleSeconds, 0.002);
 });
 
 it('leaves a chat reply on the timeline exactly as it came, with a library uploaded', function () {

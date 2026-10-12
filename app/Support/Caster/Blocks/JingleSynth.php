@@ -93,8 +93,8 @@ final class JingleSynth
         $graph = sprintf(
             '[0:a]aresample=%1$d,aformat=channel_layouts=mono,highpass=f=70,%2$s,adelay=%3$d,apad=whole_dur=%4$.3F,asplit=2[v1][v2];'
             .'[1:a]volume=-3dB[bed];[bed][v1]sidechaincompress=threshold=0.015:ratio=7:attack=12:release=420[ducked];'
-            .'[ducked][v2]amix=inputs=2:normalize=0:duration=first,afade=t=in:d=0.02,afade=t=out:st=%5$.3F:d=0.35[out]',
-            self::RATE, self::EFFECTS[$effect] ?? 'anull', $delay, $duration, max(0.0, $duration - 0.35),
+            .'[ducked][v2]amix=inputs=2:normalize=0:duration=first,afade=t=in:d=0.02,afade=t=out:st=%5$.3F:d=%6$.3F[out]',
+            self::RATE, self::EFFECTS[$effect] ?? 'anull', $delay, $duration, max(0.0, $duration - self::RING_OUT_FADE), self::RING_OUT_FADE,
         );
 
         return [
@@ -133,6 +133,18 @@ final class JingleSynth
      */
     public const TRUE_PEAK_LIMIT = 0.794;
 
+    /**
+     * The ring-out of every jingle (user 2026-10-12: the Anchor jingles "werden am Ende abgekürzt und brechen ab"; the
+     * P6 renders closed 1.6 s after the voice with a 0.35 s fade into a bell still ringing): the closing hit plays to
+     * its own end plus RING_OUT_PAD, and the last RING_OUT_FADE seconds fade out, never a cut at the voice's end.
+     */
+    public const RING_OUT_FADE = 1.0;
+
+    public const RING_OUT_PAD = 0.45;
+
+    /** The seconds after the voice of a block jingle (mixArguments()): the button's bell and boom ring out. */
+    public const BUTTON_TAIL = 2.6;
+
     /** The length of every bed loop (seconds): every periodic part of a bed divides it, so the file loops seamlessly. */
     public const LOOP_SECONDS = 16;
 
@@ -155,14 +167,14 @@ final class JingleSynth
      */
     public const IMAGING = [
         'station-long' => ['tempo' => 0.8, 'stingers' => ['riser-long', 'reverse-swell'], 'intro' => 2.7, 'hits' => ['hit-boom', 'bass-drop'], 'tail' => 2.2, 'beds' => ['news-drive', 'sport', 'news-pulse']],
-        'station-short' => ['tempo' => 0.65, 'stingers' => ['laser-zap', 'whoosh-up', 'coin-8bit', 'glitch'], 'intro' => 0.5, 'hits' => ['hit-metal', 'hit-boom'], 'tail' => 0.7, 'beds' => []],
-        'sweeper' => ['tempo' => 0.6, 'stingers' => ['whoosh-up', 'whoosh-down', 'laser-double', 'tape-stop', 'riser-short'], 'intro' => 0.8, 'hits' => ['hit-boom', 'hit-metal', 'coin-8bit'], 'tail' => 0.8, 'beds' => []],
+        'station-short' => ['tempo' => 0.6, 'stingers' => ['laser-zap', 'whoosh-up', 'coin-8bit', 'glitch'], 'intro' => 0.5, 'hits' => ['coin-8bit', 'laser-zap'], 'tail' => 0.7, 'beds' => []],
+        'sweeper' => ['tempo' => 0.55, 'stingers' => ['whoosh-up', 'whoosh-down', 'laser-double', 'tape-stop', 'riser-short'], 'intro' => 0.8, 'hits' => ['hit-boom', 'hit-metal', 'coin-8bit'], 'tail' => 0.8, 'beds' => []],
         'liner' => ['tempo' => 0.75, 'stingers' => ['riser-short', 'whoosh-up', 'glitch'], 'intro' => 1.1, 'hits' => ['hit-boom', 'bass-drop'], 'tail' => 1.2, 'beds' => ['late-night', 'tutorial', 'weather']],
-        'opener' => ['tempo' => 0.7, 'stingers' => ['riser-short', 'reverse-swell', 'laser-double'], 'intro' => 1.2, 'hits' => ['hit-boom', 'hit-metal'], 'tail' => 1.3, 'beds' => ['news-drive', 'tutorial']],
-        'news-open' => ['tempo' => 0.75, 'stingers' => ['news-rise', 'news-clock', 'news-pulse'], 'intro' => 1.6, 'hits' => ['hit-boom'], 'tail' => 1.0, 'beds' => ['news-pulse', 'news-drive']],
-        'news-close' => ['tempo' => 0.55, 'stingers' => ['whoosh-down'], 'intro' => 0.4, 'hits' => ['hit-metal', 'hit-boom'], 'tail' => 0.9, 'beds' => ['news-pulse']],
+        'opener' => ['tempo' => 0.65, 'stingers' => ['riser-short', 'reverse-swell', 'laser-double'], 'intro' => 1.2, 'hits' => ['hit-boom', 'hit-metal'], 'tail' => 1.3, 'beds' => ['news-drive', 'tutorial']],
+        'news-open' => ['tempo' => 0.7, 'stingers' => ['news-rise', 'news-clock', 'news-pulse'], 'intro' => 1.3, 'hits' => ['hit-boom'], 'tail' => 1.0, 'beds' => ['news-pulse', 'news-drive']],
+        'news-close' => ['tempo' => 0.5, 'stingers' => ['whoosh-down'], 'intro' => 0.4, 'hits' => ['hit-metal', 'hit-boom'], 'tail' => 0.9, 'beds' => ['news-pulse']],
         'promo' => ['tempo' => 0.8, 'stingers' => ['riser-short', 'whoosh-up', 'glitch'], 'intro' => 1.4, 'hits' => ['bass-drop', 'hit-boom'], 'tail' => 1.5, 'beds' => ['tutorial', 'news-drive', 'weather']],
-        'power-intro' => ['tempo' => 0.55, 'stingers' => ['whoosh-up', 'laser-zap'], 'intro' => 0.6, 'hits' => ['hit-metal'], 'tail' => 0.6, 'beds' => []],
+        'power-intro' => ['tempo' => 0.5, 'stingers' => ['whoosh-up', 'laser-zap'], 'intro' => 0.6, 'hits' => ['laser-zap', 'coin-8bit'], 'tail' => 0.6, 'beds' => []],
     ];
 
     /**
@@ -189,7 +201,8 @@ final class JingleSynth
             'stinger' => $spec['stingers'][$hash % count($spec['stingers'])],
             'intro' => $spec['intro'],
             'hit' => $spec['hits'][intdiv($hash, 7) % count($spec['hits'])],
-            'tail' => $spec['tail'],
+            // The hit rings out in full (user 2026-10-12: the jingles "werden am Ende abgekürzt und brechen ab").
+            'tail' => max($spec['tail'], self::sound($spec['hits'][intdiv($hash, 7) % count($spec['hits'])])['seconds'] + 0.05 + self::RING_OUT_PAD),
             'bed' => in_array($bed, self::LOOP_BEDS, true) ? $bed : null,
             'effect' => ['dry', 'room', 'slap'][intdiv($hash, 31) % 3],
         ];
@@ -274,16 +287,16 @@ final class JingleSynth
         $duration = $intro + $voiceSeconds + $tail;
         $withBed = $bedFile !== null;
         $bed = $withBed ? sprintf(
-            '[3:a]aresample=%1$d,aformat=channel_layouts=mono,atrim=duration=%2$.3F,volume=-9dB,afade=t=in:d=0.4,afade=t=out:st=%3$.3F:d=0.8[bedraw];[bedraw][vk]sidechaincompress=threshold=0.015:ratio=6:attack=15:release=450[bed];',
-            self::RATE, $duration, max(0.0, $duration - 0.8),
+            '[3:a]aresample=%1$d,aformat=channel_layouts=mono,atrim=duration=%2$.3F,volume=-9dB,afade=t=in:d=0.4,afade=t=out:st=%3$.3F:d=1.5[bedraw];[bedraw][vk]sidechaincompress=threshold=0.015:ratio=6:attack=15:release=450[bed];',
+            self::RATE, $duration, max(0.0, $duration - 1.5),
         ) : '';
         $graph = sprintf(
             '[0:a]aresample=%1$d,aformat=channel_layouts=mono,highpass=f=70,%2$s,adelay=%3$d,apad=whole_dur=%4$.3F%5$s;'
             .'[1:a]aresample=%1$d,aformat=channel_layouts=mono,volume=-2dB,apad=whole_dur=%4$.3F[st];'
             .'[2:a]aresample=%1$d,aformat=channel_layouts=mono,volume=-1dB,adelay=%6$d,apad=whole_dur=%4$.3F[hit];'
-            .'%7$s[v][st][hit]%8$samix=inputs=%9$d:normalize=0:duration=first,atrim=duration=%4$.3F,afade=t=out:st=%10$.3F:d=0.3[out]',
+            .'%7$s[v][st][hit]%8$samix=inputs=%9$d:normalize=0:duration=first,atrim=duration=%4$.3F,afade=t=out:st=%10$.3F:d=%11$.3F[out]',
             self::RATE, self::EFFECTS[$effect] ?? 'anull', (int) round($intro * 1000), $duration, $withBed ? ',asplit=2[v][vk]' : '[v]',
-            (int) round(($intro + $voiceSeconds + 0.05) * 1000), $bed, $withBed ? '[bed]' : '', $withBed ? 4 : 3, max(0.0, $duration - 0.3),
+            (int) round(($intro + $voiceSeconds + 0.05) * 1000), $bed, $withBed ? '[bed]' : '', $withBed ? 4 : 3, max(0.0, $duration - self::RING_OUT_FADE), self::RING_OUT_FADE,
         );
         $inputs = ['-i', $voiceFile, '-i', $stingerFile, '-i', $hitFile];
 

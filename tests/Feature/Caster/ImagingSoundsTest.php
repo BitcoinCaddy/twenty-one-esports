@@ -136,6 +136,32 @@ it('gives the Anchor at least 120 English imaging lines: every category, an open
     }
 });
 
+it('lets a produced jingle ring out in full: the hit plays to its end and the last second fades, never a cut at the voice', function () {
+    $dir = storage_path('framework/testing/ringout-'.uniqid());
+    File::ensureDirectoryExists($dir);
+    // Two seconds of a voice stand-in, loud to its last sample (the hardest case for a cut).
+    expect(Process::run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-f', 'lavfi', '-i', 'aevalsrc=0.4*sin(2*PI*220*t):s=48000:d=2', '-y', $dir.'/voice.wav'])->successful())->toBeTrue();
+    $recipe = JingleSynth::imagingRecipe('img-sl-01', 'station-long');
+    $sounds = resource_path('audio/idents');
+    $arguments = JingleSynth::produceArguments('ffmpeg', $dir.'/voice.wav', 2.0, $sounds.'/sfx-'.$recipe['stinger'].'.opus', $sounds.'/sfx-'.$recipe['hit'].'.opus', $sounds.'/bed-news-pulse.opus', 'dry', $recipe['intro'], $recipe['tail'], $dir.'/out.wav');
+    expect(Process::run(array_slice($arguments, 3))->successful())->toBeTrue();
+
+    $samples = unpack('g*', Process::run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-i', $dir.'/out.wav', '-f', 'f32le', '-'])->output()) ?: [];
+    File::deleteDirectory($dir);
+    $rms = fn (int $from, int $count): float => 20 * log10(max(1e-9, sqrt(array_sum(array_map(fn (float $x): float => $x * $x, array_slice($samples, $from, $count))) / $count)));
+    $n = count($samples);
+    $hitEnd = $recipe['intro'] + 2.0 + 0.05 + JingleSynth::sound($recipe['hit'])['seconds'];
+
+    expect($n / 48000)->toEqualWithDelta($recipe['intro'] + 2.0 + $recipe['tail'], 0.02)
+        ->and($recipe['intro'] + 2.0 + $recipe['tail'])->toBeGreaterThanOrEqual($hitEnd + JingleSynth::RING_OUT_PAD - 0.001)
+        ->and($rms($n - 2400, 2400))->toBeLessThan(-45.0)
+        ->and($rms($n - 14400, 4800))->toBeGreaterThan($rms($n - 4800, 4800));
+
+    // The block jingles (P6) ring out as long after the voice.
+    expect(JingleSynth::BUTTON_TAIL)->toBeGreaterThanOrEqual(2.5)
+        ->and(implode(' ', JingleSynth::mixArguments('ffmpeg', 'v.wav', '0', 'dry', 1.0, 6.0, 'o.wav')))->toContain('afade=t=out:st=5.000:d=1.000');
+});
+
 it('produces each imaging category to its length: voice length by tempo, stinger before, hit and tail after', function () {
     $lines = json_decode((string) file_get_contents(resource_path('data/voice/anchor-imaging.json')), true)['lines'];
     $ranges = ['station-long' => [12, 20], 'station-short' => [4, 6.5], 'sweeper' => [6, 10], 'liner' => [8, 15], 'opener' => [8, 15], 'news-open' => [10, 15], 'news-close' => [5, 8], 'promo' => [15, 25], 'power-intro' => [4.5, 8]];

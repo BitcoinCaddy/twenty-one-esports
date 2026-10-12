@@ -312,7 +312,7 @@ class CasterJinglesCommand extends Command
             return ['id' => $id.'-'.$variant, 'file' => $file, 'seconds' => round($this->seconds($dir.'/'.$file), 3), 'lufs' => $this->lufs($dir.'/'.$file)] + $recipe;
         }
 
-        $duration = $recipe['intro'] + $voiceSeconds + 1.6;
+        $duration = $recipe['intro'] + $voiceSeconds + JingleSynth::BUTTON_TAIL;
         $bed = JingleSynth::bed($recipe['bed'], $recipe['key'], $recipe['intro'], $voiceSeconds, $duration);
         $ffmpeg = (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg');
         $mix = $dir.'/anchor/.mix-'.$id.'-'.$variant.'.wav';
