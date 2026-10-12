@@ -266,7 +266,7 @@ final class DuetScripts
                 ."\nJede spätere Wortmeldung greift den Inhalt der Wortmeldung direkt davor auf: zustimmen, frotzeln, widersprechen, einen Fakt aus dem Fakten-Block nachlegen oder eine eigene Geschichte erzählen. Die beiden reden miteinander, duzen sich, und im ganzen Wortwechsel fällt höchstens ein Name."
                 ."\nBeide klingen wie in ihren Persona-Blöcken oben: Markus mit seinen Themen und Wendungen, Sirius ausführlich und mit eigener Meinung aus seinen Themengebieten, mit eigener kleiner Geschichte oder einem Seitenhieb, mit dem er Markus aufzieht; jede seiner Wortmeldungen hat mindestens drei lange, ganze Sätze und ist so lang wie die von Markus oder länger."
                 ."\nSirius beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“, „Richtig“ oder dem Namen Markus, und jede seiner Wortmeldungen fängt anders an als die davor."
-                ."\nHöchstens EIN Fakt aus dem Fakten-Block im ganzen Wortwechsel, keine Spielernamen, höchstens zwei Marker. Kein Abschied, keine Begrüßung und keine Ansage wie „und jetzt zu …“.",
+                ."\nHöchstens EIN Fakt aus dem Fakten-Block im ganzen Wortwechsel, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze. Kein Abschied, keine Begrüßung und keine Ansage wie „und jetzt zu …“.",
             "Fakten (die einzige Quelle für Zahlen, Namen und Links)\n\n".json_encode($facts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
