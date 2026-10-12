@@ -6,6 +6,7 @@ use App\Support\Caster\CasterPersonas;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
+use App\Support\Caster\Pcm;
 use App\Support\Caster\SceneFacts;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
@@ -214,7 +215,7 @@ it('parses speaker-tagged lines into turns, continuation lines included', functi
     ]);
 });
 
-it('writes a duet in one call and turns down a draft whose turns break the drawn sequence', function () {
+it('writes a duet in one call and turns down a draft in which Sirius never speaks', function () {
     VoiceAgent::fake([
         ['text' => "Markus: Die Liga läuft heute wieder rund um die Uhr, und ich sitze hier mit einem Kaffee.\nMarkus: Und gleich geht es weiter mit der nächsten Runde für alle, die noch wach sind.", 'canon_id' => null, 'mood' => 'fakten'],
         ['text' => DUET_GOOD_ANSWER, 'canon_id' => null, 'mood' => 'fakten'],
@@ -228,7 +229,7 @@ it('writes a duet in one call and turns down a draft whose turns break the drawn
         ->and($duet['text'])->not->toContain('Sirius:');
     VoiceAgent::assertPromptedTimes(2);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: zwei bis vier Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
-        && str_contains($prompt->prompt, 'folgten nicht der Reihenfolge'));
+        && str_contains($prompt->prompt, 'kam gar nicht zu Wort'));
 });
 
 it('puts Markus persona into every TV prompt and Sirius behind it into the duets, every phrase with its source', function () {
@@ -346,7 +347,60 @@ it('voices every line with its speaker profile and breathes on a speaker change'
 
         $ends = array_map('floatval', explode(',', $request->header('X-Caster-Sentence-Ends')[0]));
 
-        // Each chunk 0.5 s of tone; the speaker-change breath (0.3 s) between every two of them.
-        return count($ends) === 3 && abs($ends[1] - $ends[0] - 0.8) < 0.03 && abs($ends[2] - $ends[1] - 0.8) < 0.03;
+        // Each chunk 0.5 s of tone with 140 ms of quiet at both ends; the speaker-change breath (0.3 s) between them.
+        return count($ends) === 3 && abs($ends[1] - $ends[0] - 1.08) < 0.03 && abs($ends[2] - $ends[1] - 1.08) < 0.03;
     });
+});
+
+it('keeps a draft whose turns differ from the drawn sequence, as long as both speak', function () {
+    // Drawn M·S·S·M: consecutive lines of one speaker are one turn, so the model's M·S·M is that duet (turned down before).
+    VoiceAgent::fake([['text' => DUET_GOOD_ANSWER, 'canon_id' => null, 'mood' => 'fakten']]);
+
+    $duet = app(DuetScripts::class)->write([DuetDirector::MARKUS, DuetDirector::SIRIUS, DuetDirector::SIRIUS, DuetDirector::MARKUS], ScenePhase::BREAK, ['players' => 21]);
+
+    expect($duet['speakers'])->toBe(['markus', 'sirius', 'sirius', 'markus']);
+    VoiceAgent::assertPromptedTimes(1);
+});
+
+it('reads a duet the model wrote on one line, every speaker tag after a sentence end', function () {
+    // Haiku wrote 3 of 10 duets as one line on 2026-10-12 ("Markus: … . Sirius: … . Markus: …"): read as Markus alone, turned down.
+    VoiceAgent::fake([['text' => str_replace("\n", ' ', DUET_GOOD_ANSWER), 'canon_id' => null, 'mood' => 'fakten']]);
+
+    $duet = app(DuetScripts::class)->write([DuetDirector::MARKUS, DuetDirector::SIRIUS], ScenePhase::BREAK, ['players' => 21]);
+
+    expect($duet['speakers'])->toBe(['markus', 'sirius', 'sirius', 'markus'])
+        ->and(explode("\n", $duet['text'])[1])->toStartWith('Kaffee um diese Uhrzeit')
+        ->and(DuetScripts::parse('Markus: Ich sag dir, Sirius: das wird knapp.'))->toBe([['speaker' => 'markus', 'text' => 'Ich sag dir, Sirius: das wird knapp.']]);
+    VoiceAgent::assertPromptedTimes(1);
+});
+
+it('turns down a duet only when one of the two never speaks, and keeps at most the configured turns', function () {
+    $line = fn (string $speaker, string $words): array => ['speaker' => $speaker, 'text' => "Das ist {$words} von {$speaker}, und er redet hier ganz normal und in einem vollständigen Satz."];
+    $duets = app(DuetScripts::class);
+
+    expect($duets->repair([$line('markus', 'eins')]))->toBeNull()
+        ->and($duets->repair([$line('sirius', 'eins')]))->toBeNull()
+        ->and($duets->repair([$line('sirius', 'eins'), $line('markus', 'zwei')])['speakers'])->toBe(['sirius', 'markus'])
+        // Seven alternating turns: the first five (`duet.turns.max`) stay.
+        ->and($duets->repair(array_map(fn (int $i): array => $line($i % 2 === 0 ? 'markus' : 'sirius', "Wortmeldung {$i}"), range(0, 6)))['speakers'])
+        ->toBe(['markus', 'sirius', 'markus', 'sirius', 'markus']);
+});
+
+it('breathes 0.45 to 0.7 seconds on a speaker change by default', function () {
+    config(['tv.commentary.voicestudio.url' => 'http://voicestudio.test', 'tv.commentary.voicestudio.retry_seconds' => 0]);
+    $tone = '';
+    for ($i = 0; $i < 12000; $i++) {
+        $tone .= pack('v', ((int) (8000 * sin($i / 8))) & 0xFFFF);
+    }
+    Http::fake(['http://voicestudio.test/generate' => Http::response(Pcm::toWav($tone, 24000), 200, ['Content-Type' => 'audio/wav']), '*' => Http::response()]);
+    $gaps = [];
+
+    foreach (range(1, 20) as $run) {
+        $ends = (new CasterFetcher(fn () => null))->voice(['Markus spricht.', 'Sirius antwortet.'], [], ['markus', 'sirius'])['ends'];
+        // A chunk is 0.5 s of tone with 140 ms of quiet at both ends; the rest is the breath.
+        $gaps[] = round($ends[1] - $ends[0] - 0.78, 3);
+    }
+
+    expect(min($gaps))->toBeGreaterThanOrEqual(0.45)
+        ->and(max($gaps))->toBeLessThanOrEqual(0.7);
 });

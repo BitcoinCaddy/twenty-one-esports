@@ -180,10 +180,11 @@ it('voices the script in chunks, deletes each history entry, and uploads one cli
         $ends = array_map('floatval', explode(',', $request->header('X-Caster-Sentence-Ends')[0]));
         $duration = (float) $request->header('X-Caster-Duration')[0];
 
-        // Each chunk's tail trimmed to the tone (0.5 s) + 70 ms fade; one pause between the chunks, 0.2 s after a
-        // plain sentence ("Hier ist Blockli."), none inside a chunk. Process::fake() ends its output with a newline.
+        // Each chunk trimmed to the tone (0.5 s) with 140 ms of quiet at both ends (the lead padded, the tail kept);
+        // one pause between the chunks, 0.2 s after a plain sentence ("Hier ist Blockli."), none inside a chunk.
+        // Process::fake() ends its output with a newline.
         return rtrim($request->body(), "\n") === casterOpus() && count($ends) === 2
-            && abs($ends[0] - 0.57) < 0.02 && abs($duration - $ends[1]) < 0.001 && abs($ends[1] - (0.57 + 0.2 + 0.57)) < 0.03;
+            && abs($ends[0] - 0.78) < 0.02 && abs($duration - $ends[1]) < 0.001 && abs($ends[1] - (0.78 + 0.2 + 0.78)) < 0.03;
     });
 
     Process::assertRan(fn ($process): bool => in_array('loudnorm=I=-16:TP=-1.5:LRA=11', $process->command, true) && in_array('libopus', $process->command, true) && in_array('pipe:1', $process->command, true));
@@ -269,15 +270,30 @@ it('keeps the first 200 ms of speech through the Opus encode and decode', functi
         ->and($rms(0.0, 0.2))->toBeGreaterThan(0.8 * $rms(0.5, 0.7));
 });
 
-it('trims the quiet tail after the last word with a short fade', function () {
-    ['pcm' => $pcm, 'rate' => $rate] = Pcm::fromWav(casterWav(0.5, 0.4));
+it('trims a chunk to its speech with 140 ms of quiet at both ends, a soft ending kept whole', function () {
+    // 0.3 s of near silence, 0.5 s of tone, a soft ending of 0.1 s at amplitude 300 (below the former threshold
+    // of 400, which cut it), a breath of 0.1 s at 100 (below the threshold, kept as the quiet tail), 0.3 s of near silence.
+    $samples = fn (float $seconds, Closure $value): string => implode('', array_map(fn (int $i): string => pack('v', $value($i) & 0xFFFF), range(0, (int) (24000 * $seconds) - 1)));
+    $soft = $samples(0.1, fn (int $i): int => (int) (300 * sin($i / 8)));
+    $pcm = $samples(0.3, fn (): int => 30).$samples(0.5, fn (int $i): int => (int) (8000 * sin($i / 8))).$soft
+        .$samples(0.1, fn (int $i): int => (int) (100 * sin($i / 8))).$samples(0.3, fn (): int => 30);
 
-    $trimmed = Pcm::trimTail($pcm, $rate, 400, 70);
-    $last = unpack('s', substr($trimmed, -2))[1];
+    $trimmed = Pcm::trimEdges($pcm, 24000, 150, 140, 100);
+    $breath = array_values(unpack('s*', substr($trimmed, (int) (0.74 * 24000) * 2, 1200 * 2)));
 
-    expect(Pcm::seconds($pcm, $rate))->toBe(0.9)
-        ->and(abs(Pcm::seconds($trimmed, $rate) - 0.57))->toBeLessThan(0.011)
-        ->and(abs($last))->toBeLessThan(50);
+    // 0.14 + 0.5 + 0.1 + 0.14 s; the soft ending byte for byte right after the tone, the breath behind it still
+    // there under the fade (not replaced by silence), the edges faded in and out.
+    expect(abs(Pcm::seconds($trimmed, 24000) - 0.88))->toBeLessThan(0.011)
+        ->and(substr($trimmed, (int) (0.64 * 24000) * 2, strlen($soft)))->toBe($soft)
+        ->and(max(array_map('abs', $breath)))->toBeGreaterThan(60)
+        ->and(abs(unpack('s', substr($trimmed, -2))[1]))->toBeLessThan(5)
+        ->and(abs(unpack('s', substr($trimmed, 0, 2))[1]))->toBeLessThan(5);
+
+    // VoiceStudio's onset right at the first sample (no quiet before it): 140 ms of silence are put in front.
+    $abrupt = Pcm::trimEdges($samples(0.5, fn (int $i): int => (int) (8000 * sin($i / 8 + 1))), 24000, 150, 140, 100);
+    expect(substr($abrupt, 0, 3360 * 2))->toBe(str_repeat("\0\0", 3360))
+        ->and(Pcm::seconds($abrupt, 24000))->toBe(0.78)
+        ->and(Pcm::trimEdges($samples(0.5, fn (): int => 30), 24000, 150, 140, 100))->toBe('');
 });
 
 it('respells league terms as whole words, longest first', function () {

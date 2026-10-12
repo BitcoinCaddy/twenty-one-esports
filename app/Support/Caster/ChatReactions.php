@@ -54,6 +54,11 @@ use Illuminate\Support\Facades\Cache;
  * queued right behind the reply. An untrusted chatter's message is never read. Skips are counted per reason in VoiceUsage
  * (`chat_reaction`), never the text.
  *
+ * About `duet_share` of the model replies to a trusted message are a short
+ * duet in one call (CasterVoice::chatDuet()): Markus answers, Sirius adds
+ * his own take, Markus may close; a wish's acknowledgement and the
+ * greeting for everybody stay Markus alone.
+ *
  * Every model reply also gets, as data (user 2026-10-12): the podcast's
  * latest episodes (PodcastFeed), the asking person's thread of the last
  * `memory_hours` and the latest lines of everybody else (ChatMemory). Every
@@ -322,7 +327,12 @@ class ChatReactions
         }
 
         $priority = (int) config('tv.commentary.scripts.chat_priority', 50);
-        $text = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, $hints, $data) : null;
+        // About `duet_share` of the replies are a short duet (user 2026-10-12: "Auch bei Chat-Messages soll Markus
+        // antworten, aber dann auch Sirius im Duett!"): Markus answers, Sirius adds his take (CasterVoice::chatDuet()).
+        $reply = ! ScriptQueue::aiEnabled() ? null : (self::duetDue()
+            ? $this->voice->chatDuet($message, $name, $hints, $data)
+            : (($solo = $this->voice->chatReply($message, $name, $hints, $data)) === null ? null : ['text' => $solo, 'speakers' => null]));
+        $text = $reply['text'] ?? null;
 
         if ($text === null && ScriptQueue::aiEnabled()) {
             $this->usage->recordRejection(self::SKIPS, ['voice_rejected']);
@@ -330,7 +340,8 @@ class ChatReactions
 
         // The model is off or its draft did not pass: a pattern reply to the message's intent, never silence.
         $spoken = $text ?? $this->lines->reply($message, $name);
-        $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $spoken, SceneFacts::hash($facts), $priority, $now, source: $text === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
+        $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $spoken, SceneFacts::hash($facts), $priority, $now, source: $text === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI,
+            speakers: $reply['speakers'] ?? null);
         if ($line !== null) {
             $this->memory->answer($line, $spoken);
         }
@@ -340,6 +351,14 @@ class ChatReactions
         $this->cache->rememberExchange($event->pubkey, implode(', ', $keywords));
 
         return true;
+    }
+
+    /** Whether the next trusted chat reply is a duet: a draw at `chat.duet_share` (0 never, 1 always). */
+    public static function duetDue(): bool
+    {
+        $share = (float) config('tv.commentary.chat.duet_share', 0.0);
+
+        return $share > 0.0 && mt_rand() / (mt_getrandmax() + 1) < $share;
     }
 
     /**

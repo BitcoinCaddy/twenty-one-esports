@@ -16,9 +16,10 @@ use Throwable;
  * The workstation side of TWENTY ONE TV (`php artisan caster:fetch` on Markus
  * Turm's machine): claims the next script from the server, voices it in
  * chunks of two or three sentences (chunks()) with the local VoiceStudio
- * (profile `ee7a2a18`, tempo 1.0), trims each chunk's quiet tail (+70 ms
- * fade), puts real pauses between the chunks (≈0.2 s, ≈0.35 s after ! ? : or
- * a marker, slightly random),
+ * (`voicestudio.profiles`, a tempo per speaker), trims each chunk to its
+ * speech with at least `pad_ms` of quiet left at both ends (Pcm::trimEdges()),
+ * puts real pauses between the chunks (≈0.2 s, ≈0.35 s after ! ? : or a
+ * marker, 0.45 to 0.7 s on a speaker change, slightly random),
  * normalises to -16 LUFS and encodes Opus with ffmpeg (stdin to stdout), and
  * uploads the clip.
  *
@@ -215,7 +216,7 @@ class CasterFetcher
 
         foreach ($chunks as $index => [$speaker, $lines]) {
             $sentence = (string) end($lines);
-            $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $this->profile($speaker));
+            $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $this->profile($speaker), $this->speed($speaker));
 
             if ($wav === null) {
                 return null;
@@ -232,12 +233,12 @@ class CasterFetcher
             }
 
             $rate = $partRate;
-            $pcm .= Pcm::trimTail($part, $rate, (int) $settings['silence_threshold'], (int) $settings['fade_ms']);
+            $pcm .= Pcm::trimEdges($part, $rate, (int) ($settings['silence_threshold'] ?? 150), (int) ($settings['pad_ms'] ?? 140), (int) ($settings['fade_ms'] ?? 100));
             $ends[] = round(Pcm::seconds($pcm, $rate), 3);
 
             if ($index < count($chunks) - 1 && $chunks[$index + 1][0] !== $speaker) {
-                $min = (float) ($speakerPause['min'] ?? 0.25);
-                $pcm .= Pcm::silence(max(0.1, $min + max(0.0, (float) ($speakerPause['max'] ?? 0.4) - $min) * (mt_rand(0, 1000) / 1000)), $rate);
+                $min = (float) ($speakerPause['min'] ?? 0.45);
+                $pcm .= Pcm::silence(max(0.1, $min + max(0.0, (float) ($speakerPause['max'] ?? 0.7) - $min) * (mt_rand(0, 1000) / 1000)), $rate);
             } elseif ($index < count($chunks) - 1) {
                 $base = ScriptGuard::accented($sentence) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
                 $jitter = (float) ($pause['jitter'] ?? 0.0);
@@ -273,10 +274,10 @@ class CasterFetcher
 
     /**
      * One sentence from VoiceStudio as WAV bytes in the voice of
-     * `$profileId`, retried on connection errors and 5xx; its history entry
-     * deleted right after.
+     * `$profileId` at `$speed`, retried on connection errors and 5xx; its
+     * history entry deleted right after.
      */
-    private function generate(string $text, string $profileId): ?string
+    private function generate(string $text, string $profileId, float $speed): ?string
     {
         $settings = $this->settings();
         $attempts = max(1, (int) $settings['retries'] + 1);
@@ -286,7 +287,7 @@ class CasterFetcher
                 $response = Http::asMultipart()->timeout((int) $settings['timeout_seconds'])->post(rtrim((string) $settings['url'], '/').'/generate', [
                     'text' => $text,
                     'profile_id' => $profileId,
-                    'speed' => (string) ($profileId === (string) ($settings['profiles']['sirius'] ?? '') ? ($settings['speeds']['sirius'] ?? $settings['speed']) : $settings['speed']),
+                    'speed' => (string) $speed,
                     'language' => (string) $settings['language'],
                 ]);
 
@@ -334,6 +335,15 @@ class CasterFetcher
         $profile = ((array) ($settings['profiles'] ?? []))[$speaker] ?? null;
 
         return is_string($profile) && trim($profile) !== '' ? trim($profile) : (string) $settings['profile_id'];
+    }
+
+    /** The tempo of a speaker (`voicestudio.speeds`), Markus' `speed` for one without its own. */
+    private function speed(string $speaker): float
+    {
+        $settings = $this->settings();
+        $speed = ((array) ($settings['speeds'] ?? []))[$speaker] ?? null;
+
+        return is_numeric($speed) ? (float) $speed : (float) ($settings['speed'] ?? 1.0);
     }
 
     private function release(int $id): void

@@ -36,9 +36,9 @@ return [
     | scripts) instead of eating the last clips.
     |
     | voicestudio (workstation): the local VoiceStudio API, the voice profile
-    | (`ee7a2a18`, cut by the user), tempo 1.0, pauses between sentences
-    | (seconds, slightly random), the quiet tail trimmed after the last word
-    | with a `fade_ms` fade out. Every generation's history entry is deleted
+    | of each speaker and its tempo (`php artisan caster:voices` lists them),
+    | pauses between chunks (seconds, slightly random), each chunk trimmed to
+    | its speech with `pad_ms` of quiet at both ends. Every generation's history entry is deleted
     | right after the audio was read (the fetcher leaves no files behind).
     |
     | mix (App\Support\TwentyOne\Stream\FfmpegCommands): TV levels, voice at
@@ -198,8 +198,9 @@ return [
                 'markus' => env('TV_VOICESTUDIO_PROFILE', 'ee7a2a18'),
                 'sirius' => env('TV_VOICESTUDIO_PROFILE_SIRIUS', '446d98e1'),
             ],
-            // The breath when the speaker changes inside a clip (seconds, random within the range).
-            'speaker_pause' => ['min' => 0.25, 'max' => 0.4],
+            // The breath when the speaker changes inside a clip (seconds, random within the range); 0.25 to 0.4 s put
+            // Sirius too close to Markus (user 2026-10-12).
+            'speaker_pause' => ['min' => 0.45, 'max' => 0.7],
             'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
             // Sirius' clone speaks faster than Markus' at the same speed (user 2026-10-12: "Er redet schneller als Markus").
             'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92)],
@@ -211,9 +212,13 @@ return [
             // (user 2026-10-11: "Und er spricht zu abgehackt"; one call per sentence put a pause after each).
             'pause' => ['sentence' => 0.2, 'accent' => 0.35, 'scene' => [1.0, 1.5], 'jitter' => 0.08],
             'chunk' => ['max_sentences' => 3, 'max_words' => 25],
-            'fade_ms' => 70,
-            // Below this amplitude (of 32767) a 10 ms window counts as quiet when the tail is trimmed.
-            'silence_threshold' => 400,
+            // Each chunk is trimmed to its speech with at least `pad_ms` of quiet at both ends, the kept tail faded out
+            // over `fade_ms` (Pcm::trimEdges()). Measured 2026-10-12: VoiceStudio leaves about 100 ms before the onset
+            // and 110 to 160 ms after the last word, its noise floor peaks near 50.
+            'pad_ms' => 140,
+            'fade_ms' => 100,
+            // Below this amplitude (of 32767) a 10 ms window counts as quiet when a chunk is trimmed (400 cut soft endings).
+            'silence_threshold' => 150,
             'loudness_lufs' => -16,
             'opus_kbps' => 48,
             'ffmpeg' => env('TV_COMMENTARY_FFMPEG', 'ffmpeg'),
@@ -481,6 +486,8 @@ return [
             'profiles' => (bool) env('TV_COMMENTARY_CHAT_PROFILES', false),
             'per_person_minutes' => (int) env('TV_COMMENTARY_CHAT_PERSON_MINUTES', 2),
             'per_hour' => (int) env('TV_COMMENTARY_CHAT_PER_HOUR', 20),
+            // The share of trusted chat replies that are a short duet: Markus answers, Sirius adds his take (user 2026-10-12).
+            'duet_share' => (float) env('TV_COMMENTARY_CHAT_DUET_SHARE', 0.5),
             'notes_per_person' => 50,
             'notes_days' => 30,
             'notes_total' => 20_000,

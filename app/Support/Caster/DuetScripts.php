@@ -26,15 +26,19 @@ use Throwable;
  * complete sentences within the word limits, at most two tries (the second
  * with the reasons of the first), the duet's own daily cap
  * (`duet.daily_cap`) and the monthly budget, counted in VoiceUsage under
- * `caster_duet`. A draft whose turns do not follow the drawn sequence is
- * turned down (TURNS). Repeats and sign-offs leave it in
+ * `caster_duet`. A draft whose turns differ from the drawn sequence is kept
+ * with the turns it has (consecutive lines of one speaker are one turn, at
+ * most `duet.turns.max` turns); only a draft in which one of the two never
+ * speaks is turned down (TURNS). Measured on prod 2026-10-12: 18 of 47 duet
+ * calls were turned down for a sequence the model did not follow, and
+ * Sirius went quiet. Repeats and sign-offs leave it in
  * ScriptQueue::enqueue(), line by line with their speakers.
  */
 final class DuetScripts
 {
     public const CHANNEL = 'caster_duet';
 
-    /** The turns of a draft did not follow the drawn sequence (a turn missing, merged or by the wrong speaker). */
+    /** One of the two never speaks in the draft (no "Sirius:" line, or no "Markus:" line). */
     public const TURNS = 'duet_turns';
 
     /** @var array<string, string> */
@@ -112,23 +116,7 @@ final class DuetScripts
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
         $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
-        $cutOff = $response->steps->last()?->finishReason === FinishReason::Length;
-        $duet = $this->repair(self::parse($this->hygiene->clean($raw, true, 'de')), $sequence);
-
-        if ($duet === null) {
-            $this->usage->recordRejection(self::CHANNEL, [self::TURNS]);
-            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
-
-            return [null, [self::TURNS]];
-        }
-
-        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
-        $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $duet['text']));
-        $violations = CasterVoice::free([
-            ...$this->hygiene->check($spoken, 'de', [], null, $cutOff, null, [], $maxWords, ScriptGuard::maxCommas()),
-            ...$this->voice->guard()->check($spoken, $facts, 100_000, null),
-            ...$this->scriptGuard->check($duet['text'], count($sequence), 100, $maxWords),
-        ]);
+        [$duet, $violations] = $this->evaluate($raw, $facts, $response->steps->last()?->finishReason === FinishReason::Length);
 
         if ($violations !== []) {
             $this->usage->recordRejection(self::CHANNEL, $violations);
@@ -143,19 +131,52 @@ final class DuetScripts
     }
 
     /**
+     * A model answer checked like draft() does it: parsed into turns,
+     * repaired, then the hygiene, fact and script guards over its spoken
+     * text. The duet, or null with the reason codes.
+     *
+     * @param  array<array-key, mixed>  $facts
+     * @return array{0: array{text: string, speakers: list<string>}|null, 1: list<string>}
+     */
+    public function evaluate(string $raw, array $facts, bool $cutOff = false): array
+    {
+        $duet = $this->repair(self::parse($this->hygiene->clean($raw, true, 'de')));
+
+        if ($duet === null) {
+            return [null, [self::TURNS]];
+        }
+
+        $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
+        $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $duet['text']));
+        $violations = CasterVoice::free([
+            ...$this->hygiene->check($spoken, 'de', [], null, $cutOff, null, [], $maxWords, ScriptGuard::maxCommas()),
+            ...$this->voice->guard()->check($spoken, $facts, 100_000, null),
+            ...$this->scriptGuard->check($duet['text'], count(DuetDirector::turns(ScriptGuard::lines($duet['text']), $duet['speakers'])), 100, $maxWords),
+        ]);
+
+        return $violations === [] ? [$duet, []] : [null, $violations];
+    }
+
+    /**
      * The parsed turns repaired like a solo script, turn by turn (one
      * sentence per line, fragments and overlong sentences dropped while one
      * stays, at most the speaker's `duet.sentences.max`), as text with one
-     * speaker per line; null when the turns do not follow `$sequence` or a
-     * turn lost every sentence.
+     * speaker per line. The turns the model wrote count, not the drawn
+     * sequence: consecutive lines of one speaker are already one turn
+     * (parse()), so no speaker ever has two turns in a row (`max_run`), and
+     * turns beyond `duet.turns.max` are dropped. null when Markus or Sirius
+     * never speaks, or a turn lost every sentence.
      *
      * @param  list<array{speaker: string, text: string}>  $turns
-     * @param  list<string>  $sequence
      * @return array{text: string, speakers: list<string>}|null
      */
-    public function repair(array $turns, array $sequence): ?array
+    public function repair(array $turns): ?array
     {
-        if (array_column($turns, 'speaker') !== $sequence) {
+        $turns = DuetDirector::turns(array_column($turns, 'text'), array_column($turns, 'speaker'));
+        $turns = array_slice($turns, 0, max(2, (int) config('tv.commentary.duet.turns.max', 5)));
+        $speakers = array_column($turns, 'speaker');
+
+        if (! in_array(DuetDirector::SIRIUS, $speakers, true) || ! in_array(DuetDirector::MARKUS, $speakers, true)) {
             return null;
         }
 
@@ -184,7 +205,10 @@ final class DuetScripts
      * The model's lines as turns: a line led by "Markus:" or "Sirius:" (any
      * case, also bold or with a dash) starts or continues that speaker's
      * turn, a line without a speaker continues the current turn; a line
-     * before any speaker counts for Markus.
+     * before any speaker counts for Markus. A speaker tag right after a
+     * sentence end inside a line starts a new line first: Haiku often writes
+     * the whole exchange on one line ("Markus: … . Sirius: … . Markus: …",
+     * 3 of 10 real calls on 2026-10-12), which read as Markus alone.
      *
      * @return list<array{speaker: string, text: string}>
      */
@@ -192,6 +216,7 @@ final class DuetScripts
     {
         [$lines, $speakers] = [[], []];
         $current = DuetDirector::MARKUS;
+        $text = preg_replace('/(?<=[.!?…"“”»)\]])[ \t]+(?=[*_]*(?:markus|sirius)(?:\s+turm)?[*_]*\s*[:：])/iu', "\n", $text) ?? $text;
 
         foreach (ScriptGuard::lines($text) as $line) {
             if (preg_match('/^[\s*_\-–—>]*(markus|sirius)(?:\s+turm)?[\s*_]*[:：][\s*_]*(.*)$/iu', $line, $match) === 1) {
@@ -253,7 +278,7 @@ final class DuetScripts
 
         if ($rejected !== []) {
             $parts[] = "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.($code === self::TURNS
-                ? 'Die Wortmeldungen folgten nicht der Reihenfolge oben: jede Zeile mit „Markus:“ oder „Sirius:“ beginnen, genau in dieser Abfolge.'
+                ? 'Einer der beiden kam gar nicht zu Wort: jede Zeile mit „Markus:“ oder „Sirius:“ beginnen, in der Abfolge oben, und beide sprechen.'
                 : (VoicePrompt::REASON_HINTS[$code] ?? $code)), $rejected));
         }
 

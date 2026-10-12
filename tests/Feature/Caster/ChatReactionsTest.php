@@ -10,6 +10,7 @@ use App\Models\PubkeyModeration;
 use App\Models\TrustRank;
 use App\Models\TrustRun;
 use App\Models\WotLevel;
+use App\Support\Caster\CasterPersonas;
 use App\Support\Caster\ChatReactions;
 use App\Support\Caster\ChatterCache;
 use App\Support\Caster\PersonaCards;
@@ -649,4 +650,66 @@ it('speaks an echoed 24/7 as words instead of turning the reply down for a digit
 
     expect(casterReactions()->poll(CarbonImmutable::now()))->toBe(1)
         ->and(CasterScript::query()->sole()->text)->toBe("Du fragst nach vierundzwanzig sieben, El Presidento Ben, und das trifft es ziemlich genau.\nDer Sender schläft nie, und ich eigentlich auch nicht.");
+});
+
+/** A chat duet as the model writes it: Markus answers, Sirius adds his take, Markus closes; one line led by its speaker each. */
+const CHAT_DUET_ANSWER = "Markus: Du fragst, ob ich nicht arbeiten muss, El Presidento Ben, dabei arbeite ich gerade an diesem Mikrofon.\n"
+    ."Markus: Das hier ist nämlich echter Proof of Work, nur ganz ohne Stempeluhr und ohne Chef im Nacken.\n"
+    ."Sirius: Proof of Work nennt er das, dabei sitzt er seit Stunden mit Kaffee im Allgäu und lässt die Grafikkarte schwitzen.\n"
+    ."Sirius: Bei mir in Düsseldorf würde man das eher eine sehr gemütliche Schicht mit Altbier am Tresen nennen.\n"
+    .'Markus: Neid ist auch nur eine Form von Anerkennung, mein Lieber, das weiß doch jeder hier im Chat.';
+
+it('answers a trusted chatter as a duet at the duet share: Markus first, then Sirius, one call', function () {
+    config(['tv.commentary.chat.duet_share' => 1.0]);
+    casterBen($this, 'Musst du nicht arbeiten?');
+    VoiceAgent::fake([['text' => CHAT_DUET_ANSWER, 'canon_id' => null, 'mood' => 'call']]);
+
+    expect(casterReactions()->poll(CarbonImmutable::now()))->toBe(1);
+    $script = CasterScript::query()->sole();
+
+    expect($script->kind)->toBe(CasterScript::CHAT)
+        ->and($script->speakers)->toBe(['markus', 'markus', 'sirius', 'sirius', 'markus'])
+        ->and($script->sentences()[2])->toStartWith('Proof of Work nennt er das')
+        ->and($script->text)->not->toContain('Sirius:');
+    VoiceAgent::assertPromptedTimes(1);
+    // The same chat prompt (message as data, free rules) plus the duet block, under the duets' system prompt with Sirius' persona.
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "<<<chat\nMusst du nicht arbeiten?\nchat>>>")
+        && str_contains($prompt->prompt, "Duett\n\nDiesmal antwortet ihr zu zweit")
+        && str_contains($prompt->prompt, 'genau einer Wortmeldung von 2 bis 4 Sätzen')
+        && str_contains($prompt->agent->instructions(), CasterPersonas::sirius()));
+});
+
+it('keeps a chat duet draft without Sirius as Markus reply alone, and asks again when Sirius speaks first', function () {
+    config(['tv.commentary.chat.duet_share' => 1.0]);
+    casterBen($this, 'Musst du nicht arbeiten?');
+    $siriusFirst = "Sirius: Arbeiten, der Markus, das wäre ja mal ganz was Neues hier in diesem schönen Stream.\nMarkus: Du bist doch nur neidisch auf meinen gemütlichen Platz hier am Mikrofon, El Presidento Ben.";
+    VoiceAgent::fake([['text' => $siriusFirst, 'canon_id' => null, 'mood' => 'call'], ['text' => "Markus: Du fragst, ob ich nicht arbeiten muss, El Presidento Ben, dabei arbeite ich gerade.\nMarkus: Das hier ist nämlich echter Proof of Work am Mikrofon, nur ohne Stempeluhr.", 'canon_id' => null, 'mood' => 'call']]);
+
+    expect(casterReactions()->poll(CarbonImmutable::now()))->toBe(1);
+    $script = CasterScript::query()->sole();
+
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->speakers)->toBeNull()
+        ->and($script->sentences())->toHaveCount(2)
+        ->and($script->text)->not->toContain('Markus:');
+    VoiceAgent::assertPromptedTimes(2);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Markus muss zuerst antworten'));
+});
+
+it('answers alone at a duet share of zero, and greets strangers alone at any share', function () {
+    casterBen($this, 'Musst du nicht arbeiten?');
+    VoiceAgent::fake([['text' => "Du fragst, ob ich nicht arbeiten muss, El Presidento Ben, dabei arbeite ich gerade.\nDas hier ist nämlich echter Proof of Work am Mikrofon, nur ohne Stempeluhr.", 'canon_id' => null, 'mood' => 'call']]);
+
+    casterReactions()->poll(CarbonImmutable::now());
+
+    expect(CasterScript::query()->sole()->speakers)->toBeNull();
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => ! str_contains($prompt->prompt, 'Duett') && ! str_contains($prompt->agent->instructions(), CasterPersonas::sirius()));
+
+    CasterScript::query()->delete();
+    config(['tv.commentary.chat.duet_share' => 1.0]);
+    $this->reader->events = [casterChat(new TestSigner, 'kauft meinen zwiebelcoin', now()->addMinutes(10)->getTimestamp())];
+
+    expect(casterReactions()->poll(CarbonImmutable::now()->addMinutes(10)))->toBe(1)
+        ->and(CasterScript::query()->sole()->topic)->toBe(ChatReactions::GREETING_TOPIC)
+        ->and(CasterScript::query()->sole()->speakers)->toBeNull();
 });

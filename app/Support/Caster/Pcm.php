@@ -60,6 +60,12 @@ final class Pcm
         throw new InvalidArgumentException('no data chunk');
     }
 
+    /** The PCM as a WAV file (16 bit, mono). */
+    public static function toWav(string $pcm, int $rate): string
+    {
+        return 'RIFF'.pack('V', 36 + strlen($pcm)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, $rate, $rate * self::BYTES_PER_SAMPLE, self::BYTES_PER_SAMPLE, 16).'data'.pack('V', strlen($pcm)).$pcm;
+    }
+
     public static function seconds(string $pcm, int $rate): float
     {
         return strlen($pcm) / self::BYTES_PER_SAMPLE / max(1, $rate);
@@ -71,34 +77,83 @@ final class Pcm
     }
 
     /**
-     * The audio up to the end of its last loud window (10 ms windows above
-     * `$threshold`), plus `$fadeMs` faded out: a quiet tail after the last
-     * word made the sentence end sound like a question (plan, "Referenz-Regeln").
+     * The audio from `$padMs` before its first loud window to `$padMs` after
+     * its last one (10 ms windows with a peak at or above `$threshold`), the
+     * kept quiet tail faded out over at most `$fadeMs`, and silence added
+     * where VoiceStudio left less than `$padMs` at either end: every chunk
+     * starts and ends with at least `$padMs` of quiet, so no soft onset or
+     * word ending is cut (user 2026-10-12: "Sirius-Audios werden am Anfang
+     * und Ende irgendwie abgeschnitten"). The former tail trim cut at the
+     * last window above 400 plus a 70 ms fade and never padded the start.
+     * Empty when no window is loud.
      */
-    public static function trimTail(string $pcm, int $rate, int $threshold, int $fadeMs): string
+    public static function trimEdges(string $pcm, int $rate, int $threshold, int $padMs, int $fadeMs): string
     {
         $samples = intdiv(strlen($pcm), self::BYTES_PER_SAMPLE);
         $window = max(1, intdiv($rate, 100));
-        $end = 0;
+        [$first, $end] = [null, null];
 
-        for ($start = ($samples - 1) - (($samples - 1) % $window); $start >= 0; $start -= $window) {
-            $chunk = unpack('s*', substr($pcm, $start * self::BYTES_PER_SAMPLE, $window * self::BYTES_PER_SAMPLE)) ?: [];
-            $peak = $chunk === [] ? 0 : max(array_map('abs', $chunk));
+        for ($start = 0; $start < $samples; $start += $window) {
+            if (self::peak($pcm, $start, $window) >= $threshold) {
+                $first = $start;
+                break;
+            }
+        }
 
-            if ($peak >= $threshold) {
+        if ($first === null) {
+            return '';
+        }
+
+        for ($start = ($samples - 1) - (($samples - 1) % $window); $start >= $first; $start -= $window) {
+            if (self::peak($pcm, $start, $window) >= $threshold) {
                 $end = min($samples, $start + $window);
                 break;
             }
         }
 
-        if ($end === 0) {
-            return '';
+        $end ??= min($samples, $first + $window);
+        $pad = max(0, (int) round($rate * $padMs / 1000));
+        $from = max(0, $first - $pad);
+        $to = min($samples, $end + $pad);
+        $kept = self::fadeOut(substr($pcm, $from * self::BYTES_PER_SAMPLE, ($to - $from) * self::BYTES_PER_SAMPLE), min($to - $end, (int) round($rate * $fadeMs / 1000)));
+
+        // A cut lead gets a 10 ms fade in against a click; the quiet before the onset stays otherwise untouched.
+        $kept = $from > 0 ? self::fadeIn($kept, min($first - $from, intdiv($rate, 100))) : $kept;
+
+        return self::silence(($pad - ($first - $from)) / $rate, $rate).$kept.self::silence(($pad - ($to - $end)) / $rate, $rate);
+    }
+
+    /** The highest absolute sample of the `$length` samples from `$start`. */
+    private static function peak(string $pcm, int $start, int $length): int
+    {
+        $peak = 0;
+
+        foreach (unpack('s*', substr($pcm, $start * self::BYTES_PER_SAMPLE, $length * self::BYTES_PER_SAMPLE)) ?: [] as $sample) {
+            $peak = max($peak, $sample < 0 ? -$sample : $sample);
         }
 
-        $fade = min($samples - $end, (int) round($rate * $fadeMs / 1000));
-        $kept = substr($pcm, 0, ($end + $fade) * self::BYTES_PER_SAMPLE);
+        return $peak;
+    }
 
-        return self::fadeOut($kept, $fade);
+    /** The first `$samplesToFade` samples ramped up linearly from silence. */
+    public static function fadeIn(string $pcm, int $samplesToFade): string
+    {
+        $samples = intdiv(strlen($pcm), self::BYTES_PER_SAMPLE);
+        $samplesToFade = min($samples, max(0, $samplesToFade));
+
+        if ($samplesToFade === 0) {
+            return $pcm;
+        }
+
+        $head = unpack('s*', substr($pcm, 0, $samplesToFade * self::BYTES_PER_SAMPLE)) ?: [];
+        $faded = '';
+        $i = 0;
+
+        foreach ($head as $sample) {
+            $faded .= pack('v', ((int) round($sample * ($i++ / $samplesToFade))) & 0xFFFF);
+        }
+
+        return $faded.substr($pcm, $samplesToFade * self::BYTES_PER_SAMPLE);
     }
 
     /** The last `$samplesToFade` samples ramped down linearly to silence. */

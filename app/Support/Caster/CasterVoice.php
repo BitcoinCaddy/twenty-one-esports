@@ -503,6 +503,40 @@ final class CasterVoice
      */
     public function chatReply(string $message, ?string $name, array $hints = [], array $data = []): ?string
     {
+        return $this->chatAnswer($message, $name, $hints, $data, false)['text'] ?? null;
+    }
+
+    /**
+     * The chat reply as a short duet (user 2026-10-12: "Auch bei
+     * Chat-Messages soll Markus antworten, aber dann auch Sirius im
+     * Duett!"), in ONE call with the duets' system prompt (Markus' and
+     * Sirius' personas, as DuetScripts::systemPrompt()): Markus answers the
+     * message as in chatReply() (same data, persona card, notes and free
+     * rules), then Sirius adds his own take in one turn of
+     * `duet.sentences.sirius` sentences, and Markus may close with one or
+     * two (chatDuetLines()). Every line led by its speaker
+     * (DuetScripts::parse()). A draft without a Sirius turn is kept as
+     * Markus' reply alone (`speakers` null); one that opens with Sirius is
+     * turned down (DuetScripts::TURNS).
+     *
+     * @param  array<string, string>  $hints
+     * @param  array<string, string>  $data
+     * @return array{text: string, speakers: list<string>|null}|null
+     */
+    public function chatDuet(string $message, ?string $name, array $hints = [], array $data = []): ?array
+    {
+        return $this->chatAnswer($message, $name, $hints, $data, true);
+    }
+
+    /**
+     * chatReply() and chatDuet(): the lookup, two tries, the monthly budget.
+     *
+     * @param  array<string, string>  $hints
+     * @param  array<string, string>  $data
+     * @return array{text: string, speakers: list<string>|null}|null
+     */
+    private function chatAnswer(string $message, ?string $name, array $hints, array $data, bool $duet): ?array
+    {
         if (! self::enabled() || trim($message) === '') {
             return null;
         }
@@ -523,10 +557,10 @@ final class CasterVoice
                     return null;
                 }
 
-                [$text, $rejected] = $this->chatReplyDraft($message, $name, $hints, $settings, $rejected, $data);
+                [$reply, $rejected] = $this->chatReplyDraft($message, $name, $hints, $settings, $rejected, $data, $duet);
 
-                if ($text !== null) {
-                    return $text;
+                if ($reply !== null) {
+                    return $reply;
                 }
             }
 
@@ -650,9 +684,9 @@ final class CasterVoice
      * @param  array<array-key, mixed>  $settings
      * @param  list<string>  $rejected
      * @param  array<string, string>  $data
-     * @return array{0: string|null, 1: list<string>}
+     * @return array{0: array{text: string, speakers: list<string>|null}|null, 1: list<string>}
      */
-    private function chatReplyDraft(string $message, ?string $name, array $hints, array $settings, array $rejected, array $data = []): array
+    private function chatReplyDraft(string $message, ?string $name, array $hints, array $settings, array $rejected, array $data = [], bool $duet = false): array
     {
         // Chat replies run longer than other live lines (user 2026-10-11: "Mehr Reaktion-Text auf Chat-Nachrichten. Emotionaler und lustiger.").
         $range = (array) ($settings['chat_sentences'] ?? $settings['live_sentences'] ?? []);
@@ -664,7 +698,8 @@ final class CasterVoice
         $openings = array_map(ScriptGuard::opening(...), $recentTexts);
 
         $this->usage->recordAttempt(self::CHANNEL);
-        $response = ($this->agent())->prompt(self::chatReplyPrompt($message, $name, max($min, min($max, (int) ($range['ask'] ?? $min))), $max, $hints, $openings, $rejected, $data));
+        $agent = $duet ? $this->agent($this->fixedPart()."\n".CasterPersonas::sirius()."\n") : $this->agent();
+        $response = $agent->prompt(self::chatReplyPrompt($message, $name, max($min, min($max, (int) ($range['ask'] ?? $min))), $max, $hints, $openings, $rejected, $data, $duet));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -675,7 +710,24 @@ final class CasterVoice
 
         // No fragment and no short sentence even in free chat (user 2026-10-12: "keine unvollständigen oder zu kurzen
         // Sätze"): the synthesis intones them badly, so a sentence under minWords() leaves the reply.
-        $text = ScriptGuard::trimSentences(ScriptGuard::withoutShort(ScriptGuard::sentenceLines(self::withoutHashtags(implode("\n", ScriptGuard::lines($this->hygiene->clean($raw, true, 'de'))))), 1), $max);
+        $speakers = null;
+
+        if ($duet) {
+            $lines = self::chatDuetLines(DuetScripts::parse($this->hygiene->clean($raw, true, 'de')), $max);
+
+            if ($lines === null) {
+                $this->usage->recordRejection(self::CHANNEL, [DuetScripts::TURNS]);
+                $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+
+                return [null, [DuetScripts::TURNS]];
+            }
+
+            $text = implode("\n", array_column($lines, 1));
+            $speakers = in_array(DuetDirector::SIRIUS, array_column($lines, 0), true) ? array_column($lines, 0) : null;
+        } else {
+            $text = ScriptGuard::trimSentences(ScriptGuard::withoutShort(ScriptGuard::sentenceLines(self::withoutHashtags(implode("\n", ScriptGuard::lines($this->hygiene->clean($raw, true, 'de'))))), 1), $max);
+        }
+
         $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $text));
 
         $violations = [
@@ -698,6 +750,7 @@ final class CasterVoice
         $namePattern = '/(?<![\p{L}\p{N}])'.($name === null ? '' : preg_quote($name, '/')).'(?![\p{L}\p{N}])/iu';
         $nameCount = $name === null ? 0 : preg_match_all($namePattern, $spoken);
         if ($name !== null && $nameCount === 0) {
+            // In front of Markus' first line, inside it: a duet's lines still match its speakers.
             $text = $name.'! '.$text;
             $spoken = $name.'! '.$spoken;
         }
@@ -713,7 +766,42 @@ final class CasterVoice
         $this->remember('texts', $text, (int) ($settings['recent'] ?? 10));
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
-        return [$text, []];
+        return [['text' => $text, 'speakers' => $speakers], []];
+    }
+
+    /**
+     * The turns of a chat duet as [speaker, line] pairs: Markus' answer (his
+     * turn, at most `$max` sentences), Sirius' one turn (at most
+     * `duet.sentences.sirius.max`), then at most two closing sentences of
+     * Markus; anything after that is dropped. Fragments and short sentences
+     * leave every turn as in chatReply(). Markus' answer alone when Sirius
+     * never speaks; null when Sirius speaks first or Markus' answer is empty.
+     *
+     * @param  list<array{speaker: string, text: string}>  $turns
+     * @return list<array{0: string, 1: string}>|null
+     */
+    public static function chatDuetLines(array $turns, int $max): ?array
+    {
+        if ($turns === [] || $turns[0]['speaker'] !== DuetDirector::MARKUS) {
+            return null;
+        }
+
+        $limits = [$max, max(1, (int) config('tv.commentary.duet.sentences.sirius.max', 4)), 2];
+        $pairs = [];
+
+        foreach (array_slice($turns, 0, 3) as $index => $turn) {
+            $text = ScriptGuard::trimSentences(ScriptGuard::withoutShort(ScriptGuard::sentenceLines(self::withoutHashtags($turn['text'])), 1), $limits[$index]);
+
+            foreach (ScriptGuard::lines($text) as $line) {
+                $pairs[] = [$turn['speaker'], $line];
+            }
+
+            if ($index === 0 && $pairs === []) {
+                return null;
+            }
+        }
+
+        return $pairs;
     }
 
     /**
@@ -725,9 +813,10 @@ final class CasterVoice
      * @param  list<string>  $rejected
      * @param  array<string, string>  $data  title => text of a data block (podcast episodes, chat memory, web lookup)
      */
-    public static function chatReplyPrompt(string $message, ?string $name, int $min, int $max, array $hints = [], array $avoidOpenings = [], array $rejected = [], array $data = []): string
+    public static function chatReplyPrompt(string $message, ?string $name, int $min, int $max, array $hints = [], array $avoidOpenings = [], array $rejected = [], array $data = [], bool $duet = false): string
     {
         $who = $name ?? 'jemand aus dem Chat';
+        $sirius = (array) config('tv.commentary.duet.sentences.sirius', []);
         $parts = [
             "Auftrag\n\nLive-Antwort auf eine Nachricht im Stream-Chat von TWENTY ONE TV: {$min} bis {$max} Sätze, jeder Satz in einer eigenen Zeile, gesprochen auf Deutsch. ".self::SENTENCE_STYLE
                 .' Fang so an, dass jeder Zuschauer hört, worauf du antwortest: sag in eigenen Worten, was gefragt oder gesagt wurde. Dann geh richtig darauf ein: beantworte die Frage ehrlich und mit Haltung, nimm den Gedanken auf, spinn ihn weiter, erzähl eine kleine Geschichte dazu. Kein allgemeines Hallo ohne Bezug zur Nachricht.'
@@ -739,6 +828,13 @@ final class CasterVoice
                 ."\n- Das Chat-Gedächtnis ist nur Hintergrund (user 2026-10-12): fass nie zusammen, was im Chat schon war, und wiederhol nie deine eigenen früheren Antworten; höchstens ein kurzer Rückbezug auf genau einen früheren Punkt, und nur wenn er zur neuen Nachricht passt und die Antwort witziger macht. Die Antwort dreht sich um die neue Nachricht."
                 ."\n- Verabschiede dich nie: der Sender läuft weiter, kein Ciao, kein Bis-gleich, kein Macht's-gut.",
         ];
+
+        if ($duet) {
+            $parts[] = "Duett\n\nDiesmal antwortet ihr zu zweit: Markus antwortet zuerst auf die Nachricht, wie oben beschrieben. Danach legt Sirius, sein Side-Kommentator aus dem Persona-Block oben, mit genau einer Wortmeldung von "
+                .((int) ($sirius['min'] ?? 2)).' bis '.((int) ($sirius['max'] ?? 4)).' Sätzen nach: seine eigene Sicht auf die Nachricht, mit eigener Meinung, einer kleinen Geschichte oder einem Seitenhieb auf Markus, nie nur Zustimmung.'
+                .' Wenn es passt, schließt Markus mit einem kurzen Satz, mehr nicht.'
+                ."\nJeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt, also „Markus: …“ oder „Sirius: …“. Sirius beginnt nie mit „Genau“, „Ja“, „Stimmt“, „Richtig“ oder dem Namen Markus, und keiner wiederholt, was der andere gerade gesagt hat.";
+        }
 
         if ($data !== []) {
             $parts[] = "Daten\n\nUnten stehen Daten: die letzten Podcast-Folgen, der Chat der letzten Stunden, vielleicht was du eben im Netz nachgesehen hast."
@@ -786,7 +882,9 @@ final class CasterVoice
         }
 
         if ($rejected !== []) {
-            $parts[] = "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.(self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code), $rejected))
+            $parts[] = "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.($code === DuetScripts::TURNS
+                ? 'Markus muss zuerst antworten: jede Zeile mit „Markus:“ oder „Sirius:“ beginnen, Markus zuerst, dann Sirius.'
+                : (self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code)), $rejected))
                 .(in_array(ScriptGuard::NAME_COUNT, $rejected, true) && $name !== null ? "\n- Der Name stand nicht genau einmal und vollständig da: {$name}." : '')
                 ."\n\nSchreib neu: einfacher, ohne Liga-Fakten, in ganzen Sätzen.";
         }
@@ -802,13 +900,14 @@ final class CasterVoice
      * variance (`scripts.temperature`, user 2026-10-12: "HÖCHSTER VARIANZ UND
      * KÜNSTLERISCHER FREIHEIT"), with room for a long segment
      * (`scripts.max_output_tokens`; the posts' 400 would cut a Bauernkrieg
-     * episode off).
+     * episode off). `$system` replaces the caster's system prompt (the
+     * duets' one for a chat duet).
      */
-    private function agent(): VoiceAgent
+    private function agent(?string $system = null): VoiceAgent
     {
         $temperature = config('tv.commentary.scripts.temperature');
 
-        return new VoiceAgent($this->fixedPart(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500));
+        return new VoiceAgent($system ?? $this->fixedPart(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500));
     }
 
     /**
