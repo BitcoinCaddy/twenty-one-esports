@@ -240,19 +240,32 @@ final class ScriptGuard
      * model's "Boah." or "Läuft.") or, with `$maxWords`, over it: the repair
      * before the check. Unchanged when fewer than `$minSentences` lines would
      * stay; check() rejects it then (fail closed).
+     *
+     * A short line is an interjection and leaves wherever it stands; an
+     * overlong line carries content, so the script ends before it (plan
+     * "TWENTY ONE Radio" P8: a sentence dropped from the middle left the next
+     * one without its setup, "Denn wer Krisen so gut erklären kann …" on air).
      */
     public static function withoutShort(string $text, int $minSentences, ?int $maxWords = null): string
     {
         $minWords = self::minWords();
-        $kept = array_values(array_filter(self::lines($text), function (string $line) use ($minWords, $maxWords): bool {
+        $kept = [];
+
+        foreach (self::lines($text) as $line) {
+            $short = false;
+
             foreach (self::runs(self::withoutMarkers($line)) as $sentence) {
-                if (self::wordCount($sentence) < $minWords || ($maxWords !== null && self::wordCount($sentence) > $maxWords)) {
-                    return false;
+                if ($maxWords !== null && self::wordCount($sentence) > $maxWords) {
+                    break 2;
                 }
+
+                $short = $short || self::wordCount($sentence) < $minWords;
             }
 
-            return true;
-        }));
+            if (! $short) {
+                $kept[] = $line;
+            }
+        }
 
         return count($kept) < max(1, $minSentences) ? $text : implode("\n", $kept);
     }
@@ -498,8 +511,9 @@ final class ScriptGuard
     /**
      * The script with at most `$allowed` person name mentions (a name said
      * twice counts twice) and none of `$blocked` (named in the last
-     * `name_memory_minutes`): a sentence that would go over is dropped. Null
-     * when fewer than `$minSentences` sentences stay (rejected, fail closed).
+     * `name_memory_minutes`): the script ends before the first sentence that
+     * would go over, so no later sentence loses the one it builds on (P8).
+     * Null when fewer than `$minSentences` sentences stay (rejected, fail closed).
      *
      * @param  list<string>  $names  ScriptGuard::personNames() of the facts
      * @param  array<string, true>  $blocked  normalised names
@@ -514,7 +528,7 @@ final class ScriptGuard
             $isBlocked = array_filter($here, fn (string $name): bool => isset($blocked[RecentlySaid::normalize($name)])) !== [];
 
             if ($here !== [] && ($isBlocked || $mentions + count($here) > $allowed)) {
-                continue;
+                break;
             }
 
             $mentions += count($here);
@@ -563,8 +577,9 @@ final class ScriptGuard
      * `entity_memory_minutes`): a later or blocked mention becomes the noun
      * where a preposition or the sentence start makes that grammatical ("bei
      * X" → "beim Turnier", "X startet" → "Das Turnier startet", "der Ladder X"
-     * → "der Ladder"); a sentence where it cannot is dropped. Null when fewer
-     * than `$minSentences` stay.
+     * → "der Ladder"); where it cannot, the script ends before that sentence
+     * (no later sentence loses its setup, P8). Null when fewer than
+     * `$minSentences` stay.
      *
      * @param  array<string, array{0: string, 1: string}>  $names  entityNames()
      * @param  array<string, true>  $blocked  normalised names
@@ -628,9 +643,11 @@ final class ScriptGuard
                 $line = $out.substr($line, $offset);
             }
 
-            if (! $drop) {
-                $kept[] = $line;
+            if ($drop) {
+                break;
             }
+
+            $kept[] = $line;
         }
 
         return count($kept) < $minSentences ? null : implode("\n", $kept);

@@ -234,10 +234,12 @@ it('knows the person names of the facts and limits a script to its allowance', f
     $facts = [...patternFactsByTopic()[SceneTopic::LIVE_TOURNAMENT], 'clan_spotlight' => ['name' => 'Einundzwanzig Bern']];
 
     expect(ScriptGuard::personNames($facts))->toBe(['Ada', 'Bob', 'Cleo'])
-        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nBob ist Zweiter.\nSchaut rein.", ['Ada', 'Bob'], 1, [], 3))->toBe("Ada führt.\nDie Liga lebt.\nSchaut rein.")
+        // The script ends before the first sentence over the allowance (P8): no later sentence loses its setup.
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nSchaut rein.\nBob ist Zweiter.", ['Ada', 'Bob'], 1, [], 3))->toBe("Ada führt.\nDie Liga lebt.\nSchaut rein.")
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nBob ist Zweiter.\nSchaut rein.", ['Ada', 'Bob'], 1, [], 2))->toBe("Ada führt.\nDie Liga lebt.")
+        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nBob ist Zweiter.\nSchaut rein.", ['Ada', 'Bob'], 1, [], 3))->toBeNull()
         ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nSchaut rein.", ['Ada'], 0, [], 3))->toBeNull()
-        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nAda auch.\nSchaut rein.", ['Ada'], 1, [], 3))->toBe("Ada führt.\nDie Liga lebt.\nSchaut rein.")
-        ->and(ScriptGuard::limitNames("Ada führt.\nDie Liga lebt.\nBob ist Zweiter.\nSchaut rein.", ['Ada', 'Bob'], 1, ['ada' => true], 3))->toBe("Die Liga lebt.\nBob ist Zweiter.\nSchaut rein.");
+        ->and(ScriptGuard::limitNames("Die Liga lebt.\nSchaut rein.\nAda führt.", ['Ada', 'Bob'], 1, ['ada' => true], 2))->toBe("Die Liga lebt.\nSchaut rein.");
 });
 
 it('writes forty flavour lines and more that pass the spoken rules and the hard rules', function () {
@@ -437,9 +439,9 @@ it('says a tournament name once per script, later as the noun, and not again wit
         ->toBe("Chess Cup Nummer 2 startet bald.\nNoch 5 Plätze frei beim Turnier.\nDas Turnier wird gespielt.\nSchaut rein.")
         ->and(ScriptGuard::dedupeEntities("Auf A07-Race fährt die Nummer eins vorn.\nDie Zeit auf A07-Race ist stark.\nPlatz zwei in der Ladder Schach Blitz 5+3.\nIn der Ladder Schach Blitz 5+3 ist es eng.\nSchaut rein.", $names, [], 3))
         ->toBe("Auf A07-Race fährt die Nummer eins vorn.\nDie Zeit auf der Strecke ist stark.\nPlatz zwei in der Ladder Schach Blitz 5+3.\nIn der Ladder ist es eng.\nSchaut rein.")
-        // Blocked (named lately) and no grammatical noun: the sentence goes; too few left: rejected.
-        ->and(ScriptGuard::dedupeEntities("Heute ist Chess Cup Nummer 2 dran.\nSchaut rein.\nDie Lobby ist offen.\nBis gleich.", $names, ['chess cup nummer 2' => true], 3))->toBe("Schaut rein.\nDie Lobby ist offen.\nBis gleich.")
-        ->and(ScriptGuard::dedupeEntities("Heute ist Chess Cup Nummer 2 dran.\nSchaut rein.\nBis gleich.", $names, ['chess cup nummer 2' => true], 3))->toBeNull();
+        // Blocked (named lately) and no grammatical noun: the script ends before that sentence (P8); too few left: rejected.
+        ->and(ScriptGuard::dedupeEntities("Schaut rein.\nDie Lobby ist offen.\nBis gleich.\nHeute ist Chess Cup Nummer 2 dran.", $names, ['chess cup nummer 2' => true], 3))->toBe("Schaut rein.\nDie Lobby ist offen.\nBis gleich.")
+        ->and(ScriptGuard::dedupeEntities("Heute ist Chess Cup Nummer 2 dran.\nSchaut rein.\nDie Lobby ist offen.\nBis gleich.", $names, ['chess cup nummer 2' => true], 3))->toBeNull();
 
     $facts = patternFactsByTopic()[SceneTopic::TOURNAMENTS];
     $first = patternScripts()->write(SceneTopic::TOURNAMENTS, ScenePhase::PRE_SHOW, $facts)['text'] ?? '';

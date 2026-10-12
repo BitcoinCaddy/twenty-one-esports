@@ -97,20 +97,29 @@ it('drops sentences from the end down to the maximum, unless a required fact goe
         ->and(ScriptGuard::trimSentences($script, 2, ['Sieben']))->toBe($script);
 });
 
-it('repairs a one-line draft: one sentence per line, a sentence over the limit dropped instead of cut, and counts the repair', function () {
+it('repairs a one-line draft: one sentence per line, the script ending before a sentence over the limit, and counts the repair', function () {
     // The limits the drafts of 2026-10-11 were cut at; the repair itself does not depend on them.
     config(['tv.commentary.scripts.max_words_per_sentence' => 12, 'tv.commentary.scripts.max_commas' => 1, 'tv.commentary.scripts.min_words_per_sentence' => 0]);
     VoiceAgent::fake([[
-        'text' => 'Die Lobby ist offen, die Bretter sind frei, und ihr könnt jederzeit rein. Heute sind 34 Spieler dabei. Acht Clans sind am Start. Gleich geht es weiter. Kurz durchatmen. Schaut rein. Na also, läuft. Bleibt dran, Leute. Bis gleich, ihr Lieben.',
+        'text' => 'Heute sind 34 Spieler dabei. Acht Clans sind am Start. Gleich geht es weiter. Kurz durchatmen. Schaut rein. Na also, läuft. Bleibt dran, Leute. Die Lobby ist offen, die Bretter sind frei, und ihr könnt jederzeit rein. Bis gleich, ihr Lieben.',
         'canon_id' => null, 'mood' => 'fakten',
     ]]);
 
     $script = casterVoiceWrite();
 
-    // No clause cut any more: it left verb-first fragments ("Stehen hier schon die Bretter bereit.", real drafts 2026-10-12).
-    expect($script['text'] ?? null)->toBe("Heute sind 34 Spieler dabei.\nAcht Clans sind am Start.\nGleich geht es weiter.\nKurz durchatmen.\nSchaut rein.\nNa also, läuft.\nBleibt dran, Leute.\nBis gleich, ihr Lieben.")
+    // No clause cut (it left verb-first fragments, real drafts 2026-10-12) and no hole (P8: the sentence after a dropped
+    // one lost its setup): the script ends before the overlong sentence.
+    expect($script['text'] ?? null)->toBe("Heute sind 34 Spieler dabei.\nAcht Clans sind am Start.\nGleich geht es weiter.\nKurz durchatmen.\nSchaut rein.\nNa also, läuft.\nBleibt dran, Leute.")
         ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL.'_repaired')->pluck('reason')->sort()->values()->all())->toBe([ScriptGuard::SENTENCE_LONG, ScriptGuard::SENTENCE_SHORT]);
     VoiceAgent::assertPromptedTimes(1);
+});
+
+it('keeps a draft whose overlong sentence comes first as it is, so the check turns it down instead of cutting its setup away', function () {
+    $draft = 'Die Lobby ist offen, die Bretter sind frei, und ihr könnt jederzeit rein und gleich loslegen.'."\nHeute sind vierunddreißig Spieler bei uns dabei.\nAcht Clans sind heute bei uns am Start.";
+
+    expect(ScriptGuard::withoutShort($draft, 2, 12))->toBe($draft)
+        ->and(ScriptGuard::withoutShort("Heute sind vierunddreißig Spieler bei uns dabei.\nAcht Clans sind heute bei uns am Start.\n".'Die Lobby ist offen, die Bretter sind frei, und ihr könnt jederzeit rein und gleich loslegen.', 2, 12))
+        ->toBe("Heute sind vierunddreißig Spieler bei uns dabei.\nAcht Clans sind heute bei uns am Start.");
 });
 
 it('reads a fact number spelled out as that fact, and any other number word as an invented name', function () {
@@ -160,13 +169,13 @@ it('asks every prompt for long complete sentences, a random angle and none of th
 
     casterVoiceWrite();
 
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Dein Blickwinkel diesmal:')
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Dein Kniff für die Pointe diesmal:')
         && str_contains($prompt->prompt, '- Mal mit einem Augenzwinkern erzähl')
         && str_contains($prompt->prompt, CasterVoice::SENTENCE_STYLE));
     expect(count(CasterVoice::ANGLES))->toBeGreaterThanOrEqual(20)
-        ->and(CasterVoice::chatReplyPrompt('Hallo', 'Ada', 1, 4))->toContain('Dein Blickwinkel diesmal:')->toContain(CasterVoice::SENTENCE_STYLE)
-        ->and(CasterVoice::newsPrompt('Hashrate erreicht Rekord', 'BTC-Echo', 'bitcoin', 1, 3))->toContain('Dein Blickwinkel diesmal:')->toContain('nie die Schlagzeile als Titel vorlesen')
-        ->and(CasterVoice::followedPrompt('Ein Post', 'Ada', true, 3, 7))->toContain('Dein Blickwinkel diesmal:');
+        ->and(CasterVoice::chatReplyPrompt('Hallo', 'Ada', 1, 4))->toContain('Dein Kniff für die Pointe diesmal:')->toContain(CasterVoice::SENTENCE_STYLE)
+        ->and(CasterVoice::newsPrompt('Hashrate erreicht Rekord', 'BTC-Echo', 'bitcoin', 1, 3))->toContain('Dein Kniff für die Pointe diesmal:')->toContain('nie die Schlagzeile als Titel vorlesen')
+        ->and(CasterVoice::followedPrompt('Ein Post', 'Ada', true, 3, 7))->toContain('Dein Kniff für die Pointe diesmal:');
 });
 
 it('lets the station ident open a script and still turns a preamble down', function () {
@@ -249,11 +258,11 @@ it('lets a spoken sentence run from seven to thirty-two words with two commas, a
     expect($guard->check('Na also, das läuft.', 1, 8, 32))->toBe([]);
 });
 
-it('drops a sentence that names a player outside a result moment, and keeps the draft as it is when too few would stay', function () {
+it('ends a script before a sentence that names a player outside a result moment, and keeps the draft as it is when too few would stay', function () {
     $facts = [...casterVoiceQuietFacts(), 'live_games' => [['game' => 'Schach', 'white' => 'Ada', 'black' => 'Bob', 'mode' => 'Blitz', 'move' => 14]]];
     $few = "Ada spielt heute im Blitz richtig stark auf und lässt nichts anbrennen.\nBob hält dagegen und denkt bei jedem Zug ganz lange nach.\nSchaut unbedingt rein, denn das hier lohnt sich wirklich für euch.";
     VoiceAgent::fake([
-        ['text' => "Wir sind live im Blitz, und auf dem Brett geht es gerade richtig zur Sache.\nAda spielt gegen Bob, und beide sind hellwach.\nDie Lobby ist offen, und jeder von euch kann jederzeit einsteigen.\nSchreibt in den Chat, wer von den beiden eurer Meinung nach gewinnt.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Wir sind live im Blitz, und auf dem Brett geht es gerade richtig zur Sache.\nDie Lobby ist offen, und jeder von euch kann jederzeit einsteigen.\nSchreibt in den Chat, wer von den beiden eurer Meinung nach gewinnt.\nAda spielt gegen Bob, und beide sind hellwach.", 'canon_id' => null, 'mood' => 'hype'],
         ['text' => $few, 'canon_id' => null, 'mood' => 'hype'],
     ]);
 
@@ -265,7 +274,7 @@ it('drops a sentence that names a player outside a result moment, and keeps the 
 it('lets one name through in a result moment, and not the same person again within thirty minutes', function () {
     $facts = [...casterVoiceQuietFacts(), 'results' => [['winner' => 'Ada', 'loser' => 'Bob', 'game' => 'Schach', 'mode' => 'Blitz']]];
     $draft = ['text' => "Ada gewinnt im Blitz, und das Ergebnis ist jetzt eingetragen.\nDie Lobby ist offen, und jeder von euch kann jederzeit einsteigen.\nSchreibt in den Chat, wer als Nächstes an die Reihe kommen soll.", 'canon_id' => null, 'mood' => 'hype'];
-    $again = ['text' => "Ada holt sich schon wieder den Sieg in dieser Runde.\nWer ist zum ersten Mal hier und will ein kurzes Hallo in den Chat schreiben?\nMit Nostr einloggen und loslegen geht bei uns in wenigen Sekunden.", 'canon_id' => null, 'mood' => 'hype'];
+    $again = ['text' => "Wer ist zum ersten Mal hier und will ein kurzes Hallo in den Chat schreiben?\nMit Nostr einloggen und loslegen geht bei uns in wenigen Sekunden.\nAda holt sich schon wieder den Sieg in dieser Runde.", 'canon_id' => null, 'mood' => 'hype'];
     VoiceAgent::fake([$draft, $again]);
 
     expect(app(CasterVoice::class)->write('scene', ScenePhase::AFTER_RESULT, $facts, 2, 8)['text'] ?? null)->toBe($draft['text']);
