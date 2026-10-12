@@ -729,6 +729,12 @@ class ScriptQueue
             }
 
             $this->memory->remember($text, $now);
+        } elseif ($kind === CasterScript::BULLETIN || $topic === 'sport_wetter') {
+            // Data read out every hour repeats by nature: the same temperature at 20:00 and 21:00 cut the weather off the
+            // end of "Sport und Wetter" (user 2026-10-12: "Was ist mit dem Wetter passiert?"). Only a goodbye goes.
+            $text = self::beforeSignOff($text);
+            $this->memory ??= new SpokenMemory;
+            $this->memory->remember($text, $now);
         } else {
             $this->memory ??= new SpokenMemory;
             $min = in_array($kind, [CasterScript::CHAT, CasterScript::LIVE, CasterScript::TEASER], true) ? 1 : self::MIN_COHERENT;

@@ -358,3 +358,14 @@ it('keeps scene scripts when the facts change while superseding is off, the defa
     expect($queue->supersedeTopic(SceneTopic::LIVE_GAMES, 'new'))->toBe(0)
         ->and($old?->fresh()->status)->toBe(CasterScript::QUEUED);
 });
+
+it('keeps the weather of "Sport und Wetter" although the same sentence aired an hour before', function () {
+    $now = CarbonImmutable::now();
+    $queue = app(ScriptQueue::class);
+    $text = "Nach den Nachrichten gibt es jetzt Sport und Wetter, und zwar ungeschönt.\nFreiburg führt die Tabelle mit dreizehn Punkten an, was früher ein Fehler im System gewesen wäre.\nIn Berlin sind es jetzt vierzehn Grad bei leichtem Regen und Wind aus Westen.";
+
+    $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $text, 'a', 70, $now, topic: 'sport_wetter');
+    $second = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $text, 'b', 70, $now->addHour(), topic: 'sport_wetter');
+
+    expect($second?->text)->toContain('vierzehn Grad');
+});
