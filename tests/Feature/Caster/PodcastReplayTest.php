@@ -9,12 +9,16 @@ use App\Support\Caster\CommentaryTimeline;
 use App\Support\Caster\Imaging;
 use App\Support\Caster\PodcastLibrary;
 use App\Support\Caster\PodcastReplay;
+use App\Support\Caster\Programme\PodcastPromos;
+use App\Support\Caster\Programme\PodcastScripts;
+use App\Support\Caster\Programme\ShowScripts;
 use App\Support\Caster\SceneDirector;
 use App\Support\Caster\SceneFacts;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
 use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\TwentyOne\Stream\TournamentSlides;
+use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Process\PendingProcess;
@@ -627,4 +631,159 @@ it('hands the workstation only replies and bulletins while an airing is on, and 
     config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true]);
     expect(DayPlanner::whenIdle(0.0, true, false, false, false, 'stock'))->toBe([DayPlanner::RENDER_STOCK, DayPlanner::WAIT])
         ->and(DayPlanner::whenIdle(0.0, true, true, false, false, 'stock'))->toBe([DayPlanner::WAIT]);
+});
+
+/*
+| Promos, announcement and back-announce (user addendum 2026-10-12: "Die Podcasts, die wir abspielen, müssen auch
+| regelmäßig angekündigt werden von KI-Markus und Sirius und bevor sie gespielt werden auch explizit.").
+*/
+
+/** What the model answers for a promo, an announcement or a back-announce, by its prompt. */
+function podcastReplayAnswer(string $prompt): array
+{
+    $lines = match (true) {
+        str_contains($prompt, 'Programmhinweis') => [
+            'Markus: In der neuen Folge geht es um die einundfünfzig Prozent Attacke auf Deutschland, und das klingt ziemlich dramatisch.',
+            'Sirius: Wer wissen will, ob Deutschland jetzt endgültig verloren ist, sollte sich diese Folge auf keinen Fall entgehen lassen.',
+            'Markus: Ich verspreche euch jedenfalls mehr Substanz als in jeder Pressekonferenz der Bundesregierung in diesem ganzen Jahr.',
+            'Sirius: Also bleibt einfach dran, holt euch etwas zu trinken und lasst euch von den beiden ordentlich durchrütteln.',
+        ],
+        str_contains($prompt, 'direkt nach dieser Ansage') => [
+            'Markus: Jetzt kommt die neueste Folge vom EINUNDZWANZIG Podcast, Nummer dreihundertfünfunddreißig mit dem Titel einundfünfzig Prozent Attacke auf Deutschland.',
+            'Sirius: Laut Shownotes reden die beiden über die Frage, wer in Deutschland eigentlich gerade die Mehrheit im Netzwerk hätte.',
+            'Markus: Es geht um Politik, um Bitcoin und um die Frage, warum Behörden so gerne Dinge regulieren, die sie nicht verstehen.',
+            'Sirius: Ich sage nur, wer eine einundfünfzig Prozent Attacke befürchtet, hat wahrscheinlich auch Angst vor dem eigenen Toaster.',
+            'Markus: Lehnt euch zurück, macht es euch bequem und hört genau zu, denn diese Folge lohnt sich von Anfang bis Ende.',
+            'Sirius: Und wer danach noch Fragen hat, schreibt sie einfach in den Chat, wir lesen wirklich alles mit großer Freude.',
+        ],
+        default => [
+            'Markus: Das war die neueste Folge vom EINUNDZWANZIG Podcast über die einundfünfzig Prozent Attacke auf Deutschland, in voller Länge.',
+            'Markus: Ich hoffe, euer Toaster hat die ganze Sendung ohne einen einzigen Angriff auf eure Ersparnisse überstanden.',
+        ],
+    };
+
+    return ['text' => implode("\n", $lines), 'canon_id' => null, 'mood' => 'fakten'];
+}
+
+function podcastReplayVoice(): void
+{
+    config(['tv.commentary.ai' => true]);
+    VoiceAgent::fake(fn (string $prompt): array => podcastReplayAnswer($prompt));
+}
+
+it('promotes today\'s airing from nine on every two hours with the slot\'s true time, and stops before the slot', function () {
+    podcastReplayVoice();
+    podcastReplayStored('einundzwanzig', 'g-335', [[300.0, [100.0]]]);
+    $slot = CarbonImmutable::parse('2026-10-12 14:03', 'Europe/Berlin');
+    $queue = app(ScriptQueue::class);
+
+    for ($at = $slot->setTime(8, 0); $at->lessThan($slot); $at = $at->addMinutes(10)) {
+        $this->travelTo($at);
+        $queue->fillPodcast($at);
+    }
+
+    $promos = CasterScript::query()->where('kind', CasterScript::TEASER)->where('scene', PodcastPromos::SCENE)->orderBy('id')->get();
+
+    expect($promos->map(fn (CasterScript $script): string => $script->airs_at->setTimezone('Europe/Berlin')->format('H:i'))->all())->toBe(['09:00', '11:00', '13:00'])
+        ->and($promos->every(fn (CasterScript $script): bool => str_starts_with($script->text, 'Heute um vierzehn Uhr drei läuft bei uns die neueste Folge vom EINUNDZWANZIG Podcast')))->toBeTrue()
+        ->and($promos->every(fn (CasterScript $script): bool => in_array('sirius', $script->speakers, true) && $script->expires_at->lessThan($slot)))->toBeTrue();
+});
+
+it('promotes once more in the hour before the slot when the last promo is older than ninety minutes', function () {
+    podcastReplayVoice();
+    config(['tv.commentary.podcast_replay.promos.every_minutes' => 180]);
+    podcastReplayStored('einundzwanzig', 'g-335', [[300.0, [100.0]]]);
+    $slot = CarbonImmutable::parse('2026-10-12 14:03', 'Europe/Berlin');
+
+    for ($at = $slot->setTime(8, 0); $at->lessThan($slot); $at = $at->addMinutes(10)) {
+        $this->travelTo($at);
+        app(ScriptQueue::class)->fillPodcast($at);
+    }
+
+    expect(CasterScript::query()->where('scene', PodcastPromos::SCENE)->orderBy('id')->get()
+        ->map(fn (CasterScript $script): string => $script->airs_at->setTimezone('Europe/Berlin')->format('H:i'))->all())->toBe(['09:00', '12:00', '13:10']);
+});
+
+it('promotes nothing without a real airing ahead: source off, no episode, aired today, and withdraws a promo that is no longer true', function () {
+    podcastReplayVoice();
+    $at = CarbonImmutable::parse('2026-10-12 11:00', 'Europe/Berlin');
+    $this->travelTo($at);
+    $queue = app(ScriptQueue::class);
+
+    // No episode stored.
+    expect($queue->fillPodcast($at))->toBe(0);
+
+    podcastReplayStored('einundzwanzig', 'g-335', [[300.0, [100.0]]]);
+    expect($queue->fillPodcast($at))->toBe(1);
+    $promo = CasterScript::query()->where('scene', PodcastPromos::SCENE)->sole();
+    $clip = app(ClipSpool::class)->store($promo->fresh(), casterOpus(), 20.0, [20.0], $at);
+
+    // The source switched off: the voiced promo leaves the spool, and no new one comes.
+    config(['tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => false]);
+    expect($queue->fillPodcast($at->addHours(2)))->toBe(0)
+        ->and($promo->fresh()->status)->toBe(CasterScript::EXPIRED)
+        ->and(CasterClip::query()->find($clip->id))->toBeNull();
+
+    // Aired today already (the airing is in the spool): no promo either; its frame instead.
+    config(['tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => true]);
+    podcastReplayAiring([[300.0, 21, []]], CarbonImmutable::parse('2026-10-12 14:03', 'Europe/Berlin'));
+    $queue->fillPodcast($at->addHours(2));
+    expect(CasterScript::query()->where('scene', PodcastPromos::SCENE)->where('status', '!=', CasterScript::EXPIRED)->count())->toBe(0);
+});
+
+it('writes the announcement duet and Markus\' back-announce once the airing is in the spool, once each', function () {
+    podcastReplayVoice();
+    podcastReplayStored('einundzwanzig', 'g-335', [[300.0, [100.0]]]);
+    $slot = CarbonImmutable::parse('2026-10-12 14:03', 'Europe/Berlin');
+    $this->travelTo($slot->subMinutes(14));
+    (new PodcastReplay(new PodcastLibrary))->schedule(CarbonImmutable::now());
+
+    expect(app(ScriptQueue::class)->fillPodcast(CarbonImmutable::now()))->toBe(2)
+        ->and(app(ScriptQueue::class)->fillPodcast(CarbonImmutable::now()))->toBe(0);
+
+    $intro = CasterScript::query()->where('kind', CasterScript::PODCAST_INTRO)->sole();
+    $outro = CasterScript::query()->where('kind', CasterScript::PODCAST_OUTRO)->sole();
+    expect($intro->airs_at->getTimestamp())->toBe($slot->getTimestamp())
+        ->and(array_values(array_unique($intro->speakers)))->toBe(['markus', 'sirius'])
+        ->and(array_values(array_unique($outro->speakers)))->toBe(['markus'])
+        ->and($intro->text)->toContain('dreihundertfünfunddreißig');
+});
+
+it('plays announcement, podcast opener, the episode, back-announce jingle and Markus\' back-announce in this order, nothing in between', function () {
+    podcastReplayDecodes();
+    File::ensureDirectoryExists($this->imagingDir.'/files');
+    $items = [];
+    foreach (['station', 'sweeper', 'podcast-open-einundzwanzig', 'podcast-close-einundzwanzig'] as $category) {
+        file_put_contents($this->imagingDir.'/files/'.$category.'.opus', 'stub');
+        $items[] = ['id' => $category.'-a', 'line' => $category, 'category' => $category, 'file' => 'files/'.$category.'.opus', 'seconds' => 1.0];
+    }
+    file_put_contents($this->imagingDir.'/manifest.json', json_encode(['items' => $items]));
+    config(['tv.commentary.imaging.enabled' => true]);
+    $imaging = new Imaging((array) config('tv.commentary.imaging'), PODCAST_REPLAY_RATE, fn (): float => 0.0);
+    $slot = CarbonImmutable::parse('2026-10-12 14:03', 'Europe/Berlin');
+    $this->travelTo($slot);
+    podcastReplayAiring([[40.0, 21, [20.0]], [40.0, 22, [20.0]]], $slot);
+    foreach ([CasterScript::PODCAST_INTRO => 31, CasterScript::PODCAST_OUTRO => 32] as $kind => $fill) {
+        $script = casterScript($kind);
+        $script->update(['topic' => 'einundzwanzig', 'airs_at' => $slot->utc(), 'expires_at' => $slot->addHours(3)->utc()]);
+        app(ClipSpool::class)->store($script->fresh(), podcastReplayOpus(30.0, $fill), 30.0, [15.0, 30.0], CarbonImmutable::now());
+    }
+
+    $air = podcastReplayAir(podcastReplayDirector(imaging: $imaging), (float) $slot->getTimestamp(), 160, [
+        // A reply ready during the announcement waits for the end of the episode.
+        5 => fn () => podcastReplayClip(CasterScript::CHAT, 5.0, 5),
+    ]);
+
+    expect(podcastReplayOrder($air))->toBe([31, 9, 21, 22, 9, 32, 5])
+        ->and(CasterClip::query()->whereIn('kind', [CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO])->count())->toBe(0);
+});
+
+it('turns down a promo with a number the feed does not have or a time of day of its own', function () {
+    $scripts = app(PodcastScripts::class);
+    $material = PodcastScripts::material('EINUNDZWANZIG Podcast', ['title' => '#335 - 51% Attacke auf Deutschland', 'episode_number' => 335, 'notes' => '']);
+    $good = podcastReplayAnswer('Programmhinweis')['text'];
+
+    expect($scripts->evaluate(PodcastScripts::PROMO, $material, $good)[1])->toBe([])
+        ->and($scripts->evaluate(PodcastScripts::PROMO, $material, str_replace('einundfünfzig Prozent', 'zweiundvierzig Prozent', $good))[1])->toContain(ShowScripts::NUMBER)
+        ->and($scripts->evaluate(PodcastScripts::PROMO, $material, str_replace('in diesem ganzen Jahr', 'heute um sechzehn Uhr', $good))[1])->toContain(PodcastScripts::CLOCK);
 });

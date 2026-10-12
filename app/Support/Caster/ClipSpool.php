@@ -249,6 +249,24 @@ class ClipSpool
             ->orderBy('caster_script_id')->orderBy('id')->first();
     }
 
+    /**
+     * The announcement (CasterScript::PODCAST_INTRO) or back-announce
+     * (PODCAST_OUTRO) of the airing `$chunk` belongs to: the ready clip of
+     * that kind anchored to the same slot and source, or null.
+     */
+    public function podcastFrame(CasterClip $chunk, string $kind, CarbonImmutable $now): ?CasterClip
+    {
+        $airing = CasterScript::query()->find($chunk->caster_script_id);
+
+        if ($airing === null || $airing->airs_at === null) {
+            return null;
+        }
+
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', $kind)->where('expires_at', '>', $now->utc())
+            ->whereIn('caster_script_id', CasterScript::query()->where('kind', $kind)->where('topic', $airing->topic)->where('airs_at', $airing->airs_at)->select('id'))
+            ->orderBy('id')->first();
+    }
+
     /** The ready chunk that follows `$chunk` in its airing, or null after the last one. */
     public function nextPodcastChunk(CasterClip $chunk): ?CasterClip
     {

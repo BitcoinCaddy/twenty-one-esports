@@ -108,7 +108,10 @@ use Carbon\CarbonImmutable;
  * bulletin), and the episode resumes from there after bulletin, sport and
  * weather and the replies that waited for the break. No rubric, teaser or
  * waiting reaction cuts it, and a cut rest waits up to
- * `podcast.resume_within_seconds`.
+ * `podcast.resume_within_seconds`. Markus' and Sirius' announcement
+ * (CasterScript::PODCAST_INTRO) plays right before the first chunk, the first
+ * chunk right after it (nothing comes between), and Markus' back-announce
+ * (PODCAST_OUTRO) right after the last chunk, each when it is voiced.
  */
 final class SceneDirector
 {
@@ -149,6 +152,12 @@ final class SceneDirector
 
     /** The slot type of the bulletin on air, or null. */
     private ?string $bulletinSlot = null;
+
+    /** The announcement of a podcast is on air: its first chunk follows before anything else (P12). */
+    private bool $podcastFollows = false;
+
+    /** The last chunk of a podcast just ended: its back-announce follows before anything else (P12). */
+    private ?CasterClip $podcastEnded = null;
 
     /** The slot of the bulletin a podcast stopped for before the slot began (P12): nothing else plays until that bulletin. */
     private ?int $podcastBreak = null;
@@ -281,6 +290,11 @@ final class SceneDirector
             return null;
         }
 
+        // The announcement ended: the episode starts at once. The episode ended: the back-announce follows at once.
+        if ($this->clip === null && ($this->podcastFollows || $this->podcastEnded !== null) && $this->podcastFrameNext($planner, $now)) {
+            return null;
+        }
+
         // The next part of the story on air comes before anything else, once its breath is over; an overdue reaction first.
         if ($this->clip === null && $this->part !== null && $now >= $this->part['at'] && ! $overdue) {
             $this->continuePart($planner, $now);
@@ -304,7 +318,16 @@ final class SceneDirector
         // A podcast replay whose slot has come starts at the next clip boundary, after a story on air and anything held;
         // after a cut its next chunk goes on the same way (P12).
         if ($this->clip === null && $this->part === null && $this->held === []) {
-            $podcast = $this->spool->podcast(CarbonImmutable::createFromTimestamp($now));
+            $at = CarbonImmutable::createFromTimestamp($now);
+            $podcast = $this->spool->podcast($at);
+            // Its first chunk comes after Markus' and Sirius' announcement, when that is voiced.
+            $intro = $podcast !== null && (int) ($podcast->block['podcast']['index'] ?? 0) === 1 ? $this->spool->podcastFrame($podcast, CasterScript::PODCAST_INTRO, $at) : null;
+
+            if ($intro !== null && $this->play($planner, $intro, $now)) {
+                $this->podcastFollows = true;
+
+                return null;
+            }
 
             if ($podcast !== null && $this->play($planner, $podcast, $now)) {
                 return null;
@@ -415,6 +438,11 @@ final class SceneDirector
         $at = CarbonImmutable::createFromTimestamp($now);
         $part = $this->clipIsPart ? $this->spool->partOf($clip) : null;
         $cut = $this->timeline->isCut();
+
+        // The last chunk of a podcast played to its end: the back-announce comes next (P12).
+        if ($this->isPodcast($clip) && ! $cut && (int) ($clip->block['podcast']['index'] ?? 0) === (int) ($clip->block['podcast']['count'] ?? -1)) {
+            $this->podcastEnded = $clip;
+        }
         $this->logPiece($clip, (float) ($this->timeline->endsAt() ?? $now));
         $this->spool->played($clip);
         $this->clip = null;
@@ -875,6 +903,20 @@ final class SceneDirector
 
         $this->cut($at, $now, resume: true);
         $this->podcastBreak = $slot['key'];
+    }
+
+    /**
+     * The first chunk right after the podcast's announcement, the back-announce right after its last chunk; false
+     * when there is none to play (the director goes on as usual).
+     */
+    private function podcastFrameNext(RotationPlanner $planner, float $now): bool
+    {
+        $at = CarbonImmutable::createFromTimestamp($now);
+        $next = $this->podcastFollows ? $this->spool->podcast($at) : ($this->podcastEnded === null ? null : $this->spool->podcastFrame($this->podcastEnded, CasterScript::PODCAST_OUTRO, $at));
+        $this->podcastFollows = false;
+        $this->podcastEnded = null;
+
+        return $next !== null && $this->play($planner, $next, $now);
     }
 
     /** Whether a podcast stopped for a bulletin whose slot has not come yet, or that is still due (P12). */

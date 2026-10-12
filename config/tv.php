@@ -971,6 +971,8 @@ return [
                 'einundzwanzig' => [
                     'enabled' => (bool) env('TV_PODCAST_REPLAY_EINUNDZWANZIG', true),
                     'name' => 'EINUNDZWANZIG Podcast',
+                    // How Markus and Sirius name it (PodcastScripts).
+                    'spoken' => 'EINUNDZWANZIG Podcast',
                     'feed' => 'https://anchor.fm/s/d8d3c38/podcast/rss',
                     'title_pattern' => null,
                     'starts_at' => env('TV_PODCAST_REPLAY_EINUNDZWANZIG_AT', '14:03'),
@@ -981,6 +983,7 @@ return [
                 'resat' => [
                     'enabled' => (bool) env('TV_PODCAST_REPLAY_RESAT', false),
                     'name' => 'Blocktrainer Re:set',
+                    'spoken' => 'Blocktrainer-Podcast Reset',
                     'feed' => 'https://serve.podhome.fm/rss/9b654631-a45c-58e4-a237-2e8aa65262b8',
                     'title_pattern' => '/^Re:s[ae]t\b/i',
                     'starts_at' => env('TV_PODCAST_REPLAY_RESAT_AT', '16:03'),
@@ -1009,6 +1012,26 @@ return [
             'resume_within_seconds' => 1_800,
             // What the workstation's GPU does meanwhile: `stock` renders day stock, `idle` waits.
             'gpu' => env('TV_PODCAST_REPLAY_GPU', 'stock'),
+            // Markus and Sirius promote it (user 2026-10-12: "müssen auch regelmäßig angekündigt werden von KI-Markus und
+            // Sirius und bevor sie gespielt werden auch explizit"): a promo duet (a teaser) from `from` (Berlin) on at most
+            // every `every_minutes` and once more in the hour before the slot, only while today's airing really follows
+            // (enabled source, stored episode, not aired yet), up to `until_minutes_before` the slot; each airs within
+            // `expire_minutes`. Right before the episode their announcement duet, after it Markus' back-announce.
+            'promos' => [
+                'enabled' => (bool) env('TV_PODCAST_REPLAY_PROMOS', true),
+                'from' => '09:00',
+                'every_minutes' => (int) env('TV_PODCAST_REPLAY_PROMO_EVERY_MINUTES', 120),
+                'until_minutes_before' => 10,
+                'expire_minutes' => 30,
+                'priority' => 72,
+            ],
+            'scripts' => [
+                'daily_cap' => 30,
+                'timeout_seconds' => 60,
+                // Above the bulletin's writing, so the announcement is voiced before the episode starts.
+                'priority' => 76,
+                'tries' => 3,
+            ],
         ],
     ],
 

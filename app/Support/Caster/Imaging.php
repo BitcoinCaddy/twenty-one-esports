@@ -136,6 +136,11 @@ final class Imaging
             return $this->podcast($clip, $tail, $now);
         }
 
+        // The announcement before a podcast and the back-announce after it: the podcast's own jingles stand between.
+        if (in_array($kind, [CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO], true)) {
+            return $none;
+        }
+
         if (in_array($kind, ClipSpool::LIVE_KINDS, true) || $clip->isBlock() || $this->library()->items() === []) {
             return $none;
         }

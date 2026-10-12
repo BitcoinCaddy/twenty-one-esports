@@ -83,7 +83,7 @@ class PodcastLibrary
     /**
      * The enabled sources by key, each with its feed and slot; none while the replay is off.
      *
-     * @return array<string, array{name: string, feed: string, title_pattern: string|null, starts_at: string}>
+     * @return array<string, array{name: string, spoken: string, feed: string, title_pattern: string|null, starts_at: string}>
      */
     public static function sources(): array
     {
@@ -101,6 +101,7 @@ class PodcastLibrary
 
             $sources[$key] = [
                 'name' => is_string($source['name'] ?? null) ? $source['name'] : $key,
+                'spoken' => is_string($source['spoken'] ?? null) ? $source['spoken'] : (is_string($source['name'] ?? null) ? $source['name'] : $key),
                 'feed' => $source['feed'],
                 'title_pattern' => is_string($source['title_pattern'] ?? null) && $source['title_pattern'] !== '' ? $source['title_pattern'] : null,
                 'starts_at' => is_string($source['starts_at'] ?? null) ? $source['starts_at'] : '14:03',
@@ -124,7 +125,7 @@ class PodcastLibrary
      * The stored episode of a source: its guid, title, notes, length and chunks (path on the spool disk, seconds,
      * pauses), or null when there is none or its chunks are not all there.
      *
-     * @return array{guid: string, title: string, published_at: int, seconds: float, chunks: list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>}|null
+     * @return array{guid: string, title: string, episode_number?: int|null, notes?: string, published_at: int, seconds: float, chunks: list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>}|null
      */
     public function episode(string $source): ?array
     {
@@ -141,7 +142,7 @@ class PodcastLibrary
             }
         }
 
-        /** @var array{guid: string, title: string, published_at: int, seconds: float, chunks: list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>} $meta */
+        /** @var array{guid: string, title: string, episode_number?: int|null, notes?: string, published_at: int, seconds: float, chunks: list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>} $meta */
         return $meta;
     }
 
@@ -177,7 +178,7 @@ class PodcastLibrary
     /**
      * One source: the newest episode of its feed, stored when it is not the one already here.
      *
-     * @param  array{name: string, feed: string, title_pattern: string|null, starts_at: string}  $source
+     * @param  array{name: string, spoken: string, feed: string, title_pattern: string|null, starts_at: string}  $source
      */
     public function refreshSource(string $key, array $source): string
     {
@@ -249,6 +250,8 @@ class PodcastLibrary
                 'guid' => $episode['guid'],
                 'title' => $episode['title'],
                 'episode_number' => $episode['episode_number'],
+                // What Markus and Sirius may say about it (PodcastScripts).
+                'notes' => $episode['notes'],
                 'published_at' => $episode['published_at'],
                 'source' => $key,
                 'id' => $id,

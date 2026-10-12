@@ -11,6 +11,7 @@ use App\Support\Caster\Programme\Announcements;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
+use App\Support\Caster\Programme\PodcastPromos;
 use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
 use App\Support\Caster\Programme\Shows;
@@ -167,6 +168,7 @@ class ScriptQueue
         $written += $podcast ? 0 : $this->fillRubric($now);
         $written += $quiet || $podcast ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
         $written += $this->fillStock($now);
+        $written += $this->fillPodcast($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -310,6 +312,16 @@ class ScriptQueue
 
         return $talk === null ? null : $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $talk['text'], StockScripts::TOPIC_PREFIX.$talk['format'], 0, $now,
             scene: StockScripts::SCENE, topic: StockScripts::TOPIC_PREFIX.$talk['format'], maxAgeMinutes: (int) config('tv.commentary.blocks.stock.max_age_minutes', 180), speakers: $talk['speakers']);
+    }
+
+    /**
+     * The podcast replay's promos, announcement and back-announce (P12, PodcastPromos), AI only.
+     *
+     * @return int scripts written
+     */
+    public function fillPodcast(CarbonImmutable $now): int
+    {
+        return self::aiEnabled() && PodcastLibrary::enabled() ? app(PodcastPromos::class)->fill($this, $now) : 0;
     }
 
     /**

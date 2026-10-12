@@ -59,7 +59,7 @@ final class PodcastReplay
                 continue;
             }
 
-            if (Cache::has(self::AIRED.$key.':'.$day) || $this->airedOn($key, $slot)) {
+            if (self::airedToday($key, $slot)) {
                 $outcomes[$key] = self::DONE_TODAY;
 
                 continue;
@@ -107,13 +107,19 @@ final class PodcastReplay
         });
     }
 
-    /** Whether an airing of `$key` with its slot on the Berlin day of `$slot` is in the queue already. */
-    private function airedOn(string $key, CarbonImmutable $slot): bool
+    /** Whether `$key` aired (or was put into the spool) on the Berlin day of `$slot` already. */
+    public static function airedToday(string $key, CarbonImmutable $slot): bool
+    {
+        return Cache::has(self::AIRED.$key.':'.$slot->setTimezone(self::timezone())->format('Y-m-d')) || self::airing($key, $slot) !== null;
+    }
+
+    /** The airing of `$key` with its slot on the Berlin day of `$slot`, or null. */
+    public static function airing(string $key, CarbonImmutable $slot): ?CasterScript
     {
         $local = $slot->setTimezone(self::timezone());
 
         return CasterScript::query()->where('kind', CasterScript::PODCAST)->where('topic', $key)
-            ->whereBetween('airs_at', [$local->startOfDay()->utc(), $local->endOfDay()->utc()])->exists();
+            ->whereBetween('airs_at', [$local->startOfDay()->utc(), $local->endOfDay()->utc()])->orderBy('id')->first();
     }
 
     /**
