@@ -935,6 +935,17 @@ return [
             'callback_sentences' => ['min' => 2, 'max' => 4],
         ],
 
+        // Anthropic's prompt cache for the caster's model calls (a prefix match: tools, system, messages; one changed byte
+        // re-bills everything behind it). The system prompt (caster guide, tone, personas) is the static prefix, cached for
+        // `static_ttl` ("1h" or "5m"; measured 2026-10-12: 43 gaps of 5 to 60 minutes between scripts at night re-wrote
+        // the 5-minute entry each time). The world memory's items older than the start of the current `world_epoch_minutes`
+        // epoch follow as a second cached system block, frozen for the epoch (WorldMemory::epochDigest()); the items since
+        // then and the games on now stay in the uncached user message. 0: the whole world block in the user message.
+        'cache' => [
+            'static_ttl' => (string) env('TV_COMMENTARY_CACHE_STATIC_TTL', '1h'),
+            'world_epoch_minutes' => (int) env('TV_COMMENTARY_CACHE_WORLD_EPOCH_MINUTES', 10),
+        ],
+
         // The latest EINUNDZWANZIG podcast episode as a transcript (App\Support\Caster\PodcastTranscripts): the workstation
         // (`caster:podcast-transcript`, started by `caster:fetch` at most every `check_minutes` outside the quiet hours)
         // downloads the newest episode, transcribes it with the local VoiceStudio Whisper in `chunk_seconds` pieces, deletes

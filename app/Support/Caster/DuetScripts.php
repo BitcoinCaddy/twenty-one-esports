@@ -115,7 +115,7 @@ final class DuetScripts
     {
         $this->usage->recordAttempt(self::CHANNEL);
         $temperature = config('tv.commentary.scripts.temperature');
-        $response = (new VoiceAgent($this->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500), plan: true))
+        $response = (new VoiceAgent($this->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500), plan: true, cacheTtl: CasterVoice::staticCacheTtl()))
             ->prompt(self::prompt($sequence, $phase, $facts, $topics, $previous, $rejected, in_array(CasterVoice::SPOKEN_REPEAT, $rejected, true) ? $this->repeated : []));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 

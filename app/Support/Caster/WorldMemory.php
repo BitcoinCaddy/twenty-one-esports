@@ -155,6 +155,80 @@ class WorldMemory
     }
 
     /**
+     * The digest split for Anthropic's prompt cache (a prefix match: one changed byte re-bills everything behind it).
+     * `frozen` is the digest as of the start of the current `$minutes` epoch: the items older than that start, the
+     * games on now left out, their time in words counted from that start. It is snapshotted once per epoch (Cache),
+     * so every prompt of the epoch carries it byte for byte, also when a late row turns up or the window slides.
+     * `fresh` is everything the snapshot does not hold (the games on now, the items since the start, a late row),
+     * newest first with the time counted from `$now`, within what is left of the budget (a quarter at least).
+     * `since` is the epoch's start (a timestamp).
+     *
+     * @param  list<string>  $except
+     * @return array{frozen: string|null, fresh: string|null, since: int}
+     */
+    public function epochDigest(CarbonImmutable $now, int $minutes, array $except = [], ?int $tokens = null): array
+    {
+        $budget = max(1, $tokens ?? (int) config('tv.commentary.world.tokens', 2_000)) * 4;
+        $length = max(1, $minutes) * 60;
+        $since = intdiv($now->getTimestamp(), $length) * $length;
+        sort($except);
+
+        $snapshot = Cache::remember('caster:world:epoch:'.$length.':'.$since.':'.implode(',', $except), $length + 120, function () use ($now, $since, $except, $budget): array {
+            $start = CarbonImmutable::createFromTimestamp($since);
+            $lines = [];
+            $keys = [];
+            $used = 0;
+            $floor = 0;
+
+            foreach ($this->items($now) as $item) {
+                if ($item['kind'] === self::LIVE || $item['at'] >= $since || in_array($item['kind'], $except, true)) {
+                    continue;
+                }
+
+                $line = '- '.self::relative($item['at'], $start).': '.$item['line'];
+                $used += mb_strlen($line) + 1;
+
+                if ($used > $budget) {
+                    // Older rows than this one fell off the budget: they are no late arrivals for the fresh part.
+                    $floor = $item['at'] + 1;
+
+                    break;
+                }
+
+                $lines[] = $line;
+                $keys[] = $item['key'];
+            }
+
+            return ['lines' => $lines, 'keys' => $keys, 'used' => $used, 'floor' => $floor];
+        });
+
+        $held = array_flip((array) ($snapshot['keys'] ?? []));
+        $floor = (int) ($snapshot['floor'] ?? 0);
+        $left = max(intdiv($budget, 4), $budget - (int) ($snapshot['used'] ?? 0));
+        $fresh = [];
+        $used = 0;
+
+        foreach ($this->items($now) as $item) {
+            if (isset($held[$item['key']]) || $item['at'] < $floor || in_array($item['kind'], $except, true)) {
+                continue;
+            }
+
+            $line = '- '.self::relative($item['at'], $now).': '.$item['line'];
+            $used += mb_strlen($line) + 1;
+
+            if ($used > $left) {
+                break;
+            }
+
+            $fresh[] = $line;
+        }
+
+        $frozen = array_values(array_map('strval', (array) ($snapshot['lines'] ?? [])));
+
+        return ['frozen' => $frozen === [] ? null : implode("\n", $frozen), 'fresh' => $fresh === [] ? null : implode("\n", $fresh), 'since' => $since];
+    }
+
+    /**
      * Up to `$count` items for a callback: at least CALLBACK_MIN_AGE_MINUTES
      * old, no game on now, none called back within `callback_repeat_hours`;
      * drawn at random.

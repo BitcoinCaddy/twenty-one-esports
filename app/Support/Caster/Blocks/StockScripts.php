@@ -191,7 +191,7 @@ final class StockScripts
     {
         $this->usage->recordAttempt(self::CHANNEL);
         $temperature = config('tv.commentary.scripts.temperature');
-        $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000)))
+        $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000), cacheTtl: CasterVoice::staticCacheTtl()))
             ->prompt(self::prompt($format, $material, $rejected));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
