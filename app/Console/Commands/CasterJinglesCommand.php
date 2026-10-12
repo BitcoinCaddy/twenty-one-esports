@@ -6,9 +6,11 @@ use App\Support\Caster\Blocks\JingleSynth;
 use App\Support\Caster\CasterFetcher;
 use App\Support\Caster\Pcm;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
+use Closure;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -377,9 +379,10 @@ class CasterJinglesCommand extends Command
 
         $result = $run(JingleSynth::produceArguments($ffmpeg, $voice, $this->seconds($voice), $stinger, $hit, $bed, $recipe['effect'], $recipe['intro'], $recipe['tail'], $mix));
         $measured = $result->successful() ? $this->lufs($mix) : null;
-        $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mix, -16 - $measured, $mastered, false));
+        $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mix, -16 - $measured, $mastered, false, JingleSynth::TRUE_PEAK_LIMIT));
         $measured = $measured !== null && $result->successful() ? $this->lufs($mastered) : null;
-        $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mastered, -16 - $measured, $dir.'/'.$file, true));
+        $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mastered, -16 - $measured, $dir.'/'.$file, true, JingleSynth::TRUE_PEAK_LIMIT));
+        $result = $measured === null || ! $result->successful() ? $result : $this->underTruePeak($run, $ffmpeg, $mastered, -16 - $measured, $dir.'/'.$file) ?? $result;
 
         foreach ([$mix, $mastered] as $temporary) {
             if (is_file($temporary)) {
@@ -415,9 +418,10 @@ class CasterJinglesCommand extends Command
             $mastered = $out.'/.master-'.$file.'.wav';
             $result = $run(JingleSynth::soundArguments($ffmpeg, $name, $raw));
             $measured = $result->successful() ? $this->lufs($raw) : null;
-            $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $raw, -16 - $measured, $mastered, false));
+            $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $raw, -16 - $measured, $mastered, false, JingleSynth::TRUE_PEAK_LIMIT));
             $measured = $measured !== null && $result->successful() ? $this->lufs($mastered) : null;
-            $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mastered, -16 - $measured, $out.'/'.$file.'.opus', true));
+            $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mastered, -16 - $measured, $out.'/'.$file.'.opus', true, JingleSynth::TRUE_PEAK_LIMIT));
+            $result = $measured === null || ! $result->successful() ? $result : $this->underTruePeak($run, $ffmpeg, $mastered, -16 - $measured, $out.'/'.$file.'.opus') ?? $result;
 
             foreach ([$raw, $mastered] as $temporary) {
                 if (is_file($temporary)) {
@@ -498,6 +502,39 @@ class CasterJinglesCommand extends Command
         $result = Process::timeout(20)->run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', $file]);
 
         return (float) trim($result->output());
+    }
+
+    /**
+     * The encoded file's true peak above -1 dBTP (Opus overshoots on a noisy hit by up to 2 dB): encoded again from
+     * `$mastered` with the limiter that much lower plus a fifth of a dB, at most three times; the loudness stays, only
+     * the hit is limited harder. Null when nothing had to be done.
+     *
+     * @param  Closure(list<string>): ProcessResult  $run
+     */
+    private function underTruePeak(Closure $run, string $ffmpeg, string $mastered, float $gainDb, string $out): ?ProcessResult
+    {
+        $limit = JingleSynth::TRUE_PEAK_LIMIT;
+        $result = null;
+
+        for ($pass = 0; $pass < 3; $pass++) {
+            $peak = $this->truePeak($out);
+
+            if ($peak === null || $peak <= -1.0) {
+                break;
+            }
+
+            $limit *= 10 ** (-($peak + 1.2) / 20);
+            $result = $run(JingleSynth::masterArguments($ffmpeg, $mastered, $gainDb, $out, true, $limit));
+        }
+
+        return $result;
+    }
+
+    private function truePeak(string $file): ?float
+    {
+        $result = Process::timeout(30)->run(['nice', '-n', '19', (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg'), '-nostdin', '-hide_banner', '-threads', '1', '-i', $file, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
+
+        return preg_match_all('/Peak:\s+(-?[\d.]+) dBFS/', $result->errorOutput(), $match) > 0 ? (float) end($match[1]) : null;
     }
 
     private function lufs(string $file): ?float

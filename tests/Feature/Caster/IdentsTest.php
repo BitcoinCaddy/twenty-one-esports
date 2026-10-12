@@ -224,4 +224,3 @@ it('builds no idents while they are switched off, and the director then plays th
     expect(Idents::fromConfig())->toBeNull()
         ->and(identsFirstClip(SceneDirector::fromConfig(app(ClipSpool::class)))['ident'])->toBeNull();
 });
-

@@ -54,7 +54,7 @@ final class Idents
     /** The file of a stinger slot (news, ident, breaking …), or null when the slot is unknown or its file is missing. */
     public function stingerFor(string $slot): ?string
     {
-        $files = array_values(array_filter(array_map(fn ($file): ?string => is_string($file) ? $this->existing($file) : null, (array) ($this->settings['stingers'][$slot] ?? []))));
+        $files = array_values(array_filter(array_map(fn (string $file): ?string => $this->existing($file), (array) ($this->settings['stingers'][$slot] ?? []))));
 
         return $this->rotate('stinger:'.$slot, $files);
     }
@@ -93,7 +93,7 @@ final class Idents
 
         if ($clip->kind === 'rubric' && $formatBeds !== []) {
             $topic = (string) $clip->script()->value('topic');
-            $file = isset($formatBeds[$topic]) && is_string($formatBeds[$topic]) ? $this->existing($formatBeds[$topic]) : null;
+            $file = isset($formatBeds[$topic]) ? $this->existing($formatBeds[$topic]) : null;
 
             if ($file !== null) {
                 return ['file' => $file, 'gain_db' => $newGain];
@@ -108,7 +108,7 @@ final class Idents
         $gains = $legacy === null ? [] : [$legacy => (float) ($this->settings['bed_gain_db'] ?? 0)];
 
         foreach ((array) ($this->settings['beds'] ?? []) as $file) {
-            $path = is_string($file) ? $this->existing($file) : null;
+            $path = $this->existing($file);
 
             if ($path !== null) {
                 $gains[$path] = $newGain;

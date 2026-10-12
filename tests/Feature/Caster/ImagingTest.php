@@ -313,3 +313,79 @@ it('leaves a chat reply on the timeline exactly as it came, with a library uploa
         ->and($director->imagingOnAir())->toBe([])
         ->and((float) $director->timeline->endsAt() - (float) $director->timeline->startsAt())->toEqualWithDelta(10.0, 0.01);
 });
+
+it('opens a teaser with the promo of the format it teases, a station ID due with a long one every 30 minutes', function () {
+    imagingLibrary($this->imagingDir, ['station-long' => 3, 'station-short' => 3, 'promo-tribunal' => 1, 'promo' => 2, 'coming-up' => 2]);
+    $imaging = imagingRules(0.99);
+    $at = CarbonImmutable::parse('2026-10-12 12:00:00', 'UTC');
+
+    expect(imagingChoice($imaging, imagingClip(CasterScript::SCENE), $at)[0])->toBe('station-long')
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::TEASER, 'tribunal'), $at->addMinutes(5))[0])->toBe('promo-tribunal')
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::TEASER, 'news'), $at->addMinutes(6))[0])->toBe('coming-up')
+        // The promo at +5 named the station: the next station ID is due at +20, a short one; the long one at +30.
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::SCENE), $at->addMinutes(20))[0])->toBe('station-short')
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::SCENE), $at->addMinutes(35))[0])->toBe('station-long');
+});
+
+it('rides a power intro on a music gap after talk by day only, never before a slot, and the next clip opens without a jingle', function () {
+    imagingLibrary($this->imagingDir, ['power-intro' => 4, 'station-short' => 4, 'sweeper' => 4]);
+    $talk = imagingClip(CasterScript::SCENE);
+    $day = CarbonImmutable::parse('2026-10-12 14:05:00', 'Europe/Berlin');
+
+    expect(imagingRules(0.1)->powerIntro($talk, $day)['category'] ?? null)->toBe('power-intro')
+        ->and(imagingRules(0.3)->powerIntro($talk, $day))->toBeNull()
+        ->and(imagingRules(0.1)->powerIntro(imagingClip(CasterScript::CHAT), $day))->toBeNull()
+        ->and(imagingRules(0.1)->powerIntro(imagingClip(CasterScript::BULLETIN), $day))->toBeNull()
+        ->and(imagingRules(0.1)->powerIntro($talk, CarbonImmutable::parse('2026-10-12 03:05:00', 'Europe/Berlin')))->toBeNull()
+        // A minute before the :30 headlines: the news open comes first.
+        ->and(imagingRules(0.1)->powerIntro($talk, CarbonImmutable::parse('2026-10-12 14:29:00', 'Europe/Berlin')))->toBeNull();
+
+    $imaging = imagingRules(0.1);
+    imagingChoice($imaging, imagingClip(CasterScript::SCENE), $day);
+    $intro = $imaging->powerIntro($talk, $day->addSeconds(20));
+
+    expect($intro)->not->toBeNull()
+        // 4 s of intro, the next clip 6 s after its end: no opener; a minute later the rules apply again.
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::SCENE), $day->addSeconds(30))[0])->toBeNull()
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::SCENE), $day->addSeconds(80))[0])->toBe('sweeper');
+});
+
+it('puts the power intro on the timeline when the gap opens and lets a clip that comes meanwhile follow it a breath later', function () {
+    $jingle = resource_path('audio/idents/station-ident.opus');
+    imagingLibrary($this->imagingDir, ['power-intro' => 2], $jingle);
+    config(['tv.commentary.imaging.enabled' => true, 'tv.commentary.imaging.power_intro_share' => 1.0, 'tv.commentary.idents.enabled' => false,
+        'tv.commentary.spool.gap_seconds' => ['min' => 20, 'max' => 20], 'tv.commentary.runs.enabled' => false]);
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 14:05:00', 'Europe/Berlin'));
+    imagingClip(CasterScript::SCENE, seconds: 10.0);
+    Process::fake(["*'pipe:0' '-ac'*" => Process::result(output: str_repeat("\1\0", 24000 * 4))]);
+
+    $director = SceneDirector::fromConfig(app(ClipSpool::class));
+    $planner = new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+    $introAt = null;
+
+    for ($t = $start; $t <= $start + 30 && $introAt === null; $t += 0.25) {
+        $director->tick($planner, $planner->at($t, []), $t);
+        if ($director->clip() === null && $director->imagingOnAir() === ['power-intro'] && $director->timeline->isPlaying($t)) {
+            $introAt = $t;
+        }
+    }
+
+    $jingleSeconds = Pcm::seconds((string) Process::run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-i', $jingle, '-ac', '1', '-ar', '24000', '-f', 's16le', 'pipe:1'])->output(), 24000);
+    $timeline = $director->timeline;
+
+    expect($introAt)->not->toBeNull()
+        ->and((float) $timeline->endsAt() - (float) $timeline->startsAt())->toEqualWithDelta($jingleSeconds, 0.05);
+
+    $sample = fn (float $at): string => $timeline->samples((int) round($at * 24000), (int) round($at * 24000) + 2400);
+    $before = $sample($introAt + 1.0);
+    $introEnds = (float) $timeline->endsAt();
+
+    // A chat reply arrives while the intro plays: it follows the intro's rest, not a sample of the intro changes.
+    imagingClip(CasterScript::CHAT, seconds: 4.0);
+    $director->tick($planner, $planner->at($introAt + 0.5, []), $introAt + 0.5);
+
+    expect($director->clip()?->kind)->toBe(CasterScript::CHAT)
+        ->and($sample($introAt + 1.0))->toBe($before)
+        ->and((float) $timeline->endsAt())->toEqualWithDelta($introEnds + 0.3 + 4.0, 0.05);
+});

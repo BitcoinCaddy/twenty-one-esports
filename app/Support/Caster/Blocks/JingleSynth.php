@@ -108,12 +108,12 @@ final class JingleSynth
     /**
      * The ffmpeg arguments that gain a mix by `$gainDb` (towards -16 LUFS,
      * measured by the caller like scripts/make-idents.sh does), limit its
-     * sample peaks at -1 dBFS and write it as WAV (`$opus` false) or as the
+     * sample peaks at `$limit` (-1 dBFS by default) and write it as WAV (`$opus` false) or as the
      * final Ogg Opus mono jingle.
      *
      * @return list<string>
      */
-    public static function masterArguments(string $ffmpeg, string $in, float $gainDb, string $out, bool $opus): array
+    public static function masterArguments(string $ffmpeg, string $in, float $gainDb, string $out, bool $opus, float $limit = 0.891): array
     {
         $codec = $opus
             ? ['-c:a', 'libopus', '-b:a', '64k', '-application', 'audio', '-map_metadata', '-1',
@@ -122,10 +122,16 @@ final class JingleSynth
 
         return [
             'nice', '-n', '19', $ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-threads', '1', '-i', $in,
-            '-af', sprintf('volume=%.2FdB,alimiter=limit=0.891:level=disabled:attack=1:release=50', $gainDb),
+            '-af', sprintf('volume=%.2FdB,alimiter=limit=%.3F:level=disabled:attack=1:release=50', $gainDb, $limit),
             '-ac', '1', '-ar', (string) self::RATE, ...$codec, '-y', $out,
         ];
     }
+
+    /**
+     * The sample-peak limit of the stingers, beds and produced imaging (P11): -2 dBFS keeps the true peak of the
+     * encoded Opus file under -1 dBTP (at -1 dBFS sample peak the beds measured up to -0.4 dBTP).
+     */
+    public const TRUE_PEAK_LIMIT = 0.794;
 
     /** The length of every bed loop (seconds): every periodic part of a bed divides it, so the file loops seamlessly. */
     public const LOOP_SECONDS = 16;

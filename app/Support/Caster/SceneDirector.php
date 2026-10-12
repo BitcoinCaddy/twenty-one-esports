@@ -440,8 +440,12 @@ final class SceneDirector
      */
     private function powerIntro(CasterClip $ended, float $now): void
     {
-        $intro = $this->imaging?->powerIntro($ended, CarbonImmutable::createFromTimestamp($now));
-        $pcm = $intro === null ? null : $this->imaging?->pcm($intro['file']);
+        if ($this->imaging === null) {
+            return;
+        }
+
+        $intro = $this->imaging->powerIntro($ended, CarbonImmutable::createFromTimestamp($now));
+        $pcm = $intro === null ? null : $this->imaging->pcm($intro['file']);
 
         if ($pcm === null) {
             return;
