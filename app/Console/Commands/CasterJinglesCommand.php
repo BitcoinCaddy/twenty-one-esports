@@ -63,7 +63,7 @@ use InvalidArgumentException;
  * the list (about 100 small files, a few MB), never in git.
  */
 #[Signature('caster:jingles
-    {--limit=150 : VoiceStudio calls at most in this run}
+    {--limit=260 : VoiceStudio calls at most in this run (the whole library: 74 block lines, 126 imaging lines, the blips)}
     {--pause=6 : Seconds between two VoiceStudio calls}
     {--no-blips : Leave the speakers\' blips out}
     {--mix-only : Render the jingles from the voices on disk, no VoiceStudio call}
