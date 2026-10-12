@@ -1,0 +1,31 @@
+{
+    "about": "Heute vor X Jahren (plan \"TWENTY ONE Radio\", P9; App\\Support\\Caster\\Programme\\OnThisDay): Bitcoin and cypherpunk history by calendar day. Each entry: `date` as MM-DD, `year`, the German fact and its source (read 2026-10-12: the Wikipedia article's text via the MediaWiki extracts API). A day without an entry here and without a bitcoin event in Wikipedia's \"on this day\" feed has no rubric (skipped, never filled).",
+    "events": [
+        {"date": "01-03", "year": 2009, "fact": "Satoshi Nakamoto schürft den Genesis-Block, Block null, mit einer Belohnung von 50 Bitcoin, und darin steht die Schlagzeile der Times: Chancellor on brink of second bailout for banks.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "01-09", "year": 2009, "fact": "Der erste quelloffene Bitcoin-Client erscheint, gehostet auf SourceForge.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "01-10", "year": 2024, "fact": "Die US-Börsenaufsicht SEC genehmigt den Handel mit börsengehandelten Spot-Bitcoin-Produkten.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "01-12", "year": 2009, "fact": "Hal Finney bekommt von Satoshi Nakamoto 10 Bitcoin, die erste Bitcoin-Transaktion der Welt, in Block 170.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "01-16", "year": 2018, "fact": "Bitconnect schließt seine Börse und sein Verleihprogramm, nachdem Aufseher aus Texas und North Carolina eingeschritten sind.", "source": "https://en.wikipedia.org/wiki/Bitconnect"},
+        {"date": "01-21", "year": 2025, "fact": "Ross Ulbricht, der Gründer von Silk Road, bekommt nach elf Jahren Haft eine volle und bedingungslose Begnadigung vom US-Präsidenten Donald Trump.", "source": "https://en.wikipedia.org/wiki/Ross_Ulbricht"},
+        {"date": "02-24", "year": 2014, "fact": "Die Börse Mt. Gox stellt den Handel ein und nimmt ihre Website vom Netz.", "source": "https://en.wikipedia.org/wiki/Mt._Gox"},
+        {"date": "02-28", "year": 2014, "fact": "Mt. Gox beantragt Insolvenzschutz.", "source": "https://en.wikipedia.org/wiki/Mt._Gox"},
+        {"date": "03-12", "year": 2013, "fact": "Ein Miner mit Version 0.8.0 der Bitcoin-Software erzeugt einen großen Block, den Version 0.7 für ungültig hält, und die Kette spaltet sich kurz auf.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "03-23", "year": 2023, "fact": "Terra-Gründer Do Kwon wird am Flughafen Podgorica in Montenegro mit falschen Papieren festgenommen.", "source": "https://en.wikipedia.org/wiki/Terra_(blockchain)"},
+        {"date": "04-20", "year": 2024, "fact": "Das vierte Halving: die Belohnung für einen Block sinkt von 6,25 auf 3,125 Bitcoin.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "05-09", "year": 2022, "fact": "Der Stablecoin TerraUSD beginnt, seine Bindung an den US-Dollar zu verlieren, und reißt LUNA mit, fast 45 Milliarden Dollar Marktkapitalisierung sind in einer Woche weg.", "source": "https://en.wikipedia.org/wiki/Terra_(blockchain)"},
+        {"date": "05-22", "year": 2010, "fact": "Bitcoin Pizza Day: Laszlo Hanyecz bezahlt 10.000 Bitcoin für zwei Pizzen von Papa John's, der erste bekannte Kauf mit Bitcoin.", "source": "https://en.wikipedia.org/wiki/Laszlo_Hanyecz"},
+        {"date": "06-13", "year": 2022, "fact": "Der Krypto-Verleiher Celsius stoppt alle Abhebungen seiner Kunden wegen extremer Marktbedingungen.", "source": "https://en.wikipedia.org/wiki/Celsius_Network"},
+        {"date": "06-18", "year": 2019, "fact": "Facebook kündigt seine Währung Libra an, die später Diem heißt und nie startet.", "source": "https://en.wikipedia.org/wiki/Diem_(digital_currency)"},
+        {"date": "07-13", "year": 2022, "fact": "Celsius meldet Insolvenz nach Chapter 11 an, einen Monat nach dem Stopp der Abhebungen.", "source": "https://en.wikipedia.org/wiki/Celsius_Network"},
+        {"date": "08-01", "year": 2017, "fact": "Eine harte Abspaltung im Blockgrößenkrieg erzeugt Bitcoin Cash mit Blöcken bis 8 Megabyte, Bitcoin bleibt bei einem Megabyte.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "08-18", "year": 2008, "fact": "Die Domain bitcoin.org wird registriert.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "08-24", "year": 2017, "fact": "Segregated Witness, kurz SegWit, wird bei Blockhöhe 481.824 aktiviert.", "source": "https://en.wikipedia.org/wiki/SegWit"},
+        {"date": "09-07", "year": 2021, "fact": "In El Salvador tritt das Bitcoin-Gesetz in Kraft, und Bitcoin wird dort als erstem Land der Welt gesetzliches Zahlungsmittel.", "source": "https://en.wikipedia.org/wiki/Bitcoin_in_El_Salvador"},
+        {"date": "10-01", "year": 2013, "fact": "Das FBI verhaftet Ross Ulbricht in der Glen-Park-Filiale der öffentlichen Bibliothek von San Francisco als mutmaßlichen Kopf von Silk Road.", "source": "https://en.wikipedia.org/wiki/Ross_Ulbricht"},
+        {"date": "10-02", "year": 2013, "fact": "Das FBI beschlagnahmt die Seite Silk Road, und mit der Verhaftung ihres mutmaßlichen Betreibers stellt es rund 26.000 Bitcoin sicher.", "source": "https://en.wikipedia.org/wiki/History_of_bitcoin"},
+        {"date": "10-31", "year": 2008, "fact": "Satoshi Nakamoto verschickt das Whitepaper Bitcoin: A Peer-to-Peer Electronic Cash System über eine Kryptographie-Mailingliste.", "source": "https://en.wikipedia.org/wiki/Bitcoin"},
+        {"date": "11-02", "year": 2022, "fact": "CoinDesk berichtet, dass ein großer Teil des Vermögens von Alameda Research aus dem FTX-Token FTT besteht, der Anfang vom Ende von FTX.", "source": "https://en.wikipedia.org/wiki/Bankruptcy_of_FTX"},
+        {"date": "11-02", "year": 2023, "fact": "Sam Bankman-Fried wird schuldig gesprochen, die Kunden von FTX und die Kreditgeber von Alameda Research betrogen zu haben.", "source": "https://en.wikipedia.org/wiki/Bankruptcy_of_FTX"},
+        {"date": "11-07", "year": 2022, "fact": "Binance-Chef Zhao kündigt an, die FTT-Bestände von Binance zu verkaufen, und bei FTX setzt ein Ansturm auf die Abhebungen ein.", "source": "https://en.wikipedia.org/wiki/Bankruptcy_of_FTX"}
+    ]
+}
