@@ -282,7 +282,11 @@ class ChatReactions
 
         $hints = [];
         if ($persona !== null) {
-            $hints['persona'] = $persona;
+            $hints[CasterVoice::PERSONA_HINT] = $persona;
+        }
+        // The chatter's newest own notes, so Markus can surprise them (user 2026-10-12); only while profiles are on.
+        if (PersonaCards::enabled() && ($notes = $this->cache->promptNotes($event->pubkey, $now)) !== []) {
+            $hints[CasterVoice::NOTES_HINT] = implode("\n", $notes);
         }
         if (($earlier = $this->cache->exchanges($event->pubkey)) !== []) {
             $hints['frühere_wortwechsel'] = implode(' | ', $earlier);

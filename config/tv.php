@@ -361,8 +361,21 @@ return [
             'notes_days' => 30,
             'notes_total' => 20_000,
             'profiles_total' => 2_000,
-            'persona_chars' => 400,
-            'persona_refresh_hours' => 24,
+            'persona_chars' => 600,
+            'persona_refresh_hours' => 6,
+            // Where the chatter's kind 0 and newest notes are read (App\Support\Caster\ChatterCache::refresh), measured
+            // from prod 2026-10-12: purplepag.es has kind 0 only, nostr.mom/oxtr/wine/einundzwanzig had kind 0 and all
+            // fifteen notes, primal some notes but no kind 0, damus refused, nostr.band timed out. None answering:
+            // `esports.relays`. Read one after the other, so four (about six seconds measured); `knowledge_budget_seconds`
+            // stops starting the next one.
+            'knowledge_relays' => array_values(array_filter(array_map('trim', explode(',', env('APP_ENV') === 'testing'
+                ? (string) env('TV_COMMENTARY_KNOWLEDGE_RELAYS', '')
+                : ((string) env('TV_COMMENTARY_KNOWLEDGE_RELAYS') ?: 'wss://purplepag.es,wss://nostr.mom,wss://nostr.oxtr.dev,wss://nostr.wine'))))),
+            'knowledge_budget_seconds' => 8,
+            // The newest own notes (no replies) a refresh keeps, and how many of them a reply prompt carries, each cut.
+            'knowledge_notes' => 15,
+            'prompt_notes' => 3,
+            'prompt_note_chars' => 160,
             'exchanges_per_person' => 5,
             'inactive_days' => 30,
             'wot_level_two_min_followers' => 2,
