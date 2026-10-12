@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Einundzwanzig News</title>
+    <link>/s/einundzwanzig-news</link>
+    <description>Das neuste aus dem Bitcoin Space</description>
+    <lastBuildDate>Mon, 12 Oct 2026 21:52:04 GMT</lastBuildDate>
+    <generator>EINUNDZWANZIG Nostr Publishing Platform</generator>
+    <item>
+      <title>Gigi über KI</title>
+      <link>/s/einundzwanzig-news/draft-19a3edcb-8907-4136-8e26-e3d3d3e1063c</link>
+      <guid isPermaLink="false">30023:f240be2b684f85cc81566f2081386af81d7427ea86250c8bde6b7a8500c761ba:draft-19a3edcb-8907-4136-8e26-e3d3d3e1063c</guid>
+      <pubDate>Mon, 12 Oct 2026 12:42:53 GMT</pubDate>
+      <author>markusturm</author>
+      <description>Wieder ein Wochenende, wieder ein Experiment. Oder doch eher ein Wochenendprojekt? Ich bin mir nicht einmal mehr sicher, wie ich diese Dinge nennen soll, denn alles, was ich tue, ist ein bisschen nachdenken und ein bisschen reden, und schon kommt eine App dabei heraus.</description>
+      <enclosure url="https://blossom.einundzwanzig.space/76c36adbab0c401b982d377a5fbc56e7e47f53b7e4e7d15b4a949029f95e6cbe.webp" type="image/jpeg" />
+    </item>
+    <item>
+      <title>Ledger mit Spionage-Implantat: Was beim CryptoBilis-Vorfall wirklich bekannt ist</title>
+      <link>/s/einundzwanzig-news/ledger-implantat-cryptobilis-lieferkette</link>
+      <guid isPermaLink="false">30023:638384700918e6a472477045dbcc229362ac0e64a48d927c48af609a956b9348:ledger-implantat-cryptobilis-lieferkette</guid>
+      <pubDate>Mon, 12 Oct 2026 10:47:16 GMT</pubDate>
+      <author>Bitcoinlighthouse</author>
+      <description>In einem Ledger Nano X steckte eine zweite Platine mit Mobilfunkmodem, die die Seed-Phrase vom Display mitlesen kann – der Genuine Check blieb grün. Was bestätigt ist, was Gerücht ist, wer betroffen ist und welches Setup so einen Angriff übersteht.</description>
+      <enclosure url="https://bitcoinlighthouse.de/uploads/blog_posts/ledger-implantat-lieferkette.webp" type="image/jpeg" />
+      <category>hardware-wallet</category>
+      <category>ledger</category>
+      <category>news</category>
+      <category>security</category>
+      <category>selbstverwahrung</category>
+    </item>
+  </channel>
+</rss>

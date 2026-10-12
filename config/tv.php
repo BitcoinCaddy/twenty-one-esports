@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Caster\NewsMix;
+
 return [
 
     /*
@@ -527,7 +529,8 @@ return [
             // and a headline that reads as another language is skipped all the same (NewsFilter::FOREIGN).
             'feeds' => [
                 'btc-echo' => ['url' => 'https://www.btc-echo.de/feed/', 'source' => 'BTC-Echo', 'section' => 'bitcoin', 'language' => 'de'],
-                'blocktrainer' => ['url' => 'https://www.blocktrainer.de/feed.xml', 'source' => 'Blocktrainer', 'section' => 'bitcoin', 'language' => 'de'],
+                // About one article a day (30 items ≈ a month, prod 2026-10-12): eligible for a week unless a bulletin read it (P15).
+                'blocktrainer' => ['url' => 'https://www.blocktrainer.de/feed.xml', 'source' => 'Blocktrainer', 'section' => 'bitcoin', 'language' => 'de', 'fresh_hours' => 168],
                 'tagesschau-inland' => ['url' => 'https://www.tagesschau.de/inland/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
                 'tagesschau-wirtschaft' => ['url' => 'https://www.tagesschau.de/wirtschaft/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'germany', 'language' => 'de'],
                 'spiegel-deutschland' => ['url' => 'https://www.spiegel.de/politik/deutschland/index.rss', 'source' => 'Spiegel', 'section' => 'germany', 'language' => 'de'],
@@ -544,7 +547,37 @@ return [
                 'tagesschau-ausland' => ['url' => 'https://www.tagesschau.de/ausland/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'world', 'language' => 'de'],
                 'spiegel-ausland' => ['url' => 'https://www.spiegel.de/ausland/index.rss', 'source' => 'Spiegel', 'section' => 'world', 'language' => 'de'],
                 // The association's own news (plan "TWENTY ONE Radio", P2; RSS, 50 items, reachable from prod, checked 2026-10-12).
-                'einundzwanzig-news' => ['url' => 'https://media.einundzwanzig.space/s/einundzwanzig-news/feed.xml', 'source' => 'EINUNDZWANZIG News', 'section' => 'bitcoin', 'language' => 'de'],
+                'einundzwanzig-news' => ['url' => 'https://media.einundzwanzig.space/s/einundzwanzig-news/feed.xml', 'source' => 'EINUNDZWANZIG News', 'section' => 'bitcoin', 'language' => 'de', 'fresh_hours' => 168],
+                // Tech news (P15, user 2026-10-12: "heise Technik-News mehr anreichern", "mehr heise Technik"); Atom/RSS, HTTP 200
+                // from prod 2026-10-13: heise top 60 entries, heise security 20, golem 40, netzpolitik 25, all with items of the day.
+                'heise-top' => ['url' => 'https://www.heise.de/rss/heise-top-atom.xml', 'source' => 'heise online', 'section' => 'tech', 'language' => 'de'],
+                'heise-security' => ['url' => 'https://www.heise.de/security/rss/news-atom.xml', 'source' => 'heise Security', 'section' => 'tech', 'language' => 'de'],
+                'golem' => ['url' => 'https://www.golem.de/rss.php?feed=ATOM1.0', 'source' => 'Golem', 'section' => 'tech', 'language' => 'de'],
+                'netzpolitik' => ['url' => 'https://netzpolitik.org/feed/', 'source' => 'netzpolitik.org', 'section' => 'tech', 'language' => 'de'],
+            ],
+            // The balance of the bulletins, the Presseschau and the news talk (App\Support\Caster\NewsMix, P15; user
+            // 2026-10-12 23:15: "Wir machen zu viel Politik-News", then "etwas zu viel Bitcoin, mehr heise Technik"): about
+            // `shares` of each bulletin Bitcoin and tech, the rest money policy before politics, politics at most
+            // `politics_max` per slot type; a short tier is filled by the other of Bitcoin and tech first, politics last.
+            // `fresh_hours` per section (a feed's own `fresh_hours` wins, else `programme.bulletin.fresh_hours`).
+            'quota' => [
+                'shares' => [
+                    'bitcoin' => (float) env('TV_COMMENTARY_NEWS_SHARE_BITCOIN', 0.4),
+                    'tech' => (float) env('TV_COMMENTARY_NEWS_SHARE_TECH', 0.4),
+                ],
+                'politics_max' => [
+                    'news' => (int) env('TV_COMMENTARY_NEWS_POLITICS_MAX', 2),
+                    'headlines' => (int) env('TV_COMMENTARY_HEADLINES_POLITICS_MAX', 1),
+                ],
+                'fresh_hours' => ['bitcoin' => 72, 'tech' => 24],
+                // The first outlets within a tier (the association's own news, then Blocktrainer; heise before the other tech feeds).
+                'first' => [
+                    'bitcoin' => ['EINUNDZWANZIG News', 'Blocktrainer'],
+                    'tech' => ['heise online', 'heise Security'],
+                ],
+                'money_pattern' => NewsMix::MONEY_PATTERN,
+                'altcoin_pattern' => NewsMix::ALTCOIN_PATTERN,
+                'altcoin_major_pattern' => NewsMix::ALTCOIN_MAJOR_PATTERN,
             ],
         ],
 
@@ -1179,6 +1212,26 @@ return [
                 // Above the bulletin's writing, so the announcement is voiced before the episode starts.
                 'priority' => 76,
                 'tries' => 3,
+            ],
+            // The night loop (PodcastNight; user 2026-10-12 23:30: "warum nicht heute Nacht ausnahmsweise mehrere
+            // Podcastfolgen im Loop … weil heute Nacht dazu Zeit ist"): from `from` to `to` (Berlin) the `episodes` newest
+            // episodes of each of `sources` back to back, newest first, each once a night, every one between the podcast
+            // opener and the back-announce (no announcement duet at night). The next episode goes into the spool once the
+            // one on air has at most `queue_ahead_seconds` left; none starts that would end more than `overrun_minutes`
+            // after `to`. Only until `until` (Berlin, empty: every night), so "just tonight" needs no switch back.
+            // `skip_daytime_episode` leaves out the episode the day's slot airs. The library keeps `episodes + 1` per
+            // source (within `max_bytes`) and stores up to `prefetch_per_run` missing ones per feed read.
+            'night' => [
+                'enabled' => (bool) env('TV_PODCAST_NIGHT', true),
+                'from' => env('TV_PODCAST_NIGHT_FROM', '01:00'),
+                'to' => env('TV_PODCAST_NIGHT_TO', '09:00'),
+                'until' => env('TV_PODCAST_NIGHT_UNTIL', '2026-10-13 09:00'),
+                'episodes' => (int) env('TV_PODCAST_NIGHT_EPISODES', 6),
+                'sources' => ['einundzwanzig'],
+                'skip_daytime_episode' => (bool) env('TV_PODCAST_NIGHT_SKIP_DAYTIME', false),
+                'queue_ahead_seconds' => 900,
+                'overrun_minutes' => 30,
+                'prefetch_per_run' => 6,
             ],
         ],
     ],

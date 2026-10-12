@@ -50,7 +50,7 @@ class NewsFeeds
                 continue;
             }
 
-            $items = array_slice(self::parse($xml), 0, max(1, (int) ($settings['per_feed'] ?? 20)));
+            $items = array_slice(self::parse($xml, $feed['url']), 0, max(1, (int) ($settings['per_feed'] ?? 20)));
 
             foreach ($items as $item) {
                 $stored = $this->store((string) $key, $feed, $item, $now, $settings);
@@ -67,11 +67,12 @@ class NewsFeeds
     /**
      * The items of an RSS 2.0, RSS 1.0 (RDF) or Atom document, in feed order;
      * an unreadable document gives none. No network and no entity expansion
-     * while parsing.
+     * while parsing. A link relative to the site (EINUNDZWANZIG News writes "/s/einundzwanzig-news/…") is made
+     * absolute against `$base`, the feed's URL; without one it is left out.
      *
      * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary: string|null}>
      */
-    public static function parse(string $xml): array
+    public static function parse(string $xml, ?string $base = null): array
     {
         $previous = libxml_use_internal_errors(true);
 
@@ -104,7 +105,7 @@ class NewsFeeds
                 $items[] = ['title' => (string) $entry->title, 'link' => $link, 'published_at' => self::date((string) $entry->published ?: (string) $entry->updated), 'summary' => (string) $entry->summary ?: (string) $entry->content];
             }
 
-            return self::clean($items);
+            return self::clean($items, $base);
         }
 
         $rows = $root === 'RDF' ? $document->children('http://purl.org/rss/1.0/')->item : $document->channel->item;
@@ -114,7 +115,7 @@ class NewsFeeds
             $items[] = ['title' => (string) $row->title, 'link' => trim((string) $row->link) ?: null, 'published_at' => self::date((string) $row->pubDate ?: (string) $dc->date), 'summary' => (string) $row->description];
         }
 
-        return self::clean($items);
+        return self::clean($items, $base);
     }
 
     /**
@@ -125,6 +126,9 @@ class NewsFeeds
     {
         $title = html_entity_decode(strip_tags(html_entity_decode($title, ENT_QUOTES | ENT_HTML5, 'UTF-8')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $title = trim((string) preg_replace('/\s+/u', ' ', $title));
+
+        // Golem marks its paywalled articles "(g+) …" (prod 2026-10-13): the mark is not spoken.
+        $title = trim((string) preg_replace('/^\(g\+\)\s*/iu', '', $title));
 
         return trim((string) preg_replace('/\s+[|–-]\s+(tagesschau\.de|SPIEGEL|WELT|FAZ|n-tv\.de|Handelsblatt)$/iu', '', $title));
     }
@@ -159,7 +163,7 @@ class NewsFeeds
      * @param  list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary?: string}>  $items
      * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary: string|null}>
      */
-    private static function clean(array $items): array
+    private static function clean(array $items, ?string $base = null): array
     {
         $clean = [];
 
@@ -167,7 +171,12 @@ class NewsFeeds
             $title = self::normalize($item['title']);
 
             if ($title !== '') {
-                $clean[] = ['title' => $title, 'link' => $item['link'] !== null && str_starts_with($item['link'], 'http') ? mb_substr($item['link'], 0, 500) : null, 'published_at' => $item['published_at'],
+                $link = $item['link'];
+                if ($link !== null && $base !== null && str_starts_with($link, '/') && ! str_starts_with($link, '//')
+                    && is_string($scheme = parse_url($base, PHP_URL_SCHEME)) && is_string($host = parse_url($base, PHP_URL_HOST))) {
+                    $link = $scheme.'://'.$host.$link;
+                }
+                $clean[] = ['title' => $title, 'link' => $link !== null && str_starts_with($link, 'http') ? mb_substr($link, 0, 500) : null, 'published_at' => $item['published_at'],
                     'summary' => self::summary($item['summary'] ?? '', $title)];
             }
         }
@@ -250,7 +259,9 @@ class NewsFeeds
             $published = $now;
         }
 
-        if ($published->lessThan($now->subHours((int) ($settings['keep_hours'] ?? 48))) || mb_strlen($item['title']) > (int) ($settings['max_title_chars'] ?? 160)) {
+        $section = in_array($feed['section'] ?? null, CasterNews::SECTIONS, true) ? $feed['section'] : CasterNews::GERMANY;
+
+        if ($published->lessThan($now->subHours(NewsMix::keepHours($key, $section))) || mb_strlen($item['title']) > (int) ($settings['max_title_chars'] ?? 160)) {
             return 'skipped';
         }
 
@@ -261,7 +272,6 @@ class NewsFeeds
         }
 
         $reason = NewsFilter::reason($item['title'], ($feed['language'] ?? 'de') === 'en' ? 'en' : 'de');
-        $section = in_array($feed['section'] ?? null, CasterNews::SECTIONS, true) ? $feed['section'] : CasterNews::GERMANY;
 
         CasterNews::query()->create([
             'hash' => $hash,
@@ -280,17 +290,37 @@ class NewsFeeds
         return $reason === null ? 'stored' : 'filtered';
     }
 
-    /** Rows older than `keep_hours`, then the oldest beyond `max_rows`. */
+    /**
+     * Rows older than `keep_hours` (a feed that stays fresh longer keeps its rows that long, NewsMix::keepHours()),
+     * then the oldest beyond `max_rows`; the rows of the long-kept feeds (a few dozen, Blocktrainer writes one a day)
+     * count towards neither, so the general feeds never push them out.
+     */
     public function prune(CarbonImmutable $now): int
     {
         $settings = (array) config('tv.commentary.news', []);
-        $deleted = CasterNews::query()->where('published_at', '<', $now->subHours((int) ($settings['keep_hours'] ?? 48)))->delete();
+        $keepHours = (int) ($settings['keep_hours'] ?? 48);
+        $long = [];
+
+        foreach ((array) ($settings['feeds'] ?? []) as $key => $feed) {
+            $hours = NewsMix::keepHours((string) $key, is_array($feed) ? (string) ($feed['section'] ?? CasterNews::GERMANY) : CasterNews::GERMANY);
+
+            if ($hours > $keepHours) {
+                $long[(string) $key] = $hours;
+            }
+        }
+
+        $deleted = CasterNews::query()->whereNotIn('feed', array_keys($long))->where('published_at', '<', $now->subHours($keepHours))->delete();
+
+        foreach ($long as $key => $hours) {
+            $deleted += CasterNews::query()->where('feed', $key)->where('published_at', '<', $now->subHours($hours))->delete();
+        }
 
         $max = max(1, (int) ($settings['max_rows'] ?? 600));
-        $keep = CasterNews::query()->orderByDesc('published_at')->orderByDesc('id')->limit($max)->pluck('id');
+        $general = CasterNews::query()->whereNotIn('feed', array_keys($long));
+        $keep = (clone $general)->orderByDesc('published_at')->orderByDesc('id')->limit($max)->pluck('id');
 
-        if (CasterNews::query()->count() > $max) {
-            $deleted += CasterNews::query()->whereNotIn('id', $keep)->delete();
+        if ((clone $general)->count() > $max) {
+            $deleted += (clone $general)->whereNotIn('id', $keep)->delete();
         }
 
         return $deleted;

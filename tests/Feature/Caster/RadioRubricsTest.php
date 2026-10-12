@@ -90,7 +90,7 @@ function rubricsDesk(): void
 
     rubricsHeadline('Klingbeil will SPD-Führung neu wählen lassen', 'tagesschau', 10);
     rubricsHeadline('Klingbeil kündigt Neuwahl der Parteispitze an', 'Spiegel', 15);
-    rubricsHeadline('Bahn kündigt Sanierung wichtiger Strecken im Westen an', 'Welt', 25);
+    rubricsHeadline('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', 25, CasterNews::BITCOIN);
     rubricsHeadline('Länder streiten über Finanzierung neuer Schulgebäude', 'FAZ', 30);
 
     app(PodcastTranscripts::class)->store(['guid' => 'ep-336', 'title' => '#336 - Proof of Bier', 'episode_number' => 336, 'published_at' => now()->subDays(2)->getTimestamp(), 'transcript' => 'Heute reden wir über Bier.']);

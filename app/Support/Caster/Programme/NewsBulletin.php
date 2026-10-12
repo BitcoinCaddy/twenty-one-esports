@@ -7,6 +7,7 @@ use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\NewsFilter;
+use App\Support\Caster\NewsMix;
 use App\Support\Caster\QuietHours;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
@@ -124,7 +125,7 @@ class NewsBulletin
         'ins', 'ans', 'kein', 'keine', 'keinen', 'jede', 'jeder', 'jedes', 'diese', 'dieser', 'dieses', 'neue', 'neuen', 'neuer', 'mehr'];
 
     /** The section labels the prompt shows. */
-    private const SECTIONS = [CasterNews::GERMANY => 'Deutschland', CasterNews::WORLD => 'Welt', CasterNews::BITCOIN => 'Bitcoin', self::LEAGUE => 'TWENTY ONE Liga'];
+    private const SECTIONS = [CasterNews::GERMANY => 'Deutschland', CasterNews::WORLD => 'Welt', CasterNews::BITCOIN => 'Bitcoin', CasterNews::TECH => 'Technik', self::LEAGUE => 'TWENTY ONE Liga'];
 
     /** The separator between the news and the commentary, rotating by slot. */
     private const SEPARATORS = [
@@ -205,12 +206,12 @@ class NewsBulletin
     }
 
     /**
-     * The items of a bulletin of `$type`: fresh headlines no bulletin read
-     * yet, the sections taking turns (Deutschland first at :00, Bitcoin first
-     * at :30; EINUNDZWANZIG News first within Bitcoin), a new outlet before
-     * one already picked, never two items on the same story; at :00 the
-     * newest league item of the day after them. Between `items.min` and
-     * `items.max` of the type, fewer when the feeds have fewer.
+     * The items of a bulletin of `$type`: headlines no bulletin read yet, fresh by their feed's window (Blocktrainer
+     * and EINUNDZWANZIG News for a week, NewsMix::fresh()), composed by the quota of NewsMix (about 40 % Bitcoin,
+     * 40 % tech, the rest money before politics, politics capped), the first outlets of a tier first
+     * (`news.quota.first`: EINUNDZWANZIG News, Blocktrainer; heise), a new outlet before one already picked, never
+     * two items on the same story, no altcoin hype; at :00 the newest league item of the day after them. Between
+     * `items.min` and `items.max` of the type, fewer when the feeds have fewer.
      *
      * @return list<BulletinItem>
      */
@@ -224,73 +225,43 @@ class NewsBulletin
         $wanted = $count - ($league === null ? 0 : 1);
 
         $pools = self::emptyPools();
-        $rows = CasterNews::query()->whereNull('skipped')->whereNull('bulletin_at')
-            ->where('published_at', '>=', $now->utc()->subHours((int) ($settings['fresh_hours'] ?? 12)))->where('published_at', '<=', $now->utc())
-            ->orderByDesc('published_at')->orderByDesc('id')->limit(300)->get();
+        $rows = NewsMix::fresh(CasterNews::query()->whereNull('skipped')->whereNull('bulletin_at'), $now)
+            ->orderByDesc('published_at')->orderByDesc('id')->limit(400)->get();
 
         // A story a bulletin read within the last day stays out, whichever outlet tells it now.
         $aired = CasterNews::query()->whereNotNull('bulletin_at')->where('bulletin_at', '>=', $now->utc()->subDay())->orderByDesc('bulletin_at')->limit(200)->pluck('title')->all();
 
         foreach ($rows as $row) {
-            if (! isset($pools[$row->section]) || NewsFilter::reason($row->title, $row->language) !== null
+            $tier = NewsMix::tier($row->section, $row->title, $row->summary);
+
+            if (! in_array($row->section, CasterNews::SECTIONS, true) || NewsFilter::reason($row->title, $row->language) !== null
                 || ($row->summary !== null && NewsFilter::reason($row->summary, $row->language) !== null)
+                || ($tier === NewsMix::BITCOIN && NewsMix::altcoinHype($row->title))
                 || array_filter($aired, fn (string $title): bool => self::sameStory($row->title, $title)) !== []) {
                 continue;
             }
 
             // One item per story: a later headline on a story already in a pool joins it (its outlet as `also`).
-            foreach ($pools as $section => $pool) {
+            foreach ($pools as $poolTier => $pool) {
                 foreach ($pool as $index => $item) {
                     if (self::sameStory($item['title'], $row->title)) {
-                        $pools[$section][$index] = self::joined($item, $row);
+                        $pools[$poolTier][$index] = self::joined($item, $row);
 
                         continue 3;
                     }
                 }
             }
 
-            $pools[$row->section][] = ['key' => 'news:'.$row->id, 'section' => $row->section, 'source' => $row->source, 'title' => CasterVoice::withoutHashtags($row->title), 'news_id' => (int) $row->id, 'also' => [], 'ids' => [],
+            $pools[$tier][] = ['key' => 'news:'.$row->id, 'section' => $row->section, 'source' => $row->source, 'title' => CasterVoice::withoutHashtags($row->title), 'news_id' => (int) $row->id, 'also' => [], 'ids' => [],
                 'summary' => $row->summary === null ? '' : CasterVoice::withoutHashtags($row->summary)];
         }
 
-        // The association's own news first within its section: two or three a day, each worth the air.
-        usort($pools[CasterNews::BITCOIN], fn (array $a, array $b): int => (int) ($b['source'] === 'EINUNDZWANZIG News') <=> (int) ($a['source'] === 'EINUNDZWANZIG News'));
-
-        $order = $type === BroadcastClock::HEADLINES ? [CasterNews::BITCOIN, CasterNews::GERMANY, CasterNews::WORLD] : [CasterNews::GERMANY, CasterNews::WORLD, CasterNews::BITCOIN];
-        $picked = [];
-
-        // Round by round, each section an outlet not heard yet; only when no section has one left, an outlet again.
-        while (count($picked) < $wanted) {
-            $progress = false;
-
-            foreach ([true, false] as $newOnly) {
-                foreach ($order as $section) {
-                    if (count($picked) >= $wanted) {
-                        break;
-                    }
-
-                    $choice = $this->pick($pools[$section], $picked, $newOnly);
-
-                    if ($choice !== null) {
-                        $picked[] = $pools[$section][$choice];
-                        array_splice($pools[$section], $choice, 1);
-                        $progress = true;
-
-                        if (! $newOnly) {
-                            break;
-                        }
-                    }
-                }
-
-                if ($progress) {
-                    break;
-                }
-            }
-
-            if (! $progress) {
-                break;
-            }
+        // The first outlets of a tier first (the association's own news, Blocktrainer; heise), else newest first.
+        foreach (array_keys($pools) as $tier) {
+            usort($pools[$tier], fn (array $a, array $b): int => NewsMix::firstRank($tier, $a['source']) <=> NewsMix::firstRank($tier, $b['source']));
         }
+
+        $picked = NewsMix::compose($pools, $type, $wanted, fn (array $pool, array $picked): ?int => $this->pick($pool, $picked, true) ?? $this->pick($pool, $picked, false));
 
         if ($league !== null) {
             $picked[] = $league;
@@ -300,13 +271,13 @@ class NewsBulletin
     }
 
     /**
-     * One pool of items per section, in the order the sections are read.
+     * One pool of items per tier (NewsMix).
      *
      * @return array<string, list<BulletinItem>>
      */
     private static function emptyPools(): array
     {
-        return [CasterNews::GERMANY => [], CasterNews::WORLD => [], CasterNews::BITCOIN => []];
+        return [NewsMix::BITCOIN => [], NewsMix::TECH => [], NewsMix::MONEY => [], NewsMix::POLITICS => []];
     }
 
     /**

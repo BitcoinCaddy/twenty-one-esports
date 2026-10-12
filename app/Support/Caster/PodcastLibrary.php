@@ -62,7 +62,7 @@ class PodcastLibrary
     /**
      * What the last refresh measured per source (download, transcode, chunks, pauses), for the command's log line.
      *
-     * @var array<string, array<string, int|float>>
+     * @var array<string, array<string, int|float|string>>
      */
     public array $measured = [];
 
@@ -151,6 +151,56 @@ class PodcastLibrary
     }
 
     /**
+     * Every stored episode of a source whose chunks are all there (the current one and the night loop's), newest
+     * first by publication, each once.
+     *
+     * @return list<array{guid: string, title: string, episode_number?: int|null, notes?: string, published_at: int, seconds: float, chunks: list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>}>
+     */
+    public function episodes(string $source): array
+    {
+        $episodes = [];
+        $files = [$this->dir().'/'.$source.'/episode.json'];
+
+        foreach ($this->disk()->directories($this->dir().'/'.$source) as $directory) {
+            $files[] = $directory.'/meta.json';
+        }
+
+        foreach ($files as $file) {
+            $meta = $this->disk()->exists($file) ? json_decode((string) $this->disk()->get($file), true) : null;
+
+            if (! is_array($meta) || ! is_string($meta['guid'] ?? null) || isset($episodes[$meta['guid']]) || ! is_array($meta['chunks'] ?? null) || $meta['chunks'] === []) {
+                continue;
+            }
+
+            foreach ($meta['chunks'] as $chunk) {
+                if (! is_array($chunk) || ! is_string($chunk['path'] ?? null) || ! $this->disk()->exists($chunk['path'])) {
+                    continue 2;
+                }
+            }
+
+            $episodes[$meta['guid']] = $meta;
+        }
+
+        /** @var list<array{guid: string, title: string, episode_number?: int|null, notes?: string, published_at: int, seconds: float, chunks: list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>}> $sorted */
+        $sorted = array_values($episodes);
+        usort($sorted, fn (array $a, array $b): int => (int) ($b['published_at'] ?? 0) <=> (int) ($a['published_at'] ?? 0));
+
+        return $sorted;
+    }
+
+    /**
+     * The episode directories the night loop keeps for a source: its newest `episodes + 1` (none while it is off).
+     *
+     * @return list<string>
+     */
+    private function nightDirectories(string $source): array
+    {
+        $keep = PodcastNight::episodeCount($source);
+
+        return $keep === 0 ? [] : array_map(fn (array $episode): string => dirname($episode['chunks'][0]['path']), array_slice($this->episodes($source), 0, $keep + 1));
+    }
+
+    /**
      * Reads every enabled source whose last read is `check_minutes` ago (all with `$force`), stores a newer episode
      * and trims the directory; returns what happened per source.
      *
@@ -200,16 +250,69 @@ class PodcastLibrary
             return self::FEED_FAILED;
         }
 
-        $episode = PodcastFeed::newestAudio($response->body(), $source['title_pattern']);
+        // The night loop (PodcastNight) plays the newest few: those are stored too, after the newest.
+        $night = PodcastNight::episodeCount($key);
+        $episodes = PodcastFeed::newestAudios($response->body(), $source['title_pattern'], max(1, $night));
 
-        if ($episode === null) {
+        if ($episodes === []) {
             return self::NO_EPISODE;
         }
 
-        if (($this->episode($key)['guid'] ?? null) === $episode['guid']) {
-            return self::SAME;
+        $outcome = ($this->episode($key)['guid'] ?? null) === $episodes[0]['guid'] ? self::SAME : $this->store($key, $episodes[0], current: true);
+
+        if ($night > 1 && in_array($outcome, [self::SAME, self::STORED], true)) {
+            $this->prefetch($key, array_slice($episodes, 1));
         }
 
+        return $outcome;
+    }
+
+    /**
+     * Stores the night loop's older episodes that are not here yet, newest first, at most `night.prefetch_per_run`
+     * per refresh; stops at the first one that fails or would not fit.
+     *
+     * @param  list<array{guid: string, title: string, published_at: int, url: string, episode_number: int|null, notes: string}>  $episodes
+     */
+    private function prefetch(string $key, array $episodes): void
+    {
+        $stored = array_column($this->episodes($key), 'guid');
+        $left = max(0, (int) (self::settings()['night']['prefetch_per_run'] ?? 6));
+        $measured = $this->measured[$key];
+        $prefetched = 0;
+
+        foreach ($episodes as $episode) {
+            if (in_array($episode['guid'], $stored, true)) {
+                continue;
+            }
+
+            if ($left-- <= 0) {
+                break;
+            }
+
+            $this->measured[$key] = [];
+            $outcome = $this->store($key, $episode, current: false);
+            $measured['night_'.$prefetched] = $outcome.' '.json_encode($this->measured[$key]);
+
+            if ($outcome !== self::STORED) {
+                break;
+            }
+
+            $prefetched++;
+        }
+
+        $measured['night_stored'] = $prefetched;
+        $this->measured[$key] = $measured;
+    }
+
+    /**
+     * Downloads, levels and cuts one episode into its own directory with a `meta.json`; `$current` makes it the
+     * source's episode (`episode.json`, the daytime airing).
+     *
+     * @param  array{guid: string, title: string, published_at: int, url: string, episode_number: int|null, notes: string}  $episode
+     */
+    private function store(string $key, array $episode, bool $current): string
+    {
+        $settings = self::settings();
         $id = substr(sha1($episode['guid']), 0, 12);
         $target = $this->dir().'/'.$key.'/'.$id;
         $temp = sys_get_temp_dir().'/twentyone-podcast-replay-'.bin2hex(random_bytes(6));
@@ -269,19 +372,27 @@ class PodcastLibrary
             $this->measured[$this->measuring]['total_seconds'] = round(microtime(true) - $started, 1);
 
             // The library may not outgrow `max_bytes`: what no airing plays from goes first, the episode this one replaces
-            // counts as gone unless an airing still plays from it, else the new episode itself is dropped.
+            // counts as gone unless an airing still plays from it (or the night loop keeps it), else the new episode
+            // itself is dropped.
             $this->bound(keep: $target);
-            $old = $this->episode($key);
+            $old = $current ? $this->episode($key) : null;
             $oldDir = $old === null ? null : dirname($old['chunks'][0]['path']);
-            $freed = $oldDir === null || in_array($oldDir, $this->playingDirectories(), true) ? 0 : $this->directoryBytes($oldDir);
+            $freed = $oldDir === null || in_array($oldDir, [...$this->playingDirectories(), ...$this->nightDirectories($key)], true) ? 0 : $this->directoryBytes($oldDir);
+            $json = (string) json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-            if ($this->bytes() - $freed > (int) ($settings['max_bytes'] ?? 1024 * 1024 * 1024)) {
+            // The meta files count too (episode.json replaces one of the same kind, so meta.json alone is new).
+            if ($this->bytes() - $freed + strlen($json) > (int) ($settings['max_bytes'] ?? 1024 * 1024 * 1024)) {
                 $this->disk()->deleteDirectory($target);
 
                 return self::TOO_BIG;
             }
 
-            $this->disk()->put($this->dir().'/'.$key.'/episode.json', (string) json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $this->disk()->put($target.'/meta.json', $json);
+
+            if ($current) {
+                $this->disk()->put($this->dir().'/'.$key.'/episode.json', $json);
+            }
+
             $this->bound();
 
             return self::STORED;
@@ -536,9 +647,10 @@ class PodcastLibrary
             $key = basename($sourceDir);
             $current = isset($sources[$key]) ? $this->episode($key) : null;
             $currentDir = $current === null ? null : dirname($current['chunks'][0]['path']);
+            $night = isset($sources[$key]) ? $this->nightDirectories($key) : [];
 
             foreach ($this->disk()->directories($sourceDir) as $episodeDir) {
-                if ($episodeDir !== $currentDir && $episodeDir !== $keep && ! in_array($episodeDir, $playing, true)) {
+                if ($episodeDir !== $currentDir && $episodeDir !== $keep && ! in_array($episodeDir, $playing, true) && ! in_array($episodeDir, $night, true)) {
                     $this->disk()->deleteDirectory($episodeDir);
                 }
             }

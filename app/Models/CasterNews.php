@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property string $hash sha256 of the normalised headline
- * @property string $section bitcoin or germany
+ * @property string $section bitcoin, germany, world or tech
  * @property string $feed the key of the feed in tv.commentary.news.feeds
  * @property string $source the outlet as spoken ("tagesschau")
  * @property string $language de or en
@@ -39,7 +39,10 @@ class CasterNews extends Model
     /** Foreign news (plan "TWENTY ONE Radio", P5): read in the bulletins only, not in the ten-minute news segments. */
     public const WORLD = 'world';
 
-    public const SECTIONS = [self::BITCOIN, self::GERMANY, self::WORLD];
+    /** Tech news (heise and others, plan "TWENTY ONE Radio", P15): read in the bulletins, the Presseschau and the news talk only. */
+    public const TECH = 'tech';
+
+    public const SECTIONS = [self::BITCOIN, self::GERMANY, self::WORLD, self::TECH];
 
     protected function casts(): array
     {
