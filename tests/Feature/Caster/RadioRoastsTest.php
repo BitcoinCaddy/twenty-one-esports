@@ -85,16 +85,19 @@ function roastSources(array $down = [], array $treasury = []): void
         $url = $request->url();
         $is = fn (string $part): bool => str_contains($url, $part);
         $fail = fn (string $source): bool => in_array($source, $down, true);
+        // Down: a 500, even with a body that would read as data.
+        $broken = fn (string $body) => Http::response($body, 500);
 
         return match (true) {
-            $is('ecb.europa.eu/rss') => $fail('ecb') ? Http::response('down', 500) : Http::response(roastRss([
+            $is('ecb.europa.eu/rss') => $fail('ecb') ? $broken(roastRss([[' Monetary policy decisions', 'https://www.ecb.europa.eu//press/pr/date/2026/html/ecb.mp261001.en.html', 'Thu, 01 Oct 2026 14:15:00 +0200']])) : Http::response(roastRss([
                 [' Philip R. Lane: Interview with Ansa', 'https://www.ecb.europa.eu//press/inter/date/2026/html/ecb.in261009.en.html', 'Fri, 09 Oct 2026 08:00:00 +0200'],
+                [' Results of the September 2026 survey on credit terms (SESFOD)', 'https://www.ecb.europa.eu//press/pr/date/2026/html/ecb.pr261007.en.html', 'Wed, 07 Oct 2026 10:00:00 +0200'],
                 [' Monetary policy decisions', 'https://www.ecb.europa.eu//press/pr/date/2026/html/ecb.mp261001.en.html', 'Thu, 01 Oct 2026 14:15:00 +0200'],
             ])),
             $is('ecb.mp261001') => Http::response('<html><nav><p>We use cookies to give you the best experience on our website, please accept them all now.</p></nav><main>'
                 .'<p>The Governing Council today decided to keep the three key ECB interest rates unchanged at 2.15%. Incoming information is broadly in line with the previous assessment of the inflation outlook.</p>'
                 .'<p>The Governing Council is determined to ensure that inflation stabilises at its 2% target in the medium term.</p></main></html>'),
-            $is('federalreserve.gov/feeds') => $fail('fed') ? Http::response('down', 500) : Http::response(roastRss([
+            $is('federalreserve.gov/feeds') => $fail('fed') ? $broken(roastRss([['Federal Reserve issues FOMC statement', 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm', 'Wed, 16 Sep 2026 18:00:00 GMT']])) : Http::response(roastRss([
                 ['Federal Reserve issues FOMC statement', 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm', 'Wed, 16 Sep 2026 18:00:00 GMT', 'Federal Reserve issues FOMC statement'],
             ])),
             $is('monetary20260916a') => Http::response('<div id="article"><p>For release at 2:00 p.m. EDT Share --> The Federal Open Market Committee approved the following statement:</p>'
@@ -103,13 +106,13 @@ function roastSources(array $down = [], array $treasury = []): void
                 ['Solana memecoin surges 400% after celebrity endorsement', 'https://cointelegraph.com/news/solana-memecoin', 'Mon, 12 Oct 2026 09:00:00 +0000', 'A new memecoin on Solana rallied.'],
                 ['Bitcoin price holds above key level as miners hodl', 'https://cointelegraph.com/news/btc-level', 'Mon, 12 Oct 2026 08:00:00 +0000'],
             ])),
-            $is('decrypt.co') => $fail('decrypt') ? Http::response('down', 500) : Http::response(roastRss([
+            $is('decrypt.co') => $fail('decrypt') ? $broken(roastRss([['Dogecoin token frenzy', 'https://decrypt.co/2', 'Mon, 12 Oct 2026 07:30:00 +0000']])) : Http::response(roastRss([
                 ['Ethereum layer-2 token airdrop draws record wallets', 'https://decrypt.co/1/eth-airdrop', 'Mon, 12 Oct 2026 07:30:00 +0000'],
             ])),
-            $is('coindesk.com') => $fail('coindesk') ? Http::response('down', 500) : Http::response(roastRss([
+            $is('coindesk.com') => $fail('coindesk') ? $broken(roastRss([['Solana token frenzy', 'https://www.coindesk.com/3', 'Mon, 12 Oct 2026 06:00:00 +0000']])) : Http::response(roastRss([
                 ['XRP jumps as traders bet on new ETF filing', 'https://www.coindesk.com/markets/xrp', 'Mon, 12 Oct 2026 06:00:00 +0000'],
             ])),
-            $is('coingecko.com') => $fail('coingecko') ? Http::response('down', 500) : Http::response([
+            $is('coingecko.com') => $fail('coingecko') ? $broken('{"total_holdings": 5, "companies": [{"name": "Broken", "total_holdings": 5}]}') : Http::response([
                 'total_holdings' => 1301259.67, 'total_value_usd' => 107799577036.95, 'market_cap_dominance' => 6.2,
                 'companies' => [
                     ['name' => 'Strategy', 'symbol' => 'MSTR.US', 'country' => 'US', 'total_holdings' => $treasury['Strategy'] ?? 848250.0, 'total_entry_value_usd' => 64536394091.0, 'total_current_value_usd' => 70271132948.57, 'percentage_of_total_supply' => 4.039],
@@ -117,7 +120,7 @@ function roastSources(array $down = [], array $treasury = []): void
                     ['name' => 'MARA Holdings', 'symbol' => 'MARA.US', 'country' => 'US', 'total_holdings' => 35303.0, 'total_entry_value_usd' => 0.0, 'total_current_value_usd' => 2924588041.83, 'percentage_of_total_supply' => 0.168],
                 ],
             ]),
-            $is('destatis.de') => $fail('destatis') ? Http::response('down', 500) : Http::response('<html><body><div class="keyfigures">+3,3 % Inflations&shy;rate (vorläufig) + 10,5 % Verbraucherpreise Energie + 0,1 % Verbraucherpreise Nahrungsmittel</div>'
+            $is('destatis.de') => $fail('destatis') ? $broken('Inflationsrate im September 2026 bei +9,9 %') : Http::response('<html><body><div class="keyfigures">+3,3 % Inflations&shy;rate (vorläufig) + 10,5 % Verbraucherpreise Energie + 0,1 % Verbraucherpreise Nahrungsmittel</div>'
                 .'<ul><li>30. September 2026 Inflationsrate im September 2026 voraussichtlich +3,3 % Mehr erfahren</li><li>10. September 2026 Inflationsrate im August 2026 bei +2,9 %</li></ul></body></html>'),
             default => Http::response('', 404),
         };
@@ -198,7 +201,7 @@ it('builds every fresh source into words: no digit in any material, the real fac
     expect($bank['data'])->toContain('„The Governing Council today decided to keep the three key ECB interest rates unchanged at zwei Komma eins fünf Prozent.“')
         ->toContain('raise the target range for the federal funds rate by null Komma zwei fünf percentage point to drei Komma sieben fünf to vier percent')
         // The decision, not the newest interview; the cookie banner and the release line stay out.
-        ->not->toContain('Interview')->not->toContain('cookies')->not->toContain('For release')
+        ->not->toContain('Interview')->not->toContain('survey')->not->toContain('cookies')->not->toContain('For release')
         ->and($bank['sources'])->toBe(['EZB', 'Fed']);
 
     $alt = $material->altcoinHype($now);
@@ -277,6 +280,14 @@ it('writes each format from its facts and turns down an invented number, quotati
     'inflation: an invented rate' => [Roasts::INFLATION, 'Im Oktober sind es dann sicher neun Prozent, und der Finanzminister nennt das wieder eine vorübergehende Erscheinung.', RoastFacts::AMOUNT],
 ]);
 
+it('turns down a roast that only one of the two speakers talks', function () {
+    roastSources();
+    $material = app(Roasts::class)->material(Roasts::STACKER, CarbonImmutable::now());
+    $solo = (string) preg_replace('/^Sirius: /mu', 'Markus: ', roastDraft(roastFacts()[Roasts::STACKER]));
+
+    expect(app(RoastScripts::class)->evaluate(Roasts::STACKER, $material, $solo)[1])->toContain(RoastScripts::SPEAKERS);
+});
+
 it('names its source or is turned down', function () {
     roastSources();
     $material = app(Roasts::class)->material(Roasts::STACKER, CarbonImmutable::now());
@@ -342,11 +353,12 @@ it('finds Nostr posts by their kind 0 name, leaves out replies, sensitive and fa
     $good = roastNote('a1', 'b1', 'Habe heute versucht meinen Kühlschrank mit Lightning zu bezahlen und er hat nur gebrummt wie ein Altcoin.');
     $other = roastNote('a2', 'b2', 'Wer braucht schon Schlaf wenn man die ganze Nacht Blöcke zählen kann, ich bin jetzt bei sehr vielen angekommen.');
     $reply = roastNote('a3', 'b3', 'Da hast du völlig recht, das sehe ich ganz genauso wie du und alle anderen hier im Faden.', [['e', str_repeat('f', 64)]]);
-    $family = roastNote('a4', 'b4', 'Meine Tochter hat heute in der Schule erklärt was Bitcoin ist und alle haben nur gestaunt und gelacht.');
+    $family = roastNote('a4', 'b4', 'Mama hat heute gefragt warum ich ständig über Blöcke rede und ich habe es mit Lego erklärt, ging leider schief.');
     $profiles = [
         roastNote('c1', 'b1', json_encode(['name' => 'kuehlschrank_maxi', 'display_name' => 'Kühlschrank Maxi']), [], 0),
         roastNote('c2', 'b2', json_encode(['name' => 'Blockzaehler']), [], 0),
-        roastNote('c4', 'b4', json_encode(['name' => 'Papa Stack']), [], 0),
+        roastNote('c3', 'b3', json_encode(['name' => 'Fadenmeister']), [], 0),
+        roastNote('c4', 'b4', json_encode(['name' => 'Lego Stacker']), [], 0),
     ];
     roastRelay([$good, $other, $reply, $family], $profiles);
 
@@ -354,7 +366,7 @@ it('finds Nostr posts by their kind 0 name, leaves out replies, sensitive and fa
     $material = $roasts->material(Roasts::NOSTR, CarbonImmutable::now());
 
     expect($material['data'])->toContain('Kühlschrank Maxi schrieb')->toContain('„Habe heute versucht meinen Kühlschrank mit Lightning zu bezahlen')
-        ->toContain('Blockzaehler schrieb')->not->toContain('völlig recht')->not->toContain('Tochter')
+        ->toContain('Blockzaehler schrieb')->not->toContain('völlig recht')->not->toContain('Lego')
         ->and($material['names'])->toEqualCanonicalizing(['Kühlschrank Maxi', 'Blockzaehler']);
 
     $roasts->aired(Roasts::NOSTR, $material, CarbonImmutable::now());
@@ -400,9 +412,23 @@ it('plans roast formats into the rubric rotation: never two back to back, fresh 
         ->and(Roasts::allowedAt(Roasts::ALTCOIN, CarbonImmutable::parse('2026-10-13 09:15:00', 'Europe/Berlin')))->toBeTrue()
         ->and(Roasts::allowedAt(Roasts::INFLATION, CarbonImmutable::parse('2026-10-13 00:15:00', 'Europe/Berlin')))->toBeTrue();
 
-    // Switched off: no roast format takes a slot.
-    config(['tv.commentary.programme.roasts.enabled' => false]);
-    expect(app(Rubrics::class)->plannedFor(roastSlot('2026-10-13 00:45:00'), CarbonImmutable::now()))->toBeNull();
+    // Only fresh formats in the rotation: nothing airs after midnight.
+    config(['tv.commentary.programme.rubrics.rotation' => [Roasts::ALTCOIN, Roasts::STACKER]]);
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 00:05:00', 'Europe/Berlin'));
+    expect(app(Rubrics::class)->plannedFor(roastSlot('2026-10-14 00:15:00'), CarbonImmutable::now()))->toBeNull();
+    // The same rotation at nine in the morning has its show.
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 09:05:00', 'Europe/Berlin'));
+    expect(Roasts::owns((string) app(Rubrics::class)->plannedFor(roastSlot('2026-10-14 09:15:00'), CarbonImmutable::now())))->toBeTrue();
+});
+
+it('lets no roast format take a slot while the roasts are switched off', function () {
+    roastSources();
+    config(['tv.commentary.programme.rubrics.rotation' => [Roasts::SCHWARZBUCH, Roasts::INFLATION], 'tv.commentary.programme.roasts.enabled' => false]);
+
+    expect(app(Rubrics::class)->plannedFor(roastSlot('2026-10-12 14:15:00'), CarbonImmutable::now()))->toBeNull();
+
+    config(['tv.commentary.programme.roasts.enabled' => true]);
+    expect(Roasts::owns((string) app(Rubrics::class)->plannedFor(roastSlot('2026-10-12 14:45:00'), CarbonImmutable::now())))->toBeTrue();
 });
 
 it('writes a roast at its rubric slot with the opener, both voices and the real facts in the prompt', function () {
