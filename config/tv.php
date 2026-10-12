@@ -432,8 +432,10 @@ return [
                 // The formats in rotation (user 2026-10-12: "lustige Programme ohne aktuellen Bezug, sondern sinnvolles
                 // Besprechen; Programm für Tutorials für Bitcoin-Dinge"), each with its Anchor jingle categories (the
                 // talk jingle when none of them exists).
-                'formats' => ['talk', 'tutorial', 'geschichte', 'podcast', 'liga'],
+                'formats' => ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', 'schwarzbuch', 'inflationsbeichte'],
                 'jingles' => [
+                    'schwarzbuch' => ['rubric-schwarzbuch'],
+                    'inflationsbeichte' => ['rubric-inflationsbeichte'],
                     'talk' => ['stock-talk'],
                     'tutorial' => ['stock-tutorial'],
                     'geschichte' => ['stock-geschichte', 'rubric-geschichte'],
@@ -597,7 +599,7 @@ return [
             // is tried again, one above `max` loses its last sentences); `sirius_chance` of them as a duet.
             'rubrics' => [
                 'enabled' => (bool) env('TV_COMMENTARY_RUBRICS', true),
-                'rotation' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_RUBRIC_ROTATION', 'liga,presseschau,podcast,geschichte,chat'))))),
+                'rotation' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_RUBRIC_ROTATION', 'liga,zentralbank,presseschau,schwarzbuch,podcast,altcoin_hype,geschichte,liga_pranger,chat,phrasendrescher,liga,nostr_fundbuero,presseschau,corporate_stacker,podcast,inflationsbeichte'))))),
                 'write_minutes_ahead' => 8,
                 'last_write_minutes' => 2,
                 'late_seconds' => 180,
@@ -611,6 +613,68 @@ return [
                 'chat_hours' => 3,
                 // The same material of a rubric does not air again within this many hours (the podcast digest stays a week).
                 'repeat_hours' => ['default' => 2, 'podcast' => 12],
+            ],
+            // The roast formats (P10; App\Support\Caster\Programme\Roasts, RoastMaterial, RoastScripts; user 2026-10-12: "Alles aus
+            // echten Daten, alles roasten"): they take rubric slots from `rubrics.rotation` like any rubric, each only within its
+            // `hours` (Berlin; the fresh ones 09:00 to midnight, the evergreen Schwarzbuch and Inflationsbeichte any time) and
+            // never right after another roast format. Every source is fetched server-side (cached `cache_minutes`, a failure
+            // `retry_seconds`); a source that is down skips its format. `seconds` of content by `speakers` (a list: another voice
+            // needs only its VoiceStudio profile and its name in DuetScripts::parse()). Reachable from prod, checked 2026-10-12.
+            'roasts' => [
+                'enabled' => (bool) env('TV_COMMENTARY_ROASTS', true),
+                'speakers' => ['markus', 'sirius'],
+                'seconds' => ['min' => 120, 'max' => 240],
+                'sentences' => ['min' => 16, 'max' => 30],
+                'max_output_tokens' => 4_000,
+                'daily_cap' => (int) env('TV_COMMENTARY_ROAST_DAILY_CAP', 60),
+                'cache_minutes' => 30,
+                'retry_seconds' => 120,
+                'timeout_seconds' => 8,
+                'formats' => [
+                    'zentralbank' => ['hours' => ['from' => '09:00', 'to' => '00:00']],
+                    'schwarzbuch' => [],
+                    'altcoin_hype' => ['hours' => ['from' => '09:00', 'to' => '00:00']],
+                    'liga_pranger' => ['hours' => ['from' => '09:00', 'to' => '00:00']],
+                    'phrasendrescher' => ['hours' => ['from' => '09:00', 'to' => '00:00']],
+                    'nostr_fundbuero' => ['hours' => ['from' => '09:00', 'to' => '00:00']],
+                    'corporate_stacker' => ['hours' => ['from' => '09:00', 'to' => '00:00']],
+                    'inflationsbeichte' => [],
+                ],
+                'sources' => [
+                    // Official RSS of both banks; the decision itself first (`prefer`), its release page read for the first sentences.
+                    'central_banks' => [
+                        'max_days' => 45,
+                        'sentences' => 4,
+                        'feeds' => [
+                            ['name' => 'Die Europäische Zentralbank (EZB)', 'short' => 'EZB', 'url' => 'https://www.ecb.europa.eu/rss/press.html', 'only' => '/press/pr/', 'prefer' => '/monetary policy decisions/i', 'start' => '<main'],
+                            ['name' => 'Die US-Notenbank Federal Reserve (Fed)', 'short' => 'Fed', 'url' => 'https://www.federalreserve.gov/feeds/press_monetary.xml', 'prefer' => '/FOMC statement/i', 'start' => 'id="article"'],
+                        ],
+                    ],
+                    'altcoins' => [
+                        'max_hours' => 48,
+                        'items' => 4,
+                        'feeds' => [
+                            ['url' => 'https://cointelegraph.com/rss', 'source' => 'Cointelegraph'],
+                            ['url' => 'https://decrypt.co/feed', 'source' => 'Decrypt'],
+                            ['url' => 'https://www.coindesk.com/arc/outboundfeeds/rss/', 'source' => 'CoinDesk'],
+                        ],
+                    ],
+                    'league' => ['days' => 7, 'min_games' => 3],
+                    // Quoted headlines of the week from the stored news (NewsFeeds, CasterNews).
+                    'phrases' => ['outlets' => ['tagesschau', 'Spiegel'], 'days' => 7, 'items' => 3, 'min_items' => 2],
+                    'nostr' => [
+                        'relays' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_ROAST_NOSTR_RELAYS', 'wss://nostr.einundzwanzig.space'))))),
+                        // Where the authors' kind 0 names are read (nos.lol reachable from prod 2026-10-12, damus answers 403 there).
+                        'profile_relays' => ['wss://nos.lol'],
+                        'hours' => 72,
+                        'items' => 3,
+                        'min_words' => 8,
+                        'max_words' => 70,
+                        'seconds' => 12,
+                    ],
+                    'treasuries' => ['url' => 'https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin', 'top' => 5],
+                    'inflation' => ['url' => 'https://www.destatis.de/DE/Themen/Wirtschaft/Preise/Verbraucherpreisindex/_inhalt.html'],
+                ],
             ],
             // The long formats (plan "TWENTY ONE Radio", P9; App\Support\Caster\Programme\Shows; user 2026-10-12: "Mehr Programm …
             // damit es nicht langweilig wird, müssen wir roasten!"): each owns a rubric slot of the clock at its Berlin time
