@@ -269,6 +269,27 @@ return [
             'pause_seconds' => 0.3,
         ],
 
+        // Radio imaging on the server (plan "TWENTY ONE Radio", P11; user 2026-10-12: "Mehr typische Radio-Zwischenfüller,
+        // wie man sie von einem Radiosender kennt"): the Anchor's jingles, uploaded once by the workstation
+        // (caster:imaging-upload, POST api/caster/imaging) into `dir`, play between clips by the rules of
+        // App\Support\Caster\Imaging, also while the programme blocks are off. No library uploaded: no imaging.
+        'imaging' => [
+            'enabled' => (bool) env('TV_IMAGING', true),
+            'dir' => env('TV_IMAGING_DIR', storage_path('app/stream/imaging')),
+            // A station ID (or a news open, a time-of-day ID) at least this often; in quiet hours the only imaging.
+            'station_every_minutes' => (float) env('TV_IMAGING_STATION_EVERY_MINUTES', 15),
+            // The share of transitions between two talk clips that get a sweeper or liner.
+            'sweeper_share' => (float) env('TV_IMAGING_SWEEPER_SHARE', 0.35),
+            // The same line never again within this long.
+            'repeat_minutes' => 45,
+            'pause_seconds' => 0.3,
+            // Upload bounds: items in a manifest, bytes of one file and of the whole library, seconds of one item.
+            'max_items' => 600,
+            'max_file_bytes' => 1_500_000,
+            'max_bytes' => 120_000_000,
+            'max_seconds' => 40,
+        ],
+
         // Programme blocks (plan "TWENTY ONE Radio", P6; user 2026-10-12: "Die Composition soll lokal erfolgen … Der Server
         // bekommt am besten vorgerenderte Programme hochgeladen, trotzdem in Häppchen"). With `enabled` the workstation
         // (App\Support\Caster\Blocks\BlockRenderer) claims consecutive scripts until about `seconds.min` to `seconds.max`

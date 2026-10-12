@@ -84,9 +84,10 @@ final class Idents
      * under its speech where due, and its sentence ends moved with the speech.
      *
      * @param  list<float>  $sentenceEnds  seconds into the clip
+     * @param  bool  $withStinger  false: no stinger in front (an imaging jingle opens the clip instead)
      * @return array{pcm: string, ends: list<float>, stinger: string|null, bed: bool}
      */
-    public function dress(CasterClip $clip, string $pcm, array $sentenceEnds, CarbonImmutable $now): array
+    public function dress(CasterClip $clip, string $pcm, array $sentenceEnds, CarbonImmutable $now, bool $withStinger = true): array
     {
         $bed = false;
 
@@ -99,7 +100,8 @@ final class Idents
             }
         }
 
-        $slot = $this->slotFor($clip->kind);
+        // An imaging jingle in front of the clip (Imaging) takes the stinger's place.
+        $slot = $withStinger ? $this->slotFor($clip->kind) : null;
         $stinger = $slot === null ? null : $this->stingerPcm($slot);
 
         if ($stinger === null) {

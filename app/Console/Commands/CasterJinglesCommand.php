@@ -41,7 +41,9 @@ use InvalidArgumentException;
  *  4. the speakers' blips ("hm", "ja", "stimmt", a laugh) with their own
  *     profiles, at the speech level, at most 1.6 s (blips/<speaker>/*.wav);
  *  5. manifest.json with every jingle's line, category, file, length and
- *     measured loudness; files of lines no longer in the list are deleted.
+ *     measured loudness; files of lines no longer in the list are deleted;
+ *  6. the library goes to the server as its imaging (caster:imaging-upload,
+ *     P11), unless --no-upload.
  *
  * Everything stays in `blocks.jingles.dir` (storage/app/jingles): bounded by
  * the list (about 100 small files, a few MB), never in git.
@@ -51,7 +53,8 @@ use InvalidArgumentException;
     {--pause=6 : Seconds between two VoiceStudio calls}
     {--no-blips : Leave the speakers\' blips out}
     {--mix-only : Render the jingles from the voices on disk, no VoiceStudio call}
-    {--remix : Render every jingle again, also those already on disk}')]
+    {--remix : Render every jingle again, also those already on disk}
+    {--no-upload : Do not upload the library to the server as its imaging (caster:imaging-upload)}')]
 #[Description('Render the Anchor jingles and the speakers\' blips for the programme blocks (workstation)')]
 class CasterJinglesCommand extends Command
 {
@@ -156,6 +159,11 @@ class CasterJinglesCommand extends Command
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
         $this->info(sprintf('%d jingles of %d lines, %d blips, %d VoiceStudio calls; manifest in %s', count($items), count($list['lines']), count($blips), $this->calls, $dir));
+
+        // The server plays the same jingles as its imaging (P11): the nightly run hands them over itself.
+        if (! $this->option('no-upload') && $items !== []) {
+            $this->call('caster:imaging-upload', ['--dir' => $dir]);
+        }
 
         return self::SUCCESS;
     }

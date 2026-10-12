@@ -22,6 +22,8 @@ use Throwable;
  * remembered in `rotation.json` next to the manifest (the last 300 picks),
  * so a restart of the fetcher keeps the rotation.
  *
+ * With `$strict` a category whose every line is that recent gives nothing.
+ *
  * Fails open towards the programme: no manifest, an unknown category or an
  * undecodable file give no jingle (null), the block goes on without one.
  */
@@ -35,6 +37,7 @@ final class JingleLibrary
     public function __construct(
         private readonly string $dir,
         private readonly float $repeatMinutes = 30.0,
+        private readonly bool $strict = false,
     ) {}
 
     public static function fromConfig(): self
@@ -106,7 +109,8 @@ final class JingleLibrary
             $fresh = array_values(array_filter($notLast, fn (array $item): bool => ! isset($lastAt[$item['line']]) || $now->getTimestamp() - $lastAt[$item['line']] >= $this->repeatMinutes * 60));
 
             if ($fresh === []) {
-                if ($notLast === []) {
+                // Strict (the server's imaging, P11): no line within `repeat_minutes`, the next category is tried instead.
+                if ($notLast === [] || $this->strict) {
                     continue;
                 }
 
