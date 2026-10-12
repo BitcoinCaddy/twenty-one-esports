@@ -457,7 +457,7 @@ it('gives every format its English Anchor jingle and replays only the Schwarzbuc
     foreach (array_keys(Roasts::CATALOGUE) as $id) {
         $line = collect($jingles)->firstWhere('category', 'rubric-'.$id);
         expect($line)->not->toBeNull()->and($line['language'])->toBe('en')
-            ->and(str_contains($line['text'], 'ESPORTS') ? $line['spoken'] : 'Eee. Sports.')->toContain('Eee. Sports.')
+            ->and(str_contains($line['text'], 'ESPORTS') ? $line['spoken'] : 'E. Sports.')->toContain('E. Sports.')
             ->and(BlockComposer::plan([['kind' => CasterScript::RUBRIC, 'topic' => $id]], CarbonImmutable::now())[0]['categories'][0])->toBe('rubric-'.$id);
 
         $evergreen = ReplayArchive::evergreen([['kind' => CasterScript::RUBRIC, 'topic' => $id, 'sentences' => ['Markus: Ein Fall, der jeden Steuerzahler zum Weinen bringt.']]], ['script:1']);

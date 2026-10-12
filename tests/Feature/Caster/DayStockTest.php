@@ -398,7 +398,7 @@ it('answers a chat reaction in the middle of a stock render: fresh items keep th
     expect(DayStock::fromConfig()->entries())->toHaveCount(1);
 });
 
-it('gives the Anchor English lines only, ESPORTS spoken as "Eee. Sports.", and a slow length per line', function () {
+it('gives the Anchor English lines only, ESPORTS spoken as "E. Sports.", and a slow length per line', function () {
     $lines = json_decode((string) file_get_contents(resource_path('data/voice/anchor-jingles.json')), true)['lines'];
 
     expect(count($lines))->toBeGreaterThanOrEqual(40);
@@ -409,12 +409,12 @@ it('gives the Anchor English lines only, ESPORTS spoken as "Eee. Sports.", and a
             ->and($line['spoken'])->not->toContain('ESPORTS');
 
         if (str_contains($line['text'], 'ESPORTS')) {
-            expect($line['spoken'])->toContain('TWENTY ONE. Eee. Sports. Radio');
+            expect($line['spoken'])->toContain('TWENTY ONE. E. Sports. Radio');
         }
     }
 
     expect(collect($lines)->pluck('category')->unique()->all())->toContain('stock-talk', 'stock-tutorial', 'stock-geschichte', 'replay')
-        ->and(CasterJinglesCommand::duration('You are listening to TWENTY ONE. Eee. Sports. Radio.'))->toBe(7.4);
+        ->and(CasterJinglesCommand::duration('You are listening to TWENTY ONE. E. Sports. Radio.'))->toBe(7.4);
 });
 
 it('renders an Anchor line again only when its spoken text or length changed', function () {
@@ -430,7 +430,7 @@ it('renders an Anchor line again only when its spoken text or length changed', f
     $this->artisan('caster:jingles', ['--pause' => 0, '--no-blips' => true, '--limit' => 400])->assertSuccessful();
     expect($generated())->toBe($count);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/generate')
-        && $field($request, 'text') === "You're listening to TWENTY ONE. Eee. Sports. Radio."
+        && $field($request, 'text') === "You're listening to TWENTY ONE. E. Sports. Radio."
         && $field($request, 'duration') === '6.8' && $field($request, 'language') === 'en');
 
     $this->artisan('caster:jingles', ['--pause' => 0, '--no-blips' => true, '--limit' => 400])->assertSuccessful();

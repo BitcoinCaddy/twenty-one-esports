@@ -31,7 +31,7 @@ use InvalidArgumentException;
  *     length or profile (voice/<id>.wav, the source, with its hash in
  *     voice/<id>.json), at most `--limit` calls, `--pause` seconds apart so
  *     the fetcher's voicing never starves; no ASR. English only, the line's
- *     `spoken` text ("Eee. Sports." for ESPORTS), slow and dramatic: the
+ *     `spoken` text ("E. Sports." for ESPORTS), slow and dramatic: the
  *     `duration` VoiceStudio is asked for is `anchor.seconds_per_word` per
  *     word plus `anchor.sentence_pause_seconds` per sentence (user
  *     2026-10-12: "viel viel viel langsamer und dramatischer"; `speed` had no

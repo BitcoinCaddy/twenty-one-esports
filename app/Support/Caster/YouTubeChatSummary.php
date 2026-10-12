@@ -37,8 +37,8 @@ class YouTubeChatSummary
     /** Words of one message in a row that make a draft a read-out, not a summary. */
     public const QUOTE_WORDS = 6;
 
-    /** Author names a summary may speak at most. */
-    public const MAX_NAMES = 2;
+    /** Author names a summary may speak: none (user 2026-10-12: "Die YouTube-Zusammenfassung ganz ohne Autorennamen"). */
+    public const MAX_NAMES = 0;
 
     /** Lines older than this never join a summary (a lost cursor does not dig up the whole day). */
     private const FRESH_MINUTES = 60;

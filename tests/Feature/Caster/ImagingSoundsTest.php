@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Storage;
 | User 2026-10-12: "aufregendere Jingles, die viel länger sind vom ANCHOR, und
 | mehr unterschiedliche Jingles und Stinger und Betten." Own synthesized
 | sounds (JingleSynth, CC0), measured with the real ffmpeg; the Anchor's
-| imaging lines in English with ESPORTS spoken as "Eee. Sports.".
+| imaging lines in English with ESPORTS spoken as "E. Sports.".
 |
 */
 
@@ -107,7 +107,7 @@ it('rotates the news stinger and the news bed, never the same twice in a row, an
         ->and($idents?->bedUnder($tribunal, CarbonImmutable::parse('2026-10-12 03:00:00', 'Europe/Berlin')))->toBeNull();
 });
 
-it('gives the Anchor at least 120 English imaging lines: every category, an opener and a promo for every format, ESPORTS spoken as "Eee. Sports."', function () {
+it('gives the Anchor at least 120 English imaging lines: every category, an opener and a promo for every format, ESPORTS spoken as "E. Sports."', function () {
     $lines = json_decode((string) file_get_contents(resource_path('data/voice/anchor-imaging.json')), true)['lines'];
     $categories = collect($lines)->countBy('category');
     $formats = ['tribunal', 'friedhof', 'jahrestag', 'meetups', 'partie', 'hotline', 'zentralbank', 'schwarzbuch', 'altcoin_hype', 'liga_pranger', 'phrasendrescher', 'nostr_fundbuero', 'corporate_stacker', 'inflationsbeichte', 'sport_wetter', 'nachrichten_talk'];
@@ -131,7 +131,7 @@ it('gives the Anchor at least 120 English imaging lines: every category, an open
             ->and($line['text'])->not->toMatch('/\d/');
 
         if (str_contains($line['text'], 'ESPORTS')) {
-            expect($line['spoken'])->toContain('TWENTY ONE. Eee. Sports. Radio.');
+            expect($line['spoken'])->toContain('TWENTY ONE. E. Sports. Radio.');
         }
     }
 });

@@ -428,7 +428,7 @@ it('never replays the day-bound formats, brings an Anchor jingle line per format
         expect(count($lines))->toBeGreaterThanOrEqual(2);
         foreach ($lines as $line) {
             expect($line['language'])->toBe('en')
-                ->and(str_contains($line['text'], 'ESPORTS') ? $line['spoken'] : 'Eee. Sports.')->toContain('Eee. Sports.');
+                ->and(str_contains($line['text'], 'ESPORTS') ? $line['spoken'] : 'E. Sports.')->toContain('E. Sports.');
         }
         expect(BlockComposer::plan([['kind' => 'rubric', 'topic' => $id]], CarbonImmutable::now())[0]['categories'])->toBe(['rubric-'.$id, 'sweeper']);
     }

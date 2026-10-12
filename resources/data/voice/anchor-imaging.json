@@ -1,887 +1,887 @@
 {
-    "about": "The Anchor's radio imaging for TWENTY ONE ESPORTS RADIO (plan \"TWENTY ONE Radio\", P11; user 2026-10-12: \"aufregendere Jingles, die viel länger sind vom ANCHOR, und mehr unterschiedliche Jingles und Stinger und Betten\"). One VoiceStudio call per line (caster:jingles), produced over self-made stingers and beds (JingleSynth::produce...), -16 LUFS, uploaded to the server as its imaging (caster:imaging-upload). Voice: VoiceStudio personality us_news_anchor, a designed voice, no person's clone. English only; `spoken` writes ESPORTS as \"Eee. Sports.\". Categories are what App\\Support\\Caster\\Imaging asks for: station-long, station-short, sweeper, liner, opener-<format>, news-open, news-close, promo-<format>, promo, power-intro. No invented facts: lines name formats and the station, never a number, a date or a person.",
+    "about": "The Anchor's radio imaging for TWENTY ONE ESPORTS RADIO (plan \"TWENTY ONE Radio\", P11; user 2026-10-12: \"aufregendere Jingles, die viel länger sind vom ANCHOR, und mehr unterschiedliche Jingles und Stinger und Betten\"). One VoiceStudio call per line (caster:jingles), produced over self-made stingers and beds (JingleSynth::produce...), -16 LUFS, uploaded to the server as its imaging (caster:imaging-upload). Voice: VoiceStudio personality us_news_anchor, a designed voice, no person's clone. English only; `spoken` writes ESPORTS as \"E. Sports.\". Categories are what App\\Support\\Caster\\Imaging asks for: station-long, station-short, sweeper, liner, opener-<format>, news-open, news-close, promo-<format>, promo, power-intro. No invented facts: lines name formats and the station, never a number, a date or a person.",
     "lines": [
         {
             "id": "img-sl-01",
             "category": "station-long",
             "text": "From the league tables to the timechain. Talk, news and banter, around the clock. You are listening to TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "From the league tables to the timechain. Talk, news and banter, around the clock. You are listening to TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "From the league tables to the timechain. Talk, news and banter, around the clock. You are listening to TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-02",
             "category": "station-long",
             "text": "No banks. No bosses. No brakes. Just Bitcoiners, gamers and a microphone that never sleeps. This is TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "No banks. No bosses. No brakes. Just Bitcoiners, gamers and a microphone that never sleeps. This is TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "No banks. No bosses. No brakes. Just Bitcoiners, gamers and a microphone that never sleeps. This is TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-03",
             "category": "station-long",
             "text": "Every match. Every block. Every bad take in the chat. We cover it all, live and loud. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Every match. Every block. Every bad take in the chat. We cover it all, live and loud. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Every match. Every block. Every bad take in the chat. We cover it all, live and loud. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-04",
             "category": "station-long",
             "text": "Built by plebs, for plebs. Broadcasting on Nostr, powered by Bitcoin, fuelled by coffee. You're tuned in to TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Built by plebs, for plebs. Broadcasting on Nostr, powered by Bitcoin, fuelled by coffee. You're tuned in to TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Built by plebs, for plebs. Broadcasting on Nostr, powered by Bitcoin, fuelled by coffee. You're tuned in to TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-05",
             "category": "station-long",
             "text": "News on the hour and on the half hour. Talk in between. And the league, all day long. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "News on the hour and on the half hour. Talk in between. And the league, all day long. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "News on the hour and on the half hour. Talk in between. And the league, all day long. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-06",
             "category": "station-long",
             "text": "Somewhere out there, a central banker is printing money. In here, we are counting blocks. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Somewhere out there, a central banker is printing money. In here, we are counting blocks. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Somewhere out there, a central banker is printing money. In here, we are counting blocks. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-07",
             "category": "station-long",
             "text": "Turn it up. Lean back. Stack sats. The station that never asks for permission. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Turn it up. Lean back. Stack sats. The station that never asks for permission. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Turn it up. Lean back. Stack sats. The station that never asks for permission. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-08",
             "category": "station-long",
             "text": "Gamers on the left. Bitcoiners on the right. And everyone in the middle is welcome. This is TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Gamers on the left. Bitcoiners on the right. And everyone in the middle is welcome. This is TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Gamers on the left. Bitcoiners on the right. And everyone in the middle is welcome. This is TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-09",
             "category": "station-long",
             "text": "Live from the EINUNDZWANZIG league. Matches, rankings and roasts, twenty-four hours a day. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Live from the EINUNDZWANZIG league. Matches, rankings and roasts, twenty-four hours a day. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Live from the EINUNDZWANZIG league. Matches, rankings and roasts, twenty-four hours a day. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-10",
             "category": "station-long",
             "text": "Fix the money, fix the world. Or at least fix the playlist. You are listening to TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Fix the money, fix the world. Or at least fix the playlist. You are listening to TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Fix the money, fix the world. Or at least fix the playlist. You are listening to TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-11",
             "category": "station-long",
             "text": "Your radio for the hard money generation. Tick tock, next block, and you're still with us. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Your radio for the hard money generation. Tick tock, next block, and you're still with us. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Your radio for the hard money generation. Tick tock, next block, and you're still with us. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sl-12",
             "category": "station-long",
             "text": "Signal over noise. Facts over hype. And a little bit of roast on the side. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Signal over noise. Facts over hype. And a little bit of roast on the side. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Signal over noise. Facts over hype. And a little bit of roast on the side. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-01",
             "category": "station-short",
             "text": "TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-02",
             "category": "station-short",
             "text": "This is TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "This is TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "This is TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-03",
             "category": "station-short",
             "text": "You're on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "You're on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "You're on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-04",
             "category": "station-short",
             "text": "TWENTY ONE ESPORTS RADIO. Stay humble.",
             "language": "en",
-            "spoken": "TWENTY ONE. Eee. Sports. Radio. Stay humble."
+            "spoken": "TWENTY ONE. E. Sports. Radio. Stay humble."
         },
         {
             "id": "img-ss-05",
             "category": "station-short",
             "text": "TWENTY ONE ESPORTS RADIO. Live on Nostr.",
             "language": "en",
-            "spoken": "TWENTY ONE. Eee. Sports. Radio. Live on Nostr."
+            "spoken": "TWENTY ONE. E. Sports. Radio. Live on Nostr."
         },
         {
             "id": "img-ss-06",
             "category": "station-short",
             "text": "Still here. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Still here. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Still here. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-07",
             "category": "station-short",
             "text": "TWENTY ONE ESPORTS RADIO. Never off.",
             "language": "en",
-            "spoken": "TWENTY ONE. Eee. Sports. Radio. Never off."
+            "spoken": "TWENTY ONE. E. Sports. Radio. Never off."
         },
         {
             "id": "img-ss-08",
             "category": "station-short",
             "text": "Plebs radio. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Plebs radio. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Plebs radio. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-09",
             "category": "station-short",
             "text": "TWENTY ONE ESPORTS RADIO. Loud and clear.",
             "language": "en",
-            "spoken": "TWENTY ONE. Eee. Sports. Radio. Loud and clear."
+            "spoken": "TWENTY ONE. E. Sports. Radio. Loud and clear."
         },
         {
             "id": "img-ss-10",
             "category": "station-short",
             "text": "Tick tock. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Tick tock. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Tick tock. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-11",
             "category": "station-short",
             "text": "Right here on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Right here on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Right here on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ss-12",
             "category": "station-short",
             "text": "TWENTY ONE ESPORTS RADIO. Hard money, hard talk.",
             "language": "en",
-            "spoken": "TWENTY ONE. Eee. Sports. Radio. Hard money, hard talk."
+            "spoken": "TWENTY ONE. E. Sports. Radio. Hard money, hard talk."
         },
         {
             "id": "img-sw-01",
             "category": "sweeper",
             "text": "Less noise, more signal. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Less noise, more signal. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Less noise, more signal. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-02",
             "category": "sweeper",
             "text": "Your node for news and nonsense. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Your node for news and nonsense. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Your node for news and nonsense. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-03",
             "category": "sweeper",
             "text": "Twenty-one million reasons to stay tuned. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Twenty-one million reasons to stay tuned. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Twenty-one million reasons to stay tuned. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-04",
             "category": "sweeper",
             "text": "No middlemen on this frequency. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "No middlemen on this frequency. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "No middlemen on this frequency. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-05",
             "category": "sweeper",
             "text": "Low time preference, high volume. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Low time preference, high volume. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Low time preference, high volume. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-06",
             "category": "sweeper",
             "text": "We don't do bailouts. We do banter. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "We don't do bailouts. We do banter. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "We don't do bailouts. We do banter. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-07",
             "category": "sweeper",
             "text": "Verify, don't trust. Then turn it up. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Verify, don't trust. Then turn it up. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Verify, don't trust. Then turn it up. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-08",
             "category": "sweeper",
             "text": "Proof of work, proof of talk. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Proof of work, proof of talk. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Proof of work, proof of talk. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-09",
             "category": "sweeper",
             "text": "The league never sleeps, and neither do we. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The league never sleeps, and neither do we. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The league never sleeps, and neither do we. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-10",
             "category": "sweeper",
             "text": "Sound money, sound waves. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Sound money, sound waves. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Sound money, sound waves. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-11",
             "category": "sweeper",
             "text": "Not your keys, not your coins. Our mic, our rules. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Not your keys, not your coins. Our mic, our rules. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Not your keys, not your coins. Our mic, our rules. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-12",
             "category": "sweeper",
             "text": "From the mempool to your ears. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "From the mempool to your ears. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "From the mempool to your ears. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-13",
             "category": "sweeper",
             "text": "Keep calm and run a node. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Keep calm and run a node. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Keep calm and run a node. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-sw-14",
             "category": "sweeper",
             "text": "Fresh blocks, fresh talk. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Fresh blocks, fresh talk. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Fresh blocks, fresh talk. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-01",
             "category": "liner",
             "text": "Inflation is a tax nobody voted for. We talk about it anyway. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Inflation is a tax nobody voted for. We talk about it anyway. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Inflation is a tax nobody voted for. We talk about it anyway. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-02",
             "category": "liner",
             "text": "Every ten minutes a new block. Every few minutes a new opinion. Stay with us. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Every ten minutes a new block. Every few minutes a new opinion. Stay with us. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Every ten minutes a new block. Every few minutes a new opinion. Stay with us. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-03",
             "category": "liner",
             "text": "Play the league, win the sats, brag in the chat. That's the deal. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Play the league, win the sats, brag in the chat. That's the deal. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Play the league, win the sats, brag in the chat. That's the deal. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-04",
             "category": "liner",
             "text": "If your money melts while you sleep, you need better money. And better radio. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "If your money melts while you sleep, you need better money. And better radio. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "If your money melts while you sleep, you need better money. And better radio. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-05",
             "category": "liner",
             "text": "Your chat messages make the show. Write to us on Nostr, we read everything. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Your chat messages make the show. Write to us on Nostr, we read everything. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Your chat messages make the show. Write to us on Nostr, we read everything. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-06",
             "category": "liner",
             "text": "We roast the fiat world so you don't have to. Sit back, this one's on us. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "We roast the fiat world so you don't have to. Sit back, this one's on us. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "We roast the fiat world so you don't have to. Sit back, this one's on us. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-07",
             "category": "liner",
             "text": "No algorithm decides what you hear. Just us, the league and the timechain. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "No algorithm decides what you hear. Just us, the league and the timechain. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "No algorithm decides what you hear. Just us, the league and the timechain. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-08",
             "category": "liner",
             "text": "Shitcoins come and go. The halving stays on schedule. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Shitcoins come and go. The halving stays on schedule. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Shitcoins come and go. The halving stays on schedule. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-09",
             "category": "liner",
             "text": "Bitcoin fixes this. Radio explains it. Slowly, for the people in the back. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Bitcoin fixes this. Radio explains it. Slowly, for the people in the back. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Bitcoin fixes this. Radio explains it. Slowly, for the people in the back. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-10",
             "category": "liner",
             "text": "Good games, bad takes, real news. The full menu, all day. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Good games, bad takes, real news. The full menu, all day. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Good games, bad takes, real news. The full menu, all day. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-11",
             "category": "liner",
             "text": "Central banks have meetings. We have a chat. Guess which one is more fun. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Central banks have meetings. We have a chat. Guess which one is more fun. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Central banks have meetings. We have a chat. Guess which one is more fun. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-12",
             "category": "liner",
             "text": "Stack sats, touch grass, come back for the news. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Stack sats, touch grass, come back for the news. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Stack sats, touch grass, come back for the news. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-13",
             "category": "liner",
             "text": "Not financial advice. Just financial roast. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Not financial advice. Just financial roast. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Not financial advice. Just financial roast. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-ln-14",
             "category": "liner",
             "text": "Pseudonymous players, public scores. The league is open. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Pseudonymous players, public scores. The league is open. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Pseudonymous players, public scores. The league is open. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-no-01",
             "category": "news-open",
             "text": "The news. On TWENTY ONE ESPORTS RADIO. What happened, who said it, and why it matters. Here are the headlines.",
             "language": "en",
-            "spoken": "The news. On TWENTY ONE. Eee. Sports. Radio. What happened, who said it, and why it matters. Here are the headlines."
+            "spoken": "The news. On TWENTY ONE. E. Sports. Radio. What happened, who said it, and why it matters. Here are the headlines."
         },
         {
             "id": "img-no-02",
             "category": "news-open",
             "text": "This is the newsroom of TWENTY ONE ESPORTS RADIO. Facts first, opinions later. The news.",
             "language": "en",
-            "spoken": "This is the newsroom of TWENTY ONE. Eee. Sports. Radio. Facts first, opinions later. The news."
+            "spoken": "This is the newsroom of TWENTY ONE. E. Sports. Radio. Facts first, opinions later. The news."
         },
         {
             "id": "img-no-03",
             "category": "news-open",
             "text": "Around the world, around the block, around the clock. TWENTY ONE ESPORTS RADIO News.",
             "language": "en",
-            "spoken": "Around the world, around the block, around the clock. TWENTY ONE. Eee. Sports. Radio. News."
+            "spoken": "Around the world, around the block, around the clock. TWENTY ONE. E. Sports. Radio. News."
         },
         {
             "id": "img-no-04",
             "category": "news-open",
             "text": "Straight facts. Short sentences. No spin. This is the news on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Straight facts. Short sentences. No spin. This is the news on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Straight facts. Short sentences. No spin. This is the news on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-no-05",
             "category": "news-open",
             "text": "The headlines that matter, read without the hype. TWENTY ONE ESPORTS RADIO. The news.",
             "language": "en",
-            "spoken": "The headlines that matter, read without the hype. TWENTY ONE. Eee. Sports. Radio. The news."
+            "spoken": "The headlines that matter, read without the hype. TWENTY ONE. E. Sports. Radio. The news."
         },
         {
             "id": "img-no-06",
             "category": "news-open",
             "text": "Stand by for the news. Germany, the world, Bitcoin and the league. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Stand by for the news. Germany, the world, Bitcoin and the league. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Stand by for the news. Germany, the world, Bitcoin and the league. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-nc-01",
             "category": "news-close",
             "text": "And that was the news. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "And that was the news. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "And that was the news. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-nc-02",
             "category": "news-close",
             "text": "So much for the facts. Now for the opinions. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "So much for the facts. Now for the opinions. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "So much for the facts. Now for the opinions. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-nc-03",
             "category": "news-close",
             "text": "That was the newsroom. Stay with us. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "That was the newsroom. Stay with us. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "That was the newsroom. Stay with us. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-nc-04",
             "category": "news-close",
             "text": "Those were the headlines. Back to the show. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Those were the headlines. Back to the show. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Those were the headlines. Back to the show. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-nc-05",
             "category": "news-close",
             "text": "News done. Talk is next. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "News done. Talk is next. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "News done. Talk is next. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-nc-06",
             "category": "news-close",
             "text": "That's the news. The rest is commentary. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "That's the news. The rest is commentary. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "That's the news. The rest is commentary. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-01",
             "category": "power-intro",
             "text": "Music on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Music on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Music on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-02",
             "category": "power-intro",
             "text": "Turn it up. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Turn it up. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Turn it up. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-03",
             "category": "power-intro",
             "text": "A little music for the stackers. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "A little music for the stackers. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "A little music for the stackers. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-04",
             "category": "power-intro",
             "text": "Time to breathe. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Time to breathe. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Time to breathe. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-05",
             "category": "power-intro",
             "text": "Bass for the plebs. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Bass for the plebs. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Bass for the plebs. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-06",
             "category": "power-intro",
             "text": "Let it play. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Let it play. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Let it play. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-07",
             "category": "power-intro",
             "text": "Blocks keep coming. So does the music. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Blocks keep coming. So does the music. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Blocks keep coming. So does the music. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-08",
             "category": "power-intro",
             "text": "Quiet minds, loud music. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Quiet minds, loud music. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Quiet minds, loud music. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-09",
             "category": "power-intro",
             "text": "Headphones on. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Headphones on. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Headphones on. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pi-10",
             "category": "power-intro",
             "text": "Music while the mempool clears. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Music while the mempool clears. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Music while the mempool clears. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-tribunal-1",
             "category": "opener-tribunal",
             "text": "Order in the chat. The Chat Tribunal is now in session. The chat judges, we just read the verdict. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Order in the chat. The Chat Tribunal is now in session. The chat judges, we just read the verdict. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Order in the chat. The Chat Tribunal is now in session. The chat judges, we just read the verdict. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-tribunal-2",
             "category": "opener-tribunal",
             "text": "All rise for the Chat Tribunal. Bad takes go on trial, and the chat decides. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "All rise for the Chat Tribunal. Bad takes go on trial, and the chat decides. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "All rise for the Chat Tribunal. Bad takes go on trial, and the chat decides. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-tribunal",
             "category": "promo-tribunal",
             "text": "Coming up: the Chat Tribunal. Your messages go on trial, the evidence is in the chat, and the verdict is yours. Get your best arguments ready. The Chat Tribunal, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the Chat Tribunal. Your messages go on trial, the evidence is in the chat, and the verdict is yours. Get your best arguments ready. The Chat Tribunal, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the Chat Tribunal. Your messages go on trial, the evidence is in the chat, and the verdict is yours. Get your best arguments ready. The Chat Tribunal, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-friedhof-1",
             "category": "opener-friedhof",
             "text": "Welcome to the Shitcoin Graveyard. Here lie the coins that promised the moon. Rest in pieces. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Welcome to the Shitcoin Graveyard. Here lie the coins that promised the moon. Rest in pieces. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Welcome to the Shitcoin Graveyard. Here lie the coins that promised the moon. Rest in pieces. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-friedhof-2",
             "category": "opener-friedhof",
             "text": "Grab a shovel. The Shitcoin Graveyard is open, and we have fresh graves to visit. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Grab a shovel. The Shitcoin Graveyard is open, and we have fresh graves to visit. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Grab a shovel. The Shitcoin Graveyard is open, and we have fresh graves to visit. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-friedhof",
             "category": "promo-friedhof",
             "text": "Soon, we take a walk through the Shitcoin Graveyard. Fallen tokens, broken promises and the white papers nobody read. Bring flowers, or don't. The Shitcoin Graveyard, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Soon, we take a walk through the Shitcoin Graveyard. Fallen tokens, broken promises and the white papers nobody read. Bring flowers, or don't. The Shitcoin Graveyard, coming up on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Soon, we take a walk through the Shitcoin Graveyard. Fallen tokens, broken promises and the white papers nobody read. Bring flowers, or don't. The Shitcoin Graveyard, coming up on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-jahrestag-1",
             "category": "opener-jahrestag",
             "text": "On This Day. A look back at what happened, years ago, on exactly this date. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "On This Day. A look back at what happened, years ago, on exactly this date. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "On This Day. A look back at what happened, years ago, on exactly this date. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-jahrestag-2",
             "category": "opener-jahrestag",
             "text": "Time machine engaged. On This Day, the history you forgot, back on the air. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Time machine engaged. On This Day, the history you forgot, back on the air. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Time machine engaged. On This Day, the history you forgot, back on the air. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-jahrestag",
             "category": "promo-jahrestag",
             "text": "Coming up: On This Day. What happened on this very date years ago, in Bitcoin and beyond. History, with a little bit of roast. On This Day, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: On This Day. What happened on this very date years ago, in Bitcoin and beyond. History, with a little bit of roast. On This Day, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: On This Day. What happened on this very date years ago, in Bitcoin and beyond. History, with a little bit of roast. On This Day, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-meetups-1",
             "category": "opener-meetups",
             "text": "The Meetup Radar is scanning. Where the Bitcoiners meet, and when. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The Meetup Radar is scanning. Where the Bitcoiners meet, and when. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The Meetup Radar is scanning. Where the Bitcoiners meet, and when. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-meetups-2",
             "category": "opener-meetups",
             "text": "Ping. The Meetup Radar found something. EINUNDZWANZIG meetups, coming up. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Ping. The Meetup Radar found something. EINUNDZWANZIG meetups, coming up. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Ping. The Meetup Radar found something. EINUNDZWANZIG meetups, coming up. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-meetups",
             "category": "promo-meetups",
             "text": "Soon on the air: the Meetup Radar. Where the next EINUNDZWANZIG meetups take place and when you can join. Real people, real meetups. The Meetup Radar, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Soon on the air: the Meetup Radar. Where the next EINUNDZWANZIG meetups take place and when you can join. Real people, real meetups. The Meetup Radar, coming up on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Soon on the air: the Meetup Radar. Where the next EINUNDZWANZIG meetups take place and when you can join. Real people, real meetups. The Meetup Radar, coming up on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-partie-1",
             "category": "opener-partie",
             "text": "The Game of the Day. One match from the league, move by move, with all the drama. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The Game of the Day. One match from the league, move by move, with all the drama. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The Game of the Day. One match from the league, move by move, with all the drama. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-partie-2",
             "category": "opener-partie",
             "text": "Pull up a chair. The Game of the Day is about to be replayed. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Pull up a chair. The Game of the Day is about to be replayed. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Pull up a chair. The Game of the Day is about to be replayed. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-partie",
             "category": "promo-partie",
             "text": "Coming up: the Game of the Day. One match from the league, the best moments, the worst blunders, and the winner. The Game of the Day, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the Game of the Day. One match from the league, the best moments, the worst blunders, and the winner. The Game of the Day, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the Game of the Day. One match from the league, the best moments, the worst blunders, and the winner. The Game of the Day, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-hotline-1",
             "category": "opener-hotline",
             "text": "Satoshi's Hotline is open. Your questions about Bitcoin, answered on air. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Satoshi's Hotline is open. Your questions about Bitcoin, answered on air. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Satoshi's Hotline is open. Your questions about Bitcoin, answered on air. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-hotline-2",
             "category": "opener-hotline",
             "text": "Ring ring. Satoshi's Hotline. No hold music, just answers. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Ring ring. Satoshi's Hotline. No hold music, just answers. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Ring ring. Satoshi's Hotline. No hold music, just answers. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-hotline",
             "category": "promo-hotline",
             "text": "Coming up: Satoshi's Hotline. Your questions, our answers, live on air. Nobody from the hotline has ever met Satoshi, but we try our best. Satoshi's Hotline, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: Satoshi's Hotline. Your questions, our answers, live on air. Nobody from the hotline has ever met Satoshi, but we try our best. Satoshi's Hotline, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: Satoshi's Hotline. Your questions, our answers, live on air. Nobody from the hotline has ever met Satoshi, but we try our best. Satoshi's Hotline, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-zentralbank-1",
             "category": "opener-zentralbank",
             "text": "Hold your nose. The Central Bank Sewage Plant is now processing the latest monetary policy. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Hold your nose. The Central Bank Sewage Plant is now processing the latest monetary policy. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Hold your nose. The Central Bank Sewage Plant is now processing the latest monetary policy. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-zentralbank-2",
             "category": "opener-zentralbank",
             "text": "Welcome to the Central Bank Sewage Plant, where we filter what the money printers left behind. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Welcome to the Central Bank Sewage Plant, where we filter what the money printers left behind. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Welcome to the Central Bank Sewage Plant, where we filter what the money printers left behind. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-zentralbank",
             "category": "promo-zentralbank",
             "text": "Soon: the Central Bank Sewage Plant. We take the latest central bank news and run it through our filter, so you don't have to touch it. The Central Bank Sewage Plant, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Soon: the Central Bank Sewage Plant. We take the latest central bank news and run it through our filter, so you don't have to touch it. The Central Bank Sewage Plant, coming up on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Soon: the Central Bank Sewage Plant. We take the latest central bank news and run it through our filter, so you don't have to touch it. The Central Bank Sewage Plant, coming up on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-schwarzbuch-1",
             "category": "opener-schwarzbuch",
             "text": "The Black Book Hour. Public money, private disasters. Let's open the book. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The Black Book Hour. Public money, private disasters. Let's open the book. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The Black Book Hour. Public money, private disasters. Let's open the book. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-schwarzbuch-2",
             "category": "opener-schwarzbuch",
             "text": "Open the Black Book. Today's chapter of money spent on nothing. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Open the Black Book. Today's chapter of money spent on nothing. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Open the Black Book. Today's chapter of money spent on nothing. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-schwarzbuch",
             "category": "promo-schwarzbuch",
             "text": "Coming up: the Black Book Hour. Where your tax money went, and why it never came back. Real cases, read out loud. The Black Book Hour, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the Black Book Hour. Where your tax money went, and why it never came back. Real cases, read out loud. The Black Book Hour, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the Black Book Hour. Where your tax money went, and why it never came back. Real cases, read out loud. The Black Book Hour, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-altcoin-hype-1",
             "category": "opener-altcoin_hype",
             "text": "The Altcoin Hype Detector is beeping. Something out there promises the world again. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The Altcoin Hype Detector is beeping. Something out there promises the world again. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The Altcoin Hype Detector is beeping. Something out there promises the world again. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-altcoin-hype-2",
             "category": "opener-altcoin_hype",
             "text": "Warning. Hype levels rising. The Altcoin Hype Detector is on. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Warning. Hype levels rising. The Altcoin Hype Detector is on. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Warning. Hype levels rising. The Altcoin Hype Detector is on. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-altcoin-hype",
             "category": "promo-altcoin_hype",
             "text": "Soon on the air: the Altcoin Hype Detector. A new coin, a big promise, and our detector going off the scale. The Altcoin Hype Detector, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Soon on the air: the Altcoin Hype Detector. A new coin, a big promise, and our detector going off the scale. The Altcoin Hype Detector, coming up on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Soon on the air: the Altcoin Hype Detector. A new coin, a big promise, and our detector going off the scale. The Altcoin Hype Detector, coming up on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-liga-pranger-1",
             "category": "opener-liga_pranger",
             "text": "The League Pillory. The worst results of the week, on display for everyone. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The League Pillory. The worst results of the week, on display for everyone. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The League Pillory. The worst results of the week, on display for everyone. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-liga-pranger-2",
             "category": "opener-liga_pranger",
             "text": "Step up to the League Pillory. Somebody lost badly, and we have the numbers. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Step up to the League Pillory. Somebody lost badly, and we have the numbers. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Step up to the League Pillory. Somebody lost badly, and we have the numbers. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-liga-pranger",
             "category": "promo-liga_pranger",
             "text": "Coming up: the League Pillory. The heaviest defeats, the longest losing streaks, the numbers nobody wants to see. All in good fun. The League Pillory, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the League Pillory. The heaviest defeats, the longest losing streaks, the numbers nobody wants to see. All in good fun. The League Pillory, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the League Pillory. The heaviest defeats, the longest losing streaks, the numbers nobody wants to see. All in good fun. The League Pillory, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-phrasendrescher-1",
             "category": "opener-phrasendrescher",
             "text": "Phrase Thresher of the Week. The emptiest words of the last seven days, weighed and judged. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Phrase Thresher of the Week. The emptiest words of the last seven days, weighed and judged. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Phrase Thresher of the Week. The emptiest words of the last seven days, weighed and judged. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-phrasendrescher-2",
             "category": "opener-phrasendrescher",
             "text": "Buzzword alert. The Phrase Thresher of the Week is about to be crowned. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Buzzword alert. The Phrase Thresher of the Week is about to be crowned. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Buzzword alert. The Phrase Thresher of the Week is about to be crowned. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-phrasendrescher",
             "category": "promo-phrasendrescher",
             "text": "Soon: Phrase Thresher of the Week. Politicians, bankers and pundits, and the hollow phrases they used this week. We pick a winner. Phrase Thresher of the Week, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Soon: Phrase Thresher of the Week. Politicians, bankers and pundits, and the hollow phrases they used this week. We pick a winner. Phrase Thresher of the Week, coming up on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Soon: Phrase Thresher of the Week. Politicians, bankers and pundits, and the hollow phrases they used this week. We pick a winner. Phrase Thresher of the Week, coming up on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-nostr-fundbuero-1",
             "category": "opener-nostr_fundbuero",
             "text": "The Nostr Lost and Found. Notes nobody saw, finally on air. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The Nostr Lost and Found. Notes nobody saw, finally on air. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The Nostr Lost and Found. Notes nobody saw, finally on air. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-nostr-fundbuero-2",
             "category": "opener-nostr_fundbuero",
             "text": "Welcome to the Nostr Lost and Found. Somebody posted gold, and nobody noticed. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Welcome to the Nostr Lost and Found. Somebody posted gold, and nobody noticed. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Welcome to the Nostr Lost and Found. Somebody posted gold, and nobody noticed. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-nostr-fundbuero",
             "category": "promo-nostr_fundbuero",
             "text": "Coming up: the Nostr Lost and Found. The best notes that got lost in the feed, dug out and read on air. The Nostr Lost and Found, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the Nostr Lost and Found. The best notes that got lost in the feed, dug out and read on air. The Nostr Lost and Found, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the Nostr Lost and Found. The best notes that got lost in the feed, dug out and read on air. The Nostr Lost and Found, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-corporate-stacker-1",
             "category": "opener-corporate_stacker",
             "text": "Corporate Stacker Watch. Which companies hold Bitcoin on their balance sheet? TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Corporate Stacker Watch. Which companies hold Bitcoin on their balance sheet? TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Corporate Stacker Watch. Which companies hold Bitcoin on their balance sheet? TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-corporate-stacker-2",
             "category": "opener-corporate_stacker",
             "text": "Eyes on the balance sheets. Corporate Stacker Watch is on. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Eyes on the balance sheets. Corporate Stacker Watch is on. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Eyes on the balance sheets. Corporate Stacker Watch is on. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-corporate-stacker",
             "category": "promo-corporate_stacker",
             "text": "Soon on the air: Corporate Stacker Watch. Companies, their Bitcoin, and what the numbers really say. Corporate Stacker Watch, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Soon on the air: Corporate Stacker Watch. Companies, their Bitcoin, and what the numbers really say. Corporate Stacker Watch, coming up on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Soon on the air: Corporate Stacker Watch. Companies, their Bitcoin, and what the numbers really say. Corporate Stacker Watch, coming up on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-inflationsbeichte-1",
             "category": "opener-inflationsbeichte",
             "text": "The Inflation Confession. What did your money lose this time? Confess. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The Inflation Confession. What did your money lose this time? Confess. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The Inflation Confession. What did your money lose this time? Confess. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-inflationsbeichte-2",
             "category": "opener-inflationsbeichte",
             "text": "Kneel down for the Inflation Confession. Prices up, purchasing power down. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Kneel down for the Inflation Confession. Prices up, purchasing power down. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Kneel down for the Inflation Confession. Prices up, purchasing power down. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-inflationsbeichte",
             "category": "promo-inflationsbeichte",
             "text": "Coming up: the Inflation Confession. What got more expensive, by how much, and who is to blame. Bring your receipts. The Inflation Confession, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the Inflation Confession. What got more expensive, by how much, and who is to blame. Bring your receipts. The Inflation Confession, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the Inflation Confession. What got more expensive, by how much, and who is to blame. Bring your receipts. The Inflation Confession, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-sport-wetter-1",
             "category": "opener-sport_wetter",
             "text": "Sport and Weather. Who won, who lost, and do you need an umbrella. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Sport and Weather. Who won, who lost, and do you need an umbrella. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Sport and Weather. Who won, who lost, and do you need an umbrella. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-sport-wetter-2",
             "category": "opener-sport_wetter",
             "text": "Results and forecasts. Sport and Weather, right now. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Results and forecasts. Sport and Weather, right now. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Results and forecasts. Sport and Weather, right now. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-sport-wetter",
             "category": "promo-sport_wetter",
             "text": "Coming up after the news: Sport and Weather. The latest results and what the sky has planned for you. Sport and Weather, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up after the news: Sport and Weather. The latest results and what the sky has planned for you. Sport and Weather, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up after the news: Sport and Weather. The latest results and what the sky has planned for you. Sport and Weather, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-nachrichten-talk-1",
             "category": "opener-nachrichten_talk",
             "text": "The News Talk. The facts are in. Now, the opinions. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "The News Talk. The facts are in. Now, the opinions. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "The News Talk. The facts are in. Now, the opinions. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-op-nachrichten-talk-2",
             "category": "opener-nachrichten_talk",
             "text": "After the news, the talk. What the headlines really mean. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "After the news, the talk. What the headlines really mean. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "After the news, the talk. What the headlines really mean. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-nachrichten-talk",
             "category": "promo-nachrichten_talk",
             "text": "Coming up: the News Talk. We take the headlines apart and say what nobody in the newsroom is allowed to say. The News Talk, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up: the News Talk. We take the headlines apart and say what nobody in the newsroom is allowed to say. The News Talk, soon on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up: the News Talk. We take the headlines apart and say what nobody in the newsroom is allowed to say. The News Talk, soon on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-generic-1",
             "category": "promo",
             "text": "Stay right here. More league, more news and more roast are on the way. Don't touch that dial. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Stay right here. More league, more news and more roast are on the way. Don't touch that dial. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Stay right here. More league, more news and more roast are on the way. Don't touch that dial. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-generic-2",
             "category": "promo",
             "text": "Coming up in the next hour: the news on the hour, the league tables and whatever the chat throws at us. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Coming up in the next hour: the news on the hour, the league tables and whatever the chat throws at us. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Coming up in the next hour: the news on the hour, the league tables and whatever the chat throws at us. TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-generic-3",
             "category": "promo",
             "text": "Still to come: fresh news at the top and at the bottom of the hour, and the talk in between. Stay with us on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Still to come: fresh news at the top and at the bottom of the hour, and the talk in between. Stay with us on TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Still to come: fresh news at the top and at the bottom of the hour, and the talk in between. Stay with us on TWENTY ONE. E. Sports. Radio."
         },
         {
             "id": "img-pr-generic-4",
             "category": "promo",
             "text": "Don't go anywhere. The next segment is already warming up, and the chat is already arguing. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
-            "spoken": "Don't go anywhere. The next segment is already warming up, and the chat is already arguing. TWENTY ONE. Eee. Sports. Radio."
+            "spoken": "Don't go anywhere. The next segment is already warming up, and the chat is already arguing. TWENTY ONE. E. Sports. Radio."
         }
     ]
 }
