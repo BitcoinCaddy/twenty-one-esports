@@ -58,6 +58,10 @@ class ScriptQueue
 
     private FollowedScripts $followed;
 
+    private DuetDirector $duets;
+
+    private DuetScripts $duetScripts;
+
     private ?SpokenMemory $memory = null;
 
     public function __construct(
@@ -67,11 +71,15 @@ class ScriptQueue
         ?NewsScripts $news = null,
         ?HistoryScripts $history = null,
         ?FollowedScripts $followed = null,
+        ?DuetDirector $duets = null,
+        ?DuetScripts $duetScripts = null,
     ) {
         $this->patterns = $patterns ?? app(PatternScripts::class);
         $this->news = $news ?? app(NewsScripts::class);
         $this->history = $history ?? app(HistoryScripts::class);
         $this->followed = $followed ?? app(FollowedScripts::class);
+        $this->duets = $duets ?? app(DuetDirector::class);
+        $this->duetScripts = $duetScripts ?? app(DuetScripts::class);
     }
 
     /** Whether the league voice writes scene scripts (TV_COMMENTARY_AI); off, the patterns fill the airtime alone. */
@@ -137,6 +145,18 @@ class ScriptQueue
 
             if ($aiLeft > 0) {
                 $aiLeft--;
+
+                // About `duet.share` of the scenes are an exchange of Markus and Sirius (DuetDirector); when the duet
+                // gives nothing, Markus speaks alone as before.
+                $sequence = $this->duets->next($now);
+                $duet = $sequence === null ? null : $this->duetScripts->write($sequence, $phase, $facts, $this->topics($phase, $now), $this->duets->lastTurns($now));
+
+                if ($duet !== null && $this->enqueue(CasterScript::SCENE, $phase, $duet['text'], SceneFacts::hash($facts), 0, $now, source: CasterScript::SOURCE_AI, topic: $topic, speakers: $duet['speakers']) !== null) {
+                    $written++;
+
+                    continue;
+                }
+
                 $long = LengthMix::isDue(LengthMix::SCENE);
                 $range = $long ? (array) config('tv.commentary.length.scene_long', []) : $sentences;
                 $script = $this->voice->write(CasterScript::SCENE, $phase, $facts, (int) ($range['min'] ?? 2), (int) ($range['max'] ?? 8), [], $this->topics($phase, $now), $long);
@@ -253,8 +273,14 @@ class ScriptQueue
      * off (PatternScripts::enabled()), and when every sentence of it was said within `repeat_hours`
      * (SpokenMemory: from any source, chat replies and fallbacks included;
      * the sentences said before leave a script, the rest is queued).
+     *
+     * `$speakers` (a duet, DuetDirector): the speaker of each line of `$text`;
+     * sign-offs and repeats then leave it line by line, each line keeping its
+     * speaker, and every part stores the speakers of its own lines.
+     *
+     * @param  list<string>|null  $speakers
      */
-    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null): ?CasterScript
+    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null, ?array $speakers = null): ?CasterScript
     {
         // AI only unless the pattern fallback is switched on (PatternScripts::enabled()): no template text, no filler.
         if (! PatternScripts::enabled() && ($source === CasterScript::SOURCE_PATTERN || $kind === CasterScript::FILLER)) {
@@ -262,9 +288,18 @@ class ScriptQueue
         }
 
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
+
+        if ($speakers !== null) {
+            [$text, $speakers] = $this->duetLines($text, $speakers, $now);
+
+            if ($text === '') {
+                return null;
+            }
+        }
+
         $text = self::withoutSignOffs($text);
 
-        if ($kind !== CasterScript::FILLER) {
+        if ($kind !== CasterScript::FILLER && $speakers === null) {
             $this->memory ??= new SpokenMemory;
             $text = $this->memory->withoutRepeats($text, $now);
 
@@ -279,10 +314,15 @@ class ScriptQueue
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
 
-        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAge, $parts, $group): CasterScript {
+        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAge, $parts, $group, $speakers): CasterScript {
             $first = null;
+            $offset = 0;
 
             foreach ($parts as $index => $part) {
+                $lineCount = count(ScriptGuard::lines($part));
+                $partSpeakers = $speakers === null ? null : array_slice($speakers, $offset, $lineCount);
+                $offset += $lineCount;
+
                 $script = CasterScript::query()->create([
                     'kind' => $kind,
                     'phase' => $phase,
@@ -298,6 +338,7 @@ class ScriptQueue
                     'expires_at' => $kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes($maxAge),
                     'part_group' => $group,
                     'part_index' => $group === null ? null : $index + 1,
+                    'speakers' => $partSpeakers,
                 ]);
                 $first ??= $script;
             }
@@ -305,6 +346,40 @@ class ScriptQueue
             /** @var CasterScript $first */
             return $first;
         });
+    }
+
+    /**
+     * A duet's lines without sign-offs and without the sentences said within
+     * `repeat_hours` (SpokenMemory), each kept line with its speaker; the
+     * kept lines are remembered. An empty text when nothing is left.
+     *
+     * @param  list<string>  $speakers  one per line of `$text`
+     * @return array{0: string, 1: list<string>}
+     */
+    private function duetLines(string $text, array $speakers, CarbonImmutable $now): array
+    {
+        $this->memory ??= new SpokenMemory;
+        [$lines, $kept] = [[], []];
+
+        foreach (ScriptGuard::lines($text) as $index => $line) {
+            $line = self::withoutSignOffs($line);
+
+            if (preg_match(self::SIGN_OFF, $line) === 1) {
+                continue;
+            }
+
+            $line = trim($this->memory->withoutRepeats($line, $now));
+
+            if (trim(ScriptGuard::withoutMarkers($line)) === '') {
+                continue;
+            }
+
+            $this->memory->remember($line, $now);
+            $lines[] = str_replace("\n", ' ', $line);
+            $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
+        }
+
+        return [implode("\n", $lines), $kept];
     }
 
     /**

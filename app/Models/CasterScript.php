@@ -27,12 +27,13 @@ use Illuminate\Support\Carbon;
  * @property float $estimated_seconds
  * @property string|null $part_group the parts of one long script share it (App\Support\Caster\ScriptQueue::enqueue()); null for a script in one piece
  * @property int|null $part_index the position of the part in its group, from 1
+ * @property list<string>|null $speakers the speaker of each line of a duet (App\Support\Caster\DuetDirector::MARKUS, ::SIRIUS), aligned with sentences(); null when Markus speaks alone
  * @property Carbon|null $claimed_at
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at', 'part_group', 'part_index'])]
+#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at', 'part_group', 'part_index', 'speakers'])]
 class CasterScript extends Model
 {
     public const QUEUED = 'queued';
@@ -75,6 +76,7 @@ class CasterScript extends Model
             'estimated_seconds' => 'float',
             'claimed_at' => 'datetime',
             'expires_at' => 'datetime',
+            'speakers' => 'array',
         ];
     }
 
@@ -101,6 +103,18 @@ class CasterScript extends Model
     public function isContinuation(): bool
     {
         return $this->part_group !== null && (int) $this->part_index > 1;
+    }
+
+    /**
+     * The speaker of each of sentences() for a duet (DuetDirector), null for Markus alone or when the two do not line up.
+     *
+     * @return list<string>|null
+     */
+    public function lineSpeakers(): ?array
+    {
+        $speakers = is_array($this->speakers) ? array_values(array_filter($this->speakers, 'is_string')) : null;
+
+        return $speakers !== null && count($speakers) === count($this->sentences()) ? $speakers : null;
     }
 
     /**
