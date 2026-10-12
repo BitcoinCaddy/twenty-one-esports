@@ -439,12 +439,12 @@ return [
                 'MS' => 30, 'MSM' => 20, 'MSS' => 9, 'MSMS' => 8, 'MMS' => 10, 'MSSM' => 4, 'MSMSM' => 4,
                 'SM' => 18, 'SMS' => 9,
             ],
-            'sirius_share' => ['min' => 0.25, 'max' => 0.35, 'window_minutes' => 60],
+            'sirius_share' => ['min' => (float) env('TV_COMMENTARY_SIRIUS_SHARE_MIN', 0.25), 'max' => (float) env('TV_COMMENTARY_SIRIUS_SHARE_MAX', 0.35), 'window_minutes' => 60],
             'cooldown' => 0.35,
             // The previous duet's last turns a follow-up may pick up, if it ran within this many minutes.
             'follow_up_minutes' => 30,
             'sentences' => ['markus' => ['min' => 1, 'max' => 3], 'sirius' => ['min' => 1, 'max' => 2]],
-            'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 150),
+            'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 1000),
         ],
 
         // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen

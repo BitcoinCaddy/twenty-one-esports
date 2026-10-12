@@ -42,7 +42,7 @@ import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
 import { ACCOUNT_CARDS, ACCOUNT_SERVICES, HOST_CARD, accountTags, cardContent, casualExpiration, isExpired, lobbyTags, openCardIds, parseCard, pinnedLobbyCard, randomPassword } from './lobbyCards.js';
 import { extraInboxRelays, lookupInboxes, relaysFor } from './dmInbox.js';
-import { canEncrypt, chatSince, isUntagged, roomMessages, unwrapMessage, wrapGroupMessage } from './nostrChat.js';
+import { UnwrapError, canEncrypt, chatSince, isUntagged, roomMessages, unwrapMessage, wrapGroupMessage } from './nostrChat.js';
 import { awaitSigner, ensureSigner } from './nostrSign.js';
 
 const MUTES_KEY = 'esports.chat.mutes';
@@ -52,6 +52,17 @@ const SEEN_RETRIES = [1000, 2000, 4000, 8000, 16000];
 
 /** Messages drawn at first and added per scroll to the top. */
 export const PAGE = 30;
+
+/**
+ * Unwrap errors that say nothing about the wrap itself: the signer could not
+ * decrypt it just now (a remote signer timed out, an extension's prompt was
+ * closed, the signer was busy with the whole history at once). Such a wrap is
+ * tried again (UNWRAP_RETRIES, ms) and never cached, so the next load opens it
+ * anew. Cached as null it was never opened again (tournament 27, 2026-10-12:
+ * "messages do not arrive" for the players whose signer failed once).
+ */
+const TRANSIENT_UNWRAP = new Set(['wrap_decrypt', 'seal_decrypt']);
+export const UNWRAP_RETRIES = [2000, 8000, 30000];
 
 /** Within this many pixels of an edge counts as at it. */
 const EDGE = 24;
@@ -69,6 +80,8 @@ const nowSeconds = () => Math.floor(Date.now() / 1000);
 export function roomChat(config) {
     // The newest message seen, outside the reactive state: arrived() runs in an x-effect and must not depend on it.
     let lastId = null;
+    // The timers of wraps waiting for another unwrap attempt, cleared in destroy().
+    const unwrapTimers = new Set();
 
     return {
         rumors: [],
@@ -138,6 +151,8 @@ export function roomChat(config) {
             this.sub?.close();
             this.inboxSub?.close();
             this.pool?.destroy();
+            unwrapTimers.forEach((timer) => clearTimeout(timer));
+            unwrapTimers.clear();
         },
 
         /** The relay pool (a seam for tests/js/dmReplies.test.mjs). */
@@ -190,7 +205,7 @@ export function roomChat(config) {
             });
         },
 
-        async receive(wrap) {
+        async receive(wrap, attempt = 0) {
             // A stub is a card seen before: open it again, it was never stored.
             if (Object.hasOwn(this.cache, wrap.id) && !this.cache[wrap.id]?.stub) return;
 
@@ -199,7 +214,15 @@ export function roomChat(config) {
             if (!isExpired(wrap)) {
                 try {
                     rumor = await unwrapMessage(window.nostr, wrap, config.me);
-                } catch {
+                } catch (error) {
+                    // The signer failed, not the wrap: again later, and not in the cache (TRANSIENT_UNWRAP).
+                    if (error instanceof UnwrapError && TRANSIENT_UNWRAP.has(error.code)) {
+                        this.retryUnwrap(wrap, attempt);
+
+                        return;
+                    }
+
+                    // No valid NIP-17 message (not to me, a broken seal, a forged sender): stays closed.
                     rumor = null;
                 }
             }
@@ -207,6 +230,17 @@ export function roomChat(config) {
             this.cache[wrap.id] = entryFor(this.cacheName(), rumor);
             if (rumor !== null && this.cache[wrap.id] !== null) this.add(rumor);
             saveCache(this.cacheName(), config.me, this.cache);
+        },
+
+        /** Another unwrap attempt of `wrap` after UNWRAP_RETRIES[attempt] ms, while the chat is open and attempts are left. */
+        retryUnwrap(wrap, attempt) {
+            if (this.closed || attempt >= UNWRAP_RETRIES.length) return;
+
+            const timer = setTimeout(() => {
+                unwrapTimers.delete(timer);
+                if (!this.closed) this.receive(wrap, attempt + 1);
+            }, UNWRAP_RETRIES[attempt]);
+            unwrapTimers.add(timer);
         },
 
         /** Which local cache this chat keeps (chatCache.js): `room`, or the tournament desk's own. */

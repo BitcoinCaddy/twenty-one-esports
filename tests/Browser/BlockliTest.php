@@ -595,7 +595,11 @@ test('an organizer switches a running Blockli tournament to rapid in the editor;
     $page = blockliPage($admin, route('admin.tournaments.edit', $tournament, false).'?lang=de', 1440, 900, false);
     BrowserWait::until($page, '() => !!document.querySelector("[data-test=mode-switch-rapid]")', 10_000);
     $page->locator('[data-test=mode-switch-rapid]')->click();
-    BrowserWait::until($page, '() => !!document.querySelector("[data-test=mode-switch-notice]") && document.querySelector("[data-test=mode-switch-rapid]").getAttribute("aria-checked") === "true"', 10_000);
+    BrowserWait::until($page, '() => document.querySelector("[data-test=mode-switch-rapid]").getAttribute("aria-checked") === "true"', 10_000);
+    // Deferred (user, 2026-10-12): the choice is saved by "Save changes", never by the click.
+    expect($tournament->refresh()->mode)->toBe('correspondence');
+    $page->locator('[data-test=edit-save]')->click();
+    BrowserWait::until($page, '() => !!document.querySelector("[data-test=edit-notice]")', 10_000);
     expect($tournament->refresh()->mode)->toBe('rapid')
         ->and($page->evaluate('() => window.__errors'))->toBe([])
         ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);

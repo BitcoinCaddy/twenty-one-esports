@@ -104,7 +104,10 @@ export function migrateLegacy(me, storage = globalThis.localStorage, now = nowSe
     if (storage.getItem(legacyKey) === null) return;
 
     for (const chat of CHATS) {
-        if (legacy !== null && storage.getItem(cacheKey(chat, me)) === null) write(storage, cacheKey(chat, me), sanitize(chat, legacy, now));
+        if (legacy !== null && storage.getItem(cacheKey(chat, me)) === null) {
+            write(storage, cacheKey(chat, me), sanitize(chat, legacy, now));
+            markPurged(chat, me, storage);
+        }
     }
 
     try {
@@ -118,11 +121,43 @@ export function migrateLegacy(me, storage = globalThis.localStorage, now = nowSe
  * The cache of one chat, checked entry by entry (and written back if that
  * changed anything), with the rumors to show from it.
  */
+/**
+ * Until 2026-10-12 a wrap the signer could not open just now (a remote
+ * signer's timeout, a closed extension prompt) was cached as null like a wrap
+ * that is no message, and so never opened again (roomChat.js, receive()).
+ * Once per reader and chat the null entries are dropped: the relays deliver
+ * the wraps again and the signer opens them anew; what is no message becomes
+ * null again, cheaply.
+ */
+export function purgeKey(chat, me) {
+    return `esports.chat.nullpurge.${chat}.${me}`;
+}
+
+/** Every write of this code marks the cache as its own (markPurged()); only a cache without the mark is purged. */
+function purgeNulls(chat, me, storage, cache) {
+    try {
+        if (storage.getItem(purgeKey(chat, me)) !== null) return cache;
+        storage.setItem(purgeKey(chat, me), '1');
+    } catch {
+        return cache;
+    }
+
+    return Object.fromEntries(Object.entries(cache).filter(([, entry]) => entry !== null));
+}
+
+function markPurged(chat, me, storage) {
+    try {
+        storage.setItem(purgeKey(chat, me), '1');
+    } catch {
+        // private mode or full storage: the purge may run once more, which only reopens the wraps
+    }
+}
+
 export function loadCache(chat, me, storage = globalThis.localStorage, now = nowSeconds()) {
     migrateLegacy(me, storage, now);
 
     const raw = read(storage, cacheKey(chat, me)) ?? {};
-    const cache = sanitize(chat, raw, now);
+    const cache = purgeNulls(chat, me, storage, sanitize(chat, raw, now));
 
     if (JSON.stringify(cache) !== JSON.stringify(raw)) write(storage, cacheKey(chat, me), cache);
 
@@ -131,6 +166,7 @@ export function loadCache(chat, me, storage = globalThis.localStorage, now = now
 
 /** Write a chat's cache, keeping the newest CACHE_LIMIT wraps. */
 export function saveCache(chat, me, cache, storage = globalThis.localStorage) {
+    markPurged(chat, me, storage);
     const ids = Object.keys(cache);
     if (ids.length > CACHE_LIMIT) ids.slice(0, ids.length - CACHE_LIMIT).forEach((id) => delete cache[id]);
     write(storage, cacheKey(chat, me), cache);

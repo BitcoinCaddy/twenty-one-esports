@@ -89,14 +89,24 @@ final class TournamentModeSwitch
             return false;
         }
 
-        $tournament->refresh();
-
-        if ($tournament->status !== TournamentStatus::Draft) {
-            $this->tell($tournament);
-            Broadcasts::send(new TournamentChanged($tournament->id, 'edited'));
-        }
+        $this->announce($tournament->refresh());
 
         return true;
+    }
+
+    /**
+     * After the mode was saved (switch(), or the edit page's save with the
+     * other changes): a published tournament's players get the message, and
+     * the open pages reload. A draft is not public yet, so nothing is said.
+     */
+    public function announce(Tournament $tournament): void
+    {
+        if ($tournament->status === TournamentStatus::Draft) {
+            return;
+        }
+
+        $this->tell($tournament);
+        Broadcasts::send(new TournamentChanged($tournament->id, 'edited'));
     }
 
     /**
