@@ -170,6 +170,35 @@ return [
                 'initial_seconds' => 5,
                 'max_seconds' => 120,
             ],
+
+            /*
+            | The live chat of that YouTube restream, summarised by the caster (YouTubeChat, YouTubeChatSummary; user
+            | 2026-10-12: "Kannst du den Chat auch aus https://www.youtube.com/live/TPNa5BhYfnE lesen und kommentieren
+            | lassen? Aber nur zusammengefasst."). Official Data API v3 with an API key (public data): videos.list
+            | (1 unit) finds the active live chat of `video_id`, or search.list (live broadcasts of `channel_id`, its own
+            | bucket of 100 calls a day) at most every `channel_lookup_minutes`; liveChat/messages (5 units) is read
+            | at most every `poll_seconds` or the response's pollingIntervalMillis, whichever is longer. 90 s are
+            | 960 reads, 4,800 of the daily 10,000 units. No live chat: no read, a new look after `idle_minutes`.
+            | Messages are kept `retention_hours`, at most `max_rows`; every `every_minutes` with at least
+            | `min_messages` new ones the caster speaks one summary (a chat item). Off until a key exists.
+            */
+            'chat' => [
+                'enabled' => (bool) env('YOUTUBE_CHAT_ENABLED', false),
+                'api_key' => (string) env('YOUTUBE_API_KEY', ''),
+                'video_id' => (string) env('YOUTUBE_CHAT_VIDEO_ID', ''),
+                'channel_id' => (string) env('YOUTUBE_CHAT_CHANNEL_ID', ''),
+                'poll_seconds' => (int) env('YOUTUBE_CHAT_POLL_SECONDS', 90),
+                'idle_minutes' => 10,
+                'channel_lookup_minutes' => 30,
+                'timeout_seconds' => 8,
+                'retention_hours' => 24,
+                'max_rows' => 500,
+                'every_minutes' => (int) env('YOUTUBE_CHAT_SUMMARY_MINUTES', 15),
+                'min_messages' => (int) env('YOUTUBE_CHAT_SUMMARY_MIN_MESSAGES', 3),
+                // Messages one summary sees at most (the newest), and the share of summaries Sirius joins as a duet.
+                'max_messages' => 40,
+                'duet_share' => (float) env('YOUTUBE_CHAT_DUET_SHARE', 0.3),
+            ],
         ],
 
         /*
