@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use App\Games\GameRegistry;
 use App\Models\CasterScript;
 use App\Support\Voice\LeagueVoice;
 use App\Support\Voice\VoiceAgent;
@@ -927,15 +928,19 @@ final class CasterVoice
             return $this->fixed;
         }
 
-        $data = self::castData();
-        $patterns = array_map(fn (array $row): string => "- [{$row['kind']} · Energie {$row['energy']} · ".implode('/', $row['fits'])."] {$row['template']}", $data['patterns']);
-        $promo = array_map(fn (array $row): string => "- [{$row['category']} · ".implode('/', $row['when'])."] {$row['text']}", $data['promo']);
+        $games = implode(', ', array_map(fn ($game): string => $game->name(), app(GameRegistry::class)->all()));
 
+        // No template sentences, invitations or mood lines in the prompt any more (user 2026-10-12: "caster.json scheint
+        // verantwortlich für lauter Wiederholungen"): the model copied their phrasing; it gets the facts and writes its own.
         return $this->fixed = self::withoutHashes(trim((string) file_get_contents(resource_path('data/voice/caster-guide.md')))
             ."\n\n".self::spokenStyleGuide((string) file_get_contents(resource_path('data/voice/style-guide.md')))
-            ."\n\n## Satzmuster aus echten Casts (`{…}` füllen nur die Fakten)\n\n".implode("\n", $patterns)
-            ."\n\n## Einladungen (frei variieren, nie wörtlich wiederholen)\n\n".implode("\n", $promo)
-            ."\n\n## Stolz, Chat und Gefühl (so klingt der Rest des Skripts; frei variieren)\n\n".implode("\n", self::flavourExamples()))
+            ."\n\n## Die Liga in Fakten (nur Wissen, keine Formulierungen zum Nachsprechen)\n\n"
+            ."- TWENTY ONE ist die eSports-Liga der EINUNDZWANZIG-Community unter esports punkt einundzwanzig punkt space, der Sender heißt TWENTY ONE TV.\n"
+            ."- Gespielt wird {$games}, dazu die Brettspiele Mühle, Dame und Blockli ohne Uhr.\n"
+            ."- Einloggen geht mit Nostr oder Google, dann die Lobby öffnen, einen Gegner einladen oder einem Turnier beitreten.\n"
+            ."- Gewertete Siege schürfen Blöcke im Liga-Mempool, Turniere haben Sats-Töpfe, und niemand zahlt je eine Gebühr.\n"
+            ."- Zuschauer können im Stream-Chat schreiben, sich etwas wünschen und mit Zaps Sats schicken.\n"
+            .'- Erfinde jede Einladung jedes Mal neu und anders und wiederhol keine Wendung, die du schon einmal gesagt hast.')
             // Who Markus is in the podcast, topics, style and gags with their sources (CasterPersonas, user 2026-10-12).
             ."\n\n".CasterPersonas::markus()."\n";
     }
@@ -953,26 +958,6 @@ final class CasterVoice
         $guide = (string) preg_replace('/^## Alltagssprache\b.*?(?=^## Harte Regeln)/msu', '', $guide);
 
         return trim(str_replace(' Kürzer ist fast immer besser.', '', $guide));
-    }
-
-    /**
-     * The pattern scripts' pride, chat and emotion lines (caster.json,
-     * `pattern_scripts.flavour`), as the prompt shows them: "- [stolz] …".
-     *
-     * @return list<string>
-     */
-    private static function flavourExamples(): array
-    {
-        $flavour = self::castData()['pattern_scripts']['flavour'];
-        $lines = [];
-
-        foreach (['stolz' => $flavour['pride'], 'chat' => $flavour['engage'], 'gefühl' => $flavour['emotion']] as $label => $rows) {
-            foreach ($rows as $row) {
-                $lines[] = "- [{$label}] {$row['text']}";
-            }
-        }
-
-        return $lines;
     }
 
     /**

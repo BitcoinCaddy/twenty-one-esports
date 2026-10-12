@@ -281,11 +281,13 @@ it('says a tournament name once in a league-voice script, the repeat as the noun
         ->toBe("Chess Cup startet am Samstag, und die Anmeldung ist schon offen.\nBeim Turnier ist noch Platz für alle, die mitspielen wollen.\nSchreibt in den Chat, wer von euch am Samstag mitspielt.");
 });
 
-it('asks for one fact and few names, and shows the flavour lines as examples', function () {
+it('asks for one fact and few names, and gives league facts instead of template lines to copy', function () {
     VoiceAgent::fake([['text' => "Number go up, und das sieht man hier bei uns jeden Tag. [laughter]\nWer von euch ist Team Schach, der schreibt das bitte gleich in den Chat.\nDie Lobby ist offen, und jeder von euch kann jetzt sofort einsteigen.", 'canon_id' => 'btc-number-go-up', 'mood' => 'witz']]);
 
     casterVoiceWrite();
 
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Höchstens EIN Fakt') && str_contains($prompt->prompt, 'Keine Spielernamen'));
-    expect(app(CasterVoice::class)->fixedPart())->toContain('Ich lieb diesen Sender einfach');
+    // No template sentences in the prompt any more (user 2026-10-12: the model copied caster.json's phrasing).
+    expect(app(CasterVoice::class)->fixedPart())->toContain('Die Liga in Fakten')->toContain('Rocket League')
+        ->not->toContain('Ich lieb diesen Sender einfach')->not->toContain('## Satzmuster')->not->toContain('## Einladungen');
 });
