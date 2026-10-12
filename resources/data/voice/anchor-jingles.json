@@ -54,7 +54,15 @@
         {"id": "stock-tutorial-01", "category": "stock-tutorial", "language": "en", "text": "The Bitcoin tutorial. Learn it here, on TWENTY ONE ESPORTS RADIO.", "spoken": "The Bitcoin tutorial. Learn it here, on TWENTY ONE. Eee. Sports. Radio."},
         {"id": "stock-tutorial-02", "category": "stock-tutorial", "language": "en", "text": "No dumb questions. The Bitcoin tutorial on TWENTY ONE ESPORTS RADIO.", "spoken": "No dumb questions. The Bitcoin tutorial on TWENTY ONE. Eee. Sports. Radio."},
         {"id": "stock-geschichte-01", "category": "stock-geschichte", "language": "en", "text": "The history hour. Bitcoin and the cypherpunks.", "spoken": "The history hour. Bitcoin and the cypherpunks."},
-        {"id": "stock-geschichte-02", "category": "stock-geschichte", "language": "en", "text": "How it all began. The history hour on TWENTY ONE ESPORTS RADIO.", "spoken": "How it all began. The history hour on TWENTY ONE. Eee. Sports. Radio."}
+        {"id": "stock-geschichte-02", "category": "stock-geschichte", "language": "en", "text": "How it all began. The history hour on TWENTY ONE ESPORTS RADIO.", "spoken": "How it all began. The history hour on TWENTY ONE. Eee. Sports. Radio."},
+        {"id": "rubric-zentralbank-01", "category": "rubric-zentralbank", "language": "en", "text": "The central bank sewage plant. Printed money, treated here.", "spoken": "The central bank sewage plant. Printed money, treated here."},
+        {"id": "rubric-schwarzbuch-01", "category": "rubric-schwarzbuch", "language": "en", "text": "The black book hour. Your taxes, burned in style.", "spoken": "The black book hour. Your taxes, burned in style."},
+        {"id": "rubric-altcoin_hype-01", "category": "rubric-altcoin_hype", "language": "en", "text": "The altcoin hype detector. Beep. Beep. Shitcoin.", "spoken": "The altcoin hype detector. Beep. Beep. Shitcoin."},
+        {"id": "rubric-liga_pranger-01", "category": "rubric-liga_pranger", "language": "en", "text": "The league pillory. TWENTY ONE ESPORTS RADIO.", "spoken": "The league pillory. TWENTY ONE. Eee. Sports. Radio."},
+        {"id": "rubric-phrasendrescher-01", "category": "rubric-phrasendrescher", "language": "en", "text": "The phrase thresher of the week. Empty words, full volume.", "spoken": "The phrase thresher of the week. Empty words, full volume."},
+        {"id": "rubric-nostr_fundbuero-01", "category": "rubric-nostr_fundbuero", "language": "en", "text": "The Nostr lost and found. Strange notes from the relays.", "spoken": "The Nostr lost and found. Strange notes from the relays."},
+        {"id": "rubric-corporate_stacker-01", "category": "rubric-corporate_stacker", "language": "en", "text": "Corporate stacker watch. Who buys, who sells, who sweats.", "spoken": "Corporate stacker watch. Who buys, who sells, who sweats."},
+        {"id": "rubric-inflationsbeichte-01", "category": "rubric-inflationsbeichte", "language": "en", "text": "The inflation confession. On TWENTY ONE ESPORTS RADIO.", "spoken": "The inflation confession. On TWENTY ONE. Eee. Sports. Radio."}
     ],
     "blips": {
         "markus": ["Hm.", "Ja.", "Stimmt.", "Genau.", "Ja, ja.", "[laughter]"],

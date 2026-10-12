@@ -12,6 +12,8 @@ use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
 use App\Support\Caster\Programme\Rubrics;
+use App\Support\Caster\Programme\RoastScripts;
+use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\Programme\RubricScripts;
 use App\Support\Caster\Programme\SportWeather;
 use Carbon\CarbonImmutable;
@@ -383,7 +385,8 @@ class ScriptQueue
         $rubrics = app(Rubrics::class);
         $id = $rubrics->plannedFor($slot, $now);
         $material = $id === null ? null : $rubrics->material($id, $now);
-        $rubric = $id === null || $material === null ? null : $this->rubricScripts->write($slot, $id, $material, $now);
+        $rubric = $id === null || $material === null ? null
+            : (Roasts::owns($id) ? app(RoastScripts::class)->write($slot, $id, $material, $now) : $this->rubricScripts->write($slot, $id, $material, $now));
 
         if ($id === null || $material === null || $rubric === null
             || $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $rubric['text'], Rubrics::hashFor($id, $material, $slot['key']), (int) ($settings['priority'] ?? 70), $now,
