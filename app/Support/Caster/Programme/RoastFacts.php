@@ -205,6 +205,8 @@ final class RoastFacts
         if ($english) {
             // "$32M", "$1.2B": the amount, then its unit and the currency (real Decrypt headline 2026-10-12: "Bitmine Adds $32M in Ethereum").
             $text = (string) preg_replace_callback('/\$(\d+(?:\.\d+)?)\s?([KMB])\b/u', fn (array $m): string => $m[1].' '.['K' => 'Tausend', 'M' => 'Millionen', 'B' => 'Milliarden'][$m[2]].' Dollar', $text);
+            // "$2 trillion" (CoinDesk headline 2026-10-12): an English trillion is a German Billion.
+            $text = (string) preg_replace_callback('/\$(\d+(?:\.\d+)?)\s+(trillion|billion|million)\b/iu', fn (array $m): string => $m[1].' '.['trillion' => 'Billionen', 'billion' => 'Milliarden', 'million' => 'Millionen'][mb_strtolower($m[2])].' Dollar', $text);
             $text = (string) preg_replace('/\$(\d[\d,.]*)/u', '$1 Dollar', $text);
             // The Fed's fractions: "3-3/4" is 3.75, "1/4" is 0.25.
             $fraction = fn (int $whole, int $over, int $under): string => $under === 0 ? "{$whole}" : rtrim(rtrim(number_format($whole + $over / $under, 2, '.', ''), '0'), '.');

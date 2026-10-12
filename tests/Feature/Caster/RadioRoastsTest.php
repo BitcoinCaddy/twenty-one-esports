@@ -485,3 +485,9 @@ it('reads the relays with the real reader when the container builds the material
 
     expect($reader)->toBeInstanceOf(RelayReader::class);
 });
+
+it('says English dollar amounts the German way', function () {
+    expect(RoastFacts::spell('Bitmine Adds $32M in Ethereum', true))->toBe('Bitmine Adds zweiunddreißig Millionen Dollar in Ethereum')
+        ->and(RoastFacts::spell('Tom Lee sees $2 trillion wealth transfer', true))->toBe('Tom Lee sees zwei Billionen Dollar wealth transfer')
+        ->and(RoastFacts::spell('rate cut by 1/4 percentage point to 3-3/4 percent', true))->toBe('rate cut by null Komma zwei fünf percentage point to drei Komma sieben fünf percent');
+});
