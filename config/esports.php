@@ -1354,9 +1354,18 @@ return [
     | kind 9735) with the stream's `a` tag. The server never talks to a relay
     | for it and stores nothing but a viewer's own mutes (ChatMute).
     |
-    | `relays`: where the page reads and posts. Unset = the stream's relays
-    | (`twentyone.stream.relays`) plus the bot's `chat_relays`; set but empty
-    | = no chat (the tests force that, so no page ever reaches a real relay).
+    | `relays`: where the page reads and posts, the caster's ChatReactions
+    | reads, and what the kind 30311 announces as its `relays` tag
+    | (App\Support\StreamChat\StreamChat::compose()). Unset = the stream's
+    | relays (`twentyone.stream.relays`), then `public_relays`, then the bot's
+    | `chat_relays`; set but empty = no chat (the tests force that, so no page
+    | ever reaches a real relay).
+    |
+    | `public_relays` (comma-separated `ESPORTS_STREAM_CHAT_PUBLIC_RELAYS`):
+    | where clients that ignore the `relays` tag post anyway, zap.stream's
+    | defaults first. Measured 2026-10-12: a kind 1311 on nos.lol and damus
+    | only never showed on /live while the page read just the six stream
+    | relays. Empty locally and in testing unless set.
     |
     | Zap receipts shown (NIP-57: the receipt is signed by the recipient's
     | LNURL server; anyone can publish a 9735, so any other signer's receipt
@@ -1380,6 +1389,10 @@ return [
         'relays' => env('ESPORTS_STREAM_CHAT_RELAYS') === null
             ? null
             : array_values(array_filter(array_map('trim', explode(',', (string) env('ESPORTS_STREAM_CHAT_RELAYS'))))),
+        'public_relays' => array_values(array_filter(array_map('trim', explode(',', match (env('APP_ENV')) {
+            'local', 'testing' => (string) env('ESPORTS_STREAM_CHAT_PUBLIC_RELAYS', ''),
+            default => (string) (env('ESPORTS_STREAM_CHAT_PUBLIC_RELAYS') ?: 'wss://nos.lol,wss://relay.damus.io,wss://relay.primal.net,wss://relay.snort.social'),
+        })))),
         'zap_signers' => array_values(array_filter(array_map('trim', explode(',', (string) env(
             'ESPORTS_STREAM_ZAP_SIGNERS',
             '79f00d3f5a19ec806189fcab03c1be4ff81d18ee4f653c88fac41fe03570f432',

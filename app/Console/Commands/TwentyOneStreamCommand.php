@@ -6,6 +6,7 @@ use App\Models\ChessGame;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\SceneDirector;
 use App\Support\Caster\VoiceFeed;
+use App\Support\StreamChat\StreamChat;
 use App\Support\TwentyOne\EventBuilder;
 use App\Support\TwentyOne\RelayPublisher;
 use App\Support\TwentyOne\Stream\Backoff;
@@ -1197,6 +1198,8 @@ class TwentyOneStreamCommand extends Command
             $this->startedAt,
             null,
             $viewers,
+            // The chat relays the /live page reads (NIP-53 `relays`), so zap.stream and Amethyst post there too.
+            StreamChat::compose($this->relays),
         )->setCreatedAt($createdAt);
         $event = $this->signer->sign($unsigned);
         $this->lastCreatedAt = $createdAt;

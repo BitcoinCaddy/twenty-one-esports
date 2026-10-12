@@ -51,6 +51,8 @@ beforeEach(function () {
         'tv.commentary.chat.reactions' => true,
         'tv.commentary.chat.per_person_minutes' => 0,
         'esports.stream_bot.chat_relays' => ['wss://chat.test'],
+        // The page, the caster and the 30311 share one relay set (StreamChat::compose()); testing forces it off.
+        'esports.stream_chat.relays' => null,
         'twentyone.nostr.npub' => NostrKeys::hexToNpub($this->streamKey->pubkey),
         'twentyone.nostr.nsec' => null,
         'twentyone.stream.relays' => ['wss://one.test'],

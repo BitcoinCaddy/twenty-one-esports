@@ -40,21 +40,74 @@ final readonly class StreamChat
         return $stream === null ? null : new self($stream, self::relaysFor($stream));
     }
 
+    /** More relays than this and every viewer's browser opens a socket to each one; the stream relays come first. */
+    public const MAX_RELAYS = 10;
+
     /**
-     * `esports.stream_chat.relays` when set (empty = off), else the stream's
-     * relays and the bot's chat relays: the bot posts on the first, people
-     * who chat through zap.stream or Amethyst mostly on the second.
+     * The chat relays of the stream: where the /live page reads and posts,
+     * where the caster's ChatReactions reads, and what the kind 30311
+     * announces in its `relays` tag (NIP-53), so zap.stream and Amethyst
+     * post there too. One set for all three.
      *
      * @return list<string>
      */
     public static function relaysFor(StreamCoordinates $stream): array
     {
-        $configured = config('esports.stream_chat.relays');
-        $relays = is_array($configured)
-            ? RelayPublisher::relayUrls($configured)
-            : RelayPublisher::relayUrls([...$stream->relays, ...(array) config('esports.stream_bot.chat_relays', [])]);
+        return self::compose($stream->relays);
+    }
 
-        return array_values(array_filter($relays, fn (string $relay): bool => EventBuilder::isRelayUrl($relay)));
+    /**
+     * `esports.stream_chat.relays` when set (empty = off), else the stream's
+     * relays, then the public chat relays (`esports.stream_chat.public_relays`),
+     * then the bot's chat relays. Valid websocket URLs only, each once
+     * (`wss://Host/` and `wss://host` are the same relay), at most MAX_RELAYS.
+     *
+     * The public relays are there for clients that ignore the `relays` tag
+     * and post only to the author's own relays: zap.stream does that with its
+     * defaults (snort, nos.lol, damus, primal, ...). Measured 2026-10-12: a
+     * kind 1311 on nos.lol and damus only never showed on /live, which read
+     * just the six stream relays. The browser reaches damus although the
+     * prod server gets a 403 there; a server reader simply fails that relay.
+     *
+     * @param  array<mixed>  $streamRelays
+     * @return list<string>
+     */
+    public static function compose(array $streamRelays): array
+    {
+        $configured = config('esports.stream_chat.relays');
+        $candidates = is_array($configured)
+            ? RelayPublisher::relayUrls($configured)
+            : RelayPublisher::relayUrls([
+                ...$streamRelays,
+                ...(array) config('esports.stream_chat.public_relays', []),
+                ...(array) config('esports.stream_bot.chat_relays', []),
+            ]);
+
+        $relays = [];
+
+        foreach ($candidates as $candidate) {
+            if (! EventBuilder::isRelayUrl($candidate)) {
+                continue;
+            }
+
+            $relays[self::relayKey($candidate)] ??= $candidate;
+        }
+
+        return array_slice(array_values($relays), 0, self::MAX_RELAYS);
+    }
+
+    /** The same relay written two ways: scheme and host lowercase, no trailing slash. */
+    private static function relayKey(string $relay): string
+    {
+        $parts = parse_url($relay);
+
+        if ($parts === false) {
+            return strtolower($relay);
+        }
+
+        $path = rtrim($parts['path'] ?? '', '/');
+
+        return strtolower(($parts['scheme'] ?? '').'://'.($parts['host'] ?? '')).(isset($parts['port']) ? ':'.$parts['port'] : '').$path.(isset($parts['query']) ? '?'.$parts['query'] : '');
     }
 
     /**
