@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\StreamChat\StreamChat;
 use App\Support\TwentyOne\EventBuilder;
 use App\Support\TwentyOne\RelayPublisher;
 use App\Support\TwentyOne\Stream\StreamSession;
@@ -64,6 +65,7 @@ class TwentyOneStreamEndCommand extends Command
             'ended',
             $stored['starts'] ?? $endedAt,
             $endedAt,
+            relays: StreamChat::compose($relays),
         )->setCreatedAt($endedAt));
 
         $results = $publisher->publish($event, $relays, (float) config('twentyone.stream.shutdown_publish_seconds', 8));

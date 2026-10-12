@@ -195,8 +195,12 @@ test('a player posts a picked custom emoji through her signer, another player an
     $regular = new TestSigner;
     $older = array_map(fn (int $i): array => $regular->sign(1311, [$root()], 'earlier message '.$i, $now - 3000 + $i * 60), range(1, 16));
 
+    // Anna's own write relay (her NIP-65 list on the chat relay): her message goes there too.
+    [$outbox, $outboxUrl, $outboxSeed] = p24StartRelay([]);
+
     [$relay, $url, $seed] = p24Relay([
         ...$older,
+        $annaKey->sign(10002, [['r', $outboxUrl]], '', $now - 3600),
         // Anna's emoji: her list points to a set of someone else's.
         $annaKey->sign(10030, [['a', '30030:'.$setOwner->pubkey.':party']], '', $now - 3600),
         $setOwner->sign(30030, [['d', 'party'], ['emoji', 'satoshi', $satoshi]], '', $now - 3600),
@@ -273,6 +277,9 @@ test('a player posts a picked custom emoji through her signer, another player an
         expect($sent['content'])->toBe(':satoshi: gm stream')
             ->and($sent['pubkey'])->toBe($anna->pubkey)
             ->and($sent['tags'])->toBe([['a', $this->address, $url, 'root'], ['emoji', 'satoshi', $satoshi]]);
+        // The same event on her own write relay (outbox), which the chat itself does not read.
+        $copy = $guest->evaluate('async (url) => await new Promise((resolve) => { const ws = new WebSocket(url); ws.onopen = () => ws.send(JSON.stringify(["REQ", "p24", { kinds: [1311], authors: ['.json_encode($anna->pubkey).'] }])); ws.onmessage = (m) => { const f = JSON.parse(m.data); if (f[0] === "EVENT") { ws.close(); resolve(f[2]); } if (f[0] === "EOSE") { ws.close(); resolve(null); } }; })', $outboxUrl);
+        expect($copy['id'] ?? null)->toBe($sent['id']);
 
         // One message every 2 s: a second one right away is held back and says so.
         $pageA->locator('#live-chat-input')->fill('again');
@@ -319,8 +326,10 @@ test('a player posts a picked custom emoji through her signer, another player an
         }
     } finally {
         $relay->stop(1);
+        $outbox->stop(1);
         $images->stop(1);
         @unlink($seed);
+        @unlink($outboxSeed);
     }
 });
 

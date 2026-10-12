@@ -14,5 +14,5 @@ test('stream chat: messages, zaps, emoji tags, NIP-27 references, send rules and
         ->run(['node', '--test', 'tests/js/streamChat.test.mjs']);
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 24')->toContain('ℹ skipped 0');
+        ->and($run->output())->toContain('ℹ pass 25')->toContain('ℹ skipped 0');
 });

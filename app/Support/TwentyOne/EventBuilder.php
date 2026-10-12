@@ -82,10 +82,13 @@ final class EventBuilder
      * the `p` tag with all four elements (Primal reads `t[3]` of every `p`).
      * `current_participants` only when the viewers were counted. No `t`
      * tag: the league posts no hashtags (a standing rule of this project).
+     * `relays` (NIP-53: where the event and its chat are) when there are
+     * any: zap.stream and Amethyst read and post the live chat there.
      *
      * @param  array{d: string, title: string, summary: string, image: string}  $stream
+     * @param  list<string>  $relays
      */
-    public function liveActivity(array $stream, string $streamingUrl, string $hostPubkey, string $status, int $starts, ?int $ends = null, ?int $currentParticipants = null): Event
+    public function liveActivity(array $stream, string $streamingUrl, string $hostPubkey, string $status, int $starts, ?int $ends = null, ?int $currentParticipants = null, array $relays = []): Event
     {
         if (! self::isStreamingUrl($streamingUrl)) {
             throw new InvalidArgumentException('The streaming URL must end in .m3u8: '.$streamingUrl);
@@ -112,6 +115,10 @@ final class EventBuilder
 
         if ($currentParticipants !== null) {
             $tags[] = ['current_participants', (string) max(0, $currentParticipants)];
+        }
+
+        if ($relays !== []) {
+            $tags[] = ['relays', ...$relays];
         }
 
         $tags[] = ['p', $hostPubkey, '', 'host'];

@@ -26,7 +26,10 @@
  *   are league accounts the page's `players()` says (pubkeys in, the league
  *   accounts among them out; nothing else about them).
  *   Posting signs a kind 1311 with the viewer's signer (signing.js) and
- *   publishes it; guests only read.
+ *   publishes it to the chat relays (the set the 30311 announces) plus up to
+ *   three of the viewer's own write relays (NIP-65 10002, read once the
+ *   list is drawn; unknown until then, so the chat relays alone); guests
+ *   only read.
  *   Mutes are the viewer's own, as in the game chat: localStorage plus the
  *   account (Livewire `setMuted`); a run of muted messages folds into one line.
  *   Keys an admin muted or banned site-wide (`config.hidden`, live by push:
@@ -42,10 +45,10 @@ import { knownCustomEmojis, loadUserCustomEmojis, pushRecentEmoji } from './emoj
 import { emojiPicker, emojiPopover } from './emojiPicker.js';
 import { proxiedAvatar } from './imageProxy.js';
 import { ensureSigner } from './nostrSign.js';
-import { newest, publicRelay, readProfiles, readRelays } from './relayRead.js';
+import { newest, publicRelay, readOwnWriteRelays, readProfiles, readRelays } from './relayRead.js';
 import { signerMessage, signTemplate } from './signing.js';
 import { visible, watchSiteHidden } from './siteHidden.js';
-import { NJUMP, botMark, boundProfiles, compareItems, displayRows, formatSats, insertSorted, isHttps, isStreamMessage, length, messageTemplate, newestPage, olderPage, parseZap, profileOf, relayHints, sendBlocker, tokenize } from './streamChat.js';
+import { NJUMP, botMark, boundProfiles, compareItems, displayRows, formatSats, insertSorted, isHttps, isStreamMessage, length, messageTemplate, newestPage, olderPage, parseZap, profileOf, relayHints, sendBlocker, sendRelays, tokenize } from './streamChat.js';
 import { registerAlpine } from './registerAlpine.js';
 
 const MUTES_KEY = 'esports.chat.mutes';
@@ -233,11 +236,25 @@ export function liveChat(config) {
             this.items = newestPage([...this.buffer.values()], this.page);
             this.buffer = null;
             this.status = 'live';
+            this.readOwnOutbox();
             this.afterRender(() => {
                 this.toBottom();
                 // A short list has no scrollbar to pull: read on until it fills or the chat's start is reached.
                 this.readOnIfNearTop();
             });
+        },
+
+        /**
+         * The viewer's own write relays (NIP-65), looked up once from the
+         * indexers and the profile relays; a message also goes there. Not
+         * found or not answered: the chat relays alone.
+         */
+        readOwnOutbox() {
+            if (!this.me || this.ownWriteRelays !== undefined) return;
+            this.ownWriteRelays = [];
+            readOwnWriteRelays(this.me, [...(config.indexerRelays ?? []), ...(config.profileRelays ?? [])])
+                .then(({ writeRelays }) => { if (!this.destroyed) this.ownWriteRelays = writeRelays; })
+                .catch(() => {});
         },
 
         /** A relay event as a list item (a message or a zap of this stream), null when it is neither. */
@@ -763,7 +780,11 @@ export function liveChat(config) {
                 this.lastSentAt = Date.now();
                 this.input = this.input === content ? '' : this.input;
                 try {
-                    await Promise.any(this.pool.publish(config.relays, signed));
+                    // Sent means a chat relay took it (the chat reads only those); the own write relays come on top.
+                    const chatCount = sendRelays(config.relays, []).length;
+                    const acks = this.pool.publish(sendRelays(config.relays, this.ownWriteRelays, { allow: (url) => this.allowRelay(url) }), signed);
+                    Promise.allSettled(acks.slice(chatCount));
+                    await Promise.any(acks.slice(0, chatCount));
                 } catch {
                     this.error = t.notSent;
                     this.input ||= content;

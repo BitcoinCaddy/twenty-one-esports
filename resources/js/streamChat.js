@@ -222,6 +222,34 @@ function splitEmoji(text, emoji, tokens, budget) {
     if (last < text.length) tokens.push({ type: 'text', value: text.slice(last) });
 }
 
+/**
+ * Where a viewer's message goes: every chat relay (what the page reads and
+ * the 30311 announces), then at most `max` of the viewer's own write relays
+ * (NIP-65 outbox) that `allow` accepts, so her followers' clients find it
+ * too. Each relay once; `wss://Host/` and `wss://host` are the same.
+ */
+export function sendRelays(chatRelays, ownWriteRelays, { max = 3, allow = () => true } = {}) {
+    const key = (url) => url.trim().toLowerCase().replace(/\/+$/, '');
+    const seen = new Set();
+    const relays = [];
+    const add = (url) => {
+        if (typeof url !== 'string' || !/^wss?:\/\/[^\s/]+/i.test(url.trim()) || seen.has(key(url))) return false;
+        seen.add(key(url));
+        relays.push(url.trim());
+
+        return true;
+    };
+
+    (Array.isArray(chatRelays) ? chatRelays : []).forEach(add);
+    let own = 0;
+    for (const url of Array.isArray(ownWriteRelays) ? ownWriteRelays : []) {
+        if (own >= max) break;
+        if (typeof url === 'string' && allow(url.trim()) && add(url)) own += 1;
+    }
+
+    return relays;
+}
+
 /** At most `max` distinct wss:// relay URLs (a NIP-19 code's or a tag's hints), each at most 200 characters. */
 export function relayHints(relays, max = MAX_HINTS) {
     return [...new Set((Array.isArray(relays) ? relays : []).filter((url) => typeof url === 'string' && url.length <= 200 && /^wss:\/\/[^\s/?#]+(\/[^\s]*)?$/i.test(url)))].slice(0, max);

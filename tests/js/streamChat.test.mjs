@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import { naddrEncode, neventEncode, noteEncode, nprofileEncode, npubEncode, nsecEncode } from 'nostr-tools/nip19';
 import { finalizeEvent, generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import {
-    MAX_EMOJI, MAX_REFS, MAX_TOKENS, nostrToken, relayHints, bolt11Msats, botMark, boundProfiles, clip, compareItems, displayRows, emojiTagsForContent, insertSorted, isHttps, isStreamMessage, messageTemplate, newestPage, olderPage, parseZap, profileOf, sendBlocker, tokenize,
+    MAX_EMOJI, MAX_REFS, MAX_TOKENS, nostrToken, relayHints, sendRelays, bolt11Msats, botMark, boundProfiles, clip, compareItems, displayRows, emojiTagsForContent, insertSorted, isHttps, isStreamMessage, messageTemplate, newestPage, olderPage, parseZap, profileOf, sendBlocker, tokenize,
 } from '../../resources/js/streamChat.js';
 import { emojisFromTags, groupEmojis, searchEmojis, setAddresses } from '../../resources/js/emoji.js';
 
@@ -371,4 +371,17 @@ test('NIP-27 references are capped per message and fold back into text beyond th
     // A reference whose njump URL would pass MAX_URL stays text.
     assert.equal(nostrToken(neventEncode({ id: 'd'.repeat(64), relays: Array.from({ length: 40 }, (_, i) => `wss://relay-${i}.example.com/some/long/path`) })), null);
     assert.deepEqual(relayHints(['wss://a.example', 'wss://a.example', 'wss://b.example/' + 'x'.repeat(300)]), ['wss://a.example']);
+});
+
+test('a message goes to every chat relay, then to at most three allowed write relays of the viewer, each relay once', () => {
+    const chat = ['wss://stream.example', 'wss://nos.lol', 'not a relay'];
+    // Unknown outbox (not read yet, or no 10002): the chat relays alone.
+    assert.deepEqual(sendRelays(chat, undefined), ['wss://stream.example', 'wss://nos.lol']);
+    assert.deepEqual(sendRelays(chat, []), ['wss://stream.example', 'wss://nos.lol']);
+
+    const own = ['wss://NOS.lol/', 'wss://private.local', 'wss://own-1.example', 'wss://own-2.example', 'wss://own-3.example', 'wss://own-4.example'];
+    const allow = (url) => !url.endsWith('.local');
+    assert.deepEqual(sendRelays(chat, own, { allow }), ['wss://stream.example', 'wss://nos.lol', 'wss://own-1.example', 'wss://own-2.example', 'wss://own-3.example']);
+    // The chat relays are never cut, whatever the outbox says.
+    assert.deepEqual(sendRelays(chat, own, { allow, max: 0 }), ['wss://stream.example', 'wss://nos.lol']);
 });
