@@ -15,13 +15,25 @@ use RuntimeException;
  * (resources/fonts/stream), so the server needs no font installed and renders
  * like any other machine. The child gets no secrets from the environment.
  * The last SVG and its PNG are kept: a second with nothing changed costs no
- * render.
+ * render; so are the last PNG_CACHE renders by their SVG's hash.
  */
 final class SceneRenderer
 {
     private ?string $lastSvg = null;
 
     private ?string $lastPng = null;
+
+    /**
+     * Recent renders by the hash of their SVG (the SVG is a pure function of the scene's data): a slide that comes back
+     * in the rotation unchanged (the radio programme between two minutes, a teaser) costs no render. At most
+     * PNG_CACHE of them, the oldest dropped first.
+     *
+     * @var array<string, string>
+     */
+    private array $pngs = [];
+
+    /** PNGs kept by SVG hash (a 1280x720 slide is 50 to 300 kB). */
+    public const PNG_CACHE = 8;
 
     public function __construct(
         private string $rsvgConvert,
@@ -81,6 +93,14 @@ final class SceneRenderer
             return $this->lastPng;
         }
 
+        $hash = sha1($svg);
+
+        if (isset($this->pngs[$hash])) {
+            $this->lastSvg = $svg;
+
+            return $this->lastPng = $this->pngs[$hash];
+        }
+
         // A render takes 0.07-0.2 s; a hanging one must not hold the supervisor loop.
         $result = Process::timeout(max(1, (int) config('twentyone.stream.scene.render_timeout_seconds', 2)))
             ->env([...ChildEnvironment::withoutSecrets(), 'FONTCONFIG_FILE' => $this->fontconfig()])
@@ -92,6 +112,11 @@ final class SceneRenderer
         }
 
         $this->lastSvg = $svg;
+        $this->pngs[$hash] = $result->output();
+
+        if (count($this->pngs) > self::PNG_CACHE) {
+            unset($this->pngs[array_key_first($this->pngs)]);
+        }
 
         return $this->lastPng = $result->output();
     }

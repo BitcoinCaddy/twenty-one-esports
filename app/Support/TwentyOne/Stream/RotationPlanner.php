@@ -92,6 +92,15 @@ use App\Games\TrackmaniaNationsForever;
  * PongScene), right after the Hyperbitcoinization slot: one result a round for `pongSeconds` (20), the recent results
  * taking turns from round to round (no live gameplay on the stream: the encoder takes no live frame rate). None
  * while no match was won within the day or the switch is off.
+ *
+ * The radio programme (plan "TWENTY ONE Radio", P19; ProgrammeSlides) has three slides, PROGRAMME: the programme of
+ * the next hours (r1), the next show in the spotlight (r2), the talk show's duel card (r3), as the caller reports
+ * which of them have something to show (ProgrammeSlides::entries()). Every `programmeEvery`-th round that is not the
+ * loop and no running tournament's or champion moment's takes one of them, after the Blockfill slot, in turn: about
+ * one slot in seven of a round without games. A show (no bulletin) that starts within two minutes gets its
+ * spotlight (the duel card for the talk show) as the very next slot, once per show, like a new Blockfill #1: never
+ * cutting a slot short, never while a tournament runs or a champion moment waits. A programme slide whose slide has
+ * nothing to show any more ends at once.
  */
 final class RotationPlanner
 {
@@ -125,6 +134,9 @@ final class RotationPlanner
 
     /** The scene of PONG. */
     public const PONG_SCENE = PongScene::SCENE;
+
+    /** A radio programme slide (r1..r3, ProgrammeSlides). */
+    public const PROGRAMME = 'programme';
 
     /** Without a live board game, the board teaser comes every this many rounds. */
     public const BOARD_IDLE_EVERY = 3;
@@ -191,6 +203,8 @@ final class RotationPlanner
         'm1' => 'stream.rotation.m1-mempool',
         'h1' => 'stream.rotation.h1-hyper',
         'p1' => 'stream.rotation.p1-pong',
+        // The radio programme (plan "TWENTY ONE Radio", P19): the next hours, the spotlight, the talk show's duel.
+        ...ProgrammeSlides::VIEWS,
         'f1' => 'stream.rotation.f1-blockfill',
         'f2' => 'stream.rotation.f2-board', 'f3' => 'stream.rotation.f3-fresh', 'f4' => 'stream.rotation.f4-moment', 'f5' => 'stream.rotation.f5-play',
         'g1' => 'stream.rotation.g1-tmnf',
@@ -315,6 +329,18 @@ final class RotationPlanner
     /** Rounds that took a Proof of Pong result (the results take turns by it). */
     private int $pongTurn = 0;
 
+    /** @var array{scenes: list<string>, soon: string|null, soonScene?: string|null} the radio programme slides that may show, as the last call to at() reported them */
+    private array $programme = ['scenes' => [], 'soon' => null];
+
+    /** Rounds planned while a programme slide could show (every `programmeEvery`-th takes one). */
+    private int $programmeRounds = 0;
+
+    /** Programme slides planned (the slides take turns by it). */
+    private int $programmeTurn = 0;
+
+    /** The key of the last show whose spotlight came before its start. */
+    private ?string $lastSoon = null;
+
     /** Slots shown so far: a new number is a new slot, however long the commentary holds one. */
     private int $slotNumber = 0;
 
@@ -342,6 +368,9 @@ final class RotationPlanner
         private float $hyperMinSeconds = 60,
         private float $hyperMaxSeconds = 180,
         private float $pongSeconds = 20,
+        private int $programmeEvery = 1,
+        private float $programmeSeconds = 20,
+        private float $spotlightSeconds = 15,
     ) {}
 
     public static function fromConfig(float $loopSeconds): self
@@ -362,6 +391,9 @@ final class RotationPlanner
             (float) config('twentyone.stream.rotation.hyper_min_seconds', 60),
             (float) config('twentyone.stream.rotation.hyper_max_seconds', 180),
             (float) config('twentyone.stream.rotation.pong_seconds', 20),
+            (int) config('twentyone.stream.rotation.programme_every_rounds', 1),
+            (float) config('twentyone.stream.rotation.programme_seconds', 20),
+            (float) config('twentyone.stream.rotation.programme_spotlight_seconds', 15),
         );
     }
 
@@ -402,11 +434,13 @@ final class RotationPlanner
      * @param  string|null  $blockfillMoment  the key of a new #1 of the last minutes (BlockfillSlides::state())
      * @param  list<array{id: int, tense: bool}>  $hyper  the running Hyperbitcoinization matches (HyperScene::entries()), in turn order
      * @param  list<array{id: int}>  $pong  the recent won Proof of Pong matches (PongScene::entries()), in turn order
+     * @param  array{scenes?: list<string>, soon?: string|null, soonScene?: string|null}  $programme  the radio programme slides that have something to show and a show starting within two minutes (ProgrammeSlides::entries())
      * @return array{kind: string, scene: string|null, gameId: int|null, tournamentId: int|null, until: float} `gameId` is the Hyperbitcoinization match's id for HYPER, the Proof of Pong match's for PONG
      */
-    public function at(float $now, array $games, array $tournaments = [], string $boards = BoardScene::OFF, array $live = [], string $blockfillWeek = BlockfillSlides::OFF, ?string $blockfillMoment = null, array $hyper = [], array $pong = []): array
+    public function at(float $now, array $games, array $tournaments = [], string $boards = BoardScene::OFF, array $live = [], string $blockfillWeek = BlockfillSlides::OFF, ?string $blockfillMoment = null, array $hyper = [], array $pong = [], array $programme = []): array
     {
         $ids = array_column($games, 'id');
+        $this->programme = ['scenes' => $programme['scenes'] ?? [], 'soon' => $programme['soon'] ?? null, 'soonScene' => $programme['soonScene'] ?? null];
         $this->boards = $boards;
         $this->hyper = $hyper;
         $this->pong = $pong;
@@ -526,6 +560,8 @@ final class RotationPlanner
             // The match ended, or the game was switched off.
             self::HYPER => ! in_array($this->slot['gameId'], array_column($this->hyper, 'id'), true),
             self::PONG => ! in_array($this->slot['gameId'], array_column($this->pong, 'id'), true),
+            // Nothing to show on that slide any more (the show aired, the spool emptied).
+            self::PROGRAMME => ! in_array($this->slot['scene'], $this->programme['scenes'], true),
             default => false,
         };
     }
@@ -560,6 +596,15 @@ final class RotationPlanner
             $this->lastMoment = $moment;
             $this->lastMomentAt = $start;
             array_unshift($this->queue, ['kind' => self::BLOCKFILL, 'scene' => BlockfillSlides::MOMENT]);
+        }
+
+        // A show starting within two minutes: its spotlight next, once per show (not while a tournament runs or a champion moment waits).
+        $soon = $this->programme['soon'];
+        $soonScene = $this->programme['soonScene'] ?? ProgrammeSlides::SPOTLIGHT;
+        if ($soon !== null && $soon !== $this->lastSoon && $this->moments === [] && $this->running === [] && ! $this->roundMoment
+            && in_array($soonScene, $this->programme['scenes'], true)) {
+            $this->lastSoon = $soon;
+            array_unshift($this->queue, ['kind' => self::PROGRAMME, 'scene' => $soonScene]);
         }
 
         while (true) {
@@ -616,9 +661,9 @@ final class RotationPlanner
             if ($this->idleRounds++ % max(1, $this->loopEvery) === 0) {
                 $this->queue = [['kind' => self::LOOP]];
             } elseif ($tournaments !== []) {
-                $this->queue = [...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->tournamentSlides($this->nextLook(), $tournaments), ...$this->everyRound(), ...$this->blockfillRound(), ['kind' => self::TEASER]];
+                $this->queue = [...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->tournamentSlides($this->nextLook(), $tournaments), ...$this->everyRound(), ...$this->blockfillRound(), ...$this->programmeRound(), ['kind' => self::TEASER]];
             } else {
-                $this->queue = [...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->everyRound(), ...$this->blockfillRound(), ...$teasers];
+                $this->queue = [...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->everyRound(), ...$this->blockfillRound(), ...$this->programmeRound(), ...$teasers];
             }
 
             return;
@@ -637,8 +682,26 @@ final class RotationPlanner
             ...($tournaments === [] ? [] : $this->tournamentSlides($look, $tournaments)),
             ...$this->everyRound(),
             ...$this->blockfillRound(),
+            ...$this->programmeRound(),
             ...$teasers,
         ];
+    }
+
+    /**
+     * This round's radio programme slide: one of the slides that have something to show, in turn, every
+     * `programmeEvery`-th round; none while none has.
+     *
+     * @return list<array{kind: string, scene: string}>
+     */
+    private function programmeRound(): array
+    {
+        $scenes = $this->programme['scenes'];
+
+        if ($scenes === [] || $this->programmeRounds++ % max(1, $this->programmeEvery) !== 0) {
+            return [];
+        }
+
+        return [['kind' => self::PROGRAMME, 'scene' => $scenes[$this->programmeTurn++ % count($scenes)]]];
     }
 
     /**
@@ -850,6 +913,12 @@ final class RotationPlanner
                 }
 
                 return $this->slot(self::PONG, self::PONG_SCENE, $entry['gameId'], $start + max(1.0, $this->pongSeconds));
+            case self::PROGRAMME:
+                $scene = (string) ($entry['scene'] ?? '');
+
+                // Nothing to show on it any more since the round was planned: skipped.
+                return in_array($scene, $this->programme['scenes'], true)
+                    ? $this->slot(self::PROGRAMME, $scene, null, $start + max(1.0, $scene === ProgrammeSlides::RUNDOWN ? $this->programmeSeconds : $this->spotlightSeconds)) : null;
             case self::BOARD:
                 // Switched off since the round was planned: skipped.
                 return $this->boards === BoardScene::OFF ? null

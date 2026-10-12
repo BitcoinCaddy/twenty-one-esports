@@ -474,6 +474,8 @@ test('every person on a scene has an avatar, a clan its logo, every scene its ba
             'h1' => $images->backdrop('hyperbitcoinization') ?? $brandBackdrop,
             // A won Proof of Pong match (plan "Proof of Pong", P4), switched off here: its cover's backdrop, else the brand.
             'p1' => $images->backdrop('proof-of-pong') ?? $brandBackdrop,
+            // The radio programme (plan "TWENTY ONE Radio", P19): the next hours, the spotlight, the talk show's duel, on the brand.
+            'r1' => $brandBackdrop, 'r2' => $brandBackdrop, 'r3' => $brandBackdrop,
             // Blockfill's week (plan "Blockfill", P6), switched off here: the brand.
             'f1' => $brandBackdrop,
             // Blockfill's slide set (BlockfillSlides), switched off here as well: the brand.

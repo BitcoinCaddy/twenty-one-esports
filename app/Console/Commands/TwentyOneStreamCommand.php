@@ -22,6 +22,7 @@ use App\Support\TwentyOne\Stream\MusicPlaylist;
 use App\Support\TwentyOne\Stream\MusicTimeline;
 use App\Support\TwentyOne\Stream\PlaylistWriter;
 use App\Support\TwentyOne\Stream\PongScene;
+use App\Support\TwentyOne\Stream\ProgrammeSlides;
 use App\Support\TwentyOne\Stream\PublicPlaylist;
 use App\Support\TwentyOne\Stream\PublishSchedule;
 use App\Support\TwentyOne\Stream\RotationPlanner;
@@ -37,6 +38,7 @@ use App\Support\TwentyOne\Stream\TvSlides;
 use App\Support\TwentyOne\Stream\ViewerFeed;
 use App\Support\TwentyOne\Stream\YouTubeRelay;
 use App\Support\TwentyOne\TwentyOneSigner;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -285,6 +287,7 @@ class TwentyOneStreamCommand extends Command
         $boardScene = app(BoardScene::class);
         $hyperScene = app(HyperScene::class);
         $pongScene = app(PongScene::class);
+        $programmeSlides = app(ProgrammeSlides::class);
         // Games that ended within this window stay on show with their result.
         $hysteresis = (int) config('twentyone.stream.scene.hysteresis_seconds', 60);
         // The planner decides scene or loop; the machine only keeps a failed scene off.
@@ -325,6 +328,10 @@ class TwentyOneStreamCommand extends Command
         /** @var list<array{id: int}> $pong */
         $pong = [];
         $pongPollFailing = false;
+        // The radio programme slides that have something to show (ProgrammeSlides::entries()); none while the read fails.
+        /** @var array{scenes: list<string>, soon: string|null, soonScene: string|null} $programme */
+        $programme = ['scenes' => [], 'soon' => null, 'soonScene' => null];
+        $programmePollFailing = false;
         // Blockfill's week (BlockfillSlides::state()): `off` while the read fails, so no slide of the set shows.
         $blockfillSlides = app(BlockfillSlides::class);
         $blockfill = ['week' => BlockfillSlides::OFF, 'moment' => null];
@@ -442,6 +449,23 @@ class TwentyOneStreamCommand extends Command
                     $pong = [];
                 }
 
+                // The radio programme on its own, like Proof of Pong: a failing read only drops its slides. Logged once per series.
+                try {
+                    $programme = $pollFailures === 0 ? $programmeSlides->entries(CarbonImmutable::createFromTimestamp((int) $now)) : ['scenes' => [], 'soon' => null, 'soonScene' => null];
+
+                    if ($programmePollFailing && $pollFailures === 0) {
+                        $this->log('programme poll recovered');
+                        $programmePollFailing = false;
+                    }
+                } catch (Throwable $e) {
+                    if (! $programmePollFailing) {
+                        $this->log('programme poll failed, showing no programme slide: '.$this->describe($e));
+                        $programmePollFailing = true;
+                    }
+
+                    $programme = ['scenes' => [], 'soon' => null, 'soonScene' => null];
+                }
+
                 // Blockfill's week on its own, like the board games: a failing read only drops its slides. Logged once per series.
                 try {
                     $blockfill = $pollFailures === 0 ? $blockfillSlides->state() : ['week' => BlockfillSlides::OFF, 'moment' => null];
@@ -470,7 +494,7 @@ class TwentyOneStreamCommand extends Command
                     $this->advanceCover($cover, $source, $tournaments, $sceneGames, $sceneMore, $stats, $now);
                 }
 
-                $slot = $planner->at($now, array_map(fn (ChessGame $game): array => ['id' => $game->id, 'blitz' => ! $game->isCorrespondence()], $sceneGames), TournamentSlides::featured($tournaments), $boards, TournamentLiveSlides::entries($liveFrames, $tournaments, (int) ($now * 1000), (int) config('twentyone.stream.rotation.champion_moment_seconds', 120)), $blockfill['week'], $blockfill['moment'], $hyper, $pong);
+                $slot = $planner->at($now, array_map(fn (ChessGame $game): array => ['id' => $game->id, 'blitz' => ! $game->isCorrespondence()], $sceneGames), TournamentSlides::featured($tournaments), $boards, TournamentLiveSlides::entries($liveFrames, $tournaments, (int) ($now * 1000), (int) config('twentyone.stream.rotation.champion_moment_seconds', 120)), $blockfill['week'], $blockfill['moment'], $hyper, $pong, $programme);
                 $modes->tick($slot['kind'] !== RotationPlanner::LOOP, (int) $now);
 
                 // The commentary: its clip for the slot, the hold until it is spoken. A failing director only loses the voice.

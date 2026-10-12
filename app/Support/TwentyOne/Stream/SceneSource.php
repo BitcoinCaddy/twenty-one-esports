@@ -11,6 +11,7 @@ use App\Models\ChessGame;
 use App\Models\ChessQueueEntry;
 use App\Models\Clan;
 use App\Support\Chess\ChessGameService;
+use Carbon\CarbonImmutable;
 use LogicException;
 
 /**
@@ -47,6 +48,8 @@ class SceneSource
     private ?HyperScene $hyper = null;
 
     private ?PongScene $pong = null;
+
+    private ?ProgrammeSlides $programme = null;
 
     public function __construct(
         private ChessGameService $chess,
@@ -135,7 +138,8 @@ class SceneSource
      * games' teaser (BoardScene), the mempool slide (m1) the games of every
      * game and, while a season runs, its latest blocks (MempoolSlides), Blockfill's
      * set (f2-f5) its week's board, fresh blocks, new #1 and call to play (BlockfillSlides), TMNF's set (g2-g4) the
-     * race to the author time, the call to join and the time to beat (TmnfSlides).
+     * race to the author time, the call to join and the time to beat (TmnfSlides), the radio programme's slides
+     * (r1-r3) what is on air and ready in the spool (ProgrammeSlides).
      *
      * @param  list<ChessGame>  $games  the games on show, in display order
      * @param  array<string, mixed>  $stats  StreamStats::all()
@@ -153,6 +157,11 @@ class SceneSource
         // A running Hyperbitcoinization match (plan "Hyperbitcoinization", P6): `$gameId` is the match's id in its slot.
         if ($scene === HyperScene::SCENE) {
             return ($this->hyper ??= app(HyperScene::class))->data($gameId, $nowMs, $stats);
+        }
+
+        // The radio programme (plan "TWENTY ONE Radio", P19): what is on air and ready in the spool, over the brand cover.
+        if (in_array($scene, ProgrammeSlides::SCENES, true)) {
+            return [...($this->programme ??= app(ProgrammeSlides::class))->scene(CarbonImmutable::createFromTimestampMs($nowMs)), 'stats' => $stats, 'backdrop' => $this->images->backdrop(StreamImages::BRAND)];
         }
 
         // A live Proof of Pong match (plan "Proof of Pong", P4): `$gameId` is the match's id in its slot.

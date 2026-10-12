@@ -273,6 +273,14 @@ return [
             // result a round (RotationPlanner, plan "Proof of Pong", P4). No live gameplay: the encoder takes no live frame rate.
             'pong_seconds' => 20,
             'pong_recent_hours' => 24,
+            // The radio programme slides (r1..r3, ProgrammeSlides, plan "TWENTY ONE Radio", P19): only while the commentary runs; one
+            // slide every `programme_every_rounds`-th round, the programme of the next `programme_hours` this long, the
+            // spotlight and the duel card this long; a show starting within two minutes gets its spotlight next, once.
+            'programme_slides' => (bool) env('TWENTYONE_STREAM_PROGRAMME_SLIDES', true),
+            'programme_every_rounds' => 1,
+            'programme_seconds' => 20,
+            'programme_spotlight_seconds' => 15,
+            'programme_hours' => 12,
             // A Blockfill run that took first place this many minutes ago still gets its moment slide (f4, BlockfillSlides).
             'blockfill_moment_minutes' => 10,
             // A finished tournament keeps its champion, podium and final bracket on the stream this long after its last result (TournamentLiveSlides): five days (2026-10-03).
