@@ -138,11 +138,12 @@ class ClipSpool
      * @param  list<CasterScript>  $scripts
      * @param  list<float>  $sentenceEnds
      * @param  list<float>  $boundaries  where a segment ends inside the block (a reaction may cut in there)
+     * @param  array<string, mixed>  $extra  more block metadata (StockFeeder: `library`, `autopilot`, `library_before`)
      *
      * @throws SpoolFull when the byte cap is reached
      * @throws InvalidClip when the upload is not an Opus clip within the limits
      */
-    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now, bool $replay = false, bool $stock = false): CasterClip
+    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now, bool $replay = false, bool $stock = false, array $extra = []): CasterClip
     {
         $lead = $scripts[0] ?? null;
         $blocks = (array) config('tv.commentary.blocks', []);
@@ -195,6 +196,9 @@ class ClipSpool
                 'replay' => $replay,
                 // A block of the workstation's day stock (DayStock): evergreen, plays after every fresh block.
                 'stock' => $stock,
+                // What the server's stock library and the autopilot (P18) need to know about it: its hash, whether it is
+                // a repeat and what the library said before it was marked aired.
+                ...$extra,
             ],
         ]);
 

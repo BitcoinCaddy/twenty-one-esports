@@ -59,6 +59,8 @@ beforeEach(function () {
         'tv.commentary.voicestudio.retry_seconds' => 0,
         'tv.commentary.blocks.enabled' => true,
         'tv.commentary.blocks.stock.enabled' => true,
+        // The day-stock path without the server's library (P18 keeps it as the fallback; StockLibraryTest covers the library).
+        'tv.commentary.blocks.stock.library.enabled' => false,
         'tv.commentary.blocks.stock.dir' => dayStockTempDir(),
         'tv.commentary.blocks.replay.enabled' => true,
         'tv.commentary.blocks.replay.dir' => dayStockTempDir(),

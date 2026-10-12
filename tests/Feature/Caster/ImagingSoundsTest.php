@@ -164,7 +164,7 @@ it('lets a produced jingle ring out in full: the hit plays to its end and the la
 
 it('produces each imaging category to its length: voice length by tempo, stinger before, hit and tail after', function () {
     $lines = json_decode((string) file_get_contents(resource_path('data/voice/anchor-imaging.json')), true)['lines'];
-    $ranges = ['station-long' => [12, 20], 'station-short' => [4, 6.5], 'sweeper' => [6, 10], 'liner' => [8, 15], 'opener' => [8, 15], 'news-open' => [10, 15], 'news-close' => [5, 8], 'promo' => [15, 25], 'power-intro' => [4.5, 8]];
+    $ranges = ['station-long' => [12, 20], 'station-short' => [4, 6.5], 'sweeper' => [6, 10], 'liner' => [8, 15], 'opener' => [8, 15], 'news-open' => [10, 15], 'news-close' => [5, 8], 'promo' => [15, 25], 'power-intro' => [4.5, 8], 'autopilot-hour' => [12, 20]];
 
     foreach ($lines as $line) {
         $recipe = JingleSynth::imagingRecipe($line['id'], $line['category'], (array) config('tv.commentary.imaging.format_beds'));

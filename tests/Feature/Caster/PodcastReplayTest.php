@@ -630,7 +630,7 @@ it('hands the workstation only replies and bulletins while an airing is on, and 
     expect($claim()->json('podcast'))->toBe(['gpu' => 'idle'])
         ->and(DayPlanner::whenIdle(0.0, true, false, false, false, 'idle'))->toBe([DayPlanner::WAIT]);
 
-    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true]);
+    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => false]);
     expect(DayPlanner::whenIdle(0.0, true, false, false, false, 'stock'))->toBe([DayPlanner::RENDER_STOCK, DayPlanner::WAIT])
         ->and(DayPlanner::whenIdle(0.0, true, true, false, false, 'stock'))->toBe([DayPlanner::WAIT]);
 });
