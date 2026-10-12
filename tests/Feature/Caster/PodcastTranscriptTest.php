@@ -132,7 +132,7 @@ it('writes the digest once per episode and puts it into the cached system prompt
 });
 
 it('reads the newest episode with audio, its guid and its number from the feed', function () {
-    expect(PodcastFeed::newestAudio(podcastTranscriptFeed()))->toBe(['guid' => 'ep-335', 'title' => '#335 - 51% Attacke auf Deutschland', 'published_at' => CarbonImmutable::parse('2026-10-10 08:00:00 UTC')->getTimestamp(), 'url' => 'https://cdn.test/335.mp3', 'episode_number' => 335])
+    expect(PodcastFeed::newestAudio(podcastTranscriptFeed()))->toBe(['guid' => 'ep-335', 'title' => '#335 - 51% Attacke auf Deutschland', 'published_at' => CarbonImmutable::parse('2026-10-10 08:00:00 UTC')->getTimestamp(), 'url' => 'https://cdn.test/335.mp3', 'episode_number' => 335, 'notes' => ''])
         ->and(PodcastFeed::newestAudio('<rss><channel><item><title>Ohne Audio</title></item></channel></rss>'))->toBeNull();
 });
 

@@ -724,11 +724,14 @@ it('promotes nothing without a real airing ahead: source off, no episode, aired 
         ->and($promo->fresh()->status)->toBe(CasterScript::EXPIRED)
         ->and(CasterClip::query()->find($clip->id))->toBeNull();
 
-    // Aired today already (the airing is in the spool): no promo either; its frame instead.
+    // Aired today already (put into the spool at 13:48, then gone from the queue): no promo either.
     config(['tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => true]);
-    podcastReplayAiring([[300.0, 21, []]], CarbonImmutable::parse('2026-10-12 14:03', 'Europe/Berlin'));
-    $queue->fillPodcast($at->addHours(2));
-    expect(CasterScript::query()->where('scene', PodcastPromos::SCENE)->where('status', '!=', CasterScript::EXPIRED)->count())->toBe(0);
+    (new PodcastReplay(new PodcastLibrary))->schedule(CarbonImmutable::parse('2026-10-12 13:48', 'Europe/Berlin'));
+    CasterClip::query()->delete();
+    CasterScript::query()->where('kind', CasterScript::PODCAST)->delete();
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 13:50', 'Europe/Berlin'));
+    expect($queue->fillPodcast(CarbonImmutable::now()))->toBe(0)
+        ->and(CasterScript::query()->where('scene', PodcastPromos::SCENE)->where('status', '!=', CasterScript::EXPIRED)->count())->toBe(0);
 });
 
 it('writes the announcement duet and Markus\' back-announce once the airing is in the spool, once each', function () {
@@ -786,4 +789,17 @@ it('turns down a promo with a number the feed does not have or a time of day of 
     expect($scripts->evaluate(PodcastScripts::PROMO, $material, $good)[1])->toBe([])
         ->and($scripts->evaluate(PodcastScripts::PROMO, $material, str_replace('einundfünfzig Prozent', 'zweiundvierzig Prozent', $good))[1])->toContain(ShowScripts::NUMBER)
         ->and($scripts->evaluate(PodcastScripts::PROMO, $material, str_replace('in diesem ganzen Jahr', 'heute um sechzehn Uhr', $good))[1])->toContain(PodcastScripts::CLOCK);
+});
+
+it('never stops the podcast for a rubric whose slot comes while it plays', function () {
+    podcastReplayDecodes();
+    $start = CarbonImmutable::parse('2026-10-12 14:10', 'Europe/Berlin');
+    $this->travelTo($start);
+    podcastReplayAiring([[120.0, 21, range(10.0, 110.0, 10.0)]], $start);
+    podcastReplayClip(CasterScript::RUBRIC, 20.0, 11, $start->addSeconds(30), $start->addSeconds(100));
+
+    $air = podcastReplayAir(podcastReplayDirector(), (float) $start->getTimestamp(), 160);
+
+    expect(podcastReplayOrder($air))->toBe([21])
+        ->and(podcastReplaySecondsOf($air, 21))->toBe(120.0);
 });
