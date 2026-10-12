@@ -473,6 +473,8 @@ return [
             'follow_up_minutes' => 30,
             'sentences' => ['markus' => ['min' => 2, 'max' => 4], 'sirius' => ['min' => 3, 'max' => 6]],
             'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 1000),
+            // Share of duets in which Sirius may pick his beer topic (the running gag, not every time).
+            'beer_percent' => (int) env('TV_COMMENTARY_DUET_BEER_PERCENT', 15),
         ],
 
         // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen
