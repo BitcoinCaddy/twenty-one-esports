@@ -1154,6 +1154,26 @@ return [
                 'priority' => 76,
                 'tries' => 3,
             ],
+            // The night loop (PodcastNight; user 2026-10-12 23:30: "warum nicht heute Nacht ausnahmsweise mehrere
+            // Podcastfolgen im Loop … weil heute Nacht dazu Zeit ist"): from `from` to `to` (Berlin) the `episodes` newest
+            // episodes of each of `sources` back to back, newest first, each once a night, every one between the podcast
+            // opener and the back-announce (no announcement duet at night). The next episode goes into the spool once the
+            // one on air has at most `queue_ahead_seconds` left; none starts that would end more than `overrun_minutes`
+            // after `to`. Only until `until` (Berlin, empty: every night), so "just tonight" needs no switch back.
+            // `skip_daytime_episode` leaves out the episode the day's slot airs. The library keeps `episodes + 1` per
+            // source (within `max_bytes`) and stores up to `prefetch_per_run` missing ones per feed read.
+            'night' => [
+                'enabled' => (bool) env('TV_PODCAST_NIGHT', true),
+                'from' => env('TV_PODCAST_NIGHT_FROM', '01:00'),
+                'to' => env('TV_PODCAST_NIGHT_TO', '09:00'),
+                'until' => env('TV_PODCAST_NIGHT_UNTIL', '2026-10-13 09:00'),
+                'episodes' => (int) env('TV_PODCAST_NIGHT_EPISODES', 6),
+                'sources' => ['einundzwanzig'],
+                'skip_daytime_episode' => (bool) env('TV_PODCAST_NIGHT_SKIP_DAYTIME', false),
+                'queue_ahead_seconds' => 900,
+                'overrun_minutes' => 30,
+                'prefetch_per_run' => 6,
+            ],
         ],
     ],
 

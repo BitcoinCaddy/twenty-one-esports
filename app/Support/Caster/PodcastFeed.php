@@ -150,6 +150,17 @@ class PodcastFeed
      */
     public static function newestAudio(string $xml, ?string $titlePattern = null): ?array
     {
+        return self::newestAudios($xml, $titlePattern, 1)[0] ?? null;
+    }
+
+    /**
+     * The newest `$limit` items with an audio enclosure, newest first (feed order), each as newestAudio() gives it;
+     * the night loop of the podcast replay takes several (PodcastNight).
+     *
+     * @return list<array{guid: string, title: string, published_at: int, url: string, episode_number: int|null, notes: string}>
+     */
+    public static function newestAudios(string $xml, ?string $titlePattern = null, int $limit = 1): array
+    {
         $previous = libxml_use_internal_errors(true);
 
         try {
@@ -160,8 +171,10 @@ class PodcastFeed
         }
 
         if (! $document instanceof SimpleXMLElement || ! isset($document->channel->item)) {
-            return null;
+            return [];
         }
+
+        $episodes = [];
 
         foreach ($document->channel->item as $item) {
             $url = trim((string) ($item->enclosure['url'] ?? ''));
@@ -182,11 +195,15 @@ class PodcastFeed
                 : (preg_match('/^#\s*(\d{1,5})\b|\b(?:Folge|Episode|Nr\.?)\s*(\d{1,5})\b/iu', $title, $match) === 1 ? (int) ($match[1] !== '' ? $match[1] : $match[2]) : null);
             $guid = trim((string) $item->guid);
 
-            return ['guid' => mb_substr($guid === '' ? $url : $guid, 0, 255), 'title' => mb_substr($title, 0, 255), 'published_at' => $published, 'url' => $url, 'episode_number' => $number,
+            $episodes[] = ['guid' => mb_substr($guid === '' ? $url : $guid, 0, 255), 'title' => mb_substr($title, 0, 255), 'published_at' => $published, 'url' => $url, 'episode_number' => $number,
                 'notes' => self::shownotes((string) $item->description)];
+
+            if (count($episodes) >= max(1, $limit)) {
+                break;
+            }
         }
 
-        return null;
+        return $episodes;
     }
 
     /**

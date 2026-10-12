@@ -57,6 +57,8 @@ beforeEach(function () {
         'tv.commentary.podcast_replay.enabled' => true,
         'tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => true,
         'tv.commentary.podcast_replay.sources.resat.enabled' => false,
+        // The night loop has its own file (PodcastNightTest).
+        'tv.commentary.podcast_replay.night.enabled' => false,
         'tv.commentary.imaging.dir' => $this->imagingDir,
     ]);
 });
