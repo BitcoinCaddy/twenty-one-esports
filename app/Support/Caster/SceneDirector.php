@@ -57,6 +57,11 @@ use Carbon\CarbonImmutable;
  * after the one before it ended, an expired one, or a part cut off by a
  * takeover ends the group (ClipSpool::endGroup()). A group counts as one
  * run clip.
+ *
+ * With the station sound on (Idents, tv.commentary.idents), a clip opens
+ * with the stinger of its kind and a bulletin carries the news bed: both
+ * become part of the clip's PCM before it goes on the timeline, so the hold
+ * and the sentence ends include them.
  */
 final class SceneDirector
 {
@@ -65,6 +70,9 @@ final class SceneDirector
     private ?CasterClip $clip = null;
 
     private ?string $caption = null;
+
+    /** The stinger slot the clip on air opened with (Idents), or null. */
+    private ?string $ident = null;
 
     /** Until when only the music plays (the gap after a clip). */
     private float $quietUntil = 0.0;
@@ -93,6 +101,7 @@ final class SceneDirector
         private readonly ClipSpool $spool,
         public readonly CommentaryTimeline $timeline,
         private readonly array $settings = [],
+        private readonly ?Idents $idents = null,
     ) {}
 
     public static function fromConfig(ClipSpool $spool): self
@@ -100,7 +109,7 @@ final class SceneDirector
         /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}} $settings */
         $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', [])];
 
-        return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings);
+        return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings, Idents::fromConfig());
     }
 
     /**
@@ -284,7 +293,21 @@ final class SceneDirector
         // earlier lost its first syllables to it (user 2026-10-11: "Der Start des Audios scheint beim Start immer
         // etwas abgeschnitten zu sein"; lead-in 0.5 s against a 1.0 s feed lead cut half a second).
         $start = $now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
-        $this->timeline->start($pcm, $clip->sentence_ends, $start);
+        $ends = $clip->sentence_ends;
+        $this->ident = null;
+
+        // The station sound (Idents): a segment or bulletin opens with its stinger, never a later part of its story.
+        // The ffmpeg calls take real time while the feed keeps writing ahead: the start moves by it, so the stinger's
+        // first beat is not lost to silence already written.
+        if ($this->idents !== null && ! $continuation) {
+            $dressing = microtime(true);
+            $dressed = $this->idents->dress($clip, $pcm, $ends, CarbonImmutable::createFromTimestamp($now));
+            ['pcm' => $pcm, 'ends' => $ends] = $dressed;
+            $this->ident = $dressed['stinger'];
+            $start += microtime(true) - $dressing;
+        }
+
+        $this->timeline->start($pcm, $ends, $start);
         $this->spool->playing($clip);
         $this->clip = $clip;
         $this->quietUntil = 0.0;
@@ -378,6 +401,12 @@ final class SceneDirector
     public function run(): array
     {
         return ['id' => $this->runId, 'position' => $this->runPosition, 'left' => $this->runLeft];
+    }
+
+    /** The stinger slot the clip on air opened with, or null (tests, logging). */
+    public function ident(): ?string
+    {
+        return $this->ident;
     }
 
     /** The clip on air (tests, logging). */

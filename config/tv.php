@@ -233,6 +233,22 @@ return [
             'lead_seconds' => 1.0,
         ],
 
+        // The station sound (App\Support\Caster\Idents, plan "TWENTY ONE Radio" P4): own synthesized stingers and a news
+        // bed in resources/audio/idents (scripts/make-idents.sh, CC0, LICENSES.md). `kinds` maps a clip kind to the
+        // stinger it opens with (never a later part of a long script); `bed_kinds` get the bed under their speech, not
+        // in quiet hours unless `bed_at_night`. The `bulletin` kind is the news block of the broadcast clock (P2).
+        'idents' => [
+            'enabled' => (bool) env('TV_COMMENTARY_IDENTS', true),
+            'stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
+            'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident'],
+            'bed' => 'news-bed.opus',
+            'bed_kinds' => ['bulletin'],
+            'bed_gain_db' => 0,
+            'bed_fade_seconds' => 1.5,
+            'bed_at_night' => false,
+            'pause_seconds' => 0.3,
+        ],
+
         'scenes' => [
             'min_scene_seconds' => 20,
             'silent_min_scene_seconds' => 15,
