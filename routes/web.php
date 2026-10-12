@@ -154,6 +154,10 @@ Route::post('api/caster/scripts/{id}/clip', [CasterFetchController::class, 'clip
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.clip');
 Route::post('api/caster/blocks', [CasterFetchController::class, 'block'])
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.block');
+Route::post('api/caster/imaging', [CasterFetchController::class, 'imagingManifest'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.imaging');
+Route::post('api/caster/imaging/files/{hash}', [CasterFetchController::class, 'imagingFile'])->where('hash', '[0-9a-f]{40}')
+    ->withoutMiddleware('web')->middleware('throttle:caster-imaging')->name('caster.imaging-file');
 Route::post('api/caster/replays', [CasterFetchController::class, 'replay'])
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.replay');
 Route::post('api/caster/stock/stored', [CasterFetchController::class, 'stockStored'])

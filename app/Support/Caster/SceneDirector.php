@@ -65,6 +65,11 @@ use Carbon\CarbonImmutable;
  * become part of the clip's PCM before it goes on the timeline, so the hold
  * and the sentence ends include them.
  *
+ * Radio imaging (P11, Imaging): the Anchor's uploaded jingles open a clip
+ * (station ID, sweeper, format opener, news open) or close a bulletin (news
+ * close), by the rules of Imaging; an opener takes the place of the stinger.
+ * Never on a reaction or live moment, a later part of a story or a block.
+ *
  * The news bulletin (plan "TWENTY ONE Radio", P1; ClipSpool::bulletin()):
  * from its slot on (:00, :30 on the broadcast clock, at most
  * `bulletin.late_seconds` late) it plays before anything else, over the
@@ -103,6 +108,9 @@ final class SceneDirector
 
     /** The stinger slot the clip on air opened with (Idents), or null. */
     private ?string $ident = null;
+
+    /** @var list<string> the imaging categories around the clip on air (Imaging), opener first */
+    private array $imagingOnAir = [];
 
     /** Until when only the music plays (the gap after a clip). */
     private float $quietUntil = 0.0;
@@ -172,6 +180,7 @@ final class SceneDirector
         private readonly array $settings = [],
         private readonly ?Idents $idents = null,
         ?BroadcastClock $clock = null,
+        private readonly ?Imaging $imaging = null,
     ) {
         $this->clock = $clock ?? BroadcastClock::fromConfig();
     }
@@ -188,7 +197,7 @@ final class SceneDirector
             (float) config('tv.commentary.mix.news_fade_up_seconds', 2.0),
         );
 
-        return new self($spool, $timeline, $settings, Idents::fromConfig());
+        return new self($spool, $timeline, $settings, Idents::fromConfig(), null, Imaging::fromConfig());
     }
 
     /**
@@ -488,13 +497,26 @@ final class SceneDirector
         // The ffmpeg calls take real time while the feed keeps writing ahead: the start moves by it, so the stinger's
         // first beat is not lost to silence already written.
         // A block rendered on the workstation is dressed already (P6): never a second stinger or bed.
+        // Radio imaging (P11): a jingle of the Anchor in front of the clip takes the stinger's place, a news close follows a
+        // bulletin; decoded before the stinger, so a jingle that fails still leaves the stinger.
+        $dressing = microtime(true);
+        $choice = $this->imaging?->choose($clip, $continuation, CarbonImmutable::createFromTimestamp($now)) ?? ['before' => null, 'after' => null];
+
         if ($this->idents !== null && ! $continuation && ! $clip->isDressed()) {
-            $dressing = microtime(true);
-            $dressed = $this->idents->dress($clip, $pcm, $ends, CarbonImmutable::createFromTimestamp($now));
+            $dressed = $this->idents->dress($clip, $pcm, $ends, CarbonImmutable::createFromTimestamp($now), withStinger: $choice['before'] === null);
             ['pcm' => $pcm, 'ends' => $ends] = $dressed;
             $this->ident = $dressed['stinger'];
-            $start += microtime(true) - $dressing;
         }
+
+        if ($this->imaging !== null && ($choice['before'] !== null || $choice['after'] !== null)) {
+            $wrapped = $this->imaging->wrap($choice, $pcm, $ends);
+            ['pcm' => $pcm, 'ends' => $ends] = $wrapped;
+            $this->imagingOnAir = array_values(array_filter([$wrapped['before'] ? $choice['before']['category'] ?? null : null, $wrapped['after'] ? $choice['after']['category'] ?? null : null]));
+        } else {
+            $this->imagingOnAir = [];
+        }
+
+        $start += microtime(true) - $dressing;
 
         // A bulletin puts the music into news mode for as long as its PCM (stinger and bed included) plays.
         $this->timeline->start($pcm, $ends, $start, news: $bulletinSlot !== null);
@@ -892,6 +914,16 @@ final class SceneDirector
     public function run(): array
     {
         return ['id' => $this->runId, 'position' => $this->runPosition, 'left' => $this->runLeft];
+    }
+
+    /**
+     * The imaging categories around the clip on air (opener first), empty when none (tests, logging).
+     *
+     * @return list<string>
+     */
+    public function imagingOnAir(): array
+    {
+        return $this->imagingOnAir;
     }
 
     /** The stinger slot the clip on air opened with, or null (tests, logging). */
