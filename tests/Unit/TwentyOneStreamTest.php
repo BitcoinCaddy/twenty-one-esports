@@ -42,9 +42,20 @@ test('the youtube relay copies one encoder playlist from its newest segment to t
     expect((new FfmpegCommands('ffmpeg', 2))->relay('/srv/hls/scene/index.m3u8', 'rtmp://a.rtmp.youtube.com/live2/key'))->toBe([
         'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
         '-re', '-live_start_index', '-1', '-i', '/srv/hls/scene/index.m3u8',
-        '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy',
+        '-map', '0:v:0', '-map', '0:a:0', '-c:v', 'copy', '-c:a', 'copy',
         '-rw_timeout', '10000000', '-f', 'flv', '-flvflags', 'no_duration_filesize', 'rtmp://a.rtmp.youtube.com/live2/key',
     ]);
+});
+
+test('the youtube relay re-encodes the video to a constant bitrate at the given frame rate when asked', function () {
+    $argv = (new FfmpegCommands('ffmpeg', 2))->relay('/srv/hls/scene/index.m3u8', 'rtmp://x/live2/key', 1500, 30);
+
+    expect(implode(' ', $argv))->toContain('-vf fps=30 -c:v libx264')
+        ->toContain('-b:v 1500k -minrate 1500k -maxrate 1500k -bufsize 3000k')
+        ->toContain('-g 60')
+        ->toContain('-tune zerolatency')
+        ->toContain('-c:a copy')
+        ->not->toContain('-c:v copy');
 });
 
 test('every encoder run gets a new id', function () {

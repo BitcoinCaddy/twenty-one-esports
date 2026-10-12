@@ -97,21 +97,31 @@ final class CasterVoice
         ScriptGuard::MARKER_UNKNOWN, ScriptGuard::STAGE_DIRECTION, ScriptGuard::SENTENCE_LONG, ScriptGuard::SENTENCE_SHORT,
     ];
 
-    /** The angles a prompt draws one of at random, so no two scripts are built alike (user 2026-10-12). */
+    /**
+     * The comic device a prompt draws one of at random, so no two bits are built alike (user 2026-10-12). Devices,
+     * not image domains (plan "TWENTY ONE Radio" P8): "ein Bild aus dem Wetterbericht" or "ein Vergleich mit dem
+     * Fußball" turned whole scripts into a running metaphor, 38 of the 140 senseless sentences in 60 prod scripts.
+     */
     public const ANGLES = [
-        'eine kleine Anekdote', 'eine Gegenüberstellung von damals und heute', 'eine rhetorische Frage an die Zuschauer', 'ein Wortspiel',
-        'eine maßlose Übertreibung', 'ein Blick in die Geschichte', 'Sarkasmus über Staat und Fiatgeld', 'Selbstironie über dich als Sprecher',
-        'ein Vergleich aus dem Allgäuer Alltag', 'ein Gedankenexperiment', 'eine kleine Verschwörungstheorie mit Augenzwinkern über Zentralbanken',
-        'ein Vergleich mit dem Fußball', 'eine Liebeserklärung an die Community', 'trockenes Understatement', 'ein Blick in die Zukunft',
-        'ein Vergleich mit dem Mining', 'eine Beobachtung wie aus einer Naturdoku', 'gespielte Empörung', 'ein Ratschlag vom alten Hasen',
-        'ein Vergleich aus der Küche', 'ein Bild aus dem Wetterbericht', 'eine Wette mit dem Chat', 'philosophisch und nachdenklich',
-        'ein Vergleich mit der Deutschen Bahn', 'ein Bild aus dem Bergsteigen',
+        'eine maßlose Übertreibung', 'trockenes Understatement', 'gespielte Empörung', 'eine rhetorische Frage, die du gleich selbst beantwortest',
+        'eine Dreierliste, deren drittes Glied kippt', 'eine falsche Fährte: der letzte Satz biegt anders ab als erwartet', 'Selbstironie über dich als Sprecher',
+        'ein Gegensatz von damals und heute', 'ein Gedankenexperiment', 'Sarkasmus über Staat und Fiatgeld', 'eine Wette mit dem Chat',
+        'ein Ratschlag vom alten Hasen, der sich am Ende selbst entlarvt', 'eine kleine Verschwörungstheorie mit Augenzwinkern über Zentralbanken',
+        'ein schiefer Vergleich in genau einem Satz', 'eine Liebeserklärung an die Community mit Haken', 'erst nachdenklich, dann ein trockener Schluss',
+        'die Sache konsequent zu Ende gedacht, bis sie absurd wird', 'ein ernst gemeinter Rat, der wörtlich genommen komisch wird',
+        'gespieltes Lob für genau das, was eigentlich peinlich ist', 'ein nüchterner Schluss, der die ganze Aufregung davor entlarvt',
     ];
 
     public const FOLLOWED_FACT_CHECK = 'caster_followed_fact_check';
 
     /** The usage channel of the "Rückblick-Spitze" callbacks on the world memory (callback()). */
     public const CALLBACK_CHANNEL = 'caster_callback';
+
+    /**
+     * The reason code of a first draft with a sentence the station said within `repeat_hours` (SpokenMemory::repeated()):
+     * the second try gets those sentences to say anew (P8), instead of the queue cutting them out of the middle.
+     */
+    public const SPOKEN_REPEAT = 'spoken_repeat';
 
     /** The material that keeps the slide's facts in a scene prompt (the only one, see MATERIALS). */
     public const LEAGUE = 'league';
@@ -124,12 +134,12 @@ final class CasterVoice
      * @var array<string, string>
      */
     public const MATERIALS = [
-        'world' => 'Greif ein oder zwei echte Ereignisse aus dem Block „Was in den letzten 24 Stunden wirklich passiert ist“ auf und kommentier sie witzig und sarkastisch, wie ein Rückblick am Stammtisch („vorhin …“, „heute Nachmittag …“).',
+        'world' => 'Greif EIN echtes Ereignis aus dem Block „Was in den letzten 24 Stunden wirklich passiert ist“ auf: sag zuerst in einem ganzen Satz, was passiert ist, dann kommentier es witzig und sarkastisch, wie ein Rückblick am Stammtisch („vorhin …“, „heute Nachmittag …“).',
         'podcast' => 'Spiel auf die letzte Folge des EINUNDZWANZIG-Podcasts an (der Abschnitt „Letzte Podcast-Folge“ im System-Prompt): ein Thema, ein Running Gag oder ein Gedanke daraus, in deinen Worten weitergesponnen („in der letzten Folge …“).',
         'canon' => 'Nimm einen Eintrag aus der Kanon-Auswahl unten, erzähl die Geschichte dahinter frei nach und nenn beiläufig, woher er stammt.',
         'fiat' => 'Sarkasmus über Staat, Fiatgeld, Inflation, Zentralbanken und Bürokratie, gern angeknüpft an eine Schlagzeile aus dem 24-Stunden-Block; Bitcoin als Gegenentwurf.',
         'nostr' => 'Einer deiner eigenen Nostr-Posts (Material unten): erzähl, was du damals geschrieben hast, und kommentier dich selbst mit Selbstironie.',
-        'chat' => 'Plaudere mit dem Chat: knüpf an etwas an, das heute im Chat stand (24-Stunden-Block), oder stell dem Chat eine freche Frage.',
+        'chat' => 'Plaudere mit dem Chat: knüpf an EINE Sache an, die heute im Chat stand (24-Stunden-Block), sag zuerst, wer was geschrieben hat, und roaste es, oder stell dem Chat eine freche Frage.',
         'invite' => 'Lade mit Humor zum Mitspielen auf esports punkt einundzwanzig punkt space oder zu einem Zap an den Stream ein, nie mit einer Gebühr und nie als Werbeblock.',
         self::LEAGUE => 'Die Fakten der Liga unten.',
     ];
@@ -163,6 +173,7 @@ final class CasterVoice
         VoiceHygiene::LONG_SENTENCE => 'Ein Satz war zu lang: höchstens zweiunddreißig Wörter pro Satz.',
         VoiceHygiene::PLACEHOLDER => 'Ein Platzhalter in geschweiften Klammern: nur echte Fakten.',
         VoiceHygiene::PREAMBLE => 'Keine Vorrede, gleich mit dem ersten Satz anfangen.',
+        self::SPOKEN_REPEAT => 'Ein Satz klang wie etwas, das heute schon lief: derselbe Gedanke, aber neue Worte und ein neuer Satzanfang.',
     ];
 
     /**
@@ -179,9 +190,36 @@ final class CasterVoice
         .'- Laut-Marker machen es lebendig, aber nur, wo der Inhalt sie trägt (Nutzer 2026-10-12: "mehr von diesen Tags … aber da, wo es vom Kontext her passt"): [laughter] direkt nach einer Pointe, [sigh] bei Resignation über Staat, Fiat oder die eigene Technik, [surprise-wa] oder [surprise-oh] vor einer echten Überraschung, [question-en] oder [question-ah] bei einer rhetorischen Nachfrage, [confirmation-en] als Zustimmung zum anderen, [dissatisfaction-hnn] bei gespielter Empörung; ungefähr einer auf zwei bis drei Sätze, nie zwei hintereinander, nie ohne Anlass, und nie mitten in einem Satz.'."\n"
         .'- Die einzige Grenze: keine Hetze gegen Gruppen, nichts über Herkunft, Aussehen, Krankheit, Behinderung, Religion oder Sexualität, keine Gewalt, keine Drohungen, keine privaten Daten, keine Lügen über reale Personen.';
 
-    public const SENTENCE_STYLE = 'Schreib lange, fließende, vollständige Sätze von etwa zwölf bis achtundzwanzig Wörtern, nie mehr als zweiunddreißig (ein längerer Satz fällt weg, also lieber zwei Sätze):'
+    public const SENTENCE_STYLE = 'Schreib ganze, gesprochene Sätze von etwa zehn bis fünfundzwanzig Wörtern, nie mehr als zweiunddreißig (ein längerer Satz beendet das Skript, also lieber zwei Sätze):'
         .' jeder Satz ist ein ganzer Satz mit Subjekt und Verb, kein Bruchstück, keine Überschrift und kein Einwortausruf wie „Hey!“ oder „Läuft.“; Titel von Schlagzeilen, Folgen, Turnieren oder Posts nie nackt vorlesen, sondern in einen ganzen Satz einbauen.'
-        .' Verbinde die Gedanken mit „und“, „weil“, „denn“, „während“ oder „dass“ statt mit Kommaketten, und lieber wenige lange Sätze als viele kurze.';
+        .' Die Länge kommt aus dem Inhalt: jeder Satz bringt den einen Gedanken einen Schritt weiter, keiner wird mit Füllstoff lang gemacht. Verbinde mit „und“, „weil“, „denn“, „während“ oder „dass“ statt mit Kommaketten.';
+
+    /**
+     * How a bit is built (plan "TWENTY ONE Radio" P8, user 2026-10-12: "viel zu viele Sätze, die gar keinen Sinn
+     * ergeben … trotzdem roasten und witzig, meme-artig"): one point per break and the punchline last (NPR Training:
+     * "Each story should make one main point"; rule of three, callback and straight man as comedy devices), planned
+     * in the answer's plan fields before the text (VoiceAgent::PLAN_FIELDS). The examples show the build, never
+     * wording to reuse; their facts are true at any hour (league basics).
+     */
+    public const BIT = "Aufbau eines Beitrags\n\n"
+        ."Im Radio kann niemand zurückspulen, und viele schalten mitten im Beitrag ein. Deshalb trägt jeder Beitrag genau einen Gedanken, und jeder Satz versteht sich auch ohne den Chat von vorhin.\n"
+        ."- Ein Thema: Nimm aus dem Stoff EINE Sache und bleib dabei. Eine zweite Meldung, eine Einladung oder eine Chat-Frage kommt nur dazu, wenn sie genau diesen Gedanken weiterdreht.\n"
+        ."- Aufbau: Der erste Satz sagt, worum es geht, so dass es auch versteht, wer gerade einschaltet; dann deine Sicht oder eine Zuspitzung; der letzte Satz ist die Pointe, und alles davor arbeitet auf sie hin.\n"
+        ."- Ein Bild, ein Satz: Ein Vergleich oder eine Metapher steht in höchstens einem Satz und trägt die Pointe. Das Skript wird keine Dauermetapher, das Thema bleibt das Thema.\n"
+        ."- Roasten mit Ziel: Spott trifft etwas Konkretes aus dem Stoff, eine Meldung, eine Nachricht im Chat, einen Spielzug oder den Partner, und man hört, was daran lächerlich ist. Die Pointe ist der böseste Satz: konkret und überraschend, kein freundliches Fazit, kein Gruß und keine Einladung als Schluss.\n"
+        ."- Der Witz kommt aus diesem Stoff, nicht aus dem Persona-Block: Lieblingsthemen und Running Gags von Markus und Sirius kommen nur vor, wenn der Stoff selbst davon handelt.\n"
+        ."- Bezüge mit Anlauf: Greifst du etwas Früheres auf, den Chat, einen Rückblick oder einen eigenen Post, sag erst in einem halben Satz, was war, dann kommt deine Pointe.\n"
+        ."- Planen, dann schreiben: Trag zuerst in `punkt` den einen Gedanken in einem Satz ein und in `pointe`, worauf der letzte Satz hinausläuft; beides wird nie gesprochen. Dann schreib `text` so, dass jeder Satz diesem Punkt dient.\n\n"
+        ."So sieht der Aufbau aus (nur der Aufbau: übernimm aus den Beispielen keinen Satz, kein Bild und keine Pointe)\n\n"
+        ."<beispiele>\n<beispiel>\nStoff: Fernschach in der Liga, ein Zug am Tag\npunkt: Fernschach ist langsam, aber jeder Zug ist durchdacht und endgültig.\npointe: Ein Fernschachzug kommt schneller als ein Bescheid vom Finanzamt und ist im Gegensatz dazu durchdacht.\n"
+        ."text:\nIn unserer Liga gibt es Fernschach, und da macht jeder Spieler höchstens einen Zug am Tag.\nDas klingt nach Zeitlupe, aber jeder dieser Züge lässt sich nicht mehr zurücknehmen, ganz wie ein bestätigter Block.\n"
+        ."Und trotzdem kommt so ein Fernschachzug schneller an als ein Bescheid vom Finanzamt, und er ist im Gegensatz zum Bescheid sogar durchdacht.\n</beispiel>\n"
+        ."<beispiel>\nStoff: Chat-Nachricht „Ist Bitcoin nicht viel zu langsam?“\npunkt: Wer Bitcoin langsam nennt, verwechselt Tempo mit Endgültigkeit.\npointe: Die Bank hält dein Geld übers Wochenende fest und nennt das Service.\n"
+        ."text:\nDu fragst, ob Bitcoin nicht viel zu langsam ist, und das ist eine ehrliche Frage, die eine ehrliche und leicht gemeine Antwort verdient.\nEin Block kommt im Schnitt alle zehn Minuten, und danach ist die Zahlung so endgültig, dass sie niemand mehr zurückholen kann.\n"
+        ."Wenn dir zehn Minuten zu lang sind, dann schick am Freitagabend eine Überweisung los und schau zu, wie deine Bank dein Geld bis Montag festhält und das dann Service nennt.\n</beispiel>\n"
+        ."<beispiel>\nStoff: In der Liga zahlt niemand eine Startgebühr, Turniere haben trotzdem Sats-Töpfe\npunkt: Eine Liga ohne Gebühr ist für den Staat unbegreiflich.\npointe: Ein Amt würde am Ende fürs Zuschauen kassieren.\n"
+        ."text:\nMarkus: Bei uns zahlt niemand eine Startgebühr, und trotzdem liegen in den Turnieren echte Sats im Topf.\nSirius: Das versteht in Berlin kein Mensch, denn dort würde man für so eine Liga erst eine Gebührenordnung schreiben und dann ein Amt gründen, das sie verwaltet.\n"
+        ."Markus: Und dieses Amt würde dann fürs Zuschauen kassieren, gestaffelt nach der Zahl deiner Bildschirme.\n</beispiel>\n</beispiele>";
 
     private const RECENT_TTL_SECONDS = 86_400;
 
@@ -191,6 +229,9 @@ final class CasterVoice
     private ?string $fixed = null;
 
     private ?VoiceGuard $guard = null;
+
+    /** @var list<string> the repeated sentences of the last draft turned down for SPOKEN_REPEAT */
+    private array $repeated = [];
 
     public function __construct(
         private readonly VoiceCanon $canon,
@@ -568,7 +609,7 @@ final class CasterVoice
                     return null;
                 }
 
-                [$reply, $rejected] = $this->chatReplyDraft($message, $name, $hints, $settings, $rejected, $data, $duet);
+                [$reply, $rejected] = $this->chatReplyDraft($message, $name, $hints, $settings, $rejected, $data, $duet, $try === 1);
 
                 if ($reply !== null) {
                     return $reply;
@@ -696,9 +737,10 @@ final class CasterVoice
      * @param  array<array-key, mixed>  $settings
      * @param  list<string>  $rejected
      * @param  array<string, string>  $data
+     * @param  bool  $last  the last try: a repeated sentence no longer turns it down (the queue ends the reply before it)
      * @return array{0: array{text: string, speakers: list<string>|null}|null, 1: list<string>}
      */
-    private function chatReplyDraft(string $message, ?string $name, array $hints, array $settings, array $rejected, array $data = [], bool $duet = false): array
+    private function chatReplyDraft(string $message, ?string $name, array $hints, array $settings, array $rejected, array $data = [], bool $duet = false, bool $last = true): array
     {
         // Chat replies run longer than other live lines (user 2026-10-11: "Mehr Reaktion-Text auf Chat-Nachrichten. Emotionaler und lustiger.").
         $range = (array) ($settings['chat_sentences'] ?? $settings['live_sentences'] ?? []);
@@ -711,7 +753,7 @@ final class CasterVoice
 
         $this->usage->recordAttempt(self::CHANNEL);
         $agent = $duet ? $this->agent($this->fixedPart()."\n".CasterPersonas::sirius()."\n") : $this->agent();
-        $response = $agent->prompt(self::chatReplyPrompt($message, $name, max($min, min($max, (int) ($range['ask'] ?? $min))), $max, $hints, $openings, $rejected, $data, $duet));
+        $response = $agent->prompt(self::chatReplyPrompt($message, $name, max($min, min($max, (int) ($range['ask'] ?? $min))), $max, $hints, $openings, $rejected, $data, $duet, in_array(self::SPOKEN_REPEAT, $rejected, true) ? $this->repeated : []));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -765,6 +807,10 @@ final class CasterVoice
             // In front of Markus' first line, inside it: a duet's lines still match its speakers.
             $text = $name.'! '.$text;
             $spoken = $name.'! '.$spoken;
+        }
+
+        if ($violations === [] && ! $last && ($this->repeated = $this->repeatedSentences($text)) !== []) {
+            $violations = [self::SPOKEN_REPEAT];
         }
 
         if ($violations !== []) {
@@ -824,8 +870,9 @@ final class CasterVoice
      * @param  list<string>  $avoidOpenings
      * @param  list<string>  $rejected
      * @param  array<string, string>  $data  title => text of a data block (podcast episodes, chat memory, web lookup)
+     * @param  list<string>  $repeated  the first draft's sentences that repeated what the station said (repeatBlock())
      */
-    public static function chatReplyPrompt(string $message, ?string $name, int $min, int $max, array $hints = [], array $avoidOpenings = [], array $rejected = [], array $data = [], bool $duet = false): string
+    public static function chatReplyPrompt(string $message, ?string $name, int $min, int $max, array $hints = [], array $avoidOpenings = [], array $rejected = [], array $data = [], bool $duet = false, array $repeated = []): string
     {
         $who = $name ?? 'jemand aus dem Chat';
         $sirius = (array) config('tv.commentary.duet.sentences.sirius', []);
@@ -908,6 +955,11 @@ final class CasterVoice
                 ."\n\nSchreib neu: einfacher, ohne Liga-Fakten, in ganzen Sätzen.";
         }
 
+        $repeatBlock = self::repeatBlock($repeated);
+        if ($repeatBlock !== null) {
+            $parts[] = $repeatBlock;
+        }
+
         $parts[] = self::varietyBlock();
         $parts[] = 'canon_id ist null. Schreibe jetzt die Antwort.';
 
@@ -926,7 +978,7 @@ final class CasterVoice
     {
         $temperature = config('tv.commentary.scripts.temperature');
 
-        return new VoiceAgent($system ?? $this->fixedPart(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500));
+        return new VoiceAgent($system ?? $this->fixedPart(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500), plan: true);
     }
 
     /**
@@ -940,6 +992,33 @@ final class CasterVoice
         $source = array_filter([$entry['speaker'] === null ? null : 'Sprecher: '.$entry['speaker'], 'Kategorie: '.$entry['category'], 'Art: '.$entry['type']]);
 
         return "- {$entry['id']}: „{$entry['wording']}“ — {$entry['meaning']} — {$entry['usage']} — ".implode(', ', $source);
+    }
+
+    /**
+     * The sentences of a draft that repeat what the station said within `repeat_hours` (SpokenMemory::repeated());
+     * none when the memory cannot be read: the queue checks again and ends the script before a repeat
+     * (ScriptQueue::enqueue()), so a failure here costs a retry, never a hole.
+     *
+     * @return list<string>
+     */
+    private function repeatedSentences(string $text): array
+    {
+        try {
+            return (new SpokenMemory)->repeated($text, CarbonImmutable::now());
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * The retry block naming the sentences of a first draft that repeated what the station said, or null.
+     *
+     * @param  list<string>  $sentences
+     */
+    public static function repeatBlock(array $sentences): ?string
+    {
+        return $sentences === [] ? null : "Diese Sätze deines ersten Entwurfs liefen heute schon so oder fast so (gleicher Anfang, fast gleicher Wortlaut oder eine abgenutzte Wendung); sag denselben Gedanken mit neuen Worten und neuem Satzanfang\n\n"
+            .implode("\n", array_map(fn (string $sentence): string => '- '.$sentence, $sentences));
     }
 
     /**
@@ -1094,8 +1173,8 @@ final class CasterVoice
     {
         $openings = SpokenMemory::recentOpenings(30);
 
-        return "Abwechslung\n\nDein Blickwinkel diesmal: ".self::ANGLES[array_rand(self::ANGLES)].'.'
-            .' Erfinde eigene Bilder und Formulierungen, keine Floskel und kein Satzanfang, den man schon kennt.'
+        return "Abwechslung\n\nDein Kniff für die Pointe diesmal: ".self::ANGLES[array_rand(self::ANGLES)].'; er formt die Pointe, nicht jeden Satz.'
+            .' Erfinde eigene Formulierungen, keine Floskel und kein Satzanfang, den man schon kennt.'
             .($openings === [] ? '' : "\nSo fingen die letzten Sätze auf Sendung an; verwende keine dieser Wendungen und keinen dieser Anfänge wieder:\n"
                 .implode("\n", array_map(fn (string $opening): string => '- '.$opening, $openings)));
     }
@@ -1173,6 +1252,7 @@ final class CasterVoice
         try {
             $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
             $rejected = [];
+            $repeated = [];
 
             for ($try = 0; $try < 2; $try++) {
                 if ($this->usage->attemptsToday($channel) >= (int) config('tv.commentary.scripts.daily_cap', 0)
@@ -1182,7 +1262,8 @@ final class CasterVoice
 
                 $this->usage->recordAttempt($channel);
                 $response = ($this->agent())->prompt($prompt.($rejected === [] ? '' : "\n\nDein erster Entwurf ging nicht durch:\n"
-                    .implode("\n", array_map(fn (string $code): string => '- '.(self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code), $rejected))));
+                    .implode("\n", array_map(fn (string $code): string => '- '.(self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code), $rejected)))
+                    .($repeated === [] ? '' : "\n\n".self::repeatBlock($repeated)));
                 $this->usage->recordTokens($channel, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
                 $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -1196,6 +1277,12 @@ final class CasterVoice
                     ...$this->guard()->check($spoken, [], 100_000, null),
                     ...$this->scriptGuard->check($text, 1, $max, $maxWords),
                 ]);
+
+                // A first draft that repeats the station is said anew once (P8); the queue cuts what is still left over.
+                $repeated = $rejected === [] && $try === 0 ? $this->repeatedSentences($text) : [];
+                if ($repeated !== []) {
+                    $rejected = [self::SPOKEN_REPEAT];
+                }
 
                 if ($rejected === []) {
                     $this->usage->recordOutcome($channel, 'accepted');
@@ -1244,8 +1331,9 @@ final class CasterVoice
 
         // No template sentences, invitations or mood lines in the prompt any more (user 2026-10-12: "caster.json scheint
         // verantwortlich für lauter Wiederholungen"): the model copied their phrasing; it gets the facts and writes its own.
+        // Nor the posts' style guide (P8): written for chat posts, it asked for friendliness to everyone, a canon line
+        // word for word and a mood per text, against the roast, the free retelling and the one point of a TV bit.
         return $this->fixed = self::withoutHashes(trim((string) file_get_contents(resource_path('data/voice/caster-guide.md')))
-            ."\n\n".self::spokenStyleGuide((string) file_get_contents(resource_path('data/voice/style-guide.md')))
             ."\n\n## Die Liga in Fakten (nur Wissen, keine Formulierungen zum Nachsprechen)\n\n"
             ."- TWENTY ONE ist die eSports-Liga der EINUNDZWANZIG-Community unter esports punkt einundzwanzig punkt space, der Sender heißt TWENTY ONE TV.\n"
             ."- Gespielt wird {$games}, dazu die Brettspiele Mühle, Dame und Blockli ohne Uhr.\n"
@@ -1257,23 +1345,10 @@ final class CasterVoice
             ."\n\n".RadioCraft::block()
             // Tone and sense (user 2026-10-12: "Die Texte müssen sinnhafter werden … viel mehr Sarkasmus und Zynismus … toxischer").
             ."\n\n".self::TONE
+            // One point per bit, punchline last, planned before it is written (P8).
+            ."\n\n".self::BIT
             // Who Markus is in the podcast, topics, style and gags with their sources (CasterPersonas, user 2026-10-12).
             ."\n\n".CasterPersonas::markus()."\n";
-    }
-
-    /**
-     * The league's style guide as the TV voice reads it: without its chat
-     * and post sections ("Alltagssprache" with its short sentences, one-word
-     * exclamations and ellipses, "Englische Posts") and without "Kürzer ist
-     * fast immer besser". Spoken, those make the choppy fragments OmniVoice
-     * intones badly (user 2026-10-12); the caster guide says how a spoken
-     * sentence is built instead.
-     */
-    public static function spokenStyleGuide(string $guide): string
-    {
-        $guide = (string) preg_replace('/^## Alltagssprache\b.*?(?=^## Harte Regeln)/msu', '', $guide);
-
-        return trim(str_replace(' Kürzer ist fast immer besser.', '', $guide));
     }
 
     /**
@@ -1312,8 +1387,9 @@ final class CasterVoice
      * @param  list<CanonEntry>  $selection
      * @param  list<string>  $avoidOpenings  the first words of the last scripts
      * @param  list<string>  $rejected  the reason codes of a first draft the checks turned down (one more try)
+     * @param  list<string>  $repeated  the sentences of that draft that repeated what the station said (repeatBlock())
      */
-    public function variablePart(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $selection, array $avoidOpenings, array $rejected = [], bool $long = false, ?string $material = null, ?string $materialData = null): string
+    public function variablePart(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $selection, array $avoidOpenings, array $rejected = [], bool $long = false, ?string $material = null, ?string $materialData = null, array $repeated = []): string
     {
         // A scene with a material other than `league` is no slide commentary (user 2026-10-12: "Das mit den
         // Slide-Fakten ist nicht stimmig. Lieber mehr Lebendigkeit!"): the slide's facts stay out of its prompt.
@@ -1323,7 +1399,7 @@ final class CasterVoice
                 .": {$minSentences} bis {$maxSentences} Sätze".($kind === 'scene' && ! $long ? ' (am besten drei bis fünf)' : '').', jeder Satz in einer eigenen Zeile, gesprochen auf Deutsch.'
                 ."\n".self::SENTENCE_STYLE
                 .($withFacts
-                    ? "\nHöchstens EIN Fakt aus dem Fakten-Block".(self::namesAllowed($kind, $phase) === 0 ? '' : ' (zwei bei einem Ergebnis oder Champion)').', ohne Statistiken vorzulesen. Der Rest: ein Spruch aus dem Kanon unten, Stolz auf die Liga, eine Einladung oder eine Frage an den Chat, mit Gefühl und ein bis zwei Markern.'
+                    ? "\nHöchstens EIN Fakt aus dem Fakten-Block".(self::namesAllowed($kind, $phase) === 0 ? '' : ' (zwei bei einem Ergebnis oder Champion)').', ohne Statistiken vorzulesen. Um diesen einen Fakt baust du den Beitrag: was er bedeutet, deine Zuspitzung, die Pointe; ein Kanon-Spruch, eine Einladung oder eine Frage an den Chat nur, wenn sie genau diesen Punkt weiterdreht. Mit Gefühl und ein bis zwei Markern.'
                     : "\nDein Stoff diesmal: ".self::MATERIALS[$material].' Frei, lebendig, mit Witz und Sarkasmus, mit Gefühl und ein bis zwei Markern; keine Statistik und keine Spielstände vorlesen.')
                 ."\n".(self::namesAllowed($kind, $phase) === 0 ? 'Keine Spielernamen in diesem Skript: sag „die Nummer eins“, „zwei Spieler“, „ein Neuling“.' : 'Meist ohne Namen: höchstens EIN Spielername im ganzen Skript, und nur einmal.')
                 .($withFacts && self::hasGames($facts) ? "\n".self::ANCHOR_RULE : ''),
@@ -1367,6 +1443,11 @@ final class CasterVoice
         if ($rejected !== []) {
             $reasons = array_map(fn (string $code): string => '- '.(self::REASON_HINTS[$code] ?? VoicePrompt::REASON_HINTS[$code] ?? $code), $rejected);
             $parts[] = "## Dein erster Entwurf ging nicht durch\n\n".implode("\n", $reasons)."\n\nSchreib neu: einfacher, nur die Fakten, in ganzen Sätzen.";
+        }
+
+        $repeatBlock = self::repeatBlock($repeated);
+        if ($repeatBlock !== null) {
+            $parts[] = $repeatBlock;
         }
 
         $parts[] = self::varietyBlock();
@@ -1459,6 +1540,9 @@ final class CasterVoice
         // "#1" in a fact (a tournament name) is spoken "Nummer 1": the model then never sees a hash to copy.
         $facts = self::spokenFacts(LeagueVoice::publicFacts($facts));
         $rejected = [];
+        // A scene draws its material (MATERIALS) once: a second try says the same bit anew (P8), it is no other bit.
+        // A live moment, a chat line or a zap thank-you stays with its facts; a caller that needs the facts names the material.
+        [$material, $materialData] = $kind === CasterScript::SCENE && $material === null ? $this->material($phase, $facts) : [$material, null];
 
         // Two tries at most, like LeagueVoice: the second one only after the checks turned the first down, with their reasons.
         for ($try = 0; $try < 2; $try++) {
@@ -1470,7 +1554,7 @@ final class CasterVoice
                 return null;
             }
 
-            [$script, $rejected] = $this->draft($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $settings, $rejected, $long, $material);
+            [$script, $rejected] = $this->draft($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $settings, $rejected, $long, $material, $materialData, $try === 1);
 
             if ($script !== null) {
                 return $script;
@@ -1489,9 +1573,10 @@ final class CasterVoice
      * @param  list<string>  $topics
      * @param  array<array-key, mixed>  $settings
      * @param  list<string>  $rejected  the reasons of the previous try
+     * @param  bool  $last  the last try: a repeated sentence no longer turns it down (the queue ends the script before it)
      * @return array{0: array{text: string, canon_id: string|null, mood: string}|null, 1: list<string>}
      */
-    private function draft(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $settings, array $rejected, bool $long = false, ?string $material = null): array
+    private function draft(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $settings, array $rejected, bool $long = false, ?string $material = null, ?string $materialData = null, bool $last = true): array
     {
         $canonSettings = (array) config('esports.voice.canon', []);
         // A small pick for the phase's moment (`tv.commentary.scripts.canon`): the posts' 50 to 100 entries were
@@ -1511,14 +1596,10 @@ final class CasterVoice
         $openings = array_map(ScriptGuard::opening(...), $recentTexts);
         $this->rememberMany('canon_offered', array_column($selection, 'id'), self::CANON_ROTATION);
 
-        // A scene draws its material (MATERIALS); a live moment, a chat line or a zap thank-you stays with its facts.
-        // A caller that needs the facts (a chat wish for the game) names the material itself.
-        [$material, $materialData] = $kind === CasterScript::SCENE && $material === null ? $this->material($phase, $facts) : [$material, null];
-
         $this->usage->recordAttempt(self::CHANNEL);
 
         $response = ($this->agent())
-            ->prompt($this->variablePart($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $selection, $openings, $rejected, $long, $material, $materialData));
+            ->prompt($this->variablePart($kind, $phase, $facts, $minSentences, $maxSentences, $hints, $topics, $selection, $openings, $rejected, $long, $material, $materialData, in_array(self::SPOKEN_REPEAT, $rejected, true) ? $this->repeated : []));
 
         $this->usage->recordTokens(
             self::CHANNEL,
@@ -1569,6 +1650,10 @@ final class CasterVoice
             ...$this->guard()->check($spoken, $facts, (int) ($settings['max_chars'] ?? 900), $canonId),
             ...$this->scriptGuard->check($text, $minSentences, $maxSentences, $maxWords, $openings),
         ]);
+
+        if ($violations === [] && ! $last && ($this->repeated = $this->repeatedSentences($text)) !== []) {
+            $violations = [self::SPOKEN_REPEAT];
+        }
 
         if ($violations !== []) {
             $violations = array_values(array_unique($violations));

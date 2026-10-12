@@ -39,14 +39,24 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
     /**
      * @param  float|null  $temperatureOverride  sampling temperature (null: the provider's default); the TV voice samples hot for variance
      * @param  int|null  $maxTokensOverride  output tokens (null: `esports.voice.max_output_tokens`); a long TV segment needs more than a post
+     * @param  bool  $plan  the TV voice plans its bit before it writes (PLAN_FIELDS ahead of `text`)
      * @param  int|null  $timeoutOverride  seconds (null: `esports.voice.timeout_seconds`); a five-minute show takes longer to write than a post
      */
     public function __construct(
         private readonly string $fixedPart = '',
         private readonly ?float $temperatureOverride = null,
         private readonly ?int $maxTokensOverride = null,
+        private readonly bool $plan = false,
         private readonly ?int $timeoutOverride = null,
     ) {}
+
+    /**
+     * The fields a TV answer fills before `text` (plan "TWENTY ONE Radio" P8): the one point of the bit and what its
+     * last sentence lands on. With thinking off and structured output the model cannot work anything out before it
+     * answers (Anthropic, "Prompting Claude Sonnet 5.5", Reasoning tasks with JSON output, read 2026-10-12); the
+     * fields ahead of `text` are that step. Never spoken.
+     */
+    public const PLAN_FIELDS = ['punkt', 'pointe'];
 
     public function temperature(): ?float
     {
@@ -96,7 +106,13 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 
     public function schema(JsonSchema $schema): array
     {
+        $plan = [];
+        foreach ($this->plan ? self::PLAN_FIELDS : [] as $field) {
+            $plan[$field] = $schema->string()->required();
+        }
+
         return [
+            ...$plan,
             'text' => $schema->string()->required(),
             'canon_id' => $schema->string()->nullable()->required(),
             'mood' => $schema->string()->enum(self::MOODS)->required(),

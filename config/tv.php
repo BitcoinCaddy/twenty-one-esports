@@ -745,6 +745,10 @@ return [
         // No sentence again within this many hours, from any source (App\Support\Caster\SpokenMemory; user 2026-10-12:
         // "ALLE WIEDERHOLUNGEN RAUS!!!"): the queue keeps a day of scripts, so more than 24 has no effect. 0 turns it off.
         'repeat_hours' => (int) env('TV_COMMENTARY_REPEAT_HOURS', 24),
+        // A worn phrase (four words, two with content, said twice) counts within this many hours only (plan "TWENTY ONE
+        // Radio" P8): over a whole day, every fact phrase ("der Spieler mit Weiß", "mit Nostr einloggen", "die Welt
+        // berichtet, dass") wore out and took the script with it; 10.6 % of fresh eval sentences at 24 h, 5.5 % at 6 h.
+        'repeat_phrase_hours' => (int) env('TV_COMMENTARY_REPEAT_PHRASE_HOURS', 6),
 
         'length' => [
             'shares' => [
