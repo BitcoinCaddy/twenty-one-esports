@@ -14,6 +14,7 @@ use App\Support\Caster\Programme\SportResults;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\Programme\WeatherReport;
 use App\Support\Caster\SceneDirector;
+use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
 use App\Support\Caster\WorldMemory;
@@ -348,6 +349,42 @@ it('writes no Sport und Wetter after the half-hour headlines', function () {
     expect($queue->fillBulletin(CarbonImmutable::now()))->toBe(1)
         ->and($queue->fillSportWeather(CarbonImmutable::now()))->toBe(0)
         ->and(CasterScript::query()->where('topic', SportWeather::TOPIC)->count())->toBe(0);
+});
+
+it('writes Sport und Wetter again an hour later from the same data, the repeat filter on (live 22:00, 2026-10-12)', function () {
+    // Live: the model's draft for 22:00 was accepted, but the rubric repeat cut took its first line after the opener
+    // (the same score as at 21:00) for a repeat and dropped the whole segment; the news talk followed the bulletin alone.
+    config(['tv.commentary.repeat_hours' => 6]);
+    sportWeatherSources();
+    VoiceAgent::fake(fn (AgentPrompt|string $prompt): array => sportWeatherAnswer($prompt));
+    $queue = app(ScriptQueue::class);
+    $bulletinFor = function () use ($queue): void {
+        $slot = BroadcastClock::fromConfig()->nextBulletin(CarbonImmutable::now());
+        $queue->enqueue(CasterScript::BULLETIN, ScenePhase::BREAK, 'Es ist die volle Stunde, hier sind die Nachrichten auf TWENTY ONE TV.', 'bulletin:'.$slot['key'], 75, CarbonImmutable::now(),
+            airsAt: $slot['starts_at'], expiresAt: $slot['starts_at']->addMinutes(2));
+    };
+
+    $bulletinFor();
+    expect($queue->fillSportWeather(CarbonImmutable::now()))->toBe(1);
+
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 14:53:00', 'Europe/Berlin'));
+    $bulletinFor();
+    $first = CasterScript::query()->where('topic', SportWeather::TOPIC)->min('id');
+
+    expect($queue->fillSportWeather(CarbonImmutable::now()))->toBe(1);
+
+    $later = CasterScript::query()->where('topic', SportWeather::TOPIC)->where('facts_hash', 'sport_weather:'.CarbonImmutable::parse('2026-10-12 15:00:00', 'Europe/Berlin')->getTimestamp())->orderBy('part_index')->get();
+    $lines = $later->flatMap(fn (CasterScript $part): array => ScriptGuard::lines($part->text));
+    $speakers = $later->flatMap(fn (CasterScript $part): array => $part->speakers);
+
+    expect($later)->not->toBeEmpty()
+        ->and($later->first()->id)->toBeGreaterThan($first)
+        ->and($lines->implode("\n"))->toContain('sechs zu null')->toContain('minus drei Grad')
+        // The opener and all ten lines, each with its speaker.
+        ->and($lines)->toHaveCount(11)
+        ->and($speakers)->toHaveCount(11)
+        ->and($speakers->first())->toBe(DuetDirector::MARKUS)
+        ->and($speakers->get(2))->toBe(DuetDirector::SIRIUS);
 });
 
 it('leaves Sport und Wetter out once the news talk is written: the talk keeps its place', function () {

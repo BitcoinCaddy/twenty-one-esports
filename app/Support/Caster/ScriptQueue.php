@@ -701,6 +701,13 @@ class ScriptQueue
         if ($kind === CasterScript::BULLETIN) {
             $this->memory ??= new SpokenMemory;
             $this->memory->remember($text, $now);
+        } elseif ($topic === SportWeather::TOPIC) {
+            // Data read out every hour repeats by nature: the same temperature or score at 20:00 and 21:00 cut the weather
+            // off the end of "Sport und Wetter" (user 2026-10-12: "Was ist mit dem Wetter passiert?"), and a repeated first
+            // line after the opener dropped the whole segment (live 22:00). Only a goodbye goes, each line with its speaker.
+            [$text, $speakers] = self::linesBeforeSignOff($text, $speakers);
+            $this->memory ??= new SpokenMemory;
+            $this->memory->remember($text, $now);
         } elseif ($kind === CasterScript::RUBRIC && $speakers !== null) {
             // The rubric's opening line (time and name) comes back on purpose; its content leaves repeats like a duet.
             $lines = ScriptGuard::lines($text);
@@ -728,12 +735,6 @@ class ScriptQueue
                 return null;
             }
 
-            $this->memory->remember($text, $now);
-        } elseif ($kind === CasterScript::BULLETIN || $topic === 'sport_wetter') {
-            // Data read out every hour repeats by nature: the same temperature at 20:00 and 21:00 cut the weather off the
-            // end of "Sport und Wetter" (user 2026-10-12: "Was ist mit dem Wetter passiert?"). Only a goodbye goes.
-            $text = self::beforeSignOff($text);
-            $this->memory ??= new SpokenMemory;
             $this->memory->remember($text, $now);
         } else {
             $this->memory ??= new SpokenMemory;
@@ -1026,6 +1027,36 @@ class ScriptQueue
      *
      * @param-out bool $cut
      */
+    /**
+     * The lines of `$text` up to a sign-off, each kept line with its speaker (`$speakers`, one per line; null stays null).
+     *
+     * @param  list<string>|null  $speakers
+     * @return array{0: string, 1: list<string>|null}
+     */
+    public static function linesBeforeSignOff(string $text, ?array $speakers): array
+    {
+        if ($speakers === null) {
+            return [self::beforeSignOff($text), null];
+        }
+
+        [$lines, $kept] = [[], []];
+
+        foreach (ScriptGuard::lines($text) as $index => $line) {
+            $line = self::beforeSignOff(trim($line), $signedOff);
+
+            if (trim(ScriptGuard::withoutMarkers($line)) !== '') {
+                $lines[] = str_replace("\n", ' ', $line);
+                $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
+            }
+
+            if ($signedOff) {
+                break;
+            }
+        }
+
+        return [implode("\n", $lines), $kept];
+    }
+
     public static function beforeSignOff(string $text, ?bool &$cut = null): string
     {
         $lines = [];

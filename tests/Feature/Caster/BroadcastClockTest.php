@@ -312,6 +312,45 @@ it('plays the bulletin at its slot: never before, a scene on air cut at the end 
         ->and($stinger['voice_at'] - $stinger['at'])->toBeGreaterThanOrEqual(3.0);
 });
 
+it('cuts a long duet part on air across the hour for the bulletin and resumes its rest after the news (live 22:00, 2026-10-12)', function () {
+    // Live: part one of a two-part ladder duet (34 s) started at 21:59:51; the bulletin waited for its end until 22:00:28.
+    $slot = CarbonImmutable::parse('2026-10-12 22:00:00', 'Europe/Berlin');
+    $this->travelTo($slot->subSeconds(9));
+    config(['tv.commentary.parts.sentences' => 5, 'tv.commentary.repeat_hours' => 0]);
+    $first = app(ScriptQueue::class)->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", array_map(fn (int $number): string => "Auf der Rapid Ladder steht Satz Nummer {$number}.", range(1, 10))), 'ladders:x', 50, CarbonImmutable::now());
+    $second = CasterScript::query()->where('part_group', $first->part_group)->where('part_index', 2)->sole();
+    radioFakeDecoding();
+    $bulletin = radioClip(CasterScript::BULLETIN, 30, $slot);
+    $part = app(ClipSpool::class)->store($first->refresh(), casterOpus(40_000), 40.0, range(5.0, 40.0, 5.0), CarbonImmutable::now());
+    $planner = new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
+    $director = radioDirector();
+    $order = [];
+    $last = null;
+
+    for ($t = (float) $slot->subSeconds(9)->getTimestamp(); $t <= $slot->getTimestamp() + 120; $t += 0.25) {
+        $this->travelTo(CarbonImmutable::createFromTimestamp((int) $t));
+        if (abs($t - $slot->getTimestamp() - 10.0) < 0.01) {
+            app(ClipSpool::class)->store($second->refresh(), casterOpus(10_000), 10.0, [5.0, 10.0], CarbonImmutable::now());
+        }
+
+        $director->tick($planner, $planner->at($t, []), $t);
+
+        if ($director->clip()?->id !== $last) {
+            $last = $director->clip()?->id;
+            if ($last !== null) {
+                $order[] = [$director->clip()->caster_script_id, $t - $slot->getTimestamp()];
+            }
+        }
+    }
+
+    // Part one started 9 s before the slot (sentences every 5 s): cut at its sentence end 1 s after the slot.
+    expect(array_column($order, 0))->toBe([$first->id, $bulletin->caster_script_id, $first->id, $second->id])
+        ->and($order[0][1])->toBe(-9.0)
+        ->and($order[1][1])->toBeGreaterThanOrEqual(0.0)->toBeLessThanOrEqual(6.0)
+        ->and($order[2][1])->toBeGreaterThanOrEqual($order[1][1] + 30.0)
+        ->and(CasterClip::query()->whereKey($part->id)->exists())->toBeFalse();
+});
+
 it('lets no reaction or takeover cut into a bulletin: the chat reply follows it', function () {
     $slot = CarbonImmutable::parse('2026-10-12 14:30:00', 'Europe/Berlin');
     $this->travelTo($slot);
