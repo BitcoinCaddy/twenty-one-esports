@@ -478,3 +478,10 @@ it('stocks the evergreen formats for the day stock with their jingle', function 
         ->and(StockScripts::jinglesFor(StockScripts::TOPIC_PREFIX.Roasts::SCHWARZBUCH)[0])->toBe('rubric-schwarzbuch')
         ->and(StockScripts::prompt(Roasts::INFLATION, 'x'))->toContain('Inflationsbeichte');
 });
+
+it('reads the relays with the real reader when the container builds the material', function () {
+    // Real run 2026-10-12: a nullable reader defaulted to null in the container and every Nostr-Fundbüro was skipped.
+    $reader = (fn () => $this->reader)->call(app(RoastMaterial::class));
+
+    expect($reader)->toBeInstanceOf(RelayReader::class);
+});
