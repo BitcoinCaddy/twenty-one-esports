@@ -163,6 +163,9 @@ return [
             // Bauernkrieg segment is 15 to 30 sentences, about ten VoiceStudio calls).
             // A programme block (P6) of up to six minutes holds its claims while all of it is voiced.
             'claim_seconds' => (int) env('TV_COMMENTARY_CLAIM_SECONDS', 1200),
+            // A claimed script the clock places (bulletin, rubric, teaser) is free again after this long instead: a
+            // fetcher killed mid-voicing held bulletins 2644 and 2706 past their slots (prod 2026-10-13).
+            'slot_claim_seconds' => (int) env('TV_COMMENTARY_SLOT_CLAIM_SECONDS', 120),
         ],
 
         'spool' => [
@@ -691,8 +694,10 @@ return [
                 'fresh_hours' => (int) env('TV_COMMENTARY_BULLETIN_FRESH_HOURS', 12),
                 'league' => true,
                 'league_hours' => 12,
-                'write_minutes_ahead' => 7,
+                // Ten minutes ahead (2026-10-13): two bulletins expired unvoiced with seven minutes of lead.
+                'write_minutes_ahead' => (int) env('TV_COMMENTARY_BULLETIN_WRITE_MINUTES', 10),
                 'last_write_minutes' => 2,
+                // Not voiced this long before its slot, the bulletin is skipped with its follow-ups (ScriptQueue::expire()).
                 'ready_seconds' => 60,
                 'late_seconds' => 120,
                 'priority' => 75,

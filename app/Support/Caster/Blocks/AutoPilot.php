@@ -50,9 +50,9 @@ final class AutoPilot
     /** Whether the workstation reported VoiceStudio down within `fetch.online_seconds`. */
     public static function voiceDown(CarbonImmutable $now): bool
     {
-        $at = Cache::get(self::VOICE_DOWN);
+        $at = ClipSpool::cachedTimestamp(Cache::get(self::VOICE_DOWN));
 
-        return is_int($at) && $now->getTimestamp() - $at <= (int) config('tv.commentary.fetch.online_seconds', 120);
+        return $at !== null && $now->getTimestamp() - $at <= (int) config('tv.commentary.fetch.online_seconds', 120);
     }
 
     public static function active(CarbonImmutable $now): bool

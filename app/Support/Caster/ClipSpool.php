@@ -373,11 +373,29 @@ class ClipSpool
         return $at === null ? null : CarbonImmutable::parse((string) $at, 'UTC');
     }
 
+    /**
+     * Whether the workstation made any fetch request (a claim poll, idle or not, or a heartbeat) within
+     * `fetch.online_seconds`.
+     */
     public function fetcherOnline(CarbonImmutable $now): bool
     {
-        $seen = Cache::get(self::FETCHER_SEEN);
+        $seen = self::cachedTimestamp(Cache::get(self::FETCHER_SEEN));
 
-        return is_int($seen) && $now->getTimestamp() - $seen <= (int) config('tv.commentary.fetch.online_seconds', 120);
+        return $seen !== null && $now->getTimestamp() - $seen <= (int) config('tv.commentary.fetch.online_seconds', 120);
+    }
+
+    /**
+     * A unix timestamp read back from the cache. The Redis store keeps a number unserialized and returns it as a
+     * numeric string (prod 2026-10-13: `caster:fetcher_seen_at` read "1791847226"), the database and array stores
+     * return the int: both count, anything else is none.
+     */
+    public static function cachedTimestamp(mixed $value): ?int
+    {
+        return match (true) {
+            is_int($value) => $value,
+            is_string($value) && ctype_digit($value) => (int) $value,
+            default => null,
+        };
     }
 
     /**
@@ -529,6 +547,25 @@ class ClipSpool
     {
         return CasterScript::query()->where('part_group', $group)->where('part_index', $index)
             ->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED, CasterScript::VOICED])->where('expires_at', '>', $now)->exists();
+    }
+
+    /**
+     * Scripts that must not air any more (the follow-ups of a skipped bulletin, ScriptQueue::expire()): they expire,
+     * voiced or not, and their ready clips are deleted; what already plays is left alone.
+     *
+     * @param  array<int, int>  $ids  script ids
+     */
+    public function dropScripts(array $ids): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        CasterScript::query()->whereKey($ids)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED, CasterScript::VOICED])->update(['status' => CasterScript::EXPIRED]);
+
+        foreach (CasterClip::query()->where('status', CasterClip::READY)->whereIn('caster_script_id', $ids)->get() as $clip) {
+            $this->delete($clip);
+        }
     }
 
     /**

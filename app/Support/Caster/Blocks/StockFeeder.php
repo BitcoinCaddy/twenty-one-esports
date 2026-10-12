@@ -331,11 +331,11 @@ final class StockFeeder
     /** The scripts the vanished workstation held go back to the queue at once (its claims never come back). */
     private function releaseClaims(CarbonImmutable $now): int
     {
-        $seen = Cache::get(ClipSpool::FETCHER_SEEN);
+        $seen = ClipSpool::cachedTimestamp(Cache::get(ClipSpool::FETCHER_SEEN));
         $queue = app(ScriptQueue::class);
         $released = 0;
 
-        foreach (CasterScript::query()->where('status', CasterScript::CLAIMED)->when(is_int($seen), fn ($query) => $query->where('claimed_at', '<=', CarbonImmutable::createFromTimestamp((int) $seen)))->get() as $script) {
+        foreach (CasterScript::query()->where('status', CasterScript::CLAIMED)->when($seen !== null, fn ($query) => $query->where('claimed_at', '<=', CarbonImmutable::createFromTimestamp((int) $seen)))->get() as $script) {
             $queue->release($script);
             $released++;
         }

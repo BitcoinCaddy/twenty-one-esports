@@ -953,6 +953,13 @@ class ScriptQueue
             ->where('claimed_at', '<', $now->subSeconds((int) config('tv.commentary.fetch.claim_seconds', 180)))
             ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
 
+        // A script the clock places is free again much sooner: a fetcher killed while voicing it (a restart, prod
+        // 2026-10-13: bulletins 2644 and 2706) would otherwise hold it past its slot. A second voicing is harmless,
+        // the later upload is refused (not_claimed).
+        CasterScript::query()->where('status', CasterScript::CLAIMED)->whereNotNull('airs_at')
+            ->where('claimed_at', '<', $now->subSeconds((int) config('tv.commentary.fetch.slot_claim_seconds', 120)))
+            ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
+
         return DB::transaction(function () use ($now, $kinds, $stock): ?CasterScript {
             $script = CasterScript::query()->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
                 ->where(fn ($query) => $stock ? $query->where('scene', StockScripts::SCENE) : self::notStock($query))
@@ -960,6 +967,8 @@ class ScriptQueue
                 ->where(fn ($query) => $query->whereNull('part_group')->orWhereNotExists(fn ($earlier) => $earlier->from('caster_scripts as earlier')
                     ->whereColumn('earlier.part_group', 'caster_scripts.part_group')->whereColumn('earlier.part_index', '<', 'caster_scripts.part_index')
                     ->where('earlier.status', CasterScript::QUEUED)))
+                // A bulletin first, whatever else waits: it airs at its slot or not at all.
+                ->orderByRaw('case when kind = ? then 0 else 1 end', [CasterScript::BULLETIN])
                 ->orderByDesc('priority')->orderBy('id')->lockForUpdate()->first();
 
             $script?->update(['status' => CasterScript::CLAIMED, 'claimed_at' => $now]);
@@ -984,7 +993,9 @@ class ScriptQueue
      */
     public function expire(CarbonImmutable $now): int
     {
-        $expired = CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
+        $expired = $this->skipUnreadyBulletins($now);
+
+        $expired += CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
             ->where('expires_at', '<=', $now)->update(['status' => CasterScript::EXPIRED]);
 
         // The parts of a script expire together: without the part before it, a part would start mid-story.
@@ -999,6 +1010,28 @@ class ScriptQueue
             ->delete();
 
         return $expired;
+    }
+
+    /**
+     * A bulletin not voiced `bulletin.ready_seconds` before its slot is skipped cleanly: it expires unvoiced, and with
+     * it the follow-ups of that slot (Sport und Wetter, the news talk), voiced or not, so nothing on air says "nach den
+     * Nachrichten" about news that never aired (prod 2026-10-13, 00:00 Berlin).
+     *
+     * @return int bulletins skipped now
+     */
+    private function skipUnreadyBulletins(CarbonImmutable $now): int
+    {
+        $bulletins = CasterScript::query()->where('kind', CasterScript::BULLETIN)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
+            ->whereNotNull('airs_at')->where('airs_at', '<=', $now->utc()->addSeconds((int) config('tv.commentary.programme.bulletin.ready_seconds', 60)))->get();
+
+        foreach ($bulletins as $bulletin) {
+            $bulletin->update(['status' => CasterScript::EXPIRED]);
+            $key = Str::after((string) $bulletin->facts_hash, 'bulletin:');
+            app(ClipSpool::class)->dropScripts(CasterScript::query()->where('kind', CasterScript::RUBRIC)
+                ->whereIn('facts_hash', ['sport_weather:'.$key, 'news_talk:'.$key])->pluck('id')->map(fn (mixed $id): int => (int) $id)->values()->all());
+        }
+
+        return $bulletins->count();
     }
 
     /** Scene scripts of a topic written for other facts than `$hash` expire: the slide they talk about changed. */
