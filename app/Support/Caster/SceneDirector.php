@@ -75,7 +75,8 @@ use Carbon\CarbonImmutable;
  * `bulletin.late_seconds` late) it plays before anything else, over the
  * music gap and the quiet hours' ten-minute rhythm. A scene or segment on air
  * is cut at the end of its sentence for it; a live moment, a reaction or a
- * part of a story ends first (the story goes on after the bulletin). Nothing
+ * part of a story too, and its rest resumes from that sentence after the news
+ * (the story goes on after the bulletin; it never waits for a clip's end). Nothing
  * cuts into a bulletin: no takeover, no reaction, no wish; they follow it.
  * A bulletin ends a run and does not count as a run clip. Hook for the
  * stinger (P4): a slot with `stinger` leaves a cue (takeStinger()) and the
@@ -268,6 +269,16 @@ final class SceneDirector
             if ($this->clip === null) {
                 if ($this->play($planner, $bulletin, $now)) {
                     return null;
+                }
+            } elseif ($bulletin->kind === CasterScript::BULLETIN && ! $this->clip->isBlock() && ($this->clipIsPart || in_array($this->clip->kind, ClipSpool::LIVE_KINDS, true))) {
+                // The news never waits for a clip's end: a part of a story, a reaction or a live moment is cut at its next
+                // sentence end too and its rest resumes from there after the news (live 2026-10-12 22:00: a 34 s duet part
+                // that started 9 s before the slot held the bulletin back to 22:00:28).
+                $end = $this->timeline->nextSentenceEnd($this->earliestCut($now, resumable: true)) ?? $this->earliestCut($now, resumable: true);
+
+                if (! $this->timeline->isCut() && $end < (float) $this->timeline->endsAt() - 1.0) {
+                    $this->cut($end, $now, resume: true);
+                    $planner->hold($end + 0.3);
                 }
             } elseif (! $this->timeline->isCut() && ($this->clip->isBlock() || ! $this->clipIsPart) && ! in_array($this->clip->kind, ClipSpool::LIVE_KINDS, true)) {
                 // A block is cut at the end of its sentence on air too, and resumes from there after the news.
