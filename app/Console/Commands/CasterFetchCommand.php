@@ -3,9 +3,14 @@
 namespace App\Console\Commands;
 
 use App\Support\Caster\CasterFetcher;
+use App\Support\Caster\QuietHours;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Process\InvokedProcess;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Process;
 
 /**
  * The TV commentary fetcher, meant for Markus Turm's workstation (plan
@@ -17,6 +22,12 @@ use Illuminate\Console\Command;
  * VoiceStudio is unreachable. Keeps no audio on disk
  * (CasterFetcher). Prints a line only when its state changes, so a fetcher
  * that runs for days does not grow a log.
+ *
+ * Outside the quiet hours it also starts `caster:podcast-transcript` in the
+ * background at most every `tv.commentary.podcast.check_minutes`
+ * (podcastDue()), so a new podcast episode is transcribed within the hour
+ * while the voicing goes on; the first check after the quiet hours is the
+ * daily retry after a failure.
  */
 #[Signature('caster:fetch {--once : Claim and voice at most one script, then exit}')]
 #[Description('Voice TV commentary scripts with the local VoiceStudio and upload the clips (workstation)')]
@@ -26,6 +37,11 @@ class CasterFetchCommand extends Command
     private const WAITS = [CasterFetcher::VOICED => 0, CasterFetcher::IDLE => 1, CasterFetcher::RELEASED => 3, CasterFetcher::OFFLINE => 6];
 
     private bool $stopping = false;
+
+    /** The transcription started in the background, kept so it is not stopped with the object. */
+    private ?InvokedProcess $podcast = null;
+
+    private const PODCAST_CHECKED = 'caster:podcast:checked';
 
     public function handle(CasterFetcher $fetcher): int
     {
@@ -37,6 +53,10 @@ class CasterFetchCommand extends Command
         $last = null;
 
         do {
+            if (! $this->option('once') && self::podcastDue(CarbonImmutable::now(), $this->podcast?->running() ?? false)) {
+                $this->podcast = Process::path(base_path())->timeout(4 * 3_600)->start([PHP_BINARY, 'artisan', 'caster:podcast-transcript']);
+            }
+
             $outcome = $fetcher->runOnce();
 
             if ($outcome !== $last) {
@@ -54,6 +74,18 @@ class CasterFetchCommand extends Command
         } while (! $this->stopping);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Whether the background transcription should start now: the switch is on, no quiet hours, none running, and
+     * none started within `check_minutes` (the check is remembered at once).
+     */
+    public static function podcastDue(CarbonImmutable $now, bool $running): bool
+    {
+        $minutes = (int) config('tv.commentary.podcast.check_minutes', 60);
+
+        return config('tv.commentary.podcast.transcribe') === true && $minutes > 0 && ! $running && ! QuietHours::active($now)
+            && Cache::add(self::PODCAST_CHECKED, $now->getTimestamp(), $minutes * 60);
     }
 
     /**

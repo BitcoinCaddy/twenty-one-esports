@@ -115,6 +115,20 @@ return [
             // The canon entries a scene script's prompt offers (fitting the phase first): the system prompt (guides,
             // patterns, invitations) stays byte-identical and cached, only the facts and this pick vary.
             'canon' => ['min' => 12, 'max' => 15, 'token_budget' => 2_000],
+            // What a scene script is about (user 2026-10-12: "Das mit den Slide-Fakten ist nicht stimmig. Lieber mehr
+            // Lebendigkeit!"): one material drawn per call by these weights (CasterVoice::MATERIALS); a material without
+            // data (no podcast digest, no world memory, no own note) is left out of the draw. `league` is the only one
+            // that shows the slide's facts, so at most about `league` / total of the scenes mention one.
+            'materials' => [
+                'world' => (int) env('TV_COMMENTARY_MATERIAL_WORLD', 3),
+                'podcast' => (int) env('TV_COMMENTARY_MATERIAL_PODCAST', 2),
+                'canon' => (int) env('TV_COMMENTARY_MATERIAL_CANON', 3),
+                'fiat' => (int) env('TV_COMMENTARY_MATERIAL_FIAT', 2),
+                'nostr' => (int) env('TV_COMMENTARY_MATERIAL_NOSTR', 1),
+                'chat' => (int) env('TV_COMMENTARY_MATERIAL_CHAT', 2),
+                'invite' => (int) env('TV_COMMENTARY_MATERIAL_INVITE', 1),
+                'league' => (int) env('TV_COMMENTARY_MATERIAL_LEAGUE', 2),
+            ],
         ],
 
         // The deterministic scene scripts (App\Support\Caster\PatternScripts): at most `per_run` per fill() run,
@@ -400,6 +414,38 @@ return [
             // block at most `memory_tokens` (characters / 4).
             'memory_hours' => (int) env('TV_COMMENTARY_CHAT_MEMORY_HOURS', 24),
             'memory_tokens' => 1_500,
+        ],
+
+        // The rolling world memory (App\Support\Caster\WorldMemory, user 2026-10-12: "zu monoton und nicht reaktiv genug auf
+        // echte Geschehnisse"): what really happened in the last `hours` (aired headlines, results, tournaments, new players
+        // and clans, games on now, chat lines, zaps, wishes, Nostr notes aired), newest first, at most `tokens`
+        // (characters / 4), as data in every TV prompt; built at most every `cache_seconds`. A "Rückblick-Spitze" (a
+        // sarcastic callback on one or two of its items) is written every `callback_every_minutes` outside the quiet hours
+        // (0: never); an item is not called back again within `callback_repeat_hours`.
+        'world' => [
+            'hours' => (int) env('TV_COMMENTARY_WORLD_HOURS', 24),
+            'tokens' => (int) env('TV_COMMENTARY_WORLD_TOKENS', 2_000),
+            'cache_seconds' => 120,
+            'callback_every_minutes' => (int) env('TV_COMMENTARY_CALLBACK_EVERY_MINUTES', 12),
+            'callback_repeat_hours' => 6,
+            'callback_sentences' => ['min' => 2, 'max' => 4],
+        ],
+
+        // The latest EINUNDZWANZIG podcast episode as a transcript (App\Support\Caster\PodcastTranscripts): the workstation
+        // (`caster:podcast-transcript`, started by `caster:fetch` at most every `check_minutes` outside the quiet hours)
+        // downloads the newest episode, transcribes it with the local VoiceStudio Whisper in `chunk_seconds` pieces, deletes
+        // the audio and uploads the text (at most `max_bytes`). The server keeps the latest episode only; its digest (one
+        // Haiku call per episode, at most `digest_tokens`) goes into the cached system prompt of every TV call.
+        'podcast' => [
+            'transcribe' => (bool) env('TV_PODCAST_TRANSCRIBE', true),
+            'transcribe_url' => env('TV_WHISPER_URL', 'http://127.0.0.1:3900/v1/audio/transcriptions'),
+            'transcribe_timeout_seconds' => 1_800,
+            'chunk_seconds' => 600,
+            'max_audio_bytes' => 400 * 1024 * 1024,
+            'max_bytes' => 400 * 1024,
+            'digest_tokens' => 2_500,
+            'digest_retry_minutes' => 30,
+            'check_minutes' => 60,
         ],
     ],
 

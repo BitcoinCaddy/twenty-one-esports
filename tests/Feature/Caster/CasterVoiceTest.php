@@ -27,7 +27,8 @@ use Laravel\Ai\Prompts\AgentPrompt;
 */
 
 beforeEach(function () {
-    config(['tv.commentary.enabled' => true]);
+    // These cases are about the league material (the slide's facts); the material draw has its own cases in WorldMemoryTest.
+    config(['tv.commentary.enabled' => true, 'tv.commentary.scripts.materials' => ['league' => 1]]);
 });
 
 /**

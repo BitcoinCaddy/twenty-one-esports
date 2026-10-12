@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Support\Caster\CasterVoice;
+use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\ScriptQueue;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
@@ -12,19 +13,25 @@ use Illuminate\Console\Command;
 /**
  * Keeps the TV commentary queue filled (plan "KI-Stimme der Liga", P6):
  * expires stale scripts, seeds the fillers, and writes scene scripts until
- * `tv.commentary.scripts.ahead_seconds` of airtime wait. Scheduled every
- * minute while `tv.commentary.enabled`; off, it does nothing.
+ * `tv.commentary.scripts.ahead_seconds` of airtime wait, after the latest
+ * podcast transcript got its digest (PodcastTranscripts::ensureDigest(), once
+ * per episode). Scheduled every minute while `tv.commentary.enabled`; off,
+ * it does nothing.
  */
 #[Signature('caster:script')]
 #[Description('Write TV commentary scripts ahead and expire stale ones')]
 class CasterScriptCommand extends Command
 {
-    public function handle(ScriptQueue $queue): int
+    public function handle(ScriptQueue $queue, PodcastTranscripts $transcripts): int
     {
         if (! CasterVoice::enabled()) {
             $this->line('TV commentary is off (TV_COMMENTARY).');
 
             return self::SUCCESS;
+        }
+
+        if (ScriptQueue::aiEnabled() && $transcripts->ensureDigest()) {
+            $this->line('Wrote the digest of the latest podcast episode.');
         }
 
         $written = $queue->fill(CarbonImmutable::now());

@@ -154,6 +154,10 @@ Route::post('api/caster/scripts/{id}/clip', [CasterFetchController::class, 'clip
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.clip');
 Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
+Route::post('api/caster/podcast-transcript/status', [CasterFetchController::class, 'podcastStatus'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.podcast-status');
+Route::post('api/caster/podcast-transcript', [CasterFetchController::class, 'podcastTranscript'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.podcast-transcript');
 
 // OBS overlays (plan "OBS-Broadcast-Overlays", P2): an admin's preset by its secret token, and its data. No session,
 // no cookie, no CSRF: OBS keeps no login; a wrong or rotated token is 404 (BroadcastOverlayController).
