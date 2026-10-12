@@ -53,6 +53,8 @@ final class CasterFetchController
                 'id' => $script->id,
                 'kind' => $script->kind,
                 'sentences' => $script->sentences(),
+                // A duet (DuetDirector): the speaker of each sentence; null when Markus speaks alone.
+                'speakers' => $script->lineSpeakers(),
             ],
             'spool_seconds' => round($ready, 1),
             'target_seconds' => $target,

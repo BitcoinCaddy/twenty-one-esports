@@ -179,6 +179,13 @@ return [
         'voicestudio' => [
             'url' => env('TV_VOICESTUDIO_URL', 'http://127.0.0.1:3900'),
             'profile_id' => env('TV_VOICESTUDIO_PROFILE', 'ee7a2a18'),
+            // The voice of each speaker of a duet (DuetDirector); Markus' is `profile_id`. Consent: Sirius agreed (per Markus Turm, 2026-10-12).
+            'profiles' => [
+                'markus' => env('TV_VOICESTUDIO_PROFILE', 'ee7a2a18'),
+                'sirius' => env('TV_VOICESTUDIO_PROFILE_SIRIUS', '446d98e1'),
+            ],
+            // The breath when the speaker changes inside a clip (seconds, random within the range).
+            'speaker_pause' => ['min' => 0.25, 'max' => 0.4],
             'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
             'language' => 'de',
             'timeout_seconds' => 60,
@@ -338,6 +345,36 @@ return [
             'sentences' => (int) env('TV_COMMENTARY_PART_SENTENCES', 5),
             'breath_seconds' => 0.0,
             'wait_seconds' => 20,
+        ],
+
+        // Duets (App\Support\Caster\DuetDirector, user 2026-10-12: "Sirius ist so ein Side-Kommentator, der jeweils immer
+        // das zuletzt Gesagte von Markus kommentiert … mal hin und her, dann mal einmal Markus mit zweimal Sirius"): about
+        // `share` of the league voice's scene scripts are an exchange of Markus (M) and Sirius (S), rolling over the last
+        // `window_segments` scene scripts (never in the quiet hours); the rest stays Markus alone. A duet's turn sequence
+        // walks the weighted `patterns` turn by turn: where the turns so far form a whole pattern, it ends with the rising
+        // `stop` chance of that turn count, else the next speaker is drawn by the weight of the patterns that continue.
+        // Patterns breaking `max_run` or `turns` are ignored; Sirius never opens two duets in a row. His share of the
+        // duets' spoken seconds over the last `sirius_share.window_minutes` steers the next draw: above `max` only the
+        // patterns Markus opens with one Sirius turn are left (MS, MSM, MMS), below `min` a pattern's weight is divided
+        // by `cooldown` for each Sirius turn beyond the first.
+        // One model call writes the whole exchange (App\Support\Caster\DuetScripts, `daily_cap` calls a day).
+        'duet' => [
+            'share' => (float) env('TV_COMMENTARY_DUET_SHARE', 0.35),
+            'tolerance' => 0.05,
+            'window_segments' => 20,
+            'turns' => ['min' => 2, 'max' => 5],
+            'max_run' => 2,
+            'stop' => [2 => 0.35, 3 => 0.55, 4 => 0.8, 5 => 1.0],
+            'patterns' => [
+                'MS' => 30, 'MSM' => 20, 'MSS' => 9, 'MSMS' => 8, 'MMS' => 10, 'MSSM' => 4, 'MSMSM' => 4,
+                'SM' => 18, 'SMS' => 9,
+            ],
+            'sirius_share' => ['min' => 0.25, 'max' => 0.35, 'window_minutes' => 60],
+            'cooldown' => 0.35,
+            // The previous duet's last turns a follow-up may pick up, if it ran within this many minutes.
+            'follow_up_minutes' => 30,
+            'sentences' => ['markus' => ['min' => 1, 'max' => 3], 'sirius' => ['min' => 1, 'max' => 2]],
+            'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 150),
         ],
 
         // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen
