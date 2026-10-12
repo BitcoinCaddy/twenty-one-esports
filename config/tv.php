@@ -703,20 +703,28 @@ return [
             // The share of trusted chat replies that are a short duet: Markus answers, Sirius adds his take (user 2026-10-12).
             'duet_share' => (float) env('TV_COMMENTARY_CHAT_DUET_SHARE', 0.5),
             'notes_per_person' => 50,
-            'notes_days' => 30,
+            // Ninety days, not thirty (prod 2026-10-12): two of the six chatters who post at all had one note in thirty days.
+            'notes_days' => 90,
             'notes_total' => 20_000,
             'profiles_total' => 2_000,
             'persona_chars' => 600,
             'persona_refresh_hours' => 6,
-            // Where the chatter's kind 0 and newest notes are read (App\Support\Caster\ChatterCache::refresh), measured
-            // from prod 2026-10-12: purplepag.es has kind 0 only, nostr.mom/oxtr/wine/einundzwanzig had kind 0 and all
-            // fifteen notes, primal some notes but no kind 0, damus refused, nostr.band timed out. None answering:
-            // `esports.relays`. Read one after the other, so four (about six seconds measured); `knowledge_budget_seconds`
-            // stops starting the next one.
+            // Where the chatter's kind 0, newest notes and NIP-65 relay list are read (App\Support\Caster\ChatterCache::refresh),
+            // measured from prod 2026-10-12 for the eleven chatters: purplepag.es carries kind 0 and 10002 (eight of nine
+            // lists), primal and oxtr the most notes (six and five chatters), nostr.mom many but it failed about half the reads;
+            // nostr.wine held one chatter's notes and nothing else, damus refuses prod, nos.lol failed half the reads.
+            // None answering: `esports.relays`. Read one after the other; `knowledge_budget_seconds` stops starting the next.
             'knowledge_relays' => array_values(array_filter(array_map('trim', explode(',', env('APP_ENV') === 'testing'
                 ? (string) env('TV_COMMENTARY_KNOWLEDGE_RELAYS', '')
-                : ((string) env('TV_COMMENTARY_KNOWLEDGE_RELAYS') ?: 'wss://purplepag.es,wss://nostr.mom,wss://nostr.oxtr.dev,wss://nostr.wine'))))),
+                : ((string) env('TV_COMMENTARY_KNOWLEDGE_RELAYS') ?: 'wss://purplepag.es,wss://relay.primal.net,wss://nostr.oxtr.dev,wss://nostr.mom'))))),
             'knowledge_budget_seconds' => 8,
+            // Then the chatter's own write relays from that 10002 (kind 3's legacy map without one), NIP-65 outbox: at most
+            // `outbox_relays`, untrusted (RelayReader::readGuarded()), within `outbox_budget_seconds`; one that fails is
+            // skipped for `outbox_down_minutes`. `outbox_skip`: relays measured refusing prod.
+            'outbox_relays' => 4,
+            'outbox_budget_seconds' => 6,
+            'outbox_down_minutes' => 60,
+            'outbox_skip' => ['wss://relay.damus.io', 'wss://relay.nostr.band', 'wss://inbox.nostr.wine'],
             // The newest own notes (no replies) a refresh keeps, and how many of them a reply prompt carries, each cut.
             'knowledge_notes' => 15,
             'prompt_notes' => 3,

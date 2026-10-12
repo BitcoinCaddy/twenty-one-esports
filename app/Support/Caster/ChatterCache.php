@@ -15,6 +15,7 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\SeasonChain\RatedTrustGate;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 /**
@@ -35,6 +36,9 @@ use Throwable;
  */
 class ChatterCache
 {
+    /** Cache key prefix of an outbox relay that failed lately (outboxRelays()). */
+    public const DOWN_KEY = 'caster:outbox-down:';
+
     public function __construct(private RelayReader $reader) {}
 
     public function isReactable(string $pubkey): bool
@@ -119,7 +123,7 @@ class ChatterCache
         $days = $now->subDays((int) ($settings['notes_days'] ?? 30))->getTimestamp();
         $keep = max(1, (int) ($settings['knowledge_notes'] ?? 15));
 
-        $events = $this->knowledgeEvents([
+        $events = $this->knowledgeEvents($profile->pubkey, [
             ['kinds' => [0], 'authors' => [$profile->pubkey], 'limit' => 1],
             ['kinds' => [1], 'authors' => [$profile->pubkey], 'since' => $days, 'limit' => $keep * 3],
             ['kinds' => [5], 'authors' => [$profile->pubkey], 'since' => $days, 'limit' => 50],
@@ -200,6 +204,60 @@ class ChatterCache
         }
 
         return $lines;
+    }
+
+    /**
+     * The chatter's public kind 0 as the reply prompt carries it, so Markus
+     * can pick up a profile fact when no note fits (user 2026-10-12: "es wird
+     * immer noch nicht über die Chatter und deren Profil"): the about,
+     * sanitised like a note (no word with a digit, nothing sensitive, never a
+     * gamer tag or game account, at most `prompt_note_chars`), and the NIP-05
+     * and website domains as spoken words, without the ending ("einundzwanzig"
+     * for einundzwanzig.space): a domain read out is a link, and a label with a
+     * digit is left out. Data, never an instruction.
+     *
+     * @return list<string>
+     */
+    public function promptProfile(string $pubkey): array
+    {
+        $profile = ChatterProfile::query()->where('pubkey', $pubkey)->first();
+
+        if ($profile === null) {
+            return [];
+        }
+
+        $chars = max(20, (int) config('tv.commentary.chat.prompt_note_chars', 160));
+        $tags = $this->gamerTags($pubkey);
+        $lines = [];
+        $about = ChatReactions::sanitizeMessage((string) preg_replace('/\S*\d\S*/u', ' ', (string) $profile->about));
+        $about = trim((string) preg_replace('/\s+([,.!?;:])/u', '$1', $about));
+
+        if (preg_match_all('/\p{L}{2,}/u', $about) >= 2 && ! PersonaCards::sensitive($about) && ! self::namesGameAccount($about, $tags)) {
+            $lines[] = 'Über mich: '.(mb_strlen($about) > $chars ? rtrim(mb_substr($about, 0, $chars - 1)).'…' : $about);
+        }
+
+        foreach (['NIP-05 bei' => $profile->nip05_domain, 'Website' => $profile->website_domain] as $label => $domain) {
+            $word = self::spokenDomain($domain);
+
+            if ($word !== null && ! self::namesGameAccount($word, $tags) && ! in_array($label.': '.$word, $lines, true)) {
+                $lines[] = $label.': '.$word;
+            }
+        }
+
+        return $lines;
+    }
+
+    /** A domain as a spoken word: its labels without `www` and the ending, null when one carries a digit. */
+    public static function spokenDomain(?string $domain): ?string
+    {
+        $labels = $domain === null ? [] : array_slice(explode('.', $domain), 0, -1);
+        $labels = array_values(array_filter($labels, fn (string $label): bool => $label !== 'www'));
+
+        if ($labels === [] || preg_match('/\d/', implode('', $labels)) === 1) {
+            return null;
+        }
+
+        return str_replace('-', ' ', implode(' ', $labels));
     }
 
     /**
@@ -360,28 +418,148 @@ class ChatterCache
     }
 
     /**
-     * The events of a refresh: the knowledge relays first, `esports.relays`
-     * when none of them answered, null when no relay answered at all.
+     * The events of a refresh, newest first, null when no relay answered at
+     * all. The knowledge relays first (`esports.relays` when none of them
+     * answered), asked for the chatter's NIP-65 relay list `10002` and kind 3
+     * too; then the chatter's own write relays (NIP-65 outbox, outboxRelays()),
+     * at most `outbox_relays` within `outbox_budget_seconds`, each through
+     * RelayReader::readGuarded(). Measured from prod 2026-10-12: the knowledge
+     * relays alone held notes of three of the six chatters who posted, and
+     * one chatter's notes stood mostly on their own relays.
      *
      * @param  list<array<string, mixed>>  $filters
      * @return list<SignedEvent>|null
      */
-    private function knowledgeEvents(array $filters, int $perAuthor): ?array
+    private function knowledgeEvents(string $pubkey, array $filters, int $perAuthor): ?array
     {
-        $relays = array_values(array_filter((array) config('tv.commentary.chat.knowledge_relays', []), 'is_string'));
-        $budget = (float) config('tv.commentary.chat.knowledge_budget_seconds', 15);
+        $settings = (array) config('tv.commentary.chat', []);
+        $relays = array_values(array_filter((array) ($settings['knowledge_relays'] ?? []), 'is_string'));
+        $budget = (float) ($settings['knowledge_budget_seconds'] ?? 15);
+        $lists = [
+            ['kinds' => [10002], 'authors' => [$pubkey], 'limit' => 1],
+            ['kinds' => [3], 'authors' => [$pubkey], 'limit' => 1],
+        ];
+        $read = ['events' => [], 'answered' => 0];
 
         if ($relays !== []) {
-            $read = $this->reader->fetchCounted($filters, $relays, [], $perAuthor, microtime(true) + $budget);
+            $read = $this->reader->fetchCounted([...$filters, ...$lists], $relays, [], $perAuthor + 2, microtime(true) + $budget);
+        }
 
-            if ($read['answered'] > 0) {
-                return $read['events'];
+        if ($read['answered'] === 0) {
+            $relays = array_values(array_filter((array) config('esports.relays', []), 'is_string'));
+            $read = $this->reader->fetchCounted([...$filters, ...$lists], $relays, [], $perAuthor + 2, microtime(true) + $budget);
+        }
+
+        $events = [];
+        foreach ($read['events'] as $event) {
+            $events[$event->id] = $event;
+        }
+        $answered = $read['answered'];
+
+        $outbox = $this->outboxRelays($pubkey, $read['events'], $relays);
+        if ($outbox !== []) {
+            $until = microtime(true) + (float) ($settings['outbox_budget_seconds'] ?? 6);
+
+            foreach ($this->reader->readGuarded($filters, $outbox, $perAuthor, $until, array_fill_keys(array_keys($events), true)) as $relay => $found) {
+                if ($found === null) {
+                    // Not asked again for a while: an unreachable relay costs its timeout on every refresh.
+                    Cache::put(self::DOWN_KEY.$relay, true, now()->addMinutes((int) ($settings['outbox_down_minutes'] ?? 60)));
+
+                    continue;
+                }
+
+                $answered++;
+                foreach ($found as $event) {
+                    $events[$event->id] = $event;
+                }
             }
         }
 
-        $read = $this->reader->fetchCounted($filters, null, [], $perAuthor, microtime(true) + $budget);
+        if ($answered === 0) {
+            return null;
+        }
 
-        return $read['answered'] > 0 ? $read['events'] : null;
+        $events = array_values($events);
+        usort($events, fn (SignedEvent $a, SignedEvent $b): int => [$b->createdAt, $a->id] <=> [$a->createdAt, $b->id]);
+
+        return $events;
+    }
+
+    /**
+     * Where the chatter writes, read from their own signed lists (NIP-65): the
+     * `r` tags of the newest `10002` without a marker or marked `write`, else
+     * the legacy relay map in the content of the newest kind 3 (`write` true).
+     * Untrusted, so only `wss://` URLs of at most 200 characters, in the
+     * chatter's order, without the relays already read, those of
+     * `outbox_skip` (measured refusing prod) and those that failed within
+     * `outbox_down_minutes`; at most `outbox_relays`.
+     *
+     * @param  list<SignedEvent>  $events
+     * @param  list<string>  $read  relays already read in this refresh
+     * @return list<string>
+     */
+    public function outboxRelays(string $pubkey, array $events, array $read = []): array
+    {
+        $settings = (array) config('tv.commentary.chat', []);
+        $max = max(0, (int) ($settings['outbox_relays'] ?? 4));
+        $skip = array_map(self::relayUrl(...), [...$read, ...array_filter((array) ($settings['outbox_skip'] ?? []), 'is_string')]);
+        $urls = [];
+
+        foreach (self::writeRelays($pubkey, $events) as $url) {
+            if (count($urls) >= $max) {
+                break;
+            }
+
+            if (! in_array($url, $skip, true) && ! Cache::has(self::DOWN_KEY.$url)) {
+                $urls[$url] = $url;
+            }
+        }
+
+        return array_values($urls);
+    }
+
+    /**
+     * The chatter's write relays as their newest `10002` names them, else as
+     * the newest kind 3's legacy content map does; normalised, `wss://` only.
+     *
+     * @param  list<SignedEvent>  $events
+     * @return list<string>
+     */
+    public static function writeRelays(string $pubkey, array $events): array
+    {
+        $newest = [];
+        foreach ($events as $event) {
+            if ($event->pubkey === $pubkey && in_array($event->kind, [3, 10002], true)
+                && (! isset($newest[$event->kind]) || [$event->createdAt, $newest[$event->kind]->id] > [$newest[$event->kind]->createdAt, $event->id])) {
+                $newest[$event->kind] = $event;
+            }
+        }
+
+        $urls = [];
+        foreach (isset($newest[10002]) ? $newest[10002]->tags : [] as $tag) {
+            if (($tag[0] ?? null) === 'r' && is_string($tag[1] ?? null) && in_array($tag[2] ?? 'write', ['write'], true)) {
+                $urls[] = self::relayUrl($tag[1]);
+            }
+        }
+
+        if ($urls === [] && isset($newest[3])) {
+            $map = json_decode($newest[3]->content, true);
+            foreach (is_array($map) ? $map : [] as $url => $flags) {
+                if (is_string($url) && is_array($flags) && ($flags['write'] ?? false) === true) {
+                    $urls[] = self::relayUrl($url);
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($urls, fn (string $url): bool => preg_match('#^wss://[a-z0-9.-]+(?::\d+)?(?:/[^\s]*)?$#', $url) === 1 && strlen($url) <= 200)));
+    }
+
+    /** A relay URL compared and stored one way: trimmed, the scheme and host lowercase, no trailing slash. */
+    private static function relayUrl(string $url): string
+    {
+        $url = rtrim(trim($url), '/');
+
+        return (string) preg_replace_callback('#^[a-z]+://[^/]+#i', fn (array $match): string => strtolower($match[0]), $url);
     }
 
     /** How long ago a note was written, in words: digits never reach a prompt. */
@@ -394,7 +572,9 @@ class ChatterCache
             $days === 1 => 'gestern',
             $days <= 6 => 'vor ein paar Tagen',
             $days <= 13 => 'letzte Woche',
-            default => 'vor ein paar Wochen',
+            $days <= 34 => 'vor ein paar Wochen',
+            $days <= 59 => 'vor gut einem Monat',
+            default => 'vor ein paar Monaten',
         };
     }
 

@@ -27,9 +27,12 @@ final class RelayGuard
      * Where to connect for `$url`: the host and the checked address (`ip`
      * null for an allowed test relay), or null when it may not be reached.
      *
+     * `$lookupSeconds` bounds the DNS lookup ({@see HostResolver::addressesWithin()}): a chatter's
+     * relay list names any host, and a name server that never answers held a read 10 s by default.
+     *
      * @return array{host: string, ip: string|null}|null
      */
-    public function target(string $url): ?array
+    public function target(string $url, ?float $lookupSeconds = null): ?array
     {
         $parts = parse_url($url);
 
@@ -49,7 +52,7 @@ final class RelayGuard
             return null;
         }
 
-        $addresses = $this->resolver->addresses($host);
+        $addresses = $lookupSeconds === null ? $this->resolver->addresses($host) : $this->resolver->addressesWithin($host, $lookupSeconds);
 
         if ($addresses === []) {
             return null;

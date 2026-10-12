@@ -291,6 +291,10 @@ class ChatReactions
         if (PersonaCards::enabled() && ($notes = $this->cache->promptNotes($event->pubkey, $now)) !== []) {
             $hints[CasterVoice::NOTES_HINT] = implode("\n", $notes);
         }
+        // Their own profile (about, NIP-05 and website as words), for a reply when no note fits (user 2026-10-12).
+        if (PersonaCards::enabled() && ($profileFacts = $this->cache->promptProfile($event->pubkey)) !== []) {
+            $hints[CasterVoice::PROFILE_HINT] = implode("\n", $profileFacts);
+        }
         if (($earlier = $this->cache->exchanges($event->pubkey)) !== []) {
             $hints['frühere_wortwechsel'] = implode(' | ', $earlier);
         }
