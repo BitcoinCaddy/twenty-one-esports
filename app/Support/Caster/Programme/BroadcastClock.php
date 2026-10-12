@@ -162,6 +162,16 @@ final class BroadcastClock
         return null;
     }
 
+    /**
+     * The minutes of the hour with a slot of `$type`, in order (the rubric rotation counts them).
+     *
+     * @return list<int>
+     */
+    public function minutesOf(string $type): array
+    {
+        return array_column(array_filter($this->slots, fn (array $slot): bool => $slot['type'] === $type), 'minute');
+    }
+
     public static function isBulletin(string $type): bool
     {
         return in_array($type, self::BULLETINS, true);

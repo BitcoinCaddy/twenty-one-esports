@@ -55,31 +55,13 @@ class HistoryScripts
      */
     public function write(CarbonImmutable $now, bool $long = false, ?int $repeatMinutes = null): ?array
     {
-        $data = self::data();
-        $told = CasterScript::query()->where('kind', CasterScript::HISTORY)->where('facts_hash', 'like', self::HASH_PREFIX.'%')
-            ->selectRaw('facts_hash, max(created_at) as told_at')->groupBy('facts_hash')->pluck('told_at', 'facts_hash')->all();
-        // `$repeatMinutes` 0: no repeat window, the episode told longest ago comes next.
-        $since = $repeatMinutes === null ? $now->subHours((int) config('tv.commentary.history.repeat_hours', 24)) : $now->subMinutes(max(0, $repeatMinutes));
+        $episode = $this->nextEpisode($now, $repeatMinutes);
 
-        $candidates = [];
-        foreach ($data['episodes'] as $index => $episode) {
-            $toldAt = $told[self::HASH_PREFIX.$episode['id']] ?? null;
-
-            if ($toldAt !== null && CarbonImmutable::parse((string) $toldAt)->greaterThan($since)) {
-                continue;
-            }
-
-            // Never told first (in file order), then the one told longest ago.
-            $candidates[] = ['episode' => $episode, 'order' => $toldAt === null ? sprintf('0-%04d', $index) : '1-'.CarbonImmutable::parse((string) $toldAt)->format('YmdHis')];
-        }
-
-        if ($candidates === []) {
+        if ($episode === null) {
             return null;
         }
 
-        usort($candidates, fn (array $a, array $b): int => strcmp($a['order'], $b['order']));
-        $episode = $candidates[0]['episode'];
-        $turn = count($told) + intdiv($now->getTimestamp(), 86_400);
+        $turn = $this->toldCount() + intdiv($now->getTimestamp(), 86_400);
 
         // Markus narrates the episode freely (CasterVoice::history()); the pattern episode only when the voice gives nothing.
         $told = ScriptQueue::aiEnabled() ? $this->voice->history($episode, $long) : null;
@@ -91,6 +73,55 @@ class HistoryScripts
         return $told !== null
             ? ['text' => $told, 'episode' => $episode['id'], 'source' => CasterScript::SOURCE_AI]
             : ['text' => $long ? self::buildLong($episode, $turn) : self::build($episode, $turn), 'episode' => $episode['id'], 'source' => CasterScript::SOURCE_PATTERN];
+    }
+
+    /**
+     * The episode that is told next: never told first (in file order), then
+     * the one told longest ago; none told within `repeat_hours` (`$repeatMinutes`
+     * instead, 0: no window). A Geschichtsstunde (a rubric, Programme\Rubrics)
+     * counts as told like a segment. null when every episode was told lately.
+     *
+     * @return array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}|null
+     */
+    public function nextEpisode(CarbonImmutable $now, ?int $repeatMinutes = null): ?array
+    {
+        $told = $this->told();
+        $since = $repeatMinutes === null ? $now->subHours((int) config('tv.commentary.history.repeat_hours', 24)) : $now->subMinutes(max(0, $repeatMinutes));
+        $candidates = [];
+
+        foreach (self::data()['episodes'] as $index => $episode) {
+            $toldAt = $told[self::HASH_PREFIX.$episode['id']] ?? null;
+
+            if ($toldAt !== null && CarbonImmutable::parse((string) $toldAt)->greaterThan($since)) {
+                continue;
+            }
+
+            $candidates[] = ['episode' => $episode, 'order' => $toldAt === null ? sprintf('0-%04d', $index) : '1-'.CarbonImmutable::parse((string) $toldAt)->format('YmdHis')];
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, fn (array $a, array $b): int => strcmp($a['order'], $b['order']));
+
+        return $candidates[0]['episode'];
+    }
+
+    /**
+     * When each episode was told last (facts_hash => time), segments and Geschichtsstunden alike.
+     *
+     * @return array<string, mixed>
+     */
+    private function told(): array
+    {
+        return CasterScript::query()->whereIn('kind', [CasterScript::HISTORY, CasterScript::RUBRIC])->where('facts_hash', 'like', self::HASH_PREFIX.'%')
+            ->selectRaw('facts_hash, max(created_at) as told_at')->groupBy('facts_hash')->pluck('told_at', 'facts_hash')->all();
+    }
+
+    private function toldCount(): int
+    {
+        return count($this->told());
     }
 
     /**

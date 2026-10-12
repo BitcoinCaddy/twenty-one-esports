@@ -49,11 +49,11 @@ final class CasterFetchController
         // `?only=urgent` (P6): the workstation asks in the middle of rendering a block for what cannot wait for it.
         $urgent = $request->query('only') === 'urgent';
 
-        // A full spool still takes live moments and reactions (they play next) and the news bulletin (it airs at its
-        // slot, whatever else waits); only the byte cap stops them too.
+        // A full spool still takes live moments and reactions (they play next) and what the clock places (a bulletin,
+        // a rubric, a teaser: each airs at its slot, whatever else waits); only the byte cap stops them too.
         $script = match (true) {
             config('tv.commentary.enabled') !== true, $atByteCap => null,
-            $full || $urgent => $queue->claim($now, [...ClipSpool::LIVE_KINDS, CasterScript::BULLETIN]),
+            $full || $urgent => $queue->claim($now, [...ClipSpool::LIVE_KINDS, ...CasterScript::PROGRAMME]),
             default => $queue->claim($now),
         };
 

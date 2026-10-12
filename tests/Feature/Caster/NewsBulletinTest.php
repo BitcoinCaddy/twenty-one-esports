@@ -9,6 +9,7 @@ use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Laravel\Ai\Prompts\AgentPrompt;
 
 /*
 |--------------------------------------------------------------------------
@@ -119,25 +120,26 @@ it('reads EINUNDZWANZIG News from its feed as a Bitcoin source', function () {
         ->and($stored->pluck('link')->unique()->all())->toBe([null]);
 });
 
-it('mixes four to six items at the full hour from at least three outlets, EINUNDZWANZIG News among them', function () {
+it('mixes six to eight items at the full hour from at least three outlets, EINUNDZWANZIG News among them', function () {
     bulletinNewsDesk();
 
     foreach (range(1, 5) as $run) {
         $items = app(NewsBulletin::class)->select(BroadcastClock::NEWS, CarbonImmutable::now());
 
-        expect(count($items))->toBeGreaterThanOrEqual(4)->toBeLessThanOrEqual(6)
+        expect(count($items))->toBeGreaterThanOrEqual(6)->toBeLessThanOrEqual(8)
             ->and(count(array_unique(array_column($items, 'source'))))->toBeGreaterThanOrEqual(3)
             ->and(array_column($items, 'source'))->toContain('EINUNDZWANZIG News')
             ->and(array_unique(array_column($items, 'section')))->toEqualCanonicalizing([CasterNews::GERMANY, CasterNews::BITCOIN]);
     }
 
     $headlines = app(NewsBulletin::class)->select(BroadcastClock::HEADLINES, CarbonImmutable::now());
-    expect($headlines)->toHaveCount(3)
-        ->and(count(array_unique(array_column($headlines, 'source'))))->toBe(3)
+    expect(count($headlines))->toBeGreaterThanOrEqual(4)->toBeLessThanOrEqual(5)
+        ->and(count(array_unique(array_column($headlines, 'source'))))->toBe(count($headlines))
         ->and($headlines[0]['source'])->toBe('EINUNDZWANZIG News');
 });
 
 it('takes a new outlet from the other section before an outlet again (real feeds 2026-10-12: Bitcoin had only BTC-Echo)', function () {
+    config(['tv.commentary.programme.bulletin.items.headlines' => ['min' => 3, 'max' => 3]]);
     bulletinHeadline('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', CasterNews::BITCOIN, 10);
     bulletinHeadline('Lightning-Zahlungen wachsen bei Händlern in Europa', 'BTC-Echo', CasterNews::BITCOIN, 11);
     bulletinHeadline('Bundestag beschließt Reform der Grundsteuer für Eigentümer', 'tagesschau', CasterNews::GERMANY, 12);
@@ -158,7 +160,7 @@ it('writes the bulletin: the time line, the items with their outlets, then the c
     $facts = bulletinFactLines($bulletin['text']);
 
     expect($lines[0])->toBe('Es ist vierzehn Uhr, hier sind die Nachrichten auf TWENTY ONE TV.')
-        ->and(count($bulletin['items']))->toBeGreaterThanOrEqual(4)->toBeLessThanOrEqual(6)
+        ->and(count($bulletin['items']))->toBeGreaterThanOrEqual(6)->toBeLessThanOrEqual(8)
         ->and($facts)->toHaveCount(count($bulletin['items']))
         ->and(count($lines))->toBe(1 + count($facts) + 1 + 2 + 1)
         ->and($lines[count($facts) + 1])->toBeIn([
@@ -232,6 +234,7 @@ it('leaves out an item with an opinion word, an invented number or acronym, or w
 
 it('reads a headline in one bulletin only: the next bulletins of the day pick others', function () {
     bulletinNewsDesk();
+    config(['tv.commentary.programme.bulletin.items' => ['news' => ['min' => 4, 'max' => 4], 'headlines' => ['min' => 3, 'max' => 3]]]);
     VoiceAgent::fake(fn (string $prompt): array => bulletinAnswer($prompt));
     $read = [];
 
@@ -319,4 +322,78 @@ it('names the slot time at night and adds at most one league item of the day', f
         ->and(array_values(array_filter($first['items'], fn (string $key): bool => str_starts_with($key, 'league:'))))->toBe(['league:tournament-end:7'])
         ->and($first['text'])->toContain('TWENTY ONE Liga')
         ->and(array_values(array_filter($second['items'] ?? [], fn (string $key): bool => str_starts_with($key, 'league:'))))->toBe(['league:chess:9']);
+});
+
+it('tells one story once: the Klingbeil pair of 12:30 is one item, the other outlet named with it and marked read', function () {
+    bulletinNewsDesk();
+    bulletinHeadline('Klingbeil will SPD-Führung neu wählen lassen', 'tagesschau', CasterNews::GERMANY, 5);
+    bulletinHeadline('Klingbeil kündigt Neuwahl der Parteispitze an', 'Spiegel', CasterNews::GERMANY, 6);
+    VoiceAgent::fake(fn (string $prompt): array => bulletinAnswer($prompt));
+
+    expect(NewsBulletin::sameStory('Klingbeil will SPD-Führung neu wählen lassen', 'Klingbeil kündigt Neuwahl der Parteispitze an'))->toBeTrue()
+        // A shared name alone is no story: two different stories about one person stay apart.
+        ->and(NewsBulletin::sameStory('Merz trifft Macron in Paris', 'Merz verteidigt Rentenpaket im Bundestag'))->toBeFalse();
+
+    $items = app(NewsBulletin::class)->select(BroadcastClock::NEWS, CarbonImmutable::now());
+    $klingbeil = array_values(array_filter($items, fn (array $item): bool => str_contains($item['title'], 'Klingbeil')));
+
+    expect($klingbeil)->toHaveCount(1)->and($klingbeil[0]['also'])->toBe(['Spiegel']);
+
+    $bulletin = app(NewsBulletin::class)->write(bulletinSlot(), CarbonImmutable::now());
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Dieselbe Geschichte auch bei: Spiegel'));
+
+    expect(substr_count($bulletin['text'], 'Klingbeil'))->toBe(1)
+        ->and(CasterNews::query()->where('title', 'like', 'Klingbeil%')->whereNotNull('bulletin_at')->count())->toBe(2);
+});
+
+it('keeps a story out of the next bulletin that one read within the day, from whichever outlet', function () {
+    bulletinHeadline('Klingbeil will SPD-Führung neu wählen lassen', 'tagesschau', CasterNews::GERMANY, 50)->update(['bulletin_at' => now()->subMinutes(30)]);
+    bulletinHeadline('Klingbeil kündigt Neuwahl der Parteispitze an', 'Welt', CasterNews::GERMANY, 5);
+    bulletinHeadline('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', CasterNews::BITCOIN, 12);
+
+    expect(array_column(app(NewsBulletin::class)->select(BroadcastClock::NEWS, CarbonImmutable::now()), 'title'))->toBe(['Miner verlagern Rechenleistung nach Skandinavien']);
+});
+
+it('leaves out an item the model marks as doppelt and marks it read, without turning the draft down', function () {
+    bulletinNewsDesk();
+    VoiceAgent::fake(fn (string $prompt): array => bulletinAnswer($prompt, [3 => 'doppelt']));
+
+    $bulletin = app(NewsBulletin::class)->write(bulletinSlot(), CarbonImmutable::now());
+
+    expect($bulletin['dropped'])->toHaveCount(1)
+        ->and($bulletin['items'])->not->toContain($bulletin['dropped'][0])
+        ->and(bulletinFactLines($bulletin['text']))->toHaveCount(count($bulletin['items']))
+        ->and($bulletin['text'])->not->toContain('doppelt')
+        ->and(CasterNews::query()->whereNotNull('bulletin_at')->count())->toBe(count($bulletin['items']) + 1);
+    VoiceAgent::assertPromptedTimes(1);
+});
+
+it('asks for an opinionated, witty commentary and drops a timid sentence (live 12:30: "ich kann euch dazu nicht mehr sagen")', function () {
+    bulletinNewsDesk();
+    VoiceAgent::fake(fn (string $prompt): array => bulletinAnswer($prompt, comment: 'Ich kann euch dazu leider nicht mehr sagen, weil die Meldung wirklich sehr knapp ausgefallen ist.'));
+
+    $bulletin = app(NewsBulletin::class)->write(bulletinSlot(), CarbonImmutable::now());
+
+    expect($bulletin['text'])->not->toContain('nicht mehr sagen')
+        ->and($bulletin['text'])->toContain('Bitcoin für mich die ehrlichere Antwort')
+        ->and(NewsBulletin::withoutTimid("Mehr weiß ich auch nicht dazu, ehrlich gesagt, liebe Leute im Chat.\nDas bleibt abzuwarten, aber ich habe da so meine Zweifel an der ganzen Sache.\nDer Staat druckt, wir stapeln, und am Ende lacht der Bitcoiner über den Euro."))
+        ->toBe('Der Staat druckt, wir stapeln, und am Ende lacht der Bitcoiner über den Euro.');
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Sarkasmus über Staat, Steuern, Bürokratie und Fiatgeld') && str_contains($prompt->prompt, 'Kein Herumdrucksen'));
+});
+
+it('gives each item its feed description as background and reads foreign news as a section of its own', function () {
+    bulletinNewsDesk();
+    bulletinHeadline('Polen verstärkt Schutz für Regierungschef Tusk', 'n-tv', CasterNews::WORLD, 8)
+        ->update(['summary' => 'Die polnische Regierung stellt dem Regierungschef Tusk mehr Personenschützer zur Seite.']);
+    VoiceAgent::fake(fn (string $prompt): array => bulletinAnswer($prompt));
+
+    $items = app(NewsBulletin::class)->select(BroadcastClock::NEWS, CarbonImmutable::now());
+    expect(array_column($items, 'section'))->toContain(CasterNews::WORLD);
+
+    app(NewsBulletin::class)->write(bulletinSlot(), CarbonImmutable::now());
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Rubrik: Welt | Quelle: n-tv | Meldung: Polen verstärkt Schutz für Regierungschef Tusk | Hintergrund: Die polnische Regierung')
+        && str_contains($prompt->prompt, 'jede mit 1 bis 3 ganzen Sätzen'));
+
+    // A name or a number from the description is no invented fact.
+    expect(NewsBulletin::factual('Wie n-tv berichtet, stellt Polen dem Regierungschef Tusk mehr Personenschützer zur Seite.', $items[array_search(CasterNews::WORLD, array_column($items, 'section'), true)]))->toBe([]);
 });

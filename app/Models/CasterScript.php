@@ -28,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $part_group the parts of one long script share it (App\Support\Caster\ScriptQueue::enqueue()); null for a script in one piece
  * @property int|null $part_index the position of the part in its group, from 1
  * @property list<string>|null $speakers the speaker of each line of a duet (App\Support\Caster\DuetDirector::MARKUS, ::SIRIUS), aligned with sentences(); null when Markus speaks alone
- * @property Carbon|null $airs_at a news bulletin's slot (App\Support\Caster\Programme\BroadcastClock): it plays from then on, never before; null for every other script
+ * @property Carbon|null $airs_at a bulletin's or rubric's slot, a teaser's first moment (App\Support\Caster\Programme\BroadcastClock): it plays from then on, never before; null for every other script
  * @property Carbon|null $claimed_at
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
@@ -64,6 +64,15 @@ class CasterScript extends Model
 
     /** A news bulletin at :00 or :30 (App\Support\Caster\Programme\NewsBulletin): voiced ahead, played at its slot (`airs_at`). */
     public const BULLETIN = 'bulletin';
+
+    /** A rubric at a rubric slot of the clock (App\Support\Caster\Programme\RubricScripts): voiced ahead, played from its slot on (`airs_at`). */
+    public const RUBRIC = 'rubric';
+
+    /** A programme teaser before a slot (App\Support\Caster\Programme\Announcements): played at a clip boundary from `airs_at` until it expires. */
+    public const TEASER = 'teaser';
+
+    /** The kinds the broadcast clock places (`airs_at`): never counted as airtime ahead, never refused by the airtime cap. */
+    public const PROGRAMME = [self::BULLETIN, self::RUBRIC, self::TEASER];
 
     /** The long segments that play on calm slots only, one at a time (App\Support\Caster\ClipSpool::next()). */
     public const SEGMENTS = [self::NEWS, self::HISTORY, self::FOLLOWED];

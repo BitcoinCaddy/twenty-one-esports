@@ -4,8 +4,12 @@ namespace App\Support\Caster;
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Programme\Announcements;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
+use App\Support\Caster\Programme\NewsTalk;
+use App\Support\Caster\Programme\Rubrics;
+use App\Support\Caster\Programme\RubricScripts;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -52,6 +56,13 @@ use Illuminate\Support\Str;
  * it before the scenes and it waits in the spool for its slot (`airs_at`);
  * also in the quiet hours. It expires `bulletin.late_seconds` after its slot.
  *
+ * The rubrics and teasers (P5; fillRubric(), fillTeaser()): the rubric
+ * planned for the next rubric slot (Rubrics) is written the same way from
+ * `rubrics.write_minutes_ahead` before it, in parts, and waits for its slot;
+ * a teaser for the next bulletin or rubric (Announcements) is written
+ * `teasers.write_minutes_ahead` before it and plays within
+ * `teasers.before_minutes` of it (outside the quiet hours).
+ *
  * Bounded: expired and voiced rows older than a day are deleted, so the table
  * holds at most a day of scripts.
  */
@@ -76,6 +87,8 @@ class ScriptQueue
 
     private NewsBulletin $bulletin;
 
+    private RubricScripts $rubricScripts;
+
     public function __construct(
         private CasterVoice $voice,
         private SceneFacts $facts,
@@ -86,6 +99,7 @@ class ScriptQueue
         ?DuetDirector $duets = null,
         ?DuetScripts $duetScripts = null,
         ?NewsBulletin $bulletin = null,
+        ?RubricScripts $rubricScripts = null,
     ) {
         $this->patterns = $patterns ?? app(PatternScripts::class);
         $this->news = $news ?? app(NewsScripts::class);
@@ -94,6 +108,7 @@ class ScriptQueue
         $this->duets = $duets ?? app(DuetDirector::class);
         $this->duetScripts = $duetScripts ?? app(DuetScripts::class);
         $this->bulletin = $bulletin ?? app(NewsBulletin::class);
+        $this->rubricScripts = $rubricScripts ?? app(RubricScripts::class);
     }
 
     /** Whether the league voice writes scene scripts (TV_COMMENTARY_AI); off, the patterns fill the airtime alone. */
@@ -106,7 +121,7 @@ class ScriptQueue
     public function airtimeAhead(): float
     {
         $scripts = (float) CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
-            ->whereNotIn('kind', [CasterScript::FILLER, CasterScript::BULLETIN, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::PROGRAMME, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
 
         return $scripts + app(ClipSpool::class)->readySeconds();
     }
@@ -133,7 +148,9 @@ class ScriptQueue
         $this->seedFillers($now);
         $quiet = QuietHours::active($now);
         $written = $this->fillBulletin($now);
-        $written += $quiet ? 0 : $this->fillSegments($now);
+        $written += $quiet ? 0 : $this->fillNewsTalk($now);
+        $written += $this->fillRubric($now);
+        $written += $quiet ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -243,6 +260,128 @@ class ScriptQueue
         return $bulletin !== null && $this->enqueue(CasterScript::BULLETIN, ScenePhase::BREAK, $bulletin['text'], $hash, (int) ($settings['priority'] ?? 75), $now,
             source: CasterScript::SOURCE_AI, topic: $slot['type'], speakers: $bulletin['speakers'], airsAt: $slot['starts_at'],
             expiresAt: $slot['starts_at']->addSeconds((int) ($settings['late_seconds'] ?? 120))) !== null ? 1 : 0;
+    }
+
+    /**
+     * The rubric of the next rubric slot (Rubrics::plannedFor(), RubricScripts),
+     * once per slot: written when the slot is at most
+     * `rubrics.write_minutes_ahead` and at least `last_write_minutes` away, AI
+     * only (a call that gave nothing is tried again on the next run within
+     * that window). Queued in parts at `rubrics.priority` with its slot as
+     * `airs_at`; SceneDirector starts it at most `late_seconds` after the slot.
+     * The quiet hours have no rubric slots (BroadcastClock).
+     *
+     * @return int rubrics written (0 or 1)
+     */
+    public function fillRubric(CarbonImmutable $now): int
+    {
+        if (! self::aiEnabled() || ! Rubrics::enabled()) {
+            return 0;
+        }
+
+        $settings = (array) config('tv.commentary.programme.rubrics', []);
+        $write = max(1, (int) ($settings['write_minutes_ahead'] ?? 8));
+        $slots = array_values(array_filter(BroadcastClock::fromConfig()->upcoming($now, $write), fn (array $slot): bool => $slot['type'] === BroadcastClock::RUBRIC));
+        $slot = $slots[0] ?? null;
+
+        if ($slot === null) {
+            return 0;
+        }
+
+        $ahead = $slot['key'] - $now->getTimestamp();
+
+        if ($ahead > 60 * $write || $ahead < 60 * (float) ($settings['last_write_minutes'] ?? 2) || Rubrics::written($slot['key'])) {
+            return 0;
+        }
+
+        $rubrics = app(Rubrics::class);
+        $id = $rubrics->plannedFor($slot, $now);
+        $material = $id === null ? null : $rubrics->material($id, $now);
+        $rubric = $id === null || $material === null ? null : $this->rubricScripts->write($slot, $id, $material, $now);
+
+        if ($id === null || $material === null || $rubric === null
+            || $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $rubric['text'], Rubrics::hashFor($id, $material, $slot['key']), (int) ($settings['priority'] ?? 70), $now,
+                source: CasterScript::SOURCE_AI, topic: $id, speakers: $rubric['speakers'], airsAt: $slot['starts_at'],
+                expiresAt: $slot['starts_at']->addSeconds((int) ($settings['late_seconds'] ?? 180) + 600)) === null) {
+            return 0;
+        }
+
+        $rubrics->aired($id, $material, $now);
+
+        return 1;
+    }
+
+    /**
+     * The news talk after the next :00 bulletin (NewsTalk), once per slot:
+     * written once that bulletin is queued (its items, NewsBulletin) and the
+     * slot is at least a minute away, AI only; queued in parts as a rubric
+     * (topic NewsTalk::TOPIC) airing when the bulletin ends (its estimated
+     * length after the slot), at most `news_talk.late_seconds` late.
+     *
+     * @return int talks written (0 or 1)
+     */
+    public function fillNewsTalk(CarbonImmutable $now): int
+    {
+        $slot = self::aiEnabled() && NewsTalk::enabled() && config('tv.commentary.news.enabled') === true ? BroadcastClock::fromConfig()->nextBulletin($now) : null;
+
+        if ($slot === null || $slot['type'] !== BroadcastClock::NEWS || $slot['key'] - $now->getTimestamp() < 60) {
+            return 0;
+        }
+
+        $hash = 'news_talk:'.$slot['key'];
+        $bulletin = CasterScript::query()->where('kind', CasterScript::BULLETIN)->where('facts_hash', 'bulletin:'.$slot['key'])->orderBy('id')->first();
+        $items = NewsTalk::itemsFor($slot['key']);
+
+        if ($bulletin === null || $items === [] || CasterScript::query()->where('kind', CasterScript::RUBRIC)->where('facts_hash', $hash)->exists()) {
+            return 0;
+        }
+
+        $settings = (array) config('tv.commentary.programme.news_talk', []);
+        // When the bulletin ends: its spoken length plus the stinger in front of it.
+        $airsAt = $slot['starts_at']->addSeconds((int) ceil(self::estimateSeconds($bulletin->text) + 4));
+        $talk = app(NewsTalk::class)->write($slot, $items, $airsAt, $now);
+
+        return $talk !== null && $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], $hash, (int) ($settings['priority'] ?? 70), $now,
+            source: CasterScript::SOURCE_AI, topic: NewsTalk::TOPIC, speakers: $talk['speakers'], airsAt: $airsAt,
+            expiresAt: $airsAt->addSeconds((int) ($settings['late_seconds'] ?? 240) + 900)) !== null ? 1 : 0;
+    }
+
+    /**
+     * The teaser for the next bulletin or planned rubric (Announcements),
+     * once per slot: written from `teasers.write_minutes_ahead` before it
+     * until a minute before it, played from `teasers.before_minutes` before
+     * it (SceneDirector, at a clip boundary) and expiring fifteen seconds
+     * before it. AI only; nothing true written, no teaser.
+     *
+     * @return int teasers written (0 or 1)
+     */
+    public function fillTeaser(CarbonImmutable $now): int
+    {
+        if (! self::aiEnabled() || ! Announcements::enabled()) {
+            return 0;
+        }
+
+        $settings = (array) config('tv.commentary.programme.teasers', []);
+        $announcements = app(Announcements::class);
+        $target = $announcements->entries($now, max(1, (int) ($settings['write_minutes_ahead'] ?? 7)))[0] ?? null;
+
+        if ($target === null) {
+            return 0;
+        }
+
+        $hash = 'teaser:'.$target['starts_at']->getTimestamp();
+
+        if ($target['starts_at']->getTimestamp() - $now->getTimestamp() < 60 || CasterScript::query()->where('kind', CasterScript::TEASER)->where('facts_hash', $hash)->exists()) {
+            return 0;
+        }
+
+        $airsAt = $target['starts_at']->subMinutes(max(1, (int) ($settings['before_minutes'] ?? 5)));
+        $airsAt = $airsAt->lessThan($now) ? $now : $airsAt;
+        $text = $announcements->write($target, $airsAt);
+
+        return $text !== null && $this->enqueue(CasterScript::TEASER, ScenePhase::BREAK, $text, $hash, (int) ($settings['priority'] ?? 72), $now,
+            source: CasterScript::SOURCE_AI, topic: $target['type'], speakers: array_fill(0, count(ScriptGuard::lines($text)), DuetDirector::MARKUS),
+            airsAt: $airsAt, expiresAt: $target['starts_at']->subSeconds(15)) !== null ? 1 : 0;
     }
 
     /**
@@ -381,6 +520,16 @@ class ScriptQueue
         if ($kind === CasterScript::BULLETIN) {
             $this->memory ??= new SpokenMemory;
             $this->memory->remember($text, $now);
+        } elseif ($kind === CasterScript::RUBRIC && $speakers !== null) {
+            // The rubric's opening line (time and name) comes back on purpose; its content leaves repeats like a duet.
+            $lines = ScriptGuard::lines($text);
+            [$rest, $restSpeakers] = $this->duetLines(implode("\n", array_slice($lines, 1)), array_slice($speakers, 1), $now);
+
+            if ($lines === [] || $rest === '') {
+                return null;
+            }
+
+            [$text, $speakers] = [$lines[0]."\n".$rest, [$speakers[0] ?? DuetDirector::MARKUS, ...$restSpeakers]];
         } elseif ($speakers !== null) {
             [$text, $speakers] = $this->duetLines($text, $speakers, $now);
 
@@ -402,7 +551,7 @@ class ScriptQueue
             $this->memory->remember($text, $now);
         }
 
-        $inParts = in_array($kind, [CasterScript::SCENE, ...CasterScript::SEGMENTS], true) || $scene === ChatWishes::SCENE;
+        $inParts = in_array($kind, [CasterScript::SCENE, CasterScript::RUBRIC, ...CasterScript::SEGMENTS], true) || $scene === ChatWishes::SCENE;
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
 

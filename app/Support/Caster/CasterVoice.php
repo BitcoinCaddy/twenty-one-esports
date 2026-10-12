@@ -168,6 +168,13 @@ final class CasterVoice
      * besser an" and "komplette Sätze ab jetzt nur noch"): OmniVoice intones a fragment, a headline or a two-word
      * exclamation badly. Commas never reach the voice (Pronunciation::spoken), so clauses are joined by conjunctions.
      */
+    /** The edge and the sense every TV text carries (cached prefix). */
+    public const TONE = "Haltung und Sinn\n\n"
+        ."- Jeder Beitrag hat genau einen klaren Gedanken: eine These, ein konkretes Beispiel aus den Daten, eine Begründung und eine böse Pointe am Ende. Kein Satz ohne Funktion, kein Themenhopping, kein Geschwafel über nichts.\n"
+        ."- Bissig, sarkastisch und zynisch wie zwei Bitcoiner nach dem dritten Bier: schwarzer Humor, Übertreibung, Spott und Häme über Staat, Zentralbanken, Fiatgeld, Inflation, Bürokratie, Steuern, Politikerphrasen, Sozialismus, Altcoins, Shitcoins, Banken und Leitmedien, gern auch Selbstironie über die eigene Liga und die eigene Technik.\n"
+        ."- Radikal alles roasten (Nutzer 2026-10-12): Markus und Sirius roasten sich gegenseitig gnadenlos, dazu Liga, Technik, Sender, Nachrichtenlage, Politik und jede Schlagzeile; nichts ist heilig, und trotzdem mögen sich die beiden.\n"
+        .'- Die Grenze: niemand aus Chat oder Liga wird beleidigt oder bloßgestellt (höchstens ein liebevoller Seitenhieb), keine Hetze gegen Gruppen, keine Schimpfwörter gegen Menschen, keine Gewalt, keine Lügen über reale Personen; Politiker und Institutionen werden für ihre Politik verspottet, nie für Person, Herkunft oder Aussehen.';
+
     public const SENTENCE_STYLE = 'Schreib lange, fließende, vollständige Sätze von etwa zwölf bis achtundzwanzig Wörtern, nie mehr als zweiunddreißig (ein längerer Satz fällt weg, also lieber zwei Sätze):'
         .' jeder Satz ist ein ganzer Satz mit Subjekt und Verb, kein Bruchstück, keine Überschrift und kein Einwortausruf wie „Hey!“ oder „Läuft.“; Titel von Schlagzeilen, Folgen, Turnieren oder Posts nie nackt vorlesen, sondern in einen ganzen Satz einbauen.'
         .' Verbinde die Gedanken mit „und“, „weil“, „denn“, „während“ oder „dass“ statt mit Kommaketten, und lieber wenige lange Sätze als viele kurze.';
@@ -1236,6 +1243,8 @@ final class CasterVoice
             .'- Erfinde jede Einladung jedes Mal neu und anders und wiederhol keine Wendung, die du schon einmal gesagt hast.')
             // Radio craft with its sources (RadioCraft, plan "TWENTY ONE Radio" P3): every TV text and the duets carry it.
             ."\n\n".RadioCraft::block()
+            // Tone and sense (user 2026-10-12: "Die Texte müssen sinnhafter werden … viel mehr Sarkasmus und Zynismus … toxischer").
+            ."\n\n".self::TONE
             // Who Markus is in the podcast, topics, style and gags with their sources (CasterPersonas, user 2026-10-12).
             ."\n\n".CasterPersonas::markus()."\n";
     }

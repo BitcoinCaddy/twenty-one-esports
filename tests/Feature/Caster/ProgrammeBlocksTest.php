@@ -102,9 +102,9 @@ function programmeBlockPlainClip(string $kind, float $seconds, int $fill, ?Carbo
     return app(ClipSpool::class)->store($script->fresh(), programmeBlockOpus($seconds, $fill), $seconds, ($seconds >= 4.0 ? range(2.0, $seconds, 2.0) : [$seconds]), CarbonImmutable::now());
 }
 
-function programmeBlockDirector(?Idents $idents = null, float $reactionWait = 90): SceneDirector
+function programmeBlockDirector(?Idents $idents = null, float $reactionWait = 90, float $newsMusicDb = 0.0): SceneDirector
 {
-    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000, $newsMusicDb), [
         'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
         'feed_lead_seconds' => 1.0, 'gap_seconds' => ['min' => 8, 'max' => 8], 'bulletin_late_seconds' => 120,
         'blocks' => ['join_seconds' => ['min' => 0.4, 'max' => 0.6], 'reaction_wait_seconds' => $reactionWait, 'hold_seconds' => 30, 'resume_within_seconds' => 600],
@@ -307,6 +307,43 @@ it('still airs a bulletin at its slot while a block is on air, and the block res
         ->and($news['from'])->toBeLessThan(36.0)
         ->and(programmeBlockSecondsOf($runs, 7))->toBe(10.0)
         ->and(programmeBlockSecondsOf($runs, 1))->toBe(120.0);
+});
+
+it('puts the music into news mode under a rendered news block, and not under a talk block', function () {
+    $slot = CarbonImmutable::parse('2026-10-12 14:00', 'Europe/Berlin');
+    $this->travelTo($slot);
+    programmeBlockDecodes();
+    $planner = new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
+    $mid = fn (SceneDirector $director): int => unpack('v', $director->timeline->musicDuck((int) round(($director->timeline->startsAt() + 10) * 24000), (int) round(($director->timeline->startsAt() + 10) * 24000) + 1))[1];
+
+    programmeBlockClip(30.0, 1, [10.0], 10.0, CasterScript::BULLETIN, $slot);
+    $news = programmeBlockDirector(newsMusicDb: -60);
+    $news->tick($planner, $planner->at((float) $slot->getTimestamp(), []), (float) $slot->getTimestamp());
+
+    CasterClip::query()->delete();
+    programmeBlockClip(30.0, 1, [10.0]);
+    $talk = programmeBlockDirector(newsMusicDb: -60);
+    $talk->tick($planner, $planner->at((float) $slot->getTimestamp() + 1, []), (float) $slot->getTimestamp() + 1);
+
+    expect($news->clip()?->kind)->toBe(CasterScript::BULLETIN)
+        ->and($mid($news))->toBeGreaterThan(32000)
+        ->and($talk->clip()?->isBlock())->toBeTrue()
+        ->and($mid($talk))->toBe(0);
+});
+
+it('lets a due programme teaser in at the block\'s next segment boundary, then resumes the block', function () {
+    programmeBlockDecodes();
+    programmeBlockClip(40.0, 1, [12.0, 26.0]);
+    $start = (float) CarbonImmutable::now()->getTimestamp();
+
+    $runs = programmeBlockAir(programmeBlockDirector(), $start, 70, [4 => fn () => programmeBlockPlainClip(CasterScript::TEASER, 4.0, 6, CarbonImmutable::now()->subSecond())]);
+    $teaser = collect($runs)->firstWhere('value', 6);
+    $blockStart = collect($runs)->firstWhere('value', 1)['from'];
+
+    expect($teaser['from'] - $blockStart)->toBeGreaterThanOrEqual(12.0)
+        ->and($teaser['from'] - $blockStart)->toBeLessThan(15.0)
+        ->and(programmeBlockSecondsOf($runs, 6))->toBe(4.0)
+        ->and(programmeBlockSecondsOf($runs, 1))->toBe(40.0);
 });
 
 it('never dresses a rendered block again: a news block gets no stinger, a plain bulletin still does', function () {

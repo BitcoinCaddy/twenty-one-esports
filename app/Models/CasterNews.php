@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string $source the outlet as spoken ("tagesschau")
  * @property string $language de or en
  * @property string $title
+ * @property string|null $summary the feed item's teaser text (description), plain, at most `news.max_summary_chars`
  * @property string|null $link
  * @property Carbon $published_at
  * @property Carbon|null $used_at spoken, or turned down (`skipped` says why)
@@ -28,14 +29,17 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Table('caster_news')]
-#[Fillable(['hash', 'section', 'feed', 'source', 'language', 'title', 'link', 'published_at', 'used_at', 'skipped', 'bulletin_at'])]
+#[Fillable(['hash', 'section', 'feed', 'source', 'language', 'title', 'summary', 'link', 'published_at', 'used_at', 'skipped', 'bulletin_at'])]
 class CasterNews extends Model
 {
     public const BITCOIN = 'bitcoin';
 
     public const GERMANY = 'germany';
 
-    public const SECTIONS = [self::BITCOIN, self::GERMANY];
+    /** Foreign news (plan "TWENTY ONE Radio", P5): read in the bulletins only, not in the ten-minute news segments. */
+    public const WORLD = 'world';
+
+    public const SECTIONS = [self::BITCOIN, self::GERMANY, self::WORLD];
 
     protected function casts(): array
     {

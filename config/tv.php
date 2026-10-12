@@ -171,7 +171,7 @@ return [
             'max_clip_seconds' => 90,
             // A clip of these kinds may be this long (the long variants, tv.commentary.length): a long scene runs 60 to
             // 100 s spoken, a long news segment up to two minutes, a long Bauernkrieg segment two to four minutes.
-            'long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280, 'bulletin' => 240],
+            'long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280, 'bulletin' => 420, 'rubric' => 130],
             // At most one news or history segment on air within this many minutes.
             'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
@@ -255,7 +255,7 @@ return [
         'idents' => [
             'enabled' => (bool) env('TV_COMMENTARY_IDENTS', true),
             'stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
-            'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident'],
+            'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident', 'rubric' => 'ident'],
             'bed' => 'news-bed.opus',
             // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
             'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
@@ -337,7 +337,7 @@ return [
             'max_hold_seconds' => 100,
             // A clip of these kinds holds its slot until it has been spoken, up to this long (spool.long_clip_seconds
             // plus the lead-in and tail): the scene stays on air through a long scene or story.
-            'long_max_hold_seconds' => ['scene' => 135, 'news' => 160, 'history' => 290, 'bulletin' => 250],
+            'long_max_hold_seconds' => ['scene' => 135, 'news' => 160, 'history' => 290, 'bulletin' => 430, 'rubric' => 140],
         ],
 
         'news' => [
@@ -349,6 +349,8 @@ return [
             'max_rows' => 600,
             'per_feed' => 20,
             'max_title_chars' => 160,
+            // The feed item's teaser text (description) kept with the headline, for the bulletin's context (P5).
+            'max_summary_chars' => 500,
             'max_age_minutes' => 30,
             'sentences' => ['min' => (int) env('TV_COMMENTARY_NEWS_SENTENCES_MIN', 1), 'max' => (int) env('TV_COMMENTARY_NEWS_SENTENCES_MAX', 3)],
             'daily_cap' => (int) env('TV_COMMENTARY_NEWS_DAILY_CAP', 150),
@@ -372,6 +374,9 @@ return [
                 'handelsblatt-finanzen' => ['url' => 'https://www.handelsblatt.com/contentexport/feed/finanzen', 'source' => 'Handelsblatt', 'section' => 'germany', 'language' => 'de'],
                 'ntv-politik' => ['url' => 'https://www.n-tv.de/politik/rss', 'source' => 'n-tv', 'section' => 'germany', 'language' => 'de'],
                 'ntv-wirtschaft' => ['url' => 'https://www.n-tv.de/wirtschaft/rss', 'source' => 'n-tv', 'section' => 'germany', 'language' => 'de'],
+                // Foreign news for the bulletins (plan "TWENTY ONE Radio", P5; RSS with descriptions, reachable from the workstation 2026-10-12).
+                'tagesschau-ausland' => ['url' => 'https://www.tagesschau.de/ausland/index~rss2.xml', 'source' => 'tagesschau', 'section' => 'world', 'language' => 'de'],
+                'spiegel-ausland' => ['url' => 'https://www.spiegel.de/ausland/index.rss', 'source' => 'Spiegel', 'section' => 'world', 'language' => 'de'],
                 // The association's own news (plan "TWENTY ONE Radio", P2; RSS, 50 items, reachable from prod, checked 2026-10-12).
                 'einundzwanzig-news' => ['url' => 'https://media.einundzwanzig.space/s/einundzwanzig-news/feed.xml', 'source' => 'EINUNDZWANZIG News', 'section' => 'bitcoin', 'language' => 'de'],
             ],
@@ -407,9 +412,11 @@ return [
             // time line names the slot), else it expires. Lead (the plan's estimate, unmeasured): a bulletin of about 100 s
             // spoken is voiced in one to two minutes, so writing seven minutes ahead leaves it spooled about four minutes early.
             'bulletin' => [
+                // User 2026-10-12 (live): "Die News war zu kurz": six to eight stories at :00, four or five at :30, each two
+                // or three sentences with the feed item's description as context.
                 'items' => [
-                    'news' => ['min' => 4, 'max' => 6],
-                    'headlines' => ['min' => 3, 'max' => 3],
+                    'news' => ['min' => (int) env('TV_COMMENTARY_BULLETIN_NEWS_MIN', 6), 'max' => (int) env('TV_COMMENTARY_BULLETIN_NEWS_MAX', 8)],
+                    'headlines' => ['min' => (int) env('TV_COMMENTARY_BULLETIN_HEADLINES_MIN', 4), 'max' => (int) env('TV_COMMENTARY_BULLETIN_HEADLINES_MAX', 5)],
                 ],
                 'min_items' => 2,
                 'min_sources' => 3,
@@ -421,13 +428,65 @@ return [
                 'ready_seconds' => 60,
                 'late_seconds' => 120,
                 'priority' => 75,
-                'item_sentences' => ['min' => 1, 'max' => 2],
+                'item_sentences' => ['min' => 2, 'max' => 3],
                 'commentary_sentences' => ['min' => 2, 'max' => 3],
                 // Chance that Sirius adds one line after Markus' commentary (never in the quiet hours).
                 'sirius_chance' => (float) env('TV_COMMENTARY_BULLETIN_SIRIUS', 0.5),
                 // Sampled cooler than the talk (scripts.temperature): the news are read, not riffed.
                 'temperature' => (float) env('TV_COMMENTARY_BULLETIN_TEMPERATURE', 0.6),
                 'daily_cap' => (int) env('TV_COMMENTARY_BULLETIN_DAILY_CAP', 120),
+            ],
+            // The rubrics (plan "TWENTY ONE Radio", P5; App\Support\Caster\Programme\Rubrics): at every `rubric` slot of the
+            // clock one rubric of `rotation`, in turn over the day (the hour and the slot's place in it pick the start), one
+            // without material skipped; the choice for a slot is kept once made, so a teaser and the rubric agree. Written
+            // like the bulletin from `write_minutes_ahead` down to `last_write_minutes` before the slot (AI only, two tries,
+            // `daily_cap`), queued at `priority` in parts and played from its slot on, at most `late_seconds` late. It opens
+            // with the ident (idents.kinds.rubric) and a line that names it, then `seconds` of content (a draft below `min`
+            // is tried again, one above `max` loses its last sentences); `sirius_chance` of them as a duet.
+            'rubrics' => [
+                'enabled' => (bool) env('TV_COMMENTARY_RUBRICS', true),
+                'rotation' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_RUBRIC_ROTATION', 'liga,presseschau,podcast,geschichte,chat'))))),
+                'write_minutes_ahead' => 8,
+                'last_write_minutes' => 2,
+                'late_seconds' => 180,
+                'priority' => 70,
+                'seconds' => ['min' => 60, 'max' => 150],
+                'sentences' => ['min' => 10, 'max' => 16],
+                'sirius_chance' => (float) env('TV_COMMENTARY_RUBRIC_SIRIUS', 0.5),
+                'daily_cap' => (int) env('TV_COMMENTARY_RUBRIC_DAILY_CAP', 100),
+                // Liga-Rubrik: league events (WorldMemory) of the last `league_hours`; Chat-Stunde: questions of the last `chat_hours`.
+                'league_hours' => 24,
+                'chat_hours' => 3,
+                // The same material of a rubric does not air again within this many hours (the podcast digest stays a week).
+                'repeat_hours' => ['default' => 2, 'podcast' => 12],
+            ],
+            // The news talk (P5; App\Support\Caster\Programme\NewsTalk, user 2026-10-12: "Die Programme sollen aufregend und lang
+            // werden"): right after the :00 bulletin Markus and Sirius discuss its two or three most interesting stories
+            // (`stories`), `seconds` long (a shorter draft is tried again, a longer one loses its last sentences), with
+            // questions from the chat of the last `chat_hours`, ending with a teaser. Written once the bulletin is, in parts,
+            // airing when the bulletin ends (its estimated length after the slot), at most `late_seconds` late.
+            'news_talk' => [
+                'enabled' => (bool) env('TV_COMMENTARY_NEWS_TALK', true),
+                'seconds' => ['min' => (int) env('TV_COMMENTARY_NEWS_TALK_MIN_SECONDS', 180), 'max' => (int) env('TV_COMMENTARY_NEWS_TALK_MAX_SECONDS', 360)],
+                'sentences' => ['min' => 24, 'max' => 44],
+                'stories' => 3,
+                'chat_hours' => 2,
+                'priority' => 70,
+                'late_seconds' => 240,
+                'max_output_tokens' => 5_000,
+                'daily_cap' => (int) env('TV_COMMENTARY_NEWS_TALK_DAILY_CAP', 60),
+            ],
+            // Programme announcements (P5; App\Support\Caster\Programme\Announcements): written by the model from the rundown as
+            // data, and a line goes on air only when it names a bulletin or rubric that really follows, at the time it
+            // says. A teaser for the next slot plays at the first clip boundary within `before_minutes` of it (written a
+            // minute or two before that, at `priority`); a bulletin ends with a preview of the hour (`after_bulletin`).
+            'teasers' => [
+                'enabled' => (bool) env('TV_COMMENTARY_TEASERS', true),
+                'before_minutes' => 5,
+                'write_minutes_ahead' => 7,
+                'after_bulletin' => true,
+                'priority' => 72,
+                'daily_cap' => (int) env('TV_COMMENTARY_TEASER_DAILY_CAP', 120),
             ],
         ],
 

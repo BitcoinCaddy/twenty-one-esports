@@ -208,7 +208,7 @@ final class BlockFetcher
      * While a block is being voiced (minutes at VoiceStudio's pace), every
      * `urgent_poll_seconds` the server is asked for what cannot wait for it:
      * a live moment, a chat reaction or a wish is voiced and uploaded alone
-     * at once, a bulletin rendered as its own block (it must air at its
+     * at once, a bulletin, rubric or teaser rendered as its own block (it airs at its
      * slot). Without this a reaction would wait for the whole block.
      *
      * @param  array<string, string>  $terms
@@ -230,7 +230,8 @@ final class BlockFetcher
                 return;
             }
 
-            if (($script['kind'] ?? null) === CasterScript::BULLETIN) {
+            // What the clock places (a bulletin, a rubric, a teaser) gets a block of its own, with its jingle.
+            if (is_string($script['airs_at'] ?? null) || ($script['kind'] ?? null) === CasterScript::BULLETIN) {
                 $this->renderAndUpload($fetcher, [$script], $terms, CarbonImmutable::now(), answerUrgent: false);
             } else {
                 $fetcher->voiceAndUpload($script, $terms);
