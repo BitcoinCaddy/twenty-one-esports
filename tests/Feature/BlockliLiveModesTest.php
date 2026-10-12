@@ -225,15 +225,18 @@ test('a chess tournament, a finished one and a casual cup cannot switch; only an
         ->and(fn () => $switch->switch($finished, blockliLiveAdmin(), 'rapid'))->toThrow(TournamentRuleViolation::class);
 });
 
-test('the edit page offers the switch with the board\'s choice list and saves it at once, also for a running tournament', function () {
+test('the edit page offers the switch with the board\'s choice list; it saves only with "Save changes", also for a running tournament', function () {
     $admin = blockliLiveAdmin();
     $tournament = blockliLiveTournament('correspondence');
 
-    Livewire::actingAs($admin)->test('pages::admin.tournament-edit', ['tournament' => $tournament])
+    $page = Livewire::actingAs($admin)->test('pages::admin.tournament-edit', ['tournament' => $tournament])
         ->assertSeeHtml('data-test="mode-switch-blitz"')->assertSeeHtml('data-test="mode-switch-rapid"')
-        ->call('switchMode', 'blitz')
-        ->assertSet('modeError', '')
-        ->assertSeeHtml('data-test="mode-switch-notice"');
+        ->set('mode', 'blitz');
+
+    // User, 2026-10-12: no edit of the form saves on its own.
+    expect($tournament->refresh()->mode)->toBe('correspondence');
+
+    $page->call('save')->assertSet('error', '')->assertSet('mode', 'blitz');
 
     expect($tournament->refresh()->mode)->toBe('blitz');
 });
