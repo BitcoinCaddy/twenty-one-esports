@@ -262,7 +262,8 @@ return [
             'bed' => 'news-bed.opus',
             // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
             'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
-            'bed_gain_db' => 0,
+            // Six dB under the file's level (user 2026-10-12: "Das News Bett im Hintergrund muss etwas leiser werden").
+            'bed_gain_db' => (float) env('TV_COMMENTARY_BED_GAIN_DB', -6),
             'bed_fade_seconds' => 1.5,
             'bed_at_night' => false,
             'pause_seconds' => 0.3,
