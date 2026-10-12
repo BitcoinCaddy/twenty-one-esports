@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     Storage::fake('local');
     config(['tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10, 'tv.commentary.parts.sentences' => 5, 'tv.commentary.repeat_hours' => 0,
-        'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00']);
+        'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00', 'tv.commentary.idents.bed_kinds' => ['bulletin']]);
 });
 
 /** The idents of the config, switched on. */
@@ -220,4 +220,10 @@ it('builds no idents while they are switched off, and the director then plays th
 
     expect(Idents::fromConfig())->toBeNull()
         ->and(identsFirstClip(SceneDirector::fromConfig(app(ClipSpool::class)))['ident'])->toBeNull();
+});
+
+it('lays no bed under a bulletin by default, the stream music already runs under the voice', function () {
+    config(['tv.commentary.idents.bed_kinds' => array_values(array_filter(explode(',', '')))]);
+
+    expect(config('tv.commentary.idents.bed_kinds'))->toBe([]);
 });

@@ -250,7 +250,8 @@ return [
             'stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
             'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident'],
             'bed' => 'news-bed.opus',
-            'bed_kinds' => ['bulletin'],
+            // No bed under the bulletin by default: the stream's music already runs under the voice, and both together clashed (user 2026-10-12).
+            'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', '')))),
             'bed_gain_db' => 0,
             'bed_fade_seconds' => 1.5,
             'bed_at_night' => false,
