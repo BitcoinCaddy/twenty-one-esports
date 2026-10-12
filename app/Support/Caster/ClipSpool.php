@@ -376,6 +376,26 @@ class ClipSpool
             ->orderBy('caster_script_id')->orderBy('id')->first();
     }
 
+    /**
+     * The live clip nextLive() hands out when it has been ready for at least
+     * `$maxHoldSeconds` (its clip's creation, else its script's): it may cut
+     * into whatever is on air (SceneDirector). Null otherwise.
+     */
+    public function overdueLive(CarbonImmutable $now, float $maxHoldSeconds): ?CasterClip
+    {
+        $live = $this->nextLive($now);
+        $ready = $live?->created_at ?? $live?->script?->created_at;
+
+        return $ready !== null && $now->getTimestamp() - $ready->getTimestamp() >= $maxHoldSeconds ? $live : null;
+    }
+
+    /** Whether nextLive() would pick this clip: a live moment, a chat reaction or a wished segment. */
+    public function isLive(CasterClip $clip): bool
+    {
+        return in_array($clip->kind, self::LIVE_KINDS, true)
+            || CasterScript::query()->whereKey($clip->caster_script_id)->where('scene', ChatWishes::SCENE)->exists();
+    }
+
     /** The oldest ready news or history segment, unless one started within `segment_spacing_minutes`. */
     public function nextSegment(CarbonImmutable $now): ?CasterClip
     {

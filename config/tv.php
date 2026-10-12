@@ -643,6 +643,12 @@ return [
             'profiles' => (bool) env('TV_COMMENTARY_CHAT_PROFILES', false),
             'per_person_minutes' => (int) env('TV_COMMENTARY_CHAT_PERSON_MINUTES', 2),
             'per_hour' => (int) env('TV_COMMENTARY_CHAT_PER_HOUR', 20),
+            // A reaction (a chat reply, a wish, a zap thank-you) waits at most this long after it is ready (user
+            // 2026-10-12: "Maximal 10 Minuten, dann dürfen wieder Reactions reinkommen"): then it cuts in at the next
+            // sentence end of whatever is on air, never inside a bulletin's news, and the programme resumes from there
+            // (SceneDirector). Its script never expires before this plus `reaction_voicing_minutes`.
+            'max_hold_seconds' => (int) env('TV_COMMENTARY_CHAT_MAX_HOLD_SECONDS', 600),
+            'reaction_voicing_minutes' => 20,
             // The share of trusted chat replies that are a short duet: Markus answers, Sirius adds his take (user 2026-10-12).
             'duet_share' => (float) env('TV_COMMENTARY_CHAT_DUET_SHARE', 0.5),
             'notes_per_person' => 50,

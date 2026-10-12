@@ -517,6 +517,11 @@ class ScriptQueue
 
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
 
+        // A reaction may wait `chat.max_hold_seconds` on air before it cuts in, after its voicing: it never expires before that.
+        if ($kind === CasterScript::CHAT || $scene === ChatWishes::SCENE || ($kind === CasterScript::LIVE && $topic === ChatReactions::ZAP_TOPIC)) {
+            $maxAge = max($maxAge, (int) ceil((int) config('tv.commentary.chat.max_hold_seconds', 600) / 60) + (int) config('tv.commentary.chat.reaction_voicing_minutes', 20));
+        }
+
         if ($kind === CasterScript::BULLETIN) {
             $this->memory ??= new SpokenMemory;
             $this->memory->remember($text, $now);

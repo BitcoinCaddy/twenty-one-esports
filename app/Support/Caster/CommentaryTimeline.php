@@ -128,6 +128,12 @@ final class CommentaryTimeline
         }
     }
 
+    /** Takes back a cut that has not come yet: the clip runs to its end again. */
+    public function uncut(): void
+    {
+        $this->cutAt = null;
+    }
+
     public function isCut(): bool
     {
         return $this->cutAt !== null;
