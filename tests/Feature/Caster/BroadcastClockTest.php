@@ -280,7 +280,7 @@ function radioDirector(float $stinger = 0.0): SceneDirector
     return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
         'min_scene_seconds' => 20, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
         'long_max_hold_seconds' => ['bulletin' => 250], 'gap_seconds' => ['min' => 25, 'max' => 25], 'stinger_seconds' => $stinger, 'bulletin_late_seconds' => 120,
-    ], radioClockAwake());
+    ], clock: radioClockAwake());
 }
 
 it('plays the bulletin at its slot: never before, a scene on air cut at the end of its sentence, a stinger cue first', function () {
@@ -353,7 +353,7 @@ it('plays the night bulletin on the hour, over the quiet hours ten-minute rhythm
     $planner = new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
     $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
         'min_scene_seconds' => 20, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100, 'bulletin_late_seconds' => 120,
-    ], BroadcastClock::fromConfig());
+    ], clock: BroadcastClock::fromConfig());
     $startedAt = null;
 
     for ($t = (float) $slot->subSeconds(30)->getTimestamp(); $t <= $slot->getTimestamp() + 20 && $startedAt === null; $t += 0.25) {
