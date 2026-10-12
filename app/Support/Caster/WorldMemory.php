@@ -202,9 +202,9 @@ class WorldMemory
             return ['lines' => $lines, 'keys' => $keys, 'used' => $used, 'floor' => $floor];
         });
 
-        $held = array_flip((array) ($snapshot['keys'] ?? []));
-        $floor = (int) ($snapshot['floor'] ?? 0);
-        $left = max(intdiv($budget, 4), $budget - (int) ($snapshot['used'] ?? 0));
+        $held = array_flip($snapshot['keys']);
+        $floor = $snapshot['floor'];
+        $left = max(intdiv($budget, 4), $budget - $snapshot['used']);
         $fresh = [];
         $used = 0;
 
@@ -223,7 +223,7 @@ class WorldMemory
             $fresh[] = $line;
         }
 
-        $frozen = array_values(array_map('strval', (array) ($snapshot['lines'] ?? [])));
+        $frozen = $snapshot['lines'];
 
         return ['frozen' => $frozen === [] ? null : implode("\n", $frozen), 'fresh' => $fresh === [] ? null : implode("\n", $fresh), 'since' => $since];
     }
