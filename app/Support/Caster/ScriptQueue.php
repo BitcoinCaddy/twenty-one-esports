@@ -4,6 +4,8 @@ namespace App\Support\Caster;
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Programme\BroadcastClock;
+use App\Support\Caster\Programme\NewsBulletin;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -43,6 +45,13 @@ use Illuminate\Support\Str;
  * follow in order; the parts share one expiry, and expire() expires the rest
  * of a group once one part expired. SceneDirector plays them back to back.
  *
+ * The news bulletins (plan "TWENTY ONE Radio", P1/P2; fillBulletin()): the
+ * broadcast clock names the next bulletin slot (:00, :30; at night only :00),
+ * and from `bulletin.write_minutes_ahead` before it the bulletin is written
+ * (NewsBulletin) and queued at `bulletin.priority`, so the workstation voices
+ * it before the scenes and it waits in the spool for its slot (`airs_at`);
+ * also in the quiet hours. It expires `bulletin.late_seconds` after its slot.
+ *
  * Bounded: expired and voiced rows older than a day are deleted, so the table
  * holds at most a day of scripts.
  */
@@ -65,6 +74,8 @@ class ScriptQueue
 
     private ?SpokenMemory $memory = null;
 
+    private NewsBulletin $bulletin;
+
     public function __construct(
         private CasterVoice $voice,
         private SceneFacts $facts,
@@ -74,6 +85,7 @@ class ScriptQueue
         ?FollowedScripts $followed = null,
         ?DuetDirector $duets = null,
         ?DuetScripts $duetScripts = null,
+        ?NewsBulletin $bulletin = null,
     ) {
         $this->patterns = $patterns ?? app(PatternScripts::class);
         $this->news = $news ?? app(NewsScripts::class);
@@ -81,6 +93,7 @@ class ScriptQueue
         $this->followed = $followed ?? app(FollowedScripts::class);
         $this->duets = $duets ?? app(DuetDirector::class);
         $this->duetScripts = $duetScripts ?? app(DuetScripts::class);
+        $this->bulletin = $bulletin ?? app(NewsBulletin::class);
     }
 
     /** Whether the league voice writes scene scripts (TV_COMMENTARY_AI); off, the patterns fill the airtime alone. */
@@ -89,11 +102,11 @@ class ScriptQueue
         return config('tv.commentary.ai') === true;
     }
 
-    /** Airtime (seconds) queued, claimed or spooled and not yet played, fillers and segments left out. */
+    /** Airtime (seconds) queued, claimed or spooled and not yet played, fillers, segments and bulletins left out. */
     public function airtimeAhead(): float
     {
         $scripts = (float) CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
-            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, CasterScript::BULLETIN, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
 
         return $scripts + app(ClipSpool::class)->readySeconds();
     }
@@ -119,7 +132,8 @@ class ScriptQueue
         $this->expire($now);
         $this->seedFillers($now);
         $quiet = QuietHours::active($now);
-        $written = $quiet ? 0 : $this->fillSegments($now);
+        $written = $this->fillBulletin($now);
+        $written += $quiet ? 0 : $this->fillSegments($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -194,6 +208,41 @@ class ScriptQueue
         }
 
         return $written;
+    }
+
+    /**
+     * The next news bulletin (NewsBulletin), once per slot: written when the
+     * broadcast clock's next bulletin slot is at most `write_minutes_ahead`
+     * and at least `last_write_minutes` away, AI only; a call that gave
+     * nothing is tried again on the next run within that window. Queued at
+     * `bulletin.priority` with its slot as `airs_at`, expiring
+     * `bulletin.late_seconds` after it.
+     *
+     * @return int bulletins written (0 or 1)
+     */
+    public function fillBulletin(CarbonImmutable $now): int
+    {
+        $clock = BroadcastClock::fromConfig();
+        $slot = self::aiEnabled() && config('tv.commentary.news.enabled') === true ? $clock->nextBulletin($now) : null;
+
+        if ($slot === null) {
+            return 0;
+        }
+
+        $settings = (array) config('tv.commentary.programme.bulletin', []);
+        $ahead = $slot['key'] - $now->getTimestamp();
+        $hash = 'bulletin:'.$slot['key'];
+
+        if ($ahead > 60 * (float) ($settings['write_minutes_ahead'] ?? 7) || $ahead < 60 * (float) ($settings['last_write_minutes'] ?? 2)
+            || CasterScript::query()->where('kind', CasterScript::BULLETIN)->where('facts_hash', $hash)->exists()) {
+            return 0;
+        }
+
+        $bulletin = $this->bulletin->write($slot, $now);
+
+        return $bulletin !== null && $this->enqueue(CasterScript::BULLETIN, ScenePhase::BREAK, $bulletin['text'], $hash, (int) ($settings['priority'] ?? 75), $now,
+            source: CasterScript::SOURCE_AI, topic: $slot['type'], speakers: $bulletin['speakers'], airsAt: $slot['starts_at'],
+            expiresAt: $slot['starts_at']->addSeconds((int) ($settings['late_seconds'] ?? 120))) !== null ? 1 : 0;
     }
 
     /**
@@ -312,9 +361,15 @@ class ScriptQueue
      * sign-offs and repeats then leave it line by line, each line keeping its
      * speaker, and every part stores the speakers of its own lines.
      *
+     * A bulletin (`$airsAt`, `$expiresAt`; fillBulletin()) is queued as it
+     * was written: its sentences are news and its ritual lines come back on
+     * purpose, so neither the repeat filter nor the sign-off filter touches
+     * it (NewsBulletin keeps goodbyes out of its commentary); its lines are
+     * remembered all the same.
+     *
      * @param  list<string>|null  $speakers
      */
-    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null, ?array $speakers = null): ?CasterScript
+    public function enqueue(string $kind, string $phase, string $text, string $factsHash, int $priority, CarbonImmutable $now, ?string $scene = null, string $source = CasterScript::SOURCE_AI, ?string $topic = null, ?int $maxAgeMinutes = null, ?array $speakers = null, ?CarbonImmutable $airsAt = null, ?CarbonImmutable $expiresAt = null): ?CasterScript
     {
         // AI only unless the pattern fallback is switched on (PatternScripts::enabled()): no template text, no filler.
         if (! PatternScripts::enabled() && ($source === CasterScript::SOURCE_PATTERN || $kind === CasterScript::FILLER)) {
@@ -323,7 +378,10 @@ class ScriptQueue
 
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
 
-        if ($speakers !== null) {
+        if ($kind === CasterScript::BULLETIN) {
+            $this->memory ??= new SpokenMemory;
+            $this->memory->remember($text, $now);
+        } elseif ($speakers !== null) {
             [$text, $speakers] = $this->duetLines($text, $speakers, $now);
 
             if ($text === '') {
@@ -331,9 +389,9 @@ class ScriptQueue
             }
         }
 
-        $text = self::withoutSignOffs($text);
+        $text = $kind === CasterScript::BULLETIN ? $text : self::withoutSignOffs($text);
 
-        if ($kind !== CasterScript::FILLER && $speakers === null) {
+        if ($kind !== CasterScript::FILLER && $kind !== CasterScript::BULLETIN && $speakers === null) {
             $this->memory ??= new SpokenMemory;
             $text = $this->memory->withoutRepeats($text, $now);
 
@@ -348,7 +406,7 @@ class ScriptQueue
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
 
-        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAge, $parts, $group, $speakers): CasterScript {
+        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAge, $parts, $group, $speakers, $airsAt, $expiresAt): CasterScript {
             $first = null;
             $offset = 0;
 
@@ -369,7 +427,8 @@ class ScriptQueue
                     'status' => CasterScript::QUEUED,
                     'estimated_seconds' => self::estimateSeconds($part),
                     // Fillers carry no facts: they never go stale.
-                    'expires_at' => $kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes($maxAge),
+                    'expires_at' => $expiresAt?->utc() ?? ($kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes($maxAge)),
+                    'airs_at' => $airsAt?->utc(),
                     'part_group' => $group,
                     'part_index' => $group === null ? null : $index + 1,
                     'speakers' => $partSpeakers,

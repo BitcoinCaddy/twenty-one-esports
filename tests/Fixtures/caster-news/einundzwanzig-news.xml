@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Einundzwanzig News</title>
+    <link>/s/einundzwanzig-news</link>
+    <description>Das neuste aus dem Bitcoin Space</description>
+    <lastBuildDate>Mon, 12 Oct 2026 08:46:04 GMT</lastBuildDate>
+    <generator>EINUNDZWANZIG Nostr Publishing Platform</generator>
+    <item>
+      <title>Ledger-Hack durch offiziellen Distributor: Warum versiegelte Boxen keinen Schutz mehr bieten</title>
+      <link>/s/einundzwanzig-news/draft-9e35b183-8fd6-46ec-9da0-e529a80790cb</link>
+      <guid isPermaLink="false">30023:f240be2b:draft-9e35b183</guid>
+      <pubDate>Sun, 11 Oct 2026 19:58:59 GMT</pubDate>
+      <author>markusturm</author>
+      <description>Ein Supply-Chain-Angriff auf einen Distributor.</description>
+    </item>
+    <item>
+      <title>KI-Agenten wählen nicht, wie sie bezahlen. Unternehmen wählen, wie sie bezahlt werden wollen.</title>
+      <link>/s/einundzwanzig-news/draft-957c3c5a-09ba-47a8-8ecc-b5ff46c75935</link>
+      <guid isPermaLink="false">30023:f240be2b:draft-957c3c5a</guid>
+      <pubDate>Sun, 11 Oct 2026 16:18:53 GMT</pubDate>
+      <author>markusturm</author>
+      <description>Verdienen kommt vor dem Bezahlen oder Sparen.</description>
+    </item>
+    <item>
+      <title>Make Bitcoin and Nostr fun again</title>
+      <link>/s/einundzwanzig-news/draft-acc8d67d-7039-4e31-b16e-0cd6c23e37e0</link>
+      <guid isPermaLink="false">30023:f240be2b:draft-acc8d67d</guid>
+      <pubDate>Sun, 11 Oct 2026 14:39:38 GMT</pubDate>
+      <author>markusturm</author>
+      <description>English title, skipped as foreign.</description>
+    </item>
+  </channel>
+</rss>

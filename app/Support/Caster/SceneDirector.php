@@ -3,6 +3,8 @@
 namespace App\Support\Caster;
 
 use App\Models\CasterClip;
+use App\Models\CasterScript;
+use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\TwentyOne\Stream\RotationPlanner;
 use Carbon\CarbonImmutable;
 
@@ -57,6 +59,18 @@ use Carbon\CarbonImmutable;
  * after the one before it ended, an expired one, or a part cut off by a
  * takeover ends the group (ClipSpool::endGroup()). A group counts as one
  * run clip.
+ *
+ * The news bulletin (plan "TWENTY ONE Radio", P1; ClipSpool::bulletin()):
+ * from its slot on (:00, :30 on the broadcast clock, at most
+ * `bulletin.late_seconds` late) it plays before anything else, over the
+ * music gap and the quiet hours' ten-minute rhythm. A scene or segment on air
+ * is cut at the end of its sentence for it; a live moment, a reaction or a
+ * part of a story ends first (the story goes on after the bulletin). Nothing
+ * cuts into a bulletin: no takeover, no reaction, no wish; they follow it.
+ * A bulletin ends a run and does not count as a run clip. Hook for the
+ * stinger (P4): a slot with `stinger` leaves a cue (takeStinger()) and the
+ * voice starts `programme.stinger_seconds` later; bulletinOnAir() names the
+ * slot while the bulletin plays (the news bed).
  */
 final class SceneDirector
 {
@@ -86,19 +100,37 @@ final class SceneDirector
      */
     private ?array $part = null;
 
+    /** Whether the clip on air is a later or first part of a story (ScriptQueue::parts()). */
+    private bool $clipIsPart = false;
+
+    /** The slot type of the bulletin on air, or null. */
+    private ?string $bulletinSlot = null;
+
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}}  $settings
+     * The stinger the stream has to play (P4): the slot type, when it was asked for, and when the voice starts.
+     *
+     * @var array{slot: string, at: float, voice_at: float}|null
+     */
+    private ?array $stinger = null;
+
+    private readonly BroadcastClock $clock;
+
+    /**
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
         public readonly CommentaryTimeline $timeline,
         private readonly array $settings = [],
-    ) {}
+        ?BroadcastClock $clock = null,
+    ) {
+        $this->clock = $clock ?? BroadcastClock::fromConfig();
+    }
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}} $settings */
-        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', [])];
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int} $settings */
+        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120)];
 
         return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings);
     }
@@ -113,6 +145,21 @@ final class SceneDirector
     {
         if ($this->clip !== null && ! $this->timeline->isPlaying($now)) {
             $this->clipEnded($this->clip, $now);
+        }
+
+        // The bulletin's slot has come: it plays at the next clip boundary, before the next part, a live moment or the
+        // gap's end; a scene or segment on air is cut at the end of its sentence for it.
+        $bulletin = $this->bulletinSlot === null ? $this->dueBulletin($now) : null;
+        if ($bulletin !== null) {
+            if ($this->clip === null) {
+                if ($this->play($planner, $bulletin, $now)) {
+                    return null;
+                }
+            } elseif (! $this->timeline->isCut() && ! $this->clipIsPart && ! in_array($this->clip->kind, ClipSpool::LIVE_KINDS, true)) {
+                $end = $this->timeline->nextSentenceEnd($now) ?? $now;
+                $this->timeline->cutAt($end);
+                $planner->hold($end + 0.3);
+            }
         }
 
         // The next part of the story on air comes before anything else, once its breath is over.
@@ -130,8 +177,8 @@ final class SceneDirector
             }
         }
 
-        // A takeover waits for the end of the sentence on air, never longer.
-        if ($this->clip !== null && ! $this->timeline->isCut() && $planner->urgentPending()) {
+        // A takeover waits for the end of the sentence on air, never longer; it never cuts into a bulletin.
+        if ($this->clip !== null && $this->bulletinSlot === null && ! $this->timeline->isCut() && $planner->urgentPending()) {
             $end = $this->timeline->nextSentenceEnd($now) ?? $now;
             $this->timeline->cutAt($end);
             $planner->hold($end + 0.3);
@@ -190,10 +237,12 @@ final class SceneDirector
     private function clipEnded(CasterClip $clip, float $now): void
     {
         $at = CarbonImmutable::createFromTimestamp($now);
-        $part = $this->spool->partOf($clip);
+        $part = $this->clipIsPart ? $this->spool->partOf($clip) : null;
         $cut = $this->timeline->isCut();
         $this->spool->played($clip);
         $this->clip = null;
+        $this->clipIsPart = false;
+        $this->bulletinSlot = null;
         $this->timeline->clear();
 
         $settings = (array) ($this->settings['parts'] ?? []);
@@ -284,13 +333,33 @@ final class SceneDirector
         // earlier lost its first syllables to it (user 2026-10-11: "Der Start des Audios scheint beim Start immer
         // etwas abgeschnitten zu sein"; lead-in 0.5 s against a 1.0 s feed lead cut half a second).
         $start = $now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
+        $bulletinSlot = null;
+
+        if ($clip->kind === CasterScript::BULLETIN) {
+            $airsAt = $this->spool->airsAt($clip);
+            $slot = $airsAt === null ? null : $this->clock->slotAt($airsAt);
+            $bulletinSlot = $slot['type'] ?? BroadcastClock::NEWS;
+
+            // The stinger first (P4 plays it), the voice after it.
+            if (($slot['stinger'] ?? false) === true) {
+                $start += max(0.0, (float) ($this->settings['stinger_seconds'] ?? 0.0));
+                $this->stinger = ['slot' => $bulletinSlot, 'at' => $now, 'voice_at' => $start];
+            }
+        }
+
         $this->timeline->start($pcm, $clip->sentence_ends, $start);
         $this->spool->playing($clip);
         $this->clip = $clip;
+        $this->clipIsPart = $continuation || ($clip->kind !== CasterScript::BULLETIN && $this->spool->partOf($clip) !== null);
+        $this->bulletinSlot = $bulletinSlot;
         $this->quietUntil = 0.0;
 
-        // A later part continues its story: the group counts as one run clip.
-        if (! in_array($clip->kind, ClipSpool::LIVE_KINDS, true) && ! $continuation) {
+        if ($bulletinSlot !== null) {
+            // The bulletin ends a run on air and is no run clip.
+            $this->runPosition = 0;
+            $this->runLeft = 0;
+        } elseif (! in_array($clip->kind, ClipSpool::LIVE_KINDS, true) && ! $continuation) {
+            // A later part continues its story: the group counts as one run clip.
             $this->countRunClip($now);
         }
 
@@ -301,6 +370,47 @@ final class SceneDirector
         ));
 
         return true;
+    }
+
+    /**
+     * The bulletin clip to play now: only within `bulletin_late_seconds` of a
+     * bulletin slot's start on the clock (no query otherwise), and only one
+     * whose slot has come.
+     */
+    private function dueBulletin(float $now): ?CasterClip
+    {
+        if (! $this->clock->enabled()) {
+            return null;
+        }
+
+        $at = CarbonImmutable::createFromTimestamp((int) floor($now));
+        $slot = $this->clock->slotAt($at);
+
+        if (! BroadcastClock::isBulletin($slot['type']) || $now - $slot['key'] > (float) ($this->settings['bulletin_late_seconds'] ?? 120)) {
+            return null;
+        }
+
+        return $this->spool->bulletin($at);
+    }
+
+    /**
+     * The stinger cue of the bulletin that just started, once (P4 plays it): its slot type, when it was asked for
+     * and when the voice starts; null when there is none.
+     *
+     * @return array{slot: string, at: float, voice_at: float}|null
+     */
+    public function takeStinger(): ?array
+    {
+        $stinger = $this->stinger;
+        $this->stinger = null;
+
+        return $stinger;
+    }
+
+    /** The slot type of the bulletin on air (news, headlines), null when none plays (the news bed, P4). */
+    public function bulletinOnAir(): ?string
+    {
+        return $this->bulletinSlot;
     }
 
     /** A random gap within `gap_seconds` (none when unset). */

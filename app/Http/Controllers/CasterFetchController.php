@@ -46,10 +46,11 @@ final class CasterFetchController
         $atByteCap = $spool->bytes() >= (int) config('tv.commentary.spool.max_bytes', 0);
         $full = $ready >= $target || $atByteCap;
 
-        // A full spool still takes live moments and reactions (they play next); only the byte cap stops them too.
+        // A full spool still takes live moments and reactions (they play next) and the news bulletin (it airs at its
+        // slot, whatever else waits); only the byte cap stops them too.
         $script = match (true) {
             config('tv.commentary.enabled') !== true, $atByteCap => null,
-            $full => $queue->claim($now, ClipSpool::LIVE_KINDS),
+            $full => $queue->claim($now, [...ClipSpool::LIVE_KINDS, CasterScript::BULLETIN]),
             default => $queue->claim($now),
         };
 
