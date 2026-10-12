@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Support\Caster\CasterFetcher;
 use App\Support\Caster\DuetDirector;
+use App\Support\Caster\DuetScripts;
 use App\Support\Caster\Pcm;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
@@ -28,7 +29,7 @@ use Illuminate\Support\Facades\Http;
  * Only the newest KEEP probes stay; nothing else is written. An id that is
  * not one of VoiceStudio's profiles is refused before any generation.
  */
-#[Signature('caster:voices {--probe= : A VoiceStudio profile id to voice the comparison text with} {--speaker=markus : Whose place the probe takes (markus or sirius)}')]
+#[Signature('caster:voices {--probe= : A VoiceStudio profile id to voice the comparison text with} {--speaker=markus : Whose place the probe takes (markus, sirius or genossin)}')]
 #[Description('List the VoiceStudio profiles of the TV voices, or voice a comparison probe with one (workstation)')]
 class CasterVoicesCommand extends Command
 {
@@ -85,8 +86,8 @@ class CasterVoicesCommand extends Command
 
         $speaker = (string) $this->option('speaker');
 
-        if (! in_array($speaker, [DuetDirector::MARKUS, DuetDirector::SIRIUS], true)) {
-            $this->error('--speaker is markus or sirius.');
+        if (! in_array($speaker, DuetScripts::speakerNames(), true)) {
+            $this->error('--speaker is one of: '.implode(', ', DuetScripts::speakerNames()).'.');
 
             return self::FAILURE;
         }
@@ -133,7 +134,16 @@ class CasterVoicesCommand extends Command
         $markus = trim((string) ($profiles[DuetDirector::MARKUS] ?? config('tv.commentary.voicestudio.profile_id', '')));
         $sirius = trim((string) ($profiles[DuetDirector::SIRIUS] ?? ''));
 
-        return [DuetDirector::MARKUS => $markus, DuetDirector::SIRIUS => $sirius === '' ? $markus : $sirius];
+        $others = [];
+
+        // A further voice (the talk show's guest, P16) with its own profile.
+        foreach (DuetScripts::speakerNames() as $speaker) {
+            if (! in_array($speaker, [DuetDirector::MARKUS, DuetDirector::SIRIUS], true) && trim((string) ($profiles[$speaker] ?? '')) !== '') {
+                $others[$speaker] = trim((string) $profiles[$speaker]);
+            }
+        }
+
+        return [DuetDirector::MARKUS => $markus, DuetDirector::SIRIUS => $sirius === '' ? $markus : $sirius, ...$others];
     }
 
     /** Only the newest KEEP probe files stay. */
@@ -149,9 +159,9 @@ class CasterVoicesCommand extends Command
 
     private static function speed(string $speaker): string
     {
-        $speed = $speaker === DuetDirector::SIRIUS
-            ? config('tv.commentary.voicestudio.speeds.sirius', config('tv.commentary.voicestudio.speed'))
-            : config('tv.commentary.voicestudio.speed');
+        $speed = $speaker === DuetDirector::MARKUS
+            ? config('tv.commentary.voicestudio.speed')
+            : config('tv.commentary.voicestudio.speeds.'.$speaker, config('tv.commentary.voicestudio.speed'));
 
         return (string) (float) $speed;
     }

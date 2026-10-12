@@ -217,8 +217,9 @@ final class DuetScripts
     /**
      * The model's lines as turns: a line led by a speaker's name ("Markus:",
      * "Sirius:", or any other voice with a profile in
-     * `voicestudio.profiles`, so a further voice needs only its config; any
-     * case, also bold or with a dash) starts or continues that speaker's
+     * `voicestudio.profiles`, so a further voice needs only its config, or
+     * one of its `voicestudio.aliases` such as "Gisela:" for the talk show's
+     * guest; any case, also bold or with a dash) starts or continues that speaker's
      * turn, a line without a speaker continues the current turn; a line
      * before any speaker counts for Markus. A speaker tag right after a
      * sentence end inside a line starts a new line first: Haiku often writes
@@ -231,12 +232,17 @@ final class DuetScripts
     {
         [$lines, $speakers] = [[], []];
         $current = DuetDirector::MARKUS;
-        $names = implode('|', array_map(fn (string $speaker): string => preg_quote($speaker, '/'), self::speakerNames()));
+        $aliases = self::speakerAliases();
+        $tags = [...self::speakerNames(), ...array_keys($aliases)];
+        // The longest first: "genossin gisela" before "genossin".
+        usort($tags, fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));
+        $names = implode('|', array_map(fn (string $speaker): string => str_replace(' ', '\\s+', preg_quote($speaker, '/')), $tags));
         $text = preg_replace('/(?<=[.!?…"“”»)\]])[ \t]+(?=[*_]*(?:'.$names.')(?:\s+turm)?[*_]*\s*[:：])/iu', "\n", $text) ?? $text;
 
         foreach (ScriptGuard::lines($text) as $line) {
             if (preg_match('/^[\s*_\-–—>]*('.$names.')(?:\s+turm)?[\s*_]*[:：][\s*_]*(.*)$/iu', $line, $match) === 1) {
-                $current = mb_strtolower($match[1]);
+                $tag = (string) preg_replace('/\s+/u', ' ', mb_strtolower($match[1]));
+                $current = $aliases[$tag] ?? $tag;
                 $line = trim($match[2]);
             }
 
@@ -261,6 +267,28 @@ final class DuetScripts
         $names = array_map(fn (mixed $name): string => mb_strtolower((string) $name), $profiles);
 
         return array_values(array_unique([DuetDirector::MARKUS, DuetDirector::SIRIUS, ...array_filter($names, fn (string $name): bool => preg_match('/^[a-z]{2,20}$/', $name) === 1)]));
+    }
+
+    /**
+     * Further names a line may be led with (`voicestudio.aliases`, lowercase name => speaker), for speakers that
+     * speakerNames() knows only.
+     *
+     * @return array<string, string>
+     */
+    public static function speakerAliases(): array
+    {
+        $known = self::speakerNames();
+        $aliases = [];
+
+        foreach ((array) config('tv.commentary.voicestudio.aliases', []) as $alias => $speaker) {
+            $alias = trim((string) preg_replace('/\s+/u', ' ', mb_strtolower((string) $alias)));
+
+            if (is_string($speaker) && in_array($speaker, $known, true) && preg_match('/^[\p{L}]{2,20}(?: [\p{L}]{2,20})?$/u', $alias) === 1) {
+                $aliases[$alias] = $speaker;
+            }
+        }
+
+        return $aliases;
     }
 
     /**

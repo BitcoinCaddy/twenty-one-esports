@@ -7,6 +7,9 @@ use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Programme\Roasts;
+use App\Support\Caster\Programme\Shows;
+use App\Support\Caster\Programme\TalkShow;
+use App\Support\Caster\Programme\TalkShowScripts;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
@@ -36,7 +39,10 @@ use Throwable;
  *  - geschichte: a Geschichtsstunde of Bitcoin and the cypherpunks, on three
  *    bitcoin entries of the sourced canon;
  *  - podcast: the digest of the newest EINUNDZWANZIG episode (only with one);
- *  - liga: how the league works at any hour (CasterVoice::leagueBasics()).
+ *  - liga: how the league works at any hour (CasterVoice::leagueBasics());
+ *  - stammtisch: the talk show of three on a timeless MMT topic
+ *    (TalkShow::evergreen(), at most `shows.formats.stammtisch.stock_per_day`
+ *    a day), written by TalkShowScripts with its own cast and checks.
  *
  * Every format brings its own Anchor jingle line where there is one
  * (`stock.jingles`, else the talk jingle; BlockComposer). The speakers are a
@@ -64,7 +70,7 @@ final class StockScripts
     /** The topic prefix of a stock script (`stock:<format>`). */
     public const TOPIC_PREFIX = 'stock:';
 
-    public const FORMATS = ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', Roasts::SCHWARZBUCH, Roasts::INFLATION];
+    public const FORMATS = ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', Roasts::SCHWARZBUCH, Roasts::INFLATION, Shows::STAMMTISCH];
 
     /** @var array<string, string> */
     private const NAMES = [DuetDirector::MARKUS => 'Markus', DuetDirector::SIRIUS => 'Sirius'];
@@ -74,6 +80,13 @@ final class StockScripts
     private const LAST_PICKS = 'caster:stock:last_picks';
 
     private const USED_CANON = 'caster:stock:used_canon';
+
+    /**
+     * The talk show's evergreen material picked by materialFor() (TalkShow::evergreen()), written by TalkShowScripts.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $talkShow = null;
 
     public function __construct(
         private readonly DuetScripts $duets,
@@ -97,6 +110,15 @@ final class StockScripts
 
             if ($format === null) {
                 return null;
+            }
+
+            // The talk show of three (P16) has its own writer, cast and checks.
+            if ($format === Shows::STAMMTISCH && $this->talkShow !== null) {
+                /** @phpstan-ignore argument.type (TalkShow::evergreen() built it) */
+                $talk = app(TalkShowScripts::class)->evergreen($this->talkShow);
+                $this->remember(self::LAST_FORMATS, $format);
+
+                return $talk === null ? null : $talk + ['format' => $format];
             }
 
             $rejected = [];
@@ -247,6 +269,7 @@ final class StockScripts
             'podcast' => app(PodcastTranscripts::class)->digestBlock(),
             'liga' => ($lines = CasterVoice::leagueBasics()) === [] ? null : implode("\n", array_map(fn (string $line): string => '- '.$line, $lines)),
             Roasts::SCHWARZBUCH, Roasts::INFLATION => $this->roastMaterial($format),
+            Shows::STAMMTISCH => ($this->talkShow = app(TalkShow::class)->evergreen(CarbonImmutable::now())) === null ? null : (string) $this->talkShow['data'],
             default => null,
         };
     }

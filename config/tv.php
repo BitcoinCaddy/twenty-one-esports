@@ -201,16 +201,23 @@ return [
             'profiles' => [
                 'markus' => env('TV_VOICESTUDIO_PROFILE', 'ee7a2a18'),
                 'sirius' => env('TV_VOICESTUDIO_PROFILE_SIRIUS', '446d98e1'),
+                // The talk show guest (P16, Programme\TalkShow): VoiceStudio's designed archetype "German Companion"
+                // (female, young adult, moderate pitch), no person's clone.
+                'genossin' => env('TV_VOICESTUDIO_PROFILE_GENOSSIN', '6575625b'),
             ],
+            // Further names a script may lead a line with for a speaker ("Gisela: …" is the guest), lowercase.
+            'aliases' => ['gisela' => 'genossin', 'genossin gisela' => 'genossin'],
             // The breath when the speaker changes inside a clip (seconds, random within the range); 0.25 to 0.4 s put
             // Sirius too close to Markus (user 2026-10-12).
             'speaker_pause' => ['min' => 0.45, 'max' => 0.7],
             'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
             // Sirius' clone speaks faster than Markus' at the same speed (user 2026-10-12: "Er redet schneller als Markus").
-            'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92)],
+            'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92), 'genossin' => (float) env('TV_VOICESTUDIO_SPEED_GENOSSIN', 1.0)],
+            // A speaker's tempo for a heated chunk (its last sentence ends with "!"): the talk show's guest speeds up a little.
+            'heated_speeds' => ['genossin' => (float) env('TV_VOICESTUDIO_HEATED_SPEED_GENOSSIN', 1.08)],
             // Speech level of every chunk (RMS dBFS) and a per-speaker offset in dB (Pcm::levelled()).
             'speech_dbfs' => (float) env('TV_VOICESTUDIO_SPEECH_DBFS', -20),
-            'levels' => ['markus' => (float) env('TV_VOICESTUDIO_LEVEL_MARKUS', 0), 'sirius' => (float) env('TV_VOICESTUDIO_LEVEL_SIRIUS', -1)],
+            'levels' => ['markus' => (float) env('TV_VOICESTUDIO_LEVEL_MARKUS', 0), 'sirius' => (float) env('TV_VOICESTUDIO_LEVEL_SIRIUS', -1), 'genossin' => (float) env('TV_VOICESTUDIO_LEVEL_GENOSSIN', 0)],
             'language' => 'de',
             'timeout_seconds' => 60,
             'retries' => 3,
@@ -365,6 +372,10 @@ return [
                 'gain_db' => -12.0,
                 'min_turn_seconds' => 3.5,
                 'at' => ['min' => 0.55, 'max' => 0.8],
+                // The talk show (P16): under a turn of the other side (the guest under Markus or Sirius, they under her) only
+                // a blip saying one of these: a laugh or a doubting sound, never "Stimmt." to the opponent.
+                'opponents' => ['genossin'],
+                'across' => ['Hm.', '[laughter]', 'Na ja.', 'Ach komm.', 'Pff.'],
             ],
             // The replay archive (user 2026-10-12: a "Best of des Tages" in the quiet hours): the workstation keeps every
             // block it uploaded (`dir`, at most `keep_hours` and `max_bytes`, oldest out first) with its metadata; in the
@@ -432,8 +443,9 @@ return [
                 // The formats in rotation (user 2026-10-12: "lustige Programme ohne aktuellen Bezug, sondern sinnvolles
                 // Besprechen; Programm für Tutorials für Bitcoin-Dinge"), each with its Anchor jingle categories (the
                 // talk jingle when none of them exists).
-                'formats' => ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', 'schwarzbuch', 'inflationsbeichte'],
+                'formats' => ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', 'schwarzbuch', 'inflationsbeichte', 'stammtisch'],
                 'jingles' => [
+                    'stammtisch' => ['rubric-stammtisch'],
                     'schwarzbuch' => ['rubric-schwarzbuch'],
                     'inflationsbeichte' => ['rubric-inflationsbeichte'],
                     'talk' => ['stock-talk'],
@@ -693,6 +705,8 @@ return [
                     '17:15' => 'partie',
                     '20:45' => 'tribunal',
                     '21:15' => 'hotline',
+                    '18:15' => 'stammtisch',
+                    '22:15' => 'stammtisch',
                 ],
                 'max_output_tokens' => 6_000,
                 // A five-minute show is about a thousand words: longer to write than `esports.voice.timeout_seconds` allows a post.
@@ -705,6 +719,17 @@ return [
                     'meetups' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'days' => 7, 'max_events' => 12, 'repeat_days' => 1],
                     'partie' => ['seconds' => ['min' => 180, 'max' => 300], 'sentences' => ['min' => 22, 'max' => 40], 'speakers' => ['markus', 'sirius'], 'hours' => 24, 'repeat_days' => 2],
                     'hotline' => ['seconds' => ['min' => 240, 'max' => 330], 'sentences' => ['min' => 28, 'max' => 44], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_questions' => 4, 'searches_per_question' => 2, 'write_minutes_ahead' => 14, 'repeat_days' => 1],
+                    // Turm und Genossin, der Talk (P16, Programme\TalkShow, TalkShowScripts; user 2026-10-13: like a real TV talk
+                    // show): Sirius hosts as the parody of an interrupting talk show host, Markus and the guest Genossin Gisela (MMT,
+                    // resources/data/voice/mmt-positions.json) fight in short turns of at most `sentences_per_turn` (one-liners
+                    // from `min_words` words), each of the three with at least `min_turns` turns; between two turns only
+                    // `turn_gap_ms` of breath (the duets take voicestudio.speaker_pause). Live at its slots on a real money
+                    // headline of the last `headline_hours` (none within `repeat_days`), else the slot falls back to the
+                    // rotation; the evergreen version (a timeless topic) goes into the night stock at most `stock_per_day`
+                    // times a day. Its own usage channel and `daily_cap`, `timeout_seconds` for the long write.
+                    'stammtisch' => ['seconds' => ['min' => 360, 'max' => 600], 'sentences' => ['min' => 55, 'max' => 110], 'speakers' => ['markus', 'sirius', 'genossin'],
+                        'sentences_per_turn' => 3, 'min_words' => 3, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 120, 'max' => 260], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 15, 'stock_per_day' => 2,
+                        'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 12), 'timeout_seconds' => 180, 'max_output_tokens' => 9_000],
                 ],
                 // The EINUNDZWANZIG portal's public meetup dates (GET, about five megabytes, every date ever): read at most
                 // every `cache_minutes`, a failed read tried again after `retry_minutes`.

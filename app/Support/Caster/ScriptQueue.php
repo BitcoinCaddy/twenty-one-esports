@@ -19,6 +19,7 @@ use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
 use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\ShowScripts;
+use App\Support\Caster\Programme\TalkShowScripts;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Voice\VoiceHygiene;
 use Carbon\CarbonImmutable;
@@ -420,7 +421,9 @@ class ScriptQueue
 
         if (Shows::isShow($id)) {
             $material = app(Shows::class)->material($id, $now);
-            $rubric = $material === null ? null : app(ShowScripts::class)->write($slot, $id, $material, $now);
+            $rubric = $material === null ? null : ($id === Shows::STAMMTISCH
+                ? app(TalkShowScripts::class)->write($slot, $material, $now)
+                : app(ShowScripts::class)->write($slot, $id, $material, $now));
         } else {
             $material = $rubrics->material($id, $now);
             $rubric = $material === null ? null

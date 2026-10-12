@@ -7,6 +7,7 @@ use App\Support\Caster\CasterFetcher;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\Idents;
 use App\Support\Caster\Pcm;
+use App\Support\Caster\Programme\TalkShow;
 use App\Support\Caster\ScriptGuard;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -28,6 +29,8 @@ use Closure;
  *    Blips der Zustimmung des jeweils anderen (ja, lachen, hm, stimmt …)"),
  *    `blips.gain_db` under a turn of at least `min_turn_seconds`, at `at` of
  *    the turn, on about `share` of such turns and `min_gap_seconds` apart;
+ *    with three voices (the talk show) the blip is the one the turn answers,
+ *    and across the sides (`opponents`) only an `across` sound, a laugh or a doubt;
  *  - the news bed under a bulletin only where Idents::bedFor() says so.
  *
  * The result is raw PCM with its chunk ends (sentence ends for a cut), the
@@ -224,7 +227,8 @@ final class BlockRenderer
         }
 
         $pause = (array) ($voice['pause'] ?? []);
-        $speakerPause = (array) ($voice['speaker_pause'] ?? []);
+        // The talk show's turns follow each other quicker than a duet's (TalkShow::turnGap()).
+        $speakerPause = TalkShow::turnGap($script['topic'] ?? null) ?? (array) ($voice['speaker_pause'] ?? []);
         $speakers = array_values(array_unique(array_map(fn (int $key): string => $chunks[$key]['speaker'], $mine)));
         $duet = count($speakers) > 1;
         $blipSettings = (array) ($settings['blips'] ?? []);
@@ -246,8 +250,11 @@ final class BlockRenderer
                 $at = $turnStart / $rate + $turnSeconds * $this->within((array) ($blipSettings['at'] ?? []), 0.55, 0.8);
 
                 if ($blockOffset + $at - $lastBlip >= (float) ($blipSettings['min_gap_seconds'] ?? 25) && ($this->random)() < (float) ($blipSettings['share'] ?? 0.35)) {
-                    $other = collect($speakers)->first(fn (string $candidate): bool => $candidate !== $speaker) ?? DuetDirector::SIRIUS;
-                    $files = array_values(array_filter($this->jingles->blips($other), fn (string $file): bool => $file !== $lastFile));
+                    $other = self::blipSpeaker($chunks, $mine, $position, $speaker) ?? DuetDirector::SIRIUS;
+                    $opponents = array_values(array_filter((array) ($blipSettings['opponents'] ?? []), 'is_string'));
+                    // Across the sides of the talk show only a laugh or a doubting sound (`across`).
+                    $across = in_array($speaker, $opponents, true) !== in_array($other, $opponents, true);
+                    $files = array_values(array_filter($this->jingles->blips($other, $across ? array_values(array_filter((array) ($blipSettings['across'] ?? []), 'is_string')) : null), fn (string $file): bool => $file !== $lastFile));
                     $file = $files === [] ? null : $files[(int) floor(($this->random)() * count($files)) % count($files)];
                     $blip = $file === null ? null : $this->jingles->pcm($file, $rate);
 
@@ -296,6 +303,30 @@ final class BlockRenderer
             $stinger = (new Idents((array) config('tv.commentary.idents', []), $rate))->stingerPcm((string) ($this->idents->slotFor(CasterScript::BULLETIN) ?? 'news'));
 
             return $stinger === null ? null : ['id' => 'stinger', 'pcm' => $stinger];
+        }
+
+        return null;
+    }
+
+    /**
+     * Who blips under a chunk: the speaker who spoke last before this turn (the one it answers), else the next one
+     * after it; in a duet always the other of the two. null when nobody else speaks in the script.
+     *
+     * @param  list<array{script: int, speaker: string, lines: list<string>}>  $chunks
+     * @param  list<int>  $mine  the chunk keys of the script, in order
+     */
+    private static function blipSpeaker(array $chunks, array $mine, int $position, string $speaker): ?string
+    {
+        for ($i = $position - 1; $i >= 0; $i--) {
+            if ($chunks[$mine[$i]]['speaker'] !== $speaker) {
+                return $chunks[$mine[$i]]['speaker'];
+            }
+        }
+
+        for ($i = $position + 1; $i < count($mine); $i++) {
+            if ($chunks[$mine[$i]]['speaker'] !== $speaker) {
+                return $chunks[$mine[$i]]['speaker'];
+            }
         }
 
         return null;
