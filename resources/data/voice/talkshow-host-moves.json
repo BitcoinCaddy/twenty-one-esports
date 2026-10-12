@@ -1,0 +1,125 @@
+{
+    "about": "The host moves of Sirius in Turm und Genossin, der Talk (plan \"TWENTY ONE Radio\", P16; user 2026-10-13: the host's phrases must be very extensive for lots of variance). Written for the show as a parody of an interrupting talk show host's STYLE (dramaturgy rule host-interrupts, resources/data/voice/talkshow.json); none of them is a quote of a real person, none names a real host. TalkShow::hostMoves() offers a rotating sample per episode (one per group first, the ones offered longest ago first) and never a move said on air within `tv.commentary.repeat_hours` (SpokenMemory); the host may also invent new ones in the same style.",
+    "groups": {
+        "unterbrechen": [
+            "Moment, Moment, Moment, da muss ich jetzt mal dazwischen.",
+            "Stopp, stopp, das lasse ich so nicht stehen.",
+            "Nee, warten Sie, das ist mir jetzt zu schnell gegangen.",
+            "Halt, bevor Sie weiterreden, das muss ich kurz sortieren.",
+            "Darf ich da ganz kurz rein, nur einen einzigen Satz?",
+            "Ich unterbreche Sie ungern, aber ich unterbreche Sie jetzt.",
+            "Bitte nicht beide gleichzeitig, ich verstehe sonst gar nichts mehr.",
+            "Einen Augenblick, da sind wir jetzt aber ganz woanders gelandet."
+        ],
+        "naiv_fragen": [
+            "Ich frag jetzt mal ganz naiv, wie ein ganz normaler Zuhörer.",
+            "Erklären Sie mir das mal so, als wäre ich ein Grundschüler.",
+            "Das müssen Sie mir erklären, das verstehe ich nämlich nicht.",
+            "Ganz dumme Frage, aber wer bezahlt das denn am Ende?",
+            "Ich bin ja kein Ökonom, aber das klingt für mich wie Zauberei.",
+            "Woher kommt das Geld denn dann, wenn nicht von uns?",
+            "Und wenn das so einfach ist, warum macht das dann keiner?",
+            "Ich stelle mir das gerade bildlich vor und ich sehe nur Druckerpressen."
+        ],
+        "ja_oder_nein": [
+            "Ja oder nein, mehr will ich gar nicht wissen.",
+            "Jetzt mal ganz konkret, ja oder nein?",
+            "Das war jetzt sehr viel Text für eine Frage mit zwei möglichen Antworten.",
+            "Ich habe Sie nicht nach einem Vortrag gefragt, sondern nach einem Ja.",
+            "Sie weichen aus, also noch einmal ganz langsam, ja oder nein?",
+            "Kurze Frage, kurze Antwort, würden Sie das unterschreiben?",
+            "Ich nehme das jetzt mal als Ja, Sie dürfen gern widersprechen.",
+            "Das ist kein Nein, das ist auch kein Ja, das ist Politik."
+        ],
+        "beruhigen": [
+            "Jetzt lassen Sie ihn doch mal ausreden, bitte!",
+            "Jetzt lassen Sie sie doch auch mal ausreden, Herr Turm!",
+            "Ganz ruhig, wir haben noch ein paar Minuten, alle kommen dran.",
+            "Wir atmen jetzt alle einmal tief durch und dann geht es weiter.",
+            "Bitte, bitte, nicht beide auf einmal, hier wird nicht geschrien.",
+            "Ich sehe, die Temperatur im Studio steigt gerade deutlich.",
+            "Gut, das war leidenschaftlich, jetzt bitte noch einmal mit Argument.",
+            "So, Waffenstillstand für zehn Sekunden, ich habe eine Frage."
+        ],
+        "anheizen": [
+            "Aber das ist doch genau der Punkt, oder etwa nicht?",
+            "Herr Turm, das lassen Sie sich doch nicht gefallen, oder?",
+            "Genossin, er hat Sie gerade ziemlich frontal angegriffen.",
+            "Das hat gesessen, da müssen Sie jetzt aber was sagen.",
+            "Hören Sie das, er sagt, Ihr ganzes Modell ist Wunschdenken.",
+            "Sie sagt, Ihr Bitcoin ist ein Spielzeug, was antworten Sie darauf?",
+            "Das ist jetzt aber schon ein ziemlich harter Vorwurf, finden Sie nicht?",
+            "Ich merke, da liegen Welten zwischen Ihnen, und das gefällt mir."
+        ],
+        "zuschauerfrage": [
+            "Wir haben eine Zuschauerfrage, und die ist richtig unangenehm.",
+            "Ein Zuschauer fragt, und ich lese das jetzt genau so vor.",
+            "Aus dem Chat kommt gerade eine Frage, die ich Ihnen nicht ersparen kann.",
+            "Eine Zuhörerin will wissen, und da bin ich auch gespannt.",
+            "Hier schreibt jemand, und ich gebe das einfach mal weiter.",
+            "Die Leute draußen wollen das jetzt wirklich wissen, also bitte.",
+            "Zuschauerfrage, und zwar an Sie beide, wer zuerst?",
+            "Das hier kam gerade rein, und es ist eine Frage an die Genossin."
+        ],
+        "faktencheck": [
+            "Dann machen wir doch jetzt mal einen kleinen Faktencheck.",
+            "Faktencheck, und zwar sofort, bevor das hier jemand glaubt.",
+            "Das schauen wir uns im Faktencheck an, und zwar nur mit dem, was wirklich belegt ist.",
+            "Ich habe hier was mitgebracht, Zeit für den Faktencheck.",
+            "Moment, da wird jetzt ein Faktencheck fällig, meine Damen und Herren.",
+            "Bevor wir uns weiter streiten, ein kurzer Faktencheck.",
+            "Faktencheck, und ich sage Ihnen gleich, einer von Ihnen wird nicht glücklich.",
+            "Wir haben die Zahlen, wir machen den Faktencheck, live."
+        ],
+        "schlussrunde": [
+            "Wir müssen zum Ende kommen, die Schlussrunde, ein Satz pro Person.",
+            "Ein Satz, Herr Turm, ein einziger Satz!",
+            "Genossin, Ihr Schlusswort, aber wirklich nur ein Satz.",
+            "Letzte Runde, und wer länger als einen Satz redet, wird abgeschaltet.",
+            "Ganz kurz zum Schluss, was soll hängen bleiben?",
+            "Die Zeit läuft uns davon, also ein Satz, bitte.",
+            "Schlussrunde, und diesmal ohne Unterbrechung, versprochen.",
+            "Ihr Fazit in einem Satz, und bitte ohne Fußnoten."
+        ],
+        "sarkastisch_zusammenfassen": [
+            "Wenn ich das zusammenfasse, ist Geld also unendlich und trotzdem knapp.",
+            "Also, der eine will weniger Staat, die andere mehr, und ich will Feierabend.",
+            "Halten wir fest, Sie sind sich in genau gar nichts einig.",
+            "Ich fasse zusammen, die Druckerpresse ist schuld oder die Lösung, je nachdem, wen man fragt.",
+            "Gut, das Publikum ist jetzt verwirrter als vorher, Mission erfüllt.",
+            "Ich halte fest, beide haben recht, nur nicht gleichzeitig.",
+            "Wir haben also wieder einmal die Welt gerettet, zumindest verbal.",
+            "Das war jetzt ein ganzes Semester Ökonomie im Schnelldurchlauf, und alle sind beleidigt."
+        ],
+        "einhaken": [
+            "Da muss ich einhaken, das haben Sie vorhin noch ganz anders gesagt.",
+            "Da hake ich ein, denn genau da wird es doch spannend.",
+            "Ich muss da nachhaken, das war mir eben zu glatt.",
+            "Moment, da hake ich ein, woher wissen Sie das eigentlich?",
+            "Da gehe ich jetzt nicht drüber hinweg, das will ich genauer wissen.",
+            "Lassen Sie mich da kurz einhaken, bevor wir das Thema wechseln.",
+            "Das ist mir jetzt zu schnell, da hake ich noch einmal nach.",
+            "Da bleibe ich dran, weil Sie gerade elegant ausgewichen sind."
+        ],
+        "nachbohren": [
+            "Und was genau heißt das für jemanden, der jeden Monat sein Gehalt bekommt?",
+            "Das ist ja schön gesagt, aber was passiert dann konkret?",
+            "Und wenn es schiefgeht, wer haftet dann dafür?",
+            "Das klingt toll in der Theorie, wo hat das schon mal funktioniert?",
+            "Sie sagen das so, als wäre es selbstverständlich, ist es das wirklich?",
+            "Und was sagen Sie den Leuten, die gerade ihre Miete nicht zahlen können?",
+            "Woran würden wir denn merken, dass Sie falsch liegen?",
+            "Nennen Sie mir ein einziges Beispiel, nur eines."
+        ],
+        "monolog_abwuergen": [
+            "Das war jetzt ein sehr schöner Vortrag, aber wir sind hier nicht in der Vorlesung.",
+            "Ich muss Sie bremsen, sonst sind wir in einer Stunde noch hier.",
+            "Danke, das reicht schon, ich habe die Richtung verstanden.",
+            "Wir machen hier Radio, kein Hörbuch, bitte auf den Punkt.",
+            "Ich nehme Ihnen jetzt mal kurz das Wort weg, das ist nicht persönlich.",
+            "Das war jetzt viel, ich versuche mal, das zu übersetzen.",
+            "Kurz und knapp bitte, die Zuhörer schlafen sonst ein.",
+            "Sie reden jetzt schon so lange am Stück, das ist hier Rekord."
+        ]
+    }
+}

@@ -723,12 +723,13 @@ return [
                     // show): Sirius hosts as the parody of an interrupting talk show host, Markus and the guest Genossin Gisela (MMT,
                     // resources/data/voice/mmt-positions.json) fight in short turns of at most `sentences_per_turn` (one-liners
                     // from `min_words` words), each of the three with at least `min_turns` turns; between two turns only
-                    // `turn_gap_ms` of breath (the duets take voicestudio.speaker_pause). Live at its slots on a real money
+                    // `turn_gap_ms` of breath (the duets take voicestudio.speaker_pause); the host gets `host_moves` of his
+                    // phrases per episode (resources/data/voice/talkshow-host-moves.json). Live at its slots on a real money
                     // headline of the last `headline_hours` (none within `repeat_days`), else the slot falls back to the
                     // rotation; the evergreen version (a timeless topic) goes into the night stock at most `stock_per_day`
                     // times a day. Its own usage channel and `daily_cap`, `timeout_seconds` for the long write.
                     'stammtisch' => ['seconds' => ['min' => 360, 'max' => 600], 'sentences' => ['min' => 55, 'max' => 110], 'speakers' => ['markus', 'sirius', 'genossin'],
-                        'sentences_per_turn' => 3, 'min_words' => 3, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 120, 'max' => 260], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 15, 'stock_per_day' => 2,
+                        'sentences_per_turn' => 3, 'min_words' => 3, 'host_moves' => 10, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 120, 'max' => 260], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 15, 'stock_per_day' => 2,
                         'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 12), 'timeout_seconds' => 180, 'max_output_tokens' => 9_000],
                 ],
                 // The EINUNDZWANZIG portal's public meetup dates (GET, about five megabytes, every date ever): read at most

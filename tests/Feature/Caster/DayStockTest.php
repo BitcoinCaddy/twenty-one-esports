@@ -351,6 +351,8 @@ it('logs the airtime mix per hour: fresh, stock, replay and music', function () 
 });
 
 it('writes stock talks ahead only in the stock window and while the workstation reports room', function () {
+    // The two-voice formats: the talk show of three answers in its own shape (TalkShowTest).
+    config(['tv.commentary.blocks.stock.formats' => ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', 'schwarzbuch', 'inflationsbeichte']]);
     VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(), 'canon_id' => null, 'mood' => 'fakten']);
     $queue = app(ScriptQueue::class);
     $stockTalks = fn (): int => CasterScript::query()->where('scene', StockScripts::SCENE)->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count();

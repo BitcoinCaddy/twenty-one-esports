@@ -8,6 +8,7 @@ use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\NewsFilter;
 use App\Support\Caster\ScriptGuard;
+use App\Support\Caster\SpokenMemory;
 use App\Support\Caster\WorldMemory;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -67,6 +68,8 @@ class TalkShow
 
     private const USED_TOPICS = 'caster:talkshow:topics';
 
+    private const OFFERED_MOVES = 'caster:talkshow:host_moves';
+
     /** @var array<string, mixed>|null */
     private static ?array $data = null;
 
@@ -96,6 +99,75 @@ class TalkShow
         $min = max(0.05, (float) ($gap['min'] ?? 120) / 1000);
 
         return ['min' => $min, 'max' => max($min, (float) ($gap['max'] ?? 260) / 1000)];
+    }
+
+    /**
+     * The host's moves of resources/data/voice/talkshow-host-moves.json, by group.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function hostMoveGroups(): array
+    {
+        $data = json_decode((string) file_get_contents(resource_path('data/voice/talkshow-host-moves.json')), true);
+        $groups = [];
+
+        foreach (is_array($data) ? (array) ($data['groups'] ?? []) : [] as $group => $moves) {
+            $moves = array_values(array_filter((array) $moves, fn (mixed $move): bool => is_string($move) && trim($move) !== ''));
+
+            if ($moves !== []) {
+                $groups[(string) $group] = $moves;
+            }
+        }
+
+        return $groups;
+    }
+
+    /**
+     * A rotating sample of `$count` host moves for one episode: never one said on air within `repeat_hours`
+     * (SpokenMemory), the ones offered longest ago first, one per group before a group gets a second; remembered as
+     * offered. Fewer when the pool has fewer fresh ones.
+     *
+     * @return list<string>
+     */
+    public static function hostMoves(CarbonImmutable $now, int $count = 10): array
+    {
+        $memory = new SpokenMemory;
+        $offered = array_values(array_filter((array) Cache::get(self::OFFERED_MOVES, []), 'is_string'));
+        $rank = fn (string $move): int => ($position = array_search($move, $offered, true)) === false ? -1 : (int) $position;
+        $groups = [];
+
+        foreach (self::hostMoveGroups() as $group => $moves) {
+            $fresh = array_values(array_filter($moves, fn (string $move): bool => $memory->repeated($move, $now) === []));
+            shuffle($fresh);
+            usort($fresh, fn (string $a, string $b): int => $rank($a) <=> $rank($b));
+
+            if ($fresh !== []) {
+                $groups[$group] = $fresh;
+            }
+        }
+
+        $keys = array_keys($groups);
+        shuffle($keys);
+        $picked = [];
+
+        for ($round = 0; count($picked) < $count && $groups !== []; $round++) {
+            $added = false;
+
+            foreach ($keys as $group) {
+                if (count($picked) < $count && isset($groups[$group][$round])) {
+                    $picked[] = $groups[$group][$round];
+                    $added = true;
+                }
+            }
+
+            if (! $added) {
+                break;
+            }
+        }
+
+        Cache::put(self::OFFERED_MOVES, array_slice([...array_values(array_diff($offered, $picked)), ...$picked], -300), $now->addDays(14));
+
+        return $picked;
     }
 
     /** Whether the guest can speak: her voice is configured, so the cast has three. */
