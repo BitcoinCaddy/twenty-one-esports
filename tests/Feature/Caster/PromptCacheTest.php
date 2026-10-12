@@ -74,6 +74,8 @@ function promptCacheUserText(array $body): string
 
 it('sends two scene calls with different facts and a new world item between them with byte-identical cached system blocks', function () {
     promptCacheHeadline('Bundestag beschließt neues Heizungsgesetz', 120);
+    // 27 minutes old: "vor fünfundzwanzig Minuten" now, "vor dreißig Minuten" a minute later, if it were counted per call.
+    promptCacheHeadline('Rentenkasse meldet neues Loch', 27);
     $voice = app(CasterVoice::class);
 
     $voice->write('scene', ScenePhase::PRE_SHOW, ['sender' => 'TWENTY ONE TV', 'players' => 34], 2, 8);
@@ -97,6 +99,7 @@ it('sends two scene calls with different facts and a new world item between them
         ->and($first['system'][0]['text'])->toBe($voice->fixedPart())
         ->and($first['system'][1]['text'])->toContain('Bundestag beschließt neues Heizungsgesetz')
         ->and($first['system'][1]['text'])->toContain('Stand 15:00 Uhr')
+        ->and($first['system'][1]['text'])->toContain('Rentenkasse meldet neues Loch')
         // Per call: the facts and what came since the epoch began, in the uncached user message only.
         ->and(promptCacheUserText($first))->toContain('"players": 34')
         ->and(promptCacheUserText($last))->toContain('"players": 35')
