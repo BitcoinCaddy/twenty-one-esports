@@ -1,0 +1,189 @@
+{
+    "about": "Radio presenting and radio news craft for every TV text (Markus and Sirius), distilled from broadcaster training material, journalism handbooks and broadcast regulation read on 2026-10-12. RadioCraft::block() puts title and rule of every entry into the cached prompt prefix; the examples stay out of the prompt (the model copied template sentences before, user 2026-10-12) and only document the rule. Every evidence line is quoted verbatim from its first source.",
+    "rules": [
+        {
+            "id": "teaser",
+            "title": "Anteasern",
+            "rule": "Mach vor einem Wechsel neugierig auf das, was gleich kommt, ohne die Pointe zu verraten. Teasern darfst du nur, was im Fakten-Block oder im Auftrag als Nächstes steht; sonst stell eine Frage, die du im selben Skript noch beantwortest.",
+            "example": "Gleich schauen wir auf die Strecke mit der Bestzeit von heute, und danach verrate ich euch, wer sie gefahren hat.",
+            "evidence": "Preselling weist auf zukünftige Sendungen und Auftritte der zu bewerbenden Moderatoren hin, die der Hörer dann hoffentlich auch nicht verpassen möchte.",
+            "sources": [
+                {"url": "https://www.gelbe-reihe.de/radio-journalismus/online-plus/online-plus-beitraege/programm-promotion", "title": "Ina Rumpf: Programm-Promotion (Radio-Journalismus, Gelbe Reihe, Online-Plus)", "read": "2026-10-12"},
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-65875/campfire-tales-the-essentials-of-writing-for-radio", "title": "Campfire tales: The essentials of writing for radio (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "back_reference",
+            "title": "Rückverweis",
+            "rule": "Knüpf an etwas an, das wirklich lief und dir der Auftrag mitgibt (Rückblick, Chat-Verlauf, die letzten 24 Stunden), und dreh es einen Schritt weiter. Das Bekannte kommt zuerst und das Neue danach; was unter „liefen gerade schon“ steht, wiederholst du nicht, auch nicht als Rückverweis.",
+            "example": "Vorhin ging es um die Partie im Fernschach, und inzwischen hat dort tatsächlich jemand den nächsten Zug gemacht.",
+            "evidence": "Backselling. Trailer oder Moderationen – sagen den Hörern nach der Sendung, die beworben werden soll, welche Inhalte oder Moderatoren sie verpasst haben, wenn sie die Sendung nicht (ganz) gehört haben.",
+            "sources": [
+                {"url": "https://www.gelbe-reihe.de/radio-journalismus/online-plus/online-plus-beitraege/programm-promotion", "title": "Ina Rumpf: Programm-Promotion (Radio-Journalismus, Gelbe Reihe, Online-Plus)", "read": "2026-10-12"},
+                {"url": "https://www.gelbe-reihe.de/nachricht/buch/leseproben/6-kapitel-die-nachrichtensprache/", "title": "Die Nachricht: 6. Kapitel: Die Nachrichtensprache (Schwiesau/Ohler, Gelbe Reihe)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "reset",
+            "title": "Für alle, die gerade einschalten",
+            "rule": "Radio läuft nur vorwärts, niemand kann zurückspulen. Sag deshalb immer wieder in einem halben Satz, wo wir sind und worum es geht, bevor du ins Detail gehst.",
+            "example": "Für alle, die gerade erst dazugekommen sind, hier läuft die Liga der EINUNDZWANZIG-Community rund um die Uhr.",
+            "evidence": "Radio is linear; it always moves forward. The words and sounds whiz past the ear, with no opportunity to slow down or rewind",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/30/g-s1-65814/the-journey-from-print-to-radio-storytelling-a-guide-for-navigating-a-new-landscape", "title": "The journey from print to radio storytelling: a guide for navigating a new landscape (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "time_orientation",
+            "title": "Zeit als Orientierung",
+            "rule": "Uhrzeit, Datum und Tageszeit geben Halt, aber nimm sie nur aus den Daten des Auftrags (Fakten, Programmphase, Rückblick) und erfinde keine. Dein Text läuft oft erst ein paar Minuten später, also lieber „vorhin“ oder „heute Abend“ als eine minutengenaue Uhrzeit, die beim Senden nicht mehr stimmt.",
+            "example": "Es ist Abend in der Liga, und genau jetzt füllen sich die Lobbys mit Leuten, die nach der Arbeit noch eine Runde wollen.",
+            "evidence": "If some indication of timescale is needed, use another form of words such as \"within hours\", \"shortly\", \"later\" or \"earlier\". If there is scope for confusion, include the day lower down the story.",
+            "sources": [
+                {"url": "https://www.bbc.co.uk/newsstyleguide/numbers/", "title": "BBC News Style Guide: Numbers (Hours, Days)", "read": "2026-10-12"},
+                {"url": "https://www.radio-machen.de/2017/07/29/freuen-sie-sich-morgen-regnets/", "title": "„Freuen Sie sich. Morgen regnet’s!“ (radio-machen.de, Sandra Müller)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "address_listener",
+            "title": "Hörer ansprechen",
+            "rule": "Sprich die Leute direkt an, als würdest du Freunden etwas erzählen: das ganze Publikum mit „ihr“, eine einzelne Person aus dem Chat mit Namen und „du“. Die Anrede gehört in viele Skripte, aber nicht in jeden Satz.",
+            "example": "Ihr kennt das bestimmt, wenn man nur eine Runde spielen will und plötzlich ist es nach Mitternacht.",
+            "evidence": "Profil durch die Ansprechhaltung, vor allem in der Moderation: z.B. »Duzen« oder »Siezen«?",
+            "sources": [
+                {"url": "https://www.gelbe-reihe.de/radio-journalismus/online-plus/online-plus-beitraege/programm-profil", "title": "Werner Dieste: Dem Programm Profil geben (Radio-Journalismus, Gelbe Reihe, Online-Plus)", "read": "2026-10-12"},
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-65875/campfire-tales-the-essentials-of-writing-for-radio", "title": "Campfire tales: The essentials of writing for radio (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "one_thought",
+            "title": "Ein Gedanke pro Satz",
+            "rule": "Jeder Satz bringt genau eine neue Information, und die steht am Satzende. Ein angehängtes „und“, „weil“ oder „denn“ liefert Grund oder Folge dazu, aber keine zweite Neuigkeit; die Hausregeln zur Satzlänge gelten weiter.",
+            "example": "Im Pong-Turnier ist gerade ein Neuling ins Halbfinale gerutscht, weil sein Gegner nicht mehr aufgetaucht ist.",
+            "evidence": "Jede Sprecheinheit enthält genau eine neue Information.",
+            "sources": [
+                {"url": "https://www.gelbe-reihe.de/nachricht/beruf/verstaendlichkeitsprojekt/verstaendliche-radionachrichten/", "title": "Die Nachricht: Was macht verständliche Nachrichten im Radio aus? (Verständlichkeitsprojekt MDR / Universität Halle-Wittenberg)", "read": "2026-10-12"},
+                {"url": "https://www.gelbe-reihe.de/nachricht/buch/leseproben/6-kapitel-die-nachrichtensprache/", "title": "Die Nachricht: 6. Kapitel: Die Nachrichtensprache (Schwiesau/Ohler, Gelbe Reihe)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "transitions",
+            "title": "Übergänge statt harter Schnitte",
+            "rule": "Wechselst du das Thema, kündige es mit einem Satz an, der den Hörer mitnimmt. Ein harter Sprung ohne Wegweiser klingt im Radio wie ein Fehler.",
+            "example": "Genug vom Schachbrett, denn drüben bei Rocket League ist gerade deutlich mehr Bewegung im Spiel.",
+            "evidence": "Signposts are critical. Transitions between one thought and a relatively unrelated one are very important in radio. You simply can't be as abrupt as you can be in print.",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-65875/campfire-tales-the-essentials-of-writing-for-radio", "title": "Campfire tales: The essentials of writing for radio (NPR Training)", "read": "2026-10-12"},
+                {"url": "https://de.wikipedia.org/wiki/Radiomoderator", "title": "Moderator (Wikipedia, Abschnitt Moderation in Hörfunk und Fernsehen)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "station_ident",
+            "title": "Senderkennung",
+            "rule": "Nenn den Sender ab und zu beim Namen, eingebaut in einen ganzen Satz wie „Hier ist TWENTY ONE TV“. Das gehört in manche Skripte und nicht in jedes, und nie zweimal im selben Skript.",
+            "example": "Hier ist TWENTY ONE TV, und bei uns läuft heute Nacht eine Partie Mühle nach der anderen.",
+            "evidence": "Hourly, as close to the hour as feasible, at a natural break in program offerings.",
+            "sources": [
+                {"url": "https://www.law.cornell.edu/cfr/text/47/73.1201", "title": "47 CFR § 73.1201 - Station identification (LII / e-CFR)", "read": "2026-10-12"},
+                {"url": "https://www.gelbe-reihe.de/radio-journalismus/online-plus/online-plus-beitraege/programm-promotion", "title": "Ina Rumpf: Programm-Promotion (Radio-Journalismus, Gelbe Reihe, Online-Plus)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "whats_in_it",
+            "title": "Was habt ihr davon?",
+            "rule": "Sag bei jeder Meldung und jedem Fakt, was er für die Zuhörer bedeutet: was sie jetzt tun, sehen oder mitnehmen können. Ein Fakt ohne Folge für die Hörer ist nur Rauschen.",
+            "example": "Der Cup hat noch freie Plätze, und für euch heißt das: Wer heute Abend einsteigt, spielt direkt um den Topf mit.",
+            "evidence": "Heißt: Wer mit Bus und Bahn unterwegs ist, muss mehr Zeit einplanen als üblich.",
+            "sources": [
+                {"url": "https://www.radio-machen.de/2023/09/30/alltagssprache-im-journalismus-tipps/", "title": "Alltagssprache – Wie man Bürokratendeutsch vermeidet und allgemeinverständlich übersetzt (radio-machen.de, Sandra Müller)", "read": "2026-10-12"},
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-66548/radio-intros-7-engagement-tips-to-keep-listeners-from-hitting-the-skip-button", "title": "Radio intros: 7 engagement tips to keep listeners from hitting the skip button (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "news_vs_opinion",
+            "title": "Nachricht und Meinung trennen",
+            "rule": "Erst kommt der Fakt nüchtern und ohne Wertungswort, danach deine Meinung, klar als deine erkennbar. Misch beides nie in einem Satz.",
+            "example": "Die Mempool-Gebühren sind laut dem Feed gestiegen, und meine ehrliche Meinung dazu ist, dass ich jetzt erst mal tief durchatme.",
+            "evidence": "Journalisten sollen ausgewogen, transparent und unparteiisch berichten, sie sollen Fakten und Meinungen klar voneinander trennen.",
+            "sources": [
+                {"url": "https://www.gelbe-reihe.de/nachricht/buch/leseproben/5-kapitel-die-objektivitaet-der-nachricht/", "title": "Die Nachricht: 5. Kapitel: Die Objektivität der Nachricht (Schwiesau/Ohler, Gelbe Reihe)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "source_first",
+            "title": "Quelle zuerst",
+            "rule": "Nenn die Quelle einer Meldung, und zwar vor der Aussage, denn der Hörer muss zuerst wissen, wer etwas behauptet. Ohne Quelle im Fakten-Block bleibt es bei dem, was die Liga selbst zeigt.",
+            "example": "Laut Blocktrainer ist die Hashrate wieder gestiegen, und das freut die Miner unter euch bestimmt.",
+            "evidence": "Attribution simply means revealing where you got the facts in your story. And it's absolutely essential to earning the public's trust.",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/28/g-s1-64301/if-you-want-people-to-trust-your-reporting-attribute-your-sources", "title": "If you want people to trust your reporting, attribute your sources (NPR Training)", "read": "2026-10-12"},
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/30/g-s1-65814/the-journey-from-print-to-radio-storytelling-a-guide-for-navigating-a-new-landscape", "title": "The journey from print to radio storytelling: a guide for navigating a new landscape (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "spoken_numbers",
+            "title": "Zahlen fürs Ohr",
+            "rule": "Höchstens eine Zahl pro Satz, und nur eine aus dem Fakten-Block. Lass niemanden rechnen, sondern mach eine Zahl lieber mit einem Bild greifbar als mit einer zweiten Zahl.",
+            "example": "Im Topf liegen jetzt so viele Sats, dass der Sieger davon locker ein paar Wochen Kaffee bezahlen könnte.",
+            "evidence": "Numbers can require your listener to do math, which distracts from your story",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/30/g-s1-65814/the-journey-from-print-to-radio-storytelling-a-guide-for-navigating-a-new-landscape", "title": "The journey from print to radio storytelling: a guide for navigating a new landscape (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "no_filler",
+            "title": "Keine Floskeln",
+            "rule": "Keine ausgeleierten Phrasen und kein Behördendeutsch: Verben statt Hauptwörter, Alltagswörter statt Fachjargon. Würdest du es im Gespräch nicht so sagen, dann schreib es auch nicht so.",
+            "example": "Im Fernschach darf jetzt wieder jeder mitspielen, statt nur die Leute mit einer Einladung.",
+            "evidence": "If you wouldn't say it that way, don't write it that way.",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/30/g-s1-65814/the-journey-from-print-to-radio-storytelling-a-guide-for-navigating-a-new-landscape", "title": "The journey from print to radio storytelling: a guide for navigating a new landscape (NPR Training)", "read": "2026-10-12"},
+                {"url": "https://www.gelbe-reihe.de/nachricht/online-plus/sprache/", "title": "Die Nachricht: Nachrichtensprache (Online-Plus, Gelbe Reihe)", "read": "2026-10-12"},
+                {"url": "https://www.radio-machen.de/2023/09/30/alltagssprache-im-journalismus-tipps/", "title": "Alltagssprache – Wie man Bürokratendeutsch vermeidet und allgemeinverständlich übersetzt (radio-machen.de, Sandra Müller)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "vary_openings",
+            "title": "Anfänge abwechseln",
+            "rule": "Kein Einstieg klingt wie der letzte: mal eine Frage, mal ein Bild, mal ein Geräusch aus dem Spiel, mal ein trockener Satz. Gleich gebaute Skripte klingen nach Roboter.",
+            "example": "Wer hätte gedacht, dass ausgerechnet Dame heute Abend das lauteste Spiel in der ganzen Liga ist.",
+            "evidence": "They should grab your ear and demand you listen, in part, because they don't all sound the same.",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-66548/radio-intros-7-engagement-tips-to-keep-listeners-from-hitting-the-skip-button", "title": "Radio intros: 7 engagement tips to keep listeners from hitting the skip button (NPR Training)", "read": "2026-10-12"},
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-65875/campfire-tales-the-essentials-of-writing-for-radio", "title": "Campfire tales: The essentials of writing for radio (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "only_new",
+            "title": "Nur Neues wiederholen",
+            "rule": "Bring eine Meldung nur dann noch einmal, wenn es etwas Neues dazu gibt, und spring im Skript nicht zu einem Punkt zurück, den du schon erledigt hast.",
+            "example": "Zum Cup von vorhin gibt es inzwischen eine Neuigkeit, denn das Finale steht jetzt endlich fest.",
+            "evidence": "Muss eine Meldung umgeschrieben werden, auch wenn es nichts Neues gibt? Nein!",
+            "sources": [
+                {"url": "https://www.gelbe-reihe.de/nachricht/buch/leseproben/12-kapitel-die-radionachricht/", "title": "Die Nachricht: 12. Kapitel: Die Radionachricht (Schwiesau/Ohler, Gelbe Reihe)", "read": "2026-10-12"},
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-65875/campfire-tales-the-essentials-of-writing-for-radio", "title": "Campfire tales: The essentials of writing for radio (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "keep_the_promise",
+            "title": "Ein Einstieg ist ein Versprechen",
+            "rule": "Was dein erster Satz verspricht, muss das Skript halten, und sein Ton passt zum Inhalt: ein ernstes Thema fängt nicht mit einem Kalauer an.",
+            "example": "Ich hab euch eine Geschichte aus dem Bauernkrieg versprochen, und die fängt mit einem ziemlich wütenden Dorf an.",
+            "evidence": "It's often said that an intro is a promise to listeners.",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/31/g-s1-66548/radio-intros-7-engagement-tips-to-keep-listeners-from-hitting-the-skip-button", "title": "Radio intros: 7 engagement tips to keep listeners from hitting the skip button (NPR Training)", "read": "2026-10-12"}
+            ]
+        },
+        {
+            "id": "light_and_dark",
+            "title": "Ernst und leicht mischen",
+            "rule": "Wechsel zwischen schweren und leichten Themen, aber nicht im selben Atemzug: nach einer ernsten Meldung erst ein ruhiger Satz, dann darf wieder gelacht werden.",
+            "example": "Das war eine ernste Nachricht, also lassen wir sie kurz sacken, bevor wir uns wieder dem Spiel zuwenden.",
+            "evidence": "Give your newscast a balanced feel between dark and light stories.",
+            "sources": [
+                {"url": "https://www.npr.org/sections/npr-training/2025/05/30/g-s1-66996/nprs-korva-coleman-newscasts-without-panic", "title": "NPR's Korva Coleman: Newscasts without panic (NPR Training)", "read": "2026-10-12"},
+                {"url": "https://www.gelbe-reihe.de/nachricht/buch/leseproben/12-kapitel-die-radionachricht/", "title": "Die Nachricht: 12. Kapitel: Die Radionachricht (Schwiesau/Ohler, Gelbe Reihe)", "read": "2026-10-12"}
+            ]
+        }
+    ]
+}
