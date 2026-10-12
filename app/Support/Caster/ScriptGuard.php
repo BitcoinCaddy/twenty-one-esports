@@ -60,6 +60,9 @@ final class ScriptGuard
         'dissatisfaction-hnn',
     ];
 
+    /** At most one marker per this many sentences (user 2026-10-12: more of them, where the context fits), never fewer than two. */
+    public const SENTENCES_PER_MARKER = 2;
+
     public const MAX_MARKERS = 2;
 
     /** Stock phrases of written or machine German (plan, "Alltagssprache"). */
@@ -124,7 +127,7 @@ final class ScriptGuard
             }
         }
 
-        if (count($markers[0]) > self::MAX_MARKERS) {
+        if (count($markers[0]) > self::maxMarkers($text)) {
             $violations[] = self::MARKER_COUNT;
         }
 
@@ -294,6 +297,14 @@ final class ScriptGuard
     public static function minWords(): int
     {
         return max(0, (int) config('tv.commentary.scripts.min_words_per_sentence', self::MIN_WORDS));
+    }
+
+    /** The markers a text may carry: one per SENTENCES_PER_MARKER sentences, at least MAX_MARKERS. */
+    public static function maxMarkers(string $text): int
+    {
+        $sentences = preg_match_all('/[.!?…](?=\s|$)/u', (string) preg_replace('/\[[^\]]*\]/u', '', $text));
+
+        return max(self::MAX_MARKERS, intdiv((int) $sentences, self::SENTENCES_PER_MARKER));
     }
 
     /** The text without its markers, as the fact guard and the word count see it. */

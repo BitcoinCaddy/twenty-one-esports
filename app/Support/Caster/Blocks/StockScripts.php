@@ -337,7 +337,7 @@ final class StockScripts
                 ."\n\n".(int) ($turns['min'] ?? 6).' bis '.(int) ($turns['max'] ?? 10).' Wortmeldungen im Wechsel zwischen '.implode(', ', $names).", {$lead} beginnt, jede Wortmeldung zwei bis ".(int) ($settings['sentences_per_turn'] ?? 4).' Sätze, jede spätere greift die davor auf, und jeder kommt zu Wort.'
                 .' Jeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt („'.$lead.': …“). Gesprochen auf Deutsch. '.CasterVoice::SENTENCE_STYLE
                 ."\nZEITLOS: Der Beitrag läuft an einem späteren Tag zu einer unbekannten Uhrzeit. Nenne nie eine Uhrzeit, eine Tageszeit, einen Wochentag oder ein Datum von heute, nie „heute“, „gestern“, „morgen“, „gerade eben“, „vorhin“, „guten Morgen“ oder „gute Nacht“, nichts Aktuelles aus den Nachrichten und keine Ergebnisse. Geschichtliche Jahreszahlen sind erlaubt."
-                ."\nLustig, aber mit Sinn: konkrete Geschichten, Gründe und Beispiele, kein Geschwafel über nichts. Kein Abschied, keine Begrüßung, keine Ansage wie „und jetzt zu …“, keine Spielernamen, höchstens zwei Marker.",
+                ."\nLustig, aber mit Sinn: konkrete Geschichten, Gründe und Beispiele, kein Geschwafel über nichts. Kein Abschied, keine Begrüßung, keine Ansage wie „und jetzt zu …“, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
             "Material (die einzige Quelle für Zahlen, Namen und Zitate)\n\n".$material,
         ];
 

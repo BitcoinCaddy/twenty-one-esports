@@ -301,3 +301,11 @@ it('asks for one fact and few names, and gives league facts instead of template 
     expect(app(CasterVoice::class)->fixedPart())->toContain('Die Liga in Fakten')->toContain('Rocket League')
         ->not->toContain('Ich lieb diesen Sender einfach')->not->toContain('## Satzmuster')->not->toContain('## Einladungen');
 });
+
+it('allows one marker per two sentences, never fewer than two', function () {
+    $six = 'Eins ist hier. Zwei ist da. Drei kommt noch. Vier folgt gleich. Fünf ist fast. Sechs ist Schluss.';
+
+    expect(ScriptGuard::maxMarkers('Ein Satz.'))->toBe(2)
+        ->and(ScriptGuard::maxMarkers($six))->toBe(3)
+        ->and(ScriptGuard::maxMarkers('[laughter] '.$six.' [sigh]'))->toBe(3);
+});
