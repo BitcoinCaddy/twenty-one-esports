@@ -60,12 +60,12 @@ function imagingLibrary(string $dir, array $lines, ?string $source = null): void
     file_put_contents($dir.'/manifest.json', json_encode(['items' => $items]));
 }
 
-function imagingClip(string $kind, ?string $topic = null, ?CarbonImmutable $airsAt = null): CasterClip
+function imagingClip(string $kind, ?string $topic = null, ?CarbonImmutable $airsAt = null, float $seconds = 10.0): CasterClip
 {
     $script = casterScript($kind, ScenePhase::BREAK);
     $script->forceFill(['topic' => $topic, 'airs_at' => $airsAt])->save();
 
-    return app(ClipSpool::class)->store($script, casterOpus(), 10.0, [5.0, 10.0], CarbonImmutable::now());
+    return app(ClipSpool::class)->store($script, casterOpus(), $seconds, [$seconds / 2, $seconds], CarbonImmutable::now());
 }
 
 /** Imaging of the config with a fixed dice roll. */
@@ -132,8 +132,8 @@ it('wraps a bulletin in news open and news close, the headlines at half past, an
     $at = CarbonImmutable::parse('2026-10-12 12:00:00', 'UTC');
 
     expect(imagingChoice($imaging, imagingClip(CasterScript::BULLETIN, airsAt: $at), $at))->toBe(['news', 'back-announce'])
-        // Never back to back: the rubric right after the news close gets no opener of its own.
-        ->and(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'liga'), $at->addMinutes(3))[0])->toBeNull()
+        // Never back to back: the rubric right after the news close (10 s of speech, 4 + 4 s of jingles) gets no opener.
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'liga'), $at->addSeconds(20))[0])->toBeNull()
         ->and(imagingChoice($imaging, imagingClip(CasterScript::BULLETIN, airsAt: $at->addMinutes(30)), $at->addMinutes(30)))->toBe(['headlines', 'back-announce']);
 });
 
@@ -145,8 +145,9 @@ it('opens a rubric with its format opener where the library has one, else with t
     expect(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'liga'), $at)[0])->toBe('rubric-liga')
         ->and(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'tribunal'), $at->addMinutes(5))[0])->toBe('opener-tribunal')
         ->and(imagingChoice($imaging, imagingClip(CasterScript::TEASER), $at->addMinutes(6))[0])->toBe('coming-up')
-        // No opener for this format: a station ID is due (the first of this run), so it opens with one.
-        ->and(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'friedhof'), $at->addMinutes(7))[0])->toBe('station');
+        // No opener for this format: a station ID is due (the format opener at +5 named the station), so it opens with one.
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'friedhof'), $at->addMinutes(19))[0])->toBeNull()
+        ->and(imagingChoice($imaging, imagingClip(CasterScript::RUBRIC, 'friedhof'), $at->addMinutes(21))[0])->toBe('station');
 });
 
 it('plays only station IDs in the quiet hours, no news open, no sweeper', function () {
@@ -180,48 +181,94 @@ it('never plays the same line twice within 45 minutes: a category used up gives 
 });
 
 it('keeps every rule over a simulated hour of programme', function () {
-    imagingLibrary($this->imagingDir, ['station' => 14, 'sweeper' => 14, 'news' => 6, 'headlines' => 4, 'back-announce' => 6, 'coming-up' => 6, 'rubric-liga' => 4, 'rubric-presseschau' => 4, 'time-day' => 4]);
-    $imaging = new Imaging((array) config('tv.commentary.imaging'), 24000, fn (): float => mt_rand(0, 999) / 1000);
+    imagingLibrary($this->imagingDir, ['station-long' => 12, 'station-short' => 12, 'station' => 14, 'sweeper' => 28, 'liner' => 14, 'news-open' => 6, 'headlines' => 4,
+        'news-close' => 6, 'power-intro' => 10, 'promo-tribunal' => 1, 'promo-friedhof' => 1, 'promo' => 4, 'coming-up' => 6,
+        'opener-tribunal' => 2, 'opener-friedhof' => 2, 'opener-nachrichten_talk' => 2, 'time-day' => 4]);
+    config(['tv.commentary.spool.max_seconds' => 100_000, 'tv.commentary.spool.max_clip_seconds' => 600, 'tv.commentary.spool.long_clip_seconds' => []]);
     mt_srand(21);
-    $at = CarbonImmutable::parse('2026-10-12 12:00:00', 'Europe/Berlin');
-    // The hour on the broadcast clock: bulletin :00, rubric :15, headlines :30, rubric :45, a teaser before each, talk and chat between.
-    $plan = [0 => [CasterScript::BULLETIN, null], 13 => [CasterScript::TEASER, null], 15 => [CasterScript::RUBRIC, 'liga'], 30 => [CasterScript::BULLETIN, null], 43 => [CasterScript::TEASER, null], 45 => [CasterScript::RUBRIC, 'presseschau']];
+    $imaging = new Imaging((array) config('tv.commentary.imaging'), 24000, fn (): float => mt_rand(0, 999) / 1000);
+    $start = CarbonImmutable::parse('2026-10-12 12:00:00', 'Europe/Berlin');
+    // The broadcast clock: bulletins at :00 and :30, the news talk right after the :00 news, rubrics at :15 and :45,
+    // a teaser five minutes before each rubric and before the :30 headlines; between them talk, every fifth clip a chat reply.
+    $slots = [0 => [CasterScript::BULLETIN, null, 150], 15 * 60 => [CasterScript::RUBRIC, 'tribunal', 180], 30 * 60 => [CasterScript::BULLETIN, null, 90], 45 * 60 => [CasterScript::RUBRIC, 'friedhof', 180]];
+    $teasers = [10 * 60 => 'tribunal', 25 * 60 => 'headlines', 40 * 60 => 'friedhof'];
+    $jingles = [];
     $log = [];
+    $t = 0;
+    $n = 0;
 
-    for ($minute = 0; $minute < 60; $minute++) {
-        [$kind, $topic] = $plan[$minute] ?? ($minute % 7 === 3 ? [CasterScript::CHAT, null] : [CasterScript::SCENE, null]);
-        $now = $at->addMinutes($minute);
-        $choice = $imaging->choose(imagingClip($kind, $topic, $kind === CasterScript::BULLETIN ? $now : null), false, $now);
-        $log[] = ['minute' => $minute, 'kind' => $kind, 'before' => $choice['before'], 'after' => $choice['after']];
+    while ($t < 3600) {
+        $slotAt = collect(array_keys($slots))->first(fn (int $at): bool => $at <= $t);
+        $teaserAt = collect(array_keys($teasers))->first(fn (int $at): bool => $at <= $t);
+        if ($slotAt !== null) {
+            [$kind, $topic, $seconds] = $slots[$slotAt];
+            unset($slots[$slotAt]);
+        } elseif ($teaserAt !== null) {
+            [$kind, $topic, $seconds] = [CasterScript::TEASER, $teasers[$teaserAt], 15];
+            unset($teasers[$teaserAt]);
+        } else {
+            [$kind, $topic, $seconds] = ++$n % 5 === 0 ? [CasterScript::CHAT, null, 15] : [CasterScript::SCENE, null, 40];
+        }
+
+        $now = $start->addSeconds($t);
+        $clip = imagingClip($kind, $topic, $kind === CasterScript::BULLETIN ? $now : null, $seconds);
+        $choice = $imaging->choose($clip, false, $now);
+        $end = $t + $seconds + ($choice['before']['seconds'] ?? 0) + ($choice['after']['seconds'] ?? 0);
+        $log[] = ['t' => $t, 'kind' => $kind, 'topic' => $topic, 'before' => $choice['before'], 'after' => $choice['after']];
+
+        if ($choice['before'] !== null) {
+            $jingles[] = ['from' => $t, 'to' => $t + $choice['before']['seconds'], 'item' => $choice['before']];
+        }
+        if ($choice['after'] !== null) {
+            $jingles[] = ['from' => $end - $choice['after']['seconds'], 'to' => $end, 'item' => $choice['after']];
+        }
+
+        $intro = $imaging->powerIntro($clip, $start->addSeconds($end));
+        if ($intro !== null) {
+            $jingles[] = ['from' => $end, 'to' => $end + $intro['seconds'], 'item' => $intro];
+        }
+
+        // The news talk follows the :00 news three seconds later; everything else after a music gap of 25 s.
+        if ($kind === CasterScript::BULLETIN && $t < 60) {
+            $slots = [$end + 3 => [CasterScript::RUBRIC, 'nachrichten_talk', 240]] + $slots;
+            ksort($slots);
+        }
+        $t = $end + ($kind === CasterScript::BULLETIN && $t < 60 ? 3 : 25);
     }
 
-    $stationMinutes = array_column(array_filter($log, fn (array $entry): bool => in_array($entry['before']['category'] ?? null, Imaging::STATION_CATEGORIES, true)), 'minute');
-    $gaps = array_map(fn (int $a, int $b): int => $b - $a, array_slice($stationMinutes, 0, -1), array_slice($stationMinutes, 1));
-    $lines = [];
+    $categories = array_count_values(array_map(fn (array $jingle): string => $jingle['item']['category'], $jingles));
+    $stations = array_values(array_map(fn (array $jingle): int => $jingle['from'], array_filter($jingles, fn (array $jingle): bool => Imaging::namesStation($jingle['item']['category']))));
+    $lastLine = [];
 
-    foreach ($log as $index => $entry) {
-        if ($entry['kind'] === CasterScript::CHAT) {
-            expect([$entry['before'], $entry['after']])->toBe([null, null]);
+    foreach ($jingles as $index => $jingle) {
+        // Never two jingles back to back, never a line twice within 45 minutes.
+        if ($index > 0) {
+            expect($jingle['from'] - $jingles[$index - 1]['to'])->toBeGreaterThanOrEqual(12);
         }
-        // Never back to back: a clip after one that closed with a jingle opens without.
-        if ($index > 0 && $log[$index - 1]['after'] !== null) {
-            expect($entry['before'])->toBeNull();
+        if (isset($lastLine[$jingle['item']['line']])) {
+            expect($jingle['from'] - $lastLine[$jingle['item']['line']])->toBeGreaterThanOrEqual(45 * 60);
         }
-        foreach (array_filter([$entry['before'], $entry['after']]) as $item) {
-            if (isset($lines[$item['line']])) {
-                expect($entry['minute'] - $lines[$item['line']])->toBeGreaterThanOrEqual(45);
-            }
-            $lines[$item['line']] = $entry['minute'];
-        }
+        $lastLine[$jingle['item']['line']] = $jingle['from'];
     }
 
-    $count = fn (string $category): int => count(array_filter($log, fn (array $entry): bool => ($entry['before']['category'] ?? null) === $category || ($entry['after']['category'] ?? null) === $category));
+    foreach ($log as $entry) {
+        match ($entry['kind']) {
+            CasterScript::CHAT => expect([$entry['before'], $entry['after']])->toBe([null, null]),
+            CasterScript::BULLETIN => expect([$entry['before']['category'] ?? null, $entry['after']['category'] ?? null])->toBeIn([['news-open', 'news-close'], ['headlines', 'news-close']]),
+            CasterScript::RUBRIC => expect($entry['before']['category'] ?? null)->toBe($entry['topic'] === 'nachrichten_talk' ? null : 'opener-'.$entry['topic']),
+            CasterScript::TEASER => expect($entry['before']['category'] ?? null)->toBe($entry['topic'] === 'headlines' ? 'coming-up' : 'promo-'.$entry['topic']),
+            default => null,
+        };
+    }
 
-    expect(max($gaps))->toBeLessThanOrEqual(16)
-        ->and(count($stationMinutes))->toBeGreaterThanOrEqual(4)
-        ->and($count('news'))->toBe(1)->and($count('headlines'))->toBe(1)->and($count('back-announce'))->toBe(2)
-        ->and($count('coming-up'))->toBe(2)->and($count('rubric-liga'))->toBe(1)->and($count('rubric-presseschau'))->toBe(1)
-        ->and($count('sweeper'))->toBeGreaterThanOrEqual(5);
+    $stationGaps = array_map(fn (int $a, int $b): int => $b - $a, array_slice($stations, 0, -1), array_slice($stations, 1));
+
+    expect(max($stationGaps))->toBeLessThanOrEqual(16 * 60)
+        ->and($categories['station-long'] ?? 0)->toBeGreaterThanOrEqual(1)
+        ->and(($categories['sweeper'] ?? 0) + ($categories['liner'] ?? 0))->toBeGreaterThanOrEqual(5)
+        ->and($categories['power-intro'] ?? 0)->toBeGreaterThanOrEqual(2);
+
+    $this->imagingHour = ['categories' => $categories, 'stations_at_minute' => array_map(fn (int $at): float => round($at / 60, 1), $stations), 'clips' => count($log)];
 });
 
 it('puts the jingle in front of a scene clip on the timeline in place of the stinger, the speech and its sentence ends behind it', function () {

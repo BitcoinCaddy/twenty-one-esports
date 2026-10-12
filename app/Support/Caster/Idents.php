@@ -23,13 +23,19 @@ use Illuminate\Support\Facades\Process;
  *
  * Fails open towards the speech: a missing or undecodable ident, or a bed mix
  * that fails, leaves the clip as it was (logged), the speech is never lost
- * for its decoration. In quiet hours the stingers stay (short, at the voice's
+ * for its decoration. A slot may name several stingers and the news bed has
+ * variants (`beds`): they rotate, never the same twice in a row; a rubric whose
+ * format has a bed (`format_beds`) gets it under its speech (P11).
+ * In quiet hours the stingers stay (short, at the voice's
  * level) and the bed is left out unless `bed_at_night`.
  */
 final class Idents
 {
+    /** @var array<string, string> the file each rotation gave last */
+    private array $last = [];
+
     /**
-     * @param  array{enabled?: bool, dir?: string, stingers?: array<string, string>, kinds?: array<string, string>, bed?: string, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int}  $settings
+     * @param  array{enabled?: bool, dir?: string, stingers?: array<string, string|list<string>>, kinds?: array<string, string>, bed?: string, beds?: list<string>, beds_gain_db?: float|int, format_beds?: array<string, string>, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int}  $settings
      */
     public function __construct(
         private readonly array $settings,
@@ -39,7 +45,7 @@ final class Idents
     /** The idents of tv.commentary.idents, or null while they are switched off. */
     public static function fromConfig(): ?self
     {
-        /** @var array{enabled?: bool, dir?: string, stingers?: array<string, string>, kinds?: array<string, string>, bed?: string, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int} $settings */
+        /** @var array{enabled?: bool, dir?: string, stingers?: array<string, string|list<string>>, kinds?: array<string, string>, bed?: string, beds?: list<string>, beds_gain_db?: float|int, format_beds?: array<string, string>, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int} $settings */
         $settings = (array) config('tv.commentary.idents', []);
 
         return ($settings['enabled'] ?? false) === true ? new self($settings, (int) config('tv.commentary.mix.sample_rate', 24000)) : null;
@@ -48,9 +54,9 @@ final class Idents
     /** The file of a stinger slot (news, ident, breaking …), or null when the slot is unknown or its file is missing. */
     public function stingerFor(string $slot): ?string
     {
-        $file = $this->settings['stingers'][$slot] ?? null;
+        $files = array_values(array_filter(array_map(fn ($file): ?string => is_string($file) ? $this->existing($file) : null, (array) ($this->settings['stingers'][$slot] ?? []))));
 
-        return is_string($file) ? $this->existing($file) : null;
+        return $this->rotate('stinger:'.$slot, $files);
     }
 
     /** The stinger slot a clip of `$kind` opens with, or null (no stinger). */
@@ -67,6 +73,51 @@ final class Idents
         $file = $this->settings['bed'] ?? null;
 
         return is_string($file) ? $this->existing($file) : null;
+    }
+
+    /**
+     * The bed under a clip's speech, with its gain, or null: the bed of the rubric's format (`format_beds`, P11) for a
+     * rubric, else the news beds in rotation (the legacy `bed` at `bed_gain_db`, `beds` at `beds_gain_db`: those
+     * files are at -16 LUFS, the legacy one at -28) for a kind in `bed_kinds`; never in quiet hours unless `bed_at_night`.
+     *
+     * @return array{file: string, gain_db: float}|null
+     */
+    public function bedUnder(CasterClip $clip, CarbonImmutable $now): ?array
+    {
+        if (($this->settings['bed_at_night'] ?? false) !== true && QuietHours::active($now)) {
+            return null;
+        }
+
+        $newGain = (float) ($this->settings['beds_gain_db'] ?? -18);
+        $formatBeds = (array) ($this->settings['format_beds'] ?? []);
+
+        if ($clip->kind === 'rubric' && $formatBeds !== []) {
+            $topic = (string) $clip->script()->value('topic');
+            $file = isset($formatBeds[$topic]) && is_string($formatBeds[$topic]) ? $this->existing($formatBeds[$topic]) : null;
+
+            if ($file !== null) {
+                return ['file' => $file, 'gain_db' => $newGain];
+            }
+        }
+
+        if (! $this->bedFor($clip->kind, $now)) {
+            return null;
+        }
+
+        $legacy = $this->bed();
+        $gains = $legacy === null ? [] : [$legacy => (float) ($this->settings['bed_gain_db'] ?? 0)];
+
+        foreach ((array) ($this->settings['beds'] ?? []) as $file) {
+            $path = is_string($file) ? $this->existing($file) : null;
+
+            if ($path !== null) {
+                $gains[$path] = $newGain;
+            }
+        }
+
+        $file = $this->rotate('bed', array_keys($gains));
+
+        return $file === null ? null : ['file' => $file, 'gain_db' => $gains[$file]];
     }
 
     /** Whether a clip of `$kind` gets the bed under its speech at `$now`. */
@@ -90,9 +141,10 @@ final class Idents
     public function dress(CasterClip $clip, string $pcm, array $sentenceEnds, CarbonImmutable $now, bool $withStinger = true): array
     {
         $bed = false;
+        $chosen = $this->bedUnder($clip, $now);
 
-        if ($this->bedFor($clip->kind, $now)) {
-            $under = $this->underBed($pcm);
+        if ($chosen !== null) {
+            $under = $this->underBed($pcm, $chosen['file'], $chosen['gain_db']);
 
             if ($under !== null) {
                 $pcm = $under;
@@ -153,9 +205,9 @@ final class Idents
      * own level (-28 LUFS against the voice's -16), faded in and out over
      * `bed_fade_seconds`, exactly as long as the speech; null when it fails.
      */
-    public function underBed(string $pcm): ?string
+    public function underBed(string $pcm, ?string $bed = null, ?float $gainDb = null): ?string
     {
-        $bed = $this->bed();
+        $bed ??= $this->bed();
         $seconds = Pcm::seconds($pcm, $this->rate);
 
         if ($bed === null || $seconds <= 0) {
@@ -166,7 +218,7 @@ final class Idents
         $filter = sprintf(
             '[1:a]aresample=%d,aformat=sample_fmts=s16:channel_layouts=mono,volume=%.1FdB,atrim=duration=%.3F,afade=t=in:d=%.3F,afade=t=out:st=%.3F:d=%.3F[bed];'
             .'[0:a][bed]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[out]',
-            $this->rate, (float) ($this->settings['bed_gain_db'] ?? 0), $seconds, $fade, max(0.0, $seconds - $fade), $fade,
+            $this->rate, $gainDb ?? (float) ($this->settings['bed_gain_db'] ?? 0), $seconds, $fade, max(0.0, $seconds - $fade), $fade,
         );
 
         $result = Process::timeout(20)->env(ChildEnvironment::withoutSecrets())->input($pcm)->run([
@@ -186,6 +238,24 @@ final class Idents
         }
 
         return substr(str_pad($out, strlen($pcm), "\0"), 0, strlen($pcm));
+    }
+
+    /**
+     * One of `$files` at random, never the one this rotation gave last when there is another (P11: the news stinger
+     * and bed rotate).
+     *
+     * @param  list<string>  $files
+     */
+    private function rotate(string $key, array $files): ?string
+    {
+        if ($files === []) {
+            return null;
+        }
+
+        $others = array_values(array_filter($files, fn (string $file): bool => $file !== ($this->last[$key] ?? null)));
+        $pool = $others === [] ? $files : $others;
+
+        return $this->last[$key] = $pool[mt_rand(0, count($pool) - 1)];
     }
 
     private function existing(string $file): ?string

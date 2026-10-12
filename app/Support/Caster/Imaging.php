@@ -33,12 +33,19 @@ use Throwable;
  *  - a rubric opens with its format opener (rubric-<topic>, opener-<topic>),
  *    a history segment with the Geschichtsstunde, a teaser with coming-up,
  *    where the library has a jingle of that category;
+ *  - a teaser opens with the promo of the format it teases (promo-<topic>),
+ *    else coming-up or a generic promo;
  *  - else a station ID when the last one is `station_every_minutes` ago
- *    (a news open or a time-of-day ID counts as one);
+ *    (a news open, a time-of-day ID, a format opener or promo counts as one:
+ *    they all name the station), a long one when the
+ *    last long one is `station_long_every_minutes` ago;
  *  - else a sweeper or liner on `sweeper_share` of the transitions between two
  *    talk clips;
- *  - never two jingles back to back: after a clip that closed with one, the
- *    next clip opens without;
+ *  - a power intro over the first seconds of a music gap after a talk clip,
+ *    on `power_intro_share` of the gaps, never just before a bulletin or
+ *    rubric slot (powerIntro(); the stream music ducks under it);
+ *  - never two jingles back to back: a clip starting less than
+ *    `back_to_back_seconds` after a news close or power intro opens without;
  *  - the same line never within `repeat_minutes` (JingleLibrary's rotation,
  *    remembered in rotation.json next to the manifest, so a restart keeps it).
  *
@@ -64,14 +71,17 @@ final class Imaging
     /** Whether the clip that started last was talk. */
     private bool $previousTalk = false;
 
-    /** Whether the clip that started last closes with a jingle (the next one opens without). */
-    private bool $tail = false;
+    /** When a long station ID played last (unix seconds), null: none since the start. */
+    private ?int $longStationAt = null;
+
+    /** When the jingle the last clip closed with (or the power intro after it) ends, unix seconds; null: none. */
+    private ?int $tailEndsAt = null;
 
     /** @var Closure(): float */
     private Closure $random;
 
     /**
-     * @param  array{dir?: string, station_every_minutes?: float|int, sweeper_share?: float|int, repeat_minutes?: float|int, pause_seconds?: float|int}  $settings
+     * @param  array{dir?: string, station_every_minutes?: float|int, station_long_every_minutes?: float|int, sweeper_share?: float|int, power_intro_share?: float|int, back_to_back_seconds?: float|int, repeat_minutes?: float|int, pause_seconds?: float|int}  $settings
      * @param  (Closure(): float)|null  $random  a number in [0, 1), mt_rand by default
      */
     public function __construct(
@@ -86,7 +96,7 @@ final class Imaging
     /** The imaging of tv.commentary.imaging, or null while it is switched off. */
     public static function fromConfig(): ?self
     {
-        /** @var array{enabled?: bool, dir?: string, station_every_minutes?: float|int, sweeper_share?: float|int, repeat_minutes?: float|int, pause_seconds?: float|int} $settings */
+        /** @var array{enabled?: bool, dir?: string, station_every_minutes?: float|int, station_long_every_minutes?: float|int, sweeper_share?: float|int, power_intro_share?: float|int, back_to_back_seconds?: float|int, repeat_minutes?: float|int, pause_seconds?: float|int} $settings */
         $settings = (array) config('tv.commentary.imaging', []);
 
         return ($settings['enabled'] ?? false) === true ? new self($settings, (int) config('tv.commentary.mix.sample_rate', 24000)) : null;
@@ -123,9 +133,10 @@ final class Imaging
             return $none;
         }
 
-        $tail = $this->tail;
+        // Never back to back: a jingle that ended (or ends, a news close) less than `back_to_back_seconds` before this clip.
+        $backToBack = $this->tailEndsAt !== null && $now->getTimestamp() - $this->tailEndsAt < (float) ($this->settings['back_to_back_seconds'] ?? 12);
         $previousTalk = $this->previousTalk;
-        $this->tail = false;
+        $this->tailEndsAt = null;
         $this->previousTalk = in_array($kind, self::TALK_KINDS, true) && ! $clip->isBlock();
 
         if (in_array($kind, ClipSpool::LIVE_KINDS, true) || $clip->isBlock() || $this->library()->items() === []) {
@@ -133,18 +144,19 @@ final class Imaging
         }
 
         $stationDue = $this->stationAt === null || $now->getTimestamp() - $this->stationAt >= 60 * (float) ($this->settings['station_every_minutes'] ?? 15);
+        $longDue = $this->longStationAt === null || $now->getTimestamp() - $this->longStationAt >= 60 * (float) ($this->settings['station_long_every_minutes'] ?? 30);
         $before = [];
         $after = null;
 
         if (QuietHours::active($now)) {
             $before = $stationDue ? [['station-short', 'station']] : [];
         } else {
-            $topic = $kind === CasterScript::RUBRIC ? (string) $clip->script()->value('topic') : '';
+            $topic = in_array($kind, [CasterScript::RUBRIC, CasterScript::TEASER], true) ? (string) $clip->script()->value('topic') : '';
             $specific = match ($kind) {
                 CasterScript::BULLETIN => $this->newsOpen($clip),
-                CasterScript::RUBRIC => $topic === '' || $topic === 'nachrichten_talk' ? null : ['rubric-'.$topic, 'opener-'.$topic],
+                CasterScript::RUBRIC => $topic === '' ? null : ['rubric-'.$topic, 'opener-'.$topic],
                 CasterScript::HISTORY => ['rubric-geschichte', 'opener-geschichte'],
-                CasterScript::TEASER => ['coming-up', 'promo'],
+                CasterScript::TEASER => [...($topic === '' ? [] : ['promo-'.$topic]), 'coming-up', 'promo'],
                 default => null,
             };
 
@@ -153,7 +165,11 @@ final class Imaging
             }
 
             if ($stationDue) {
-                $before[] = ($this->random)() < 0.35 ? ['time-'.BlockComposer::daypart($now), 'station'] : ['station', 'station-short'];
+                $before[] = match (true) {
+                    $longDue => ['station-long', 'station'],
+                    ($this->random)() < 0.35 => ['time-'.BlockComposer::daypart($now), 'station-short', 'station'],
+                    default => ['station-short', 'station'],
+                };
             }
 
             if ($previousTalk && $this->previousTalk && ($this->random)() < (float) ($this->settings['sweeper_share'] ?? 0.35)) {
@@ -167,7 +183,7 @@ final class Imaging
 
         $opened = null;
 
-        foreach ($tail ? [] : $before as $categories) {
+        foreach ($backToBack ? [] : $before as $categories) {
             $opened = $this->library()->pick($categories, $now);
 
             if ($opened !== null) {
@@ -177,13 +193,57 @@ final class Imaging
 
         $closed = $after === null ? null : $this->library()->pick($after, $now);
 
-        if ($opened !== null && in_array($opened['category'], self::STATION_CATEGORIES, true)) {
+        if ($opened !== null && self::namesStation($opened['category'])) {
             $this->stationAt = $now->getTimestamp();
+            $this->longStationAt = $opened['category'] === 'station-long' ? $now->getTimestamp() : $this->longStationAt;
         }
 
-        $this->tail = $closed !== null;
+        if ($closed !== null) {
+            $this->tailEndsAt = $now->getTimestamp() + (int) ceil((float) $clip->duration_seconds + ($opened['seconds'] ?? 0.0) + $closed['seconds']);
+        }
 
         return ['before' => $opened, 'after' => $closed];
+    }
+
+    /**
+     * Whether a jingle of `$category` counts as a station ID: the station categories, and the format openers and
+     * promos of anchor-imaging.json, which all end with the station's name.
+     */
+    public static function namesStation(string $category): bool
+    {
+        return in_array($category, self::STATION_CATEGORIES, true) || str_starts_with($category, 'opener-') || str_starts_with($category, 'promo-');
+    }
+
+    /**
+     * The power intro over the first seconds of a music gap (P11): after a talk clip by day, on `power_intro_share`
+     * of the gaps, never when a bulletin or rubric slot starts within two minutes (its opener comes first), never
+     * right after another jingle; picked and remembered as played, null when none is due.
+     *
+     * @return array{id: string, line: string, category: string, file: string, seconds: float}|null
+     */
+    public function powerIntro(CasterClip $ended, CarbonImmutable $now): ?array
+    {
+        if (! in_array($ended->kind, self::TALK_KINDS, true) || $ended->isBlock() || QuietHours::active($now) || $this->tailEndsAt !== null
+            || ($this->random)() >= (float) ($this->settings['power_intro_share'] ?? 0.3)) {
+            return null;
+        }
+
+        $clock = $this->clock ?? BroadcastClock::fromConfig();
+
+        foreach ($clock->enabled() ? $clock->upcoming($now, 2) : [] as $slot) {
+            if (BroadcastClock::isBulletin($slot['type']) || $slot['type'] === BroadcastClock::RUBRIC) {
+                return null;
+            }
+        }
+
+        $intro = $this->library()->pick(['power-intro'], $now);
+
+        if ($intro !== null) {
+            $this->tailEndsAt = $now->getTimestamp() + (int) ceil($intro['seconds']);
+            $this->previousTalk = false;
+        }
+
+        return $intro;
     }
 
     /**
@@ -233,7 +293,7 @@ final class Imaging
     }
 
     /** A jingle as PCM (s16le mono at the voice's rate), decoded by ffmpeg; null when it fails. */
-    private function pcm(string $file): ?string
+    public function pcm(string $file): ?string
     {
         try {
             $result = Process::timeout(10)->env(ChildEnvironment::withoutSecrets())->run([

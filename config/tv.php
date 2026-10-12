@@ -257,9 +257,19 @@ return [
         // in quiet hours unless `bed_at_night`. The `bulletin` kind is the news block of the broadcast clock (P2).
         'idents' => [
             'enabled' => (bool) env('TV_COMMENTARY_IDENTS', true),
-            'stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
+            // A slot names one stinger or several that rotate (P11: JingleSynth's sfx-*.opus, 2 to 4 s, -16 LUFS).
+            'stingers' => [
+                'news' => ['news-stinger.opus', 'sfx-news-pulse.opus', 'sfx-news-rise.opus', 'sfx-news-clock.opus'],
+                'ident' => ['station-ident.opus', 'sfx-riser-short.opus', 'sfx-reverse-swell.opus'],
+                'breaking' => ['breaking-sting.opus', 'sfx-bass-drop.opus'],
+            ],
             'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident', 'rubric' => 'ident'],
             'bed' => 'news-bed.opus',
+            // News bed variants (P11) rotating with `bed`; at -16 LUFS, so `beds_gain_db` puts them where `bed` sits at
+            // `bed_gain_db` (-28 - 6 = -16 - 18). A rubric whose format has a bed gets it under its speech.
+            'beds' => ['bed-news-pulse.opus', 'bed-news-drive.opus'],
+            'beds_gain_db' => (float) env('TV_COMMENTARY_BEDS_GAIN_DB', -18),
+            'format_beds' => ['sport_wetter' => 'bed-sport.opus', 'tribunal' => 'bed-courtroom.opus'],
             // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
             'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
             // Six dB under the file's level (user 2026-10-12: "Das News Bett im Hintergrund muss etwas leiser werden").
@@ -278,11 +288,25 @@ return [
             'dir' => env('TV_IMAGING_DIR', storage_path('app/stream/imaging')),
             // A station ID (or a news open, a time-of-day ID) at least this often; in quiet hours the only imaging.
             'station_every_minutes' => (float) env('TV_IMAGING_STATION_EVERY_MINUTES', 15),
+            // A long station ID (12 to 20 s, voice, build and hit) when the last long one is this long ago.
+            'station_long_every_minutes' => (float) env('TV_IMAGING_STATION_LONG_EVERY_MINUTES', 30),
             // The share of transitions between two talk clips that get a sweeper or liner.
             'sweeper_share' => (float) env('TV_IMAGING_SWEEPER_SHARE', 0.35),
             // The same line never again within this long.
             'repeat_minutes' => 45,
             'pause_seconds' => 0.3,
+            // The share of talk clips followed by a music gap that get a power intro over the gap's first seconds (by day).
+            'power_intro_share' => (float) env('TV_IMAGING_POWER_INTRO_SHARE', 0.25),
+            // Under this many seconds between a jingle's end and the next clip's start, the next clip opens without one.
+            'back_to_back_seconds' => 12,
+            // The bed a format's opener and promo are produced over (JingleSynth::LOOP_BEDS), on the workstation; and the
+            // bed under a rubric's own speech on the server (Idents, `idents.format_beds`).
+            'format_beds' => [
+                'tribunal' => 'courtroom', 'pranger' => 'courtroom', 'sport_wetter' => 'sport', 'partie' => 'sport',
+                'hotline' => 'late-night', 'inflation' => 'late-night', 'zentralbank' => 'late-night', 'schwarzbuch' => 'courtroom',
+                'jahrestag' => 'weather', 'meetups' => 'weather', 'fundbuero' => 'tutorial', 'stacker' => 'news-drive',
+                'altcoin' => 'news-drive', 'phrasen' => 'tutorial', 'friedhof' => 'late-night', 'nachrichten_talk' => 'news-pulse',
+            ],
             // Upload bounds: items in a manifest, bytes of one file and of the whole library, seconds of one item.
             'max_items' => 600,
             'max_file_bytes' => 1_500_000,
