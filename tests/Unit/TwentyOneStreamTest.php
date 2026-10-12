@@ -38,6 +38,15 @@ test('the scene encodes piped stills at one per second with the music copied as 
     ]);
 });
 
+test('the youtube relay copies one encoder playlist from its newest segment to the ingest as FLV, with a write timeout', function () {
+    expect((new FfmpegCommands('ffmpeg', 2))->relay('/srv/hls/scene/index.m3u8', 'rtmp://a.rtmp.youtube.com/live2/key'))->toBe([
+        'ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
+        '-re', '-live_start_index', '-1', '-i', '/srv/hls/scene/index.m3u8',
+        '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy',
+        '-rw_timeout', '10000000', '-f', 'flv', '-flvflags', 'no_duration_filesize', 'rtmp://a.rtmp.youtube.com/live2/key',
+    ]);
+});
+
 test('every encoder run gets a new id', function () {
     $ids = array_map(fn () => FfmpegCommands::newRunId(), range(1, 50));
 

@@ -13,6 +13,7 @@
  * Per mode (LOOP or SCENE, the scene is the run reading image2pipe):
  * FAKE_ENCODER_<MODE>_SEGMENTS, _DELAY (seconds before the first segment)
  * and _EXIT_AFTER (seconds, then exit 1 as a crash).
+ * Called as the YouTube relay (FLV output) it plays that instead, see below.
  */
 
 $arguments = array_slice($argv, 1);
@@ -21,6 +22,27 @@ $option = function (string $name) use ($arguments): string {
 
     return $index === false ? '' : $arguments[$index + 1];
 };
+
+// The YouTube relay (FfmpegCommands::relay, FLV out): appends the playlist it reads to FAKE_RELAY_LOG, names its
+// target on stderr the way ffmpeg's errors do, then exits 1 after FAKE_RELAY_EXIT_AFTER seconds or waits for SIGTERM.
+if (in_array('flv', $arguments, true)) {
+    if (($log = getenv('FAKE_RELAY_LOG')) !== false && $log !== '') {
+        file_put_contents($log, $option('-i')."\n", FILE_APPEND);
+    }
+
+    fwrite(STDERR, 'Error opening output '.end($arguments).": Connection timed out\n");
+    pcntl_async_signals(true);
+    pcntl_signal(SIGTERM, fn () => exit(255));
+    $relayExitAfter = (float) getenv('FAKE_RELAY_EXIT_AFTER');
+
+    if ($relayExitAfter > 0) {
+        usleep((int) (1_000_000 * $relayExitAfter));
+        exit(1);
+    }
+
+    sleep(30);
+    exit(0);
+}
 
 $playlist = end($arguments);
 $directory = dirname($playlist);

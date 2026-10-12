@@ -35,6 +35,7 @@ use App\Support\TwentyOne\Stream\TournamentLiveSlides;
 use App\Support\TwentyOne\Stream\TournamentSlides;
 use App\Support\TwentyOne\Stream\TvSlides;
 use App\Support\TwentyOne\Stream\ViewerFeed;
+use App\Support\TwentyOne\Stream\YouTubeRelay;
 use App\Support\TwentyOne\TwentyOneSigner;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -62,6 +63,10 @@ use Throwable;
  * mode switch is make-before-break (the new encoder runs until it has its
  * first segment, then the old one stops). A crashed encoder restarts with
  * backoff.
+ *
+ * With a YouTube stream key (twentyone.stream.youtube) a separate ffmpeg
+ * copies the run on air to YouTube's RTMP ingest (YouTubeRelay), restarted
+ * with every new run and after its own backoff; it never touches an encoder.
  *
  * The stream is announced as a NIP-53 kind-30311 event beside the encoder,
  * not inside its loop (DetachedPublish): a hung name lookup or connect must
@@ -157,6 +162,9 @@ class TwentyOneStreamCommand extends Command
     private ?EncoderRun $active = null;
 
     private ?EncoderRun $pending = null;
+
+    /** The push of the run on air to YouTube; null without a stream key. */
+    private ?YouTubeRelay $youtube = null;
 
     /** Whether the rotation scene failed on the last frame (logged once per series). */
     private bool $rotationFailing = false;
@@ -335,6 +343,11 @@ class TwentyOneStreamCommand extends Command
         /** @var array{view: view-string, data: array<string, mixed>, fallback: array<string, mixed>|null, label: string, announce: bool}|null $frame */
         $frame = null;
         $this->viewers = ViewerFeed::fromConfig($this->log(...));
+        $this->youtube = YouTubeRelay::fromConfig($this->log(...));
+
+        if ($this->youtube !== null) {
+            $this->log('youtube relay on, to '.$this->youtube->target().', keyframes every '.FfmpegCommands::YOUTUBE_KEYFRAME_SECONDS.' s');
+        }
         $viewerLimit = max(1, (int) config('twentyone.stream.viewers.max_datagrams_per_tick', 2000));
         $stopAt = is_numeric($this->option('stop-after')) ? microtime(true) + (float) $this->option('stop-after') : null;
 
@@ -615,6 +628,10 @@ class TwentyOneStreamCommand extends Command
                 }
             }
 
+            // YouTube gets the run on air once it has a segment, and a new relay with every new run.
+            $onAir = $this->active !== null && $this->active->hasSegment($hlsDir) ? $this->active : null;
+            $this->youtube?->follow($onAir === null ? null : $hlsDir.'/'.$onAir->mode.'/'.FfmpegCommands::ENCODER_PLAYLIST, $onAir?->runId, $now);
+
             // The scene's games take turns with the general texts (every game on offer, the weekly chases).
             // A running tournament on show names itself, without taking turns (it holds the stream).
             $shownTournament = $planner->runningTournament();
@@ -665,6 +682,14 @@ class TwentyOneStreamCommand extends Command
         }
 
         $this->pending = $this->active = null;
+
+        try {
+            $this->youtube?->stop();
+        } catch (Throwable $e) {
+            $this->log('stopping the youtube relay failed: '.$this->describe($e));
+        }
+
+        $this->youtube = null;
         $this->stopPublish(! $this->signaled);
         $this->viewers?->close();
         $this->viewers = null;
@@ -712,7 +737,7 @@ class TwentyOneStreamCommand extends Command
      */
     private function startEncoder(string $mode, PublicPlaylist $public, string $hlsDir, string $prepared): EncoderRun
     {
-        $ffmpeg = new FfmpegCommands((string) config('twentyone.stream.ffmpeg'));
+        $ffmpeg = FfmpegCommands::fromConfig();
         // New names for every run: segments and init are never reused.
         $runId = FfmpegCommands::newRunId();
         $this->runIds[] = $runId;
