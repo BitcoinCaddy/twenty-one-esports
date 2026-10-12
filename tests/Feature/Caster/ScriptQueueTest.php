@@ -281,7 +281,7 @@ it('seeds every filler once and never expires it', function () {
 });
 
 it('rejects scripts that break the stream or carry a sentence the voice cannot speak well', function (string $text, string $reason) {
-    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.patterns.per_run' => 0]);
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.patterns.per_run' => 0, 'tv.commentary.scripts.max_words_per_sentence' => 32]);
     VoiceAgent::fake([['text' => $text, 'canon_id' => null, 'mood' => 'fakten']]);
 
     expect(casterQueue()->fill(CarbonImmutable::now()))->toBe(0)

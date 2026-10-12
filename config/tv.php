@@ -95,7 +95,7 @@ return [
             // Long, complete sentences (user 2026-10-12: "Wenn die Sätze länger sind, dann hören sich die Audios viel besser
             // an" and "komplette Sätze ab jetzt nur noch"): OmniVoice intones a fragment or a two-word sentence badly, so
             // every spoken sentence of a non-chat script has at least `min_words_per_sentence` words (markers not counted).
-            'max_words_per_sentence' => (int) env('TV_COMMENTARY_MAX_WORDS', 32),
+            'max_words_per_sentence' => (int) env('TV_COMMENTARY_MAX_WORDS', 40),
             'min_words_per_sentence' => (int) env('TV_COMMENTARY_MIN_WORDS', 7),
             'max_commas' => 2,
             'max_chars' => 900,
