@@ -107,7 +107,9 @@ return [
             // segment's answer (a Bauernkrieg episode of 30 sentences is about 1,000 tokens; the posts' 400 would cut it off).
             'temperature' => (float) env('TV_COMMENTARY_TEMPERATURE', 1.0),
             'max_output_tokens' => (int) env('TV_COMMENTARY_MAX_OUTPUT_TOKENS', 1_500),
-            'max_age_minutes' => 10,
+            // Scenes are no longer bound to the slide on air; ten minutes expired most of them unvoiced while the workstation lagged (2026-10-12).
+            'max_age_minutes' => (int) env('TV_COMMENTARY_SCRIPT_MAX_AGE_MINUTES', 60),
+            'supersede' => (bool) env('TV_COMMENTARY_SUPERSEDE', false),
             'live_priority' => 100,
             'chat_priority' => 50,
             'recent' => 10,

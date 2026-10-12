@@ -213,7 +213,8 @@ it('hands out live moments before scene scripts, then the oldest first', functio
         ->and($queue->claim($now))->toBeNull();
 });
 
-it('expires a script after ten minutes unused', function () {
+it('expires a script after its max age unused (ten minutes here)', function () {
+    config(['tv.commentary.scripts.max_age_minutes' => 10]);
     $now = CarbonImmutable::now();
     $queue = casterQueue();
     $script = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Alt.', 'h', 0, $now);
@@ -224,7 +225,8 @@ it('expires a script after ten minutes unused', function () {
         ->and($queue->claim($now->addMinutes(10)))->toBeNull();
 });
 
-it('expires scene scripts written for facts that changed', function () {
+it('expires scene scripts written for facts that changed, while superseding is on', function () {
+    config(['tv.commentary.scripts.supersede' => true]);
     $now = CarbonImmutable::now();
     $queue = casterQueue();
     $old = $queue->enqueue(CasterScript::SCENE, ScenePhase::LIVE_MATCH, 'Alt.', 'old', 0, $now, topic: SceneTopic::LIVE_GAMES);
@@ -346,4 +348,13 @@ it('writes about every fourth pattern scene long, 6 to 10 sentences, the rest sh
         ->and(max($counts))->toBeLessThanOrEqual(10)
         ->and(min(array_diff_key($counts, $long)))->toBeGreaterThanOrEqual(3);
     VoiceAgent::assertNeverPrompted();
+});
+
+it('keeps scene scripts when the facts change while superseding is off, the default', function () {
+    $now = CarbonImmutable::now();
+    $queue = casterQueue();
+    $old = $queue->enqueue(CasterScript::SCENE, ScenePhase::LIVE_MATCH, 'Alt.', 'old', 0, $now, topic: SceneTopic::LIVE_GAMES);
+
+    expect($queue->supersedeTopic(SceneTopic::LIVE_GAMES, 'new'))->toBe(0)
+        ->and($old?->fresh()->status)->toBe(CasterScript::QUEUED);
 });

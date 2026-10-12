@@ -722,6 +722,11 @@ class ScriptQueue
     /** Scene scripts of a topic written for other facts than `$hash` expire: the slide they talk about changed. */
     public function supersedeTopic(string $topic, string $hash): int
     {
+        // Off by default: scene scripts draw on world memory, canon and news, not only on the slide's facts.
+        if (! (bool) config('tv.commentary.scripts.supersede', false)) {
+            return 0;
+        }
+
         return CasterScript::query()->where('topic', $topic)->where('kind', CasterScript::SCENE)
             ->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
             ->where('facts_hash', '!=', $hash)->update(['status' => CasterScript::EXPIRED]);
