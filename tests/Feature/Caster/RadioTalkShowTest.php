@@ -172,7 +172,7 @@ it('keeps a sourced sheet: twenty positions and more, each with its source and e
     }
 
     $authors = array_unique(array_column($positions, 'author'));
-    expect($authors)->toContain('Stephanie Kelton', 'Warren Mosler', 'L. Randall Wray', 'Dirk Ehnts', 'Maurice Höfgen');
+    expect($authors)->toContain('Stephanie Kelton', 'Warren Mosler', 'Randall Wray', 'Dirk Ehnts', 'Maurice Höfgen');
 
     $dramaturgy = json_decode((string) file_get_contents(resource_path('data/voice/talkshow.json')), true);
     $urls = array_unique(array_merge(...array_map(fn (array $rule): array => array_column($rule['sources'], 'url'), $dramaturgy['rules'])));
@@ -286,6 +286,7 @@ it('checks a talk: the guest opens, the host closes after the fact check, every 
         ->and($writer->evaluate($material, talkAnswer([9 => 'Sirius: Dann schauen wir uns das jetzt einmal ganz genau gemeinsam an.'])['text'])[1])->toContain(TalkShowScripts::SHAPE)
         ->and($writer->evaluate($material, talkAnswer([16 => null])['text'])[1])->toContain(TalkShowScripts::SHAPE)
         ->and($writer->evaluate($material, talkAnswer([12 => 'Markus: Als Anarchokapitalist sage ich, gutes Geld braucht keine Erlaubnis.'])['text'])[1])->toContain(TalkShowScripts::LABEL)
+        ->and($writer->evaluate($material, talkAnswer([5 => 'Markus: Gnädigste, das ist ungefähr so logisch wie Feuer mit Benzin zu löschen.'])['text'])[1])->toContain(TalkShowScripts::GENDERED)
         ->and($writer->evaluate($material, talkAnswer([4 => 'Genossin: Stephanie Kelton sagt: „Defizite machen jeden Menschen sofort reich.“'])['text'])[1])->toContain(TalkShow::QUOTE)
         ->and($writer->evaluate($material, talkAnswer([5 => 'Markus: Seit dreiundvierzig Jahren erzählt ihr Linken dieselbe Geschichte vom Gelddrucken.'])['text'])[1])->toContain(ShowScripts::NUMBER);
 
@@ -414,14 +415,14 @@ it('offers ten host moves per episode from every group, rotating, and never one 
     CasterScript::query()->create(['kind' => CasterScript::RUBRIC, 'phase' => 'break', 'source' => CasterScript::SOURCE_AI, 'topic' => Shows::STAMMTISCH, 'priority' => 70,
         'text' => $said, 'facts_hash' => 'x', 'status' => CasterScript::QUEUED, 'estimated_seconds' => 3, 'expires_at' => now()->addHour()]);
 
-    for ($episode = 0; $episode < 12; $episode++) {
+    for ($episode = 0; $episode < 30; $episode++) {
         expect(TalkShow::hostMoves(CarbonImmutable::now()))->not->toContain($said);
     }
 
     // A day later it comes back into the rotation.
     $this->travelTo(now()->addHours(25));
     $offered = [];
-    for ($episode = 0; $episode < 12; $episode++) {
+    for ($episode = 0; $episode < 30; $episode++) {
         $offered = [...$offered, ...TalkShow::hostMoves(CarbonImmutable::now())];
     }
     expect($offered)->toContain($said);

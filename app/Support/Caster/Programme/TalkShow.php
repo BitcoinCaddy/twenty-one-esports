@@ -234,7 +234,7 @@ class TalkShow
         $style = (array) ($guest['style'] ?? []);
         $list = fn (mixed $rows): string => implode("\n", array_map(fn (mixed $row): string => '- '.$row, array_values(array_filter((array) $rows, 'is_string'))));
 
-        return "Dritte Stimme: ".self::stageName()." (nur in „Turm und Genossin, der Talk“)\n\n".($guest['role'] ?? '')
+        return 'Dritte Stimme: '.self::stageName()." (nur in „Turm und Genossin, der Talk“)\n\n".($guest['role'] ?? '')
             ."\n\nSprechweise\n- Satzrhythmus: ".($style['rhythm'] ?? '')
             ."\n- Füllwörter: ".implode(', ', array_map(fn (string $filler): string => "„{$filler}“", array_values(array_filter((array) ($style['fillers'] ?? []), 'is_string'))))
             ."\n- Humor: ".($style['humor'] ?? '')."\n- Da regt sie sich auf: ".($style['worked_up'] ?? '')
@@ -295,7 +295,7 @@ class TalkShow
             .RoastFacts::spell(CasterVoice::withoutHashtags($row->title)).'“'.($row->summary !== null && trim($row->summary) !== '' ? ' Anriss: '.RoastFacts::spell(CasterVoice::withoutHashtags($row->summary)) : '');
 
         return Shows::build($headline."\n\n".self::sheet(), self::names(), [], sha1('stammtisch:news:'.$row->id), ['stammtisch:news:'.$row->id], [],
-            array_values(array_filter([(string) $row->link])));
+            $row->link === null || $row->link === '' ? [] : [$row->link]);
     }
 
     /**

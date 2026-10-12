@@ -56,6 +56,8 @@ use Throwable;
  * than `turns.min` turns or without one of the speakers is turned down. Same
  * guards as a duet (DuetScripts::evaluate()), its own usage channel and
  * daily cap (`stock.daily_cap`), the monthly budget, at most two tries.
+ *
+ * @phpstan-import-type ShowMaterial from Shows
  */
 final class StockScripts
 {
@@ -84,7 +86,7 @@ final class StockScripts
     /**
      * The talk show's evergreen material picked by materialFor() (TalkShow::evergreen()), written by TalkShowScripts.
      *
-     * @var array<string, mixed>|null
+     * @var ShowMaterial|null
      */
     private ?array $talkShow = null;
 
@@ -114,7 +116,6 @@ final class StockScripts
 
             // The talk show of three (P16) has its own writer, cast and checks.
             if ($format === Shows::STAMMTISCH && $this->talkShow !== null) {
-                /** @phpstan-ignore argument.type (TalkShow::evergreen() built it) */
                 $talk = app(TalkShowScripts::class)->evergreen($this->talkShow);
                 $this->remember(self::LAST_FORMATS, $format);
 

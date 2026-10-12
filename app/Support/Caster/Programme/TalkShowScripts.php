@@ -64,6 +64,12 @@ class TalkShowScripts
     /** Markus or Sirius named their own worldview ("Anarchokapitalist", "wir Libertären"). */
     public const LABEL = 'talkshow_label';
 
+    /** Markus or Sirius talked down to the guest as a woman ("Gnädigste", real Sonnet sample 2026-10-13): ideas are roasted, never her gender. */
+    public const GENDERED = 'talkshow_gendered';
+
+    /** The condescending, gendered forms of address the hosts' side never uses for the guest. */
+    private const GENDERED_WORDS = '/(?<![\p{L}])(?:gnädigste|gnädige frau|schätzchen|püppchen|mädchen|mädel|kleine dame|junge dame|süße|hysterisch\p{L}*|weibchen)(?![\p{L}])/iu';
+
     /** The self-labels Markus and Sirius never use (user 2026-10-13). */
     private const LABELS = '/(?<![\p{L}])(?:anarcho[\s-]*kapitalist\p{L}*|ankap\p{L}*|libertär\p{L}*|libertarian\p{L}*)/iu';
 
@@ -232,7 +238,10 @@ class TalkShowScripts
         foreach ($lines as $index => $line) {
             if ($speakers[$index] !== TalkShow::GUEST && preg_match(self::LABELS, $line) === 1) {
                 $violations[] = self::LABEL;
-                break;
+            }
+
+            if ($speakers[$index] !== TalkShow::GUEST && preg_match(self::GENDERED_WORDS, $line) === 1) {
+                $violations[] = self::GENDERED;
             }
         }
 
@@ -367,7 +376,7 @@ class TalkShowScripts
             "Die Rollen\n\n- Sirius, der Gastgeber: die Parodie eines bekannten Typs von Fernseh-Talkmaster, ohne je einen echten Namen zu nennen oder jemand Echtes zu sein. Er siezt beide Gäste („Herr Turm“, „Genossin Gisela“), redet selbst viel, fällt ständig ins Wort, fragt scheinbar naiv und skeptisch nach, verlangt ein klares Ja oder Nein, würgt Monologe ab, liest eine Zuschauerfrage vor und gießt Öl ins Feuer; seine Wendungen stehen unten im eigenen Block."
                 ."\n- Markus Turm, Gast: argumentiert aus der Sicht freier Märkte, guten Geldes und von Bitcoin: Staat, Zentralbanken, Steuern, Regulierung und Fiatgeld sind das Problem, freiwilliger Tausch und Selbstbestimmung über das eigene Leben der Maßstab. Er zeigt das in Argumenten, nie mit einem Etikett: „Anarchokapitalist“, „libertär“ oder „wir Libertären“ sagt er nie. Satire-Technik: ein Fakt aus dem Material, die absurde Konsequenz, die Pointe."
                 ."\n- {$guest}, Gast: wie in ihrem Persona-Block oben; wird sie hitzig, werden ihre Sätze kürzer und enden mit Ausrufezeichen."
-                ."\n- Geroastet werden Ideen, nie Geschlecht, Aussehen, Alter oder Herkunft, und nie die echten Autorinnen und Autoren als Personen.",
+                ."\n- Geroastet werden Ideen, nie Geschlecht, Aussehen, Alter oder Herkunft, keine herablassende Anrede wie „Gnädigste“, und nie die echten Autorinnen und Autoren als Personen.",
             "Ablauf\n\n1. Kalter Einstieg: {$guest} beginnt mit ihrer steilsten These, Markus fährt ihr sofort in die Parade."
                 ."\n2. Sirius begrüßt die Hörer, stellt beide Gäste mit Namen und Haltung vor und nennt das Thema als zugespitzte Frage".($evergreen ? '.' : ', ausgehend von der Schlagzeile mit ihrer Quelle.')
                 ."\n3. Kreuzfeuer in mehreren Runden: sehr kurze Wortmeldungen von einem bis ".$count($perTurn).' Sätzen, die Gäste fallen sich ins Wort, Durcheinanderreden als schnell wechselnde Einzeiler wie „Nein, nein, nein, so nicht!“, Sirius heizt an, unterbricht und fragt nach; [laughter] nur, wo eine Pointe sitzt.'
@@ -393,6 +402,7 @@ class TalkShowScripts
                 TalkShow::QUOTE => 'Er legte einer echten Person ein Zitat in den Mund, das nicht belegt ist: sinngemäß sagen, Anführungszeichen nur für „Wörtlich belegt“.',
                 self::SHAPE => "Der Ablauf stimmte nicht: {$guest} spricht zuerst, Sirius ruft einmal den Faktencheck aus und spricht zuletzt.",
                 self::LABEL => 'Markus oder Sirius nannten ein Etikett für ihre Haltung: sie nur in Argumenten zeigen.',
+                self::GENDERED => 'Markus oder Sirius redeten die Genossin herablassend als Frau an (etwa „Gnädigste“): sie heißt „Genossin Gisela“ oder „Frau Genossin“, geroastet werden nur ihre Ideen.',
                 default => VoicePrompt::REASON_HINTS[$code] ?? $code,
             }, $rejected)),
             CasterVoice::repeatBlock($repeated),
