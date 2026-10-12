@@ -30,7 +30,8 @@ use InvalidArgumentException;
  *     starves; no ASR;
  *  3. two variants of every line over the self-made music (JingleSynth:
  *     bed, key, voice treatment, intro from a hash of the id), ducked,
- *     -16 LUFS, limited, Ogg Opus (anchor/<id>-a.opus, -b.opus);
+ *     -16 LUFS, limited, Ogg Opus (anchor/<id>-a.opus, -b.opus), a jingle
+ *     already rendered from its voice kept (resumable; --remix renders anew);
  *  4. the speakers' blips ("hm", "ja", "stimmt", a laugh) with their own
  *     profiles, at the speech level, at most 1.6 s (blips/<speaker>/*.wav);
  *  5. manifest.json with every jingle's line, category, file, length and
@@ -43,7 +44,8 @@ use InvalidArgumentException;
     {--limit=60 : VoiceStudio calls at most in this run}
     {--pause=6 : Seconds between two VoiceStudio calls}
     {--no-blips : Leave the speakers\' blips out}
-    {--mix-only : Render the jingles from the voices on disk, no VoiceStudio call}')]
+    {--mix-only : Render the jingles from the voices on disk, no VoiceStudio call}
+    {--remix : Render every jingle again, also those already on disk}')]
 #[Description('Render the Anchor jingles and the speakers\' blips for the programme blocks (workstation)')]
 class CasterJinglesCommand extends Command
 {
@@ -220,6 +222,12 @@ class CasterJinglesCommand extends Command
         }
 
         $file = 'anchor/'.$id.'-'.$variant.'.opus';
+
+        // Resumable: a jingle already rendered from this voice stays as it is (--remix renders it again).
+        if (! $this->option('remix') && is_file($dir.'/'.$file) && filemtime($dir.'/'.$file) >= filemtime($voice)) {
+            return ['id' => $id.'-'.$variant, 'file' => $file, 'seconds' => round($this->seconds($dir.'/'.$file), 3), 'lufs' => $this->lufs($dir.'/'.$file)] + $recipe;
+        }
+
         $duration = $recipe['intro'] + $voiceSeconds + 1.6;
         $bed = JingleSynth::bed($recipe['bed'], $recipe['key'], $recipe['intro'], $voiceSeconds, $duration);
         $ffmpeg = (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg');

@@ -655,11 +655,14 @@ final class SceneDirector
         $rate = $this->timeline->rate;
         $from = (int) round($now * $rate);
         $tail = $this->timeline->samples($from, (int) round($end * $rate));
+        $tailSeconds = Pcm::seconds($tail, $rate);
         $range = (array) ($this->settings['blocks']['join_seconds'] ?? []);
-        $offset = Pcm::seconds($tail, $rate) + self::random($range === [] ? ['min' => 0.4, 'max' => 0.4] : $range);
-        $joined = $tail.Pcm::silence($offset - Pcm::seconds($tail, $rate), $rate).$pcm;
+        $breath = self::random($range === [] ? ['min' => 0.4, 'max' => 0.4] : $range);
+        $joined = $tail.Pcm::silence($breath, $rate).$pcm;
         $offset = Pcm::seconds($joined, $rate) - Pcm::seconds($pcm, $rate);
-        $ends = [round(Pcm::seconds($tail, $rate), 3), ...array_map(fn (float $time): float => round($offset + $time, 3), $next->sentence_ends)];
+        // A six-minute block is about 17 MB of PCM: never more copies of it alive than needed.
+        unset($pcm, $tail);
+        $ends = [round($tailSeconds, 3), ...array_map(fn (float $time): float => round($offset + $time, 3), $next->sentence_ends)];
 
         $this->logPiece($this->clip, $end);
         $this->spool->played($this->clip);
