@@ -46,7 +46,7 @@ function bulletinHeadline(string $title, string $source, string $section, int $m
     ]);
 }
 
-/** Two headlines per outlet, four outlets in two sections, no two on the same story. */
+/** Two headlines per outlet, six outlets in three sections (Deutschland, Bitcoin, Technik), no two on the same story. */
 function bulletinNewsDesk(): void
 {
     bulletinHeadline('Bundestag beschließt Reform der Grundsteuer für Eigentümer', 'tagesschau', CasterNews::GERMANY, 10);
@@ -57,6 +57,10 @@ function bulletinNewsDesk(): void
     bulletinHeadline('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', CasterNews::BITCOIN, 12);
     bulletinHeadline('Lightning-Zahlungen wachsen bei Händlern in Europa', 'BTC-Echo', CasterNews::BITCOIN, 45);
     bulletinHeadline('Wallet-Anbieter schließt Sicherheitslücke nach Hinweis', 'Blocktrainer', CasterNews::BITCOIN, 30);
+    bulletinHeadline('Chatkontrolle: Messenger-Dienste drohen mit Rückzug aus Europa', 'heise online', CasterNews::TECH, 14);
+    bulletinHeadline('Open-Source-Router-Firmware bekommt verschlüsseltes DNS', 'heise online', CasterNews::TECH, 35);
+    bulletinHeadline('Neue Grafikkarten verbrauchen deutlich weniger Strom', 'Golem', CasterNews::TECH, 25);
+    bulletinHeadline('Forscher knacken Passwortmanager über manipulierte Browser-Erweiterung', 'Golem', CasterNews::TECH, 55);
 }
 
 /** Items of the prompt: number, source, headline. @return list<array{0: string, 1: string, 2: string}> */
@@ -99,7 +103,7 @@ function bulletinFactLines(string $text): array
 
 it('reads EINUNDZWANZIG News from its feed as a Bitcoin source', function () {
     expect(config('tv.commentary.news.feeds.einundzwanzig-news'))->toBe([
-        'url' => 'https://media.einundzwanzig.space/s/einundzwanzig-news/feed.xml', 'source' => 'EINUNDZWANZIG News', 'section' => 'bitcoin', 'language' => 'de',
+        'url' => 'https://media.einundzwanzig.space/s/einundzwanzig-news/feed.xml', 'source' => 'EINUNDZWANZIG News', 'section' => 'bitcoin', 'language' => 'de', 'fresh_hours' => 168,
     ]);
 
     config(['tv.commentary.news.feeds' => ['einundzwanzig-news' => config('tv.commentary.news.feeds.einundzwanzig-news')]]);
@@ -129,7 +133,7 @@ it('mixes six to eight items at the full hour from at least three outlets, EINUN
         expect(count($items))->toBeGreaterThanOrEqual(6)->toBeLessThanOrEqual(8)
             ->and(count(array_unique(array_column($items, 'source'))))->toBeGreaterThanOrEqual(3)
             ->and(array_column($items, 'source'))->toContain('EINUNDZWANZIG News')
-            ->and(array_unique(array_column($items, 'section')))->toEqualCanonicalizing([CasterNews::GERMANY, CasterNews::BITCOIN]);
+            ->and(array_unique(array_column($items, 'section')))->toEqualCanonicalizing([CasterNews::GERMANY, CasterNews::BITCOIN, CasterNews::TECH]);
     }
 
     $headlines = app(NewsBulletin::class)->select(BroadcastClock::HEADLINES, CarbonImmutable::now());
@@ -138,16 +142,17 @@ it('mixes six to eight items at the full hour from at least three outlets, EINUN
         ->and($headlines[0]['source'])->toBe('EINUNDZWANZIG News');
 });
 
-it('takes a new outlet from the other section before an outlet again (real feeds 2026-10-12: Bitcoin had only BTC-Echo)', function () {
+it('takes a new outlet within a tier before an outlet again, and one tier per turn (real feeds 2026-10-12: Bitcoin had only BTC-Echo)', function () {
     config(['tv.commentary.programme.bulletin.items.headlines' => ['min' => 3, 'max' => 3]]);
     bulletinHeadline('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', CasterNews::BITCOIN, 10);
     bulletinHeadline('Lightning-Zahlungen wachsen bei Händlern in Europa', 'BTC-Echo', CasterNews::BITCOIN, 11);
+    bulletinHeadline('Chatkontrolle: Messenger-Dienste drohen mit Rückzug aus Europa', 'heise online', CasterNews::TECH, 14);
     bulletinHeadline('Bundestag beschließt Reform der Grundsteuer für Eigentümer', 'tagesschau', CasterNews::GERMANY, 12);
     bulletinHeadline('Koalition legt Entwurf für Pflegereform vor', 'Spiegel', CasterNews::GERMANY, 13);
 
     $headlines = app(NewsBulletin::class)->select(BroadcastClock::HEADLINES, CarbonImmutable::now());
 
-    expect(array_column($headlines, 'source'))->toBe(['BTC-Echo', 'tagesschau', 'Spiegel']);
+    expect(array_column($headlines, 'source'))->toBe(['BTC-Echo', 'heise online', 'tagesschau']);
 });
 
 it('writes the bulletin: the time line, the items with their outlets, then the commentary clearly set apart', function () {
@@ -281,7 +286,7 @@ it('makes a shorter bulletin from thin news and none at all without enough, neve
 it('puts an item back where it belongs when the model forgot its number, so it airs and is marked read', function () {
     bulletinHeadline('Bundestag beschließt Reform der Grundsteuer für Eigentümer', 'tagesschau', CasterNews::GERMANY, 10);
     bulletinHeadline('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', CasterNews::BITCOIN, 12);
-    bulletinHeadline('Koalition legt Entwurf für Pflegereform vor', 'Spiegel', CasterNews::GERMANY, 15);
+    bulletinHeadline('Chatkontrolle: Messenger-Dienste drohen mit Rückzug aus Europa', 'heise online', CasterNews::TECH, 15);
     $this->travelTo(CarbonImmutable::parse('2026-10-12 14:25:00', 'Europe/Berlin'));
     VoiceAgent::fake(function (string $prompt): array {
         $answer = bulletinAnswer($prompt);

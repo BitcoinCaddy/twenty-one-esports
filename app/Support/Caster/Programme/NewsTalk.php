@@ -6,6 +6,7 @@ use App\Models\ChatterLine;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
+use App\Support\Caster\NewsMix;
 use App\Support\Caster\QuietHours;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
@@ -267,6 +268,13 @@ class NewsTalk
         $stories = max(1, (int) ($settings['stories'] ?? 3));
         $minutes = fn (string $bound): string => BroadcastClock::number(max(1, min(59, (int) round((float) ($settings['seconds'][$bound] ?? 180) / 60))));
 
+        // The balance of the bulletins (P15): Bitcoin, tech and money first and taking turns, politics last.
+        $items = NewsMix::balanced($items);
+        $tiers = array_map(fn (array $item): string => NewsMix::tier($item['section'], $item['title'], $item['summary'] ?? null), $items);
+        $balance = in_array(NewsMix::BITCOIN, $tiers, true) && in_array(NewsMix::TECH, $tiers, true)
+            ? "\n- Mischt die Themen: mindestens eine Bitcoin-Geschichte und eine Technik-Geschichte, Politik höchstens eine."
+            : (in_array(NewsMix::POLITICS, $tiers, true) && count(array_unique($tiers)) > 1 ? "\n- Politik höchstens eine Geschichte; die anderen Themen gehen vor." : '');
+
         $list = implode("\n", array_map(function (int $index, array $item): string {
             $summary = $item['summary'] ?? '';
 
@@ -277,6 +285,7 @@ class NewsTalk
             "Auftrag\n\nDer Nachrichten-Talk auf TWENTY ONE TV, direkt nach den Nachrichten: Markus Turm und Sirius greifen sich die {$stories} spannendsten Geschichten aus den Meldungen unten heraus und reden ausführlich darüber, wie in einer guten Radiosendung,"
                 ." etwa {$minutes('min')} bis {$minutes('max')} Minuten lang, {$min} bis {$max} Sätze. ".CasterVoice::SENTENCE_STYLE,
             "So läuft der Talk\n\n- Markus steigt ein und sagt, worüber die beiden jetzt reden; dann wechseln sie sich ab, jeder mit einem bis drei Sätzen am Stück."
+                .$balance
                 ."\n- Zu jeder Geschichte: was dahintersteckt (aus dem Hintergrund der Meldung), was das für Bitcoiner und für die Spieler der Liga bedeutet, und wo die beiden verschiedener Meinung sind."
                 ."\n- Meinung mit Haltung, Witz und Sarkasmus über Staat, Steuern, Bürokratie und Fiatgeld, wo es passt; Sirius widerspricht auch einmal, erzählt eine eigene kleine Geschichte oder zieht Markus auf, und er beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“ oder „Richtig“."
                 .($questions === [] ? '' : "\n- Greift mindestens eine der Fragen aus dem Chat auf („im Chat wollte jemand wissen …“), ohne Namen.")

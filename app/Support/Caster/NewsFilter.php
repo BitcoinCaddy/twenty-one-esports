@@ -21,6 +21,11 @@ final class NewsFilter
 
     public const FOREIGN = 'foreign';
 
+    /** An advertisement in a feed ("Anzeige: Legos Mondrakete …", Golem, prod 2026-10-13; "heise-Angebot: …"). */
+    public const AD = 'ad';
+
+    private const AD_PATTERN = '/^\s*(?:anzeige|werbung|sponsored|heise-angebot|angebot|deal)\s*[:|]/iu';
+
     /** Function words that mark an English headline ("Saylor teases … after ending September with …"). */
     private const ENGLISH_MARKERS = [
         'the', 'and', 'of', 'to', 'for', 'with', 'after', 'on', 'at', 'by', 'from', 'is', 'are', 'was',
@@ -67,11 +72,15 @@ final class NewsFilter
     /** Live tickers and blogs. */
     private const LIVE_PARTS = ['liveblog', 'live-blog', 'liveticker', 'live-ticker', 'newsblog', '+++'];
 
-    /** Why the headline (from a feed in `$language`, de or en) is not spoken (FOREIGN, LIVE, TRAGEDY), or null when it may be. */
+    /** Why the headline (from a feed in `$language`, de or en) is not spoken (FOREIGN, AD, LIVE, TRAGEDY), or null when it may be. */
     public static function reason(string $headline, string $language = 'de'): ?string
     {
         if ($language !== 'de' || ! self::readsGerman($headline)) {
             return self::FOREIGN;
+        }
+
+        if (preg_match(self::AD_PATTERN, $headline) === 1) {
+            return self::AD;
         }
 
         return self::unfit($headline);
