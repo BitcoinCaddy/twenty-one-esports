@@ -5,6 +5,7 @@ namespace App\Support\Caster\Blocks;
 use App\Models\CasterScript;
 use App\Support\Caster\ChatReactions;
 use App\Support\Caster\ChatWishes;
+use App\Support\Caster\Programme\ProgrammePreview;
 use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\SportWeather;
@@ -22,7 +23,7 @@ use Carbon\CarbonImmutable;
  * evergreen() decides what may ever come again: only talk, history and the
  * rubrics without a date in them; never a bulletin, a teaser, a chat reply,
  * a wish, a zap thank-you, a greeting, a live moment, news, a followed
- * note, the news talk, Sport und Wetter, the press review, the league or chat rubric, the long
+ * note, the news talk, Sport und Wetter, the Programmvorschau, the press review, the league or chat rubric, the long
  * formats bound to their day (Shows::DAY_BOUND; the Shitcoin-Friedhof may come again), a scene
  * about running games or results, a block that opens with a time-of-day
  * jingle or a "coming up" jingle, and no block with a line that names the
@@ -37,7 +38,7 @@ final class ReplayArchive
 
     /** Topics that are bound to their day, whatever their kind. */
     public const NEVER_TOPICS = [
-        'chat', 'nachrichten_talk', 'presseschau', 'liga', SportWeather::TOPIC,
+        'chat', 'nachrichten_talk', 'presseschau', 'liga', SportWeather::TOPIC, ProgrammePreview::TOPIC,
         SceneTopic::LIVE_GAMES, SceneTopic::LIVE_TOURNAMENT, SceneTopic::RESULTS, SceneTopic::TOURNAMENTS, SceneTopic::MEMPOOL,
         ChatReactions::ZAP_TOPIC, ChatReactions::GREETING_TOPIC,
         // The fresh roast formats (P10): only the Schwarzbuch-Stunde and the Inflationsbeichte are evergreen (Roasts::EVERGREEN).

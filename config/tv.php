@@ -783,6 +783,29 @@ return [
                     'esports_minutes' => 60,
                 ],
             ],
+            // The Programmvorschau (P14; App\Support\Caster\Programme\ProgrammePreview; user 2026-10-12: "Was ist mit einer Vorlesung
+            // des Programms, was in den nächsten 12 Stunden zu erwarten ist?"): Markus and Sirius read the highlights of the next
+            // `hours` from the real timetable (long formats with a source, fixed rubric plans, the podcast replay, news, Sport und
+            // Wetter, the quiet hours), at each of `slots` (Berlin "HH:MM" => day, or night for the short "heute Nacht und morgen
+            // früh" version) after that hour's news block, written from `write_minutes_ahead` before to `late_minutes` after it,
+            // at most `tries` writes a slot; never while a podcast replay is on, never replayed. `generic_formats` rotation formats
+            // are named without a time.
+            'preview' => [
+                'enabled' => (bool) env('TV_COMMENTARY_PREVIEW', true),
+                'slots' => ['09:03' => 'day', '13:03' => 'day', '17:03' => 'day', '21:03' => 'day', '00:35' => 'night'],
+                'hours' => 12,
+                'write_minutes_ahead' => 15,
+                'late_minutes' => 10,
+                'tries' => 2,
+                'seconds' => ['min' => 60, 'max' => 120],
+                'sentences' => ['min' => 8, 'max' => 14],
+                'night_seconds' => ['min' => 30, 'max' => 60],
+                'night_sentences' => ['min' => 4, 'max' => 8],
+                'generic_formats' => 3,
+                'priority' => 68,
+                'late_seconds' => 240,
+                'daily_cap' => (int) env('TV_COMMENTARY_PREVIEW_DAILY_CAP', 20),
+            ],
             // Programme announcements (P5; App\Support\Caster\Programme\Announcements): written by the model from the rundown as
             // data, and a line goes on air only when it names a bulletin or rubric that really follows, at the time it
             // says. A teaser for the next slot plays at the first clip boundary within `before_minutes` of it (written a

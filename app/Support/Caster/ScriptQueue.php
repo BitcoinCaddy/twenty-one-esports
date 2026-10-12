@@ -12,6 +12,7 @@ use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
 use App\Support\Caster\Programme\PodcastPromos;
+use App\Support\Caster\Programme\ProgrammePreview;
 use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\Programme\RoastScripts;
 use App\Support\Caster\Programme\Rubrics;
@@ -167,6 +168,8 @@ class ScriptQueue
         $written = $this->fillBulletin($now);
         $written += $this->fillSportWeather($now);
         $written += $quiet || $podcast ? 0 : $this->fillNewsTalk($now);
+        // The Programmvorschau after the news block (P14), also at 08:5x for 09:03 while the quiet hours still run.
+        $written += $podcast ? 0 : $this->fillPreview($now);
         $written += $podcast ? 0 : $this->fillRubric($now);
         $written += $quiet || $podcast ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
         $written += $this->fillStock($now);
@@ -513,6 +516,76 @@ class ScriptQueue
 
         return $talk !== null && $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], $hash, (int) ($settings['priority'] ?? 70), $now,
             source: CasterScript::SOURCE_AI, topic: NewsTalk::TOPIC, speakers: $talk['speakers'], airsAt: $airsAt,
+            expiresAt: $airsAt->addSeconds((int) ($settings['late_seconds'] ?? 240) + 900)) !== null ? 1 : 0;
+    }
+
+    /**
+     * The Programmvorschau (P14, ProgrammePreview) at the slot of
+     * `programme.preview.slots` whose writing window holds `$now`, once per
+     * slot, AI only, never while a podcast replay is on (fill()). It airs
+     * after the news block of its hour: the bulletin before its time, Sport und
+     * Wetter and the news talk of that bulletin (their estimated lengths), not
+     * before its own time. It waits while that bulletin or news talk can
+     * still be written (up to a minute before the bulletin slot), so it never
+     * gets between them; queued in parts as a rubric (topic
+     * ProgrammePreview::TOPIC). At most `preview.tries` writes per slot.
+     *
+     * @return int previews written (0 or 1)
+     */
+    public function fillPreview(CarbonImmutable $now): int
+    {
+        $target = self::aiEnabled() && ProgrammePreview::enabled() ? ProgrammePreview::target($now) : null;
+
+        // While a podcast replay is on (or comes within its lead) the preview is left out, not postponed.
+        if ($target === null || PodcastReplay::active($now)) {
+            return 0;
+        }
+
+        $hash = 'programmvorschau:'.$target['key'];
+
+        if (CasterScript::query()->where('kind', CasterScript::RUBRIC)->where('facts_hash', $hash)->exists()) {
+            return 0;
+        }
+
+        // The bulletin slot of the preview's hour at or before its time, and what airs after it.
+        $bulletins = array_values(array_filter(BroadcastClock::fromConfig()->upcoming($target['at']->subMinutes(59), 59),
+            fn (array $slot): bool => BroadcastClock::isBulletin($slot['type']) && $slot['key'] <= $target['key']));
+        $slot = $bulletins === [] ? null : $bulletins[count($bulletins) - 1];
+        $airsAt = $target['at'];
+
+        if ($slot !== null && config('tv.commentary.news.enabled') === true) {
+            $open = $slot['key'] - $now->getTimestamp() >= 60;
+            $bulletin = CasterScript::query()->where('kind', CasterScript::BULLETIN)->where('facts_hash', 'bulletin:'.$slot['key'])->orderBy('id')->first();
+            $talkWritten = CasterScript::query()->where('kind', CasterScript::RUBRIC)->where('facts_hash', 'news_talk:'.$slot['key'])->exists();
+            $talkDue = $slot['type'] === BroadcastClock::NEWS && NewsTalk::enabled() && ! QuietHours::active($now);
+
+            // The news block is still being written: the preview comes after it, never between its parts.
+            if ($open && ($bulletin === null || ($talkDue && ! $talkWritten))) {
+                return 0;
+            }
+
+            if ($bulletin !== null) {
+                $after = (float) CasterScript::query()->where('kind', CasterScript::RUBRIC)->whereIn('facts_hash', ['sport_weather:'.$slot['key'], 'news_talk:'.$slot['key']])
+                    ->where('status', '!=', CasterScript::EXPIRED)->sum('estimated_seconds');
+                $end = self::bulletinEnd($slot['starts_at'], $bulletin->text)->addSeconds((int) ceil($after));
+                $airsAt = $end->greaterThan($airsAt) ? $end : $airsAt;
+            }
+        }
+
+        // Written late, it airs from now on.
+        $airsAt = $airsAt->lessThan($now) ? $now : $airsAt;
+        $preview = app(ProgrammePreview::class);
+        $material = $preview->material($airsAt, $now, $target['night']);
+
+        if ($material === null || ! ProgrammePreview::tryWrite($target['key'])) {
+            return 0;
+        }
+
+        $settings = ProgrammePreview::settings();
+        $segment = $preview->write($material, $target['key']);
+
+        return $segment !== null && $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $segment['text'], $hash, (int) ($settings['priority'] ?? 68), $now,
+            source: CasterScript::SOURCE_AI, topic: ProgrammePreview::TOPIC, speakers: $segment['speakers'], airsAt: $airsAt,
             expiresAt: $airsAt->addSeconds((int) ($settings['late_seconds'] ?? 240) + 900)) !== null ? 1 : 0;
     }
 

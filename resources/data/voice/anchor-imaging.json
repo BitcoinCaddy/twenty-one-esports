@@ -849,6 +849,20 @@
             "spoken": "After the news, the talk. What the headlines really mean. TWENTY ONE. E. Sports. Radio."
         },
         {
+            "id": "img-op-programmvorschau-1",
+            "category": "opener-programmvorschau",
+            "text": "The Programme Preview. What is coming up next on the station, and why you should stay. TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "The Programme Preview. What is coming up next on the station, and why you should stay. TWENTY ONE. E. Sports. Radio."
+        },
+        {
+            "id": "img-op-programmvorschau-2",
+            "category": "opener-programmvorschau",
+            "text": "Mark your calendar. The Programme Preview, straight from the schedule. TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "Mark your calendar. The Programme Preview, straight from the schedule. TWENTY ONE. E. Sports. Radio."
+        },
+        {
             "id": "img-pr-nachrichten-talk",
             "category": "promo-nachrichten_talk",
             "text": "Coming up: the News Talk. We take the headlines apart and say what nobody in the newsroom is allowed to say. The News Talk, soon on TWENTY ONE ESPORTS RADIO.",

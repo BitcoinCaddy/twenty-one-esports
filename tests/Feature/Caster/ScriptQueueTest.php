@@ -178,7 +178,8 @@ it('asks the league voice about no topic whose slides have no data', function ()
 
 it('gives the one league-voice script to a topic with data and its slide facts', function () {
     // The league material (the slide's facts); the other materials leave the facts out (WorldMemoryTest).
-    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 1, 'tv.commentary.scripts.materials' => ['league' => 1]]);
+    // 15:00 UTC is 17:00 in Berlin, the Programmvorschau's 17:03 window: it would take the one fake answer.
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 1, 'tv.commentary.scripts.materials' => ['league' => 1], 'tv.commentary.programme.preview.enabled' => false]);
     // Daytime: at night only the night topics get scripts.
     $this->travelTo(CarbonImmutable::today()->setTime(15, 0));
     VoiceAgent::fake([['text' => "Live auf dem Brett läuft gerade eine Partie Blitz, und die schauen wir uns an.\nBleibt unbedingt dran, denn gleich wird es auf dem Brett richtig spannend.", 'canon_id' => null, 'mood' => 'fakten']]);

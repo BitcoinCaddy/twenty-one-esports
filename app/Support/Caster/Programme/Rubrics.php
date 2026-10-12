@@ -145,6 +145,17 @@ class Rubrics
     }
 
     /**
+     * The rubric plannedFor() has fixed for the rubric slot starting at `$slotKey` already, or null; asks nothing and
+     * fixes nothing (the Programmvorschau names a rotation format at a time only once it is fixed).
+     */
+    public static function kept(int $slotKey): ?string
+    {
+        $kept = Cache::get(self::PLAN.$slotKey);
+
+        return is_string($kept) && isset(self::all()[$kept]) ? $kept : null;
+    }
+
+    /**
      * The rotation for a slot, starting at its place in the day.
      *
      * @param  array{minute: int, key: int}  $slot
