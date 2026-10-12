@@ -859,4 +859,6 @@ Schedule::command('caster:chat')->everyMinute()->withoutOverlapping()->onOneServ
 Schedule::command('caster:chat', ['--wot'])->dailyAt('05:11')->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
 Schedule::command('caster:news')->everyFifteenMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.news.enabled') === true);
 Schedule::command('caster:followed')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.followed.enabled') === true);
+// The YouTube restream's live chat (radio P13): read when due (the command keeps the interval and the quota), summarised every 15 minutes.
+Schedule::command('caster:youtube-chat')->everyMinute()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('twentyone.stream.youtube.chat.enabled') === true);
 Schedule::command('caster:prune')->everyTenMinutes()->withoutOverlapping()->onOneServer();
