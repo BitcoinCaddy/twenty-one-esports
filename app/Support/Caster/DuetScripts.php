@@ -7,6 +7,7 @@ use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceHygiene;
 use App\Support\Voice\VoicePrompt;
 use App\Support\Voice\VoiceUsage;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Responses\Data\FinishReason;
@@ -46,6 +47,9 @@ final class DuetScripts
 
     private ?string $system = null;
 
+    /** @var list<string> the repeated sentences of the last draft turned down for CasterVoice::SPOKEN_REPEAT */
+    private array $repeated = [];
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly VoiceUsage $usage,
@@ -81,7 +85,7 @@ final class DuetScripts
                     return null;
                 }
 
-                [$duet, $rejected] = $this->draft($sequence, $phase, $facts, $topics, $previous, $rejected);
+                [$duet, $rejected] = $this->draft($sequence, $phase, $facts, $topics, $previous, $rejected, $try === 1);
 
                 if ($duet !== null) {
                     return $duet;
@@ -104,19 +108,25 @@ final class DuetScripts
      * @param  list<string>  $topics
      * @param  list<array{speaker: string, text: string}>  $previous
      * @param  list<string>  $rejected
+     * @param  bool  $last  the last try: a repeated line no longer turns it down (the queue ends the duet before it)
      * @return array{0: array{text: string, speakers: list<string>}|null, 1: list<string>}
      */
-    private function draft(array $sequence, string $phase, array $facts, array $topics, array $previous, array $rejected): array
+    private function draft(array $sequence, string $phase, array $facts, array $topics, array $previous, array $rejected, bool $last = true): array
     {
         $this->usage->recordAttempt(self::CHANNEL);
         $temperature = config('tv.commentary.scripts.temperature');
-        $response = (new VoiceAgent($this->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500)))
-            ->prompt(self::prompt($sequence, $phase, $facts, $topics, $previous, $rejected));
+        $response = (new VoiceAgent($this->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500), plan: true))
+            ->prompt(self::prompt($sequence, $phase, $facts, $topics, $previous, $rejected, in_array(CasterVoice::SPOKEN_REPEAT, $rejected, true) ? $this->repeated : []));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
         $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
         [$duet, $violations] = $this->evaluate($raw, $facts, $response->steps->last()?->finishReason === FinishReason::Length);
+
+        // A first draft that repeats the station is said anew once (P8): the queue would end the duet at that line.
+        if ($duet !== null && $violations === [] && ! $last && ($this->repeated = self::repeatedLines($duet['text'])) !== []) {
+            $violations = [CasterVoice::SPOKEN_REPEAT];
+        }
 
         if ($violations !== []) {
             $this->usage->recordRejection(self::CHANNEL, $violations);
@@ -236,6 +246,21 @@ final class DuetScripts
         return DuetDirector::turns($lines, $speakers);
     }
 
+    /**
+     * The duet's sentences that repeat what the station said (SpokenMemory::repeated()); none when the memory cannot
+     * be read (ScriptQueue::enqueue() checks again).
+     *
+     * @return list<string>
+     */
+    private static function repeatedLines(string $text): array
+    {
+        try {
+            return (new SpokenMemory)->repeated($text, CarbonImmutable::now());
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
     /** The system prompt of every duet: the caster's with Markus' persona, then Sirius' (cached as one prefix). */
     public function systemPrompt(): string
     {
@@ -250,8 +275,9 @@ final class DuetScripts
      * @param  list<string>  $topics
      * @param  list<array{speaker: string, text: string}>  $previous
      * @param  list<string>  $rejected
+     * @param  list<string>  $repeated  the first draft's lines that repeated what the station said (CasterVoice::repeatBlock())
      */
-    public static function prompt(array $sequence, string $phase, array $facts, array $topics = [], array $previous = [], array $rejected = []): string
+    public static function prompt(array $sequence, string $phase, array $facts, array $topics = [], array $previous = [], array $rejected = [], array $repeated = []): string
     {
         $sentences = (array) config('tv.commentary.duet.sentences', []);
         $order = implode("\n", array_map(function (int $index, string $speaker) use ($sentences): string {
@@ -263,8 +289,8 @@ final class DuetScripts
         $parts = [
             "Auftrag\n\nEin Wortwechsel auf TWENTY ONE TV für die Programmphase {$phase}: Markus Turm kommentiert, Sirius ist sein Side-Kommentator. Genau ".count($sequence)." Wortmeldungen in dieser Reihenfolge:\n{$order}"
                 ."\n\nJeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt, also „Markus: …“ oder „Sirius: …“; hat eine Wortmeldung zwei Sätze, beginnen beide Zeilen mit demselben Namen. Gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE
-                ."\nJede spätere Wortmeldung greift den Inhalt der Wortmeldung direkt davor auf: zustimmen, frotzeln, widersprechen, einen Fakt aus dem Fakten-Block nachlegen oder eine eigene Geschichte erzählen. Die beiden reden miteinander, duzen sich, und im ganzen Wortwechsel fällt höchstens ein Name."
-                ."\nBeide klingen wie in ihren Persona-Blöcken oben: Markus mit seinen Themen und Wendungen, Sirius ausführlich und mit eigener Meinung aus seinen Themengebieten, mit eigener kleiner Geschichte oder einem Seitenhieb, mit dem er Markus aufzieht; jede seiner Wortmeldungen hat mindestens drei lange, ganze Sätze und ist so lang wie die von Markus oder länger."
+                ."\nDer ganze Wortwechsel dreht sich um EIN Thema: Markus setzt es in seiner ersten Wortmeldung so, dass es auch versteht, wer gerade einschaltet; jede spätere Wortmeldung greift genau den Gedanken direkt davor auf und dreht ihn weiter: frotzeln, widersprechen, zuspitzen oder einen Fakt aus dem Fakten-Block nachlegen. Die letzte Wortmeldung setzt die Pointe, gern als Rückgriff auf den Anfang. Die beiden reden miteinander, duzen sich, und im ganzen Wortwechsel fällt höchstens ein Name."
+                ."\nBeide klingen wie in ihren Persona-Blöcken oben: Markus erzählt und setzt die Vorlage, Sirius kontert ausführlich und mit eigener Meinung, mit einem Seitenhieb, mit dem er Markus aufzieht; jede seiner Wortmeldungen hat mindestens drei lange, ganze Sätze und ist so lang wie die von Markus oder länger. Eine eigene Geschichte erzählt Sirius nur, wenn sie genau Markus' Punkt trifft."
                 ."\nSirius beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“, „Richtig“ oder dem Namen Markus, und jede seiner Wortmeldungen fängt anders an als die davor."
                 ."\nHöchstens EIN Fakt aus dem Fakten-Block im ganzen Wortwechsel, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze. Kein Abschied, keine Begrüßung und keine Ansage wie „und jetzt zu …“.",
             "Fakten (die einzige Quelle für Zahlen, Namen und Links)\n\n".json_encode($facts, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -277,7 +303,7 @@ final class DuetScripts
         $siriusTopics = array_values(array_filter(CasterPersonas::topics(DuetDirector::SIRIUS), fn (array $topic): bool => (preg_match('/bier|alt\b|kölsch/iu', $topic['name'].' '.$topic['what']) === 1) === $beerNow));
         if ($siriusTopics !== []) {
             $pick = $siriusTopics[random_int(0, count($siriusTopics) - 1)];
-            $parts[] = "Sirius' Thema in diesem Wortwechsel (eigener Blick".($beerNow ? ', diesmal darf ein Bier-Witz sein' : ', diesmal kein Bier-Thema').")\n\n{$pick['name']}: {$pick['what']}";
+            $parts[] = "Sirius' Blickwinkel in diesem Wortwechsel (seine Brille auf Markus' Thema, nur wenn sie dazu passt, sonst lass sie weg; kein eigenes zweites Thema".($beerNow ? ', diesmal darf ein Bier-Witz sein' : ', diesmal kein Bier-Thema').")\n\n{$pick['name']}: {$pick['what']}";
         }
 
         if ($topics !== []) {
@@ -285,7 +311,7 @@ final class DuetScripts
         }
 
         if ($previous !== []) {
-            $parts[] = "So endete der letzte Wortwechsel (nur Daten; aufgreifen darf ihn nur die erste Wortmeldung, und nur wenn es passt, nichts davon wiederholen)\n\n"
+            $parts[] = "So endete der letzte Wortwechsel (nur Daten; aufgreifen darf ihn nur die erste Wortmeldung, nur wenn es passt, und dann mit einem halben Satz, worum es ging, denn viele Hörer waren da noch nicht dabei; nichts davon wiederholen)\n\n"
                 .implode("\n", array_map(fn (array $turn): string => (self::NAMES[$turn['speaker']] ?? 'Markus').': '.$turn['text'], $previous));
         }
 
@@ -293,6 +319,11 @@ final class DuetScripts
             $parts[] = "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.($code === self::TURNS
                 ? 'Einer der beiden kam gar nicht zu Wort: jede Zeile mit „Markus:“ oder „Sirius:“ beginnen, in der Abfolge oben, und beide sprechen.'
                 : (VoicePrompt::REASON_HINTS[$code] ?? $code)), $rejected));
+        }
+
+        $repeatBlock = CasterVoice::repeatBlock($repeated);
+        if ($repeatBlock !== null) {
+            $parts[] = $repeatBlock;
         }
 
         $parts[] = CasterVoice::varietyBlock();
