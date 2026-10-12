@@ -1,5 +1,5 @@
 {
-    "about": "The Anchor's radio imaging for TWENTY ONE ESPORTS RADIO (plan \"TWENTY ONE Radio\", P11; user 2026-10-12: \"aufregendere Jingles, die viel länger sind vom ANCHOR, und mehr unterschiedliche Jingles und Stinger und Betten\"). One VoiceStudio call per line (caster:jingles), produced over self-made stingers and beds (JingleSynth::produce...), -16 LUFS, uploaded to the server as its imaging (caster:imaging-upload). Voice: VoiceStudio personality us_news_anchor, a designed voice, no person's clone. English only; `spoken` writes ESPORTS as \"E. Sports.\". Categories are what App\\Support\\Caster\\Imaging asks for: station-long, station-short, sweeper, liner, opener-<format>, news-open, news-close, promo-<format>, promo, power-intro. No invented facts: lines name formats and the station, never a number, a date or a person.",
+    "about": "The Anchor's radio imaging for TWENTY ONE ESPORTS RADIO (plan \"TWENTY ONE Radio\", P11; user 2026-10-12: \"aufregendere Jingles, die viel länger sind vom ANCHOR, und mehr unterschiedliche Jingles und Stinger und Betten\"). One VoiceStudio call per line (caster:jingles), produced over self-made stingers and beds (JingleSynth::produce...), -16 LUFS, uploaded to the server as its imaging (caster:imaging-upload). Voice: VoiceStudio personality us_news_anchor, a designed voice, no person's clone. English only; `spoken` writes ESPORTS as \"E. Sports.\". Categories are what App\\Support\\Caster\\Imaging asks for: station-long, station-short, sweeper, liner, opener-<format>, news-open, news-close, promo-<format>, promo, power-intro, autopilot-hour (the news-free station ID at :00 while the workstation is off, P18). No invented facts: lines name formats and the station, never a number, a date or a person.",
     "lines": [
         {
             "id": "img-sl-01",
@@ -917,6 +917,20 @@
             "text": "Coming up: Turm and the Comrade, the Talk. She says the state can never run out of money. He says that is exactly the problem. Turm and the Comrade, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Coming up: Turm and the Comrade, the Talk. She says the state can never run out of money. He says that is exactly the problem. Turm and the Comrade, soon on TWENTY ONE. E. Sports. Radio."
+        },
+        {
+            "id": "img-ah-01",
+            "category": "autopilot-hour",
+            "text": "Top of the hour. No headlines right now, just talk and banter. This is TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "Top of the hour. No headlines right now, just talk and banter. This is TWENTY ONE. E. Sports. Radio."
+        },
+        {
+            "id": "img-ah-02",
+            "category": "autopilot-hour",
+            "text": "Another hour, same mission. The station that never sleeps. You are listening to TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "Another hour, same mission. The station that never sleeps. You are listening to TWENTY ONE. E. Sports. Radio."
         }
     ]
 }

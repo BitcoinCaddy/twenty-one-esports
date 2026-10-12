@@ -467,6 +467,22 @@ return [
                     'Bitcoin und Steuern: die Grundbegriffe, ohne Beratung',
                     'Was der Mempool ist und warum ein neuer Block im Schnitt alle zehn Minuten kommt',
                     'Selbstverwahrung statt Börse: was "not your keys, not your coins" bedeutet',
+                    // P18: 60 hours of stock need more subjects than ten per format (the library spaces a subject six hours).
+                    'Was eine Bitcoin-Adresse ist und warum man jede nur einmal benutzen sollte',
+                    'Transaktionsgebühren verstehen: warum sie schwanken und wovon sie abhängen',
+                    'Was eine Bestätigung ist und warum man bei großen Beträgen auf mehrere wartet',
+                    'Ein Backup testen: warum man die Wiederherstellung übt, bevor man sie braucht',
+                    'Was eine Passphrase zur Seed-Phrase ist und welches Risiko sie mitbringt',
+                    'Lightning-Zahlungen empfangen: was eine Rechnung ist und warum sie abläuft',
+                    'Was ein Halving ist und warum es ungefähr alle vier Jahre kommt',
+                    'Mining in einfachen Worten: was ein Block ist und wer ihn finden darf',
+                    'Phishing und Betrug erkennen: warum niemand seriöses nach der Seed-Phrase fragt',
+                    'Was eine Wallet eigentlich speichert: Schlüssel statt Münzen',
+                    'Nostr-Clients wechseln: warum der eigene Schlüssel überallhin mitkommt',
+                    'Was ein Zap auf Nostr ist und wie Lightning dahintersteckt',
+                    'Satoshis als Einheit: warum man in Sats statt in ganzen Bitcoin rechnen kann',
+                    'Erbe und Notfallplan: wie Angehörige an die Bitcoin kommen, ohne Beratung',
+                    'Öffentliches WLAN und Wallets: worauf man unterwegs achten sollte',
                 ],
                 'questions' => [
                     'Was ist an Fiatgeld eigentlich das Problem?',
@@ -479,7 +495,60 @@ return [
                     'Warum ist begrenzte Menge so wichtig, einundzwanzig Millionen und keine mehr?',
                     'Was macht eine gute Community aus, online wie offline?',
                     'Warum Spielen mit Bitcoin-Bezug mehr Spaß macht als Zocken um Fiatgeld',
+                    'Warum verlieren Ersparnisse auf dem Sparbuch an Kaufkraft?',
+                    'Ist Bargeld die letzte Freiheit im Zahlungsverkehr?',
+                    'Warum wollen Zentralbanken digitales Geld, und wem nützt es?',
+                    'Was macht eine Währung eigentlich zu gutem Geld?',
+                    'Warum ist Open Source für Geld so wichtig?',
+                    'Kann man Bitcoin verbieten, und was würde dann passieren?',
+                    'Warum dauert eine Banküberweisung am Wochenende immer noch Tage?',
+                    'Ist Sparen in einer Welt mit Inflation noch vernünftig?',
+                    'Warum sind dezentrale Netze schwerer abzuschalten als zentrale?',
+                    'Was haben Gold und Bitcoin gemeinsam, und was nicht?',
+                    'Warum ist Privatsphäre kein Zeichen dafür, dass man etwas zu verbergen hat?',
+                    'Lohnt es sich, in einer Liga um Sats statt um Punkte zu spielen?',
+                    'Warum sind kleine Leute bei Inflation immer die Verlierer?',
+                    'Was können Gamer von Bitcoinern lernen, und umgekehrt?',
+                    'Warum misstrauen so viele dem Staat, wenn es ums Geld geht?',
                 ],
+                // The server's stock library (plan "TWENTY ONE Radio", P18; user 2026-10-12: "mehrere Tage fest-statische
+                // Programme vorrendern, weil dann muss mein Laptop nicht die ganze Zeit an sein"): every stock block the
+                // workstation renders goes up at once into `dir` on the server (POST api/caster/stock/library/{sha1}),
+                // bounded to `max_bytes` (the oldest-aired block leaves first, a never-aired one never), and the
+                // workstation keeps rendering stock whenever the GPU has nothing fresh until the library holds
+                // `target_hours` of unique audio (user 2026-10-13: 60 h; at 48 kbps Opus about 1.3 GB, so 4 GB leaves
+                // room for the aired blocks that wait for eviction). A block counts toward the target until it aired
+                // `retire_after_airings` times. The server feeds its own spool from the library: by day an unaired block
+                // whenever less than `feed_below_seconds` is ready (StockFeeder), and everything in the autopilot.
+                'library' => [
+                    'enabled' => (bool) env('TV_COMMENTARY_STOCK_LIBRARY', true),
+                    'dir' => env('TV_COMMENTARY_STOCK_LIBRARY_DIR', storage_path('app/stream/stock')),
+                    'max_bytes' => (int) env('TV_COMMENTARY_STOCK_LIBRARY_MAX_BYTES', 4 * 1024 * 1024 * 1024),
+                    'target_hours' => (float) env('TV_COMMENTARY_STOCK_LIBRARY_TARGET_HOURS', 60),
+                    'retire_after_airings' => (int) env('TV_COMMENTARY_STOCK_LIBRARY_RETIRE_AFTER', 4),
+                    'feed_below_seconds' => (float) env('TV_COMMENTARY_STOCK_LIBRARY_FEED_BELOW', 900),
+                    // A block airs again at the earliest this long after it last aired; no two blocks on the same
+                    // subject (a question, a tutorial, a canon story, a roast case) within `subject_spacing_hours`.
+                    'repeat_hours' => (float) env('TV_COMMENTARY_STOCK_LIBRARY_REPEAT_HOURS', 24),
+                    'subject_spacing_hours' => (float) env('TV_COMMENTARY_STOCK_LIBRARY_SUBJECT_HOURS', 6),
+                ],
+            ],
+            // The autopilot (P18): while the workstation is gone (no claim for `fetch.online_seconds`) or reports
+            // VoiceStudio down, the server keeps a real programme from what it has: the library's blocks (each at
+            // most once per `library.repeat_hours`, the least recently aired first, a repeat behind the Anchor's
+            // replay jingle), a podcast episode every `podcast_every_hours`, a news-free station ID at :00 (imaging
+            // `autopilot-hour`, else a long station ID), music between blocks. No script is written meanwhile (nobody
+            // voices it), chat messages wait for the workstation's return. It yields at the next item boundary.
+            'autopilot' => [
+                'enabled' => (bool) env('TV_COMMENTARY_AUTOPILOT', true),
+                // Music between two items (the next block goes into the spool once the air was free this long; the feeder
+                // looks every `poll_seconds`), in the quiet hours the night's slower rhythm.
+                'music_gap_seconds' => ['min' => 20, 'max' => 75],
+                'night_gap_seconds' => ['min' => 240, 'max' => 420],
+                'poll_seconds' => 15,
+                'podcast_every_hours' => (float) env('TV_COMMENTARY_AUTOPILOT_PODCAST_HOURS', 4),
+                'podcast_repeat_hours' => 24,
+                'spool_hours' => 3,
             ],
             // The Anchor (VoiceStudio personality us_news_anchor, a designed voice, no person's clone), made into a profile
             // by caster:jingles; TV_ANCHOR_PROFILE pins an existing one.

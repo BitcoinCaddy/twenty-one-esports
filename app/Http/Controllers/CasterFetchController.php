@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\CasterClip;
 use App\Models\CasterScript;
 use App\Support\Caster\AirLog;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\Blocks\DayPlanner;
 use App\Support\Caster\Blocks\DayStock;
+use App\Support\Caster\Blocks\StockLibrary;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\ImagingStore;
@@ -50,6 +52,9 @@ final class CasterFetchController
         $now = CarbonImmutable::now();
         Cache::put(ClipSpool::FETCHER_SEEN, $now->getTimestamp(), 3600);
         DayStock::rememberReport($request->header(DayStock::HEADER), $now);
+        // A claim with VoiceStudio up ends the autopilot (P18); the workstation says `down` on its heartbeat instead.
+        AutoPilot::rememberVoice($request->header(AutoPilot::HEADER), $now);
+        $library = StockLibrary::enabled() ? StockLibrary::fromConfig()->summary() : null;
 
         $ready = $spool->readySeconds();
         $target = (float) config('tv.commentary.spool.target_seconds', 180);
@@ -69,6 +74,8 @@ final class CasterFetchController
         // a rubric, a teaser: each airs at its slot, whatever else waits); only the byte cap stops them too.
         $script = match (true) {
             config('tv.commentary.enabled') !== true => null,
+            // The server library holds its target (P18): no stock is written or rendered until blocks retire.
+            $stock && ($library['full'] ?? false) === true => null,
             $stock => DayStock::enabled() && (DayStock::windowActive($now) || (! QuietHours::active($now) && config('tv.commentary.blocks.stock.day_share') === true)
                 || ($podcast && PodcastReplay::gpu() === 'stock'))
                 ? $queue->claimStock($now) : null,
@@ -94,6 +101,9 @@ final class CasterFetchController
                 // airtime, the slot it is anchored to, and where it stands in a story told in parts.
                 'scene' => $script->scene,
                 'topic' => $script->topic,
+                // A stock script's subject (the question, tutorial, canon story or roast case; P18), for the library's
+                // topic memory: `stock:<format>:<key>`.
+                'subject' => $script->scene === StockScripts::SCENE && str_starts_with((string) $script->facts_hash, StockScripts::TOPIC_PREFIX) ? $script->facts_hash : null,
                 'estimated_seconds' => $script->estimated_seconds,
                 'airs_at' => $script->airs_at?->toIso8601String(),
                 'part' => $script->part_group === null ? null : [
@@ -106,6 +116,8 @@ final class CasterFetchController
             'target_seconds' => $target,
             'full' => $full,
             'podcast' => $podcast ? ['gpu' => PodcastReplay::gpu()] : null,
+            // The server's stock library (P18): the workstation renders stock until it is full.
+            'stock_library' => $library === null ? null : ['seconds' => $library['counting_seconds'], 'target_seconds' => $library['target_seconds'], 'full' => $library['full']],
             'pronunciation' => Pronunciation::terms(),
         ]);
     }
@@ -318,6 +330,89 @@ final class CasterFetchController
         }
 
         return response()->json(['clip' => $clip->id, 'spool_seconds' => round($spool->readySeconds(), 1)], 201);
+    }
+
+    /**
+     * The server's stock library in numbers (`POST api/caster/stock/library`,
+     * P18): StockLibrary::summary(); 409 while the library is off (the
+     * workstation keeps its stock and uses the day-stock path instead).
+     */
+    public function stockLibrary(Request $request): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        if (! StockLibrary::enabled()) {
+            return response()->json(['error' => 'not_now'], 409);
+        }
+
+        return response()->json(StockLibrary::fromConfig()->summary());
+    }
+
+    /**
+     * One evergreen block into the server's stock library (`POST
+     * api/caster/stock/library/{sha1}`, P18): the raw Opus body under its
+     * sha1, its length, sentence ends and boundaries as for any block, and
+     * `X-Caster-Stock-Meta` (base64 JSON: format, topics, subjects,
+     * rendered_at, evergreen). 201 stored, 200 already there (idempotent),
+     * 422 not that block (hash, format, length, not evergreen), 507 the
+     * library is full of blocks that never aired, 409 the library is off.
+     */
+    public function stockLibraryBlock(Request $request, string $hash): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        if (! StockLibrary::enabled()) {
+            return response()->json(['error' => 'not_now'], 409);
+        }
+
+        $meta = json_decode((string) base64_decode((string) $request->header('X-Caster-Stock-Meta', ''), true), true);
+        $meta = is_array($meta) ? $meta : [];
+        $times = fn (string $header): array => array_map('floatval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header($header, ''))), 'is_numeric')));
+        $library = StockLibrary::fromConfig();
+
+        try {
+            $outcome = $library->store($hash, (string) $request->getContent(), [
+                'format' => is_string($meta['format'] ?? null) ? $meta['format'] : 'talk',
+                'topics' => array_values(array_filter((array) ($meta['topics'] ?? []), 'is_string')),
+                'subjects' => array_values(array_filter((array) ($meta['subjects'] ?? []), 'is_string')),
+                'seconds' => (float) $request->header('X-Caster-Duration', '0'),
+                'ends' => $times('X-Caster-Sentence-Ends'),
+                'boundaries' => $times('X-Caster-Boundaries'),
+                'rendered_at' => is_int($meta['rendered_at'] ?? null) ? $meta['rendered_at'] : null,
+                'evergreen' => ($meta['evergreen'] ?? false) === true,
+            ], CarbonImmutable::now());
+        } catch (SpoolFull) {
+            return response()->json(['error' => 'library_full'], 507);
+        } catch (InvalidClip $exception) {
+            return response()->json(['error' => 'invalid_block', 'reason' => $exception->getMessage()], 422);
+        }
+
+        $summary = $library->summary();
+
+        return response()->json(['stored' => $hash, 'outcome' => $outcome, 'seconds' => $summary['counting_seconds'], 'target_seconds' => $summary['target_seconds'], 'full' => $summary['full']],
+            $outcome === StockLibrary::STORED ? 201 : 200);
+    }
+
+    /**
+     * The workstation is alive but voices nothing (`POST api/caster/heartbeat`,
+     * P18): it reports its VoiceStudio (`X-Caster-Voice: up|down`); with it down
+     * the autopilot runs although the workstation is there.
+     */
+    public function heartbeat(Request $request): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $now = CarbonImmutable::now();
+        Cache::put(ClipSpool::FETCHER_SEEN, $now->getTimestamp(), 3600);
+        AutoPilot::rememberVoice($request->header(AutoPilot::HEADER), $now);
+
+        return response()->json(['autopilot' => AutoPilot::active($now)]);
     }
 
     /** The next end of the quiet hours after `$now` (UTC). */

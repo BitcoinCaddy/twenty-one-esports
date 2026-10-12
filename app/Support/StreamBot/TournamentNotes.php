@@ -81,6 +81,9 @@ class TournamentNotes
     /** NIP-09 deletion request. */
     public const KIND_DELETION = 5;
 
+    /** Hours a tournament's note is not corrected again after a correction. */
+    public const CORRECTION_HOURS = 24;
+
     /** Sends of one deletion before the relays that never took it are given up (logged). */
     private const DELETION_ATTEMPTS = 12;
 
@@ -204,8 +207,27 @@ class TournamentNotes
 
         $stale = [];
 
+        // A tournament corrected within the day is left alone (2026-10-13: tournament 34 was deleted and re-posted every
+        // five minutes, its corrected note never matching the start check): at most one correction per day.
+        // Only once the corrected note replaced the old one (the note on record is no longer the one a deletion names):
+        // a correction still in progress keeps its retries.
+        $deleted = [];
+        foreach (BotPost::query()->where(['subject_type' => BotPost::SUBJECT_TOURNAMENT, 'kind' => self::KIND_DELETION])
+            ->where('created_at', '>', now()->subHours(self::CORRECTION_HOURS))->whereNotNull('event')->get(['subject_id', 'event']) as $row) {
+            foreach ((array) (json_decode((string) $row->event, true)['tags'] ?? []) as $tag) {
+                if (($tag[0] ?? null) === 'e' && is_string($tag[1] ?? null)) {
+                    $deleted[$row->subject_id][] = $tag[1];
+                }
+            }
+        }
+
         foreach ($posts as $post) {
             $tournament = $tournaments->get($post->subject_id);
+
+            $noteId = json_decode((string) $post->event, true)['id'] ?? null;
+            if (isset($deleted[$post->subject_id]) && ! in_array($noteId, $deleted[$post->subject_id], true)) {
+                continue;
+            }
 
             if ($tournament instanceof Tournament && ! $this->announcesStart((string) $post->event, $tournament)
                 && ($key === null || $this->signedBy((string) $post->event, $key, $tournament))) {

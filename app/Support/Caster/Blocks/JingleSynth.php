@@ -189,6 +189,8 @@ final class JingleSynth
         $family = match (true) {
             str_starts_with($category, 'opener-') => 'opener',
             str_starts_with($category, 'promo') => 'promo',
+            // The autopilot's news-free station ID at :00 (P18) is produced like a long station ID.
+            $category === 'autopilot-hour' => 'station-long',
             default => $category,
         };
         $spec = self::IMAGING[$family] ?? self::IMAGING['sweeper'];

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\ScriptQueue;
@@ -26,6 +27,15 @@ class CasterScriptCommand extends Command
     {
         if (! CasterVoice::enabled()) {
             $this->line('TV commentary is off (TV_COMMENTARY).');
+
+            return self::SUCCESS;
+        }
+
+        // The autopilot runs (P18: the workstation is gone or its VoiceStudio down): nothing written would ever be voiced,
+        // so no model call is paid; what is queued expires as usual, so nothing stale airs when the workstation is back.
+        if (AutoPilot::active(CarbonImmutable::now())) {
+            $expired = $queue->expire(CarbonImmutable::now());
+            $this->line("Autopilot: no scripts written; {$expired} expired.");
 
             return self::SUCCESS;
         }

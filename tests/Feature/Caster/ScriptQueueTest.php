@@ -29,6 +29,8 @@ use Laravel\Ai\Prompts\AgentPrompt;
 
 beforeEach(function () {
     config(['tv.commentary.enabled' => true]);
+    // Daytime: the quiet hours (01:00 to 09:00 Berlin) write fewer scripts, which turned these tests red at night.
+    $this->travelTo(CarbonImmutable::parse('2026-10-13 12:00', 'Europe/Berlin'));
 });
 
 /**

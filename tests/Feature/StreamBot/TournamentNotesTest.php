@@ -603,3 +603,28 @@ test('with the spam gate on, a note whose link went out within the day goes with
         ->and($note->content)->not->toContain('https://')
         ->and($note->tag('q'))->toBe($tournament->address());
 });
+
+test('a tournament whose note was corrected is not corrected again within the day, even if its note still looks stale', function () {
+    Queue::fake();
+    Notification::fake();
+    $this->travelTo(CarbonImmutable::parse('2026-09-30 21:00', 'UTC'));
+    config(['esports.casual_cups.enabled' => ['ea-sports-fc-26']]);
+    config(['esports.casual_cups.games.ea-sports-fc-26.slot' => ['weekday' => 'saturday', 'time' => '20:00']]);
+    $moved = app(CasualCups::class)->ensure('ea-sports-fc-26', 'eu');
+    Artisan::call('twentyone:stream-bot:tournaments');
+
+    config(['esports.casual_cups.games.ea-sports-fc-26.slot' => ['weekday' => 'friday', 'time' => '18:00']]);
+    app(CasualCups::class)->moveToGameSlots();
+    $this->travel(5)->minutes();
+    Artisan::call('twentyone:stream-bot:tournaments');
+    expect($this->published)->toHaveCount(3);
+
+    // The live loop of 2026-10-13: the corrected note kept failing the start check and was deleted and re-posted every run.
+    config(['esports.casual_cups.games.ea-sports-fc-26.slot' => ['weekday' => 'thursday', 'time' => '19:00']]);
+    app(CasualCups::class)->moveToGameSlots();
+    $this->travel(5)->minutes();
+    Artisan::call('twentyone:stream-bot:tournaments');
+
+    expect(app(TournamentNotes::class)->stale())->toBe([])
+        ->and($this->published)->toHaveCount(3);
+});

@@ -316,7 +316,8 @@ class ScriptQueue
     {
         $talk = app(StockScripts::class)->write();
 
-        return $talk === null ? null : $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $talk['text'], StockScripts::TOPIC_PREFIX.$talk['format'], 0, $now,
+        // The facts hash carries the subject (P18): the claim hands it to the workstation for the library's topic memory.
+        return $talk === null ? null : $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $talk['text'], $talk['subject'], 0, $now,
             scene: StockScripts::SCENE, topic: StockScripts::TOPIC_PREFIX.$talk['format'], maxAgeMinutes: (int) config('tv.commentary.blocks.stock.max_age_minutes', 180), speakers: $talk['speakers']);
     }
 

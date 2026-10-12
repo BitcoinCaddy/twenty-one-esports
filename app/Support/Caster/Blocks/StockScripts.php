@@ -90,6 +90,9 @@ final class StockScripts
      */
     private ?array $talkShow = null;
 
+    /** What the material of the programme in the writing is about (subjectKey()), set by materialFor(). */
+    private string $subject = '';
+
     public function __construct(
         private readonly DuetScripts $duets,
         private readonly VoiceUsage $usage,
@@ -99,7 +102,7 @@ final class StockScripts
     /**
      * A new evergreen programme, or null (voice off, capped, no material, both tries turned down).
      *
-     * @return array{text: string, speakers: list<string>, format: string}|null
+     * @return array{text: string, speakers: list<string>, format: string, subject: string}|null
      */
     public function write(): ?array
     {
@@ -120,7 +123,7 @@ final class StockScripts
                 $this->remember(self::LAST_FORMATS, $format);
 
                 if ($talk !== null) {
-                    return $talk + ['format' => $format];
+                    return $talk + ['format' => $format, 'subject' => self::subjectKey($format, $this->subject)];
                 }
 
                 // A talk show that did not pass leaves the stock to the next format, it does not starve it.
@@ -144,7 +147,7 @@ final class StockScripts
                 if ($talk !== null) {
                     $this->remember(self::LAST_FORMATS, $format);
 
-                    return $talk + ['format' => $format];
+                    return $talk + ['format' => $format, 'subject' => self::subjectKey($format, $this->subject)];
                 }
             }
         } catch (Throwable $exception) {
@@ -246,7 +249,18 @@ final class StockScripts
     }
 
     /**
-     * The format of the next programme (of `stock.formats`, the one used longest ago that has material) and its material.
+     * The subject of a stock programme as the library remembers it (P18): `stock:<format>:<10 hex>` of what the
+     * material is about (the question, the tutorial, the canon stories, the roast case, the podcast digest).
+     */
+    public static function subjectKey(string $format, string $subject): string
+    {
+        return self::TOPIC_PREFIX.$format.':'.substr(sha1($subject === '' ? $format : $subject), 0, 10);
+    }
+
+    /**
+     * The format of the next programme (of `stock.formats`) and its material: the format with the fewest blocks in
+     * the server's stock library first (P18: 60 hours must not all sound the same), then the one used longest ago,
+     * that has material.
      *
      * @param  list<string>  $except  formats left out (the talk show after its draft failed)
      * @return array{0: string|null, 1: string}
@@ -255,8 +269,12 @@ final class StockScripts
     {
         $formats = array_values(array_diff(array_intersect(array_filter((array) config('tv.commentary.blocks.stock.formats', self::FORMATS), 'is_string'), self::FORMATS), $except));
         shuffle($formats);
+        $inLibrary = self::census()['formats'];
+        $ordered = self::byLastUse($formats, self::LAST_FORMATS);
+        $position = array_flip($ordered);
+        usort($ordered, fn (string $a, string $b): int => [$inLibrary[$a] ?? 0, $position[$a]] <=> [$inLibrary[$b] ?? 0, $position[$b]]);
 
-        foreach (self::byLastUse($formats, self::LAST_FORMATS) as $format) {
+        foreach ($ordered as $format) {
             $material = $this->materialFor($format);
 
             if ($material !== null) {
@@ -270,11 +288,12 @@ final class StockScripts
     private function materialFor(string $format): ?string
     {
         $settings = (array) config('tv.commentary.blocks.stock', []);
+        $subjects = self::census()['subjects'];
 
-        return match ($format) {
-            'talk' => ($question = $this->pick((array) ($settings['questions'] ?? []))) === null ? null
+        $material = match ($format) {
+            'talk' => ($question = $this->pick((array) ($settings['questions'] ?? []), $format, $subjects)) === null ? null
                 : "Die Frage: {$question}\n\nAufhänger aus dem Kanon (höchstens einer davon):\n".($this->canonLines(['einundzwanzig', 'bitcoin', 'nostr'], 2) ?? '-'),
-            'tutorial' => ($topic = $this->pick((array) ($settings['tutorials'] ?? []))) === null ? null
+            'tutorial' => ($topic = $this->pick((array) ($settings['tutorials'] ?? []), $format, $subjects)) === null ? null
                 : "Das Tutorial: {$topic}\n\nAufhänger aus dem Kanon (höchstens einer davon):\n".($this->canonLines(['bitcoin'], 2) ?? '-'),
             'geschichte' => $this->canonLines(['bitcoin'], 3),
             'podcast' => app(PodcastTranscripts::class)->digestBlock(),
@@ -283,6 +302,29 @@ final class StockScripts
             Shows::STAMMTISCH => ($this->talkShow = app(TalkShow::class)->evergreen(CarbonImmutable::now())) === null ? null : (string) $this->talkShow['data'],
             default => null,
         };
+
+        // The talk and the tutorial are about their question; everything else about its material (the canon stories,
+        // the case, the digest; the league basics are one subject).
+        $this->subject = match ($format) {
+            'talk' => (string) ($question ?? ''),
+            'tutorial' => (string) ($topic ?? ''),
+            'liga' => 'liga',
+            // The talk show is about its timeless topic, not the positions sheet every episode carries.
+            Shows::STAMMTISCH => (string) ($this->talkShow['keys'][0] ?? ''),
+            default => (string) $material,
+        };
+
+        return $material;
+    }
+
+    /**
+     * The blocks of the server's stock library by subject and format (StockLibrary::census()), empty while it is off.
+     *
+     * @return array{subjects: array<string, int>, formats: array<string, int>}
+     */
+    private static function census(): array
+    {
+        return StockLibrary::enabled() ? StockLibrary::fromConfig()->census() : ['subjects' => [], 'formats' => []];
     }
 
     /** The material of an evergreen roast format (P10), remembered as used like a rubric's. */
@@ -301,15 +343,20 @@ final class StockScripts
     }
 
     /**
-     * The entry of `$items` used longest ago (never used first, shuffled among equals), remembered as used.
+     * The entry of `$items` with the fewest blocks in the stock library (`$subjects`, P18), then the one used longest
+     * ago (never used first, shuffled among equals), remembered as used.
      *
      * @param  array<array-key, mixed>  $items
+     * @param  array<string, int>  $subjects
      */
-    private function pick(array $items): ?string
+    private function pick(array $items, string $format = '', array $subjects = []): ?string
     {
         $items = array_values(array_filter($items, fn (mixed $item): bool => is_string($item) && trim($item) !== ''));
         shuffle($items);
-        $item = self::byLastUse($items, self::LAST_PICKS)[0] ?? null;
+        $ordered = self::byLastUse($items, self::LAST_PICKS);
+        $position = array_flip($ordered);
+        usort($ordered, fn (string $a, string $b): int => [$subjects[self::subjectKey($format, $a)] ?? 0, $position[$a]] <=> [$subjects[self::subjectKey($format, $b)] ?? 0, $position[$b]]);
+        $item = $ordered[0] ?? null;
 
         if ($item !== null) {
             $this->remember(self::LAST_PICKS, $item);

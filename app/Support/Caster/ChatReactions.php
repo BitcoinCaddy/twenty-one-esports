@@ -4,6 +4,7 @@ namespace App\Support\Caster;
 
 use App\Models\CasterScript;
 use App\Models\ChatterProfile;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Moderation\SiteModeration;
 use App\Support\Nostr\RelayReader;
 use App\Support\Nostr\SignedEvent;
@@ -129,6 +130,12 @@ class ChatReactions
             return 0;
         }
 
+        // The autopilot runs (P18): nobody could voice a reply. The cursors stay where they are, so the messages that
+        // came in meanwhile are read and answered once the workstation is back.
+        if (AutoPilot::active($now)) {
+            return 0;
+        }
+
         $since = (int) Cache::get(self::CURSOR, $now->subMinutes(2)->getTimestamp());
         $zapCursor = (int) Cache::get(self::ZAP_CURSOR, $now->subMinutes(2)->getTimestamp());
         $filters = [['kinds' => [1311], '#a' => [$stream->address()], 'since' => $since, 'limit' => self::LIMIT]];
@@ -188,8 +195,9 @@ class ChatReactions
             $queued++;
         }
 
-        Cache::put(self::CURSOR, $newest, 86_400);
-        Cache::put(self::ZAP_CURSOR, $newestZap, 86_400);
+        // A week: a cursor must outlive an autopilot of several days (P18).
+        Cache::put(self::CURSOR, $newest, 7 * 86_400);
+        Cache::put(self::ZAP_CURSOR, $newestZap, 7 * 86_400);
 
         return $queued;
     }
