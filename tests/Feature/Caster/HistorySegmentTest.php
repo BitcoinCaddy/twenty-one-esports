@@ -104,7 +104,7 @@ it('lets the league voice narrate the episode freely from its facts, sources as 
         && str_contains($prompt->prompt, 'de.wikipedia.org')
         && str_contains($prompt->prompt, $episode['title'])
         && str_contains($prompt->prompt, 'kein „gleich geht es weiter“')
-        && str_contains($prompt->prompt, 'Dein Blickwinkel diesmal:'));
+        && str_contains($prompt->prompt, 'Dein Kniff für die Pointe diesmal:'));
 });
 
 it('writes the pattern episode when the voice gives nothing: three to five facts in order and a twist, nothing fixed around it', function () {
