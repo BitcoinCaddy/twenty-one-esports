@@ -57,7 +57,7 @@ class RoastMaterial
         'weg', 'herausforderung', 'entschlossen', 'konsequent', 'handeln', 'chance', 'aufbruch', 'zusammenhalt', 'priorität', 'alles tun', 'nicht hinnehmen',
         'werden', 'dürfen', 'brauchen', 'endlich', 'stark', 'sicher', 'fair', 'ehrlich', 'solidarität', 'transformation', 'zeitenwende', 'offensive'];
 
-    public function __construct(private readonly ?RelayReader $reader = null) {}
+    public function __construct(private readonly RelayReader $reader) {}
 
     /**
      * The newest statements of the ECB and the Fed: title, date and the first sentences of the release, verbatim (English).
@@ -169,6 +169,7 @@ class RoastMaterial
                 $key = 'alt:'.NewsFeeds::hash($item['title']);
 
                 if (! isset($used[$key]) && ($item['published_at'] === null || $item['published_at']->greaterThan($now->subHours(max(1, (int) ($settings['max_hours'] ?? 48)))))
+                    && preg_match('/what happened in crypto|price prediction|price analysis|daily recap/iu', $item['title']) !== 1
                     && self::isAltcoinStory($item['title'].' '.($item['summary'] ?? ''))) {
                     $byOutlet[(string) ($feed['source'] ?? 'Krypto-Presse')][] = $item + ['key' => $key];
                 }
@@ -354,7 +355,7 @@ class RoastMaterial
         $settings = (array) config('tv.commentary.programme.roasts.sources.nostr', []);
         $relays = array_values(array_filter((array) ($settings['relays'] ?? []), 'is_string'));
 
-        if ($relays === [] || $this->reader === null) {
+        if ($relays === []) {
             return null;
         }
 
@@ -369,7 +370,9 @@ class RoastMaterial
 
         $names = [];
         $authors = array_values(array_unique(array_map(fn (SignedEvent $event): string => $event->pubkey, $eligible)));
-        foreach ($this->reader->fetchCounted([['kinds' => [0], 'authors' => array_slice($authors, 0, 100), 'limit' => 100]], $relays, [], 1, $deadline + 4)['events'] as $profile) {
+        // Profiles live on the big relays more often than on the community's own (live 2026-10-12: three posts, no kind 0 for them there).
+        $profileRelays = array_values(array_unique([...$relays, ...array_filter((array) ($settings['profile_relays'] ?? []), 'is_string')]));
+        foreach ($this->reader->fetchCounted([['kinds' => [0], 'authors' => array_slice($authors, 0, 100), 'limit' => 100]], $profileRelays, [], 1, microtime(true) + 8)['events'] as $profile) {
             $meta = json_decode($profile->content, true);
             $name = is_array($meta) ? SceneFacts::spoken(is_string($meta['display_name'] ?? null) && trim($meta['display_name']) !== '' ? $meta['display_name'] : (is_string($meta['name'] ?? null) ? $meta['name'] : null)) : null;
 
@@ -595,7 +598,7 @@ class RoastMaterial
 
     /**
      * The first `$count` sentences of a release page after `$start` (`<main`, `id="article"`): paragraphs of sixty
-     * characters and more, split at sentence ends, each six to forty words, no "For release at" line.
+     * characters and more, split at sentence ends, each six to twenty-eight words, no "For release at" line.
      *
      * @return list<string>
      */
@@ -616,7 +619,7 @@ class RoastMaterial
             foreach (preg_split('/(?<=[.!?])\s+(?=[A-Z])/u', $text) ?: [] as $sentence) {
                 $words = count(preg_split('/\s+/u', trim($sentence), -1, PREG_SPLIT_NO_EMPTY) ?: []);
 
-                if ($words >= 6 && $words <= 40 && count($sentences) < $count) {
+                if ($words >= 6 && $words <= 28 && count($sentences) < $count) {
                     $sentences[] = trim($sentence);
                 }
             }
@@ -723,6 +726,12 @@ class RoastMaterial
      */
     private static function material(string $data, array $names, array $sources, string $hash, array $keys): array
     {
+        // No brackets: a draft that copies "(ECB)" or "(HE)" reads as a stage direction to the guard (real sample 2026-10-12).
+        for ($depth = 0; $depth < 4 && str_contains($data, '('); $depth++) {
+            $data = (string) preg_replace('/\s*\(([^()]*)\)/u', ', $1,', $data);
+        }
+        $data = trim((string) preg_replace(['/[()]/u', '/,\s*,/u', '/,(?=[.“:]|\n|$)/u'], ['', ',', ''], $data));
+
         return ['data' => $data, 'names' => $names, 'sources' => $sources, 'hash' => $hash, 'keys' => $keys, 'same_story' => false];
     }
 }

@@ -619,7 +619,9 @@ return [
                     'phrases' => ['outlets' => ['tagesschau', 'Spiegel'], 'days' => 7, 'items' => 3, 'min_items' => 2],
                     'nostr' => [
                         'relays' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_ROAST_NOSTR_RELAYS', 'wss://nostr.einundzwanzig.space'))))),
-                        'hours' => 24,
+                        // Where the authors' kind 0 names are read (nos.lol reachable from prod 2026-10-12, damus answers 403 there).
+                        'profile_relays' => ['wss://nos.lol'],
+                        'hours' => 72,
                         'items' => 3,
                         'min_words' => 8,
                         'max_words' => 70,

@@ -38,6 +38,9 @@ final class RoastFacts
         'jahr', 'jahre', 'jahren', 'monat*', 'tag', 'tage', 'tagen', 'stunde*', 'minute*', 'sekunde*', 'zug', 'züge', 'zügen', 'partie*', 'niederlage*',
         'sieg', 'siege', 'siegen', 'punkt', 'punkte', 'punkten', 'meter', 'kilometer', 'kubikmeter', 'quadratmeter', 'mark', 'pfennig', 'bäume', 'firmen', 'unternehmen'];
 
+    /** Amounts that are Bitcoin's own rules, true in every roast: the supply cap and the block interval. */
+    private const CANON_AMOUNTS = ['einundzwanzig millionen', 'einundzwanzig millionen bitcoin', 'zehn minuten'];
+
     /** Words that look like names to the check but are the station's or the speakers'. */
     private const NOT_NAMES = ['TWENTY', 'ONE', 'TV', 'ESPORTS', 'RADIO', 'EINUNDZWANZIG', 'EZB', 'EU', 'USA', 'US', 'BTC', 'KI', 'DM', 'NOSTR', 'ETF', 'ETFS'];
 
@@ -118,7 +121,9 @@ final class RoastFacts
             $phrase = trim((string) preg_replace('/\s+/u', ' ', mb_strtolower($match[1])));
             $first = explode(' ', $phrase)[0];
 
-            if (self::isNumberWord($first) && ! in_array($phrase, ['ein', 'eine', 'einen', 'einem', 'einer', 'eins'], true) && ! isset($known[$phrase])) {
+            $whole = mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $match[0])));
+            if (self::isNumberWord($first) && ! in_array($phrase, ['ein', 'eine', 'einen', 'einem', 'einer', 'eins'], true) && ! isset($known[$phrase])
+                && ! in_array($whole, self::CANON_AMOUNTS, true)) {
                 return true;
             }
         }
@@ -194,8 +199,13 @@ final class RoastFacts
      */
     public static function spell(string $text, bool $english = false): string
     {
+        // "2MB" is "2 MB": a number glued to its unit would be read as one word.
+        $text = (string) preg_replace('/(\d)(?=\p{L})/u', '$1 ', $text);
         $text = (string) preg_replace(['/\bMio\.(?=\s|$)/u', '/\bMrd\.(?=\s|$)/u', '/\s*%/u'], [' Millionen', ' Milliarden', ' Prozent'], $text);
         if ($english) {
+            // "$32M", "$1.2B": the amount, then its unit and the currency (real Decrypt headline 2026-10-12: "Bitmine Adds $32M in Ethereum").
+            $text = (string) preg_replace_callback('/\$(\d+(?:\.\d+)?)\s?([KMB])\b/u', fn (array $m): string => $m[1].' '.['K' => 'Tausend', 'M' => 'Millionen', 'B' => 'Milliarden'][$m[2]].' Dollar', $text);
+            $text = (string) preg_replace('/\$(\d[\d,.]*)/u', '$1 Dollar', $text);
             // The Fed's fractions: "3-3/4" is 3.75, "1/4" is 0.25.
             $fraction = fn (int $whole, int $over, int $under): string => $under === 0 ? "{$whole}" : rtrim(rtrim(number_format($whole + $over / $under, 2, '.', ''), '0'), '.');
             $text = (string) preg_replace_callback('/(?<![\d\/])(\d+)-(\d)\/(\d)(?![\d\/])/u', fn (array $m): string => $fraction((int) $m[1], (int) $m[2], (int) $m[3]), $text);

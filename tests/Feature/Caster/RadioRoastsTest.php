@@ -216,8 +216,8 @@ it('builds every fresh source into words: no digit in any material, the real fac
         ->and($stack['names'])->toContain('MARA Holdings');
 
     $inflation = $material->inflation($now);
-    expect($inflation['data'])->toContain('Inflationsrate im September zweitausendsechsundzwanzig plus drei Komma drei Prozent (vorläufig)')
-        ->toContain('Energie: plus zehn Komma fünf Prozent')->toContain('Preisvergleich:')->toContain('(Quelle: ');
+    expect($inflation['data'])->toContain('Inflationsrate im September zweitausendsechsundzwanzig plus drei Komma drei Prozent, vorläufig')
+        ->toContain('Energie: plus zehn Komma fünf Prozent')->toContain('Preisvergleich:')->toContain(', Quelle: ')->not->toContain('(');
 
     foreach ([$bank, $alt, $stack, $inflation, $material->wasteCase($now)] as $one) {
         expect(preg_match('/\d/u', $one['data']))->toBe(0);
