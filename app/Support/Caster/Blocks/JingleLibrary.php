@@ -129,16 +129,31 @@ final class JingleLibrary
     }
 
     /**
-     * The blip files of a speaker (blips/<speaker>/*.wav).
+     * The blip files of a speaker (blips/<speaker>/*.wav); with `$saying` only those whose manifest text is one of
+     * them (none when the manifest does not name a file's text: fails closed, no "Stimmt." to the opponent).
      *
+     * @param  list<string>|null  $saying
      * @return list<string>
      */
-    public function blips(string $speaker): array
+    public function blips(string $speaker, ?array $saying = null): array
     {
         $files = glob($this->dir().'/blips/'.basename($speaker).'/*.wav') ?: [];
         sort($files);
 
-        return $files;
+        if ($saying === null) {
+            return $files;
+        }
+
+        $manifest = is_file($this->dir().'/manifest.json') ? json_decode((string) file_get_contents($this->dir().'/manifest.json'), true) : null;
+        $texts = [];
+
+        foreach ((array) (is_array($manifest) ? ($manifest['blips'] ?? []) : []) as $blip) {
+            if (is_array($blip) && is_string($blip['file'] ?? null) && is_string($blip['text'] ?? null)) {
+                $texts[$this->dir().'/'.ltrim($blip['file'], '/')] = $blip['text'];
+            }
+        }
+
+        return array_values(array_filter($files, fn (string $file): bool => isset($texts[$file]) && in_array($texts[$file], $saying, true)));
     }
 
     /**

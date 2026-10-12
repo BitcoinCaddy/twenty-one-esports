@@ -86,10 +86,13 @@
         {"id": "podcast-open-01", "category": "podcast-open", "language": "en", "text": "Podcast time on TWENTY ONE ESPORTS RADIO.", "spoken": "Podcast time on TWENTY ONE. E. Sports. Radio."},
         {"id": "podcast-open-02", "category": "podcast-open", "language": "en", "text": "You are listening to TWENTY ONE ESPORTS RADIO. Here comes the podcast.", "spoken": "You are listening to TWENTY ONE. E. Sports. Radio. Here comes the podcast."},
         {"id": "podcast-close-01", "category": "podcast-close", "language": "en", "text": "That was the podcast. You are listening to TWENTY ONE ESPORTS RADIO.", "spoken": "That was the podcast. You are listening to TWENTY ONE. E. Sports. Radio."},
-        {"id": "podcast-close-02", "category": "podcast-close", "language": "en", "text": "Thanks for listening to the podcast. Stay with TWENTY ONE ESPORTS RADIO.", "spoken": "Thanks for listening to the podcast. Stay with TWENTY ONE. E. Sports. Radio."}
+        {"id": "podcast-close-02", "category": "podcast-close", "language": "en", "text": "Thanks for listening to the podcast. Stay with TWENTY ONE ESPORTS RADIO.", "spoken": "Thanks for listening to the podcast. Stay with TWENTY ONE. E. Sports. Radio."},
+        {"id": "rubric-stammtisch-01", "category": "rubric-stammtisch", "language": "en", "text": "Turm and the Comrade. The Talk.", "spoken": "Turm and the Comrade. The Talk."},
+        {"id": "rubric-stammtisch-02", "category": "rubric-stammtisch", "language": "en", "text": "TWENTY ONE ESPORTS RADIO. Turm and the Comrade, the Talk, starts now.", "spoken": "TWENTY ONE. E. Sports. Radio. Turm and the Comrade, the Talk, starts now."}
     ],
     "blips": {
         "markus": ["Hm.", "Ja.", "Stimmt.", "Genau.", "Ja, ja.", "[laughter]"],
-        "sirius": ["Hm.", "Ja.", "Stimmt.", "Genau.", "Absolut.", "[laughter]"]
+        "sirius": ["Hm.", "Ja.", "Stimmt.", "Genau.", "Absolut.", "[laughter]"],
+        "genossin": ["Hm.", "Na ja.", "Ach komm.", "Pff.", "[laughter]"]
     }
 }

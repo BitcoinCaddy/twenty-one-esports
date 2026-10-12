@@ -6,6 +6,7 @@ use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\Blocks\BlockFetcher;
 use App\Support\Caster\Blocks\DayPlanner;
 use App\Support\Caster\Blocks\DayStock;
+use App\Support\Caster\Programme\TalkShow;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -281,7 +282,7 @@ class CasterFetcher
         $id = (int) $script['id'];
         ['sentences' => $sentences, 'speakers' => $speakers, 'duet' => $duet] = self::lines($script);
 
-        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $duet ? $speakers : null);
+        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $duet ? $speakers : null, TalkShow::turnGap($script['topic'] ?? null));
         $opus = $voiced === null ? null : $this->encode($voiced['pcm'], $voiced['rate']);
 
         if ($voiced === null || $opus === null) {
@@ -364,18 +365,20 @@ class CasterFetcher
      * A duet (`$speakers`, one per sentence, DuetDirector): a chunk never
      * spans two speakers, each is voiced with its speaker's profile
      * (`voicestudio.profiles`, Markus' `profile_id` for a speaker without
-     * one), and a speaker change gets a breath of `speaker_pause` seconds.
+     * one), and a speaker change gets a breath of `speaker_pause` seconds
+     * (`$turnGap` instead: the talk show's quicker turns, TalkShow::turnGap()).
      *
      * @param  list<string>  $sentences
      * @param  array<string, string>  $terms  the pronunciation dictionary
      * @param  list<string>|null  $speakers  the speaker of each sentence; null: Markus alone
+     * @param  array{min: float, max: float}|null  $turnGap
      * @return array{pcm: string, rate: int, ends: list<float>}|null null when VoiceStudio failed past its retries
      */
-    public function voice(array $sentences, array $terms = [], ?array $speakers = null): ?array
+    public function voice(array $sentences, array $terms = [], ?array $speakers = null, ?array $turnGap = null): ?array
     {
         $settings = $this->settings();
         $pause = (array) $settings['pause'];
-        $speakerPause = (array) ($settings['speaker_pause'] ?? []);
+        $speakerPause = $turnGap ?? (array) ($settings['speaker_pause'] ?? []);
         $chunks = $this->plannedChunks($sentences, $speakers);
         $pcm = '';
         $rate = null;
@@ -420,7 +423,7 @@ class CasterFetcher
     public function voiceChunk(array $lines, string $speaker, array $terms = [], ?string $profileId = null, ?float $speed = null): ?array
     {
         $settings = $this->settings();
-        $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $profileId ?? $this->profile($speaker), $speed ?? $this->speed($speaker));
+        $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $profileId ?? $this->profile($speaker), $speed ?? $this->speed($speaker, self::heated($lines)));
 
         if ($wav === null) {
             return null;
@@ -573,13 +576,27 @@ class CasterFetcher
         return is_string($profile) && trim($profile) !== '' ? trim($profile) : (string) $settings['profile_id'];
     }
 
-    /** The tempo of a speaker (`voicestudio.speeds`), Markus' `speed` for one without its own. */
-    private function speed(string $speaker): float
+    /**
+     * The tempo of a speaker (`voicestudio.speeds`), Markus' `speed` for one without its own; a heated chunk takes
+     * the speaker's `heated_speeds` where there is one (the talk show's guest, P16).
+     */
+    private function speed(string $speaker, bool $heated = false): float
     {
         $settings = $this->settings();
-        $speed = ((array) ($settings['speeds'] ?? []))[$speaker] ?? null;
+        $hot = $heated ? (((array) ($settings['heated_speeds'] ?? []))[$speaker] ?? null) : null;
+        $speed = is_numeric($hot) ? $hot : (((array) ($settings['speeds'] ?? []))[$speaker] ?? null);
 
         return is_numeric($speed) ? (float) $speed : (float) ($settings['speed'] ?? 1.0);
+    }
+
+    /**
+     * Whether a chunk is heated: its last sentence ends with an exclamation mark (markers aside).
+     *
+     * @param  list<string>  $lines
+     */
+    public static function heated(array $lines): bool
+    {
+        return $lines !== [] && str_ends_with(rtrim(ScriptGuard::withoutMarkers((string) end($lines))), '!');
     }
 
     public function release(int $id): void

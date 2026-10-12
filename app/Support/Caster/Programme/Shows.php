@@ -39,6 +39,9 @@ use Throwable;
  * - Satoshis Hotline: the day's unanswered or best chat questions, each
  *   looked up on the web (CasterVoice::lookup(), `searches_per_question`)
  *   before the call (lookups()).
+ * - Turm und Genossin, der Talk: a talk show of three on a real money
+ *   headline, Sirius hosts, Markus against the guest Genossin Gisela (TalkShow;
+ *   written by TalkShowScripts, not ShowScripts).
  *
  * material() is cheap (no model call, sources cached) and null when the
  * source is down or has nothing: the slot then falls back to the rubric
@@ -65,6 +68,9 @@ class Shows
 
     public const HOTLINE = 'hotline';
 
+    /** Turm und Genossin, der Talk (P16; internal id "stammtisch"): the talk show of three, TalkShow and TalkShowScripts. */
+    public const STAMMTISCH = 'stammtisch';
+
     /**
      * How each format is named on air, what it brings (a teaser's data) and how a line names it (Announcements).
      *
@@ -77,10 +83,11 @@ class Shows
         self::MEETUPS => ['name' => 'das Meetup-Radar', 'what' => 'die EINUNDZWANZIG-Meetups der nächsten sieben Tage', 'pattern' => '/meetup[\s-]*radar/iu'],
         self::PARTIE => ['name' => 'die Partie des Tages', 'what' => 'das dramatischste Liga-Match des Tages als Wiederholung, neu kommentiert', 'pattern' => '/partie\s+des\s+tages/iu'],
         self::HOTLINE => ['name' => 'Satoshis Hotline', 'what' => 'die besten und unbeantworteten Fragen aus dem Chat, nachgeschlagen und beantwortet', 'pattern' => '/satoshis?[\s-]*hotline/iu'],
+        self::STAMMTISCH => ['name' => 'Turm und Genossin, der Talk', 'what' => 'eine Talkshow zu einer echten Geld-Schlagzeile: Markus Turm gegen Genossin Gisela, die für die Modern Monetary Theory streitet, und Sirius moderiert', 'pattern' => '/turm\s+und\s+genossin/iu'],
     ];
 
     /** Formats bound to their day: never replayed from the archive (ReplayArchive::NEVER_TOPICS). */
-    public const DAY_BOUND = [self::TRIBUNAL, self::MEETUPS, self::PARTIE, self::HOTLINE, self::JAHRESTAG];
+    public const DAY_BOUND = [self::TRIBUNAL, self::MEETUPS, self::PARTIE, self::HOTLINE, self::JAHRESTAG, self::STAMMTISCH];
 
     private const USED = 'caster:show:used:';
 
@@ -155,6 +162,7 @@ class Shows
                 self::MEETUPS => $this->meetups($now),
                 self::PARTIE => $this->partie($now),
                 self::HOTLINE => $this->hotline($now),
+                self::STAMMTISCH => app(TalkShow::class)->material($now),
                 default => null,
             };
         } catch (Throwable) {

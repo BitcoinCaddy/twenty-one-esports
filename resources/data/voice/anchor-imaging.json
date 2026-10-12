@@ -898,6 +898,27 @@
             "spoken": "Don't go anywhere. The next segment is already warming up, and the chat is already arguing. TWENTY ONE. E. Sports. Radio."
         },
         {
+            "id": "img-op-stammtisch-1",
+            "category": "opener-stammtisch",
+            "text": "Turm and the Comrade. The Talk. One host who never lets anyone finish, two guests who will never agree. TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "Turm and the Comrade. The Talk. One host who never lets anyone finish, two guests who will never agree. TWENTY ONE. E. Sports. Radio."
+        },
+        {
+            "id": "img-op-stammtisch-2",
+            "category": "opener-stammtisch",
+            "text": "Money printers against hard money. Two guests, one host, no mercy. Turm and the Comrade, the Talk, on TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "Money printers against hard money. Two guests, one host, no mercy. Turm and the Comrade, the Talk, on TWENTY ONE. E. Sports. Radio."
+        },
+        {
+            "id": "img-pr-stammtisch",
+            "category": "promo-stammtisch",
+            "text": "Coming up: Turm and the Comrade, the Talk. She says the state can never run out of money. He says that is exactly the problem. Turm and the Comrade, soon on TWENTY ONE ESPORTS RADIO.",
+            "language": "en",
+            "spoken": "Coming up: Turm and the Comrade, the Talk. She says the state can never run out of money. He says that is exactly the problem. Turm and the Comrade, soon on TWENTY ONE. E. Sports. Radio."
+        },
+        {
             "id": "img-ah-01",
             "category": "autopilot-hour",
             "text": "Top of the hour. No headlines right now, just talk and banter. This is TWENTY ONE ESPORTS RADIO.",

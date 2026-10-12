@@ -7,6 +7,9 @@ use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Programme\Roasts;
+use App\Support\Caster\Programme\Shows;
+use App\Support\Caster\Programme\TalkShow;
+use App\Support\Caster\Programme\TalkShowScripts;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
@@ -36,7 +39,10 @@ use Throwable;
  *  - geschichte: a Geschichtsstunde of Bitcoin and the cypherpunks, on three
  *    bitcoin entries of the sourced canon;
  *  - podcast: the digest of the newest EINUNDZWANZIG episode (only with one);
- *  - liga: how the league works at any hour (CasterVoice::leagueBasics()).
+ *  - liga: how the league works at any hour (CasterVoice::leagueBasics());
+ *  - stammtisch: the talk show of three on a timeless MMT topic
+ *    (TalkShow::evergreen(), at most `shows.formats.stammtisch.stock_per_day`
+ *    a day), written by TalkShowScripts with its own cast and checks.
  *
  * Every format brings its own Anchor jingle line where there is one
  * (`stock.jingles`, else the talk jingle; BlockComposer). The speakers are a
@@ -50,6 +56,8 @@ use Throwable;
  * than `turns.min` turns or without one of the speakers is turned down. Same
  * guards as a duet (DuetScripts::evaluate()), its own usage channel and
  * daily cap (`stock.daily_cap`), the monthly budget, at most two tries.
+ *
+ * @phpstan-import-type ShowMaterial from Shows
  */
 final class StockScripts
 {
@@ -64,7 +72,7 @@ final class StockScripts
     /** The topic prefix of a stock script (`stock:<format>`). */
     public const TOPIC_PREFIX = 'stock:';
 
-    public const FORMATS = ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', Roasts::SCHWARZBUCH, Roasts::INFLATION];
+    public const FORMATS = ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', Roasts::SCHWARZBUCH, Roasts::INFLATION, Shows::STAMMTISCH];
 
     /** @var array<string, string> */
     private const NAMES = [DuetDirector::MARKUS => 'Markus', DuetDirector::SIRIUS => 'Sirius'];
@@ -74,6 +82,13 @@ final class StockScripts
     private const LAST_PICKS = 'caster:stock:last_picks';
 
     private const USED_CANON = 'caster:stock:used_canon';
+
+    /**
+     * The talk show's evergreen material picked by materialFor() (TalkShow::evergreen()), written by TalkShowScripts.
+     *
+     * @var ShowMaterial|null
+     */
+    private ?array $talkShow = null;
 
     /** What the material of the programme in the writing is about (subjectKey()), set by materialFor(). */
     private string $subject = '';
@@ -100,6 +115,23 @@ final class StockScripts
 
             if ($format === null) {
                 return null;
+            }
+
+            // The talk show of three (P16) has its own writer, cast and checks.
+            if ($format === Shows::STAMMTISCH && $this->talkShow !== null) {
+                $talk = app(TalkShowScripts::class)->evergreen($this->talkShow);
+                $this->remember(self::LAST_FORMATS, $format);
+
+                if ($talk !== null) {
+                    return $talk + ['format' => $format, 'subject' => self::subjectKey($format, $this->subject)];
+                }
+
+                // A talk show that did not pass leaves the stock to the next format, it does not starve it.
+                [$format, $material] = $this->material([Shows::STAMMTISCH]);
+
+                if ($format === null) {
+                    return null;
+                }
             }
 
             $rejected = [];
@@ -230,11 +262,12 @@ final class StockScripts
      * the server's stock library first (P18: 60 hours must not all sound the same), then the one used longest ago,
      * that has material.
      *
+     * @param  list<string>  $except  formats left out (the talk show after its draft failed)
      * @return array{0: string|null, 1: string}
      */
-    public function material(): array
+    public function material(array $except = []): array
     {
-        $formats = array_values(array_intersect(array_filter((array) config('tv.commentary.blocks.stock.formats', self::FORMATS), 'is_string'), self::FORMATS));
+        $formats = array_values(array_diff(array_intersect(array_filter((array) config('tv.commentary.blocks.stock.formats', self::FORMATS), 'is_string'), self::FORMATS), $except));
         shuffle($formats);
         $inLibrary = self::census()['formats'];
         $ordered = self::byLastUse($formats, self::LAST_FORMATS);
@@ -266,6 +299,7 @@ final class StockScripts
             'podcast' => app(PodcastTranscripts::class)->digestBlock(),
             'liga' => ($lines = CasterVoice::leagueBasics()) === [] ? null : implode("\n", array_map(fn (string $line): string => '- '.$line, $lines)),
             Roasts::SCHWARZBUCH, Roasts::INFLATION => $this->roastMaterial($format),
+            Shows::STAMMTISCH => ($this->talkShow = app(TalkShow::class)->evergreen(CarbonImmutable::now())) === null ? null : (string) $this->talkShow['data'],
             default => null,
         };
 
@@ -275,6 +309,8 @@ final class StockScripts
             'talk' => (string) ($question ?? ''),
             'tutorial' => (string) ($topic ?? ''),
             'liga' => 'liga',
+            // The talk show is about its timeless topic, not the positions sheet every episode carries.
+            Shows::STAMMTISCH => (string) ($this->talkShow['keys'][0] ?? ''),
             default => (string) $material,
         };
 
