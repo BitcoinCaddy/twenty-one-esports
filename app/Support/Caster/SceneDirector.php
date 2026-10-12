@@ -263,6 +263,12 @@ final class SceneDirector
             } elseif (! $this->timeline->isCut() && ($this->clip->isBlock() || ! $this->clipIsPart) && ! in_array($this->clip->kind, ClipSpool::LIVE_KINDS, true)) {
                 // A block is cut at the end of its sentence on air too, and resumes from there after the news.
                 $end = $this->timeline->nextSentenceEnd($this->earliestCut($now)) ?? $now;
+
+                // A podcast with no pause within the window (its music outro: 233 s without one in episode #335) stops at
+                // once rather than let the news expire (P12).
+                if ($this->isPodcast($this->clip) && $end > $this->earliestCut($now) + (float) ($this->settings['podcast']['pause_window_seconds'] ?? 20)) {
+                    $end = $this->earliestCut($now);
+                }
                 $this->cut($end, $now);
                 $planner->hold($end + 0.3);
             }

@@ -993,9 +993,11 @@ return [
             'download_timeout_seconds' => 900,
             'transcode_timeout_seconds' => 1_800,
             'opus_kbps' => 32,
-            // A pause: at least `pause_seconds` below `pause_db` (ffmpeg silencedetect on the levelled episode).
-            'pause_db' => -35,
-            'pause_seconds' => 0.35,
+            // A pause: at least `pause_seconds` below `pause_db` (ffmpeg silencedetect on the levelled episode). Measured on
+            // episode #335 (2026-10-12): -35 dB for 0.35 s left 6.2 % of the slot seconds without a pause within 20 s and gaps
+            // of up to 63 s in speech; -32 dB for 0.3 s leaves only its 233 s music outro (5.0 %), speech gaps at most 29 s.
+            'pause_db' => -32,
+            'pause_seconds' => 0.3,
             'chunk_seconds' => 300,
             'max_bytes' => (int) env('TV_PODCAST_REPLAY_MAX_BYTES', 1024 * 1024 * 1024),
             // The airing goes into the spool this long before `starts_at`, and not later than `late_minutes` after it.

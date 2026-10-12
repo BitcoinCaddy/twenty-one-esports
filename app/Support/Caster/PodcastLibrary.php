@@ -18,9 +18,10 @@ use Throwable;
  * `tv.commentary.podcast_replay`): for every enabled source the newest
  * episode of its feed (PodcastFeed::newestAudio(), `title_pattern` picks one
  * show of a feed that carries several), downloaded into a private temp
- * directory, levelled to the voice's loudness (`voicestudio.loudness_lufs`)
- * and encoded once as mono Opus at the voice feed's rate by ffmpeg under
- * `nice`, its pauses found in the same pass (silencedetect: `pause_db` for
+ * directory, levelled to the voice's loudness (`voicestudio.loudness_lufs`:
+ * one gain after an EBU R128 measurement, a limiter on the peaks) and encoded
+ * once as mono Opus at the voice feed's rate by ffmpeg under `nice`, its
+ * pauses found in the same pass (silencedetect: `pause_db` for
  * `pause_seconds`), then cut at pauses into chunks of about `chunk_seconds`
  * (plan()). The download goes in every case.
  *
@@ -297,8 +298,25 @@ class PodcastLibrary
         $full = $temp.'/episode.opus';
         $timeout = (int) ($settings['transcode_timeout_seconds'] ?? 1_800);
         $started = microtime(true);
+        $mono = '[0:a]aresample='.$rate.',aformat=channel_layouts=mono';
 
-        $filter = '[0:a]aresample=48000,loudnorm=I='.$lufs.':TP=-1.5:LRA=11,aresample='.$rate.',aformat=channel_layouts=mono,asplit=2[voice][probe];'
+        // First the episode's loudness (EBU R128). Measured 2026-10-12 on episode #335: a single-pass loudnorm aiming at
+        // -16 LUFS left the chunks at -20.5 to -21.5 LUFS, 5 dB under the voice, and took 207 s at 192 kHz.
+        $measure = Process::timeout($timeout)->env(ChildEnvironment::withoutSecrets())->run([
+            'nice', '-n', '10', $ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'info', '-i', $audio, '-vn',
+            '-filter_complex', $mono.',ebur128=framelog=quiet[out]', '-map', '[out]', '-f', 'null', '-',
+        ]);
+        $loudness = $measure->successful() ? self::loudness($measure->errorOutput()) : null;
+
+        if ($loudness === null) {
+            return null;
+        }
+
+        // Then one gain to the voice's loudness, a limiter for the peaks, and the pauses found in the same pass.
+        $gain = round(max(-20.0, min(20.0, $lufs - $loudness)), 2);
+        $this->measured[$this->measuring]['loudness_lufs'] = $loudness;
+        $this->measured[$this->measuring]['gain_db'] = $gain;
+        $filter = $mono.',volume='.$gain.'dB,alimiter=limit=0.84:level=false,asplit=2[voice][probe];'
             .'[probe]silencedetect=noise='.(int) ($settings['pause_db'] ?? -35).'dB:d='.max(0.1, (float) ($settings['pause_seconds'] ?? 0.35)).'[quiet]';
 
         $encode = Process::timeout($timeout)->env(ChildEnvironment::withoutSecrets())->run([
@@ -382,6 +400,14 @@ class PodcastLibrary
         }
 
         return $chunks === [] ? null : $chunks;
+    }
+
+    /** The integrated loudness ebur128 logged in its summary (LUFS), null when there is none. */
+    public static function loudness(string $log): ?float
+    {
+        $summary = strrpos($log, 'Summary:');
+
+        return $summary !== false && preg_match('/I:\s*(-?[\d.]+)\s*LUFS/', substr($log, $summary), $match) === 1 && (float) $match[1] > -70.0 ? (float) $match[1] : null;
     }
 
     /**
