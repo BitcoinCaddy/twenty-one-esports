@@ -75,7 +75,9 @@ use Carbon\CarbonImmutable;
  * A bulletin ends a run and does not count as a run clip. Hook for the
  * stinger (P4): a slot with `stinger` leaves a cue (takeStinger()) and the
  * voice starts `programme.stinger_seconds` later; bulletinOnAir() names the
- * slot while the bulletin plays (the news bed).
+ * slot while the bulletin plays (the news bed). The bulletin starts on the
+ * timeline as news: the stream music fades away under it
+ * (CommentaryTimeline::musicDuck()).
  */
 final class SceneDirector
 {
@@ -141,7 +143,14 @@ final class SceneDirector
         /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int} $settings */
         $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120)];
 
-        return new self($spool, new CommentaryTimeline((int) config('tv.commentary.mix.sample_rate', 24000)), $settings, Idents::fromConfig());
+        $timeline = new CommentaryTimeline(
+            (int) config('tv.commentary.mix.sample_rate', 24000),
+            (float) config('tv.commentary.mix.news_music_db', -60),
+            (float) config('tv.commentary.mix.news_fade_down_seconds', 1.0),
+            (float) config('tv.commentary.mix.news_fade_up_seconds', 2.0),
+        );
+
+        return new self($spool, $timeline, $settings, Idents::fromConfig());
     }
 
     /**
@@ -369,7 +378,8 @@ final class SceneDirector
             $start += microtime(true) - $dressing;
         }
 
-        $this->timeline->start($pcm, $ends, $start);
+        // A bulletin puts the music into news mode for as long as its PCM (stinger and bed included) plays.
+        $this->timeline->start($pcm, $ends, $start, news: $bulletinSlot !== null);
         $this->spool->playing($clip);
         $this->clip = $clip;
         $this->clipIsPart = $continuation || ($clip->kind !== CasterScript::BULLETIN && $this->spool->partOf($clip) !== null);

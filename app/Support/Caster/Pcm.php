@@ -211,4 +211,27 @@ final class Pcm
 
         return $head.$faded;
     }
+
+    /**
+     * Two mono PCM strings of the same length as one stereo stream
+     * (left, right, left, right, ...). The usual case, a silent right
+     * channel, takes no per-sample loop.
+     */
+    public static function interleave(string $left, string $right): string
+    {
+        if ($left === '') {
+            return '';
+        }
+
+        if (strspn($right, "\0") === strlen($right)) {
+            return implode("\0\0", str_split($left, self::BYTES_PER_SAMPLE))."\0\0";
+        }
+
+        $out = '';
+        foreach (str_split($left, self::BYTES_PER_SAMPLE) as $index => $sample) {
+            $out .= $sample.substr($right, $index * self::BYTES_PER_SAMPLE, self::BYTES_PER_SAMPLE);
+        }
+
+        return $out;
+    }
 }

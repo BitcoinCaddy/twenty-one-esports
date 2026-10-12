@@ -239,6 +239,12 @@ return [
             'sample_rate' => 24000,
             // The voice is written into the encoder this far ahead of real time, so a slow tick of the daemon never starves it.
             'lead_seconds' => 1.0,
+            // News mode (user 2026-10-12: "so viel ducken im News-Modus, dass man die BG-Music nicht mehr hört"): under a
+            // bulletin, stinger and bed included, the music fades to this level within the fade down and comes back with
+            // the fade up after it, on the voice feed's own timeline (CommentaryTimeline::musicDuck()). 0 switches it off.
+            'news_music_db' => (float) env('TV_COMMENTARY_NEWS_MUSIC_DB', -60),
+            'news_fade_down_seconds' => (float) env('TV_COMMENTARY_NEWS_FADE_DOWN_SECONDS', 1.0),
+            'news_fade_up_seconds' => (float) env('TV_COMMENTARY_NEWS_FADE_UP_SECONDS', 2.0),
         ],
 
         // The station sound (App\Support\Caster\Idents, plan "TWENTY ONE Radio" P4): own synthesized stingers and a news
