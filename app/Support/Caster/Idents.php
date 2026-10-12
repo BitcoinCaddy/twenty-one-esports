@@ -35,7 +35,7 @@ final class Idents
     private array $last = [];
 
     /**
-     * @param  array{enabled?: bool, dir?: string, stingers?: array<string, string|list<string>>, kinds?: array<string, string>, bed?: string, beds?: list<string>, beds_gain_db?: float|int, format_beds?: array<string, string>, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int}  $settings
+     * @param  array{enabled?: bool, dir?: string, stingers?: array<string, string|list<string>>, kinds?: array<string, string>, bed?: string, beds?: list<string>, beds_gain_db?: float|int, format_beds?: array<string, string>, format_beds_gain_db?: float|int, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int}  $settings
      */
     public function __construct(
         private readonly array $settings,
@@ -45,7 +45,7 @@ final class Idents
     /** The idents of tv.commentary.idents, or null while they are switched off. */
     public static function fromConfig(): ?self
     {
-        /** @var array{enabled?: bool, dir?: string, stingers?: array<string, string|list<string>>, kinds?: array<string, string>, bed?: string, beds?: list<string>, beds_gain_db?: float|int, format_beds?: array<string, string>, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int} $settings */
+        /** @var array{enabled?: bool, dir?: string, stingers?: array<string, string|list<string>>, kinds?: array<string, string>, bed?: string, beds?: list<string>, beds_gain_db?: float|int, format_beds?: array<string, string>, format_beds_gain_db?: float|int, bed_kinds?: list<string>, bed_gain_db?: float|int, bed_fade_seconds?: float|int, bed_at_night?: bool, pause_seconds?: float|int} $settings */
         $settings = (array) config('tv.commentary.idents', []);
 
         return ($settings['enabled'] ?? false) === true ? new self($settings, (int) config('tv.commentary.mix.sample_rate', 24000)) : null;
@@ -77,7 +77,8 @@ final class Idents
 
     /**
      * The bed under a clip's speech, with its gain, or null: the bed of the rubric's format (`format_beds`, P11) for a
-     * rubric, else the news beds in rotation (the legacy `bed` at `bed_gain_db`, `beds` at `beds_gain_db`: those
+     * rubric at `format_beds_gain_db` (P17: every show, roast and rubric has one, 24 dB under the voice; measured with
+     * the stream's duck the music under the voice sits at -49 LUFS, so the format bed is what is heard under a show), else the news beds in rotation (the legacy `bed` at `bed_gain_db`, `beds` at `beds_gain_db`: those
      * files are at -16 LUFS, the legacy one at -28) for a kind in `bed_kinds`; never in quiet hours unless `bed_at_night`.
      *
      * @return array{file: string, gain_db: float}|null
@@ -96,7 +97,7 @@ final class Idents
             $file = isset($formatBeds[$topic]) ? $this->existing($formatBeds[$topic]) : null;
 
             if ($file !== null) {
-                return ['file' => $file, 'gain_db' => $newGain];
+                return ['file' => $file, 'gain_db' => (float) ($this->settings['format_beds_gain_db'] ?? $newGain)];
             }
         }
 

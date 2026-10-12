@@ -82,7 +82,7 @@ it('draws only sequences the grammar allows over 10 000 seeded draws', function 
     for ($i = 0; $i < 10_000; $i++) {
         $symbols = duetSymbols($director->sequence($last, null));
 
-        expect(strlen($symbols))->toBeGreaterThanOrEqual(2)->toBeLessThanOrEqual(5)
+        expect(strlen($symbols))->toBeGreaterThanOrEqual(2)->toBeLessThanOrEqual(6)
             ->and($symbols)->not->toMatch('/MMM|SSS/');
 
         if ($last === DuetDirector::SIRIUS) {
@@ -96,11 +96,11 @@ it('draws only sequences the grammar allows over 10 000 seeded draws', function 
 
     // "mal hin und her, dann mal einmal Markus mit zweimal Sirius": every pattern of the table turns up.
     expect($markusOpens / 10_000)->toBeGreaterThan(0.75)->toBeLessThan(0.85)
-        ->and(array_keys($seen))->toContain('MS', 'MSM', 'MSS', 'SM', 'MSMS', 'MMS');
+        ->and(array_keys($seen))->toContain('MS', 'MSM', 'MSS', 'SM', 'MSMS', 'MMS', 'MSMSMS', 'SMSM');
 });
 
 it('ignores a configured pattern that breaks the run or turn limits', function () {
-    config(['tv.commentary.duet.patterns' => ['MSSS' => 100, 'MMMS' => 100, 'MSMSMS' => 100, 'M' => 100, 'MS' => 1]]);
+    config(['tv.commentary.duet.patterns' => ['MSSS' => 100, 'MMMS' => 100, 'MSMSMSM' => 100, 'M' => 100, 'MS' => 1]]);
 
     expect(array_keys((new DuetDirector)->weights(null, null)))->toBe(['MS']);
 });
@@ -228,7 +228,7 @@ it('writes a duet in one call and turns down a draft in which Sirius never speak
         ->and(explode("\n", $duet['text'])[1])->toStartWith('Kaffee um diese Uhrzeit')
         ->and($duet['text'])->not->toContain('Sirius:');
     VoiceAgent::assertPromptedTimes(2);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: drei bis sechs Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: ein bis drei Sätze\n2. Sirius: ein bis vier Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
         && str_contains($prompt->prompt, 'kam gar nicht zu Wort'));
 });
 
@@ -265,7 +265,7 @@ it('queues a duet scene with one speaker per line, through its parts and the cla
 
     duetQueue(new DuetDirector(fn (): float => 0.0))->fill(CarbonImmutable::now());
 
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: drei bis sechs Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: ein bis drei Sätze\n2. Sirius: ein bis vier Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
         && str_contains($prompt->prompt, '5. Markus'));
     $parts = CasterScript::query()->whereNotNull('speakers')->orderBy('part_index')->get();
 
@@ -388,9 +388,9 @@ it('turns down a duet only when one of the two never speaks, and keeps at most t
     expect($duets->repair([$line('markus', 'eins')]))->toBeNull()
         ->and($duets->repair([$line('sirius', 'eins')]))->toBeNull()
         ->and($duets->repair([$line('sirius', 'eins'), $line('markus', 'zwei')])['speakers'])->toBe(['sirius', 'markus'])
-        // Seven alternating turns: the first five (`duet.turns.max`) stay.
-        ->and($duets->repair(array_map(fn (int $i): array => $line($i % 2 === 0 ? 'markus' : 'sirius', "Wortmeldung {$i}"), range(0, 6)))['speakers'])
-        ->toBe(['markus', 'sirius', 'markus', 'sirius', 'markus']);
+        // Eight alternating turns: the first six (`duet.turns.max`) stay.
+        ->and($duets->repair(array_map(fn (int $i): array => $line($i % 2 === 0 ? 'markus' : 'sirius', "Wortmeldung {$i}"), range(0, 7)))['speakers'])
+        ->toBe(['markus', 'sirius', 'markus', 'sirius', 'markus', 'sirius']);
 });
 
 it('breathes 0.45 to 0.7 seconds on a speaker change by default', function () {

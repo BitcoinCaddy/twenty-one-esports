@@ -67,6 +67,16 @@ final class VoiceGuard
 
     public const UNSUPPORTED_CLAIM = 'unsupported_claim';
 
+    /** The speakers label their own worldview (CasterVoice::TONE: the lens shows in what they mock, never as a label). */
+    public const SELF_LABEL = 'self_label';
+
+    /**
+     * A self-label of the station's worldview (user 2026-10-13: "NEVER say 'Anarchokapitalist'/'wir sind Libertäre' or
+     * label themselves"): the word Anarchokapitalist (and Ankap, Anarcho-Kapitalismus) in any form, and libertär as a
+     * speaker's own label ("wir als Libertäre", "als Libertärer", "ich bin libertär", "wir Libertären").
+     */
+    public const SELF_LABEL_PATTERN = '/(?<![\p{L}])(?:ankap(?:s|italis\p{L}*)?(?![\p{L}])|anarcho[\s-]*kapitalis\p{L}*|(?:wir|ich|uns|euch)\s+(?:sind\s+|bin\s+|als\s+|alle\s+)*(?:ja\s+|halt\s+|eben\s+|nun\s+mal\s+)?(?:echte\s+|überzeugte\s+)?libert\p{L}*|als\s+(?:überzeugte[rn]?\s+)?libert(?:äre|ärer|ären|arian)\p{L}*|(?:bin|sind)\s+(?:ja\s+|halt\s+|eben\s+)?(?:überzeugte[rn]?\s+)?libert\p{L}*)/iu';
+
     /** Most emoji one text may carry. */
     public const MAX_EMOJI = 2;
 
@@ -130,6 +140,10 @@ final class VoiceGuard
 
         if (preg_match('/[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+\.[\p{L}]{2,}/u', $text) === 1) {
             $violations[] = self::ADDRESS;
+        }
+
+        if (preg_match(self::SELF_LABEL_PATTERN, $text) === 1) {
+            $violations[] = self::SELF_LABEL;
         }
 
         foreach ($this->blocklist as $word) {

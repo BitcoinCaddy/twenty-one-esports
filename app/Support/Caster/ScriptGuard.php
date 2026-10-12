@@ -290,7 +290,9 @@ final class ScriptGuard
      */
     public static function runs(string $line): array
     {
-        return array_values(array_filter(array_map('trim', preg_split('/(?<=[.!?…])(?<!\d\.)\s+(?=(?:\[[a-z-]+\]\s*)*[\p{Lu}\p{N}„"»])/u', $line) ?: [$line]), fn (string $run): bool => $run !== ''));
+        // An initial ("Robert E. Hall") or a title ("Dr.", "Prof.", "St.") is no sentence end (P17 eval: the Presseschau
+        // went on air as "… an Robert E." and "Hall und Michael Woodford …").
+        return array_values(array_filter(array_map('trim', preg_split('/(?<=[.!?…])(?<!\d\.)(?<![\s(„"»]\p{Lu}\.)(?<!\bDr\.|\bSt\.)(?<!\bProf\.)\s+(?=(?:\[[a-z-]+\]\s*)*[\p{Lu}\p{N}„"»])/u', $line) ?: [$line]), fn (string $run): bool => $run !== ''));
     }
 
     /** The fewest spoken words a sentence of a non-chat script may have (`tv.commentary.scripts.min_words_per_sentence`). */
