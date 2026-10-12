@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
  * workstation and spooled as a CasterClip.
  *
  * @property int $id
- * @property string $kind scene, live, chat, filler, news, history or followed
+ * @property string $kind scene, live, chat, filler, news, history, followed or bulletin
  * @property string $phase App\Support\Caster\ScenePhase
  * @property string|null $scene the rotation scene it was written for, when one (a champion slide)
  * @property int $priority
@@ -28,12 +28,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $part_group the parts of one long script share it (App\Support\Caster\ScriptQueue::enqueue()); null for a script in one piece
  * @property int|null $part_index the position of the part in its group, from 1
  * @property list<string>|null $speakers the speaker of each line of a duet (App\Support\Caster\DuetDirector::MARKUS, ::SIRIUS), aligned with sentences(); null when Markus speaks alone
+ * @property Carbon|null $airs_at a news bulletin's slot (App\Support\Caster\Programme\BroadcastClock): it plays from then on, never before; null for every other script
  * @property Carbon|null $claimed_at
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at', 'part_group', 'part_index', 'speakers'])]
+#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at', 'part_group', 'part_index', 'speakers', 'airs_at'])]
 class CasterScript extends Model
 {
     public const QUEUED = 'queued';
@@ -61,6 +62,9 @@ class CasterScript extends Model
     /** A followed-profile segment: Markus on a Nostr note of a profile he follows (App\Support\Caster\FollowedScripts). */
     public const FOLLOWED = 'followed';
 
+    /** A news bulletin at :00 or :30 (App\Support\Caster\Programme\NewsBulletin): voiced ahead, played at its slot (`airs_at`). */
+    public const BULLETIN = 'bulletin';
+
     /** The long segments that play on calm slots only, one at a time (App\Support\Caster\ClipSpool::next()). */
     public const SEGMENTS = [self::NEWS, self::HISTORY, self::FOLLOWED];
 
@@ -75,6 +79,7 @@ class CasterScript extends Model
             'part_index' => 'integer',
             'estimated_seconds' => 'float',
             'claimed_at' => 'datetime',
+            'airs_at' => 'datetime',
             'expires_at' => 'datetime',
             'speakers' => 'array',
         ];

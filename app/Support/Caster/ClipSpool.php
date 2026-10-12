@@ -92,7 +92,7 @@ class ClipSpool
         }
 
         // A later part is never refused for airtime: the part before it may already be on air.
-        $airtimeCapped = $script->kind !== CasterScript::FILLER && ! in_array($script->kind, [...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true)
+        $airtimeCapped = ! in_array($script->kind, [CasterScript::FILLER, CasterScript::BULLETIN, ...self::LIVE_KINDS, ...CasterScript::SEGMENTS], true)
             && ! $script->isContinuation();
 
         if ($this->bytes() + strlen($opus) > (int) ($settings['max_bytes'] ?? 0)
@@ -130,14 +130,37 @@ class ClipSpool
     }
 
     /**
-     * Seconds of unplayed commentary ready, fillers and segments left out: a
-     * long news or Bauernkrieg segment waits for a calm slot, and counted it
-     * would fill the spool's target, so a live match got no scene clip.
+     * Seconds of unplayed commentary ready, fillers, segments and bulletins
+     * left out: a long news or Bauernkrieg segment waits for a calm slot and
+     * a bulletin for its slot, and counted they would fill the spool's
+     * target, so a live match got no scene clip.
      */
     public function readySeconds(): float
     {
         return (float) CasterClip::query()->where('status', CasterClip::READY)
-            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::SEGMENTS])->sum('duration_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, CasterScript::BULLETIN, ...CasterScript::SEGMENTS])->sum('duration_seconds');
+    }
+
+    /**
+     * The news bulletin whose slot has come (`airs_at` at or before `$now`)
+     * and that has not expired: SceneDirector plays it before anything else.
+     * next(), nextLive() and nextSegment() never pick a bulletin.
+     */
+    public function bulletin(CarbonImmutable $now): ?CasterClip
+    {
+        $now = $now->utc();
+
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::BULLETIN)->where('expires_at', '>', $now)
+            ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)->select('id'))
+            ->orderBy('id')->first();
+    }
+
+    /** The slot a bulletin clip was written for (its script's `airs_at`), or null. */
+    public function airsAt(CasterClip $clip): ?CarbonImmutable
+    {
+        $at = CasterScript::query()->whereKey($clip->caster_script_id)->value('airs_at');
+
+        return $at === null ? null : CarbonImmutable::parse((string) $at, 'UTC');
     }
 
     public function fetcherOnline(CarbonImmutable $now): bool

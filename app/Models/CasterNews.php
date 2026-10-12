@@ -23,11 +23,12 @@ use Illuminate\Support\Carbon;
  * @property Carbon $published_at
  * @property Carbon|null $used_at spoken, or turned down (`skipped` says why)
  * @property string|null $skipped
+ * @property Carbon|null $bulletin_at read in a news bulletin (App\Support\Caster\Programme\NewsBulletin); never again in one
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
 #[Table('caster_news')]
-#[Fillable(['hash', 'section', 'feed', 'source', 'language', 'title', 'link', 'published_at', 'used_at', 'skipped'])]
+#[Fillable(['hash', 'section', 'feed', 'source', 'language', 'title', 'link', 'published_at', 'used_at', 'skipped', 'bulletin_at'])]
 class CasterNews extends Model
 {
     public const BITCOIN = 'bitcoin';
@@ -41,6 +42,7 @@ class CasterNews extends Model
         return [
             'published_at' => 'datetime',
             'used_at' => 'datetime',
+            'bulletin_at' => 'datetime',
         ];
     }
 }

@@ -170,7 +170,7 @@ return [
             'max_clip_seconds' => 90,
             // A clip of these kinds may be this long (the long variants, tv.commentary.length): a long scene runs 60 to
             // 100 s spoken, a long news segment up to two minutes, a long Bauernkrieg segment two to four minutes.
-            'long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280],
+            'long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280, 'bulletin' => 240],
             // At most one news or history segment on air within this many minutes.
             'segment_spacing_minutes' => 5,
             // Talk density with the gap (below): a clip of about 20 s plus 20 to 30 s of music, so the spool needs half the
@@ -257,7 +257,7 @@ return [
             'max_hold_seconds' => 100,
             // A clip of these kinds holds its slot until it has been spoken, up to this long (spool.long_clip_seconds
             // plus the lead-in and tail): the scene stays on air through a long scene or story.
-            'long_max_hold_seconds' => ['scene' => 135, 'news' => 160, 'history' => 290],
+            'long_max_hold_seconds' => ['scene' => 135, 'news' => 160, 'history' => 290, 'bulletin' => 250],
         ],
 
         'news' => [
@@ -292,6 +292,62 @@ return [
                 'handelsblatt-finanzen' => ['url' => 'https://www.handelsblatt.com/contentexport/feed/finanzen', 'source' => 'Handelsblatt', 'section' => 'germany', 'language' => 'de'],
                 'ntv-politik' => ['url' => 'https://www.n-tv.de/politik/rss', 'source' => 'n-tv', 'section' => 'germany', 'language' => 'de'],
                 'ntv-wirtschaft' => ['url' => 'https://www.n-tv.de/wirtschaft/rss', 'source' => 'n-tv', 'section' => 'germany', 'language' => 'de'],
+                // The association's own news (plan "TWENTY ONE Radio", P2; RSS, 50 items, reachable from prod, checked 2026-10-12).
+                'einundzwanzig-news' => ['url' => 'https://media.einundzwanzig.space/s/einundzwanzig-news/feed.xml', 'source' => 'EINUNDZWANZIG News', 'section' => 'bitcoin', 'language' => 'de'],
+            ],
+        ],
+
+        // The broadcast clock (plan "TWENTY ONE Radio", P1; App\Support\Caster\Programme\BroadcastClock): an hour of
+        // fixed slots in `timezone` wall-clock time (DST-safe: a slot is a minute of the local hour), each from its
+        // `minute` to the next slot's. `type` news and headlines are the bulletins (NewsBulletin, written
+        // `bulletin.write_minutes_ahead` before the slot so the clip is in the spool `bulletin.ready_seconds` ahead);
+        // `stinger` asks the stream for a stinger before the slot's clip (P4 plays it, SceneDirector::takeStinger()),
+        // the clip starting `stinger_seconds` later; a slot without `quiet` turns into talk in the quiet hours (at night
+        // only the full-hour bulletin). `label` is how a teaser names the slot (Rundown, P5).
+        'programme' => [
+            'enabled' => (bool) env('TV_COMMENTARY_PROGRAMME', true),
+            'timezone' => env('TV_COMMENTARY_PROGRAMME_TZ', 'Europe/Berlin'),
+            'slots' => [
+                ['minute' => 0, 'type' => 'news', 'label' => 'die Nachrichten', 'stinger' => true, 'quiet' => true],
+                ['minute' => 3, 'type' => 'talk', 'label' => 'Talk', 'quiet' => true],
+                ['minute' => 15, 'type' => 'rubric', 'label' => 'die erste Rubrik der Stunde'],
+                ['minute' => 20, 'type' => 'talk', 'label' => 'Talk', 'quiet' => true],
+                ['minute' => 30, 'type' => 'headlines', 'label' => 'die Kurznachrichten', 'stinger' => true],
+                ['minute' => 33, 'type' => 'talk', 'label' => 'Talk', 'quiet' => true],
+                ['minute' => 45, 'type' => 'rubric', 'label' => 'die zweite Rubrik der Stunde'],
+                ['minute' => 50, 'type' => 'talk', 'label' => 'Talk', 'quiet' => true],
+            ],
+            'stinger_seconds' => (float) env('TV_COMMENTARY_STINGER_SECONDS', 0),
+            // The bulletin (App\Support\Caster\Programme\NewsBulletin): `items` per type, from at least `min_sources`
+            // outlets where the feeds have them, never a headline that was in a bulletin before (`caster_news.bulletin_at`)
+            // and at most one league item (world memory) a bulletin, none twice a day; fewer than `min_items` fresh
+            // items and the slot passes without one (never filler). The queue writes it from `write_minutes_ahead` down
+            // to `last_write_minutes` before the slot (a failed call is tried again the next minute), at `priority`
+            // (above chat replies, below live moments); it airs from its slot on, at most `late_seconds` late (the
+            // time line names the slot), else it expires. Lead (the plan's estimate, unmeasured): a bulletin of about 100 s
+            // spoken is voiced in one to two minutes, so writing seven minutes ahead leaves it spooled about four minutes early.
+            'bulletin' => [
+                'items' => [
+                    'news' => ['min' => 4, 'max' => 6],
+                    'headlines' => ['min' => 3, 'max' => 3],
+                ],
+                'min_items' => 2,
+                'min_sources' => 3,
+                'fresh_hours' => (int) env('TV_COMMENTARY_BULLETIN_FRESH_HOURS', 12),
+                'league' => true,
+                'league_hours' => 12,
+                'write_minutes_ahead' => 7,
+                'last_write_minutes' => 2,
+                'ready_seconds' => 60,
+                'late_seconds' => 120,
+                'priority' => 75,
+                'item_sentences' => ['min' => 1, 'max' => 2],
+                'commentary_sentences' => ['min' => 2, 'max' => 3],
+                // Chance that Sirius adds one line after Markus' commentary (never in the quiet hours).
+                'sirius_chance' => (float) env('TV_COMMENTARY_BULLETIN_SIRIUS', 0.5),
+                // Sampled cooler than the talk (scripts.temperature): the news are read, not riffed.
+                'temperature' => (float) env('TV_COMMENTARY_BULLETIN_TEMPERATURE', 0.6),
+                'daily_cap' => (int) env('TV_COMMENTARY_BULLETIN_DAILY_CAP', 120),
             ],
         ],
 
