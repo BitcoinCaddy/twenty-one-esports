@@ -101,7 +101,7 @@ class RoastScripts
 
                 $this->usage->recordAttempt(self::CHANNEL);
                 $temperature = config('tv.commentary.scripts.temperature');
-                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, max(2_000, (int) ($settings['max_output_tokens'] ?? 4_000))))
+                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, max(2_000, (int) ($settings['max_output_tokens'] ?? 4_000)), cacheTtl: CasterVoice::staticCacheTtl()))
                     ->prompt(self::prompt($id, $material, $rejected));
                 $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
