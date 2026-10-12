@@ -574,7 +574,11 @@ class ClipSpool
             '-f', 'ogg', '-i', 'pipe:0', '-ac', '1', '-ar', (string) (int) config('tv.commentary.mix.sample_rate', 24000), '-f', 's16le', 'pipe:1',
         ]);
 
-        return $result->successful() && $result->output() !== '' ? $result->output() : null;
+        // Whole samples only: an odd byte would shift every sample a jingle appended after it (Imaging::wrap()).
+        $pcm = $result->successful() ? $result->output() : '';
+        $pcm = substr($pcm, 0, strlen($pcm) - strlen($pcm) % Pcm::BYTES_PER_SAMPLE);
+
+        return $pcm !== '' ? $pcm : null;
     }
 
     /**
