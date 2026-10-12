@@ -45,6 +45,8 @@ beforeEach(function () {
         'tv.commentary.news.enabled' => true,
         'tv.commentary.programme.enabled' => true,
         'tv.commentary.programme.rubrics.enabled' => true,
+        // The rotation alone; the long formats on their scheduled slots are RadioShowsTest's.
+        'tv.commentary.programme.shows.enabled' => false,
         'tv.commentary.programme.rubrics.rotation' => ['geschichte', 'chat'],
         'tv.commentary.programme.rubrics.sirius_chance' => 0.0,
         'tv.commentary.programme.teasers.enabled' => true,

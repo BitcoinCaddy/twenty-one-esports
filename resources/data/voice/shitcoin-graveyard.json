@@ -1,0 +1,244 @@
+{
+    "about": "Der Shitcoin-Friedhof (plan \"TWENTY ONE Radio\", P9; App\\Support\\Caster\\Programme\\ShitcoinGraveyard): dead or collapsed coins for the eulogy rubric. Every fact is taken from its source (read 2026-10-12: the Wikipedia article's text via the MediaWiki extracts API, the BBC article's paragraphs); the model gets these facts as its only data, and the guard rejects a year, an amount or a name that is not in them. German facts, the numbers exactly as the source has them. `names`: the people and firms an entry may name.",
+    "coins": [
+        {
+            "id": "terra-luna",
+            "name": "Terra und Luna",
+            "names": [
+                "Terraform Labs",
+                "Do Kwon",
+                "Daniel Shin",
+                "TerraUSD",
+                "UST",
+                "LUNA",
+                "Anchor Protocol"
+            ],
+            "facts": [
+                "Terra ist ein Blockchain-Protokoll für algorithmische Stablecoins, 2018 von Terraform Labs gegründet, einem Start-up von Do Kwon und Daniel Shin.",
+                "Ab dem 9. Mai 2022 verlor der Stablecoin TerraUSD, kurz UST, seine Bindung an den US-Dollar, und mit ihm brach die Kryptowährung LUNA zusammen.",
+                "Der Zusammenbruch vernichtete in einer Woche fast 45 Milliarden Dollar Marktkapitalisierung, die Terra-Blockchain wurde zeitweise angehalten.",
+                "Wer UST im Anchor Protocol anlegte, bekam 19,45 Prozent Rendite, bezahlt aus den Reserven von Terra.",
+                "Am 23. März 2023 wurde Do Kwon am Flughafen Podgorica in Montenegro festgenommen, als er mit falschen costa-ricanischen Papieren nach Dubai reisen wollte.",
+                "Im August 2025 bekannte sich Do Kwon in zwei Betrugspunkten schuldig und willigte ein, 19 Millionen Dollar abzugeben."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Terra_(blockchain)"
+        },
+        {
+            "id": "ftt",
+            "name": "FTT, der Token der Börse FTX",
+            "names": [
+                "FTX",
+                "FTT",
+                "Alameda Research",
+                "Sam Bankman-Fried",
+                "Binance",
+                "Zhao",
+                "CoinDesk"
+            ],
+            "facts": [
+                "FTX war vor dem Zusammenbruch die drittgrößte Kryptobörse nach Volumen und hatte über eine Million Nutzer.",
+                "Am 2. November 2022 berichtete CoinDesk, dass 40 Prozent der 14,6 Milliarden Dollar Vermögen von Alameda Research, der Handelsfirma von FTX-Chef Sam Bankman-Fried, aus FTT bestanden.",
+                "Am 7. November 2022 kündigte Binance-Chef Zhao an, die FTT-Bestände von Binance zu verkaufen, und der Kurs von FTT stürzte ab.",
+                "Darauf zogen Kunden 6 Milliarden Dollar von FTX ab, und es tat sich ein Loch von 8 Milliarden Dollar in den Konten auf.",
+                "Die Insolvenz von FTX begann im November 2022.",
+                "Am 2. November 2023 wurde Sam Bankman-Fried schuldig gesprochen, die Kunden von FTX und die Kreditgeber von Alameda Research betrogen zu haben."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Bankruptcy_of_FTX"
+        },
+        {
+            "id": "bitconnect",
+            "name": "Bitconnect",
+            "names": [
+                "Bitconnect",
+                "Carlos Matos",
+                "Satish Kumbhani",
+                "Glenn Arcaro"
+            ],
+            "facts": [
+                "Bitconnect war von 2016 bis 2018 eine Kryptowährung mit einem Hochzins-Anlageprogramm, einer Form von Schneeballsystem.",
+                "Am 3. Januar 2018 erließ die Wertpapieraufsicht von Texas eine Unterlassungsverfügung und nannte Bitconnect ein Ponzi-System.",
+                "Am 16. Januar 2018 schloss Bitconnect seine Börse und sein Verleihprogramm, nachdem Aufseher aus Texas und North Carolina eingeschritten waren.",
+                "Nach einem Kurssturz von 92 Prozent fiel der Coin von fast 525 Dollar auf unter einen Dollar.",
+                "Der Anleger Carlos Matos aus New York schrie bei einer Bitconnect-Veranstaltung mehrmals in allen Tonlagen den Namen Bitconnect, und das wurde ein Internet-Meme.",
+                "Laut der US-Börsenaufsicht SEC sammelte Bitconnect von Anlegern insgesamt 2,4 Milliarden Dollar ein, Gründer Satish Kumbhani wurde im Februar 2022 angeklagt."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Bitconnect"
+        },
+        {
+            "id": "onecoin",
+            "name": "OneCoin",
+            "names": [
+                "OneCoin",
+                "Ruja Ignatova",
+                "Sebastian Greenwood",
+                "FBI",
+                "The Times"
+            ],
+            "facts": [
+                "OneCoin war ein betrügerisches Kryptosystem der Firmen OneCoin Ltd und OneLife Network Ltd, gegründet von Ruja Ignatova zusammen mit Sebastian Greenwood, und startete Ende 2014.",
+                "OneCoin hatte keine Blockchain, sondern eine eigene Datenbank mit Coins, und kein Mining.",
+                "Es gilt als Schneeballsystem, weil frühe Anleger mit dem Geld neuer Anleger bezahlt wurden.",
+                "Laut US-Staatsanwälten brachte das System weltweit etwa 4 Milliarden Dollar ein.",
+                "Das FBI setzte Ruja Ignatova auf die Liste der zehn meistgesuchten Flüchtigen, mit bis zu 100.000 Dollar Belohnung.",
+                "Die Zeitung The Times nannte OneCoin einen der größten Betrugsfälle der Geschichte."
+            ],
+            "source": "https://en.wikipedia.org/wiki/OneCoin"
+        },
+        {
+            "id": "safemoon",
+            "name": "SafeMoon",
+            "names": [
+                "SafeMoon",
+                "Braden John Karony",
+                "Kyle Nagy",
+                "Thomas Smith",
+                "BNB"
+            ],
+            "facts": [
+                "SafeMoon wurde im März 2021 geschaffen und zog von jeder Transaktion 10 Prozent ab, 5 Prozent für die Halter und 5 Prozent für Wallets der Macher in BNB.",
+                "Im April 2021 erreichte der Token sein Allzeithoch von 17 Milliarden Dollar Marktkapitalisierung.",
+                "Am 1. November 2023 wurde eine Anklage gegen SafeMoon-Chef Braden John Karony, Token-Gründer Kyle Nagy und den früheren Mitarbeiter Thomas Smith wegen Wertpapierbetrug, Überweisungsbetrug und Geldwäsche öffentlich.",
+                "Im Dezember 2023 meldete SafeMoon Insolvenz nach Chapter 7 an.",
+                "Im Mai 2025 wurde Braden John Karony nach einem zwölftägigen Prozess in Brooklyn in allen Punkten schuldig gesprochen."
+            ],
+            "source": "https://en.wikipedia.org/wiki/SafeMoon"
+        },
+        {
+            "id": "squid",
+            "name": "der Squid-Game-Token",
+            "names": [
+                "Squid",
+                "Squid Game",
+                "Netflix",
+                "CoinMarketCap",
+                "Gizmodo",
+                "PancakeSwap"
+            ],
+            "facts": [
+                "Squid nannte sich eine Play-to-Earn-Kryptowährung für ein Online-Spiel nach der Netflix-Serie Squid Game.",
+                "Wer Squid kaufte, konnte den Token nicht wieder verkaufen.",
+                "In weniger als einer Woche stieg der Kurs von einem Cent auf über 2.856 Dollar.",
+                "Danach stürzte der Wert laut CoinMarketCap um 99,99 Prozent ab.",
+                "Die Entwickler machten sich laut Gizmodo mit geschätzt 3,38 Millionen Dollar davon, so etwas nennen Anleger einen Rug Pull.",
+                "Die Website war voller Rechtschreib- und Grammatikfehler und verschwand danach samt den Social-Media-Konten."
+            ],
+            "source": "https://www.bbc.com/news/business-59129466"
+        },
+        {
+            "id": "celsius",
+            "name": "Celsius und sein Token CEL",
+            "names": [
+                "Celsius",
+                "CEL",
+                "Alex Mashinsky",
+                "Arkham Intelligence"
+            ],
+            "facts": [
+                "Celsius wurde 2017 unter anderem von Alex Mashinsky gegründet, Kunden legten dort Kryptowährungen gegen Rendite an.",
+                "Im Mai 2022 hatte Celsius 8 Milliarden Dollar an Kunden verliehen und fast 12 Milliarden Dollar Vermögen verwaltet.",
+                "Am 10. Juni sagte Mashinsky in seiner Fragestunde auf YouTube, Celsius habe Milliarden an Liquidität und jeder komme sofort an sein Geld.",
+                "Am 13. Juni 2022 stoppte Celsius alle Abhebungen wegen extremer Marktbedingungen.",
+                "Am 13. Juli 2022 meldete Celsius Insolvenz nach Chapter 11 an.",
+                "Laut Arkham Intelligence verkaufte Mashinsky CEL im Wert von 44 Millionen Dollar über Börsen."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Celsius_Network"
+        },
+        {
+            "id": "libra-milei",
+            "name": "der Memecoin LIBRA",
+            "names": [
+                "LIBRA",
+                "Javier Milei",
+                "Kelsier Ventures",
+                "The Economist"
+            ],
+            "facts": [
+                "Am 14. Februar 2025 bewarb Argentiniens Präsident Javier Milei das Kryptoprojekt LIBRA, drei Minuten nach der Erstellung des Tokens.",
+                "Die Gründer von LIBRA hielten 70 Prozent aller Token und verkauften sie abrupt, der Kurs fiel um 85 Prozent.",
+                "Die Marktkapitalisierung stieg auf 4,6 Milliarden Dollar und lag am 15. Februar nur noch bei 162 Millionen Dollar.",
+                "Anleger verloren 251 Millionen Dollar, es gab Vorwürfe eines Rug Pulls, und der Skandal heißt Cryptogate.",
+                "Stunden nach der Werbung zog Milei seine Empfehlung zurück und löschte den Beitrag.",
+                "The Economist nannte es den ersten großen Skandal seiner Präsidentschaft."
+            ],
+            "source": "https://en.wikipedia.org/wiki/$Libra_cryptocurrency_scandal"
+        },
+        {
+            "id": "diem",
+            "name": "Facebooks Libra, später Diem",
+            "names": [
+                "Facebook",
+                "Libra",
+                "Diem",
+                "Silvergate",
+                "PayPal",
+                "eBay",
+                "Mastercard",
+                "Stripe",
+                "Visa",
+                "Mark Zuckerberg"
+            ],
+            "facts": [
+                "Facebook kündigte das Projekt am 18. Juni 2019 unter dem Namen Libra an, eine Stablecoin-Zahlungswelt auf einer erlaubnispflichtigen Blockchain.",
+                "Im Oktober 2019 verließen PayPal, eBay, Mastercard, Stripe und Visa die Libra Association.",
+                "Im Dezember 2020 wurde Libra nach rechtlichem Streit um Namen und Logo in Diem umbenannt.",
+                "Im Januar 2022 löste sich die Diem Association auf und verkaufte das Projekt für berichtete 200 Millionen Dollar an Silvergate.",
+                "Silvergate schrieb die Diem-Investition im Januar 2023 ab."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Diem_(digital_currency)"
+        },
+        {
+            "id": "iron-titan",
+            "name": "TITAN und der Stablecoin IRON von Iron Finance",
+            "names": [
+                "Iron Finance",
+                "TITAN",
+                "IRON",
+                "USDC",
+                "Mark Cuban",
+                "Forbes"
+            ],
+            "facts": [
+                "IRON war ein algorithmischer Stablecoin, gedeckt zu 75 Prozent mit USDC und zu 25 Prozent mit dem Token TITAN.",
+                "Zu den frühen Investoren von Iron Finance gehörte Mark Cuban.",
+                "Im Juni 2021 brach der Wert der Token zusammen, nachdem große Halter ihre TITAN-Bestände zum Höchstkurs verkauften, und IRON und TITAN fielen steil.",
+                "Forbes beschrieb das als eine Welle von Panikverkäufen."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Iron_Finance"
+        },
+        {
+            "id": "quadrigacx",
+            "name": "die Börse QuadrigaCX",
+            "names": [
+                "QuadrigaCX",
+                "Gerald Cotten",
+                "Quadriga"
+            ],
+            "facts": [
+                "QuadrigaCX galt als größte Kryptobörse Kanadas, als sie 2019 zusammenbrach.",
+                "Gründer und Chef Gerald Cotten starb im Dezember 2018 nach einer Reise nach Indien.",
+                "Bis zu 250 Millionen kanadische Dollar in Kryptowährung, die 115.000 Kunden gehörten, fehlten oder waren unerreichbar, weil nur Cotten das Passwort der Offline-Wallets hatte.",
+                "Am 8. April 2019 ging die Firma in die Insolvenz, mit 215,7 Millionen kanadischen Dollar Schulden und etwa 28 Millionen Vermögen.",
+                "Die Anwälte der Kunden verlangten, dass Cottens Leiche exhumiert wird.",
+                "Ein Untersuchungsbericht stellte fest, dass Cotten mit Konten unter falschen Namen und erfundenen Guthaben betrogen hatte, ein altmodischer Betrug in moderner Technik."
+            ],
+            "source": "https://en.wikipedia.org/wiki/QuadrigaCX"
+        },
+        {
+            "id": "thodex",
+            "name": "die Börse Thodex",
+            "names": [
+                "Thodex",
+                "Faruk Fatih Özer",
+                "Interpol"
+            ],
+            "facts": [
+                "Thodex war eine türkische Kryptobörse, gegründet von Faruk Fatih Özer.",
+                "Als sie im April 2021 einfror, hatte sie 391.000 Nutzer und geschätzt 2 Milliarden Dollar Anlegergeld.",
+                "Özer verließ die Türkei in Richtung Tirana in Albanien, mit 2 Milliarden Dollar in Kryptowährung.",
+                "Am 23. April 2021 erließ Interpol eine Red Notice gegen Özer.",
+                "Im September 2021 gab es Haftbefehle gegen Özer und 81 weitere Verdächtige."
+            ],
+            "source": "https://en.wikipedia.org/wiki/Thodex"
+        }
+    ]
+}

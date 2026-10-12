@@ -41,6 +41,11 @@ use Throwable;
  * plannedFor() keeps the choice for a slot once made (cache), so a teaser
  * that named the rubric and the rubric written later agree.
  *
+ * The long formats (Shows, P9) come first: a slot the schedule gives one
+ * (`programme.shows.schedule`) gets it when it has material, else the
+ * rotation as before. Their names and patterns are part of the catalogue
+ * (all(), so a teaser may name them), their material is Shows'.
+ *
  * @phpstan-import-type Slot from BroadcastClock
  *
  * @phpstan-type RubricMaterial array{data: string, names: list<string>, sources: list<string>, hash: string, keys: list<string>, same_story: bool}
@@ -80,6 +85,16 @@ class Rubrics
 
     public function __construct(private readonly ?BroadcastClock $clock = null) {}
 
+    /**
+     * The rubrics and the long formats (Shows::CATALOGUE): how each is named on air, what it brings, how a line names it.
+     *
+     * @return array<string, array{name: string, what: string, pattern: string}>
+     */
+    public static function all(): array
+    {
+        return [...self::CATALOGUE, ...Shows::CATALOGUE];
+    }
+
     private function clock(): BroadcastClock
     {
         return $this->clock ?? BroadcastClock::fromConfig();
@@ -106,11 +121,13 @@ class Rubrics
 
         $kept = Cache::get(self::PLAN.$slot['key']);
 
-        if (is_string($kept) && isset(self::CATALOGUE[$kept])) {
+        if (is_string($kept) && isset(self::all()[$kept])) {
             return $kept;
         }
 
-        foreach ($this->rotationFor($slot) as $id) {
+        $show = app(Shows::class)->scheduledFor($slot);
+
+        foreach ([...($show === null ? [] : [$show]), ...$this->rotationFor($slot)] as $id) {
             if ($this->material($id, $now) !== null) {
                 Cache::put(self::PLAN.$slot['key'], $id, CarbonImmutable::createFromTimestamp($slot['key'])->addHour());
 
@@ -156,7 +173,7 @@ class Rubrics
                 self::PODCAST => $this->podcast(),
                 self::HISTORY => $this->history($now),
                 self::CHAT => $this->chat($now),
-                default => null,
+                default => Shows::isShow($id) ? app(Shows::class)->material($id, $now) : null,
             };
         } catch (Throwable) {
             return null;
@@ -173,6 +190,10 @@ class Rubrics
      */
     public function aired(string $id, array $material, CarbonImmutable $now): void
     {
+        if (Shows::isShow($id)) {
+            Shows::markUsed($id, $material['keys'], $now);
+        }
+
         $hours = (array) config('tv.commentary.programme.rubrics.repeat_hours', []);
         Cache::put(self::AIRED.$id, $material['hash'], $now->addHours(max(1, (int) ($hours[$id] ?? $hours['default'] ?? 2))));
 
