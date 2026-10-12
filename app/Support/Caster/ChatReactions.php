@@ -353,8 +353,8 @@ class ChatReactions
     {
         return array_filter([
             'Die letzten Folgen des EINUNDZWANZIG-Podcasts, neueste zuerst' => $this->podcast->block(),
-            'Was diese Person in den letzten Stunden geschrieben hat, neueste zuerst' => $this->memory->thread($pubkey, $now),
-            'Was die anderen im Chat zuletzt geschrieben haben, neueste zuerst' => $this->memory->others($pubkey, $now),
+            'Hintergrund: was diese Person in den letzten Stunden geschrieben hat und was du ihr geantwortet hast, neueste zuerst (nicht nacherzählen, nicht wiederholen)' => $this->memory->thread($pubkey, $now),
+            'Hintergrund: was die anderen im Chat zuletzt geschrieben haben, neueste zuerst (nicht nacherzählen)' => $this->memory->others($pubkey, $now),
         ], fn (?string $block): bool => $block !== null);
     }
 
