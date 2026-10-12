@@ -29,7 +29,10 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     Storage::fake('local');
     config(['tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10, 'tv.commentary.parts.sentences' => 5, 'tv.commentary.repeat_hours' => 0,
-        'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00', 'tv.commentary.idents.bed_kinds' => ['bulletin']]);
+        'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00', 'tv.commentary.idents.bed_kinds' => ['bulletin'],
+        // The P4 sound alone: one stinger per slot, the legacy bed (the P11 rotation has its own tests, ImagingSoundsTest).
+        'tv.commentary.idents.stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
+        'tv.commentary.idents.beds' => [], 'tv.commentary.idents.format_beds' => []]);
 });
 
 /** The idents of the config, switched on. */
@@ -221,4 +224,3 @@ it('builds no idents while they are switched off, and the director then plays th
     expect(Idents::fromConfig())->toBeNull()
         ->and(identsFirstClip(SceneDirector::fromConfig(app(ClipSpool::class)))['ident'])->toBeNull();
 });
-

@@ -422,16 +422,18 @@ it('renders an Anchor line again only when its spoken text or length changed', f
     Http::fake(['voicestudio.test/generate' => Http::response(Pcm::toWav(str_repeat(pack('v', 900), 24000), 24000)), '*' => Http::response([])]);
     Process::fake();
     $generated = fn (): int => count(Http::recorded(fn (Request $request): bool => str_ends_with($request->url(), '/generate')));
-    $count = count(json_decode((string) file_get_contents(resource_path('data/voice/anchor-jingles.json')), true)['lines']);
+    // The block jingles and the radio imaging (P11) are voiced by the same run.
+    $count = count(json_decode((string) file_get_contents(resource_path('data/voice/anchor-jingles.json')), true)['lines'])
+        + count(json_decode((string) file_get_contents(resource_path('data/voice/anchor-imaging.json')), true)['lines']);
     $field = fn (Request $request, string $name): ?string => collect($request->data())->firstWhere('name', $name)['contents'] ?? null;
 
-    $this->artisan('caster:jingles', ['--pause' => 0, '--no-blips' => true, '--limit' => 100])->assertSuccessful();
+    $this->artisan('caster:jingles', ['--pause' => 0, '--no-blips' => true, '--limit' => 400])->assertSuccessful();
     expect($generated())->toBe($count);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/generate')
         && $field($request, 'text') === "You're listening to TWENTY ONE. Eee. Sports. Radio."
         && $field($request, 'duration') === '6.8' && $field($request, 'language') === 'en');
 
-    $this->artisan('caster:jingles', ['--pause' => 0, '--no-blips' => true, '--limit' => 100])->assertSuccessful();
+    $this->artisan('caster:jingles', ['--pause' => 0, '--no-blips' => true, '--limit' => 400])->assertSuccessful();
     expect($generated())->toBe($count);
 
     config(['tv.commentary.blocks.anchor.seconds_per_word' => 0.7]);
