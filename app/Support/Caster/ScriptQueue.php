@@ -13,6 +13,8 @@ use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
 use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
+use App\Support\Caster\Programme\Shows;
+use App\Support\Caster\Programme\ShowScripts;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Voice\VoiceHygiene;
 use Carbon\CarbonImmutable;
@@ -371,7 +373,9 @@ class ScriptQueue
 
         $settings = (array) config('tv.commentary.programme.rubrics', []);
         $write = max(1, (int) ($settings['write_minutes_ahead'] ?? 8));
-        $slots = array_values(array_filter(BroadcastClock::fromConfig()->upcoming($now, $write), fn (array $slot): bool => $slot['type'] === BroadcastClock::RUBRIC));
+        // A long format may start writing earlier (the hotline looks its questions up first).
+        $furthest = max($write, ...array_values(array_map(fn (mixed $format): int => is_array($format) ? (int) ($format['write_minutes_ahead'] ?? 0) : 0, (array) config('tv.commentary.programme.shows.formats', []))));
+        $slots = array_values(array_filter(BroadcastClock::fromConfig()->upcoming($now, $furthest), fn (array $slot): bool => $slot['type'] === BroadcastClock::RUBRIC));
         $slot = $slots[0] ?? null;
 
         if ($slot === null) {
@@ -379,17 +383,30 @@ class ScriptQueue
         }
 
         $ahead = $slot['key'] - $now->getTimestamp();
+        $show = app(Shows::class)->scheduledFor($slot);
+        $window = $show === null ? $write : max($write, (int) (Shows::settings($show)['write_minutes_ahead'] ?? 0));
 
-        if ($ahead > 60 * $write || $ahead < 60 * (float) ($settings['last_write_minutes'] ?? 2) || Rubrics::written($slot['key'])) {
+        if ($ahead > 60 * $window || $ahead < 60 * (float) ($settings['last_write_minutes'] ?? 2) || Rubrics::written($slot['key'])) {
             return 0;
         }
 
         $rubrics = app(Rubrics::class);
         $id = $rubrics->plannedFor($slot, $now);
-        $material = $id === null ? null : $rubrics->material($id, $now);
-        $rubric = $id === null || $material === null ? null : $this->rubricScripts->write($slot, $id, $material, $now);
 
-        if ($id === null || $material === null || $rubric === null
+        // Planned early for a long format's window, the rotation's rubric still waits for its own.
+        if ($id === null || (! Shows::isShow($id) && $ahead > 60 * $write)) {
+            return 0;
+        }
+
+        if (Shows::isShow($id)) {
+            $material = app(Shows::class)->material($id, $now);
+            $rubric = $material === null ? null : app(ShowScripts::class)->write($slot, $id, $material, $now);
+        } else {
+            $material = $rubrics->material($id, $now);
+            $rubric = $material === null ? null : $this->rubricScripts->write($slot, $id, $material, $now);
+        }
+
+        if ($material === null || $rubric === null
             || $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $rubric['text'], Rubrics::hashFor($id, $material, $slot['key']), (int) ($settings['priority'] ?? 70), $now,
                 source: CasterScript::SOURCE_AI, topic: $id, speakers: $rubric['speakers'], airsAt: $slot['starts_at'],
                 expiresAt: $slot['starts_at']->addSeconds((int) ($settings['late_seconds'] ?? 180) + 600)) === null) {

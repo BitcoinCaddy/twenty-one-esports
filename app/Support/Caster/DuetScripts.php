@@ -215,7 +215,9 @@ final class DuetScripts
     }
 
     /**
-     * The model's lines as turns: a line led by "Markus:" or "Sirius:" (any
+     * The model's lines as turns: a line led by a speaker's name ("Markus:",
+     * "Sirius:", or any other voice with a profile in
+     * `voicestudio.profiles`, so a further voice needs only its config; any
      * case, also bold or with a dash) starts or continues that speaker's
      * turn, a line without a speaker continues the current turn; a line
      * before any speaker counts for Markus. A speaker tag right after a
@@ -229,11 +231,12 @@ final class DuetScripts
     {
         [$lines, $speakers] = [[], []];
         $current = DuetDirector::MARKUS;
-        $text = preg_replace('/(?<=[.!?…"“”»)\]])[ \t]+(?=[*_]*(?:markus|sirius)(?:\s+turm)?[*_]*\s*[:：])/iu', "\n", $text) ?? $text;
+        $names = implode('|', array_map(fn (string $speaker): string => preg_quote($speaker, '/'), self::speakerNames()));
+        $text = preg_replace('/(?<=[.!?…"“”»)\]])[ \t]+(?=[*_]*(?:'.$names.')(?:\s+turm)?[*_]*\s*[:：])/iu', "\n", $text) ?? $text;
 
         foreach (ScriptGuard::lines($text) as $line) {
-            if (preg_match('/^[\s*_\-–—>]*(markus|sirius)(?:\s+turm)?[\s*_]*[:：][\s*_]*(.*)$/iu', $line, $match) === 1) {
-                $current = mb_strtolower($match[1]) === 'sirius' ? DuetDirector::SIRIUS : DuetDirector::MARKUS;
+            if (preg_match('/^[\s*_\-–—>]*('.$names.')(?:\s+turm)?[\s*_]*[:：][\s*_]*(.*)$/iu', $line, $match) === 1) {
+                $current = mb_strtolower($match[1]);
                 $line = trim($match[2]);
             }
 
@@ -244,6 +247,20 @@ final class DuetScripts
         }
 
         return DuetDirector::turns($lines, $speakers);
+    }
+
+    /**
+     * The speakers a script may name: Markus, Sirius and every voice with a
+     * VoiceStudio profile (`voicestudio.profiles`), lowercase.
+     *
+     * @return list<string>
+     */
+    public static function speakerNames(): array
+    {
+        $profiles = array_keys(array_filter((array) config('tv.commentary.voicestudio.profiles', []), fn (mixed $profile): bool => is_string($profile) && trim($profile) !== ''));
+        $names = array_map(fn (mixed $name): string => mb_strtolower((string) $name), $profiles);
+
+        return array_values(array_unique([DuetDirector::MARKUS, DuetDirector::SIRIUS, ...array_filter($names, fn (string $name): bool => preg_match('/^[a-z]{2,20}$/', $name) === 1)]));
     }
 
     /**

@@ -103,7 +103,7 @@ class Announcements
                 $about = self::BULLETINS[$slot['type']];
             } elseif ($slot['type'] === BroadcastClock::RUBRIC) {
                 $id = $this->rubrics()->plannedFor(['type' => $slot['type'], 'minute' => $slot['minute'], 'key' => $slot['starts_at']->getTimestamp()], $from);
-                $about = $id === null ? null : Rubrics::CATALOGUE[$id];
+                $about = $id === null ? null : Rubrics::all()[$id];
             } else {
                 $about = null;
             }
@@ -165,7 +165,7 @@ class Announcements
         }
 
         // A programme word for a slot that does not come: a rubric not planned, news when no bulletin of the kind follows.
-        foreach ([...array_values(Rubrics::CATALOGUE), ...array_values(self::BULLETINS)] as $about) {
+        foreach ([...array_values(Rubrics::all()), ...array_values(self::BULLETINS)] as $about) {
             if (preg_match($about['pattern'], $line) === 1 && array_filter($named, fn (array $entry): bool => $entry['pattern'] === $about['pattern']) === []) {
                 // "nach den Nachrichten" right after the bulletin that just aired names that one.
                 $justAired = $after !== null && isset(self::BULLETINS[$after]) && self::BULLETINS[$after]['pattern'] === $about['pattern'];

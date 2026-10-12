@@ -5,6 +5,7 @@ namespace App\Support\Caster\Blocks;
 use App\Models\CasterScript;
 use App\Support\Caster\ChatReactions;
 use App\Support\Caster\ChatWishes;
+use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\SceneTopic;
 use Carbon\CarbonImmutable;
@@ -20,7 +21,8 @@ use Carbon\CarbonImmutable;
  * evergreen() decides what may ever come again: only talk, history and the
  * rubrics without a date in them; never a bulletin, a teaser, a chat reply,
  * a wish, a zap thank-you, a greeting, a live moment, news, a followed
- * note, the news talk, Sport und Wetter, the press review, the league or chat rubric, a scene
+ * note, the news talk, Sport und Wetter, the press review, the league or chat rubric, the long
+ * formats bound to their day (Shows::DAY_BOUND; the Shitcoin-Friedhof may come again), a scene
  * about running games or results, a block that opens with a time-of-day
  * jingle or a "coming up" jingle, and no block with a line that names the
  * time ("Es ist vierzehn Uhr", "heute Abend", "gerade eben").
@@ -37,6 +39,8 @@ final class ReplayArchive
         'chat', 'nachrichten_talk', 'presseschau', 'liga', SportWeather::TOPIC,
         SceneTopic::LIVE_GAMES, SceneTopic::LIVE_TOURNAMENT, SceneTopic::RESULTS, SceneTopic::TOURNAMENTS, SceneTopic::MEMPOOL,
         ChatReactions::ZAP_TOPIC, ChatReactions::GREETING_TOPIC,
+        // The long formats bound to their day (P9): Chat-Tribunal, Meetup-Radar, Partie des Tages, Hotline, Bitcoin-Zeitreise.
+        ...Shows::DAY_BOUND,
     ];
 
     /** A line that names the time of day or a moment ("Es ist vierzehn Uhr", "heute Abend", "gerade eben"). */

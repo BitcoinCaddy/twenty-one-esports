@@ -40,12 +40,14 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
      * @param  float|null  $temperatureOverride  sampling temperature (null: the provider's default); the TV voice samples hot for variance
      * @param  int|null  $maxTokensOverride  output tokens (null: `esports.voice.max_output_tokens`); a long TV segment needs more than a post
      * @param  bool  $plan  the TV voice plans its bit before it writes (PLAN_FIELDS ahead of `text`)
+     * @param  int|null  $timeoutOverride  seconds (null: `esports.voice.timeout_seconds`); a five-minute show takes longer to write than a post
      */
     public function __construct(
         private readonly string $fixedPart = '',
         private readonly ?float $temperatureOverride = null,
         private readonly ?int $maxTokensOverride = null,
         private readonly bool $plan = false,
+        private readonly ?int $timeoutOverride = null,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 
     public function timeout(): int
     {
-        return (int) config('esports.voice.timeout_seconds', 15);
+        return $this->timeoutOverride ?? (int) config('esports.voice.timeout_seconds', 15);
     }
 
     public function maxTokens(): int
