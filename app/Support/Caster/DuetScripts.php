@@ -135,12 +135,15 @@ final class DuetScripts
      * repaired, then the hygiene, fact and script guards over its spoken
      * text. The duet, or null with the reason codes.
      *
+     * `$maxTurns` and `$maxSentences` (per turn) override `duet.turns.max` and
+     * the speakers' `duet.sentences.*.max` (the day stock's long talks, StockScripts).
+     *
      * @param  array<array-key, mixed>  $facts
      * @return array{0: array{text: string, speakers: list<string>}|null, 1: list<string>}
      */
-    public function evaluate(string $raw, array $facts, bool $cutOff = false): array
+    public function evaluate(string $raw, array $facts, bool $cutOff = false, ?int $maxTurns = null, ?int $maxSentences = null): array
     {
-        $duet = $this->repair(self::parse($this->hygiene->clean($raw, true, 'de')));
+        $duet = $this->repair(self::parse($this->hygiene->clean($raw, true, 'de')), $maxTurns, $maxSentences);
 
         if ($duet === null) {
             return [null, [self::TURNS]];
@@ -170,10 +173,10 @@ final class DuetScripts
      * @param  list<array{speaker: string, text: string}>  $turns
      * @return array{text: string, speakers: list<string>}|null
      */
-    public function repair(array $turns): ?array
+    public function repair(array $turns, ?int $maxTurns = null, ?int $maxSentences = null): ?array
     {
         $turns = DuetDirector::turns(array_column($turns, 'text'), array_column($turns, 'speaker'));
-        $turns = array_slice($turns, 0, max(2, (int) config('tv.commentary.duet.turns.max', 5)));
+        $turns = array_slice($turns, 0, max(2, $maxTurns ?? (int) config('tv.commentary.duet.turns.max', 5)));
         $speakers = array_column($turns, 'speaker');
 
         if (! in_array(DuetDirector::SIRIUS, $speakers, true) || ! in_array(DuetDirector::MARKUS, $speakers, true)) {
@@ -184,7 +187,7 @@ final class DuetScripts
         [$lines, $speakers] = [[], []];
 
         foreach ($turns as $turn) {
-            $max = max(1, (int) config("tv.commentary.duet.sentences.{$turn['speaker']}.max", 3));
+            $max = max(1, $maxSentences ?? (int) config("tv.commentary.duet.sentences.{$turn['speaker']}.max", 3));
             $text = ScriptGuard::trimSentences(ScriptGuard::withoutShort(ScriptGuard::sentenceLines(CasterVoice::withoutHashtags($turn['text'])), 1, $maxWords), $max);
             $turnLines = ScriptGuard::lines($text);
 

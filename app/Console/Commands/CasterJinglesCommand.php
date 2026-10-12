@@ -25,9 +25,15 @@ use InvalidArgumentException;
  *     no person's clone), made once and found by its name afterwards
  *     (`blocks.anchor`, TV_ANCHOR_PROFILE pins one);
  *  2. one VoiceStudio call per line of resources/data/voice/anchor-jingles.json
- *     whose voice is not on disk yet (voice/<id>.wav, the source), at most
- *     `--limit` calls, `--pause` seconds apart so the fetcher's voicing never
- *     starves; no ASR;
+ *     whose voice is not on disk yet or was made for another spoken text,
+ *     length or profile (voice/<id>.wav, the source, with its hash in
+ *     voice/<id>.json), at most `--limit` calls, `--pause` seconds apart so
+ *     the fetcher's voicing never starves; no ASR. English only, the line's
+ *     `spoken` text ("Eee. Sports." for ESPORTS), slow and dramatic: the
+ *     `duration` VoiceStudio is asked for is `anchor.seconds_per_word` per
+ *     word plus `anchor.sentence_pause_seconds` per sentence (user
+ *     2026-10-12: "viel viel viel langsamer und dramatischer"; `speed` had no
+ *     audible effect, 2.58 s at 0.75);
  *  3. two variants of every line over the self-made music (JingleSynth:
  *     bed, key, voice treatment, intro from a hash of the id), ducked,
  *     -16 LUFS, limited, Ogg Opus (anchor/<id>-a.opus, -b.opus), a jingle
@@ -53,6 +59,7 @@ class CasterJinglesCommand extends Command
 
     public function handle(CasterFetcher $fetcher): int
     {
+        $this->calls = 0;
         $settings = (array) config('tv.commentary.blocks', []);
         $dir = rtrim((string) ($settings['jingles']['dir'] ?? storage_path('app/jingles')), '/');
         $list = json_decode((string) file_get_contents(resource_path('data/voice/anchor-jingles.json')), true);
@@ -89,13 +96,17 @@ class CasterJinglesCommand extends Command
 
             $id = $line['id'];
             $voice = $dir.'/voice/'.$id.'.wav';
-            $keep[] = 'voice/'.$id.'.wav';
+            $spoken = is_string($line['spoken'] ?? null) && trim($line['spoken']) !== '' ? $line['spoken'] : $line['text'];
+            $duration = self::duration($spoken);
+            $hash = $profile === null ? null : self::voiceHash($spoken, $duration, $profile, (string) ($line['language'] ?? 'en'));
+            array_push($keep, 'voice/'.$id.'.wav', 'voice/'.$id.'.json');
 
-            if (! is_file($voice) && $profile !== null && $this->calls < $limit) {
-                $wav = $this->generate($fetcher, $line['text'], $profile, (float) ($settings['anchor']['speed'] ?? 1.0), (string) ($line['language'] ?? 'de'));
+            if ($hash !== null && $this->calls < $limit && (! is_file($voice) || self::storedHash($dir, $id) !== $hash)) {
+                $wav = $this->generate($fetcher, $spoken, $profile, (float) ($settings['anchor']['speed'] ?? 1.0), (string) ($line['language'] ?? 'en'), $duration);
 
                 if ($wav !== null) {
                     file_put_contents($voice, $wav);
+                    file_put_contents($dir.'/voice/'.$id.'.json', (string) json_encode(['hash' => $hash, 'spoken' => $spoken, 'duration' => $duration], JSON_UNESCAPED_UNICODE));
                 }
             }
 
@@ -109,7 +120,7 @@ class CasterJinglesCommand extends Command
                 $item = $this->render($dir, $id, $variant, $line['category'], $voice);
 
                 if ($item !== null) {
-                    $items[] = $item + ['line' => $id, 'category' => $line['category'], 'text' => $line['text']];
+                    $items[] = $item + ['line' => $id, 'category' => $line['category'], 'text' => $line['text'], 'spoken' => $spoken, 'voice_hash' => self::storedHash($dir, $id)];
                     $keep[] = $item['file'];
                 }
             }
@@ -193,7 +204,34 @@ class CasterJinglesCommand extends Command
         return is_string($id) ? $id : null;
     }
 
-    private function generate(CasterFetcher $fetcher, string $text, string $profile, float $speed, string $language): ?string
+    /**
+     * The length the Anchor is asked to take for `$spoken`: `anchor.seconds_per_word` per word plus
+     * `anchor.sentence_pause_seconds` per sentence, to a tenth of a second ("You are listening to TWENTY ONE. Eee.
+     * Sports. Radio.": 9 words, 4 sentences, 7.4 s at the defaults; the probe of 2026-10-12 took 7).
+     */
+    public static function duration(string $spoken): float
+    {
+        $anchor = (array) config('tv.commentary.blocks.anchor', []);
+        $words = count(preg_split('/\s+/u', trim($spoken), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $sentences = max(1, preg_match_all('/[.!?]+(?=\s|$)/u', trim($spoken)));
+
+        return round($words * (float) ($anchor['seconds_per_word'] ?? 0.55) + $sentences * (float) ($anchor['sentence_pause_seconds'] ?? 0.6), 1);
+    }
+
+    /** What a voice was made from: a changed spoken text, length, profile or language renders it again. */
+    public static function voiceHash(string $spoken, float $duration, string $profile, string $language): string
+    {
+        return sha1((string) json_encode([$spoken, $duration, $profile, $language], JSON_UNESCAPED_UNICODE));
+    }
+
+    private static function storedHash(string $dir, string $id): ?string
+    {
+        $meta = is_file($dir.'/voice/'.$id.'.json') ? json_decode((string) file_get_contents($dir.'/voice/'.$id.'.json'), true) : null;
+
+        return is_array($meta) && is_string($meta['hash'] ?? null) ? $meta['hash'] : null;
+    }
+
+    private function generate(CasterFetcher $fetcher, string $text, string $profile, float $speed, string $language, ?float $duration = null): ?string
     {
         if ($this->calls > 0) {
             sleep(max(0, (int) $this->option('pause')));
@@ -201,7 +239,7 @@ class CasterJinglesCommand extends Command
 
         $this->calls++;
         $started = microtime(true);
-        $wav = $fetcher->generate($text, $profile, $speed, $language);
+        $wav = $fetcher->generate($text, $profile, $speed, $language, $duration);
         $this->line(sprintf('voiced %-60s %.1f s', mb_strimwidth($text, 0, 60), microtime(true) - $started));
 
         return $wav;
@@ -293,7 +331,7 @@ class CasterJinglesCommand extends Command
     {
         $keep = array_flip($keep);
 
-        foreach (['voice/*.wav', 'anchor/*.opus', 'blips/*/*.wav'] as $pattern) {
+        foreach (['voice/*.wav', 'voice/*.json', 'anchor/*.opus', 'blips/*/*.wav'] as $pattern) {
             foreach (glob($dir.'/'.$pattern) ?: [] as $file) {
                 if (! isset($keep[substr($file, strlen($dir) + 1)])) {
                     unlink($file);

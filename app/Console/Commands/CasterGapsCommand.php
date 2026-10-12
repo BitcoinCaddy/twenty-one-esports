@@ -13,19 +13,36 @@ use Illuminate\Console\Command;
  * log the stream writes (AirLog): every gap of the last `--minutes`, their
  * count, mean, maximum and how many exceed `--limit`. `--blocks` measures
  * only gaps between two programme blocks (the DoD's number); without it a
- * single clip's music gap counts too. Read-only; run it on the server:
+ * single clip's music gap counts too. `--mix` prints the hourly airtime
+ * budget instead (DayPlanner, user 2026-10-12): per Berlin hour the seconds
+ * of fresh voice, day stock, replays and music. Read-only; run it on the server:
  *
  *   php artisan caster:gaps --minutes=120 --blocks
+ *   php artisan caster:gaps --minutes=1440 --mix
  */
-#[Signature('caster:gaps {--minutes=60 : The window, counted back from now} {--blocks : Only gaps between two programme blocks} {--limit=1.0 : Seconds a gap may last} {--json : Machine-readable output}')]
+#[Signature('caster:gaps {--minutes=60 : The window, counted back from now} {--blocks : Only gaps between two programme blocks} {--limit=1.0 : Seconds a gap may last} {--mix : The airtime mix per hour (fresh, stock, replay, music)} {--json : Machine-readable output}')]
 #[Description('Measure the gaps between the voice stretches on air (programme blocks)')]
 class CasterGapsCommand extends Command
 {
     public function handle(): int
     {
-        $since = microtime(true) - 60 * max(1, (int) $this->option('minutes'));
+        $since = (float) now()->getTimestamp() - 60 * max(1, (int) $this->option('minutes'));
         $limit = (float) $this->option('limit');
         $entries = array_values(array_filter(AirLog::entries(), fn (array $piece): bool => (float) $piece['end'] >= $since));
+
+        if ($this->option('mix')) {
+            $hours = AirLog::hourly($entries, $since, (float) now()->getTimestamp(), (string) config('tv.commentary.spool.quiet_hours.timezone', 'Europe/Berlin'));
+
+            if ($this->option('json')) {
+                $this->line((string) json_encode(['hours' => $hours]));
+
+                return self::SUCCESS;
+            }
+
+            $this->table(['hour', 'fresh (s)', 'stock (s)', 'replay (s)', 'music (s)'], array_map(fn (array $hour): array => [$hour['hour'], $hour['fresh'], $hour['stock'], $hour['replay'], $hour['music']], $hours));
+
+            return self::SUCCESS;
+        }
         $gaps = AirLog::gaps($entries, (bool) $this->option('blocks'));
         $values = array_column($gaps, 'gap');
         $summary = [

@@ -3,7 +3,10 @@
 namespace App\Support\Caster;
 
 use App\Support\Caster\Blocks\BlockFetcher;
+use App\Support\Caster\Blocks\DayPlanner;
+use App\Support\Caster\Blocks\DayStock;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
@@ -47,6 +50,9 @@ class CasterFetcher
 
     public const OFFLINE = 'offline';
 
+    /** A block went into the workstation's day stock (DayStock). */
+    public const STOCKED = 'stocked';
+
     /** @var Closure(float): void */
     private Closure $sleep;
 
@@ -69,20 +75,21 @@ class CasterFetcher
         }
 
         $script = $claim->json('script');
+        $spool = (float) $claim->json('spool_seconds', 0);
+        $full = $claim->json('full') === true;
 
         if (! is_array($script) || ! is_int($script['id'] ?? null)) {
-            if ($claim->json('full') === true) {
-                return self::FULL;
-            }
-
-            // Nothing new to voice: in the quiet hours a block of the day comes again from the archive (P6 replay).
-            return config('tv.commentary.blocks.enabled') === true
-                ? (app(BlockFetcher::class)->replay($this, (float) $claim->json('spool_seconds', 0)) ?? self::IDLE)
-                : self::IDLE;
+            return config('tv.commentary.blocks.enabled') === true ? $this->whenIdle($spool, $full) : ($full ? self::FULL : self::IDLE);
         }
 
         /** @var array<string, string> $terms */
         $terms = array_filter((array) $claim->json('pronunciation', []), 'is_string');
+
+        // The hourly airtime budget (DayPlanner): a fresh script keeps the GPU, but a server running low gets a stock block first.
+        if (config('tv.commentary.blocks.enabled') === true && DayStock::enabled()
+            && DayPlanner::topUpBeforeFresh($spool, DayStock::fromConfig()->entries() !== [], QuietHours::active(CarbonImmutable::now()))) {
+            app(BlockFetcher::class)->uploadStock($this);
+        }
 
         // Programme blocks (plan "TWENTY ONE Radio", P6): everything but a live moment or a chat reaction is rendered
         // into a block of several scripts with jingles; those two are still voiced alone, to play next.
@@ -94,13 +101,50 @@ class CasterFetcher
     }
 
     /**
-     * One claim call: the server's answer, or null when it is unreachable or refuses. `$urgent`: only a live moment,
-     * a reaction, a wish or a bulletin (asked while a block is being rendered).
+     * Nothing to voice (DayPlanner::whenIdle()): a stock block goes up, else
+     * a replay of the archive when the air would run dry, else the GPU
+     * renders day stock, else the fetcher waits. A refused step falls
+     * through to the next.
      */
-    public function claim(bool $urgent = false): ?Response
+    private function whenIdle(float $spool, bool $full): string
     {
+        $now = CarbonImmutable::now();
+        $stock = DayStock::enabled() ? DayStock::fromConfig() : null;
+        $blocks = app(BlockFetcher::class);
+
+        foreach (DayPlanner::whenIdle($spool, $stock !== null && $stock->entries() !== [], $stock === null || $stock->isFull(), QuietHours::active($now), DayStock::windowActive($now)) as $step) {
+            $outcome = match ($step) {
+                DayPlanner::UPLOAD_STOCK => $blocks->uploadStock($this),
+                DayPlanner::REPLAY => $blocks->replay($this, $spool),
+                DayPlanner::RENDER_STOCK => $blocks->stock($this),
+                default => $full ? self::FULL : self::IDLE,
+            };
+
+            if ($outcome !== null) {
+                return $outcome;
+            }
+        }
+
+        return $full ? self::FULL : self::IDLE;
+    }
+
+    /**
+     * One claim call: the server's answer, or null when it is unreachable or refuses. `$urgent`: only a live moment,
+     * a reaction, a wish or a bulletin (asked while a block is being rendered); `$stock`: an evergreen talk for the
+     * day stock (the server may write it first, so it gets a longer timeout). While the day stock runs, every claim
+     * tells the server how much stock there is (DayStock::HEADER).
+     */
+    public function claim(bool $urgent = false, bool $stock = false): ?Response
+    {
+        $request = $this->server();
+
+        if (DayStock::enabled()) {
+            $request = $request->withHeaders([DayStock::HEADER => DayStock::fromConfig()->header()]);
+        }
+
         try {
-            $claim = $this->server()->post($this->settings()['server'].'/api/caster/claim'.($urgent ? '?only=urgent' : ''));
+            $claim = ($stock ? $request->timeout(150) : $request)
+                ->post($this->settings()['server'].'/api/caster/claim'.($urgent ? '?only=urgent' : ($stock ? '?only=stock' : '')));
         } catch (ConnectionException) {
             return null;
         }
@@ -360,10 +404,11 @@ class CasterFetcher
 
     /**
      * One sentence from VoiceStudio as WAV bytes in the voice of
-     * `$profileId` at `$speed`, retried on connection errors and 5xx; its
-     * history entry deleted right after.
+     * `$profileId` at `$speed` (and, given, a total `$duration` in seconds:
+     * VoiceStudio stretches the speech to it, the Anchor's slow jingles),
+     * retried on connection errors and 5xx; its history entry deleted right after.
      */
-    public function generate(string $text, string $profileId, float $speed, ?string $language = null): ?string
+    public function generate(string $text, string $profileId, float $speed, ?string $language = null, ?float $duration = null): ?string
     {
         $settings = $this->settings();
         $attempts = max(1, (int) $settings['retries'] + 1);
@@ -375,6 +420,7 @@ class CasterFetcher
                     'profile_id' => $profileId,
                     'speed' => (string) $speed,
                     'language' => $language ?? (string) $settings['language'],
+                    ...($duration === null ? [] : ['duration' => sprintf('%.1F', $duration)]),
                 ]);
 
                 $this->forget($response);

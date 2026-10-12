@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Process;
 class CasterFetchCommand extends Command
 {
     /** Waits after an outcome, in multiples of `idle_seconds`; FULL waits `full_seconds` instead. */
-    private const WAITS = [CasterFetcher::VOICED => 0, CasterFetcher::IDLE => 1, CasterFetcher::RELEASED => 3, CasterFetcher::OFFLINE => 6];
+    private const WAITS = [CasterFetcher::VOICED => 0, CasterFetcher::STOCKED => 0, CasterFetcher::IDLE => 1, CasterFetcher::RELEASED => 3, CasterFetcher::OFFLINE => 6];
 
     private bool $stopping = false;
 

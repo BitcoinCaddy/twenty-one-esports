@@ -335,8 +335,90 @@ return [
                 'keep_hours' => (float) env('TV_COMMENTARY_REPLAY_KEEP_HOURS', 48),
                 'max_bytes' => (int) env('TV_COMMENTARY_REPLAY_MAX_BYTES', 3 * 1024 * 1024 * 1024),
                 'below_seconds' => 120,
-                'repeat_hours' => 12,
+                'repeat_hours' => (float) env('TV_COMMENTARY_REPLAY_REPEAT_HOURS', 24),
                 'continuous' => (bool) env('TV_COMMENTARY_REPLAY_CONTINUOUS', false),
+                // Never before this many hours after a block first aired, and each block at most once within
+                // `repeat_hours` (user 2026-10-12: "auf keinen Fall zu viele Wiederholungen").
+                'min_age_hours' => (float) env('TV_COMMENTARY_REPLAY_MIN_AGE_HOURS', 6),
+                // The day reserve (user 2026-10-12): by day a replay goes up only when the spool would otherwise run
+                // dry (below `below_seconds`, no day stock, nothing fresh to voice), and the server takes it only within
+                // `hourly_share` of the Berlin hour (3600 s) and `daily_share` of the day's voice airtime; beyond that,
+                // music. A day replay expires `day_expire_minutes` after its upload.
+                'day_reserve' => (bool) env('TV_COMMENTARY_REPLAY_DAY_RESERVE', true),
+                'hourly_share' => (float) env('TV_COMMENTARY_REPLAY_HOURLY_SHARE', 0.10),
+                'daily_share' => (float) env('TV_COMMENTARY_REPLAY_DAILY_SHARE', 0.20),
+                'day_expire_minutes' => 20,
+            ],
+            // The day stock (user 2026-10-12: "Wir brauchen für den Tag über im Buffer vorgerendertes Programm durchweg"):
+            // VoiceStudio renders about as fast as it speaks (RTF 1.0 to 1.5 measured), so by day the GPU only keeps pace.
+            // In `window` (Berlin; the quiet hours by default, when the air needs one clip per ten minutes) the workstation
+            // claims evergreen talk scripts written for the stock (`?only=stock`, StockScripts: no time of day, no date)
+            // and renders them into blocks of `seconds` kept in `dir` (at most `target_hours` of audio and `max_bytes`).
+            // By day it uploads one whenever the server holds less than `upload_below_seconds` (during a fresh render too,
+            // below `low_seconds`); fresh items keep the GPU and play first, a stock block airs once and then moves to the
+            // replay archive. `day_share`: a stock render by day while the spool is full (bootstrap before the first
+            // night; it grows the stock only by what the GPU has left). `suppress_scenes`: no slide scene scripts by day
+            // while at least `suppress_min_seconds` of stock is reported (or fresh talk waits), except `keep_scene_topics`.
+            'stock' => [
+                'enabled' => (bool) env('TV_COMMENTARY_STOCK', false),
+                'dir' => env('TV_COMMENTARY_STOCK_DIR', storage_path('app/day-stock')),
+                'target_hours' => (float) env('TV_COMMENTARY_STOCK_TARGET_HOURS', 6),
+                'max_bytes' => (int) env('TV_COMMENTARY_STOCK_MAX_BYTES', 2 * 1024 * 1024 * 1024),
+                'window' => ['from' => env('TV_COMMENTARY_STOCK_FROM', '01:00'), 'to' => env('TV_COMMENTARY_STOCK_TO', '09:00')],
+                'seconds' => ['min' => 180, 'max' => 360],
+                'upload_below_seconds' => (float) env('TV_COMMENTARY_STOCK_UPLOAD_BELOW', 900),
+                'low_seconds' => (float) env('TV_COMMENTARY_STOCK_LOW', 300),
+                'day_share' => (bool) env('TV_COMMENTARY_STOCK_DAY_SHARE', true),
+                'suppress_scenes' => (bool) env('TV_COMMENTARY_STOCK_SUPPRESS_SCENES', true),
+                'suppress_min_seconds' => 600,
+                'keep_scene_topics' => ['live_games', 'live_tournament'],
+                // The writer: one model call per script, `turns` turns of up to `sentences_per_turn` sentences.
+                'daily_cap' => (int) env('TV_COMMENTARY_STOCK_DAILY_CAP', 220),
+                'max_output_tokens' => 3000,
+                'turns' => ['min' => 6, 'max' => 10],
+                'sentences_per_turn' => 4,
+                // An unvoiced stock script expires this long after it was written; an uploaded stock block keeps
+                // `spool_hours` in the server's spool.
+                'max_age_minutes' => 180,
+                'spool_hours' => 3,
+                // Who talks (VoiceStudio profiles under voicestudio.profiles); a list, so a talk show of three or four
+                // needs only their profiles (and their names in DuetScripts::parse()).
+                'speakers' => ['markus', 'sirius'],
+                // The formats in rotation (user 2026-10-12: "lustige Programme ohne aktuellen Bezug, sondern sinnvolles
+                // Besprechen; Programm für Tutorials für Bitcoin-Dinge"), each with its Anchor jingle categories (the
+                // talk jingle when none of them exists).
+                'formats' => ['talk', 'tutorial', 'geschichte', 'podcast', 'liga'],
+                'jingles' => [
+                    'talk' => ['stock-talk'],
+                    'tutorial' => ['stock-tutorial'],
+                    'geschichte' => ['stock-geschichte', 'rubric-geschichte'],
+                    'podcast' => ['rubric-podcast'],
+                    'liga' => ['rubric-liga'],
+                ],
+                'tutorials' => [
+                    'Die Seed-Phrase sicher aufbewahren: warum Papier oder Metall statt Foto und Cloud',
+                    'Eine eigene Bitcoin-Node betreiben: was sie prüft und warum das Vertrauen ersetzt',
+                    'Einen Lightning-Kanal öffnen: was Kapazität und Liquidität bedeuten',
+                    'Warum eine Hardware-Wallet die Schlüssel vom Internet fernhält',
+                    'Den eigenen Nostr-Schlüssel verstehen und sichern: privater und öffentlicher Schlüssel',
+                    'Multisig erklärt: mehrere Schlüssel für eine Ausgabe',
+                    'Coinjoin-Grundlagen: was Privatsphäre auf einer öffentlichen Blockchain heißt',
+                    'Bitcoin und Steuern: die Grundbegriffe, ohne Beratung',
+                    'Was der Mempool ist und warum ein neuer Block im Schnitt alle zehn Minuten kommt',
+                    'Selbstverwahrung statt Börse: was "not your keys, not your coins" bedeutet',
+                ],
+                'questions' => [
+                    'Was ist an Fiatgeld eigentlich das Problem?',
+                    'Warum ist Bitcoin kein Unternehmen und hat keinen Chef?',
+                    'Warum zählen Meetups vor Ort mehr als jede Online-Gruppe?',
+                    'Ist HODLn eine Tugend oder einfach nur Faulheit?',
+                    'Warum freie Rede ein offenes Protokoll wie Nostr braucht',
+                    'Was würde ein Bauer aus dem Jahr fünfzehnhundertfünfundzwanzig zu unseren Steuern sagen?',
+                    'Braucht man in einer Bitcoin-Welt noch Banken?',
+                    'Warum ist begrenzte Menge so wichtig, einundzwanzig Millionen und keine mehr?',
+                    'Was macht eine gute Community aus, online wie offline?',
+                    'Warum Spielen mit Bitcoin-Bezug mehr Spaß macht als Zocken um Fiatgeld',
+                ],
             ],
             // The Anchor (VoiceStudio personality us_news_anchor, a designed voice, no person's clone), made into a profile
             // by caster:jingles; TV_ANCHOR_PROFILE pins an existing one.
@@ -347,6 +429,10 @@ return [
                 'instruct' => 'male, middle-aged, moderate pitch, american accent',
                 'seed' => 2121,
                 'speed' => 1.0,
+                // Slow and dramatic (user 2026-10-12): VoiceStudio's `duration` per line from these (speed had no
+                // audible effect); caster:jingles renders a line again when its spoken text or length changed.
+                'seconds_per_word' => (float) env('TV_ANCHOR_SECONDS_PER_WORD', 0.55),
+                'sentence_pause_seconds' => 0.6,
             ],
         ],
 

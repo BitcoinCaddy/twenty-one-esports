@@ -230,7 +230,8 @@ it('uploads an evergreen block of the day behind the replay jingle at night when
         ->and($fetcher->runOnce())->toBe(CasterFetcher::IDLE);
 });
 
-it('never replays without the replay jingle, by day, or with the switch off', function () {
+it('never replays without the replay jingle, by day without the day reserve, or with the switch off', function () {
+    config(['tv.commentary.blocks.replay.day_reserve' => false]);
     replayArchiveWorkstation(false);
     replayArchiveServer();
     $this->travelTo(CarbonImmutable::parse('2026-10-13 02:00', 'Europe/Berlin'));

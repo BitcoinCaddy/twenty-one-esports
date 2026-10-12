@@ -766,7 +766,8 @@ final class SceneDirector
     /** One stretch of voice that was on air, for the air log (caster:gaps). */
     private function logPiece(CasterClip $clip, float $end): void
     {
-        AirLog::record(['clip' => $clip->id, 'kind' => $clip->kind, 'block' => $clip->isBlock(), 'start' => round($this->airStart, 3), 'end' => round($end, 3)]);
+        AirLog::record(['clip' => $clip->id, 'kind' => $clip->kind, 'block' => $clip->isBlock(), 'start' => round($this->airStart, 3), 'end' => round($end, 3),
+            'source' => $clip->isReplay() ? AirLog::REPLAY : ($clip->isStock() ? AirLog::STOCK : AirLog::FRESH)]);
     }
 
     /**

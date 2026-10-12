@@ -142,7 +142,7 @@ class ClipSpool
      * @throws SpoolFull when the byte cap is reached
      * @throws InvalidClip when the upload is not an Opus clip within the limits
      */
-    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now, bool $replay = false): CasterClip
+    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now, bool $replay = false, bool $stock = false): CasterClip
     {
         $lead = $scripts[0] ?? null;
         $blocks = (array) config('tv.commentary.blocks', []);
@@ -193,6 +193,8 @@ class ClipSpool
                 'protected_seconds' => round(max(0.0, min($durationSeconds, $protectedSeconds)), 3),
                 // A block from the workstation's archive, played again in the quiet hours (P6 replay).
                 'replay' => $replay,
+                // A block of the workstation's day stock (DayStock): evergreen, plays after every fresh block.
+                'stock' => $stock,
             ],
         ]);
 
@@ -202,13 +204,25 @@ class ClipSpool
     }
 
     /**
-     * The oldest ready talk block (CasterClip::BLOCK), never one that starts
-     * with a later part of a story (it follows the block before it, part()).
+     * The next ready talk block (CasterClip::BLOCK), never one that starts
+     * with a later part of a story (it follows the block before it, part()):
+     * the hourly airtime budget's order (user 2026-10-12), the oldest fresh
+     * block first, then the oldest day-stock block, a replay only when
+     * neither waits.
      */
     public function nextBlock(CarbonImmutable $now): ?CasterClip
     {
-        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterClip::BLOCK)->where('expires_at', '>', $now)
-            ->whereNotIn('caster_script_id', self::continuations())->orderBy('id')->first();
+        $blocks = CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterClip::BLOCK)->where('expires_at', '>', $now)
+            ->whereNotIn('caster_script_id', self::continuations())->orderBy('id')->get();
+
+        return $blocks->sortBy(fn (CasterClip $clip): int => $clip->isReplay() ? 2 : ($clip->isStock() ? 1 : 0), SORT_REGULAR, false)->first();
+    }
+
+    /** Seconds of ready day-stock and replay blocks: the reserve, which never makes the spool full for fresh scripts. */
+    public function reserveSeconds(): float
+    {
+        return (float) CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterClip::BLOCK)->get()
+            ->filter(fn (CasterClip $clip): bool => $clip->isStock() || $clip->isReplay())->sum('duration_seconds');
     }
 
     /** Bytes of every clip in the spool (fillers included). */
