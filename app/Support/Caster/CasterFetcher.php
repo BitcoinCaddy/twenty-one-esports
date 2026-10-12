@@ -286,7 +286,7 @@ class CasterFetcher
                 $response = Http::asMultipart()->timeout((int) $settings['timeout_seconds'])->post(rtrim((string) $settings['url'], '/').'/generate', [
                     'text' => $text,
                     'profile_id' => $profileId,
-                    'speed' => (string) $settings['speed'],
+                    'speed' => (string) ($profileId === (string) ($settings['profiles']['sirius'] ?? '') ? ($settings['speeds']['sirius'] ?? $settings['speed']) : $settings['speed']),
                     'language' => (string) $settings['language'],
                 ]);
 

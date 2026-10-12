@@ -201,6 +201,8 @@ return [
             // The breath when the speaker changes inside a clip (seconds, random within the range).
             'speaker_pause' => ['min' => 0.25, 'max' => 0.4],
             'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
+            // Sirius' clone speaks faster than Markus' at the same speed (user 2026-10-12: "Er redet schneller als Markus").
+            'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92)],
             'language' => 'de',
             'timeout_seconds' => 60,
             'retries' => 3,
@@ -387,7 +389,7 @@ return [
             'cooldown' => 0.35,
             // The previous duet's last turns a follow-up may pick up, if it ran within this many minutes.
             'follow_up_minutes' => 30,
-            'sentences' => ['markus' => ['min' => 1, 'max' => 3], 'sirius' => ['min' => 1, 'max' => 2]],
+            'sentences' => ['markus' => ['min' => 2, 'max' => 4], 'sirius' => ['min' => 2, 'max' => 4]],
             'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 1000),
         ],
 
