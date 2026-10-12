@@ -38,6 +38,7 @@ globalThis.WebSocket = class {
     }
 };
 
+const { cacheKey } = await import('../../resources/js/chatCache.js');
 const { wrapGroupMessage } = await import('../../resources/js/nostrChat.js');
 const { UNWRAP_RETRIES, roomChat } = await import('../../resources/js/roomChat.js');
 
@@ -111,7 +112,7 @@ test('a wrap the signer could not open is not cached and shows up once the signe
     await comp.receive(wrap);
 
     assert.equal(Object.hasOwn(comp.cache, wrap.id), false, 'a failed unwrap is not cached: ' + JSON.stringify(comp.cache));
-    assert.equal(store.size, 0, 'nothing is persisted for it either');
+    assert.equal(localStorage.getItem(cacheKey('room', pk.me)), null, 'nothing is persisted for it either');
     assert.deepEqual(comp.rumors, []);
 
     await wait(60);

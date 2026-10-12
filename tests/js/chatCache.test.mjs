@@ -23,7 +23,7 @@ globalThis.addEventListener ??= () => {};
 globalThis.removeEventListener ??= () => {};
 globalThis.document ??= { addEventListener() {}, querySelector() { return null; } };
 
-const { cacheKey, loadCache, migrateLegacy, sanitizeEntry } = await import('../../resources/js/chatCache.js');
+const { cacheKey, loadCache, migrateLegacy, purgeKey, sanitizeEntry } = await import('../../resources/js/chatCache.js');
 const { cardContent, casualExpiration, lobbyTags, parseCard } = await import('../../resources/js/lobbyCards.js');
 const { unwrapMessage, wrapGroupMessage, wrapMessage } = await import('../../resources/js/nostrChat.js');
 const { gameChat } = await import('../../resources/js/gameChat.js');
@@ -127,6 +127,8 @@ test('both loaders survive what an older writer or a stranger left: stubs, cards
     for (const chat of ['game', 'room']) {
         store.clear();
         store.set(cacheKey(chat, G), JSON.stringify(junk));
+        // Written by this code: the one-time null purge of 2026-10-12 is for caches of before, tested on its own below.
+        store.set(purgeKey(chat, G), '1');
         const alpine = chat === 'game' ? game() : room();
 
         assert.doesNotThrow(() => alpine.start(), chat);
@@ -186,4 +188,25 @@ test('a rumor with a malformed tag is refused when the wrap is opened, not kept 
     const wrap = finalizeEvent({ kind: 1059, created_at: NOW, tags: [['p', G]], content: nip44.encrypt(JSON.stringify(seal), nip44.getConversationKey(key, G)) }, key);
 
     await assert.rejects(() => unwrapMessage(keySigner(guestKey), wrap, G), (error) => error.code === 'rumor');
+});
+
+test('null entries written before 2026-10-12 are dropped once per reader and chat, so wraps a signer failed to open once are opened again', () => {
+    const me = getPublicKey(generateSecretKey());
+    const other = getPublicKey(generateSecretKey());
+    const ids = { lost: 'a'.repeat(64), lostToo: 'b'.repeat(64) };
+    localStorage.setItem(cacheKey('desk', me), JSON.stringify({ [ids.lost]: null, [ids.lostToo]: null }));
+    localStorage.setItem(cacheKey('desk', other), JSON.stringify({ [ids.lost]: null }));
+
+    // First load of this reader's desk cache: the null entries are gone (the relays deliver the wraps again).
+    assert.deepEqual(loadCache('desk', me).cache, {});
+    assert.deepEqual(JSON.parse(localStorage.getItem(cacheKey('desk', me))), {});
+
+    // A null written after that first load stays: it is a wrap that is no message, judged by the new receive().
+    localStorage.setItem(cacheKey('desk', me), JSON.stringify({ [ids.lost]: null }));
+    assert.deepEqual(loadCache('desk', me).cache, { [ids.lost]: null });
+
+    // Per reader and chat: another reader's cache and this reader's room cache are purged on their own first load.
+    assert.deepEqual(loadCache('desk', other).cache, {});
+    localStorage.setItem(cacheKey('room', me), JSON.stringify({ [ids.lost]: null }));
+    assert.deepEqual(loadCache('room', me).cache, {});
 });

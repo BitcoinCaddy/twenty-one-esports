@@ -160,7 +160,7 @@ test('the room chat and the game chat keep separate caches, and neither holds a 
     $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/chatCache.test.mjs']);
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ skipped 0');
+        ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ skipped 0');
 });
 
 test('the guest\'s "seen" needs the host\'s "shared" first, and only a player of the match sets either', function () {
