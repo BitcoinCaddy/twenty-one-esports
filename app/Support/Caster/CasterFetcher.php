@@ -79,10 +79,19 @@ class CasterFetcher
         }
 
         $id = $script['id'];
-        $sentences = array_values(array_filter((array) ($script['sentences'] ?? []), fn (mixed $line): bool => is_string($line) && trim($line) !== ''));
+        $given = is_array($script['speakers'] ?? null) ? array_values($script['speakers']) : [];
+        [$sentences, $speakers] = [[], []];
+
+        foreach (array_values((array) ($script['sentences'] ?? [])) as $index => $line) {
+            if (is_string($line) && trim($line) !== '') {
+                $sentences[] = $line;
+                $speakers[] = is_string($given[$index] ?? null) ? $given[$index] : DuetDirector::MARKUS;
+            }
+        }
+
         $terms = array_filter((array) $claim->json('pronunciation', []), 'is_string');
 
-        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms);
+        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $given === [] ? null : $speakers);
         $opus = $voiced === null ? null : $this->encode($voiced['pcm'], $voiced['rate']);
 
         if ($voiced === null || $opus === null) {
@@ -162,23 +171,51 @@ class CasterFetcher
      * The sentences voiced chunk by chunk (chunks()), joined with pauses
      * between the chunks only, in memory. `ends` are the chunk ends.
      *
+     * A duet (`$speakers`, one per sentence, DuetDirector): a chunk never
+     * spans two speakers, each is voiced with its speaker's profile
+     * (`voicestudio.profiles`, Markus' `profile_id` for a speaker without
+     * one), and a speaker change gets a breath of `speaker_pause` seconds.
+     *
      * @param  list<string>  $sentences
      * @param  array<string, string>  $terms  the pronunciation dictionary
+     * @param  list<string>|null  $speakers  the speaker of each sentence; null: Markus alone
      * @return array{pcm: string, rate: int, ends: list<float>}|null null when VoiceStudio failed past its retries
      */
-    public function voice(array $sentences, array $terms = []): ?array
+    public function voice(array $sentences, array $terms = [], ?array $speakers = null): ?array
     {
         $settings = $this->settings();
         $pause = (array) $settings['pause'];
+        $speakerPause = (array) ($settings['speaker_pause'] ?? []);
         $chunk = (array) ($settings['chunk'] ?? []);
-        $chunks = self::chunks($sentences, max(1, (int) ($chunk['max_sentences'] ?? 3)), max(1, (int) ($chunk['max_words'] ?? 25)));
+        $runs = [];
+
+        // Consecutive sentences of one speaker form a run; the chunks are cut within a run only.
+        foreach ($sentences as $index => $sentence) {
+            $speaker = $speakers[$index] ?? DuetDirector::MARKUS;
+            $last = array_key_last($runs);
+
+            if ($last !== null && $runs[$last][0] === $speaker) {
+                $runs[$last][1][] = $sentence;
+            } else {
+                $runs[] = [$speaker, [$sentence]];
+            }
+        }
+
+        $chunks = [];
+
+        foreach ($runs as [$speaker, $lines]) {
+            foreach (self::chunks($lines, max(1, (int) ($chunk['max_sentences'] ?? 3)), max(1, (int) ($chunk['max_words'] ?? 25))) as $lines) {
+                $chunks[] = [$speaker, $lines];
+            }
+        }
+
         $pcm = '';
         $rate = null;
         $ends = [];
 
-        foreach ($chunks as $index => $lines) {
+        foreach ($chunks as $index => [$speaker, $lines]) {
             $sentence = (string) end($lines);
-            $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms));
+            $wav = $this->generate(Pronunciation::spoken(implode(' ', $lines), $terms), $this->profile($speaker));
 
             if ($wav === null) {
                 return null;
@@ -198,7 +235,10 @@ class CasterFetcher
             $pcm .= Pcm::trimTail($part, $rate, (int) $settings['silence_threshold'], (int) $settings['fade_ms']);
             $ends[] = round(Pcm::seconds($pcm, $rate), 3);
 
-            if ($index < count($chunks) - 1) {
+            if ($index < count($chunks) - 1 && $chunks[$index + 1][0] !== $speaker) {
+                $min = (float) ($speakerPause['min'] ?? 0.25);
+                $pcm .= Pcm::silence(max(0.1, $min + max(0.0, (float) ($speakerPause['max'] ?? 0.4) - $min) * (mt_rand(0, 1000) / 1000)), $rate);
+            } elseif ($index < count($chunks) - 1) {
                 $base = ScriptGuard::accented($sentence) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
                 $jitter = (float) ($pause['jitter'] ?? 0.0);
                 $pcm .= Pcm::silence(max(0.1, $base + $jitter * (mt_rand(-1000, 1000) / 1000)), $rate);
@@ -232,10 +272,11 @@ class CasterFetcher
     }
 
     /**
-     * One sentence from VoiceStudio as WAV bytes, retried on connection
-     * errors and 5xx; its history entry deleted right after.
+     * One sentence from VoiceStudio as WAV bytes in the voice of
+     * `$profileId`, retried on connection errors and 5xx; its history entry
+     * deleted right after.
      */
-    private function generate(string $text): ?string
+    private function generate(string $text, string $profileId): ?string
     {
         $settings = $this->settings();
         $attempts = max(1, (int) $settings['retries'] + 1);
@@ -244,7 +285,7 @@ class CasterFetcher
             try {
                 $response = Http::asMultipart()->timeout((int) $settings['timeout_seconds'])->post(rtrim((string) $settings['url'], '/').'/generate', [
                     'text' => $text,
-                    'profile_id' => (string) $settings['profile_id'],
+                    'profile_id' => $profileId,
                     'speed' => (string) $settings['speed'],
                     'language' => (string) $settings['language'],
                 ]);
@@ -284,6 +325,15 @@ class CasterFetcher
         } catch (ConnectionException) {
             // Left in VoiceStudio's history (its own retention cap still applies).
         }
+    }
+
+    /** The VoiceStudio profile of a speaker (`voicestudio.profiles`); Markus' `profile_id` for one without a profile. */
+    private function profile(string $speaker): string
+    {
+        $settings = $this->settings();
+        $profile = ((array) ($settings['profiles'] ?? []))[$speaker] ?? null;
+
+        return is_string($profile) && trim($profile) !== '' ? trim($profile) : (string) $settings['profile_id'];
     }
 
     private function release(int $id): void

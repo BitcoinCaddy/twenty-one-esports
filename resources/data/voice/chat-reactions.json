@@ -55,7 +55,7 @@
   "Lightning ist schon ziemlich schnell, aber eure Großzügigkeit ist heute noch schneller.",
   "So macht ein Livestream richtig Spaß, und dafür sitze ich ja auch hier.",
   "Ihr seid ganz ehrlich das beste Publikum, das sich diese Liga wünschen kann.",
-  "Das Brett freut sich und die Spieler freuen sich, aber am meisten freue ich mich.",
+  "Die Lobby freut sich und die Spieler freuen sich, aber am meisten freue ich mich.",
   "Mit so einem Chat im Rücken kann die Liga eigentlich nur gewinnen.",
   "Egal was heute noch passiert, wir sind gut gelaunt und stacken weiter fleißig Satoshis.",
   "Das ist Wertschätzung in der härtesten Währung der Welt, und die spürt man richtig.",
@@ -92,9 +92,9 @@
  ],
  "invite": [
   "Wer Lust hat, spielt einfach mit, denn bei uns ist jeder willkommen.",
-  "Kommt doch mal selbst an ein Brett und spielt eine Runde mit uns.",
+  "Kommt doch mal selbst in die Lobby und spielt eine Runde mit uns.",
   "Mitspielen geht ganz einfach über die Seite der Liga, und in ein paar Minuten seid ihr dabei.",
-  "Vielleicht sehen wir euch ja schon gleich selbst am Brett, das würde mich freuen.",
+  "Vielleicht sehen wir euch ja schon gleich selbst in einem Match, das würde mich freuen.",
   "Wer mag, fordert einfach jemanden zu einer Partie heraus und legt direkt los.",
   "Die Lobby ist rund um die Uhr offen, und dort wartet bestimmt schon jemand auf euch."
  ],
@@ -182,7 +182,7 @@
  "wish_game": [
   "{name} will wissen, wie es in der Liga steht, also schauen wir mal rein.",
   "Den aktuellen Spielstand gibt es jetzt für {name}, und der kommt sofort.",
-  "{name} fragt nach den Partien, und deshalb schauen wir jetzt mal aufs Brett.",
+  "{name} fragt nach den Partien, und deshalb schauen wir jetzt mal auf die laufenden Spiele.",
   "Für {name} gibt es jetzt einen Blick auf das, was gerade in der Liga läuft."
  ],
  "wish_canon": [
