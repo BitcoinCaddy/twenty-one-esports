@@ -39,8 +39,8 @@ use Throwable;
  * - Satoshis Hotline: the day's unanswered or best chat questions, each
  *   looked up on the web (CasterVoice::lookup(), `searches_per_question`)
  *   before the call (lookups()).
- * - Der Stammtisch der Ökonomen: a talk show of three on a real money
- *   headline, Markus and Sirius against the guest Genossin Gisela (TalkShow;
+ * - Turm und Genossin, der Talk: a talk show of three on a real money
+ *   headline, Sirius hosts, Markus against the guest Genossin Gisela (TalkShow;
  *   written by TalkShowScripts, not ShowScripts).
  *
  * material() is cheap (no model call, sources cached) and null when the
@@ -68,7 +68,7 @@ class Shows
 
     public const HOTLINE = 'hotline';
 
-    /** Der Stammtisch der Ökonomen (P16): the talk show of three, TalkShow and TalkShowScripts. */
+    /** Turm und Genossin, der Talk (P16; internal id "stammtisch"): the talk show of three, TalkShow and TalkShowScripts. */
     public const STAMMTISCH = 'stammtisch';
 
     /**
