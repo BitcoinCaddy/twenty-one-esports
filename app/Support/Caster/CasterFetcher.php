@@ -79,7 +79,10 @@ class CasterFetcher
         $full = $claim->json('full') === true;
 
         if (! is_array($script) || ! is_int($script['id'] ?? null)) {
-            return config('tv.commentary.blocks.enabled') === true ? $this->whenIdle($spool, $full) : ($full ? self::FULL : self::IDLE);
+            // A podcast replay on air (P12): the server says what the GPU does meanwhile, stock or idle.
+            $podcast = $claim->json('podcast.gpu');
+
+            return config('tv.commentary.blocks.enabled') === true ? $this->whenIdle($spool, $full, is_string($podcast) ? $podcast : null) : ($full ? self::FULL : self::IDLE);
         }
 
         /** @var array<string, string> $terms */
@@ -106,13 +109,13 @@ class CasterFetcher
      * renders day stock, else the fetcher waits. A refused step falls
      * through to the next.
      */
-    private function whenIdle(float $spool, bool $full): string
+    private function whenIdle(float $spool, bool $full, ?string $podcastGpu = null): string
     {
         $now = CarbonImmutable::now();
         $stock = DayStock::enabled() ? DayStock::fromConfig() : null;
         $blocks = app(BlockFetcher::class);
 
-        foreach (DayPlanner::whenIdle($spool, $stock !== null && $stock->entries() !== [], $stock === null || $stock->isFull(), QuietHours::active($now), DayStock::windowActive($now)) as $step) {
+        foreach (DayPlanner::whenIdle($spool, $stock !== null && $stock->entries() !== [], $stock === null || $stock->isFull(), QuietHours::active($now), DayStock::windowActive($now), $podcastGpu) as $step) {
             $outcome = match ($step) {
                 DayPlanner::UPLOAD_STOCK => $blocks->uploadStock($this),
                 DayPlanner::REPLAY => $blocks->replay($this, $spool),

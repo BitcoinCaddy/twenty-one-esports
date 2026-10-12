@@ -1050,6 +1050,88 @@ return [
             'digest_retry_minutes' => 30,
             'check_minutes' => 60,
         ],
+
+        // Podcast replay (plan "TWENTY ONE Radio", P12; user 2026-10-12: "lass jeweils die letzten Podcast-Folgen von
+        // EINUNDZWANZIG und Blocktrainer Re:Sat nutzen und pro Tag abspielen … Dabei soll die BG-Musik natürlich voll
+        // geduckt sein"). The server (`caster:podcasts`, App\Support\Caster\PodcastLibrary) reads each enabled source's feed
+        // at most every `check_minutes`, downloads the newest episode (title matching `title_pattern`, when set), levels it
+        // to the voice's loudness under `nice` and keeps it as Opus chunks of about `chunk_seconds`, cut at pauses, in `dir`
+        // on the spool disk: the newest episode per source, at most `max_bytes` in all. Once a day per source it airs from
+        // `starts_at` (Berlin) on (App\Support\Caster\PodcastReplay): the music in news mode the whole time, the bulletins
+        // on time (the episode stops at the pause nearest the slot within `pause_window_seconds` and resumes after
+        // bulletin, sport and weather), chat replies in the bulletin break or after max_hold_seconds at a pause, only the
+        // Anchor's podcast opener before and back-announce after. Meanwhile the queue writes no slide scenes, teasers or
+        // talk and the workstation's GPU renders day stock (`gpu` stock) or idles (`gpu` idle).
+        'podcast_replay' => [
+            'enabled' => (bool) env('TV_PODCAST_REPLAY', true),
+            'dir' => 'caster/podcasts',
+            'sources' => [
+                // The user hosts it (EINUNDZWANZIG main feed: all its shows, the newest episode).
+                'einundzwanzig' => [
+                    'enabled' => (bool) env('TV_PODCAST_REPLAY_EINUNDZWANZIG', true),
+                    'name' => 'EINUNDZWANZIG Podcast',
+                    // How Markus and Sirius name it (PodcastScripts).
+                    'spoken' => 'EINUNDZWANZIG Podcast',
+                    'feed' => 'https://anchor.fm/s/d8d3c38/podcast/rss',
+                    'title_pattern' => null,
+                    'starts_at' => env('TV_PODCAST_REPLAY_EINUNDZWANZIG_AT', '14:03'),
+                ],
+                // Third-party content: only with Blocktrainer's permission. The user named the show "Re:Sat"; in the
+                // Blocktrainer feed it is titled "Re:set #19 …" (no "Re:sat" title among 202 items, measured 2026-10-12),
+                // so the pattern takes both spellings and leaves out the Wochenrückblick and the interviews.
+                'resat' => [
+                    'enabled' => (bool) env('TV_PODCAST_REPLAY_RESAT', false),
+                    'name' => 'Blocktrainer Re:set',
+                    'spoken' => 'Blocktrainer-Podcast Reset',
+                    'feed' => 'https://serve.podhome.fm/rss/9b654631-a45c-58e4-a237-2e8aa65262b8',
+                    'title_pattern' => '/^Re:s[ae]t\b/i',
+                    'starts_at' => env('TV_PODCAST_REPLAY_RESAT_AT', '16:03'),
+                ],
+            ],
+            'check_minutes' => 60,
+            'feed_max_bytes' => 12 * 1024 * 1024,
+            // Episodes run one to two and a half hours: about 100 to 140 MB of MP3 (measured 2026-10-12).
+            'max_download_bytes' => 400 * 1024 * 1024,
+            'download_timeout_seconds' => 900,
+            'transcode_timeout_seconds' => 1_800,
+            'opus_kbps' => 32,
+            // A pause: at least `pause_seconds` below `pause_db` (ffmpeg silencedetect on the levelled episode). Measured on
+            // episode #335 (2026-10-12): -35 dB for 0.35 s left 6.2 % of the slot seconds without a pause within 20 s and gaps
+            // of up to 63 s in speech; -32 dB for 0.3 s leaves only its 233 s music outro (5.0 %), speech gaps at most 29 s.
+            'pause_db' => -32,
+            'pause_seconds' => 0.3,
+            'chunk_seconds' => 300,
+            'max_bytes' => (int) env('TV_PODCAST_REPLAY_MAX_BYTES', 1024 * 1024 * 1024),
+            // The airing goes into the spool this long before `starts_at`, and not later than `late_minutes` after it.
+            'ahead_minutes' => 15,
+            'late_minutes' => 60,
+            // A bulletin stops the episode at the pause nearest its slot, at most this far before or after it.
+            'pause_window_seconds' => 20,
+            // The rest of a chunk cut for the news or a reply resumes within this long (bulletin, sport and weather, replies).
+            'resume_within_seconds' => 1_800,
+            // What the workstation's GPU does meanwhile: `stock` renders day stock, `idle` waits.
+            'gpu' => env('TV_PODCAST_REPLAY_GPU', 'stock'),
+            // Markus and Sirius promote it (user 2026-10-12: "müssen auch regelmäßig angekündigt werden von KI-Markus und
+            // Sirius und bevor sie gespielt werden auch explizit"): a promo duet (a teaser) from `from` (Berlin) on at most
+            // every `every_minutes` and once more in the hour before the slot, only while today's airing really follows
+            // (enabled source, stored episode, not aired yet), up to `until_minutes_before` the slot; each airs within
+            // `expire_minutes`. Right before the episode their announcement duet, after it Markus' back-announce.
+            'promos' => [
+                'enabled' => (bool) env('TV_PODCAST_REPLAY_PROMOS', true),
+                'from' => '09:00',
+                'every_minutes' => (int) env('TV_PODCAST_REPLAY_PROMO_EVERY_MINUTES', 120),
+                'until_minutes_before' => 10,
+                'expire_minutes' => 30,
+                'priority' => 72,
+            ],
+            'scripts' => [
+                'daily_cap' => 30,
+                'timeout_seconds' => 60,
+                // Above the bulletin's writing, so the announcement is voiced before the episode starts.
+                'priority' => 76,
+                'tries' => 3,
+            ],
+        ],
     ],
 
 ];

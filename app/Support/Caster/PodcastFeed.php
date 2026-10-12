@@ -141,11 +141,14 @@ class PodcastFeed
      * has none), title, publication time, enclosure URL (https only) and
      * episode number (`itunes:episode`, else "#335 - …" or "Folge 123" in the
      * title, else null); null for an unreadable feed or no such item. No network and no
-     * entity expansion while parsing.
+     * entity expansion while parsing. With `$titlePattern` (a PCRE) only an
+     * item whose title matches it counts (one show of a feed that carries
+     * several, the podcast replay's Re:set). `notes`: the shownotes as plain
+     * text (shownotes()).
      *
-     * @return array{guid: string, title: string, published_at: int, url: string, episode_number: int|null}|null
+     * @return array{guid: string, title: string, published_at: int, url: string, episode_number: int|null, notes: string}|null
      */
-    public static function newestAudio(string $xml): ?array
+    public static function newestAudio(string $xml, ?string $titlePattern = null): ?array
     {
         $previous = libxml_use_internal_errors(true);
 
@@ -164,7 +167,7 @@ class PodcastFeed
             $url = trim((string) ($item->enclosure['url'] ?? ''));
             $title = self::plain((string) $item->title);
 
-            if ($title === '' || ! str_starts_with($url, 'https://')) {
+            if ($title === '' || ! str_starts_with($url, 'https://') || ($titlePattern !== null && @preg_match($titlePattern, $title) !== 1)) {
                 continue;
             }
 
@@ -179,7 +182,8 @@ class PodcastFeed
                 : (preg_match('/^#\s*(\d{1,5})\b|\b(?:Folge|Episode|Nr\.?)\s*(\d{1,5})\b/iu', $title, $match) === 1 ? (int) ($match[1] !== '' ? $match[1] : $match[2]) : null);
             $guid = trim((string) $item->guid);
 
-            return ['guid' => mb_substr($guid === '' ? $url : $guid, 0, 255), 'title' => mb_substr($title, 0, 255), 'published_at' => $published, 'url' => $url, 'episode_number' => $number];
+            return ['guid' => mb_substr($guid === '' ? $url : $guid, 0, 255), 'title' => mb_substr($title, 0, 255), 'published_at' => $published, 'url' => $url, 'episode_number' => $number,
+                'notes' => self::shownotes((string) $item->description)];
         }
 
         return null;

@@ -11,6 +11,7 @@ use App\Support\Caster\Programme\Announcements;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
+use App\Support\Caster\Programme\PodcastPromos;
 use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\Programme\RoastScripts;
 use App\Support\Caster\Programme\Rubrics;
@@ -160,12 +161,16 @@ class ScriptQueue
         $this->expire($now);
         $this->seedFillers($now);
         $quiet = QuietHours::active($now);
+        // While a podcast replay airs (P12) only the bulletins and sport and weather are written: no talk, rubric,
+        // teaser, segment or slide scene would get on air before it ends.
+        $podcast = PodcastReplay::active($now);
         $written = $this->fillBulletin($now);
         $written += $this->fillSportWeather($now);
-        $written += $quiet ? 0 : $this->fillNewsTalk($now);
-        $written += $this->fillRubric($now);
-        $written += $quiet ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
+        $written += $quiet || $podcast ? 0 : $this->fillNewsTalk($now);
+        $written += $podcast ? 0 : $this->fillRubric($now);
+        $written += $quiet || $podcast ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
         $written += $this->fillStock($now);
+        $written += $this->fillPodcast($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -176,7 +181,7 @@ class ScriptQueue
             $facts = $this->facts->forTopic($topic, $night);
             $this->supersedeTopic($topic, SceneFacts::hash($facts));
 
-            if ((! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
+            if (! $podcast && (! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
                 $factsByTopic[$topic] = $facts;
             }
         }
@@ -309,6 +314,16 @@ class ScriptQueue
 
         return $talk === null ? null : $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $talk['text'], StockScripts::TOPIC_PREFIX.$talk['format'], 0, $now,
             scene: StockScripts::SCENE, topic: StockScripts::TOPIC_PREFIX.$talk['format'], maxAgeMinutes: (int) config('tv.commentary.blocks.stock.max_age_minutes', 180), speakers: $talk['speakers']);
+    }
+
+    /**
+     * The podcast replay's promos, announcement and back-announce (P12, PodcastPromos), AI only.
+     *
+     * @return int scripts written
+     */
+    public function fillPodcast(CarbonImmutable $now): int
+    {
+        return self::aiEnabled() && PodcastLibrary::enabled() ? app(PodcastPromos::class)->fill($this, $now) : 0;
     }
 
     /**

@@ -74,8 +74,17 @@ class CasterScript extends Model
     /** The stand-in script of a replayed block from the workstation's archive (P6 replay): voiced already, never claimed. */
     public const REPLAY = 'replay';
 
+    /** The stand-in script of a podcast replay's airing (App\Support\Caster\PodcastReplay, P12): its chunks are the episode, never claimed. */
+    public const PODCAST = 'podcast';
+
+    /** Markus and Sirius announce a podcast replay right before it (P12, App\Support\Caster\Programme\PodcastScripts): played before its first chunk. */
+    public const PODCAST_INTRO = 'podcast_in';
+
+    /** Markus' back-announce after a podcast replay (P12): played after its last chunk. */
+    public const PODCAST_OUTRO = 'podcast_out';
+
     /** The kinds the broadcast clock places (`airs_at`): never counted as airtime ahead, never refused by the airtime cap. */
-    public const PROGRAMME = [self::BULLETIN, self::RUBRIC, self::TEASER];
+    public const PROGRAMME = [self::BULLETIN, self::RUBRIC, self::TEASER, self::PODCAST_INTRO, self::PODCAST_OUTRO];
 
     /** The long segments that play on calm slots only, one at a time (App\Support\Caster\ClipSpool::next()). */
     public const SEGMENTS = [self::NEWS, self::HISTORY, self::FOLLOWED];

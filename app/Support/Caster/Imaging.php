@@ -27,6 +27,10 @@ use Throwable;
  * The rules, in this order:
  *  - never on a chat reply or live moment, never on a later part of a story,
  *    never on a block (it carries its own jingles);
+ *  - a podcast replay (P12) opens with the podcast opener of its source
+ *    (podcast-open-<source>, else podcast-open) on its first chunk and closes
+ *    with the back-announce (podcast-close-<source>, else podcast-close) on
+ *    its last; nothing in between;
  *  - quiet hours: a station ID only, when one is due;
  *  - a bulletin opens with the news open of its slot (headlines at :30) and
  *    closes with the news close (back-announce);
@@ -138,6 +142,15 @@ final class Imaging
         $previousTalk = $this->previousTalk;
         $this->tailEndsAt = null;
         $this->previousTalk = in_array($kind, self::TALK_KINDS, true) && ! $clip->isBlock();
+
+        if ($kind === CasterScript::PODCAST) {
+            return $this->podcast($clip, $now);
+        }
+
+        // The announcement before a podcast and the back-announce after it: the podcast's own jingles stand between.
+        if (in_array($kind, [CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO], true)) {
+            return $none;
+        }
 
         if (in_array($kind, ClipSpool::LIVE_KINDS, true) || $clip->isBlock() || $this->library()->items() === []) {
             return $none;
@@ -278,6 +291,30 @@ final class Imaging
         }
 
         return ['pcm' => $pcm, 'ends' => $ends, 'before' => $before !== null, 'after' => $after !== null];
+    }
+
+    /**
+     * The opener of a podcast replay's first chunk and the back-announce after its last.
+     *
+     * @return array{before: array{id: string, line: string, category: string, file: string, seconds: float}|null, after: array{id: string, line: string, category: string, file: string, seconds: float}|null}
+     */
+    private function podcast(CasterClip $clip, CarbonImmutable $now): array
+    {
+        $podcast = $clip->podcastChunk() ?? ['source' => '', 'index' => 0, 'count' => 0];
+        $source = $podcast['source'];
+        $first = $podcast['index'] === 1;
+        $last = $podcast['index'] > 0 && $podcast['index'] === $podcast['count'];
+        $library = $this->library()->items() === [] ? null : $this->library();
+
+        // The opener belongs to the episode: it plays even right after another jingle.
+        $opened = $first ? $library?->pick(['podcast-open-'.$source, 'podcast-open'], $now) : null;
+        $closed = $last ? $library?->pick(['podcast-close-'.$source, 'podcast-close'], $now) : null;
+
+        if ($closed !== null) {
+            $this->tailEndsAt = $now->getTimestamp() + (int) ceil((float) $clip->duration_seconds + ($opened['seconds'] ?? 0.0) + $closed['seconds']);
+        }
+
+        return ['before' => $opened, 'after' => $closed];
     }
 
     /**

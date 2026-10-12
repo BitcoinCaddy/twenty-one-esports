@@ -121,6 +121,8 @@ final class BlockComposer
             // The news talk after a bulletin (P5, topic nachrichten_talk) is talk; every other rubric has its opener.
             'rubric' => $topic === 'nachrichten_talk' ? ['talk', 'sweeper'] : ['rubric-'.$topic, 'sweeper'],
             'teaser' => ['coming-up', 'sweeper'],
+            // The announcement and back-announce of a podcast replay (P12): the Anchor's podcast opener follows on the server.
+            CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO => [],
             CasterScript::HISTORY => ['rubric-geschichte', 'sweeper'],
             // A programme of the day stock opens with its format's jingle line (StockScripts::jinglesFor()).
             default => StockScripts::jinglesFor($topic),

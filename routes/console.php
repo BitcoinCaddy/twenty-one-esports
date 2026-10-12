@@ -862,3 +862,6 @@ Schedule::command('caster:followed')->everyFiveMinutes()->withoutOverlapping()->
 // The YouTube restream's live chat (radio P13): read when due (the command keeps the interval and the quota), summarised every 15 minutes.
 Schedule::command('caster:youtube-chat')->everyMinute()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('twentyone.stream.youtube.chat.enabled') === true);
 Schedule::command('caster:prune')->everyTenMinutes()->withoutOverlapping()->onOneServer();
+// The podcast replay (plan "TWENTY ONE Radio", P12): a newer episode is stored (download and transcode take minutes, so in
+// the background) and the day's airings go into the spool before their slots.
+Schedule::command('caster:podcasts')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.podcast_replay.enabled') === true);
