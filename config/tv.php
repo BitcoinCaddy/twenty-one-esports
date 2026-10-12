@@ -169,8 +169,9 @@ return [
             'max_bytes' => (int) env('TV_COMMENTARY_SPOOL_MAX_BYTES', 50 * 1024 * 1024),
             'max_seconds' => (int) env('TV_COMMENTARY_SPOOL_MAX_SECONDS', 1200),
             // A long Bauernkrieg segment of four minutes is about 1.5 MB at `opus_kbps` 48.
-            'max_clip_bytes' => 3 * 1024 * 1024,
-            'max_clip_seconds' => 90,
+            'max_clip_bytes' => 6 * 1024 * 1024,
+            // Long duets and chat duets ran past 90 s; a refused upload went back to the queue and was voiced again and again (2026-10-12).
+            'max_clip_seconds' => (int) env('TV_COMMENTARY_MAX_CLIP_SECONDS', 300),
             // A clip of these kinds may be this long (the long variants, tv.commentary.length): a long scene runs 60 to
             // 100 s spoken, a long news segment up to two minutes, a long Bauernkrieg segment two to four minutes.
             'long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280, 'bulletin' => 420, 'rubric' => 130],

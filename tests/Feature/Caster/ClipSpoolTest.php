@@ -48,6 +48,7 @@ it('stores an Opus clip on disk and marks its script voiced', function () {
 });
 
 it('refuses an upload that is not an Opus clip or over the per-clip limits', function (string $body, float $seconds) {
+    config(['tv.commentary.spool.max_clip_seconds' => 90, 'tv.commentary.spool.max_clip_bytes' => 3 * 1024 * 1024, 'tv.commentary.spool.long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280, 'bulletin' => 420, 'rubric' => 130]]);
     expect(fn () => casterSpool()->store(casterScript(), $body, $seconds, [], CarbonImmutable::now()))->toThrow(InvalidClip::class);
 })->with([
     'not ogg' => ['RIFF....WAVEfmt ', 5.0],

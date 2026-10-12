@@ -20,6 +20,18 @@ use Laravel\Ai\Promptable;
 #[CacheInstructions]
 final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 {
+    /**
+     * "Thinking off" as the model takes it: Haiku accepts `disabled`, the
+     * newer Sonnet and Opus models only `between_tools` (the API refused
+     * `disabled` for claude-sonnet-5-5 with a 400, 2026-10-12).
+     *
+     * @return array{type: string}
+     */
+    public static function thinkingOff(string $model): array
+    {
+        return str_contains($model, 'haiku') ? ['type' => 'disabled'] : ['type' => 'between_tools'];
+    }
+
     use Promptable;
 
     public const MOODS = ['hype', 'deadpan', 'frage', 'understatement', 'call', 'fakten', 'zitat'];
@@ -77,7 +89,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
     {
         $name = $provider instanceof Lab ? $provider->value : $provider;
 
-        return $name === 'anthropic' ? ['thinking' => ['type' => 'disabled'], 'output_config' => ['effort' => 'low']] : [];
+        return $name === 'anthropic' ? ['thinking' => VoiceAgent::thinkingOff($this->model()), 'output_config' => ['effort' => 'low']] : [];
     }
 
     public function schema(JsonSchema $schema): array

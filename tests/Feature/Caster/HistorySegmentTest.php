@@ -177,6 +177,7 @@ function casterHistoryClip(string $kind, float $seconds = 10.0): CasterClip
 }
 
 it('takes a clip of up to long_clip_seconds of its kind, any other kind only up to max_clip_seconds', function () {
+    config(['tv.commentary.spool.max_clip_seconds' => 90, 'tv.commentary.spool.max_clip_bytes' => 3 * 1024 * 1024, 'tv.commentary.spool.long_clip_seconds' => ['scene' => 130, 'news' => 150, 'history' => 280, 'bulletin' => 420, 'rubric' => 130]]);
     expect(casterHistoryClip(CasterScript::HISTORY, 278.0)->duration_seconds)->toBe(278.0)
         ->and(casterHistoryClip(CasterScript::SCENE, 118.0)->duration_seconds)->toBe(118.0)
         ->and(casterHistoryClip(CasterScript::NEWS, 148.0)->duration_seconds)->toBe(148.0)

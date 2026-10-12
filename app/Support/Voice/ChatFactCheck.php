@@ -66,7 +66,7 @@ final class ChatFactCheck implements Agent, HasProviderOptions, HasStructuredOut
     {
         $name = $provider instanceof Lab ? $provider->value : $provider;
 
-        return $name === 'anthropic' ? ['thinking' => ['type' => 'disabled'], 'output_config' => ['effort' => (string) config('esports.voice.fact_check.effort', 'low')]] : [];
+        return $name === 'anthropic' ? ['thinking' => VoiceAgent::thinkingOff($this->model()), 'output_config' => ['effort' => (string) config('esports.voice.fact_check.effort', 'low')]] : [];
     }
 
     public function schema(JsonSchema $schema): array

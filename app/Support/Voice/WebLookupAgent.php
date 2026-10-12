@@ -80,6 +80,6 @@ final class WebLookupAgent implements Agent, HasProviderOptions, HasTools
     {
         $name = $provider instanceof Lab ? $provider->value : $provider;
 
-        return $name === 'anthropic' ? ['thinking' => ['type' => 'disabled'], 'output_config' => ['effort' => 'low']] : [];
+        return $name === 'anthropic' ? ['thinking' => VoiceAgent::thinkingOff($this->model()), 'output_config' => ['effort' => 'low']] : [];
     }
 }

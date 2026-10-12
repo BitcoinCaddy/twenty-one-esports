@@ -57,6 +57,6 @@ final class PodcastDigestAgent implements Agent, HasProviderOptions
     {
         $name = $provider instanceof Lab ? $provider->value : $provider;
 
-        return $name === 'anthropic' ? ['thinking' => ['type' => 'disabled'], 'output_config' => ['effort' => 'low']] : [];
+        return $name === 'anthropic' ? ['thinking' => VoiceAgent::thinkingOff($this->model()), 'output_config' => ['effort' => 'low']] : [];
     }
 }
