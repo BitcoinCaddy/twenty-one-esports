@@ -6,11 +6,13 @@ use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\PodcastTranscripts;
+use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoicePrompt;
 use App\Support\Voice\VoiceUsage;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Responses\Data\FinishReason;
@@ -62,7 +64,7 @@ final class StockScripts
     /** The topic prefix of a stock script (`stock:<format>`). */
     public const TOPIC_PREFIX = 'stock:';
 
-    public const FORMATS = ['talk', 'tutorial', 'geschichte', 'podcast', 'liga'];
+    public const FORMATS = ['talk', 'tutorial', 'geschichte', 'podcast', 'liga', Roasts::SCHWARZBUCH, Roasts::INFLATION];
 
     /** @var array<string, string> */
     private const NAMES = [DuetDirector::MARKUS => 'Markus', DuetDirector::SIRIUS => 'Sirius'];
@@ -244,8 +246,24 @@ final class StockScripts
             'geschichte' => $this->canonLines(['bitcoin'], 3),
             'podcast' => app(PodcastTranscripts::class)->digestBlock(),
             'liga' => ($lines = CasterVoice::leagueBasics()) === [] ? null : implode("\n", array_map(fn (string $line): string => '- '.$line, $lines)),
+            Roasts::SCHWARZBUCH, Roasts::INFLATION => $this->roastMaterial($format),
             default => null,
         };
+    }
+
+    /** The material of an evergreen roast format (P10), remembered as used like a rubric's. */
+    private function roastMaterial(string $format): ?string
+    {
+        $roasts = app(Roasts::class);
+        $material = Roasts::enabled() ? $roasts->material($format, CarbonImmutable::now()) : null;
+
+        if ($material === null) {
+            return null;
+        }
+
+        $roasts->aired($format, $material, CarbonImmutable::now());
+
+        return $material['data'].($material['sources'] === [] ? '' : "\n\nQuelle, im Gespräch beim Namen nennen: ".implode(', ', $material['sources']));
     }
 
     /**
@@ -328,6 +346,8 @@ final class StockScripts
                 .' Nur allgemein bekanntes, sachlich richtiges Grundwissen; wo es unsicher ist, sagt ihr das. Keine Anlage-, Rechts- oder Steuerberatung (sagt das einmal beiläufig, wenn es um Geld oder Steuern geht), keine Kaufempfehlung, keine Produkt- oder Markennamen und keine Behauptungen über einzelne Produkte.',
             'geschichte' => "eine Geschichtsstunde über Bitcoin und die Cypherpunks: {$lead} erzählt die Geschichten hinter den Einträgen aus dem Material mit Substanz (was war, warum es zählt), {$others} fragt nach und hält mit eigener Meinung dagegen.",
             'podcast' => 'die Podcast-Ecke: zwei oder drei Gedanken aus der letzten Folge des EINUNDZWANZIG-Podcasts im Material, weitergesponnen und mit eigener Meinung besprochen.',
+            Roasts::SCHWARZBUCH => 'die Schwarzbuch-Stunde: ein echter Fall von Steuergeldverschwendung aus dem Material, erzählt wie eine Gruselgeschichte über verbranntes Steuergeld, mit Fassungslosigkeit und Roast über Staat und Bürokratie; Ort, Summen und Ablauf nur aus dem Material, als Wort, und die Quelle beim Namen.',
+            Roasts::INFLATION => 'die Inflationsbeichte: die Inflationsrate und die echten Preise von damals und heute aus dem Material, mit Quelle, gebeichtet und geroastet; nur die Zahlen aus dem Material, als Wort, und keine weiteren Preise.',
             'liga' => 'Liga-Geschichten: wie die TWENTY ONE Liga funktioniert und warum man mitspielen sollte, aus dem Material, ohne aktuelle Ergebnisse, ohne Spielernamen, mit Selbstironie über die eigene Liga.',
             default => 'ein Themen-Talk: die Frage aus dem Material wird mit Substanz besprochen (Gründe, Beispiele, Gegenargumente), mit gegenseitigem Roast und Spott über Staat, Fiatgeld und Zentralbanken, und am Ende steht eine klare Haltung.',
         };

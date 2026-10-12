@@ -221,9 +221,9 @@ class ChatReactions
             return 'person_cooldown';
         }
 
-        // The greetings for everybody have their own limit (everyone_minutes) and do not count here.
+        // The greetings for everybody (everyone_minutes) and the YouTube summaries (every_minutes) have their own limits and do not count here.
         $perHour = (int) ($settings['per_hour'] ?? 6);
-        if ($perHour > 0 && CasterScript::query()->where('kind', CasterScript::CHAT)->where(fn ($query) => $query->whereNull('topic')->orWhere('topic', '!=', self::GREETING_TOPIC))
+        if ($perHour > 0 && CasterScript::query()->where('kind', CasterScript::CHAT)->where(fn ($query) => $query->whereNull('topic')->orWhereNotIn('topic', [self::GREETING_TOPIC, YouTubeChatSummary::TOPIC]))
             ->where('created_at', '>', $now->subHour())->count() >= $perHour) {
             return 'hourly_cap';
         }

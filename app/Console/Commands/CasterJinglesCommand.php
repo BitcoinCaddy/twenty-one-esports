@@ -6,9 +6,11 @@ use App\Support\Caster\Blocks\JingleSynth;
 use App\Support\Caster\CasterFetcher;
 use App\Support\Caster\Pcm;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
+use Closure;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -45,16 +47,30 @@ use InvalidArgumentException;
  *  6. the library goes to the server as its imaging (caster:imaging-upload,
  *     P11), unless --no-upload.
  *
+ * Radio imaging (P11; user 2026-10-12: "aufregendere Jingles, die viel
+ * länger sind vom ANCHOR, und mehr unterschiedliche Jingles und Stinger und
+ * Betten"): the lines of resources/data/voice/anchor-imaging.json are voiced
+ * the same way (their category's tempo on the slow default length,
+ * JingleSynth::IMAGING) and produced once each (imaging/<id>.opus): an
+ * opening stinger, the voice, a closing hit, a bed of the category or of the
+ * format (`imaging.format_beds`) ducked under it, -16 LUFS, peaks at -1 dBFS.
+ * The stingers and beds are files of resources/audio/idents (sfx-*.opus,
+ * bed-*.opus), rendered by --sounds from JingleSynth (own work, CC0).
+ * --lines renders only the named line ids (a probe), keeping the rest of the
+ * library as it is.
+ *
  * Everything stays in `blocks.jingles.dir` (storage/app/jingles): bounded by
  * the list (about 100 small files, a few MB), never in git.
  */
 #[Signature('caster:jingles
-    {--limit=60 : VoiceStudio calls at most in this run}
+    {--limit=260 : VoiceStudio calls at most in this run (the whole library: 74 block lines, 126 imaging lines, the blips)}
     {--pause=6 : Seconds between two VoiceStudio calls}
     {--no-blips : Leave the speakers\' blips out}
     {--mix-only : Render the jingles from the voices on disk, no VoiceStudio call}
     {--remix : Render every jingle again, also those already on disk}
-    {--no-upload : Do not upload the library to the server as its imaging (caster:imaging-upload)}')]
+    {--no-upload : Do not upload the library to the server as its imaging (caster:imaging-upload)}
+    {--lines= : Voice and render only these line ids (comma separated), keep the rest as it is}
+    {--sounds : Render the stingers and beds (JingleSynth) into resources/audio/idents and stop}')]
 #[Description('Render the Anchor jingles and the speakers\' blips for the programme blocks (workstation)')]
 class CasterJinglesCommand extends Command
 {
@@ -66,8 +82,14 @@ class CasterJinglesCommand extends Command
         $settings = (array) config('tv.commentary.blocks', []);
         $dir = rtrim((string) ($settings['jingles']['dir'] ?? storage_path('app/jingles')), '/');
         $list = json_decode((string) file_get_contents(resource_path('data/voice/anchor-jingles.json')), true);
+        $imaging = is_file(resource_path('data/voice/anchor-imaging.json')) ? json_decode((string) file_get_contents(resource_path('data/voice/anchor-imaging.json')), true) : null;
         $limit = max(0, (int) $this->option('limit'));
         $mixOnly = (bool) $this->option('mix-only');
+        $only = is_string($this->option('lines')) && $this->option('lines') !== '' ? array_flip(array_map('trim', explode(',', $this->option('lines')))) : null;
+
+        if ($this->option('sounds')) {
+            return $this->renderSounds(resource_path('audio/idents'));
+        }
 
         if (! is_array($list) || ! is_array($list['lines'] ?? null)) {
             $this->error('resources/data/voice/anchor-jingles.json is not readable.');
@@ -75,7 +97,9 @@ class CasterJinglesCommand extends Command
             return self::FAILURE;
         }
 
-        foreach (['', '/voice', '/anchor', '/blips'] as $sub) {
+        $lines = [...$list['lines'], ...array_map(fn ($line): mixed => is_array($line) ? $line + ['imaging' => true] : $line, (array) (is_array($imaging) ? ($imaging['lines'] ?? []) : []))];
+
+        foreach (['', '/voice', '/anchor', '/blips', '/imaging'] as $sub) {
             if (! is_dir($dir.$sub)) {
                 mkdir($dir.$sub, 0755, true);
             }
@@ -92,7 +116,7 @@ class CasterJinglesCommand extends Command
         $items = [];
         $keep = [];
 
-        foreach ($list['lines'] as $line) {
+        foreach ($lines as $line) {
             if (! is_array($line) || ! is_string($line['id'] ?? null) || ! is_string($line['text'] ?? null) || ! is_string($line['category'] ?? null)) {
                 continue;
             }
@@ -100,11 +124,14 @@ class CasterJinglesCommand extends Command
             $id = $line['id'];
             $voice = $dir.'/voice/'.$id.'.wav';
             $spoken = is_string($line['spoken'] ?? null) && trim($line['spoken']) !== '' ? $line['spoken'] : $line['text'];
-            $duration = self::duration($spoken);
+            $isImaging = ($line['imaging'] ?? false) === true;
+            $recipe = $isImaging ? JingleSynth::imagingRecipe($id, $line['category'], (array) config('tv.commentary.imaging.format_beds', [])) : null;
+            $duration = $recipe === null ? self::duration($spoken) : round(self::duration($spoken) * $recipe['tempo'], 1);
             $hash = $profile === null ? null : self::voiceHash($spoken, $duration, $profile, (string) ($line['language'] ?? 'en'));
+            $selected = $only === null || isset($only[$id]);
             array_push($keep, 'voice/'.$id.'.wav', 'voice/'.$id.'.json');
 
-            if ($hash !== null && $this->calls < $limit && (! is_file($voice) || self::storedHash($dir, $id) !== $hash)) {
+            if ($hash !== null && $selected && $this->calls < $limit && (! is_file($voice) || self::storedHash($dir, $id) !== $hash)) {
                 $wav = $this->generate($fetcher, $spoken, $profile, (float) ($settings['anchor']['speed'] ?? 1.0), (string) ($line['language'] ?? 'en'), $duration);
 
                 if ($wav !== null) {
@@ -115,6 +142,17 @@ class CasterJinglesCommand extends Command
 
             if (! is_file($voice)) {
                 $this->warn('no voice yet: '.$id);
+
+                continue;
+            }
+
+            if ($recipe !== null) {
+                $item = $this->produce($dir, $id, $recipe, $voice, $selected);
+
+                if ($item !== null) {
+                    $items[] = $item + ['line' => $id, 'category' => $line['category'], 'text' => $line['text'], 'spoken' => $spoken, 'voice_hash' => self::storedHash($dir, $id)];
+                    $keep[] = $item['file'];
+                }
 
                 continue;
             }
@@ -158,7 +196,7 @@ class CasterJinglesCommand extends Command
             'blips' => $blips,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-        $this->info(sprintf('%d jingles of %d lines, %d blips, %d VoiceStudio calls; manifest in %s', count($items), count($list['lines']), count($blips), $this->calls, $dir));
+        $this->info(sprintf('%d jingles of %d lines, %d blips, %d VoiceStudio calls; manifest in %s', count($items), count($lines), count($blips), $this->calls, $dir));
 
         // The server plays the same jingles as its imaging (P11): the nightly run hands them over itself.
         if (! $this->option('no-upload') && $items !== []) {
@@ -274,7 +312,7 @@ class CasterJinglesCommand extends Command
             return ['id' => $id.'-'.$variant, 'file' => $file, 'seconds' => round($this->seconds($dir.'/'.$file), 3), 'lufs' => $this->lufs($dir.'/'.$file)] + $recipe;
         }
 
-        $duration = $recipe['intro'] + $voiceSeconds + 1.6;
+        $duration = $recipe['intro'] + $voiceSeconds + JingleSynth::BUTTON_TAIL;
         $bed = JingleSynth::bed($recipe['bed'], $recipe['key'], $recipe['intro'], $voiceSeconds, $duration);
         $ffmpeg = (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg');
         $mix = $dir.'/anchor/.mix-'.$id.'-'.$variant.'.wav';
@@ -301,6 +339,107 @@ class CasterJinglesCommand extends Command
         }
 
         return ['id' => $id.'-'.$variant, 'file' => $file, 'seconds' => round($this->seconds($dir.'/'.$file), 3), 'lufs' => $this->lufs($dir.'/'.$file)] + $recipe;
+    }
+
+    /**
+     * An imaging line produced (P11): its stinger, the voice, its hit and bed (JingleSynth::produceArguments()),
+     * -16 LUFS, peaks limited at -1 dBFS, Ogg Opus. Kept when already rendered from this voice and recipe;
+     * a line not `$selected` (--lines) is never rendered, only kept.
+     *
+     * @param  array{tempo: float, stinger: string, intro: float, hit: string, tail: float, bed: string|null, effect: string}  $recipe
+     * @return array{id: string, file: string, seconds: float, lufs: float|null, stinger: string, hit: string, bed: string|null, effect: string}|null
+     */
+    private function produce(string $dir, string $id, array $recipe, string $voice, bool $selected): ?array
+    {
+        $file = 'imaging/'.$id.'.opus';
+        $meta = ['stinger' => $recipe['stinger'], 'hit' => $recipe['hit'], 'bed' => $recipe['bed'], 'effect' => $recipe['effect']];
+        $fresh = is_file($dir.'/'.$file) && filemtime($dir.'/'.$file) >= filemtime($voice);
+
+        if ($fresh && ! $this->option('remix') || ! $selected) {
+            return is_file($dir.'/'.$file) ? ['id' => $id, 'file' => $file, 'seconds' => round($this->seconds($dir.'/'.$file), 3), 'lufs' => $this->lufs($dir.'/'.$file)] + $meta : null;
+        }
+
+        $sounds = resource_path('audio/idents');
+        $stinger = $sounds.'/sfx-'.$recipe['stinger'].'.opus';
+        $hit = $sounds.'/sfx-'.$recipe['hit'].'.opus';
+        $bed = $recipe['bed'] === null ? null : $sounds.'/bed-'.$recipe['bed'].'.opus';
+
+        foreach (array_filter([$stinger, $hit, $bed]) as $sound) {
+            if (! is_file($sound)) {
+                $this->warn('missing sound '.basename($sound).' (php artisan caster:jingles --sounds)');
+
+                return null;
+            }
+        }
+
+        $ffmpeg = (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg');
+        $mix = $dir.'/imaging/.mix-'.$id.'.wav';
+        $mastered = $dir.'/imaging/.master-'.$id.'.wav';
+        $run = fn (array $arguments) => Process::timeout(120)->env(ChildEnvironment::withoutSecrets())->run($arguments);
+
+        $result = $run(JingleSynth::produceArguments($ffmpeg, $voice, $this->seconds($voice), $stinger, $hit, $bed, $recipe['effect'], $recipe['intro'], $recipe['tail'], $mix));
+        $measured = $result->successful() ? $this->lufs($mix) : null;
+        $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mix, -16 - $measured, $mastered, false, JingleSynth::TRUE_PEAK_LIMIT));
+        $measured = $measured !== null && $result->successful() ? $this->lufs($mastered) : null;
+        $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mastered, -16 - $measured, $dir.'/'.$file, true, JingleSynth::TRUE_PEAK_LIMIT));
+        $result = $measured === null || ! $result->successful() ? $result : $this->underTruePeak($run, $ffmpeg, $mastered, -16 - $measured, $dir.'/'.$file) ?? $result;
+
+        foreach ([$mix, $mastered] as $temporary) {
+            if (is_file($temporary)) {
+                unlink($temporary);
+            }
+        }
+
+        if ($measured === null || ! $result->successful() || ! is_file($dir.'/'.$file)) {
+            $this->warn('imaging mix failed: '.$id.' '.mb_strimwidth($result->errorOutput(), 0, 300));
+
+            return null;
+        }
+
+        $item = ['id' => $id, 'file' => $file, 'seconds' => round($this->seconds($dir.'/'.$file), 3), 'lufs' => $this->lufs($dir.'/'.$file)] + $meta;
+        $this->line(sprintf('produced %-28s %5.1f s %6.1f LUFS  %s + %s%s', $id, $item['seconds'], (float) $item['lufs'], $recipe['stinger'], $recipe['hit'], $recipe['bed'] === null ? '' : ' over '.$recipe['bed']));
+
+        return $item;
+    }
+
+    /**
+     * The stingers and beds of JingleSynth as files (P11): sfx-<name>.opus and bed-<name>.opus in `$out`, each gained
+     * to -16 LUFS and limited at -1 dBFS (two passes, like the jingles), Ogg Opus 48 kHz mono.
+     */
+    private function renderSounds(string $out): int
+    {
+        $ffmpeg = (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg');
+        $run = fn (array $arguments) => Process::timeout(120)->env(ChildEnvironment::withoutSecrets())->run($arguments);
+        $failed = 0;
+        $names = [...array_map(fn (string $name): array => [$name, 'sfx-'.$name], JingleSynth::STINGERS), ...array_map(fn (string $name): array => ['bed:'.$name, 'bed-'.$name], JingleSynth::LOOP_BEDS)];
+
+        foreach ($names as [$name, $file]) {
+            $raw = $out.'/.raw-'.$file.'.wav';
+            $mastered = $out.'/.master-'.$file.'.wav';
+            $result = $run(JingleSynth::soundArguments($ffmpeg, $name, $raw));
+            $measured = $result->successful() ? $this->lufs($raw) : null;
+            $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $raw, -16 - $measured, $mastered, false, JingleSynth::TRUE_PEAK_LIMIT));
+            $measured = $measured !== null && $result->successful() ? $this->lufs($mastered) : null;
+            $result = $measured === null ? $result : $run(JingleSynth::masterArguments($ffmpeg, $mastered, -16 - $measured, $out.'/'.$file.'.opus', true, JingleSynth::TRUE_PEAK_LIMIT));
+            $result = $measured === null || ! $result->successful() ? $result : $this->underTruePeak($run, $ffmpeg, $mastered, -16 - $measured, $out.'/'.$file.'.opus') ?? $result;
+
+            foreach ([$raw, $mastered] as $temporary) {
+                if (is_file($temporary)) {
+                    unlink($temporary);
+                }
+            }
+
+            if ($measured === null || ! $result->successful()) {
+                $failed++;
+                $this->warn('sound failed: '.$name.' '.mb_strimwidth($result->errorOutput(), 0, 300));
+
+                continue;
+            }
+
+            $this->line(sprintf('%-22s %5.2f s %6.1f LUFS', $file.'.opus', $this->seconds($out.'/'.$file.'.opus'), (float) $this->lufs($out.'/'.$file.'.opus')));
+        }
+
+        return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 
     /** A blip in the speaker's own voice and tempo at the speech level (CasterFetcher::voiceChunk()), at most 1.6 s. */
@@ -339,7 +478,7 @@ class CasterJinglesCommand extends Command
     {
         $keep = array_flip($keep);
 
-        foreach (['voice/*.wav', 'voice/*.json', 'anchor/*.opus', 'blips/*/*.wav'] as $pattern) {
+        foreach (['voice/*.wav', 'voice/*.json', 'anchor/*.opus', 'imaging/*.opus', 'blips/*/*.wav'] as $pattern) {
             foreach (glob($dir.'/'.$pattern) ?: [] as $file) {
                 if (! isset($keep[substr($file, strlen($dir) + 1)])) {
                     unlink($file);
@@ -363,6 +502,39 @@ class CasterJinglesCommand extends Command
         $result = Process::timeout(20)->run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', $file]);
 
         return (float) trim($result->output());
+    }
+
+    /**
+     * The encoded file's true peak above -1 dBTP (Opus overshoots on a noisy hit by up to 2 dB): encoded again from
+     * `$mastered` with the limiter that much lower plus a fifth of a dB, at most three times; the loudness stays, only
+     * the hit is limited harder. Null when nothing had to be done.
+     *
+     * @param  Closure(list<string>): ProcessResult  $run
+     */
+    private function underTruePeak(Closure $run, string $ffmpeg, string $mastered, float $gainDb, string $out): ?ProcessResult
+    {
+        $limit = JingleSynth::TRUE_PEAK_LIMIT;
+        $result = null;
+
+        for ($pass = 0; $pass < 3; $pass++) {
+            $peak = $this->truePeak($out);
+
+            if ($peak === null || $peak <= -1.0) {
+                break;
+            }
+
+            $limit *= 10 ** (-($peak + 1.2) / 20);
+            $result = $run(JingleSynth::masterArguments($ffmpeg, $mastered, $gainDb, $out, true, $limit));
+        }
+
+        return $result;
+    }
+
+    private function truePeak(string $file): ?float
+    {
+        $result = Process::timeout(30)->run(['nice', '-n', '19', (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg'), '-nostdin', '-hide_banner', '-threads', '1', '-i', $file, '-af', 'ebur128=peak=true', '-f', 'null', '-']);
+
+        return preg_match_all('/Peak:\s+(-?[\d.]+) dBFS/', $result->errorOutput(), $match) > 0 ? (float) end($match[1]) : null;
     }
 
     private function lufs(string $file): ?float

@@ -93,8 +93,8 @@ final class JingleSynth
         $graph = sprintf(
             '[0:a]aresample=%1$d,aformat=channel_layouts=mono,highpass=f=70,%2$s,adelay=%3$d,apad=whole_dur=%4$.3F,asplit=2[v1][v2];'
             .'[1:a]volume=-3dB[bed];[bed][v1]sidechaincompress=threshold=0.015:ratio=7:attack=12:release=420[ducked];'
-            .'[ducked][v2]amix=inputs=2:normalize=0:duration=first,afade=t=in:d=0.02,afade=t=out:st=%5$.3F:d=0.35[out]',
-            self::RATE, self::EFFECTS[$effect] ?? 'anull', $delay, $duration, max(0.0, $duration - 0.35),
+            .'[ducked][v2]amix=inputs=2:normalize=0:duration=first,afade=t=in:d=0.02,afade=t=out:st=%5$.3F:d=%6$.3F[out]',
+            self::RATE, self::EFFECTS[$effect] ?? 'anull', $delay, $duration, max(0.0, $duration - self::RING_OUT_FADE), self::RING_OUT_FADE,
         );
 
         return [
@@ -108,12 +108,12 @@ final class JingleSynth
     /**
      * The ffmpeg arguments that gain a mix by `$gainDb` (towards -16 LUFS,
      * measured by the caller like scripts/make-idents.sh does), limit its
-     * sample peaks at -1 dBFS and write it as WAV (`$opus` false) or as the
+     * sample peaks at `$limit` (-1 dBFS by default) and write it as WAV (`$opus` false) or as the
      * final Ogg Opus mono jingle.
      *
      * @return list<string>
      */
-    public static function masterArguments(string $ffmpeg, string $in, float $gainDb, string $out, bool $opus): array
+    public static function masterArguments(string $ffmpeg, string $in, float $gainDb, string $out, bool $opus, float $limit = 0.891): array
     {
         $codec = $opus
             ? ['-c:a', 'libopus', '-b:a', '64k', '-application', 'audio', '-map_metadata', '-1',
@@ -122,8 +122,191 @@ final class JingleSynth
 
         return [
             'nice', '-n', '19', $ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-threads', '1', '-i', $in,
-            '-af', sprintf('volume=%.2FdB,alimiter=limit=0.891:level=disabled:attack=1:release=50', $gainDb),
+            '-af', sprintf('volume=%.2FdB,alimiter=limit=%.3F:level=disabled:attack=1:release=50', $gainDb, $limit),
             '-ac', '1', '-ar', (string) self::RATE, ...$codec, '-y', $out,
+        ];
+    }
+
+    /**
+     * The sample-peak limit of the stingers, beds and produced imaging (P11): -2 dBFS keeps the true peak of the
+     * encoded Opus file under -1 dBTP (at -1 dBFS sample peak the beds measured up to -0.4 dBTP).
+     */
+    public const TRUE_PEAK_LIMIT = 0.794;
+
+    /**
+     * The ring-out of every jingle (user 2026-10-12: the Anchor jingles "werden am Ende abgekürzt und brechen ab"; the
+     * P6 renders closed 1.6 s after the voice with a 0.35 s fade into a bell still ringing): the closing hit plays to
+     * its own end plus RING_OUT_PAD, and the last RING_OUT_FADE seconds fade out, never a cut at the voice's end.
+     */
+    public const RING_OUT_FADE = 1.0;
+
+    public const RING_OUT_PAD = 0.45;
+
+    /** The seconds after the voice of a block jingle (mixArguments()): the button's bell and boom ring out. */
+    public const BUTTON_TAIL = 2.6;
+
+    /** The length of every bed loop (seconds): every periodic part of a bed divides it, so the file loops seamlessly. */
+    public const LOOP_SECONDS = 16;
+
+    /**
+     * The stingers (P11): hits, whooshes, risers, laser zaps, bass drops, glitch, an 8-bit coin, each an aevalsrc
+     * expression, its length and the filter after it. The `news-*` stingers (2 to 4 s) rotate before a bulletin.
+     */
+    public const STINGERS = ['hit-boom', 'hit-metal', 'whoosh-up', 'whoosh-down', 'riser-long', 'riser-short', 'laser-zap', 'laser-double',
+        'bass-drop', 'glitch', 'coin-8bit', 'reverse-swell', 'tape-stop', 'news-pulse', 'news-rise', 'news-clock'];
+
+    /** The beds (P11), loops of LOOP_SECONDS: two news beds, sport, weather, courtroom, late night, tutorial. */
+    public const LOOP_BEDS = ['news-pulse', 'news-drive', 'sport', 'weather', 'courtroom', 'late-night', 'tutorial'];
+
+    /**
+     * How an imaging category is produced (P11): the tempo factor on the Anchor's slow default length (a short ID
+     * must stay short), the opening stingers (one by the line's hash), the seconds of stinger before the voice, the
+     * closing hits, the seconds after the voice, the beds under it (none: the stream's own music is the bed).
+     *
+     * @var array<string, array{tempo: float, stingers: list<string>, intro: float, hits: list<string>, tail: float, beds: list<string>}>
+     */
+    public const IMAGING = [
+        'station-long' => ['tempo' => 0.8, 'stingers' => ['riser-long', 'reverse-swell'], 'intro' => 2.7, 'hits' => ['hit-boom', 'bass-drop'], 'tail' => 2.2, 'beds' => ['news-drive', 'sport', 'news-pulse']],
+        'station-short' => ['tempo' => 0.6, 'stingers' => ['laser-zap', 'whoosh-up', 'coin-8bit', 'glitch'], 'intro' => 0.5, 'hits' => ['coin-8bit', 'laser-zap'], 'tail' => 0.7, 'beds' => []],
+        'sweeper' => ['tempo' => 0.55, 'stingers' => ['whoosh-up', 'whoosh-down', 'laser-double', 'tape-stop', 'riser-short'], 'intro' => 0.8, 'hits' => ['hit-boom', 'hit-metal', 'coin-8bit'], 'tail' => 0.8, 'beds' => []],
+        'liner' => ['tempo' => 0.75, 'stingers' => ['riser-short', 'whoosh-up', 'glitch'], 'intro' => 1.1, 'hits' => ['hit-boom', 'bass-drop'], 'tail' => 1.2, 'beds' => ['late-night', 'tutorial', 'weather']],
+        'opener' => ['tempo' => 0.65, 'stingers' => ['riser-short', 'reverse-swell', 'laser-double'], 'intro' => 1.2, 'hits' => ['hit-boom', 'hit-metal'], 'tail' => 1.3, 'beds' => ['news-drive', 'tutorial']],
+        'news-open' => ['tempo' => 0.7, 'stingers' => ['news-rise', 'news-clock', 'news-pulse'], 'intro' => 1.3, 'hits' => ['hit-boom'], 'tail' => 1.0, 'beds' => ['news-pulse', 'news-drive']],
+        'news-close' => ['tempo' => 0.5, 'stingers' => ['whoosh-down'], 'intro' => 0.4, 'hits' => ['hit-metal', 'hit-boom'], 'tail' => 0.9, 'beds' => ['news-pulse']],
+        'promo' => ['tempo' => 0.8, 'stingers' => ['riser-short', 'whoosh-up', 'glitch'], 'intro' => 1.4, 'hits' => ['bass-drop', 'hit-boom'], 'tail' => 1.5, 'beds' => ['tutorial', 'news-drive', 'weather']],
+        'power-intro' => ['tempo' => 0.5, 'stingers' => ['whoosh-up', 'laser-zap'], 'intro' => 0.6, 'hits' => ['laser-zap', 'coin-8bit'], 'tail' => 0.6, 'beds' => []],
+    ];
+
+    /**
+     * The production of an imaging line (P11): its category's recipe with one stinger, hit and bed picked by a hash
+     * of the line id (reproducible), the bed of its format (`$formatBeds`, tv.commentary.imaging.format_beds) first.
+     *
+     * @param  array<string, string>  $formatBeds
+     * @return array{tempo: float, stinger: string, intro: float, hit: string, tail: float, bed: string|null, effect: string}
+     */
+    public static function imagingRecipe(string $id, string $category, array $formatBeds = []): array
+    {
+        $family = match (true) {
+            str_starts_with($category, 'opener-') => 'opener',
+            str_starts_with($category, 'promo') => 'promo',
+            default => $category,
+        };
+        $spec = self::IMAGING[$family] ?? self::IMAGING['sweeper'];
+        $format = (string) preg_replace('/^(opener|promo)-/', '', $category);
+        $hash = crc32($id);
+        $bed = $formatBeds[$format] ?? ($spec['beds'] === [] ? null : $spec['beds'][$hash % count($spec['beds'])]);
+
+        return [
+            'tempo' => $spec['tempo'],
+            'stinger' => $spec['stingers'][$hash % count($spec['stingers'])],
+            'intro' => $spec['intro'],
+            'hit' => $spec['hits'][intdiv($hash, 7) % count($spec['hits'])],
+            // The hit rings out in full (user 2026-10-12: the jingles "werden am Ende abgekürzt und brechen ab").
+            'tail' => max($spec['tail'], self::sound($spec['hits'][intdiv($hash, 7) % count($spec['hits'])])['seconds'] + 0.05 + self::RING_OUT_PAD),
+            'bed' => in_array($bed, self::LOOP_BEDS, true) ? $bed : null,
+            'effect' => ['dry', 'room', 'slap'][intdiv($hash, 31) % 3],
+        ];
+    }
+
+    /**
+     * A stinger or a bed (`bed:<name>`) as an aevalsrc expression, its length and the filter after it (anull: none).
+     *
+     * @return array{expression: string, seconds: float, filter: string}
+     */
+    public static function sound(string $name): array
+    {
+        $q = fn (float $frequency): float => round($frequency * self::LOOP_SECONDS) / self::LOOP_SECONDS;
+        $sine = fn (float $frequency, float $amp): string => self::f($amp).'*sin(2*PI*'.self::f($q($frequency)).'*t)';
+        $lfo = fn (float $period): string => '(0.6+0.4*sin(2*PI*t/'.self::f($period).'))';
+        $pluck = fn (float $every, float $offset, float $frequency, float $decay, float $amp): string => self::f($amp).'*exp(-mod(t+'.self::f($every - $offset).','.self::f($every).')*'.self::f($decay).')*sin(2*PI*'.self::f($q($frequency)).'*t)';
+        $kick = fn (float $every, float $amp): string => self::f($amp).'*exp(-mod(t,'.self::f($every).')*10)*sin(2*PI*(42*mod(t,'.self::f($every).')+3*(1-exp(-mod(t,'.self::f($every).')*18))))';
+        $tick = fn (float $every, float $offset, float $amp): string => self::f($amp).'*exp(-mod(t+'.self::f($every - $offset).','.self::f($every).')*70)*sin(2*PI*'.self::f($q(2400)).'*t+6*sin(2*PI*'.self::f($q(3700)).'*t))';
+        $arp = fn (array $notes, float $step, float $decay, float $amp): string => implode('+', array_map(
+            fn (float $note, int $k): string => 'eq(floor(mod(t,'.self::f($step * count($notes)).')/'.self::f($step).'),'.$k.')*'.self::f($amp).'*exp(-mod(t,'.self::f($step).')*'.self::f($decay).')*sin(2*PI*'.self::f($q($note)).'*t)',
+            $notes, array_keys($notes)));
+        $noise = fn (float $t0, float $d, float $amp, int $power): string => self::f($amp).'*between(t,'.self::f($t0).','.self::f($t0 + $d).')*pow((t-'.self::f($t0).')/'.self::f($d).','.$power.')*(2*random(0)-1)';
+        $swoosh = fn (float $t0, float $d, float $amp): string => self::f($amp).'*between(t,'.self::f($t0).','.self::f($t0 + $d).')*pow(sin(PI*(t-'.self::f($t0).')/'.self::f($d).'),2)*(2*random(0)-1)';
+
+        $sounds = [
+            'hit-boom' => [self::boom(0.0, 0.7).'+'.self::bell(0.0, 587.33, 2.6, 0.18).'+'.self::bell(0.0, 880, 2.6, 0.12).'+'.self::bell(0.0, 739.99, 2.0, 0.1), 1.8, 'anull'],
+            'hit-metal' => [self::bell(0.0, 1046.5, 3.2, 0.25).'+'.self::bell(0.0, 1479.98, 4.0, 0.15).'+'.self::bell(0.0, 2217.46, 5.0, 0.08).'+'.self::boom(0.0, 0.35), 1.5, 'anull'],
+            'whoosh-up' => [$swoosh(0.0, 1.2, 0.6).'+'.self::chirp(0.0, 1.2, 200, 2400, 0.12), 1.4, 'lowpass=f=4500,highpass=f=300'],
+            'whoosh-down' => [$swoosh(0.0, 1.0, 0.6).'+'.self::chirp(0.0, 1.0, 2400, 180, 0.12), 1.2, 'lowpass=f=3500,highpass=f=200'],
+            'riser-long' => [$noise(0.0, 2.6, 0.35, 3).'+'.self::chirp(0.0, 2.6, 110, 1760, 0.22).'+'.self::boom(2.6, 0.75).'+'.self::motif(2.6, 0.14, 3.0, 0.22, 1.0), 3.6, 'highpass=f=60'],
+            'riser-short' => [$noise(0.0, 1.2, 0.35, 3).'+'.self::chirp(0.0, 1.2, 220, 1760, 0.2).'+'.self::boom(1.2, 0.6), 2.0, 'highpass=f=60'],
+            'laser-zap' => [self::chirp(0.0, 0.35, 3200, 160, 0.4).'+'.self::bell(0.35, 1174.66, 6.0, 0.15), 0.9, 'anull'],
+            'laser-double' => [self::chirp(0.0, 0.25, 3600, 200, 0.35).'+'.self::chirp(0.3, 0.25, 3600, 200, 0.35).'+'.self::boom(0.6, 0.45), 1.3, 'anull'],
+            'bass-drop' => ['0.75*min(1,t*40)*exp(-t*1.4)*sin(2*PI*(30*t+40*(1-exp(-t*2.5))))+'.self::bell(0.0, 293.66, 2.0, 0.12), 2.4, 'lowpass=f=900'],
+            'glitch' => ['lt(mod(t,0.09),0.045)*('.self::motif(0.0, 0.18, 2.5, 0.3, 1.0).')+'.self::boom(0.9, 0.5), 1.5, 'anull'],
+            'coin-8bit' => ['0.22*lt(t,0.08)*sgn(sin(2*PI*987.77*t))+0.22*between(t,0.08,0.7)*exp(-(t-0.08)*5)*sgn(sin(2*PI*1318.51*t))', 0.75, 'lowpass=f=7000'],
+            'reverse-swell' => ['0.32*lt(t,2.0)*pow(t/2.0,4)*(sin(2*PI*587.33*t)+0.7*sin(2*PI*880*t)+0.5*sin(2*PI*739.99*t)+0.4*sin(2*PI*146.83*t))+'.self::boom(2.0, 0.7), 2.6, 'anull'],
+            'tape-stop' => ['0.3*lt(t,1.2)*(1-t/1.2)*sin(2*PI*(660*t-250*t*t))+0.25*lt(t,1.2)*(1-t/1.2)*sin(2*PI*(330*t-125*t*t))', 1.4, 'anull'],
+            'news-pulse' => ['0.22*lt(t,1.5)*exp(-mod(t,0.25)*60)*sin(2*PI*1760*t)+'.self::boom(1.5, 0.6).'+'.self::motif(1.5, 0.18, 2.4, 0.26, 1.0).'+'.self::motif(1.5, 0.18, 3.0, 0.1, 2.0), 3.2, 'anull'],
+            'news-rise' => [$noise(0.0, 1.6, 0.25, 3).'+'.self::chirp(0.0, 1.6, 147, 1175, 0.2).'+'.self::boom(1.6, 0.6).'+'.self::motif(1.6, 0.2, 2.2, 0.26, 1.122462), 3.4, 'highpass=f=60'],
+            'news-clock' => ['0.2*lt(t,1.2)*exp(-mod(t,0.125)*90)*sin(2*PI*2400*t)+'.self::boom(1.2, 0.55).'+'.self::motif(1.2, 0.16, 2.6, 0.26, 0.890899).'+'.self::bell(1.9, 1174.66, 2.5, 0.1), 2.9, 'anull'],
+            // The beds: every part periodic within LOOP_SECONDS (beats of 0.25 to 4 s, frequencies on a 1/16 Hz grid, no noise).
+            'bed:news-pulse' => [$kick(0.5, 0.3).'+'.$tick(0.25, 0.125, 0.06).'+'.$lfo(8).'*('.$sine(146.83, 0.05).'+'.$sine(220, 0.035).'+'.$sine(174.61, 0.03).')', self::LOOP_SECONDS, 'anull'],
+            'bed:news-drive' => [$kick(0.5, 0.28).'+'.$tick(0.25, 0.0, 0.05).'+'.$arp([73.42, 73.42, 87.31, 65.41], 0.25, 9, 0.22).'+'.$lfo(16).'*('.$sine(293.66, 0.03).'+'.$sine(440, 0.02).')', self::LOOP_SECONDS, 'anull'],
+            'bed:sport' => [$kick(0.5, 0.32).'+'.$tick(0.5, 0.25, 0.09).'+'.$arp([98.0, 98.0, 123.47, 146.83], 0.25, 8, 0.2).'+'.$arp([587.33, 783.99, 987.77, 783.99], 0.5, 6, 0.06), self::LOOP_SECONDS, 'anull'],
+            'bed:weather' => [$lfo(8).'*('.$sine(261.63, 0.05).'+'.$sine(329.63, 0.04).'+'.$sine(392.0, 0.035).'+'.$sine(493.88, 0.025).')+'.$pluck(2.0, 0.0, 1046.5, 3.0, 0.07).'+'.$pluck(2.0, 1.0, 1318.51, 3.0, 0.05), self::LOOP_SECONDS, 'anull'],
+            'bed:courtroom' => [$sine(73.42, 0.09).'+'.$sine(110.0, 0.05).'+'.$lfo(16).'*'.$sine(146.83, 0.03).'+0.4*exp(-mod(t,2)*4)*sin(2*PI*(55*mod(t,2)+2*(1-exp(-mod(t,2)*12))))+'.$tick(4.0, 3.0, 0.2), self::LOOP_SECONDS, 'anull'],
+            'bed:late-night' => [$kick(1.0, 0.22).'+'.$lfo(16).'*('.$sine(110.0, 0.05).'+'.$sine(130.81, 0.04).'+'.$sine(164.81, 0.035).')+'.$pluck(1.0, 0.5, 659.25, 5.0, 0.05), self::LOOP_SECONDS, 'anull'],
+            'bed:tutorial' => [$arp([392.0, 493.88, 587.33, 493.88], 0.5, 5, 0.09).'+'.$lfo(8).'*('.$sine(196.0, 0.04).'+'.$sine(293.66, 0.03).')+'.$kick(1.0, 0.12), self::LOOP_SECONDS, 'anull'],
+        ];
+        [$expression, $seconds, $filter] = $sounds[$name] ?? $sounds['hit-boom'];
+
+        return ['expression' => $expression, 'seconds' => (float) $seconds, 'filter' => $filter];
+    }
+
+    /**
+     * The ffmpeg arguments that render a stinger or bed (sound()) into a float WAV of `$seconds` (its own length by
+     * default); masterArguments() brings it to -16 LUFS.
+     *
+     * @return list<string>
+     */
+    public static function soundArguments(string $ffmpeg, string $name, string $out, ?float $seconds = null): array
+    {
+        $sound = self::sound($name);
+
+        return [
+            'nice', '-n', '19', $ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-threads', '1',
+            '-f', 'lavfi', '-i', sprintf("aevalsrc=exprs='%s':s=%d:d=%.3F", $sound['expression'], self::RATE, $seconds ?? $sound['seconds']),
+            '-af', $sound['filter'], '-ac', '1', '-ar', (string) self::RATE, '-c:a', 'pcm_f32le', '-y', $out,
+        ];
+    }
+
+    /**
+     * The ffmpeg arguments of a produced imaging item (P11): the opening stinger from 0, the voice `$intro` seconds
+     * in, the closing hit right after the voice, the bed looped under all of it and ducked under the voice, `$tail`
+     * seconds after the voice, faded out; into a float WAV (masterArguments() brings it to -16 LUFS).
+     *
+     * @return list<string>
+     */
+    public static function produceArguments(string $ffmpeg, string $voiceFile, float $voiceSeconds, string $stingerFile, string $hitFile, ?string $bedFile, string $effect, float $intro, float $tail, string $out): array
+    {
+        $duration = $intro + $voiceSeconds + $tail;
+        $withBed = $bedFile !== null;
+        $bed = $withBed ? sprintf(
+            '[3:a]aresample=%1$d,aformat=channel_layouts=mono,atrim=duration=%2$.3F,volume=-9dB,afade=t=in:d=0.4,afade=t=out:st=%3$.3F:d=1.5[bedraw];[bedraw][vk]sidechaincompress=threshold=0.015:ratio=6:attack=15:release=450[bed];',
+            self::RATE, $duration, max(0.0, $duration - 1.5),
+        ) : '';
+        $graph = sprintf(
+            '[0:a]aresample=%1$d,aformat=channel_layouts=mono,highpass=f=70,%2$s,adelay=%3$d,apad=whole_dur=%4$.3F%5$s;'
+            .'[1:a]aresample=%1$d,aformat=channel_layouts=mono,volume=-2dB,apad=whole_dur=%4$.3F[st];'
+            .'[2:a]aresample=%1$d,aformat=channel_layouts=mono,volume=-1dB,adelay=%6$d,apad=whole_dur=%4$.3F[hit];'
+            .'%7$s[v][st][hit]%8$samix=inputs=%9$d:normalize=0:duration=first,atrim=duration=%4$.3F,afade=t=out:st=%10$.3F:d=%11$.3F[out]',
+            self::RATE, self::EFFECTS[$effect] ?? 'anull', (int) round($intro * 1000), $duration, $withBed ? ',asplit=2[v][vk]' : '[v]',
+            (int) round(($intro + $voiceSeconds + 0.05) * 1000), $bed, $withBed ? '[bed]' : '', $withBed ? 4 : 3, max(0.0, $duration - self::RING_OUT_FADE), self::RING_OUT_FADE,
+        );
+        $inputs = ['-i', $voiceFile, '-i', $stingerFile, '-i', $hitFile];
+
+        if ($bedFile !== null) {
+            array_push($inputs, '-stream_loop', '-1', '-i', $bedFile);
+        }
+
+        return [
+            'nice', '-n', '19', $ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'error', '-threads', '1', ...$inputs,
+            '-filter_complex', $graph, '-map', '[out]', '-ac', '1', '-ar', (string) self::RATE, '-c:a', 'pcm_f32le', '-y', $out,
         ];
     }
 

@@ -18,6 +18,7 @@ use App\Support\Caster\ReactionLines;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\StreamZaps;
 use App\Support\Caster\WebOfTrust;
+use App\Support\Caster\YouTubeChatSummary;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Nostr\RelayReader;
 use App\Support\Nostr\SignedEvent;
@@ -416,6 +417,17 @@ it('does not count greetings against the hourly cap of personal reactions', func
     foreach (range(1, 6) as $i) {
         CasterScript::query()->create(['kind' => CasterScript::CHAT, 'phase' => 'break', 'priority' => 50, 'text' => 'Hallo.', 'facts_hash' => 'greeting',
             'status' => CasterScript::QUEUED, 'estimated_seconds' => 1, 'expires_at' => now()->addMinutes(10), 'topic' => ChatReactions::GREETING_TOPIC]);
+    }
+
+    expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), CarbonImmutable::now()))->toBeNull();
+});
+
+it('does not count YouTube chat summaries against the hourly cap of personal reactions', function () {
+    $chatter = new TestSigner;
+    WotLevel::query()->create(['pubkey' => $chatter->pubkey, 'level' => 1, 'computed_at' => now()]);
+    foreach (range(1, max(1, (int) config('tv.commentary.chat.per_hour'))) as $i) {
+        CasterScript::query()->create(['kind' => CasterScript::CHAT, 'phase' => 'break', 'priority' => 50, 'text' => 'Drüben auf YouTube.', 'facts_hash' => 'youtube',
+            'status' => CasterScript::QUEUED, 'estimated_seconds' => 1, 'expires_at' => now()->addMinutes(10), 'topic' => YouTubeChatSummary::TOPIC]);
     }
 
     expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), CarbonImmutable::now()))->toBeNull();

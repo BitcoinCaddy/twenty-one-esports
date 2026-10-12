@@ -498,6 +498,33 @@ final class SceneDirector
         $inRun = ! $quiet && $this->runPosition > 0 && $this->runLeft > 0;
         $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds) : ($inRun ? $this->between('breath_seconds') : $this->gap()));
         $this->runPosition = $inRun ? $this->runPosition : 0;
+
+        // The music gap opens: a power intro may ride its first seconds (P11), the music ducks under it.
+        if (! $quiet && ! $inRun && ! $cut && $this->held === []) {
+            $this->powerIntro($clip, $now);
+        }
+    }
+
+    /**
+     * The power intro over the start of the music gap (P11, Imaging::powerIntro()): the Anchor alone on the timeline,
+     * no clip, `lead_in_seconds` from now; a clip that starts meanwhile follows it (play()).
+     */
+    private function powerIntro(CasterClip $ended, float $now): void
+    {
+        if ($this->imaging === null) {
+            return;
+        }
+
+        $intro = $this->imaging->powerIntro($ended, CarbonImmutable::createFromTimestamp($now));
+        $pcm = $intro === null ? null : $this->imaging->pcm($intro['file']);
+
+        if ($pcm === null) {
+            return;
+        }
+
+        $start = $now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
+        $this->timeline->start($pcm, [round(Pcm::seconds($pcm, $this->timeline->rate), 3)], $start);
+        $this->imagingOnAir = ['power-intro'];
     }
 
     /**
@@ -589,6 +616,20 @@ final class SceneDirector
 
         $start += microtime(true) - $dressing;
 
+        // A power intro still on air (P11, no clip): the clip follows it a breath later on the same timeline, the intro's
+        // rest unchanged (what the feed has already written stays as it is), as joinNextBlock() does.
+        $offset = 0.0;
+        if ($this->clip === null && $this->timeline->isPlaying($now)) {
+            $rate = $this->timeline->rate;
+            $from = (int) round($now * $rate);
+            $rest = $this->timeline->samples($from, (int) round((float) $this->timeline->endsAt() * $rate));
+            $offset = Pcm::seconds($rest, $rate) + 0.3;
+            $pcm = $rest.Pcm::silence(0.3, $rate).$pcm;
+            $ends = [round($offset - 0.3, 3), ...array_map(fn (float $end): float => round($end + $offset, 3), $ends)];
+            $start = $from / $rate;
+            unset($rest);
+        }
+
         // A bulletin puts the music into news mode for as long as its PCM (stinger and bed included) plays; a podcast too.
         $this->timeline->start($pcm, $ends, $start, news: $bulletinSlot !== null || $this->isPodcast($clip));
 
@@ -600,7 +641,7 @@ final class SceneDirector
         $this->clipIsPart = $continuation || ($clip->kind !== CasterScript::BULLETIN && $this->spool->partOf($clip) !== null);
         $this->bulletinSlot = $bulletinSlot;
         $this->quietUntil = 0.0;
-        $this->onAir($clip, $start, $ends);
+        $this->onAir($clip, $start, $ends, $offset);
 
         if ($clip->isBlock()) {
             // A block is a stretch of programme: it ends a run and holds the slide only briefly, the slides rotate under it.
