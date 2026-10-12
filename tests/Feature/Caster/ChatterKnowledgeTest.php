@@ -14,6 +14,7 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\StreamBot\StreamCoordinates;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\TestSigner;
@@ -80,6 +81,16 @@ beforeEach(function () {
             usort($events, fn (SignedEvent $a, SignedEvent $b): int => $b->createdAt <=> $a->createdAt);
 
             return ['events' => $events, 'answered' => $answered];
+        }
+
+        /** @var list<list<string>> */
+        public array $guarded = [];
+
+        public function readGuarded(array $filters, array $relays, int $perAuthor, float $until, array $known = []): array
+        {
+            $this->guarded[] = $relays;
+
+            return array_combine($relays, array_map(fn (string $relay): ?array => $this->relays[$relay] ?? null, $relays));
         }
     };
     $this->app->instance(RelayReader::class, $this->reader);
@@ -175,7 +186,7 @@ it('gives a trusted reply the card and the three newest notes, sanitised, and a 
     User::factory()->create(['pubkey' => $trusted->pubkey, 'npub' => NostrKeys::hexToNpub($trusted->pubkey), 'gamer_tags' => ['steam' => 'BenRocket']]);
     $long = 'Heute wieder an TWENTY ONE gebaut '.str_repeat('und noch mehr Schachfiguren poliert ', 8);
     $this->reader->relays = ['wss://knowledge.test' => [
-        knowledgeEvent($trusted, 0, json_encode(['name' => 'Ben', 'about' => 'Cypherpunk']), 9_000),
+        knowledgeEvent($trusted, 0, json_encode(['name' => 'Ben', 'about' => 'Cypherpunk Bitcoin Bauer', 'nip05' => '_@einundzwanzig.space']), 9_000),
         knowledgeEvent($trusted, 1, 'Rocket League Cup gewonnen 2–1 gegen npub134tv37tqqqqqqqq schau https://evil.test', 3_600),
         knowledgeEvent($trusted, 1, 'Mein Steam-Name ist BenRocket, adden!', 3_700),
         knowledgeEvent($trusted, 1, 'Ich war heute beim Arzt, alles gut', 3_800),
@@ -202,7 +213,9 @@ it('gives a trusted reply the card and the three newest notes, sanitised, and a 
 
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Eigene Notizen auf Nostr, neueste zuerst:\n<<<notizen\n".implode("\n", $notes)."\nnotizen>>>")
         && str_contains($prompt->prompt, 'Persona: Rocket League; Fernschach; Running Gag Wololo')
-        && str_contains($prompt->prompt, 'Überrasch Ben mit genau einer witzigen, freundlichen Anspielung'));
+        && str_contains($prompt->prompt, "Profil auf Nostr:\n<<<profil\nÜber mich: Cypherpunk Bitcoin Bauer\nNIP-05 bei: einundzwanzig\nprofil>>>")
+        && str_contains($prompt->prompt, 'Pflicht in dieser Antwort: Sprich über Ben selbst, nicht allgemein. Greif einen der letzten Posts von Ben konkret auf')
+        && str_contains($prompt->prompt, 'roaste ihn, statt allgemein zu antworten'));
     // No gamer tag, no link, no health note in any prompt (the card writer's included), no digit of a note in a reply
     // prompt; the stranger's greeting knows nothing.
     VoiceAgent::assertNotPrompted(fn (AgentPrompt $prompt): bool => str_contains(mb_strtolower($prompt->prompt), 'benrocket')
@@ -226,4 +239,100 @@ it('puts no notes and no card into a reply while profiles are off', function () 
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Hey Markus, was geht?'));
     VoiceAgent::assertNotPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Fernschach') || str_contains($prompt->prompt, CasterVoice::NOTES_HINT));
     expect($this->reader->asked)->toBe([]);
+});
+
+it('reads the notes a chatter keeps on their own write relays (NIP-65 outbox), at most outbox_relays, untrusted', function () {
+    $chatter = new TestSigner;
+    $profile = ChatterProfile::query()->create(['pubkey' => $chatter->pubkey]);
+    $relayList = knowledgeEvent($chatter, 10002, '', 7_200, [
+        ['r', 'wss://relay.damus.io'],          // skipped: refuses prod (outbox_skip)
+        ['r', 'WSS://Own.test/'],               // no marker: read and write
+        ['r', 'wss://inbox-only.test', 'read'], // not where they write
+        ['r', 'ws://plain.test'],               // not wss
+        ['r', 'wss://knowledge.test'],          // read already
+        ['r', 'wss://down.test', 'write'],
+        ['r', 'wss://third.test', 'write'],
+        ['r', 'wss://fourth.test', 'write'],
+    ]);
+    $older = knowledgeEvent($chatter, 10002, '', 90_000, [['r', 'wss://stale.test']]);
+    $this->reader->relays = [
+        'wss://knowledge.test' => [$relayList, $older, knowledgeEvent($chatter, 1, 'Kennt jeder schon vom Knowledge-Relay', 600)],
+        'wss://own.test' => [knowledgeEvent($chatter, 1, 'Heute einen Node im Keller aufgesetzt', 300)],
+        'wss://down.test' => null,
+        'wss://third.test' => [knowledgeEvent($chatter, 1, 'Fernschach gegen den Nachbarn verloren', 400)],
+    ];
+    config(['tv.commentary.chat.outbox_relays' => 3]);
+
+    app(ChatterCache::class)->refresh($profile, CarbonImmutable::now());
+
+    expect($this->reader->guarded)->toBe([['wss://own.test', 'wss://down.test', 'wss://third.test']])
+        ->and(app(ChatterCache::class)->notes($chatter->pubkey))->toBe([
+            'Heute einen Node im Keller aufgesetzt', 'Fernschach gegen den Nachbarn verloren', 'Kennt jeder schon vom Knowledge-Relay',
+        ])
+        ->and(Cache::has(ChatterCache::DOWN_KEY.'wss://down.test'))->toBeTrue();
+
+    // The relay that failed is left out for a while; the next one of the list takes its place.
+    $this->reader->guarded = [];
+    app(ChatterCache::class)->refresh($profile, CarbonImmutable::now());
+    expect($this->reader->guarded)->toBe([['wss://own.test', 'wss://third.test', 'wss://fourth.test']]);
+});
+
+it('takes the write relays of the legacy kind 3 map when there is no 10002, and none from somebody else', function () {
+    $chatter = new TestSigner;
+    $other = new TestSigner;
+    $contacts = knowledgeEvent($chatter, 3, json_encode(['wss://legacy.test' => ['read' => true, 'write' => true], 'wss://read.test' => ['read' => true, 'write' => false]]), 600);
+    $foreign = knowledgeEvent($other, 10002, '', 60, [['r', 'wss://foreign.test']]);
+
+    expect(ChatterCache::writeRelays($chatter->pubkey, [$contacts, $foreign]))->toBe(['wss://legacy.test'])
+        // A 10002 wins over the kind 3 map; of two 10002 the newer.
+        ->and(ChatterCache::writeRelays($chatter->pubkey, [$contacts, knowledgeEvent($chatter, 10002, '', 900, [['r', 'wss://old.test']]),
+            knowledgeEvent($chatter, 10002, '', 300, [['r', 'wss://new.test', 'write']])]))->toBe(['wss://new.test']);
+});
+
+it('reads no outbox relay when the chatter names none', function () {
+    $chatter = new TestSigner;
+    $profile = ChatterProfile::query()->create(['pubkey' => $chatter->pubkey]);
+    $this->reader->relays = ['wss://knowledge.test' => [knowledgeEvent($chatter, 1, 'Nur hier zu finden, ganz ohne Liste', 600)]];
+
+    app(ChatterCache::class)->refresh($profile, CarbonImmutable::now());
+
+    expect($this->reader->guarded)->toBe([])
+        ->and(app(ChatterCache::class)->notes($chatter->pubkey))->toBe(['Nur hier zu finden, ganz ohne Liste']);
+});
+
+it('gives the reply prompt the about and the domains as spoken words, never a gamer tag, a sensitive about or a digit', function () {
+    $chatter = new TestSigner;
+    User::factory()->create(['pubkey' => $chatter->pubkey, 'npub' => NostrKeys::hexToNpub($chatter->pubkey), 'gamer_tags' => ['steam' => 'BenRocket']]);
+    $profile = ChatterProfile::query()->create(['pubkey' => $chatter->pubkey, 'about' => 'Plebs seit 2017, baut Nodes und mag Fernschach https://x.test',
+        'nip05_domain' => 'nostr.einundzwanzig.space', 'website_domain' => 'www.kycnot.me']);
+    $cache = app(ChatterCache::class);
+
+    expect($cache->promptProfile($chatter->pubkey))->toBe(['Über mich: Plebs seit baut Nodes und mag Fernschach', 'NIP-05 bei: nostr einundzwanzig', 'Website: kycnot']);
+
+    $profile->update(['about' => 'Ich bin BenRocket auf Steam', 'nip05_domain' => '21mio.space', 'website_domain' => null]);
+    expect($cache->promptProfile($chatter->pubkey))->toBe([]);
+
+    $profile->update(['about' => 'Bitcoiner mit Familie und Hund']);
+    expect($cache->promptProfile($chatter->pubkey))->toBe([])
+        ->and($cache->promptProfile((new TestSigner)->pubkey))->toBe([]);
+});
+
+it('names the age of an older note in words', function (int $days, string $words) {
+    $chatter = new TestSigner;
+    ChatterNote::query()->create(['pubkey' => $chatter->pubkey, 'event_id' => str_repeat('e', 64), 'note_created_at' => now()->getTimestamp() - $days * 86_400, 'content' => 'Fernschach ist das beste Spiel']);
+
+    expect(app(ChatterCache::class)->promptNotes($chatter->pubkey, CarbonImmutable::now()))->toBe([$words.': Fernschach ist das beste Spiel']);
+})->with([
+    [20, 'vor ein paar Wochen'],
+    [45, 'vor gut einem Monat'],
+    [80, 'vor ein paar Monaten'],
+]);
+
+it('tells the reply to roast a profile fact when there are no notes', function () {
+    $prompt = CasterVoice::chatReplyPrompt('Hey Markus', 'Ben', 1, 3, [CasterVoice::PROFILE_HINT => "Über mich: baut Nodes\nNIP-05 bei: einundzwanzig"]);
+
+    expect($prompt)->toContain("Profil auf Nostr:\n<<<profil\nÜber mich: baut Nodes\nNIP-05 bei: einundzwanzig\nprofil>>>")
+        ->toContain('Pflicht in dieser Antwort: Sprich über Ben selbst, nicht allgemein. Greif eine Angabe aus dem Profil oder der Persona konkret auf')
+        ->not->toContain('<<<notizen')
+        ->and(CasterVoice::chatReplyPrompt('Hey Markus', 'Ben', 1, 3))->not->toContain('Pflicht in dieser Antwort');
 });

@@ -2,6 +2,8 @@
 
 namespace App\Support\Nostr;
 
+use App\Support\Wallet\PinnedStreamFactory;
+use App\Support\Wallet\RelayGuard;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -39,6 +41,11 @@ class RelayReader
 
     /** Fewer filters per REQ than this, and the relay is not read (round 4). */
     public const MIN_FILTERS = 5;
+
+    /** What an untrusted relay (readGuarded()) may send in all, and in one frame. */
+    public const UNTRUSTED_BYTES = 2 * 1024 * 1024;
+
+    public const UNTRUSTED_FRAME_BYTES = 256 * 1024;
 
     /**
      * A one-time, bounded extension past the REQ deadline: a busy host can
@@ -141,6 +148,42 @@ class RelayReader
     }
 
     /**
+     * readEach() for relays a player named (a chatter's NIP-65 write relays,
+     * App\Support\Caster\ChatterCache): untrusted input that makes the server
+     * connect. Each relay passes {@see RelayGuard} (`wss://` on 443 of a public
+     * DNS name, the lookup bounded), the socket is pinned to the checked
+     * address, and every read stops at the deadline and UNTRUSTED_BYTES in all
+     * (UNTRUSTED_FRAME_BYTES a frame), inside a frame too ({@see BoundedSocketStream}).
+     * No NIP-11 lookup: that would be a plain HTTP request to the named host;
+     * the filters go out in REQs of MAX_FILTERS. A relay the guard refuses, or
+     * one not reached before `$until`, is a failed read (null), never contacted.
+     * Ids in `$known`, or returned by an earlier relay of the call, are skipped
+     * before the signature check, as in fetchCounted().
+     *
+     * @param  list<array<string, mixed>>  $filters
+     * @param  list<string>  $relays
+     * @param  array<string, true>  $known
+     * @return array<string, list<SignedEvent>|null> relay => its new events, null for a failed or refused read
+     */
+    public function readGuarded(array $filters, array $relays, int $perAuthor, float $until, array $known = []): array
+    {
+        $guard = app(RelayGuard::class);
+        $results = [];
+
+        foreach ($relays as $relay) {
+            $left = $until - microtime(true);
+            $pin = $left > 0.2 ? $guard->target($relay, min(2.0, $left)) : null;
+            $results[$relay] = $pin === null ? null : $this->read($relay, $filters, $known, $perAuthor, $pin, $until);
+
+            foreach ($results[$relay] ?? [] as $event) {
+                $known[$event->id] = true;
+            }
+        }
+
+        return $results;
+    }
+
+    /**
      * NIP-11 `limitation.max_filters` of the relay, at most MAX_FILTERS, and
      * MAX_FILTERS when the document is missing or says nothing.
      *
@@ -177,11 +220,15 @@ class RelayReader
      * $perAuthor events are collected; the caller keeps $perAuthor. Each REQ
      * gets `relay_timeout_seconds`, the whole read `relay_fetch_budget_seconds`.
      *
+     * With a `$pin` (readGuarded()) the relay is untrusted: no NIP-11 lookup,
+     * the socket pinned and bounded, the read ending at `$until` at the latest.
+     *
      * @param  list<array<string, mixed>>  $filters
      * @param  array<string, mixed>  $skip  ids not to return
+     * @param  array{host: string, ip: string|null}|null  $pin  the address RelayGuard checked
      * @return list<SignedEvent>|null null for a failed read (unsupported, error, timeout, CLOSED, budget used up)
      */
-    private function read(string $relay, array $filters, array $skip, int $perAuthor): ?array
+    private function read(string $relay, array $filters, array $skip, int $perAuthor, ?array $pin = null, ?float $until = null): ?array
     {
         // Not a relay: not read (so it never counts as one that answered, fetchCounted()).
         if (preg_match('#^wss?://#', $relay) !== 1) {
@@ -192,7 +239,7 @@ class RelayReader
             return [];
         }
 
-        $batch = $this->maxFiltersOf($relay);
+        $batch = $pin === null ? $this->maxFiltersOf($relay) : self::MAX_FILTERS;
 
         if ($batch < self::MIN_FILTERS) {
             Log::warning('Relay unsupported', ['relay' => $relay, 'reason' => 'NIP-11 max_filters '.$batch.' is below '.self::MIN_FILTERS]);
@@ -202,6 +249,7 @@ class RelayReader
 
         $timeout = (float) config('esports.relay_timeout_seconds', 5);
         $budget = microtime(true) + (float) config('esports.relay_fetch_budget_seconds', 15);
+        $budget = $until === null ? $budget : min($budget, $until);
         $received = [];
         $perPubkey = [];
         $client = null;
@@ -209,6 +257,12 @@ class RelayReader
 
         try {
             $client = new Client($relay);
+
+            if ($pin !== null) {
+                $client->setStreamFactory($pin['ip'] !== null
+                    ? new PinnedStreamFactory($pin['host'], $pin['ip'], $budget, self::UNTRUSTED_BYTES, self::UNTRUSTED_FRAME_BYTES)
+                    : new BoundedStreamFactory($budget, self::UNTRUSTED_BYTES, self::UNTRUSTED_FRAME_BYTES));
+            }
 
             foreach (array_chunk($filters, $batch) as $chunk) {
                 $deadline = min(microtime(true) + $timeout, $budget);
