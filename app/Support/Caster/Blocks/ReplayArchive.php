@@ -5,6 +5,7 @@ namespace App\Support\Caster\Blocks;
 use App\Models\CasterScript;
 use App\Support\Caster\ChatReactions;
 use App\Support\Caster\ChatWishes;
+use App\Support\Caster\Programme\Roasts;
 use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\SceneTopic;
@@ -39,6 +40,8 @@ final class ReplayArchive
         'chat', 'nachrichten_talk', 'presseschau', 'liga', SportWeather::TOPIC,
         SceneTopic::LIVE_GAMES, SceneTopic::LIVE_TOURNAMENT, SceneTopic::RESULTS, SceneTopic::TOURNAMENTS, SceneTopic::MEMPOOL,
         ChatReactions::ZAP_TOPIC, ChatReactions::GREETING_TOPIC,
+        // The fresh roast formats (P10): only the Schwarzbuch-Stunde and the Inflationsbeichte are evergreen (Roasts::EVERGREEN).
+        Roasts::ZENTRALBANK, Roasts::ALTCOIN, Roasts::LIGA_PRANGER, Roasts::PHRASEN, Roasts::NOSTR, Roasts::STACKER,
         // The long formats bound to their day (P9): Chat-Tribunal, Meetup-Radar, Partie des Tages, Hotline, Bitcoin-Zeitreise.
         ...Shows::DAY_BOUND,
     ];
