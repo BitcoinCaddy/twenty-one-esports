@@ -214,7 +214,7 @@ final class NewsMix
     /**
      * Items in a balanced order for the news talk: Bitcoin, tech and the rest taking turns, politics last.
      *
-     * @template TItem of array{section: string, title: string, summary?: string}
+     * @template TItem of array{section: string, source: string, title: string, summary?: string}
      *
      * @param  list<TItem>  $items
      * @return list<TItem>
@@ -225,6 +225,11 @@ final class NewsMix
 
         foreach ($items as $item) {
             $byTier[self::tier($item['section'], $item['title'], $item['summary'] ?? null)][] = $item;
+        }
+
+        // The first outlets of a tier first (EINUNDZWANZIG News, Blocktrainer; heise).
+        foreach ($byTier as $tier => $tierItems) {
+            usort($byTier[$tier], fn (array $a, array $b): int => self::firstRank($tier, $a['source']) <=> self::firstRank($tier, $b['source']));
         }
 
         $ordered = [];

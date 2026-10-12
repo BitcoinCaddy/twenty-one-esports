@@ -120,8 +120,8 @@ it('reads EINUNDZWANZIG News from its feed as a Bitcoin source', function () {
         ])
         ->and($stored->pluck('source')->unique()->all())->toBe(['EINUNDZWANZIG News'])
         ->and($stored->pluck('section')->unique()->all())->toBe([CasterNews::BITCOIN])
-        // Relative links (/s/einundzwanzig-news/…) are no links.
-        ->and($stored->pluck('link')->unique()->all())->toBe([null]);
+        // Relative links (/s/einundzwanzig-news/…) are made absolute against the feed's URL (P15).
+        ->and($stored->pluck('link')->unique()->all())->toBe(['https://media.einundzwanzig.space/s/einundzwanzig-news/draft-9e35b183-8fd6-46ec-9da0-e529a80790cb', 'https://media.einundzwanzig.space/s/einundzwanzig-news/draft-957c3c5a-09ba-47a8-8ecc-b5ff46c75935', 'https://media.einundzwanzig.space/s/einundzwanzig-news/draft-acc8d67d-7039-4e31-b16e-0cd6c23e37e0']);
 });
 
 it('mixes six to eight items at the full hour from at least three outlets, EINUNDZWANZIG News among them', function () {

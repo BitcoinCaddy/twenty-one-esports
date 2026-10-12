@@ -276,6 +276,30 @@ it('orders the news talk stories Bitcoin, tech, money first and asks for a mix',
         ->and($prompt)->toContain('mindestens eine Bitcoin-Geschichte und eine Technik-Geschichte, Politik höchstens eine');
 });
 
+it('reads the real EINUNDZWANZIG News feed for a week and puts its article first in the bulletin, the talk and the Presseschau', function () {
+    // Two items captured from the live feed on 2026-10-12 (Nostr long-form articles with a teaser, relative links; no shownotes list).
+    config(['tv.commentary.news.feeds' => ['einundzwanzig-news' => config('tv.commentary.news.feeds.einundzwanzig-news')]]);
+    Http::fake(['media.einundzwanzig.space/*' => Http::response((string) file_get_contents(base_path('tests/Fixtures/caster-news/einundzwanzig-news-2026-10-12.xml')))]);
+    // Four days after the articles: far beyond the general twelve hours.
+    $this->travelTo(CarbonImmutable::parse('2026-10-16 23:55:00', 'Europe/Berlin'));
+
+    app(NewsFeeds::class)->fetch(CarbonImmutable::now());
+    $ledger = CasterNews::query()->where('title', 'like', 'Ledger mit Spionage-Implantat%')->firstOrFail();
+
+    expect($ledger->source)->toBe('EINUNDZWANZIG News')
+        ->and($ledger->link)->toBe('https://media.einundzwanzig.space/s/einundzwanzig-news/ledger-implantat-cryptobilis-lieferkette')
+        ->and($ledger->summary)->toStartWith('In einem Ledger Nano X steckte eine zweite Platine');
+
+    newsMixRow('Miner verlagern Rechenleistung nach Skandinavien', 'BTC-Echo', CasterNews::BITCOIN, 5);
+    newsMixRow('Lightning-Zahlungen wachsen bei Händlern in Europa', 'Blocktrainer', CasterNews::BITCOIN, 6);
+    newsMixRow('Chatkontrolle: Messenger-Dienste drohen mit Rückzug aus Europa', 'heise online', CasterNews::TECH, 7);
+
+    $items = app(NewsBulletin::class)->select(BroadcastClock::HEADLINES, CarbonImmutable::now());
+    expect($items[0]['source'])->toBe('EINUNDZWANZIG News')
+        ->and(NewsTalk::prompt(array_reverse($items), [], []))->toMatch('/^1\. EINUNDZWANZIG News: /mu')->toContain('wie bei EINUNDZWANZIG News berichtet')
+        ->and(app(Rubrics::class)->material(Rubrics::PRESS, CarbonImmutable::now())['sources'][0])->toBe('EINUNDZWANZIG News');
+});
+
 it('follows a Bitcoin story in the Presseschau with tech, not a third Bitcoin outlet', function () {
     newsMixRow('CARF: Bundestag beschließt Krypto-Informationsaustausch über die EU hinaus', 'Blocktrainer', CasterNews::BITCOIN, 60 * 30, 'blocktrainer');
     newsMixRow('Bundestag beschließt Krypto-Informationsaustausch CARF', 'BTC-Echo', CasterNews::BITCOIN, 12);

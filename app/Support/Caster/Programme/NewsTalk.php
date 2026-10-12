@@ -274,6 +274,10 @@ class NewsTalk
         $balance = in_array(NewsMix::BITCOIN, $tiers, true) && in_array(NewsMix::TECH, $tiers, true)
             ? "\n- Mischt die Themen: mindestens eine Bitcoin-Geschichte und eine Technik-Geschichte, Politik höchstens eine."
             : (in_array(NewsMix::POLITICS, $tiers, true) && count(array_unique($tiers)) > 1 ? "\n- Politik höchstens eine Geschichte; die anderen Themen gehen vor." : '');
+        // The association's own news (user 2026-10-12: the top Bitcoin source) always gets its story in the talk.
+        $balance .= in_array('EINUNDZWANZIG News', array_column($items, 'source'), true)
+            ? "\n- Die Geschichte von EINUNDZWANZIG News ist auf jeden Fall dabei, mit der Quelle genannt („wie bei EINUNDZWANZIG News berichtet …“)."
+            : '';
 
         $list = implode("\n", array_map(function (int $index, array $item): string {
             $summary = $item['summary'] ?? '';

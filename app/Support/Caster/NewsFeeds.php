@@ -50,7 +50,7 @@ class NewsFeeds
                 continue;
             }
 
-            $items = array_slice(self::parse($xml), 0, max(1, (int) ($settings['per_feed'] ?? 20)));
+            $items = array_slice(self::parse($xml, $feed['url']), 0, max(1, (int) ($settings['per_feed'] ?? 20)));
 
             foreach ($items as $item) {
                 $stored = $this->store((string) $key, $feed, $item, $now, $settings);
@@ -67,11 +67,12 @@ class NewsFeeds
     /**
      * The items of an RSS 2.0, RSS 1.0 (RDF) or Atom document, in feed order;
      * an unreadable document gives none. No network and no entity expansion
-     * while parsing.
+     * while parsing. A link relative to the site (EINUNDZWANZIG News writes "/s/einundzwanzig-news/…") is made
+     * absolute against `$base`, the feed's URL; without one it is left out.
      *
      * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary: string|null}>
      */
-    public static function parse(string $xml): array
+    public static function parse(string $xml, ?string $base = null): array
     {
         $previous = libxml_use_internal_errors(true);
 
@@ -104,7 +105,7 @@ class NewsFeeds
                 $items[] = ['title' => (string) $entry->title, 'link' => $link, 'published_at' => self::date((string) $entry->published ?: (string) $entry->updated), 'summary' => (string) $entry->summary ?: (string) $entry->content];
             }
 
-            return self::clean($items);
+            return self::clean($items, $base);
         }
 
         $rows = $root === 'RDF' ? $document->children('http://purl.org/rss/1.0/')->item : $document->channel->item;
@@ -114,7 +115,7 @@ class NewsFeeds
             $items[] = ['title' => (string) $row->title, 'link' => trim((string) $row->link) ?: null, 'published_at' => self::date((string) $row->pubDate ?: (string) $dc->date), 'summary' => (string) $row->description];
         }
 
-        return self::clean($items);
+        return self::clean($items, $base);
     }
 
     /**
@@ -162,7 +163,7 @@ class NewsFeeds
      * @param  list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary?: string}>  $items
      * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary: string|null}>
      */
-    private static function clean(array $items): array
+    private static function clean(array $items, ?string $base = null): array
     {
         $clean = [];
 
@@ -170,7 +171,12 @@ class NewsFeeds
             $title = self::normalize($item['title']);
 
             if ($title !== '') {
-                $clean[] = ['title' => $title, 'link' => $item['link'] !== null && str_starts_with($item['link'], 'http') ? mb_substr($item['link'], 0, 500) : null, 'published_at' => $item['published_at'],
+                $link = $item['link'];
+                if ($link !== null && $base !== null && str_starts_with($link, '/') && ! str_starts_with($link, '//')
+                    && is_string($scheme = parse_url($base, PHP_URL_SCHEME)) && is_string($host = parse_url($base, PHP_URL_HOST))) {
+                    $link = $scheme.'://'.$host.$link;
+                }
+                $clean[] = ['title' => $title, 'link' => $link !== null && str_starts_with($link, 'http') ? mb_substr($link, 0, 500) : null, 'published_at' => $item['published_at'],
                     'summary' => self::summary($item['summary'] ?? '', $title)];
             }
         }
