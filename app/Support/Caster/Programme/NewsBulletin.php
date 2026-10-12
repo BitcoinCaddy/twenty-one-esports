@@ -514,7 +514,7 @@ class NewsBulletin
             ? array_slice($this->announcements()->entries($slot['starts_at']), 0, 3) : [];
 
         $this->usage->recordAttempt(self::CHANNEL);
-        $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500)))
+        $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500), cacheTtl: CasterVoice::staticCacheTtl()))
             ->prompt(self::prompt($slot['type'], $this->clock()->spokenTime($slot['starts_at']), $items, $itemMax, $commentMin, $commentMax, $sirius, $rejected, $entries));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 

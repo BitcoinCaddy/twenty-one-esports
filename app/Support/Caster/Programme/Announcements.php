@@ -300,7 +300,7 @@ class Announcements
 
                 $this->usage->recordAttempt(self::CHANNEL);
                 $temperature = config('tv.commentary.scripts.temperature');
-                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500)))
+                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.scripts.max_output_tokens', 1_500), cacheTtl: CasterVoice::staticCacheTtl()))
                     ->prompt(self::prompt($entries, $try > 0));
                 $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
