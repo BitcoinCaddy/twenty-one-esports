@@ -240,6 +240,12 @@ return [
             'sample_rate' => 24000,
             // The voice is written into the encoder this far ahead of real time, so a slow tick of the daemon never starves it.
             'lead_seconds' => 1.0,
+            // News mode (user 2026-10-12: "so viel ducken im News-Modus, dass man die BG-Music nicht mehr hört"): under a
+            // bulletin, stinger and bed included, the music fades to this level within the fade down and comes back with
+            // the fade up after it, on the voice feed's own timeline (CommentaryTimeline::musicDuck()). 0 switches it off.
+            'news_music_db' => (float) env('TV_COMMENTARY_NEWS_MUSIC_DB', -60),
+            'news_fade_down_seconds' => (float) env('TV_COMMENTARY_NEWS_FADE_DOWN_SECONDS', 1.0),
+            'news_fade_up_seconds' => (float) env('TV_COMMENTARY_NEWS_FADE_UP_SECONDS', 2.0),
         ],
 
         // The station sound (App\Support\Caster\Idents, plan "TWENTY ONE Radio" P4): own synthesized stingers and a news
@@ -251,8 +257,8 @@ return [
             'stingers' => ['news' => 'news-stinger.opus', 'ident' => 'station-ident.opus', 'breaking' => 'breaking-sting.opus'],
             'kinds' => ['bulletin' => 'news', 'news' => 'news', 'history' => 'ident', 'followed' => 'ident'],
             'bed' => 'news-bed.opus',
-            // No bed under the bulletin by default: the stream's music already runs under the voice, and both together clashed (user 2026-10-12).
-            'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', '')))),
+            // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
+            'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
             'bed_gain_db' => 0,
             'bed_fade_seconds' => 1.5,
             'bed_at_night' => false,
@@ -538,6 +544,8 @@ return [
             'follow_up_minutes' => 30,
             'sentences' => ['markus' => ['min' => 2, 'max' => 4], 'sirius' => ['min' => 3, 'max' => 6]],
             'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 1000),
+            // Share of duets in which Sirius may pick his beer topic (the running gag, not every time).
+            'beer_percent' => (int) env('TV_COMMENTARY_DUET_BEER_PERCENT', 15),
         ],
 
         // Commentary runs (user 2026-10-11: "Durchaus auch öfter mal mehrere Audios hintereinander, damit es an diesen Stellen

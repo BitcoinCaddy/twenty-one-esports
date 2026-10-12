@@ -222,8 +222,3 @@ it('builds no idents while they are switched off, and the director then plays th
         ->and(identsFirstClip(SceneDirector::fromConfig(app(ClipSpool::class)))['ident'])->toBeNull();
 });
 
-it('lays no bed under a bulletin by default, the stream music already runs under the voice', function () {
-    config(['tv.commentary.idents.bed_kinds' => array_values(array_filter(explode(',', '')))]);
-
-    expect(config('tv.commentary.idents.bed_kinds'))->toBe([]);
-});
