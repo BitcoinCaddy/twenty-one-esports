@@ -32,7 +32,8 @@ use Throwable;
  *   transcript, else the feed's show notes;
  * - Geschichtsstunde: the next Bauernkrieg episode (HistoryScripts);
  * - Chat-Stunde: questions viewers asked in the chat in the last
- *   `rubrics.chat_hours` (trusted chatters only, no names).
+ *   `rubrics.chat_hours` (trusted chatters only, no names);
+ * - the eight roast formats of P10 (Roasts, written by RoastScripts).
  *
  * The rotation (`rubrics.rotation`) starts at the slot's place in the day
  * (the hour times the rubric slots per hour, plus the slot's place in its
@@ -73,7 +74,7 @@ class Rubrics
         self::PODCAST => ['name' => 'die Podcast-Ecke', 'what' => 'das Wichtigste aus der neuesten Folge des EINUNDZWANZIG-Podcasts', 'pattern' => '/podcast[\s-]*ecke/iu'],
         self::HISTORY => ['name' => 'die Geschichtsstunde', 'what' => 'ein Kapitel aus dem Bauernkrieg', 'pattern' => '/geschichts[\s-]*stunde/iu'],
         self::CHAT => ['name' => 'die Chat-Stunde', 'what' => 'die besten Fragen aus dem Chat der letzten Stunden, beantwortet', 'pattern' => '/chat[\s-]*stunde/iu'],
-    ];
+    ] + Roasts::CATALOGUE;
 
     private const PLAN = 'caster:rubric:plan:';
 
@@ -128,6 +129,11 @@ class Rubrics
         $show = app(Shows::class)->scheduledFor($slot);
 
         foreach ([...($show === null ? [] : [$show]), ...$this->rotationFor($slot)] as $id) {
+            // A roast format (P10) only within its hours and never right after another one.
+            if (Roasts::owns($id) && ! app(Roasts::class)->mayTake($id, $slot, self::PLAN)) {
+                continue;
+            }
+
             if ($this->material($id, $now) !== null) {
                 Cache::put(self::PLAN.$slot['key'], $id, CarbonImmutable::createFromTimestamp($slot['key'])->addHour());
 
@@ -173,7 +179,11 @@ class Rubrics
                 self::PODCAST => $this->podcast(),
                 self::HISTORY => $this->history($now),
                 self::CHAT => $this->chat($now),
-                default => Shows::isShow($id) ? app(Shows::class)->material($id, $now) : null,
+                default => match (true) {
+                    Shows::isShow($id) => app(Shows::class)->material($id, $now),
+                    Roasts::owns($id) => app(Roasts::class)->material($id, $now),
+                    default => null,
+                },
             };
         } catch (Throwable) {
             return null;
@@ -196,6 +206,10 @@ class Rubrics
 
         $hours = (array) config('tv.commentary.programme.rubrics.repeat_hours', []);
         Cache::put(self::AIRED.$id, $material['hash'], $now->addHours(max(1, (int) ($hours[$id] ?? $hours['default'] ?? 2))));
+
+        if (Roasts::owns($id)) {
+            app(Roasts::class)->aired($id, $material, $now);
+        }
 
         foreach ([self::PRESS => self::PRESS_USED, self::CHAT => self::CHAT_USED] as $rubric => $key) {
             if ($rubric === $id) {

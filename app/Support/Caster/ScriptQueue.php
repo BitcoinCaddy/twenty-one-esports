@@ -11,6 +11,8 @@ use App\Support\Caster\Programme\Announcements;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
+use App\Support\Caster\Programme\Roasts;
+use App\Support\Caster\Programme\RoastScripts;
 use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
 use App\Support\Caster\Programme\Shows;
@@ -403,7 +405,8 @@ class ScriptQueue
             $rubric = $material === null ? null : app(ShowScripts::class)->write($slot, $id, $material, $now);
         } else {
             $material = $rubrics->material($id, $now);
-            $rubric = $material === null ? null : $this->rubricScripts->write($slot, $id, $material, $now);
+            $rubric = $material === null ? null
+                : (Roasts::owns($id) ? app(RoastScripts::class)->write($slot, $id, $material, $now) : $this->rubricScripts->write($slot, $id, $material, $now));
         }
 
         if ($material === null || $rubric === null
