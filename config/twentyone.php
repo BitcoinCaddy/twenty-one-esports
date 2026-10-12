@@ -155,6 +155,21 @@ return [
         ],
 
         /*
+        | The programme pushed to YouTube as well (YouTubeRelay): a separate ffmpeg reads the active encoder's own
+        | playlist and copies it to `url`/`key` over RTMP, so a failing ingest never touches the encoder. Only while
+        | `key` is set; then the scene and the prepared loop get a keyframe every 2 s (YouTube wants at most 4 s).
+        | The video is copied as it is encoded: 1 fps in the scene, 30 fps in the loop.
+        */
+        'youtube' => [
+            'key' => (string) env('TWENTYONE_STREAM_YOUTUBE_KEY', ''),
+            'url' => env('TWENTYONE_STREAM_YOUTUBE_URL') ?: 'rtmp://a.rtmp.youtube.com/live2',
+            'backoff' => [
+                'initial_seconds' => 5,
+                'max_seconds' => 120,
+            ],
+        ],
+
+        /*
         | Music under the picture in both modes: `<title>__v<n>.m4a` files
         | (AAC-LC 44.1 kHz stereo). The supervisor writes a shuffled ffconcat
         | list of about `list_hours`; ffmpeg loops it. Instrumentals, named the

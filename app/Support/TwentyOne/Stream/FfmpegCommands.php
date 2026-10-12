@@ -17,7 +17,34 @@ final class FfmpegCommands
     /** Frames per GOP at 30 fps: one IDR per segment. */
     public const GOP_FRAMES = 180;
 
-    public function __construct(private string $ffmpeg = 'ffmpeg') {}
+    /** Keyframe interval while the programme also goes to YouTube, which wants one at least every 4 s. */
+    public const YOUTUBE_KEYFRAME_SECONDS = 2;
+
+    /** Frame rate of the prepared promo. */
+    private const PROMO_FPS = 30;
+
+    /**
+     * @param  int  $keyframeSeconds  seconds between two keyframes in the scene and the prepared loop; a divisor of
+     *                                SEGMENT_SECONDS, so every segment still starts with one
+     */
+    public function __construct(private string $ffmpeg = 'ffmpeg', private int $keyframeSeconds = self::SEGMENT_SECONDS) {}
+
+    /**
+     * The configured binary, with 2 s keyframes while a YouTube key is set (twentyone.stream.youtube) and one
+     * keyframe per segment otherwise.
+     */
+    public static function fromConfig(): self
+    {
+        return new self(
+            (string) config('twentyone.stream.ffmpeg'),
+            YouTubeRelay::enabled() ? self::YOUTUBE_KEYFRAME_SECONDS : self::SEGMENT_SECONDS,
+        );
+    }
+
+    public function keyframeSeconds(): int
+    {
+        return $this->keyframeSeconds;
+    }
 
     /**
      * Length the prepared file is padded to: the next multiple of the segment
@@ -33,7 +60,7 @@ final class FfmpegCommands
     }
 
     /**
-     * One-time encode (zapstream.md (1)): x264 CRF 30 veryslow, GOP 6 s,
+     * One-time encode (zapstream.md (1)): x264 CRF 30 veryslow, GOP 6 s (2 s while YouTube gets the stream),
      * AAC 64 kbps 44.1 kHz, the last frame held and silence appended so the
      * output is exactly padTarget() long.
      *
@@ -52,7 +79,7 @@ final class FfmpegCommands
             '-vf', 'tpad=stop_mode=clone:stop_duration='.$padSeconds, '-af', 'apad', '-t', (string) $target,
             '-c:v', 'libx264', '-preset', 'veryslow', '-profile:v', 'high', '-level', '3.1', '-pix_fmt', 'yuv420p',
             '-crf', '30', '-maxrate', '1000k', '-bufsize', '2000k',
-            '-g', (string) self::GOP_FRAMES, '-keyint_min', (string) self::GOP_FRAMES, '-sc_threshold', '0',
+            '-g', (string) ($this->keyframeSeconds * self::PROMO_FPS), '-keyint_min', (string) ($this->keyframeSeconds * self::PROMO_FPS), '-sc_threshold', '0',
             '-c:a', 'aac', '-b:a', '64k', '-ar', '44100', '-ac', '2',
             '-movflags', '+faststart', '-f', 'mp4', $output,
         ];
@@ -163,8 +190,8 @@ final class FfmpegCommands
     /**
      * The still-image scene: PNG frames written to stdin by the supervisor,
      * one per second, timestamped on arrival (no drift against the real-time
-     * music), x264 stillimage with one IDR per 6 s segment, and the music
-     * copied as is.
+     * music), x264 stillimage with one IDR per 6 s segment (every 2 s while
+     * YouTube gets the stream), and the music copied as is.
      *
      * @return list<string>
      */
@@ -188,9 +215,31 @@ final class FfmpegCommands
             '-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'stillimage', '-bf', '0', '-threads', '1',
             '-x264-params', 'rc-lookahead=0:sync-lookahead=0', '-pix_fmt', 'yuv420p',
             '-crf', (string) $crf,
-            '-g', (string) self::SEGMENT_SECONDS, '-keyint_min', (string) self::SEGMENT_SECONDS, '-sc_threshold', '0',
+            '-g', (string) $this->keyframeSeconds, '-keyint_min', (string) $this->keyframeSeconds, '-sc_threshold', '0',
             ...($voicePipe === null ? ['-c:a', 'copy'] : $this->mixedAudio()),
             ...$this->hlsOutput($encoderDir, $runId),
+        ];
+    }
+
+    /**
+     * The YouTube push (YouTubeRelay): reads one encoder's own playlist from its newest segment on, in real time,
+     * and copies picture and sound as FLV over RTMP. A separate process, not a tee output of the encoder: every
+     * mode switch starts a new encoder next to the old one, and two pushes with the same key, or an encoder
+     * waiting on a hanging RTMP connect, must not happen. `-rw_timeout` (10 s) also ends a connect that is never
+     * answered (measured: exit after 11 s), so the supervisor's backoff takes over.
+     *
+     * The target URL carries the stream key and is therefore visible in the process list to local users;
+     * ffmpeg cannot read an output URL from a file.
+     *
+     * @return list<string>
+     */
+    public function relay(string $playlist, string $target): array
+    {
+        return [
+            $this->ffmpeg, '-nostdin', '-hide_banner', '-loglevel', 'warning', '-nostats',
+            '-re', '-live_start_index', '-1', '-i', $playlist,
+            '-map', '0:v:0', '-map', '0:a:0', '-c', 'copy',
+            '-rw_timeout', '10000000', '-f', 'flv', '-flvflags', 'no_duration_filesize', $target,
         ];
     }
 

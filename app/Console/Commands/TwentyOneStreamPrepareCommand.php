@@ -46,7 +46,7 @@ class TwentyOneStreamPrepareCommand extends Command
         File::ensureDirectoryExists(dirname($prepared));
         $partial = $prepared.'.part';
         $encode = Process::forever()->env(ChildEnvironment::withoutSecrets())->run(
-            (new FfmpegCommands((string) config('twentyone.stream.ffmpeg')))->prepare($source, $partial, $duration),
+            FfmpegCommands::fromConfig()->prepare($source, $partial, $duration),
         );
 
         if ($encode->failed()) {
@@ -109,12 +109,13 @@ class TwentyOneStreamPrepareCommand extends Command
 
         $intervals = array_values(array_unique($intervals));
         $segment = FfmpegCommands::SEGMENT_SECONDS;
+        $keyframeSeconds = FfmpegCommands::fromConfig()->keyframeSeconds();
 
         $checks = [
             'resolution' => [($video['width'] ?? '?').'x'.($video['height'] ?? '?'), ($video['width'] ?? null) === 1280 && ($video['height'] ?? null) === 720],
             'frame rate' => [$video['r_frame_rate'] ?? '?', ($video['r_frame_rate'] ?? null) === '30/1'],
             'duration' => [sprintf('%.3f s (target %d s)', $duration, $target), abs($duration - $target) < self::EPSILON && abs(fmod($duration + self::EPSILON, $segment)) < 2 * self::EPSILON],
-            'keyframe interval' => [implode(', ', $intervals).' s over '.count($keyframes).' keyframes', $intervals !== [] && array_all($intervals, fn (float $interval): bool => abs($interval - $segment) < self::EPSILON)],
+            'keyframe interval' => [implode(', ', $intervals).' s over '.count($keyframes).' keyframes', $intervals !== [] && array_all($intervals, fn (float $interval): bool => abs($interval - $keyframeSeconds) < self::EPSILON)],
             'audio' => [($audio['codec_name'] ?? '?').' '.($audio['sample_rate'] ?? '?').' Hz', ($audio['codec_name'] ?? null) === 'aac' && ($audio['sample_rate'] ?? null) === '44100'],
         ];
 
