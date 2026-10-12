@@ -119,7 +119,16 @@ final class StockScripts
                 $talk = app(TalkShowScripts::class)->evergreen($this->talkShow);
                 $this->remember(self::LAST_FORMATS, $format);
 
-                return $talk === null ? null : $talk + ['format' => $format];
+                if ($talk !== null) {
+                    return $talk + ['format' => $format];
+                }
+
+                // A talk show that did not pass leaves the stock to the next format, it does not starve it.
+                [$format, $material] = $this->material([Shows::STAMMTISCH]);
+
+                if ($format === null) {
+                    return null;
+                }
             }
 
             $rejected = [];
@@ -239,11 +248,12 @@ final class StockScripts
     /**
      * The format of the next programme (of `stock.formats`, the one used longest ago that has material) and its material.
      *
+     * @param  list<string>  $except  formats left out (the talk show after its draft failed)
      * @return array{0: string|null, 1: string}
      */
-    public function material(): array
+    public function material(array $except = []): array
     {
-        $formats = array_values(array_intersect(array_filter((array) config('tv.commentary.blocks.stock.formats', self::FORMATS), 'is_string'), self::FORMATS));
+        $formats = array_values(array_diff(array_intersect(array_filter((array) config('tv.commentary.blocks.stock.formats', self::FORMATS), 'is_string'), self::FORMATS), $except));
         shuffle($formats);
 
         foreach (self::byLastUse($formats, self::LAST_FORMATS) as $format) {

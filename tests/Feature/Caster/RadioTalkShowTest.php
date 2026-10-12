@@ -393,6 +393,22 @@ it('writes an evergreen talk for the night stock at most stock_per_day times a d
         ->and(TalkShow::turnGap('liga'))->toBeNull();
 });
 
+it('leaves the night stock to the next format when the talk show draft does not pass', function () {
+    config(['tv.commentary.blocks.stock.formats' => ['stammtisch', 'liga'], 'tv.commentary.blocks.stock.turns' => ['min' => 2, 'max' => 10]]);
+    // A two-voice answer: no talk show of three, but a fine league talk.
+    VoiceAgent::fake(fn (string $prompt): array => ['text' => implode("\n", [
+        'Markus: Die Liga läuft rund um die Uhr, und jeder kann jederzeit einfach mitspielen.',
+        'Sirius: Und wer verliert, bekommt wenigstens eine Geschichte, die er im Chat erzählen kann.',
+        'Markus: Genau dafür gibt es die Tabelle, damit jeder sieht, wie weit er noch weg ist.',
+        'Sirius: Die Tabelle ist ehrlicher als jede Zentralbank, das muss man ihr lassen.',
+    ]), 'canon_id' => null, 'mood' => 'fakten']);
+    Cache::put('caster:stock:last_formats', ['liga'], now()->addDay());
+
+    $talk = app(StockScripts::class)->write();
+
+    expect($talk['format'] ?? null)->toBe('liga');
+});
+
 it('offers ten host moves per episode from every group, rotating, and never one said on air within the repeat window', function () {
     config(['tv.commentary.repeat_hours' => 24, 'tv.commentary.repeat_phrase_hours' => 6]);
     $groups = TalkShow::hostMoveGroups();
