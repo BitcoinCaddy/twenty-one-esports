@@ -4,6 +4,7 @@ namespace App\Support\Caster;
 
 use App\Games\GameRegistry;
 use App\Models\CasterScript;
+use App\Support\Caster\Programme\Shows;
 use App\Support\Voice\LeagueVoice;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
@@ -602,6 +603,8 @@ final class CasterVoice
                 $found = $this->lookup($message);
                 $data = $found === null ? $data : [...$data, self::LOOKUP_TITLE => $found];
             }
+            // The same for every data block of a chat reply: a blocked word in the data came back in every draft.
+            $data = array_map(fn (string $block): string => Shows::withoutBlocked($block), $data);
 
             for ($try = 0; $try < 2; $try++) {
                 // Only the monthly budget stops a chat reply, never the daily cap the scene scripts use up
@@ -659,7 +662,11 @@ final class CasterVoice
             }
 
             $found = self::lookupText(self::answerAfterSearch($response->steps) ?? $response->text);
-            $this->usage->recordOutcome(self::WEB_LOOKUP_CHANNEL, $found === null ? 'rejected' : 'accepted');
+            // A finding with a word the voice never says ("Gebühren") made every reply draft fail the blocklist, so the
+            // search was paid for and lost (user 2026-10-12: "Das sind verlorene Tokens"): those sentences go, the rest stays.
+            $found = $found === null ? null : (trim(Shows::withoutBlocked($found)) ?: null);
+            // "Nothing to look up" (a greeting, a joke) is no rejection: it is counted apart and costs no search.
+            $found === null ? $this->usage->recordRejection(self::WEB_LOOKUP_CHANNEL, ['nothing_found']) : $this->usage->recordOutcome(self::WEB_LOOKUP_CHANNEL, 'accepted');
 
             return $found;
         } catch (Throwable $exception) {

@@ -346,3 +346,14 @@ it('drops a chatter muted later from every block, and forget() empties their mem
     app(ChatterCache::class)->forget(str_repeat('e', 64));
     expect(ChatterLine::query()->where('pubkey', str_repeat('e', 64))->exists())->toBeFalse();
 });
+
+it('drops the sentences of a web finding that carry a blocked word, so the paid search still reaches the reply', function () {
+    config(['esports.voice.blocklist' => ['gebühren']]);
+    WebLookupAgent::fake(['Die Gebühren im Mempool sind gerade hoch. Der Ledger-Vorfall traf Käufer eines Resellers in Indonesien.']);
+    VoiceAgent::fake([['text' => "Ada, der Ledger-Vorfall traf Käufer eines Resellers in Indonesien und das ist bitter.\nKauft eure Hardware direkt beim Hersteller und nicht beim Onkel vom Markt.", 'canon_id' => null, 'mood' => 'call']]);
+
+    expect(app(CasterVoice::class)->chatReply('Was ist mit dem Ledger-Vorfall?', 'Ada'))->not->toBeNull();
+
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Der Ledger-Vorfall traf Käufer eines Resellers in Indonesien.')
+        && ! str_contains($prompt->prompt, 'Gebühren im Mempool'));
+});
