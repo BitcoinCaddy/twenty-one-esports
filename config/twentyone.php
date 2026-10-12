@@ -164,7 +164,7 @@ return [
             'key' => (string) env('TWENTYONE_STREAM_YOUTUBE_KEY', ''),
             'url' => env('TWENTYONE_STREAM_YOUTUBE_URL') ?: 'rtmp://a.rtmp.youtube.com/live2',
             // Re-encoded video for YouTube (0 = copy the HLS video as it is); YouTube asks 1.5 to 4 Mbit/s for 720p.
-            'video_kbps' => (int) env('TWENTYONE_STREAM_YOUTUBE_VIDEO_KBPS', 1500),
+            'video_kbps' => (int) env('TWENTYONE_STREAM_YOUTUBE_VIDEO_KBPS', 0),
             'fps' => (int) env('TWENTYONE_STREAM_YOUTUBE_FPS', 30),
             'backoff' => [
                 'initial_seconds' => 5,
