@@ -220,6 +220,12 @@ final class SceneDirector
         if ($overdue && $bulletin !== null && $bulletin->kind !== CasterScript::BULLETIN) {
             $bulletin = null;
         }
+        // A rubric never cuts a rubric on air, nor comes between its parts: the news talk waits for the end of Sport und
+        // Wetter when that runs longer than estimated.
+        if ($bulletin !== null && $bulletin->kind === CasterScript::RUBRIC && ($this->clip?->kind === CasterScript::RUBRIC
+            || ($this->clip === null && $this->part !== null && CasterScript::query()->where('part_group', $this->part['group'])->value('kind') === CasterScript::RUBRIC))) {
+            $bulletin = null;
+        }
         if ($bulletin !== null) {
             if ($this->clip === null) {
                 if ($this->play($planner, $bulletin, $now)) {

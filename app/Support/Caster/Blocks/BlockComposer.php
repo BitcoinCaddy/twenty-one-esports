@@ -4,6 +4,7 @@ namespace App\Support\Caster\Blocks;
 
 use App\Models\CasterScript;
 use App\Support\Caster\Programme\BroadcastClock;
+use App\Support\Caster\Programme\SportWeather;
 use Carbon\CarbonImmutable;
 use Closure;
 
@@ -12,7 +13,8 @@ use Closure;
  * 2026-10-12: "wie ein echter Radiosender"): which of the Anchor's jingle
  * categories stand where between the scripts. Pure: no audio, no I/O.
  *
- *   news block    news jingle (headlines at :30) -> bulletin -> back-announce -> the talk after it
+ *   news block    news jingle (headlines at :30) -> bulletin -> Sport und Wetter (no jingle between) -> back-announce
+ *                 -> the talk after it
  *   rubric block  the rubric's opener (rubric-<topic>) -> the rubric (its parts back to back)
  *   teaser        coming-up -> teaser
  *   talk block    station ID, time of day or talk opener -> scripts; between two scripts a jingle of the
@@ -47,7 +49,9 @@ final class BlockComposer
 
             if ($index === 0) {
                 $steps[] = ['type' => self::STEP_JINGLE, 'categories' => self::opener($script, $scripts, $airAt, $random, $clock)];
-            } elseif ($previous !== null && ($previous['kind'] ?? null) === CasterScript::BULLETIN) {
+            } elseif ($previous !== null && ($previous['kind'] ?? null) === CasterScript::BULLETIN && ($script['topic'] ?? null) === SportWeather::TOPIC) {
+                // Sport und Wetter belongs to the news: it follows the bulletin without a jingle.
+            } elseif ($previous !== null && (($previous['kind'] ?? null) === CasterScript::BULLETIN || (! $sameStory && ($previous['topic'] ?? null) === SportWeather::TOPIC))) {
                 $steps[] = ['type' => self::STEP_JINGLE, 'categories' => ['back-announce', 'sweeper']];
             } elseif (! $sameStory) {
                 $categories = self::between($script, $kind);
