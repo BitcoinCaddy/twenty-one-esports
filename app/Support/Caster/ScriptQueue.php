@@ -4,6 +4,9 @@ namespace App\Support\Caster;
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Blocks\DayPlanner;
+use App\Support\Caster\Blocks\DayStock;
+use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\Programme\Announcements;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\NewsBulletin;
@@ -12,6 +15,7 @@ use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
 use App\Support\Caster\Programme\SportWeather;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -122,7 +126,7 @@ class ScriptQueue
     public function airtimeAhead(): float
     {
         $scripts = (float) CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
-            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::PROGRAMME, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::PROGRAMME, ...CasterScript::SEGMENTS])->where(self::notStock(...))->sum('estimated_seconds');
 
         return $scripts + app(ClipSpool::class)->readySeconds();
     }
@@ -153,6 +157,7 @@ class ScriptQueue
         $written += $quiet ? 0 : $this->fillNewsTalk($now);
         $written += $this->fillRubric($now);
         $written += $quiet ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
+        $written += $this->fillStock($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
         $sentences = (array) ($settings['sentences'] ?? []);
@@ -163,7 +168,7 @@ class ScriptQueue
             $facts = $this->facts->forTopic($topic, $night);
             $this->supersedeTopic($topic, SceneFacts::hash($facts));
 
-            if ((! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts)) {
+            if ((! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
                 $factsByTopic[$topic] = $facts;
             }
         }
@@ -227,6 +232,85 @@ class ScriptQueue
         }
 
         return $written;
+    }
+
+    /**
+     * Whether the slide scene scripts of `$topic` are left out now (user
+     * 2026-10-12: "zwischen dem vorgerenderten Programm kommen so generische
+     * Sprüche und die sind total langweilig"): by day, with
+     * `stock.suppress_scenes` on, while the workstation reports at least
+     * `suppress_min_seconds` of day stock or at least `scripts.ahead_seconds`
+     * of fresh talk (segments, rubrics) waits; never for `keep_scene_topics`
+     * (a running match).
+     */
+    public function scenesSuppressed(string $topic, bool $quiet): bool
+    {
+        $settings = (array) config('tv.commentary.blocks.stock', []);
+
+        if ($quiet || ! DayStock::enabled() || ($settings['suppress_scenes'] ?? false) !== true || in_array($topic, (array) ($settings['keep_scene_topics'] ?? []), true)) {
+            return false;
+        }
+
+        $report = DayStock::report();
+        $freshTalk = (float) CasterScript::query()->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])
+            ->whereIn('kind', [CasterScript::RUBRIC, ...CasterScript::SEGMENTS])->sum('estimated_seconds');
+
+        return ($report !== null && $report['seconds'] >= (float) ($settings['suppress_min_seconds'] ?? 600))
+            || $freshTalk >= (float) config('tv.commentary.scripts.ahead_seconds', 300);
+    }
+
+    /**
+     * Evergreen talks for the day stock (StockScripts), written ahead in the
+     * stock window while the workstation reports room in its stock: at most
+     * one per run, until two wait unclaimed. Queued as scenes of scene
+     * StockScripts::SCENE (in parts like any long scene), which only a stock
+     * claim (claimStock()) hands out.
+     *
+     * @return int talks written (0 or 1)
+     */
+    public function fillStock(CarbonImmutable $now): int
+    {
+        if (! DayPlanner::writeStockAhead($now, DayStock::report())
+            || CasterScript::query()->where('scene', StockScripts::SCENE)->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
+                ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count() >= 2) {
+            return 0;
+        }
+
+        return $this->writeStock($now) !== null ? 1 : 0;
+    }
+
+    /**
+     * The next stock script for the workstation (`?only=stock`): a queued
+     * one (a later part of a talk only after the part before it), else one
+     * written now. null when the writer gives nothing.
+     */
+    public function claimStock(CarbonImmutable $now): ?CasterScript
+    {
+        $script = $this->claim($now, stock: true);
+
+        if ($script !== null || $this->writeStock($now) === null) {
+            return $script;
+        }
+
+        return $this->claim($now, stock: true);
+    }
+
+    private function writeStock(CarbonImmutable $now): ?CasterScript
+    {
+        $talk = app(StockScripts::class)->write();
+
+        return $talk === null ? null : $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $talk['text'], StockScripts::TOPIC_PREFIX.$talk['format'], 0, $now,
+            scene: StockScripts::SCENE, topic: StockScripts::TOPIC_PREFIX.$talk['format'], maxAgeMinutes: (int) config('tv.commentary.blocks.stock.max_age_minutes', 180), speakers: $talk['speakers']);
+    }
+
+    /**
+     * A query constraint: not a script written for the day stock.
+     *
+     * @param  Builder<CasterScript>  $query
+     */
+    public static function notStock(Builder $query): void
+    {
+        $query->whereNull('scene')->orWhere('scene', '!=', StockScripts::SCENE);
     }
 
     /**
@@ -714,9 +798,11 @@ class ScriptQueue
      * later part of a long script. A later part is handed out only once every
      * part before it left the queue, so the parts are voiced in order.
      *
+     * A stock script (StockScripts::SCENE) only for `$stock` (claimStock()), and only then.
+     *
      * @param  list<string>|null  $kinds
      */
-    public function claim(CarbonImmutable $now, ?array $kinds = null): ?CasterScript
+    public function claim(CarbonImmutable $now, ?array $kinds = null, bool $stock = false): ?CasterScript
     {
         $this->expire($now);
 
@@ -724,8 +810,9 @@ class ScriptQueue
             ->where('claimed_at', '<', $now->subSeconds((int) config('tv.commentary.fetch.claim_seconds', 180)))
             ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
 
-        return DB::transaction(function () use ($now, $kinds): ?CasterScript {
+        return DB::transaction(function () use ($now, $kinds, $stock): ?CasterScript {
             $script = CasterScript::query()->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
+                ->where(fn ($query) => $stock ? $query->where('scene', StockScripts::SCENE) : self::notStock($query))
                 ->when($kinds !== null, fn ($query) => $query->where(fn ($query) => $query->whereIn('kind', (array) $kinds)->orWhere('scene', ChatWishes::SCENE)->orWhere('part_index', '>', 1)))
                 ->where(fn ($query) => $query->whereNull('part_group')->orWhereNotExists(fn ($earlier) => $earlier->from('caster_scripts as earlier')
                     ->whereColumn('earlier.part_group', 'caster_scripts.part_group')->whereColumn('earlier.part_index', '<', 'caster_scripts.part_index')

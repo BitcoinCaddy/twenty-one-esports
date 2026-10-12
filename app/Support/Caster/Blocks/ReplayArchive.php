@@ -127,13 +127,14 @@ final class ReplayArchive
     }
 
     /**
-     * The evergreen block to replay now: rendered within `keep_hours`, not
-     * replayed within `$repeatHours`, the one replayed longest ago (never
-     * replayed first, then the oldest); null when there is none.
+     * The evergreen block to replay now: rendered within `keep_hours` and
+     * at least `$minAgeHours` ago (its first airing), not replayed within
+     * `$repeatHours`, the one replayed longest ago (never replayed first,
+     * then the oldest); null when there is none.
      *
      * @return array{name: string, file: string, meta: array<string, mixed>}|null
      */
-    public function pick(CarbonImmutable $now, float $repeatHours): ?array
+    public function pick(CarbonImmutable $now, float $repeatHours, float $minAgeHours = 0.0): ?array
     {
         $candidates = [];
 
@@ -141,6 +142,7 @@ final class ReplayArchive
             $replayed = is_int($meta['replayed_at'] ?? null) ? $meta['replayed_at'] : null;
 
             if (($meta['evergreen'] ?? false) !== true || ! is_file($this->dir.'/'.$name.'.opus')
+                || ! is_int($meta['rendered_at'] ?? null) || $now->getTimestamp() - $meta['rendered_at'] < $minAgeHours * 3600
                 || ($replayed !== null && $now->getTimestamp() - $replayed < $repeatHours * 3600)) {
                 continue;
             }

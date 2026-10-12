@@ -33,10 +33,11 @@ final class BlockComposer
     /**
      * @param  list<array<array-key, mixed>>  $scripts  claimed scripts (the claim's `script` payloads), the first the lead
      * @param  CarbonImmutable  $airAt  when the block is expected on air (the time-of-day jingle)
+     * @param  bool  $evergreen  a block for the day stock (DayStock): it airs at an unknown hour, so never a time-of-day jingle
      * @param  (Closure(): float)|null  $random  a number in [0, 1), mt_rand by default
      * @return list<array{type: string, categories?: list<string>, index?: int}>
      */
-    public static function plan(array $scripts, CarbonImmutable $airAt, float $sweeperShare = 0.5, ?Closure $random = null, ?BroadcastClock $clock = null): array
+    public static function plan(array $scripts, CarbonImmutable $airAt, float $sweeperShare = 0.5, ?Closure $random = null, ?BroadcastClock $clock = null, bool $evergreen = false): array
     {
         $random ??= fn (): float => mt_rand(0, 999) / 1000;
         $steps = [];
@@ -48,7 +49,7 @@ final class BlockComposer
                 && ($script['part']['group'] ?? null) === ($previous['part']['group'] ?? null);
 
             if ($index === 0) {
-                $steps[] = ['type' => self::STEP_JINGLE, 'categories' => self::opener($script, $scripts, $airAt, $random, $clock)];
+                $steps[] = ['type' => self::STEP_JINGLE, 'categories' => self::opener($script, $scripts, $airAt, $random, $clock, $evergreen)];
             } elseif ($previous !== null && ($previous['kind'] ?? null) === CasterScript::BULLETIN && ($script['topic'] ?? null) === SportWeather::TOPIC) {
                 // Sport und Wetter belongs to the news: it follows the bulletin without a jingle.
             } elseif ($previous !== null && (($previous['kind'] ?? null) === CasterScript::BULLETIN || (! $sameStory && ($previous['topic'] ?? null) === SportWeather::TOPIC))) {
@@ -77,7 +78,7 @@ final class BlockComposer
      * @param  Closure(): float  $random
      * @return list<string>
      */
-    private static function opener(array $lead, array $scripts, CarbonImmutable $airAt, Closure $random, ?BroadcastClock $clock): array
+    private static function opener(array $lead, array $scripts, CarbonImmutable $airAt, Closure $random, ?BroadcastClock $clock, bool $evergreen = false): array
     {
         $kind = (string) ($lead['kind'] ?? '');
 
@@ -99,7 +100,7 @@ final class BlockComposer
 
         return match (true) {
             $roll < 0.4 => ['station', 'sweeper'],
-            $roll < 0.75 => ['time-'.self::daypart($airAt), 'station'],
+            $roll < 0.75 && ! $evergreen => ['time-'.self::daypart($airAt), 'station'],
             $duet => ['talk', 'station'],
             default => ['sweeper', 'station'],
         };
@@ -121,7 +122,8 @@ final class BlockComposer
             'rubric' => $topic === 'nachrichten_talk' ? ['talk', 'sweeper'] : ['rubric-'.$topic, 'sweeper'],
             'teaser' => ['coming-up', 'sweeper'],
             CasterScript::HISTORY => ['rubric-geschichte', 'sweeper'],
-            default => null,
+            // A programme of the day stock opens with its format's jingle line (StockScripts::jinglesFor()).
+            default => StockScripts::jinglesFor($topic),
         };
     }
 

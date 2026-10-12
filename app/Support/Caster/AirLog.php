@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -19,10 +20,18 @@ final class AirLog
 {
     public const KEY = 'caster:air_log';
 
-    public const KEEP = 400;
+    /** About a day of stretches at the radio's pace (blocks, single clips, reactions). */
+    public const KEEP = 1500;
+
+    /** What a stretch was (the hourly airtime budget, user 2026-10-12): rendered fresh, from the day stock, or a replay. */
+    public const FRESH = 'fresh';
+
+    public const STOCK = 'stock';
+
+    public const REPLAY = 'replay';
 
     /**
-     * @param  array{clip: int, kind: string, block: bool, start: float, end: float}  $piece
+     * @param  array{clip: int, kind: string, block: bool, start: float, end: float, source?: string}  $piece
      */
     public static function record(array $piece): void
     {
@@ -36,7 +45,7 @@ final class AirLog
     }
 
     /**
-     * @return list<array{clip: int, kind: string, block: bool, start: float, end: float}>
+     * @return list<array{clip: int, kind: string, block: bool, start: float, end: float, source: string}>
      */
     public static function entries(): array
     {
@@ -45,7 +54,8 @@ final class AirLog
 
         foreach (is_array($log) ? $log : [] as $piece) {
             if (is_array($piece) && is_numeric($piece['start'] ?? null) && is_numeric($piece['end'] ?? null)) {
-                $entries[] = ['clip' => (int) ($piece['clip'] ?? 0), 'kind' => (string) ($piece['kind'] ?? ''), 'block' => (bool) ($piece['block'] ?? false), 'start' => (float) $piece['start'], 'end' => (float) $piece['end']];
+                $entries[] = ['clip' => (int) ($piece['clip'] ?? 0), 'kind' => (string) ($piece['kind'] ?? ''), 'block' => (bool) ($piece['block'] ?? false), 'start' => (float) $piece['start'], 'end' => (float) $piece['end'],
+                    'source' => in_array($piece['source'] ?? null, [self::STOCK, self::REPLAY], true) ? (string) $piece['source'] : self::FRESH];
             }
         }
 
@@ -77,5 +87,49 @@ final class AirLog
         }
 
         return $gaps;
+    }
+
+    /**
+     * Seconds of voice per source within [`$from`, `$to`) (unix seconds), a stretch cut at the edges.
+     *
+     * @param  list<array{start: float, end: float, source: string}>  $entries
+     * @return array{fresh: float, stock: float, replay: float}
+     */
+    public static function seconds(array $entries, float $from, float $to): array
+    {
+        $seconds = [self::FRESH => 0.0, self::STOCK => 0.0, self::REPLAY => 0.0];
+
+        foreach ($entries as $piece) {
+            $overlap = min($to, (float) $piece['end']) - max($from, (float) $piece['start']);
+
+            if ($overlap > 0) {
+                $seconds[$piece['source']] = ($seconds[$piece['source']] ?? 0.0) + $overlap;
+            }
+        }
+
+        return [self::FRESH => round($seconds[self::FRESH], 1), self::STOCK => round($seconds[self::STOCK], 1), self::REPLAY => round($seconds[self::REPLAY], 1)];
+    }
+
+    /**
+     * The airtime mix hour by hour (Berlin hours) from `$from` to `$to`: fresh, stock and replay seconds and the
+     * rest of the hour as music (the stream plays music whenever no voice is on air). An hour cut by the window
+     * counts only its part inside it.
+     *
+     * @param  list<array{start: float, end: float, source: string}>  $entries
+     * @return list<array{hour: string, fresh: float, stock: float, replay: float, music: float}>
+     */
+    public static function hourly(array $entries, float $from, float $to, string $timezone = 'Europe/Berlin'): array
+    {
+        $hours = [];
+        $start = (float) CarbonImmutable::createFromTimestamp((int) floor($from))->setTimezone($timezone)->startOfHour()->getTimestamp();
+
+        for ($hour = $start; $hour < $to; $hour += 3600) {
+            [$a, $b] = [max($from, $hour), min($to, $hour + 3600)];
+            $seconds = self::seconds($entries, $a, $b);
+            $hours[] = ['hour' => CarbonImmutable::createFromTimestamp((int) $hour)->setTimezone($timezone)->format('Y-m-d H:00'), ...$seconds,
+                'music' => round(max(0.0, ($b - $a) - array_sum($seconds)), 1)];
+        }
+
+        return $hours;
     }
 }

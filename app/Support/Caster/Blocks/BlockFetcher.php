@@ -220,19 +220,22 @@ final class BlockFetcher
      * behind the Anchor's replay jingle, decoded and encoded by ffmpeg only,
      * no VoiceStudio call. Fails closed: replay off, day time, no evergreen
      * block, no replay jingle (the listener must hear that it is a repeat)
-     * or a refusal of the server, and nothing is uploaded (null).
+     * or a refusal of the server, and nothing is uploaded (null). By day only
+     * as the reserve of the hourly airtime budget (`replay.day_reserve`,
+     * DayPlanner): the server refuses it beyond its replay share.
      */
     public function replay(CasterFetcher $fetcher, float $spoolSeconds): ?string
     {
         $settings = (array) config('tv.commentary.blocks.replay', []);
         $now = CarbonImmutable::now();
 
-        if (! ReplayArchive::enabled() || ! QuietHours::active($now) || $spoolSeconds >= (float) ($settings['below_seconds'] ?? 120)) {
+        if (! ReplayArchive::enabled() || (! QuietHours::active($now) && ($settings['day_reserve'] ?? false) !== true)
+            || $spoolSeconds >= (float) ($settings['below_seconds'] ?? 120)) {
             return null;
         }
 
         $archive = ReplayArchive::fromConfig();
-        $pick = $archive->pick($now, (float) ($settings['repeat_hours'] ?? 12));
+        $pick = $archive->pick($now, (float) ($settings['repeat_hours'] ?? 24), (float) ($settings['min_age_hours'] ?? 6));
         $library = JingleLibrary::fromConfig();
         $jingle = $pick === null ? null : $library->pick(['replay'], $now);
 
@@ -303,9 +306,15 @@ final class BlockFetcher
         $this->urgentAskedAt = microtime(true);
 
         for ($answered = 0; $answered < 5; $answered++) {
-            $script = $fetcher->claim(urgent: true)?->json('script');
+            $claim = $fetcher->claim(urgent: true);
+            $script = $claim?->json('script');
 
             if (! is_array($script) || ! is_int($script['id'] ?? null)) {
+                // Nothing urgent: while this render runs, the air must not run dry (DayPlanner: stock first, a replay last).
+                if ($claim !== null) {
+                    $this->keepAirFed($fetcher, (float) $claim->json('spool_seconds', 0));
+                }
+
                 return;
             }
 
@@ -316,6 +325,138 @@ final class BlockFetcher
                 $fetcher->voiceAndUpload($script, $terms);
             }
         }
+    }
+
+    /**
+     * During a render (answerUrgent()): a stock block goes up when the server
+     * runs below `stock.low_seconds`, else a replay when it would run dry
+     * (DayPlanner); nothing in the quiet hours but the replay of the night.
+     */
+    private function keepAirFed(CasterFetcher $fetcher, float $spoolSeconds): void
+    {
+        $quiet = QuietHours::active(CarbonImmutable::now());
+        $hasStock = DayStock::enabled() && DayStock::fromConfig()->entries() !== [];
+
+        if (DayPlanner::topUpBeforeFresh($spoolSeconds, $hasStock, $quiet) && $this->uploadStock($fetcher) === CasterFetcher::VOICED) {
+            return;
+        }
+
+        if (! $hasStock) {
+            $this->replay($fetcher, $spoolSeconds);
+        }
+    }
+
+    /**
+     * The oldest block of the day stock goes up (`api/caster/stock/blocks`,
+     * no VoiceStudio call); once the server took it, it leaves the stock and
+     * moves to the replay archive (it aired as new once). Fails closed: no
+     * stock, quiet hours, a refusal or no connection, and the block stays.
+     */
+    public function uploadStock(CasterFetcher $fetcher): ?string
+    {
+        $stock = DayStock::fromConfig();
+        $entry = DayStock::enabled() && ! QuietHours::active(CarbonImmutable::now()) ? $stock->take() : null;
+
+        if ($entry === null) {
+            return null;
+        }
+
+        $meta = $entry['meta'];
+        $times = fn (mixed $values): string => implode(',', array_map(fn ($value): string => sprintf('%.3F', (float) $value), array_values(array_filter((array) $values, 'is_numeric'))));
+
+        try {
+            $upload = $fetcher->server()
+                ->withHeaders([
+                    'X-Caster-Duration' => sprintf('%.3F', (float) $meta['seconds']),
+                    'X-Caster-Sentence-Ends' => $times($meta['ends'] ?? []),
+                    'X-Caster-Boundaries' => $times($meta['boundaries'] ?? []),
+                ])
+                ->withBody($entry['opus'], 'audio/ogg')
+                ->post($fetcher->settings()['server'].'/api/caster/stock/blocks');
+        } catch (ConnectionException) {
+            return CasterFetcher::OFFLINE;
+        }
+
+        if ($upload->status() !== 201) {
+            return $upload->status() === 507 ? CasterFetcher::FULL : null;
+        }
+
+        $stock->remove($entry['name']);
+        $scripts = array_values(array_filter((array) ($meta['scripts'] ?? []), 'is_array'));
+
+        if (ReplayArchive::enabled() && $scripts !== []) {
+            ReplayArchive::fromConfig()->store($entry['opus'], $scripts, ['ends' => array_values(array_map('floatval', (array) ($meta['ends'] ?? []))),
+                'boundaries' => array_values(array_map('floatval', (array) ($meta['boundaries'] ?? []))), 'steps' => array_values(array_filter((array) ($meta['steps'] ?? []), 'is_string')),
+                'seconds' => (float) $meta['seconds']], CarbonImmutable::now());
+        }
+
+        $this->rendered[] = ['stock_upload' => $entry['name'], 'seconds' => (float) $meta['seconds']];
+
+        return CasterFetcher::VOICED;
+    }
+
+    /**
+     * Renders one block for the day stock: claims evergreen talks
+     * (`?only=stock`) until the block holds `stock.seconds.min` of airtime
+     * and no talk is cut mid-way (never past 1.5 times `seconds.max`),
+     * renders them without a time-of-day jingle, keeps the block in the
+     * DayStock and tells the server the scripts are done. Urgent scripts
+     * are answered during the render like in any block (answerUrgent()).
+     * null when the server had no stock script; any failure releases them.
+     */
+    public function stock(CasterFetcher $fetcher): ?string
+    {
+        $settings = (array) config('tv.commentary.blocks.stock', []);
+        $min = (float) ($settings['seconds']['min'] ?? 180);
+        $max = max($min, (float) ($settings['seconds']['max'] ?? 360));
+        [$batch, $terms] = [[], []];
+
+        while (count($batch) < (int) config('tv.commentary.blocks.max_scripts', 40)) {
+            $last = $batch === [] ? null : $batch[count($batch) - 1];
+            $continues = is_array($last['part'] ?? null) && ($last['part']['continues'] ?? false) === true;
+
+            if ($batch !== [] && ((! $continues && self::estimate($batch) >= $min) || self::estimate($batch) >= $max * 1.5)) {
+                break;
+            }
+
+            $claim = $fetcher->claim(stock: true);
+            $script = $claim?->json('script');
+
+            if (! is_array($script) || ! is_int($script['id'] ?? null)) {
+                break;
+            }
+
+            $terms = $terms === [] ? array_filter((array) $claim->json('pronunciation', []), 'is_string') : $terms;
+            $batch[] = $script;
+        }
+
+        if ($batch === []) {
+            return null;
+        }
+
+        $ids = array_map(fn (array $script): int => (int) $script['id'], $batch);
+        $renderer = new BlockRenderer($fetcher, JingleLibrary::fromConfig(), Idents::fromConfig(), null, fn () => $this->answerUrgent($fetcher, $terms));
+        $block = $renderer->render($batch, $terms, CarbonImmutable::now(), evergreen: true);
+        $opus = $block === null ? null : $fetcher->encode($block['pcm'], $block['rate']);
+        $seconds = $block === null ? 0.0 : round(Pcm::seconds($block['pcm'], $block['rate']), 3);
+        $name = $block === null || $opus === null ? null : DayStock::fromConfig()->store($opus, $batch,
+            ['ends' => $block['ends'], 'boundaries' => $block['boundaries'], 'steps' => $block['steps'], 'seconds' => $seconds], CarbonImmutable::now());
+
+        if ($name === null) {
+            $this->releaseAll($fetcher, $ids);
+
+            return CasterFetcher::RELEASED;
+        }
+
+        try {
+            $fetcher->server()->withHeaders(['X-Caster-Scripts' => implode(',', $ids)])->post($fetcher->settings()['server'].'/api/caster/stock/stored');
+        } catch (ConnectionException) {
+            // The claims run out after `claim_seconds`; the block is stocked all the same.
+        }
+
+        $this->rendered[] = ['stock' => $name, 'scripts' => $ids, 'seconds' => $seconds, 'steps' => $block['steps']];
+
+        return CasterFetcher::STOCKED;
     }
 
     /**

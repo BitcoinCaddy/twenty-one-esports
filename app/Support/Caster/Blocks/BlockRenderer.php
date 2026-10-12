@@ -59,7 +59,7 @@ final class BlockRenderer
      * @param  array<string, string>  $terms
      * @return array{pcm: string, rate: int, ends: list<float>, boundaries: list<float>, protected: float, steps: list<string>, blips: list<array{at: float, speaker: string, file: string}>, batches: list<string>}|null null when VoiceStudio failed
      */
-    public function render(array $scripts, array $terms, CarbonImmutable $airAt): ?array
+    public function render(array $scripts, array $terms, CarbonImmutable $airAt, bool $evergreen = false): ?array
     {
         $settings = (array) config('tv.commentary.blocks', []);
         $voice = $this->fetcher->settings();
@@ -105,7 +105,7 @@ final class BlockRenderer
         }
 
         $rate = (int) $rate;
-        $steps = BlockComposer::plan($scripts, $airAt, (float) ($settings['jingles']['sweeper_share'] ?? 0.5), $this->random);
+        $steps = BlockComposer::plan($scripts, $airAt, (float) ($settings['jingles']['sweeper_share'] ?? 0.5), $this->random, evergreen: $evergreen);
         $crossfade = (int) round((float) ($settings['crossfade_seconds'] ?? 0.45) * $rate);
         $jingleGain = (float) ($settings['jingles']['gain_db'] ?? -3.0);
 

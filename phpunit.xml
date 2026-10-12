@@ -61,6 +61,10 @@
         <env name="TV_COMMENTARY_NEWS_TALK" value="false" force="true"/>
         <!-- The pattern fallback is off in production (AI only); the suite keeps it on, tests of the AI-only default switch it off. -->
         <env name="TV_COMMENTARY_PATTERNS" value="true" force="true"/>
+        <!-- Programme blocks, the day stock and replays are switched on in production .env files; their own tests switch them on. -->
+        <env name="TV_COMMENTARY_BLOCKS" value="false" force="true"/>
+        <env name="TV_COMMENTARY_STOCK" value="false" force="true"/>
+        <env name="TV_COMMENTARY_REPLAY" value="false" force="true"/>
         <env name="TV_COMMENTARY_DUET_SHARE" value="0" force="true"/>
         <env name="TV_COMMENTARY_CHAT_DUET_SHARE" value="0" force="true"/>
         <env name="TWENTYONE_STREAM_ROTATE_MINUTES" value="0" force="true"/>

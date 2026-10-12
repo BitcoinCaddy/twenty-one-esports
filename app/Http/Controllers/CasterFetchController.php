@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\AirLog;
+use App\Support\Caster\Blocks\DayPlanner;
+use App\Support\Caster\Blocks\DayStock;
+use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\InvalidClip;
 use App\Support\Caster\PodcastTranscripts;
@@ -42,19 +47,27 @@ final class CasterFetchController
 
         $now = CarbonImmutable::now();
         Cache::put(ClipSpool::FETCHER_SEEN, $now->getTimestamp(), 3600);
+        DayStock::rememberReport($request->header(DayStock::HEADER), $now);
 
         $ready = $spool->readySeconds();
         $target = (float) config('tv.commentary.spool.target_seconds', 180);
         $atByteCap = $spool->bytes() >= (int) config('tv.commentary.spool.max_bytes', 0);
-        $full = $ready >= $target || $atByteCap;
+        // Day stock and replays are the reserve (DayPlanner): they never make the spool full for fresh scripts.
+        $full = $ready - $spool->reserveSeconds() >= $target || $atByteCap;
 
         // `?only=urgent` (P6): the workstation asks in the middle of rendering a block for what cannot wait for it.
         $urgent = $request->query('only') === 'urgent';
+        // `?only=stock`: an evergreen talk for the day stock, in the stock window, or by day (`stock.day_share`) while
+        // the workstation has nothing fresh to voice.
+        $stock = $request->query('only') === 'stock';
 
         // A full spool still takes live moments and reactions (they play next) and what the clock places (a bulletin,
         // a rubric, a teaser: each airs at its slot, whatever else waits); only the byte cap stops them too.
         $script = match (true) {
-            config('tv.commentary.enabled') !== true, $atByteCap => null,
+            config('tv.commentary.enabled') !== true => null,
+            $stock => DayStock::enabled() && (DayStock::windowActive($now) || (! QuietHours::active($now) && config('tv.commentary.blocks.stock.day_share') === true))
+                ? $queue->claimStock($now) : null,
+            $atByteCap => null,
             $full || $urgent => $queue->claim($now, [...ClipSpool::LIVE_KINDS, ...CasterScript::PROGRAMME]),
             default => $queue->claim($now),
         };
@@ -179,10 +192,13 @@ final class CasterFetchController
      * A replayed block from the workstation's archive (P6 replay, `POST
      * api/caster/replays`): the raw Opus body with its length, sentence ends
      * and boundaries, already behind the Anchor's replay jingle. Taken only
-     * while `blocks.replay.enabled` and the quiet hours run (409 otherwise,
-     * fail closed); it stands in the spool under a stand-in script of kind
-     * replay and expires when the quiet hours end, so a best of never runs
-     * into the day programme.
+     * while `blocks.replay.enabled` (409 otherwise, fail closed): in the
+     * quiet hours it expires when they end, so a best of never runs into the
+     * day programme; by day only as the reserve of the hourly airtime budget
+     * (`replay.day_reserve`, the spool below `below_seconds`, within
+     * DayPlanner::replayAllowed(); 409 `over_budget` beyond it: music
+     * instead), expiring `day_expire_minutes` after its upload. It stands in
+     * the spool under a stand-in script of kind replay.
      */
     public function replay(Request $request, ClipSpool $spool): JsonResponse
     {
@@ -191,18 +207,35 @@ final class CasterFetchController
         }
 
         $now = CarbonImmutable::now();
+        $settings = (array) config('tv.commentary.blocks.replay', []);
+        $quiet = QuietHours::active($now);
+        $duration = (float) $request->header('X-Caster-Duration', '0');
 
-        if (config('tv.commentary.blocks.replay.enabled') !== true || ! QuietHours::active($now)) {
+        if (config('tv.commentary.blocks.replay.enabled') !== true || (! $quiet && ($settings['day_reserve'] ?? false) !== true)) {
             return response()->json(['error' => 'not_now'], 409);
         }
 
-        $duration = (float) $request->header('X-Caster-Duration', '0');
+        if (! $quiet) {
+            // A replay waiting or on air is not in the air log yet: it counts all the same.
+            $waiting = (float) CasterClip::query()->whereIn('status', [CasterClip::READY, CasterClip::PLAYING])->where('kind', CasterClip::BLOCK)->get()
+                ->filter(fn (CasterClip $clip): bool => $clip->isReplay())->sum('duration_seconds');
+            $usage = DayPlanner::replayUsage(AirLog::entries(), $waiting, $now);
+
+            if ($spool->readySeconds() >= (float) ($settings['below_seconds'] ?? 120)) {
+                return response()->json(['error' => 'not_dry'], 409);
+            }
+
+            if (! DayPlanner::replayAllowed($usage['hour_replay'], $usage['day_replay'], $usage['day_voice'], $duration)) {
+                return response()->json(['error' => 'over_budget'] + $usage, 409);
+            }
+        }
+
         $times = fn (string $header): array => array_map('floatval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header($header, ''))), 'is_numeric')));
 
         $script = CasterScript::query()->create([
             'kind' => CasterScript::REPLAY, 'phase' => ScenePhase::BREAK, 'priority' => 0, 'text' => '(replay)', 'facts_hash' => 'replay',
             'status' => CasterScript::CLAIMED, 'source' => CasterScript::SOURCE_AI, 'estimated_seconds' => max(0.0, $duration),
-            'claimed_at' => $now, 'expires_at' => $this->quietHoursEnd($now),
+            'claimed_at' => $now, 'expires_at' => $quiet ? $this->quietHoursEnd($now) : $now->addMinutes((int) ($settings['day_expire_minutes'] ?? 20)),
         ]);
 
         try {
@@ -218,6 +251,67 @@ final class CasterFetchController
         }
 
         return response()->json(['clip' => $clip->id, 'expires_at' => $clip->expires_at->toIso8601String()], 201);
+    }
+
+    /**
+     * The scripts the workstation rendered into its day stock (`POST
+     * api/caster/stock/stored`, `X-Caster-Scripts`): claimed stock scripts
+     * are voiced (they never come again); anything else is left alone.
+     */
+    public function stockStored(Request $request): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $ids = array_map('intval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header('X-Caster-Scripts', ''))), 'ctype_digit')));
+        $stored = $ids === [] ? 0 : CasterScript::query()->whereKey($ids)->where('scene', StockScripts::SCENE)->where('status', CasterScript::CLAIMED)
+            ->update(['status' => CasterScript::VOICED]);
+
+        return response()->json(['stored' => $stored]);
+    }
+
+    /**
+     * A block of the workstation's day stock (`POST api/caster/stock/blocks`):
+     * the raw Opus body with its length, sentence ends and boundaries, under a
+     * stand-in script; it plays after every fresh block (ClipSpool::nextBlock())
+     * and keeps `stock.spool_hours`. Taken only while the day stock runs and
+     * outside the quiet hours (409 otherwise: the night air keeps its rhythm).
+     */
+    public function stockBlock(Request $request, ClipSpool $spool): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $now = CarbonImmutable::now();
+
+        if (! DayStock::enabled() || QuietHours::active($now)) {
+            return response()->json(['error' => 'not_now'], 409);
+        }
+
+        $duration = (float) $request->header('X-Caster-Duration', '0');
+        $times = fn (string $header): array => array_map('floatval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header($header, ''))), 'is_numeric')));
+
+        $script = CasterScript::query()->create([
+            'kind' => CasterScript::SCENE, 'phase' => ScenePhase::BREAK, 'scene' => StockScripts::SCENE, 'priority' => 0, 'text' => '(day stock)', 'facts_hash' => 'stock',
+            'status' => CasterScript::CLAIMED, 'source' => CasterScript::SOURCE_AI, 'estimated_seconds' => max(0.0, $duration),
+            'claimed_at' => $now, 'expires_at' => $now->addHours(max(1, (int) config('tv.commentary.blocks.stock.spool_hours', 3))),
+        ]);
+
+        try {
+            $clip = $spool->storeBlock([$script], (string) $request->getContent(), $duration, $times('X-Caster-Sentence-Ends'), $times('X-Caster-Boundaries'), 0.0, $now, stock: true);
+        } catch (SpoolFull) {
+            $script->delete();
+
+            return response()->json(['error' => 'spool_full'], 507);
+        } catch (InvalidClip $exception) {
+            $script->delete();
+
+            return response()->json(['error' => 'invalid_clip', 'reason' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['clip' => $clip->id, 'spool_seconds' => round($spool->readySeconds(), 1)], 201);
     }
 
     /** The next end of the quiet hours after `$now` (UTC). */
