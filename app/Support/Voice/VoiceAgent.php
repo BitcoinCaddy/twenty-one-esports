@@ -3,7 +3,6 @@
 namespace App\Support\Voice;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Laravel\Ai\Attributes\CacheInstructions;
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Contracts\HasStructuredOutput;
@@ -11,13 +10,18 @@ use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 
 /**
- * The laravel/ai agent behind LeagueVoice: Claude Haiku with the fixed half
- * of the prompt as cached system instructions (CacheInstructions stamps
- * `cache_control` on the system block, laravel/ai BuildsTextRequests) and a
- * structured answer {text, canon_id, mood}. Only LeagueVoice uses it; tests
- * fake it with VoiceAgent::fake().
+ * The laravel/ai agent behind LeagueVoice and the TV voices: the fixed half of
+ * the prompt as cached system instructions and a structured answer {text,
+ * canon_id, mood}. Tests fake it with VoiceAgent::fake().
+ *
+ * The cache breakpoints are its own (systemBlocks(), sent as the Anthropic
+ * `system` through providerOptions(), which laravel/ai merges over the request
+ * body, BuildsTextRequests): laravel/ai's CacheInstructions stamps one
+ * `cache_control` on the last system block only. Here the fixed part is one
+ * block with `$cacheTtl`, and a slowly changing `$context` (the world memory
+ * frozen per epoch, WorldMemory::epochDigest()) a second one with the 5-minute
+ * default: a longer TTL ahead of a shorter one, as the API requires.
  */
-#[CacheInstructions]
 final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 {
     /**
@@ -41,6 +45,8 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
      * @param  int|null  $maxTokensOverride  output tokens (null: `esports.voice.max_output_tokens`); a long TV segment needs more than a post
      * @param  bool  $plan  the TV voice plans its bit before it writes (PLAN_FIELDS ahead of `text`)
      * @param  int|null  $timeoutOverride  seconds (null: `esports.voice.timeout_seconds`); a five-minute show takes longer to write than a post
+     * @param  string|null  $context  a second cached system block behind the fixed part (null: none)
+     * @param  string|null  $cacheTtl  the fixed part's cache TTL, "1h" or "5m" (null: the API's default, five minutes)
      */
     public function __construct(
         private readonly string $fixedPart = '',
@@ -48,6 +54,8 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
         private readonly ?int $maxTokensOverride = null,
         private readonly bool $plan = false,
         private readonly ?int $timeoutOverride = null,
+        private readonly ?string $context = null,
+        private readonly ?string $cacheTtl = null,
     ) {}
 
     /**
@@ -63,9 +71,35 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
         return $this->temperatureOverride;
     }
 
+    /** The whole system prompt as one text (a provider without cache blocks, the fakes). */
     public function instructions(): string
     {
-        return $this->fixedPart;
+        return $this->context === null || trim($this->context) === '' ? $this->fixedPart : $this->fixedPart."\n\n".$this->context;
+    }
+
+    public function context(): ?string
+    {
+        return $this->context;
+    }
+
+    /**
+     * The Anthropic system blocks, each with its cache breakpoint: the fixed part, then the context.
+     *
+     * @return list<array{type: string, text: string, cache_control: array<string, string>}>
+     */
+    public function systemBlocks(): array
+    {
+        $blocks = [];
+
+        if ($this->fixedPart !== '') {
+            $blocks[] = ['type' => 'text', 'text' => $this->fixedPart, 'cache_control' => array_filter(['type' => 'ephemeral', 'ttl' => $this->cacheTtl])];
+        }
+
+        if ($this->context !== null && trim($this->context) !== '') {
+            $blocks[] = ['type' => 'text', 'text' => $this->context, 'cache_control' => ['type' => 'ephemeral']];
+        }
+
+        return $blocks;
     }
 
     public function provider(): string
@@ -101,7 +135,13 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
     {
         $name = $provider instanceof Lab ? $provider->value : $provider;
 
-        return $name === 'anthropic' ? ['thinking' => VoiceAgent::thinkingOff($this->model()), 'output_config' => ['effort' => 'low']] : [];
+        if ($name !== 'anthropic') {
+            return [];
+        }
+
+        $blocks = $this->systemBlocks();
+
+        return [...($blocks === [] ? [] : ['system' => $blocks]), 'thinking' => VoiceAgent::thinkingOff($this->model()), 'output_config' => ['effort' => 'low']];
     }
 
     public function schema(JsonSchema $schema): array

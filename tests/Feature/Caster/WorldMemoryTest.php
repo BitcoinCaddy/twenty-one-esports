@@ -135,20 +135,22 @@ it('puts the digest into every kind of TV prompt as data, and the chat reply wit
         'scene' => $voice->variablePart('scene', ScenePhase::PRE_SHOW, ['players' => 3], 2, 8, [], [], [], [], material: CasterVoice::LEAGUE),
         'live' => $voice->variablePart('live', ScenePhase::BREAK, ['players' => 3], 1, 3, [], [], [], []),
     ];
+    // What the model reads: the world memory frozen for the epoch (a cached system block) and the user message.
     foreach ($static as $kind => $prompt) {
-        expect(str_contains($prompt, $title) && str_contains($prompt, $headline))->toBeTrue("the {$kind} prompt has no world memory");
+        $seen = (CasterVoice::worldContext($kind === 'chat' ? [WorldMemory::CHAT] : []) ?? '')."\n".$prompt;
+        expect(str_contains($seen, $title) && str_contains($seen, $headline))->toBeTrue("the {$kind} prompt has no world memory");
     }
 
-    expect($static['chat'])->not->toContain('Hallo aus dem Allgäu')
-        ->and($static['news'])->toContain('Hallo aus dem Allgäu');
+    expect(CasterVoice::worldContext([WorldMemory::CHAT]).$static['chat'])->not->toContain('Hallo aus dem Allgäu')
+        ->and(CasterVoice::worldContext())->toContain('Hallo aus dem Allgäu');
 
     // The model-written kinds that build their prompt inside: a Bauernkrieg episode and a chat wish's riff.
     VoiceAgent::fake([['text' => WORLD_MEMORY_SCRIPT, 'canon_id' => null, 'mood' => 'witz'], ['text' => WORLD_MEMORY_SCRIPT."\nUnd noch ein Satz, der den Witz zu einem schönen Ende bringt.", 'canon_id' => null, 'mood' => 'witz']]);
     $voice->history(['id' => 'e1', 'title' => 'Der Anfang', 'facts' => [['text' => 'Im Jahr 1525 erhoben sich die Bauern.', 'source' => 'Wikipedia']], 'twists' => []]);
     $voice->riff(ChatWishes::JOKE, [['wording' => 'Stay humble, stack sats', 'meaning' => 'Bescheiden bleiben und sparen']]);
 
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Markus erzählt vom Bauernkrieg') && str_contains($prompt->prompt, $headline));
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Anregung aus dem Kanon') && str_contains($prompt->prompt, $headline));
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Markus erzählt vom Bauernkrieg') && str_contains($prompt->agent->instructions(), $headline));
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Anregung aus dem Kanon') && str_contains($prompt->agent->instructions(), $headline));
 });
 
 it('builds a scene from a drawn material and leaves the slide facts out unless it is the league material', function () {
