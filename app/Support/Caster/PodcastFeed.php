@@ -141,11 +141,13 @@ class PodcastFeed
      * has none), title, publication time, enclosure URL (https only) and
      * episode number (`itunes:episode`, else "#335 - …" or "Folge 123" in the
      * title, else null); null for an unreadable feed or no such item. No network and no
-     * entity expansion while parsing.
+     * entity expansion while parsing. With `$titlePattern` (a PCRE) only an
+     * item whose title matches it counts (one show of a feed that carries
+     * several, the podcast replay's Re:set).
      *
      * @return array{guid: string, title: string, published_at: int, url: string, episode_number: int|null}|null
      */
-    public static function newestAudio(string $xml): ?array
+    public static function newestAudio(string $xml, ?string $titlePattern = null): ?array
     {
         $previous = libxml_use_internal_errors(true);
 
@@ -164,7 +166,7 @@ class PodcastFeed
             $url = trim((string) ($item->enclosure['url'] ?? ''));
             $title = self::plain((string) $item->title);
 
-            if ($title === '' || ! str_starts_with($url, 'https://')) {
+            if ($title === '' || ! str_starts_with($url, 'https://') || ($titlePattern !== null && @preg_match($titlePattern, $title) !== 1)) {
                 continue;
             }
 

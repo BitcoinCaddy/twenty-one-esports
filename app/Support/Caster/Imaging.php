@@ -27,6 +27,10 @@ use Throwable;
  * The rules, in this order:
  *  - never on a chat reply or live moment, never on a later part of a story,
  *    never on a block (it carries its own jingles);
+ *  - a podcast replay (P12) opens with the podcast opener of its source
+ *    (podcast-open-<source>, else podcast-open) on its first chunk and closes
+ *    with the back-announce (podcast-close-<source>, else podcast-close) on
+ *    its last; nothing in between;
  *  - quiet hours: a station ID only, when one is due;
  *  - a bulletin opens with the news open of its slot (headlines at :30) and
  *    closes with the news close (back-announce);
@@ -128,6 +132,10 @@ final class Imaging
         $this->tail = false;
         $this->previousTalk = in_array($kind, self::TALK_KINDS, true) && ! $clip->isBlock();
 
+        if ($kind === CasterScript::PODCAST) {
+            return $this->podcast($clip, $tail, $now);
+        }
+
         if (in_array($kind, ClipSpool::LIVE_KINDS, true) || $clip->isBlock() || $this->library()->items() === []) {
             return $none;
         }
@@ -216,6 +224,27 @@ final class Imaging
         }
 
         return ['pcm' => $pcm, 'ends' => $ends, 'before' => $before !== null, 'after' => $after !== null];
+    }
+
+    /**
+     * The opener of a podcast replay's first chunk and the back-announce after its last.
+     *
+     * @return array{before: array{id: string, line: string, category: string, file: string, seconds: float}|null, after: array{id: string, line: string, category: string, file: string, seconds: float}|null}
+     */
+    private function podcast(CasterClip $clip, bool $tail, CarbonImmutable $now): array
+    {
+        $podcast = (array) ($clip->block['podcast'] ?? []);
+        $source = is_string($podcast['source'] ?? null) ? $podcast['source'] : '';
+        $index = (int) ($podcast['index'] ?? 0);
+        $first = $index === 1;
+        $last = $index > 0 && $index === (int) ($podcast['count'] ?? 0);
+        $library = $this->library()->items() === [] ? null : $this->library();
+
+        $opened = $first && ! $tail ? $library?->pick(['podcast-open-'.$source, 'podcast-open'], $now) : null;
+        $closed = $last ? $library?->pick(['podcast-close-'.$source, 'podcast-close'], $now) : null;
+        $this->tail = $closed !== null;
+
+        return ['before' => $opened, 'after' => $closed];
     }
 
     /**

@@ -19,6 +19,8 @@ namespace App\Support\Caster;
  * window outlives clear(), so the fade back up is still written after the
  * director moved on. Silence (all zero) means "no news ducking": whatever goes
  * wrong with the window, the music falls back to the normal sidechain duck.
+ * A podcast replay (P12) plays in news mode too, chunk after chunk in one
+ * window.
  */
 final class CommentaryTimeline
 {
@@ -61,7 +63,11 @@ final class CommentaryTimeline
         $this->cutAt = null;
 
         if ($news) {
-            $this->news = ['from' => $this->startSample, 'to' => null];
+            // A news clip that starts before the window of the one before it has faded back up (a podcast's next chunk,
+            // P12) continues that window: the music stays down instead of coming up for a second between them.
+            $up = (int) round($this->fadeUpSeconds * $this->rate);
+            $continues = $this->news !== null && $this->news['to'] !== null && $this->startSample <= $this->news['to'] + $up;
+            $this->news = ['from' => $continues ? $this->news['from'] : $this->startSample, 'to' => null];
         }
     }
 

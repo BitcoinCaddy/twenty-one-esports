@@ -74,6 +74,9 @@ class CasterScript extends Model
     /** The stand-in script of a replayed block from the workstation's archive (P6 replay): voiced already, never claimed. */
     public const REPLAY = 'replay';
 
+    /** The stand-in script of a podcast replay's airing (App\Support\Caster\PodcastReplay, P12): its chunks are the episode, never claimed. */
+    public const PODCAST = 'podcast';
+
     /** The kinds the broadcast clock places (`airs_at`): never counted as airtime ahead, never refused by the airtime cap. */
     public const PROGRAMME = [self::BULLETIN, self::RUBRIC, self::TEASER];
 

@@ -204,6 +204,59 @@ class ClipSpool
     }
 
     /**
+     * The chunks of a podcast replay's airing (PodcastReplay, P12), one clip
+     * each in order: kind CasterScript::PODCAST, a block that carries its own
+     * sound (no stinger), whose sentence ends are the pauses PodcastLibrary
+     * found. The files stay the library's: they are never counted against
+     * `max_bytes` and never deleted with their clip (delete()).
+     *
+     * @param  list<array{path: string, seconds: float, bytes: int, pauses: list<float>}>  $chunks
+     */
+    public function storePodcast(CasterScript $script, string $source, array $chunks): void
+    {
+        $count = count($chunks);
+
+        foreach (array_values($chunks) as $index => $chunk) {
+            $ends = array_values(array_unique(array_map(fn (float $end): float => round(max(0.0, min((float) $chunk['seconds'], $end)), 3), array_map('floatval', $chunk['pauses']))));
+            sort($ends);
+
+            CasterClip::query()->create([
+                'caster_script_id' => $script->id,
+                'phase' => $script->phase,
+                'kind' => CasterScript::PODCAST,
+                'path' => $chunk['path'],
+                'duration_seconds' => round((float) $chunk['seconds'], 3),
+                'bytes' => (int) $chunk['bytes'],
+                'sentence_ends' => $ends === [] ? [round((float) $chunk['seconds'], 3)] : $ends,
+                'status' => CasterClip::READY,
+                'expires_at' => $script->expires_at,
+                'block' => ['dressed' => true, 'scripts' => [$script->id], 'boundaries' => [], 'protected_seconds' => 0.0,
+                    'podcast' => ['source' => $source, 'index' => $index + 1, 'count' => $count]],
+            ]);
+        }
+    }
+
+    /**
+     * The podcast chunk to start now: the first ready chunk of the earliest
+     * airing whose slot has come (`airs_at` at or before `$now`), not expired.
+     */
+    public function podcast(CarbonImmutable $now): ?CasterClip
+    {
+        $now = $now->utc();
+
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::PODCAST)->where('expires_at', '>', $now)
+            ->whereIn('caster_script_id', CasterScript::query()->where('kind', CasterScript::PODCAST)->where('airs_at', '<=', $now)->select('id'))
+            ->orderBy('caster_script_id')->orderBy('id')->first();
+    }
+
+    /** The ready chunk that follows `$chunk` in its airing, or null after the last one. */
+    public function nextPodcastChunk(CasterClip $chunk): ?CasterClip
+    {
+        return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::PODCAST)
+            ->where('caster_script_id', $chunk->caster_script_id)->where('id', '>', $chunk->id)->orderBy('id')->first();
+    }
+
+    /**
      * The next ready talk block (CasterClip::BLOCK), never one that starts
      * with a later part of a story (it follows the block before it, part()):
      * the hourly airtime budget's order (user 2026-10-12), the oldest fresh
@@ -225,22 +278,23 @@ class ClipSpool
             ->filter(fn (CasterClip $clip): bool => $clip->isStock() || $clip->isReplay())->sum('duration_seconds');
     }
 
-    /** Bytes of every clip in the spool (fillers included). */
+    /** Bytes of every clip in the spool (fillers included; a podcast's chunks are the library's, PodcastLibrary). */
     public function bytes(): int
     {
-        return (int) CasterClip::query()->sum('bytes');
+        return (int) CasterClip::query()->where('kind', '!=', CasterScript::PODCAST)->sum('bytes');
     }
 
     /**
      * Seconds of unplayed commentary ready, fillers, segments and bulletins
      * left out: a long news or Bauernkrieg segment waits for a calm slot and
      * a bulletin for its slot, and counted they would fill the spool's
-     * target, so a live match got no scene clip.
+     * target, so a live match got no scene clip. A podcast airing (an hour or
+     * two, P12) is left out for the same reason.
      */
     public function readySeconds(): float
     {
         return (float) CasterClip::query()->where('status', CasterClip::READY)
-            ->whereNotIn('kind', [CasterScript::FILLER, ...CasterScript::PROGRAMME, ...CasterScript::SEGMENTS])->sum('duration_seconds');
+            ->whereNotIn('kind', [CasterScript::FILLER, CasterScript::PODCAST, ...CasterScript::PROGRAMME, ...CasterScript::SEGMENTS])->sum('duration_seconds');
     }
 
     /**
@@ -563,7 +617,11 @@ class ClipSpool
 
     private function delete(CasterClip $clip): void
     {
-        $this->disk()->delete($clip->path);
+        // A podcast chunk's file is the library's: it airs again tomorrow (PodcastLibrary trims it).
+        if ($clip->kind !== CasterScript::PODCAST) {
+            $this->disk()->delete($clip->path);
+        }
+
         $this->deleteRow($clip);
     }
 

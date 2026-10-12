@@ -31,6 +31,8 @@ use Carbon\CarbonImmutable;
  *
  * With the GPU idle and nothing fresh it renders stock: in the stock window
  * (DayStock::windowActive()), and by day while `stock.day_share` is on.
+ * While a podcast replay airs (P12, `$podcastGpu` from the claim) nothing
+ * goes up: the GPU renders stock (`podcast_replay.gpu` stock) or waits (idle).
  */
 final class DayPlanner
 {
@@ -48,12 +50,16 @@ final class DayPlanner
      *
      * @return list<string>
      */
-    public static function whenIdle(float $spoolSeconds, bool $hasStock, bool $stockFull, bool $quiet, bool $stockWindow): array
+    public static function whenIdle(float $spoolSeconds, bool $hasStock, bool $stockFull, bool $quiet, bool $stockWindow, ?string $podcastGpu = null): array
     {
         $stock = (array) config('tv.commentary.blocks.stock', []);
         $replay = (array) config('tv.commentary.blocks.replay', []);
         $stockOn = DayStock::enabled();
         $steps = [];
+
+        if ($podcastGpu !== null) {
+            return $podcastGpu === 'stock' && $stockOn && ! $stockFull ? [self::RENDER_STOCK, self::WAIT] : [self::WAIT];
+        }
 
         if ($stockOn && ! $quiet && $hasStock && $spoolSeconds < (float) ($stock['upload_below_seconds'] ?? 900)) {
             $steps[] = self::UPLOAD_STOCK;

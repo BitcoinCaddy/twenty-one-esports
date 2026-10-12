@@ -860,3 +860,6 @@ Schedule::command('caster:chat', ['--wot'])->dailyAt('05:11')->withoutOverlappin
 Schedule::command('caster:news')->everyFifteenMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.news.enabled') === true);
 Schedule::command('caster:followed')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.followed.enabled') === true);
 Schedule::command('caster:prune')->everyTenMinutes()->withoutOverlapping()->onOneServer();
+// The podcast replay (plan "TWENTY ONE Radio", P12): a newer episode is stored (download and transcode take minutes, so in
+// the background) and the day's airings go into the spool before their slots.
+Schedule::command('caster:podcasts')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.podcast_replay.enabled') === true);

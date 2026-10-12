@@ -11,6 +11,7 @@ use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\ImagingStore;
 use App\Support\Caster\InvalidClip;
+use App\Support\Caster\PodcastReplay;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Pronunciation;
 use App\Support\Caster\QuietHours;
@@ -61,15 +62,18 @@ final class CasterFetchController
         // `?only=stock`: an evergreen talk for the day stock, in the stock window, or by day (`stock.day_share`) while
         // the workstation has nothing fresh to voice.
         $stock = $request->query('only') === 'stock';
+        // A podcast replay airs (P12): nothing but the bulletins and replies is voiced; the GPU may render stock meanwhile.
+        $podcast = PodcastReplay::active($now);
 
         // A full spool still takes live moments and reactions (they play next) and what the clock places (a bulletin,
         // a rubric, a teaser: each airs at its slot, whatever else waits); only the byte cap stops them too.
         $script = match (true) {
             config('tv.commentary.enabled') !== true => null,
-            $stock => DayStock::enabled() && (DayStock::windowActive($now) || (! QuietHours::active($now) && config('tv.commentary.blocks.stock.day_share') === true))
+            $stock => DayStock::enabled() && (DayStock::windowActive($now) || (! QuietHours::active($now) && config('tv.commentary.blocks.stock.day_share') === true)
+                || ($podcast && PodcastReplay::gpu() === 'stock'))
                 ? $queue->claimStock($now) : null,
             $atByteCap => null,
-            $full || $urgent => $queue->claim($now, [...ClipSpool::LIVE_KINDS, ...CasterScript::PROGRAMME]),
+            $full || $urgent || $podcast => $queue->claim($now, [...ClipSpool::LIVE_KINDS, ...CasterScript::PROGRAMME]),
             default => $queue->claim($now),
         };
 
@@ -101,6 +105,7 @@ final class CasterFetchController
             'spool_seconds' => round($ready, 1),
             'target_seconds' => $target,
             'full' => $full,
+            'podcast' => $podcast ? ['gpu' => PodcastReplay::gpu()] : null,
             'pronunciation' => Pronunciation::terms(),
         ]);
     }

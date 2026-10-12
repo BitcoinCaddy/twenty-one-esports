@@ -158,11 +158,14 @@ class ScriptQueue
         $this->expire($now);
         $this->seedFillers($now);
         $quiet = QuietHours::active($now);
+        // While a podcast replay airs (P12) only the bulletins and sport and weather are written: no talk, rubric,
+        // teaser, segment or slide scene would get on air before it ends.
+        $podcast = PodcastReplay::active($now);
         $written = $this->fillBulletin($now);
         $written += $this->fillSportWeather($now);
-        $written += $quiet ? 0 : $this->fillNewsTalk($now);
-        $written += $this->fillRubric($now);
-        $written += $quiet ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
+        $written += $quiet || $podcast ? 0 : $this->fillNewsTalk($now);
+        $written += $podcast ? 0 : $this->fillRubric($now);
+        $written += $quiet || $podcast ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
         $written += $this->fillStock($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
@@ -174,7 +177,7 @@ class ScriptQueue
             $facts = $this->facts->forTopic($topic, $night);
             $this->supersedeTopic($topic, SceneFacts::hash($facts));
 
-            if ((! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
+            if (! $podcast && (! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
                 $factsByTopic[$topic] = $facts;
             }
         }
