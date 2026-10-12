@@ -110,7 +110,7 @@ it('rotates the news stinger and the news bed, never the same twice in a row, an
 it('gives the Anchor at least 120 English imaging lines: every category, an opener and a promo for every format, ESPORTS spoken as "Eee. Sports."', function () {
     $lines = json_decode((string) file_get_contents(resource_path('data/voice/anchor-imaging.json')), true)['lines'];
     $categories = collect($lines)->countBy('category');
-    $formats = ['tribunal', 'friedhof', 'jahrestag', 'meetups', 'partie', 'hotline', 'zentralbank', 'schwarzbuch', 'altcoin', 'pranger', 'phrasen', 'fundbuero', 'stacker', 'inflation', 'sport_wetter', 'nachrichten_talk'];
+    $formats = ['tribunal', 'friedhof', 'jahrestag', 'meetups', 'partie', 'hotline', 'zentralbank', 'schwarzbuch', 'altcoin_hype', 'liga_pranger', 'phrasendrescher', 'nostr_fundbuero', 'corporate_stacker', 'inflationsbeichte', 'sport_wetter', 'nachrichten_talk'];
 
     expect(count($lines))->toBeGreaterThanOrEqual(120)
         ->and(collect($lines)->pluck('id')->unique()->count())->toBe(count($lines));

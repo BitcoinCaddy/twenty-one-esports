@@ -302,10 +302,10 @@ return [
             // The bed a format's opener and promo are produced over (JingleSynth::LOOP_BEDS), on the workstation; and the
             // bed under a rubric's own speech on the server (Idents, `idents.format_beds`).
             'format_beds' => [
-                'tribunal' => 'courtroom', 'pranger' => 'courtroom', 'sport_wetter' => 'sport', 'partie' => 'sport',
-                'hotline' => 'late-night', 'inflation' => 'late-night', 'zentralbank' => 'late-night', 'schwarzbuch' => 'courtroom',
-                'jahrestag' => 'weather', 'meetups' => 'weather', 'fundbuero' => 'tutorial', 'stacker' => 'news-drive',
-                'altcoin' => 'news-drive', 'phrasen' => 'tutorial', 'friedhof' => 'late-night', 'nachrichten_talk' => 'news-pulse',
+                'tribunal' => 'courtroom', 'liga_pranger' => 'courtroom', 'sport_wetter' => 'sport', 'partie' => 'sport',
+                'hotline' => 'late-night', 'inflationsbeichte' => 'late-night', 'zentralbank' => 'late-night', 'schwarzbuch' => 'courtroom',
+                'jahrestag' => 'weather', 'meetups' => 'weather', 'nostr_fundbuero' => 'tutorial', 'corporate_stacker' => 'news-drive',
+                'altcoin_hype' => 'news-drive', 'phrasendrescher' => 'tutorial', 'friedhof' => 'late-night', 'nachrichten_talk' => 'news-pulse',
             ],
             // Upload bounds: items in a manifest, bytes of one file and of the whole library, seconds of one item.
             'max_items' => 600,

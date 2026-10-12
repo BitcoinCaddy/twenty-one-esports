@@ -688,127 +688,127 @@
             "spoken": "Coming up: the Black Book Hour. Where your tax money went, and why it never came back. Real cases, read out loud. The Black Book Hour, soon on TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-altcoin-1",
-            "category": "opener-altcoin",
+            "id": "img-op-altcoin-hype-1",
+            "category": "opener-altcoin_hype",
             "text": "The Altcoin Hype Detector is beeping. Something out there promises the world again. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "The Altcoin Hype Detector is beeping. Something out there promises the world again. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-altcoin-2",
-            "category": "opener-altcoin",
+            "id": "img-op-altcoin-hype-2",
+            "category": "opener-altcoin_hype",
             "text": "Warning. Hype levels rising. The Altcoin Hype Detector is on. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Warning. Hype levels rising. The Altcoin Hype Detector is on. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-pr-altcoin",
-            "category": "promo-altcoin",
+            "id": "img-pr-altcoin-hype",
+            "category": "promo-altcoin_hype",
             "text": "Soon on the air: the Altcoin Hype Detector. A new coin, a big promise, and our detector going off the scale. The Altcoin Hype Detector, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Soon on the air: the Altcoin Hype Detector. A new coin, a big promise, and our detector going off the scale. The Altcoin Hype Detector, coming up on TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-pranger-1",
-            "category": "opener-pranger",
+            "id": "img-op-liga-pranger-1",
+            "category": "opener-liga_pranger",
             "text": "The League Pillory. The worst results of the week, on display for everyone. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "The League Pillory. The worst results of the week, on display for everyone. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-pranger-2",
-            "category": "opener-pranger",
+            "id": "img-op-liga-pranger-2",
+            "category": "opener-liga_pranger",
             "text": "Step up to the League Pillory. Somebody lost badly, and we have the numbers. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Step up to the League Pillory. Somebody lost badly, and we have the numbers. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-pr-pranger",
-            "category": "promo-pranger",
+            "id": "img-pr-liga-pranger",
+            "category": "promo-liga_pranger",
             "text": "Coming up: the League Pillory. The heaviest defeats, the longest losing streaks, the numbers nobody wants to see. All in good fun. The League Pillory, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Coming up: the League Pillory. The heaviest defeats, the longest losing streaks, the numbers nobody wants to see. All in good fun. The League Pillory, soon on TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-phrasen-1",
-            "category": "opener-phrasen",
+            "id": "img-op-phrasendrescher-1",
+            "category": "opener-phrasendrescher",
             "text": "Phrase Thresher of the Week. The emptiest words of the last seven days, weighed and judged. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Phrase Thresher of the Week. The emptiest words of the last seven days, weighed and judged. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-phrasen-2",
-            "category": "opener-phrasen",
+            "id": "img-op-phrasendrescher-2",
+            "category": "opener-phrasendrescher",
             "text": "Buzzword alert. The Phrase Thresher of the Week is about to be crowned. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Buzzword alert. The Phrase Thresher of the Week is about to be crowned. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-pr-phrasen",
-            "category": "promo-phrasen",
+            "id": "img-pr-phrasendrescher",
+            "category": "promo-phrasendrescher",
             "text": "Soon: Phrase Thresher of the Week. Politicians, bankers and pundits, and the hollow phrases they used this week. We pick a winner. Phrase Thresher of the Week, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Soon: Phrase Thresher of the Week. Politicians, bankers and pundits, and the hollow phrases they used this week. We pick a winner. Phrase Thresher of the Week, coming up on TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-fundbuero-1",
-            "category": "opener-fundbuero",
+            "id": "img-op-nostr-fundbuero-1",
+            "category": "opener-nostr_fundbuero",
             "text": "The Nostr Lost and Found. Notes nobody saw, finally on air. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "The Nostr Lost and Found. Notes nobody saw, finally on air. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-fundbuero-2",
-            "category": "opener-fundbuero",
+            "id": "img-op-nostr-fundbuero-2",
+            "category": "opener-nostr_fundbuero",
             "text": "Welcome to the Nostr Lost and Found. Somebody posted gold, and nobody noticed. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Welcome to the Nostr Lost and Found. Somebody posted gold, and nobody noticed. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-pr-fundbuero",
-            "category": "promo-fundbuero",
+            "id": "img-pr-nostr-fundbuero",
+            "category": "promo-nostr_fundbuero",
             "text": "Coming up: the Nostr Lost and Found. The best notes that got lost in the feed, dug out and read on air. The Nostr Lost and Found, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Coming up: the Nostr Lost and Found. The best notes that got lost in the feed, dug out and read on air. The Nostr Lost and Found, soon on TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-stacker-1",
-            "category": "opener-stacker",
+            "id": "img-op-corporate-stacker-1",
+            "category": "opener-corporate_stacker",
             "text": "Corporate Stacker Watch. Which companies hold Bitcoin on their balance sheet? TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Corporate Stacker Watch. Which companies hold Bitcoin on their balance sheet? TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-stacker-2",
-            "category": "opener-stacker",
+            "id": "img-op-corporate-stacker-2",
+            "category": "opener-corporate_stacker",
             "text": "Eyes on the balance sheets. Corporate Stacker Watch is on. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Eyes on the balance sheets. Corporate Stacker Watch is on. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-pr-stacker",
-            "category": "promo-stacker",
+            "id": "img-pr-corporate-stacker",
+            "category": "promo-corporate_stacker",
             "text": "Soon on the air: Corporate Stacker Watch. Companies, their Bitcoin, and what the numbers really say. Corporate Stacker Watch, coming up on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Soon on the air: Corporate Stacker Watch. Companies, their Bitcoin, and what the numbers really say. Corporate Stacker Watch, coming up on TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-inflation-1",
-            "category": "opener-inflation",
+            "id": "img-op-inflationsbeichte-1",
+            "category": "opener-inflationsbeichte",
             "text": "The Inflation Confession. What did your money lose this time? Confess. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "The Inflation Confession. What did your money lose this time? Confess. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-op-inflation-2",
-            "category": "opener-inflation",
+            "id": "img-op-inflationsbeichte-2",
+            "category": "opener-inflationsbeichte",
             "text": "Kneel down for the Inflation Confession. Prices up, purchasing power down. TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Kneel down for the Inflation Confession. Prices up, purchasing power down. TWENTY ONE. Eee. Sports. Radio."
         },
         {
-            "id": "img-pr-inflation",
-            "category": "promo-inflation",
+            "id": "img-pr-inflationsbeichte",
+            "category": "promo-inflationsbeichte",
             "text": "Coming up: the Inflation Confession. What got more expensive, by how much, and who is to blame. Bring your receipts. The Inflation Confession, soon on TWENTY ONE ESPORTS RADIO.",
             "language": "en",
             "spoken": "Coming up: the Inflation Confession. What got more expensive, by how much, and who is to blame. Bring your receipts. The Inflation Confession, soon on TWENTY ONE. Eee. Sports. Radio."
