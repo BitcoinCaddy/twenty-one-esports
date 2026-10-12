@@ -317,6 +317,23 @@ return [
                 'min_turn_seconds' => 3.5,
                 'at' => ['min' => 0.55, 'max' => 0.8],
             ],
+            // The replay archive (user 2026-10-12: a "Best of des Tages" in the quiet hours): the workstation keeps every
+            // block it uploaded (`dir`, at most `keep_hours` and `max_bytes`, oldest out first) with its metadata; in the
+            // quiet hours, while the server has less than `below_seconds` ready and nothing new to voice, it uploads an
+            // evergreen one again (talk, history, rubrics without a date; never a bulletin, teaser, chat reply, wish or a
+            // line that names the time), behind the Anchor's "Ihr hört die Wiederholung" jingle (category `replay`; no such
+            // jingle, no replay), each block at most once within `repeat_hours`. Without new rendering: no VoiceStudio call.
+            // The server takes replays only while this is on and the quiet hours run; they keep the quiet hours' rhythm
+            // (one every quiet_hours.every_minutes) unless `continuous`.
+            'replay' => [
+                'enabled' => (bool) env('TV_COMMENTARY_REPLAY', false),
+                'dir' => env('TV_COMMENTARY_REPLAY_DIR', storage_path('app/replay')),
+                'keep_hours' => (float) env('TV_COMMENTARY_REPLAY_KEEP_HOURS', 48),
+                'max_bytes' => (int) env('TV_COMMENTARY_REPLAY_MAX_BYTES', 3 * 1024 * 1024 * 1024),
+                'below_seconds' => 120,
+                'repeat_hours' => 12,
+                'continuous' => (bool) env('TV_COMMENTARY_REPLAY_CONTINUOUS', false),
+            ],
             // The Anchor (VoiceStudio personality us_news_anchor, a designed voice, no person's clone), made into a profile
             // by caster:jingles; TV_ANCHOR_PROFILE pins an existing one.
             'anchor' => [

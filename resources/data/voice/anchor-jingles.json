@@ -40,6 +40,8 @@
         {"id": "coming-up-01", "category": "coming-up", "language": "de", "text": "Gleich auf TWENTY ONE ESPORTS RADIO."},
         {"id": "coming-up-02", "category": "coming-up", "language": "en", "text": "Coming up next on TWENTY ONE ESPORTS RADIO."},
         {"id": "coming-up-03", "category": "coming-up", "language": "de", "text": "Bleibt dran. Gleich geht's weiter auf TWENTY ONE ESPORTS RADIO."},
+        {"id": "replay-01", "category": "replay", "language": "de", "text": "Ihr hört die Wiederholung. Das Beste des Tages auf TWENTY ONE ESPORTS RADIO."},
+        {"id": "replay-02", "category": "replay", "language": "de", "text": "Best of des Tages. Ihr hört eine Wiederholung auf TWENTY ONE ESPORTS RADIO."},
         {"id": "talk-01", "category": "talk", "language": "de", "text": "Markus und Sirius. Talk auf TWENTY ONE ESPORTS RADIO."},
 
         {"id": "rubric-liga-01", "category": "rubric-liga", "language": "de", "text": "Die Liga-Rubrik. Ergebnisse, Turniere, Tabellen."},

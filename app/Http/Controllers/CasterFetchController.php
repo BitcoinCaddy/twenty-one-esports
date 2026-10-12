@@ -7,6 +7,8 @@ use App\Support\Caster\ClipSpool;
 use App\Support\Caster\InvalidClip;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Pronunciation;
+use App\Support\Caster\QuietHours;
+use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
 use App\Support\Caster\SpoolFull;
 use Carbon\CarbonImmutable;
@@ -171,6 +173,62 @@ final class CasterFetchController
         }
 
         return response()->json(['clip' => $clip->id, 'kind' => $clip->kind, 'spool_seconds' => round($spool->readySeconds(), 1)], 201);
+    }
+
+    /**
+     * A replayed block from the workstation's archive (P6 replay, `POST
+     * api/caster/replays`): the raw Opus body with its length, sentence ends
+     * and boundaries, already behind the Anchor's replay jingle. Taken only
+     * while `blocks.replay.enabled` and the quiet hours run (409 otherwise,
+     * fail closed); it stands in the spool under a stand-in script of kind
+     * replay and expires when the quiet hours end, so a best of never runs
+     * into the day programme.
+     */
+    public function replay(Request $request, ClipSpool $spool): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $now = CarbonImmutable::now();
+
+        if (config('tv.commentary.blocks.replay.enabled') !== true || ! QuietHours::active($now)) {
+            return response()->json(['error' => 'not_now'], 409);
+        }
+
+        $duration = (float) $request->header('X-Caster-Duration', '0');
+        $times = fn (string $header): array => array_map('floatval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header($header, ''))), 'is_numeric')));
+
+        $script = CasterScript::query()->create([
+            'kind' => CasterScript::REPLAY, 'phase' => ScenePhase::BREAK, 'priority' => 0, 'text' => '(replay)', 'facts_hash' => 'replay',
+            'status' => CasterScript::CLAIMED, 'source' => CasterScript::SOURCE_AI, 'estimated_seconds' => max(0.0, $duration),
+            'claimed_at' => $now, 'expires_at' => $this->quietHoursEnd($now),
+        ]);
+
+        try {
+            $clip = $spool->storeBlock([$script], (string) $request->getContent(), $duration, $times('X-Caster-Sentence-Ends'), $times('X-Caster-Boundaries'), 0.0, $now, replay: true);
+        } catch (SpoolFull) {
+            $script->delete();
+
+            return response()->json(['error' => 'spool_full'], 507);
+        } catch (InvalidClip $exception) {
+            $script->delete();
+
+            return response()->json(['error' => 'invalid_clip', 'reason' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['clip' => $clip->id, 'expires_at' => $clip->expires_at->toIso8601String()], 201);
+    }
+
+    /** The next end of the quiet hours after `$now` (UTC). */
+    private function quietHoursEnd(CarbonImmutable $now): CarbonImmutable
+    {
+        $settings = (array) config('tv.commentary.spool.quiet_hours', []);
+        $timezone = (string) ($settings['timezone'] ?? 'Europe/Berlin');
+        [$hour, $minute] = array_map('intval', explode(':', (string) ($settings['to'] ?? '09:00')) + [1 => 0]);
+        $end = $now->setTimezone($timezone)->setTime($hour, $minute);
+
+        return ($end->lessThanOrEqualTo($now) ? $end->addDay() : $end)->utc();
     }
 
     public function release(Request $request, string $id, ScriptQueue $queue): JsonResponse

@@ -365,7 +365,7 @@ final class SceneDirector
 
         // A block that could not be joined seamlessly (a reaction or the news came between): the programme runs on
         // with the next block, without the music gap.
-        if ($clip->isBlock() && $this->spool->nextBlock($at) !== null) {
+        if ($clip->isBlock() && $this->blocksFlowOn($clip, $at) && $this->spool->nextBlock($at) !== null) {
             $this->quietUntil = $now;
             $this->runPosition = 0;
 
@@ -657,7 +657,7 @@ final class SceneDirector
 
         $at = CarbonImmutable::createFromTimestamp($now);
 
-        if ($this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || $this->spool->teaser($at) !== null) {
+        if (! $this->blocksFlowOn($this->clip, $at) || $this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || $this->spool->teaser($at) !== null) {
             return;
         }
 
@@ -703,6 +703,17 @@ final class SceneDirector
         $this->quietUntil = 0.0;
         $this->onAir($next, $start, $ends, $offset);
         $planner->hold($now + (float) ($this->settings['blocks']['hold_seconds'] ?? 30));
+    }
+
+    /**
+     * Whether the next block may follow the block `$clip` without a pause:
+     * always by day; in the quiet hours (one clip every
+     * `quiet_hours.every_minutes`) only a replayed block when
+     * `blocks.replay.continuous` asks for a best of in one piece.
+     */
+    private function blocksFlowOn(CasterClip $clip, CarbonImmutable $at): bool
+    {
+        return ! QuietHours::active($at) || ($clip->isReplay() && ($this->settings['blocks']['replay']['continuous'] ?? false) === true);
     }
 
     /** One stretch of voice that was on air, for the air log (caster:gaps). */

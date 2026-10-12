@@ -7,6 +7,7 @@ use App\Support\Caster\CasterFetcher;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\Idents;
 use App\Support\Caster\Pcm;
+use App\Support\Caster\QuietHours;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 
@@ -196,12 +197,88 @@ final class BlockFetcher
         }
 
         if ($upload->status() === 201) {
+            // The day's archive for the quiet hours' best of (P6 replay); whether it may ever come again is decided there.
+            if (ReplayArchive::enabled()) {
+                ReplayArchive::fromConfig()->store($opus, $batch, ['ends' => $block['ends'], 'boundaries' => $block['boundaries'], 'steps' => $block['steps'],
+                    'seconds' => round(Pcm::seconds($block['pcm'], $block['rate']), 3)], CarbonImmutable::now());
+            }
+
             return CasterFetcher::VOICED;
         }
 
         $this->releaseAll($fetcher, $ids);
 
         return $upload->status() === 507 ? CasterFetcher::FULL : CasterFetcher::RELEASED;
+    }
+
+    /**
+     * The quiet hours' best of the day (P6 replay): while the server has
+     * less than `replay.below_seconds` ready and nothing new to voice, an
+     * evergreen block from the archive (ReplayArchive::pick()) goes up again
+     * behind the Anchor's replay jingle, decoded and encoded by ffmpeg only,
+     * no VoiceStudio call. Fails closed: replay off, day time, no evergreen
+     * block, no replay jingle (the listener must hear that it is a repeat)
+     * or a refusal of the server, and nothing is uploaded (null).
+     */
+    public function replay(CasterFetcher $fetcher, float $spoolSeconds): ?string
+    {
+        $settings = (array) config('tv.commentary.blocks.replay', []);
+        $now = CarbonImmutable::now();
+
+        if (! ReplayArchive::enabled() || ! QuietHours::active($now) || $spoolSeconds >= (float) ($settings['below_seconds'] ?? 120)) {
+            return null;
+        }
+
+        $archive = ReplayArchive::fromConfig();
+        $pick = $archive->pick($now, (float) ($settings['repeat_hours'] ?? 12));
+        $library = JingleLibrary::fromConfig();
+        $jingle = $pick === null ? null : $library->pick(['replay'], $now);
+
+        if ($pick === null || $jingle === null) {
+            return null;
+        }
+
+        $rate = (int) config('tv.commentary.mix.sample_rate', 24000);
+        $intro = $library->pcm($jingle['file'], $rate, (float) config('tv.commentary.blocks.jingles.gain_db', -3.0));
+        $body = $library->pcm($pick['file'], $rate);
+
+        if ($intro === null || $body === null) {
+            return null;
+        }
+
+        $start = max(0, intdiv(strlen($intro), Pcm::BYTES_PER_SAMPLE) - (int) round((float) config('tv.commentary.blocks.crossfade_seconds', 0.45) * $rate));
+        $pcm = Pcm::overlay($intro, $body, $start);
+        $offset = $start / $rate;
+        $shift = fn (mixed $times): array => array_map(fn ($time): float => round($offset + (float) $time, 3), array_values(array_filter((array) $times, 'is_numeric')));
+        $opus = $fetcher->encode($pcm, $rate);
+
+        if ($opus === null) {
+            return null;
+        }
+
+        $times = fn (array $values): string => implode(',', array_map(fn (float $value): string => sprintf('%.3F', $value), $values));
+
+        try {
+            $upload = $fetcher->server()
+                ->withHeaders([
+                    'X-Caster-Duration' => sprintf('%.3F', Pcm::seconds($pcm, $rate)),
+                    'X-Caster-Sentence-Ends' => $times($shift($pick['meta']['ends'] ?? [])),
+                    'X-Caster-Boundaries' => $times($shift($pick['meta']['boundaries'] ?? [])),
+                ])
+                ->withBody($opus, 'audio/ogg')
+                ->post($fetcher->settings()['server'].'/api/caster/replays');
+        } catch (ConnectionException) {
+            return CasterFetcher::OFFLINE;
+        }
+
+        if ($upload->status() !== 201) {
+            return null;
+        }
+
+        $archive->markReplayed($pick['name'], $now);
+        $this->rendered[] = ['replay' => $pick['name'], 'jingle' => $jingle['id']];
+
+        return CasterFetcher::VOICED;
     }
 
     /**
