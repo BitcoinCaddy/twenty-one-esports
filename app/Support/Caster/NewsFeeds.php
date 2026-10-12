@@ -69,7 +69,7 @@ class NewsFeeds
      * an unreadable document gives none. No network and no entity expansion
      * while parsing.
      *
-     * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null}>
+     * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary: string|null}>
      */
     public static function parse(string $xml): array
     {
@@ -101,7 +101,7 @@ class NewsFeeds
                         break;
                     }
                 }
-                $items[] = ['title' => (string) $entry->title, 'link' => $link, 'published_at' => self::date((string) $entry->published ?: (string) $entry->updated)];
+                $items[] = ['title' => (string) $entry->title, 'link' => $link, 'published_at' => self::date((string) $entry->published ?: (string) $entry->updated), 'summary' => (string) $entry->summary ?: (string) $entry->content];
             }
 
             return self::clean($items);
@@ -111,7 +111,7 @@ class NewsFeeds
 
         foreach ($rows ?? [] as $row) {
             $dc = $row->children('http://purl.org/dc/elements/1.1/');
-            $items[] = ['title' => (string) $row->title, 'link' => trim((string) $row->link) ?: null, 'published_at' => self::date((string) $row->pubDate ?: (string) $dc->date)];
+            $items[] = ['title' => (string) $row->title, 'link' => trim((string) $row->link) ?: null, 'published_at' => self::date((string) $row->pubDate ?: (string) $dc->date), 'summary' => (string) $row->description];
         }
 
         return self::clean($items);
@@ -129,6 +129,26 @@ class NewsFeeds
         return trim((string) preg_replace('/\s+[|–-]\s+(tagesschau\.de|SPIEGEL|WELT|FAZ|n-tv\.de|Handelsblatt)$/iu', '', $title));
     }
 
+    /**
+     * The item's teaser text as plain words (tags, entities and "mehr"-links
+     * out), at most `news.max_summary_chars` cut at a sentence end where
+     * possible; null when empty or only the headline again.
+     */
+    public static function summary(string $text, string $title = ''): ?string
+    {
+        $text = html_entity_decode(strip_tags(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string) preg_replace('/\s*(?:\[?(?:mehr|weiterlesen|read more)\]?|…|\.\.\.)\s*$/iu', '', trim((string) preg_replace('/\s+/u', ' ', $text))));
+        $max = max(80, (int) config('tv.commentary.news.max_summary_chars', 500));
+
+        if (mb_strlen($text) > $max) {
+            $cut = mb_substr($text, 0, $max);
+            $end = max((int) mb_strrpos($cut, '. '), (int) mb_strrpos($cut, '! '), (int) mb_strrpos($cut, '? '));
+            $text = $end > $max / 2 ? mb_substr($cut, 0, $end + 1) : $cut;
+        }
+
+        return $text === '' || self::hash($text) === self::hash($title) ? null : $text;
+    }
+
     /** The key two feeds share for the same headline: letters and digits only, lower case. */
     public static function hash(string $title): string
     {
@@ -136,8 +156,8 @@ class NewsFeeds
     }
 
     /**
-     * @param  list<array{title: string, link: string|null, published_at: CarbonImmutable|null}>  $items
-     * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null}>
+     * @param  list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary?: string}>  $items
+     * @return list<array{title: string, link: string|null, published_at: CarbonImmutable|null, summary: string|null}>
      */
     private static function clean(array $items): array
     {
@@ -147,7 +167,8 @@ class NewsFeeds
             $title = self::normalize($item['title']);
 
             if ($title !== '') {
-                $clean[] = ['title' => $title, 'link' => $item['link'] !== null && str_starts_with($item['link'], 'http') ? mb_substr($item['link'], 0, 500) : null, 'published_at' => $item['published_at']];
+                $clean[] = ['title' => $title, 'link' => $item['link'] !== null && str_starts_with($item['link'], 'http') ? mb_substr($item['link'], 0, 500) : null, 'published_at' => $item['published_at'],
+                    'summary' => self::summary($item['summary'] ?? '', $title)];
             }
         }
 
@@ -217,7 +238,7 @@ class NewsFeeds
 
     /**
      * @param  array<array-key, mixed>  $feed
-     * @param  array{title: string, link: string|null, published_at: CarbonImmutable|null}  $item
+     * @param  array{title: string, link: string|null, published_at: CarbonImmutable|null, summary?: string|null}  $item
      * @param  array<array-key, mixed>  $settings
      * @return string stored, filtered, or skipped (known, too long, too old)
      */
@@ -249,6 +270,7 @@ class NewsFeeds
             'source' => mb_substr((string) ($feed['source'] ?? $key), 0, 64),
             'language' => ($feed['language'] ?? 'de') === 'en' ? 'en' : 'de',
             'title' => $item['title'],
+            'summary' => $item['summary'] ?? null,
             'link' => $item['link'],
             'published_at' => $published,
             'used_at' => $reason === null ? null : $now,
