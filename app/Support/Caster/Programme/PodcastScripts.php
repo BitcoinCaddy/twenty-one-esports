@@ -102,7 +102,7 @@ class PodcastScripts
 
                 $this->usage->recordAttempt(self::CHANNEL);
                 $temperature = config('tv.commentary.scripts.temperature');
-                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, 2_000, timeoutOverride: max(15, (int) ($settings['timeout_seconds'] ?? 60))))
+                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, 2_000, timeoutOverride: max(15, (int) ($settings['timeout_seconds'] ?? 60)), cacheTtl: CasterVoice::staticCacheTtl()))
                     ->prompt(self::prompt($what, $name, $material, $rejected));
                 $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
