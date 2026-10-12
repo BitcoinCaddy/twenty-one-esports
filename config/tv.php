@@ -269,6 +269,27 @@ return [
             'pause_seconds' => 0.3,
         ],
 
+        // Radio imaging on the server (plan "TWENTY ONE Radio", P11; user 2026-10-12: "Mehr typische Radio-Zwischenfüller,
+        // wie man sie von einem Radiosender kennt"): the Anchor's jingles, uploaded once by the workstation
+        // (caster:imaging-upload, POST api/caster/imaging) into `dir`, play between clips by the rules of
+        // App\Support\Caster\Imaging, also while the programme blocks are off. No library uploaded: no imaging.
+        'imaging' => [
+            'enabled' => (bool) env('TV_IMAGING', true),
+            'dir' => env('TV_IMAGING_DIR', storage_path('app/stream/imaging')),
+            // A station ID (or a news open, a time-of-day ID) at least this often; in quiet hours the only imaging.
+            'station_every_minutes' => (float) env('TV_IMAGING_STATION_EVERY_MINUTES', 15),
+            // The share of transitions between two talk clips that get a sweeper or liner.
+            'sweeper_share' => (float) env('TV_IMAGING_SWEEPER_SHARE', 0.35),
+            // The same line never again within this long.
+            'repeat_minutes' => 45,
+            'pause_seconds' => 0.3,
+            // Upload bounds: items in a manifest, bytes of one file and of the whole library, seconds of one item.
+            'max_items' => 600,
+            'max_file_bytes' => 1_500_000,
+            'max_bytes' => 120_000_000,
+            'max_seconds' => 40,
+        ],
+
         // Programme blocks (plan "TWENTY ONE Radio", P6; user 2026-10-12: "Die Composition soll lokal erfolgen … Der Server
         // bekommt am besten vorgerenderte Programme hochgeladen, trotzdem in Häppchen"). With `enabled` the workstation
         // (App\Support\Caster\Blocks\BlockRenderer) claims consecutive scripts until about `seconds.min` to `seconds.max`
@@ -630,6 +651,46 @@ return [
                     'treasuries' => ['url' => 'https://api.coingecko.com/api/v3/companies/public_treasury/bitcoin', 'top' => 5],
                     'inflation' => ['url' => 'https://www.destatis.de/DE/Themen/Wirtschaft/Preise/Verbraucherpreisindex/_inhalt.html'],
                 ],
+            ],
+            // The long formats (plan "TWENTY ONE Radio", P9; App\Support\Caster\Programme\Shows; user 2026-10-12: "Mehr Programm …
+            // damit es nicht langweilig wird, müssen wir roasten!"): each owns a rubric slot of the clock at its Berlin time
+            // (`schedule`, "HH:MM" => format); without material the slot falls back to the rubric rotation, never filler.
+            // Real data only (the guard rejects a number or a name that is not in it). Per format: `seconds` and `sentences`
+            // of content, `speakers` (Markus leads; a further voice needs only its voicestudio.profiles entry and
+            // its name here), `write_minutes_ahead` (the hotline looks things up first) and how long
+            // its material does not come again (`repeat_days`).
+            'shows' => [
+                'enabled' => (bool) env('TV_COMMENTARY_SHOWS', true),
+                'schedule' => [
+                    '10:15' => 'jahrestag',
+                    '11:15' => 'meetups',
+                    '12:45' => 'friedhof',
+                    '15:15' => 'partie',
+                    '17:15' => 'partie',
+                    '20:45' => 'tribunal',
+                    '21:15' => 'hotline',
+                ],
+                'max_output_tokens' => 6_000,
+                // A five-minute show is about a thousand words: longer to write than `esports.voice.timeout_seconds` allows a post.
+                'timeout_seconds' => (int) env('TV_COMMENTARY_SHOWS_TIMEOUT', 90),
+                'daily_cap' => (int) env('TV_COMMENTARY_SHOWS_DAILY_CAP', 40),
+                'formats' => [
+                    'tribunal' => ['seconds' => ['min' => 240, 'max' => 360], 'sentences' => ['min' => 30, 'max' => 48], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_chatters' => 4, 'notes_per_chatter' => 3, 'repeat_days' => 1],
+                    'friedhof' => ['seconds' => ['min' => 180, 'max' => 240], 'sentences' => ['min' => 22, 'max' => 34], 'speakers' => ['markus', 'sirius'], 'repeat_days' => 30],
+                    'jahrestag' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'repeat_days' => 2, 'wikipedia' => (bool) env('TV_COMMENTARY_SHOWS_WIKIPEDIA', true)],
+                    'meetups' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'days' => 7, 'max_events' => 12, 'repeat_days' => 1],
+                    'partie' => ['seconds' => ['min' => 180, 'max' => 300], 'sentences' => ['min' => 22, 'max' => 40], 'speakers' => ['markus', 'sirius'], 'hours' => 24, 'repeat_days' => 2],
+                    'hotline' => ['seconds' => ['min' => 240, 'max' => 330], 'sentences' => ['min' => 28, 'max' => 44], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_questions' => 4, 'searches_per_question' => 2, 'write_minutes_ahead' => 14, 'repeat_days' => 1],
+                ],
+                // The EINUNDZWANZIG portal's public meetup dates (GET, about five megabytes, every date ever): read at most
+                // every `cache_minutes`, a failed read tried again after `retry_minutes`.
+                'meetup_events_url' => env('TV_COMMENTARY_MEETUP_EVENTS_URL', 'https://portal.einundzwanzig.space/api/meetup-events'),
+                'meetup_cache_minutes' => 180,
+                'meetup_retry_minutes' => 15,
+                'meetup_timeout_seconds' => 20,
+                // Wikipedia's "on this day" feed (German), only its bitcoin events are used.
+                'on_this_day_url' => 'https://api.wikimedia.org/feed/v1/wikipedia/de/onthisday/events',
+                'on_this_day_timeout_seconds' => 8,
             ],
             // The news talk (P5; App\Support\Caster\Programme\NewsTalk, user 2026-10-12: "Die Programme sollen aufregend und lang
             // werden"): right after the :00 bulletin Markus and Sirius discuss its two or three most interesting stories

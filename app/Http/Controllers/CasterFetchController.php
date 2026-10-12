@@ -9,6 +9,7 @@ use App\Support\Caster\Blocks\DayPlanner;
 use App\Support\Caster\Blocks\DayStock;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\ClipSpool;
+use App\Support\Caster\ImagingStore;
 use App\Support\Caster\InvalidClip;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Pronunciation;
@@ -380,6 +381,50 @@ final class CasterFetchController
         return $row === null
             ? response()->json(['error' => 'older_than_stored'], 409)
             : response()->json(['stored' => $row->guid, 'bytes' => strlen($row->transcript)], 201);
+    }
+
+    /**
+     * One jingle of the imaging library (P11) as the raw Opus body, under its sha1: 201 stored (or already there),
+     * 422 not an Opus file with that hash or too big, 507 the library is at `imaging.max_bytes`.
+     */
+    public function imagingFile(Request $request, string $hash): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        try {
+            ImagingStore::fromConfig()->storeFile($hash, (string) $request->getContent());
+        } catch (SpoolFull) {
+            return response()->json(['error' => 'library_full'], 507);
+        } catch (InvalidClip $exception) {
+            return response()->json(['error' => 'invalid_file', 'reason' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['stored' => $hash], 201);
+    }
+
+    /**
+     * The imaging library's manifest (P11) as JSON `{"items": [{id, line, category, seconds, hash, text}]}`: 200 once it
+     * replaced the library, 409 with the `missing` hashes to upload first, 422 when it is malformed or too long.
+     */
+    public function imagingManifest(Request $request): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        try {
+            $missing = ImagingStore::fromConfig()->storeManifest((array) $request->json('items', []));
+        } catch (InvalidClip $exception) {
+            return response()->json(['error' => 'invalid_manifest', 'reason' => $exception->getMessage()], 422);
+        }
+
+        if ($missing !== []) {
+            return response()->json(['error' => 'missing_files', 'missing' => $missing], 409);
+        }
+
+        return response()->json(['items' => count((array) $request->json('items', []))]);
     }
 
     private function authorized(Request $request): bool
