@@ -154,6 +154,8 @@ Route::post('api/caster/scripts/{id}/clip', [CasterFetchController::class, 'clip
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.clip');
 Route::post('api/caster/blocks', [CasterFetchController::class, 'block'])
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.block');
+Route::post('api/caster/replays', [CasterFetchController::class, 'replay'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.replay');
 Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
 Route::post('api/caster/podcast-transcript/status', [CasterFetchController::class, 'podcastStatus'])

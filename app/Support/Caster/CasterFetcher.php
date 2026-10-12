@@ -71,7 +71,14 @@ class CasterFetcher
         $script = $claim->json('script');
 
         if (! is_array($script) || ! is_int($script['id'] ?? null)) {
-            return $claim->json('full') === true ? self::FULL : self::IDLE;
+            if ($claim->json('full') === true) {
+                return self::FULL;
+            }
+
+            // Nothing new to voice: in the quiet hours a block of the day comes again from the archive (P6 replay).
+            return config('tv.commentary.blocks.enabled') === true
+                ? (app(BlockFetcher::class)->replay($this, (float) $claim->json('spool_seconds', 0)) ?? self::IDLE)
+                : self::IDLE;
         }
 
         /** @var array<string, string> $terms */

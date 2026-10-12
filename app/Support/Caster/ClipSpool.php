@@ -142,7 +142,7 @@ class ClipSpool
      * @throws SpoolFull when the byte cap is reached
      * @throws InvalidClip when the upload is not an Opus clip within the limits
      */
-    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now): CasterClip
+    public function storeBlock(array $scripts, string $opus, float $durationSeconds, array $sentenceEnds, array $boundaries, float $protectedSeconds, CarbonImmutable $now, bool $replay = false): CasterClip
     {
         $lead = $scripts[0] ?? null;
         $blocks = (array) config('tv.commentary.blocks', []);
@@ -191,6 +191,8 @@ class ClipSpool
                 'scripts' => array_map(fn (CasterScript $script): int => $script->id, $scripts),
                 'boundaries' => $clamp($boundaries),
                 'protected_seconds' => round(max(0.0, min($durationSeconds, $protectedSeconds)), 3),
+                // A block from the workstation's archive, played again in the quiet hours (P6 replay).
+                'replay' => $replay,
             ],
         ]);
 

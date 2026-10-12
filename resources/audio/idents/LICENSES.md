@@ -51,6 +51,10 @@ loudness). Provenance:
   voiced with the same VoiceStudio profiles as the commentary (Markus Turm,
   Sirius, consent as for the commentary), stored as `blips/<speaker>/*.wav`.
 
+The replay archive (`storage/app/replay`, workstation, at most 48 h and 3 GB)
+holds the day's uploaded blocks of the same provenance; a replay adds only the
+Anchor's "Ihr hört die Wiederholung" jingle in front.
+
 Each jingle is mastered to -16 LUFS (ebur128 measured, gained, `alimiter` at
 -1 dBFS, one correction pass); the values are in the manifest. Re-render
 without any VoiceStudio call: `php artisan caster:jingles --mix-only`.
