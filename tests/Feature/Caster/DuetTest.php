@@ -228,7 +228,7 @@ it('writes a duet in one call and turns down a draft in which Sirius never speak
         ->and(explode("\n", $duet['text'])[1])->toStartWith('Kaffee um diese Uhrzeit')
         ->and($duet['text'])->not->toContain('Sirius:');
     VoiceAgent::assertPromptedTimes(2);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: zwei bis vier Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: drei bis sechs Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
         && str_contains($prompt->prompt, 'kam gar nicht zu Wort'));
 });
 
@@ -265,7 +265,7 @@ it('queues a duet scene with one speaker per line, through its parts and the cla
 
     duetQueue(new DuetDirector(fn (): float => 0.0))->fill(CarbonImmutable::now());
 
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: zwei bis vier Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "1. Markus: zwei bis vier Sätze\n2. Sirius: drei bis sechs Sätze, reagiert auf die Wortmeldung davor\n3. Markus")
         && str_contains($prompt->prompt, '5. Markus'));
     $parts = CasterScript::query()->whereNotNull('speakers')->orderBy('part_index')->get();
 

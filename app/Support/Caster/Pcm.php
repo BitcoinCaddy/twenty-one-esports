@@ -66,6 +66,40 @@ final class Pcm
         return 'RIFF'.pack('V', 36 + strlen($pcm)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, $rate, $rate * self::BYTES_PER_SAMPLE, self::BYTES_PER_SAMPLE, 16).'data'.pack('V', strlen($pcm)).$pcm;
     }
 
+    /**
+     * The PCM scaled so its speech (samples above `$gate`) has an RMS of
+     * `$targetDbfs`, never louder than a peak of -1 dBFS: one level for every
+     * chunk and speaker (user 2026-10-12: "Sirius ist viel zu laut im
+     * Gegensatz zu Markus").
+     */
+    public static function levelled(string $pcm, float $targetDbfs, int $gate = 300): string
+    {
+        $samples = unpack('v*', $pcm) ?: [];
+        $sum = 0.0;
+        $count = 0;
+        $peak = 1;
+
+        foreach ($samples as $index => $raw) {
+            $value = $raw >= 32768 ? $raw - 65536 : $raw;
+            $samples[$index] = $value;
+            $peak = max($peak, abs($value));
+
+            if (abs($value) > $gate) {
+                $sum += $value * $value;
+                $count++;
+            }
+        }
+
+        if ($count === 0) {
+            return $pcm;
+        }
+
+        $rms = sqrt($sum / $count);
+        $gain = min((32767 * 10 ** (-1 / 20)) / $peak, (32767 * 10 ** ($targetDbfs / 20)) / max(1.0, $rms));
+
+        return pack('v*', ...array_map(fn (int $value): int => max(-32768, min(32767, (int) round($value * $gain))) & 0xFFFF, $samples));
+    }
+
     public static function seconds(string $pcm, int $rate): float
     {
         return strlen($pcm) / self::BYTES_PER_SAMPLE / max(1, $rate);
