@@ -1135,6 +1135,8 @@ final class CasterVoice
             ."- Gewertete Siege schürfen Blöcke im Liga-Mempool, Turniere haben Sats-Töpfe, und niemand zahlt je eine Gebühr.\n"
             ."- Zuschauer können im Stream-Chat schreiben, sich etwas wünschen und mit Zaps Sats schicken.\n"
             .'- Erfinde jede Einladung jedes Mal neu und anders und wiederhol keine Wendung, die du schon einmal gesagt hast.')
+            // Radio craft with its sources (RadioCraft, plan "TWENTY ONE Radio" P3): every TV text and the duets carry it.
+            ."\n\n".RadioCraft::block()
             // Who Markus is in the podcast, topics, style and gags with their sources (CasterPersonas, user 2026-10-12).
             ."\n\n".CasterPersonas::markus()."\n";
     }
