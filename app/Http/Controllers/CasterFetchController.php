@@ -20,6 +20,7 @@ use App\Support\Caster\QuietHours;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
 use App\Support\Caster\SpoolFull;
+use App\Support\Caster\VoiceBudget;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -69,6 +70,10 @@ final class CasterFetchController
         $stock = $request->query('only') === 'stock';
         // A podcast replay airs (P12): nothing but the bulletins and replies is voiced; the GPU may render stock meanwhile.
         $podcast = PodcastReplay::active($now);
+        // The stock's turn (VoiceBudget): the hour's fresh talk is voiced, only what the clock places and the replies come
+        // now; with none of those the workstation renders stock instead of the next scene.
+        $budget = VoiceBudget::enabled() ? app(VoiceBudget::class) : null;
+        $stockTurn = $budget?->stockTurn($now) === true;
 
         // A full spool still takes live moments and reactions (they play next) and what the clock places (a bulletin,
         // a rubric, a teaser: each airs at its slot, whatever else waits); only the byte cap stops them too.
@@ -80,7 +85,7 @@ final class CasterFetchController
                 || ($podcast && PodcastReplay::gpu() === 'stock'))
                 ? $queue->claimStock($now) : null,
             $atByteCap => null,
-            $full || $urgent || $podcast => $queue->claim($now, [...ClipSpool::LIVE_KINDS, ...CasterScript::PROGRAMME]),
+            $full || $urgent || $podcast || $stockTurn => $queue->claim($now, [...ClipSpool::LIVE_KINDS, ...CasterScript::PROGRAMME]),
             default => $queue->claim($now),
         };
 
@@ -119,6 +124,8 @@ final class CasterFetchController
             // The server's stock library (P18): the workstation renders stock until it is full.
             'stock_library' => $library === null ? null : ['seconds' => $library['counting_seconds'], 'target_seconds' => $library['target_seconds'], 'full' => $library['full']],
             'pronunciation' => Pronunciation::terms(),
+            // The voicing budget (VoiceBudget::snapshot()): the measured throughput, the hour's budget and whose turn it is.
+            'budget' => $budget?->snapshot($now),
         ]);
     }
 
@@ -414,6 +421,22 @@ final class CasterFetchController
         AutoPilot::rememberVoice($request->header(AutoPilot::HEADER), $now);
 
         return response()->json(['autopilot' => AutoPilot::active($now)]);
+    }
+
+    /**
+     * The claim heartbeat (`POST api/caster/claims/renew`, `X-Caster-Scripts`): the workstation renews the claims it is
+     * still voicing, about once a minute (CasterFetcher::keepClaims()), so a block that takes longer than
+     * `slot_claim_seconds` or `claim_seconds` is not taken away mid-voicing; a dead fetcher's claims still lapse.
+     */
+    public function renew(Request $request, ScriptQueue $queue): JsonResponse
+    {
+        if (! $this->authorized($request)) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $ids = array_map('intval', array_values(array_filter(array_map('trim', explode(',', (string) $request->header('X-Caster-Scripts', ''))), 'ctype_digit')));
+
+        return response()->json(['renewed' => $queue->renew(array_slice($ids, 0, (int) config('tv.commentary.blocks.max_scripts', 40) * 2), CarbonImmutable::now())]);
     }
 
     /** The next end of the quiet hours after `$now` (UTC). */

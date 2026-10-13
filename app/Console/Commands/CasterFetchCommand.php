@@ -57,6 +57,8 @@ class CasterFetchCommand extends Command
             $fetcher->stop();
         });
 
+        // Every upload and every VoiceStudio failure gets a line in the journal, not only a change of the outcome.
+        $fetcher->log = fn (string $line) => $this->line(now()->toDateTimeString().' '.$line);
         $idle = max(1, (int) config('tv.commentary.voicestudio.idle_seconds', 10));
         $last = null;
         $downRuns = 0;

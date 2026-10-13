@@ -30,11 +30,12 @@ use Illuminate\Support\Carbon;
  * @property list<string>|null $speakers the speaker of each line of a duet (App\Support\Caster\DuetDirector::MARKUS, ::SIRIUS), aligned with sentences(); null when Markus speaks alone
  * @property Carbon|null $airs_at a bulletin's or rubric's slot, a teaser's first moment (App\Support\Caster\Programme\BroadcastClock): it plays from then on, never before; null for every other script
  * @property Carbon|null $claimed_at
+ * @property Carbon|null $renewed_at the last claim heartbeat of the workstation voicing it (CasterFetchController::extend()); null until one came
  * @property Carbon $expires_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'expires_at', 'part_group', 'part_index', 'speakers', 'airs_at'])]
+#[Fillable(['kind', 'phase', 'scene', 'priority', 'text', 'facts_hash', 'status', 'source', 'topic', 'estimated_seconds', 'claimed_at', 'renewed_at', 'expires_at', 'part_group', 'part_index', 'speakers', 'airs_at'])]
 class CasterScript extends Model
 {
     public const QUEUED = 'queued';
@@ -100,6 +101,7 @@ class CasterScript extends Model
             'part_index' => 'integer',
             'estimated_seconds' => 'float',
             'claimed_at' => 'datetime',
+            'renewed_at' => 'datetime',
             'airs_at' => 'datetime',
             'expires_at' => 'datetime',
             'speakers' => 'array',

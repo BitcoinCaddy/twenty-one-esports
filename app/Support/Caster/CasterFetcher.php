@@ -70,6 +70,20 @@ class CasterFetcher
     /** @var Closure(float): void */
     private Closure $sleep;
 
+    /** @var array<int, true> the scripts claimed and not yet uploaded or released: their claims are renewed (keepClaims()) */
+    private array $held = [];
+
+    /** When the held claims were last renewed (clock()). */
+    private float $renewedAt = 0.0;
+
+    /**
+     * Where a line about an upload or a VoiceStudio failure goes (`caster:fetch` prints it to the journal; prod
+     * 2026-10-13: runs of four to twenty minutes ended "released" and nothing said why).
+     *
+     * @var (Closure(string): void)|null
+     */
+    public ?Closure $log = null;
+
     /**
      * @param  (Closure(float): void)|null  $sleep
      */
@@ -244,7 +258,73 @@ class CasterFetcher
             return null;
         }
 
-        return $claim->successful() ? $claim : null;
+        if (! $claim->successful()) {
+            $this->note("claim refused: {$claim->status()}");
+
+            return null;
+        }
+
+        $id = $claim->json('script.id');
+
+        if (is_int($id)) {
+            // The first renewal is due `renew_seconds` after the first claim held.
+            $this->renewedAt = $this->held === [] ? self::clock() : $this->renewedAt;
+            $this->held[$id] = true;
+        }
+
+        return $claim;
+    }
+
+    /** Seconds on the app clock (it travels in tests). */
+    private static function clock(): float
+    {
+        return (float) CarbonImmutable::now()->format('U.u');
+    }
+
+    /** A line for the journal (`$log`), nothing without one. */
+    public function note(string $line): void
+    {
+        if ($this->log !== null) {
+            ($this->log)($line);
+        }
+    }
+
+    /**
+     * The scripts are done with (uploaded, refused or released): their claims are no longer renewed.
+     *
+     * @param  list<int>  $ids
+     */
+    public function letGo(array $ids): void
+    {
+        foreach ($ids as $id) {
+            unset($this->held[$id]);
+        }
+    }
+
+    /**
+     * The claim heartbeat: every `fetch.renew_seconds` while scripts are held, the server renews their claims
+     * (`POST api/caster/claims/renew`), so a block voiced for longer than `slot_claim_seconds` is still accepted.
+     * Asked before every VoiceStudio call; a failed renewal never stops the voicing, it only costs the next try.
+     */
+    public function keepClaims(): void
+    {
+        if ($this->held === [] || $this->stopping || self::clock() - $this->renewedAt < (float) config('tv.commentary.fetch.renew_seconds', 60)) {
+            return;
+        }
+
+        $this->renewedAt = self::clock();
+
+        try {
+            $renewal = $this->server()->timeout(10)->withHeaders(['X-Caster-Scripts' => implode(',', array_keys($this->held))])
+                ->post($this->settings()['server'].'/api/caster/claims/renew');
+
+            if (! $renewal->successful()) {
+                $this->note("claim renewal refused: {$renewal->status()}");
+            }
+        } catch (Throwable $exception) {
+            // The voicing goes on: at worst the claim lapses as it did before the heartbeat.
+            $this->note('claim renewal failed: '.$exception->getMessage());
+        }
     }
 
     /**
@@ -286,6 +366,7 @@ class CasterFetcher
         $opus = $voiced === null ? null : $this->encode($voiced['pcm'], $voiced['rate']);
 
         if ($voiced === null || $opus === null) {
+            $this->note("script {$id}: ".($voiced === null ? 'voicing failed' : 'encoding failed').', released');
             $this->release($id);
 
             return self::RELEASED;
@@ -300,10 +381,14 @@ class CasterFetcher
                 ->withBody(self::keepLocal($opus, 'clip'), 'audio/ogg')
                 ->post($settings['server'].'/api/caster/scripts/'.$id.'/clip');
         } catch (ConnectionException) {
+            $this->note("script {$id}: upload failed, server unreachable, released");
             $this->release($id);
 
             return self::OFFLINE;
         }
+
+        $this->letGo([$id]);
+        $this->note(self::uploadLine("script {$id}", $upload, Pcm::seconds($voiced['pcm'], $voiced['rate'])));
 
         if ($upload->status() === 201) {
             return self::VOICED;
@@ -540,6 +625,9 @@ class CasterFetcher
                 return null;
             }
 
+            // Minutes of voicing for one block: the claims it holds are renewed meanwhile.
+            $this->keepClaims();
+
             try {
                 $response = Http::asMultipart()->timeout((int) $settings['timeout_seconds'])->post(rtrim((string) $settings['url'], '/').'/generate', [
                     'text' => $text,
@@ -557,12 +645,15 @@ class CasterFetcher
                     return $response->body();
                 }
 
+                $this->note("VoiceStudio answered {$response->status()} (try {$attempt} of {$attempts})");
+
                 if ($response->clientError()) {
                     return null;
                 }
             } catch (ConnectionException) {
                 // VoiceStudio is restarting or busy: wait and try again.
                 $unreachable++;
+                $this->note("VoiceStudio unreachable (try {$attempt} of {$attempts})");
             }
 
             if ($attempt < $attempts && ! $this->stopping) {
@@ -624,8 +715,19 @@ class CasterFetcher
         return $lines !== [] && str_ends_with(rtrim(ScriptGuard::withoutMarkers((string) end($lines))), '!');
     }
 
+    /** One journal line for an upload: what, how long, the status and the server's reason when it refused. */
+    public static function uploadLine(string $what, Response $upload, float $seconds): string
+    {
+        $error = $upload->status() === 201 ? '' : ' '.(is_string($upload->json('error')) ? $upload->json('error') : 'refused')
+            .(is_numeric($upload->json('script')) ? ' (script '.$upload->json('script').')' : '');
+
+        return sprintf('%s: %.1f s uploaded, %d%s', $what, $seconds, $upload->status(), $error);
+    }
+
     public function release(int $id): void
     {
+        unset($this->held[$id]);
+
         try {
             // While stopping, every release must get through within the stop timeout.
             $this->server()->timeout($this->stopping ? 5 : 30)->post($this->settings()['server'].'/api/caster/scripts/'.$id.'/release');

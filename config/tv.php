@@ -166,6 +166,37 @@ return [
             // A claimed script the clock places (bulletin, rubric, teaser) is free again after this long instead: a
             // fetcher killed mid-voicing held bulletins 2644 and 2706 past their slots (prod 2026-10-13).
             'slot_claim_seconds' => (int) env('TV_COMMENTARY_SLOT_CLAIM_SECONDS', 120),
+            // The claim heartbeat (CasterFetcher::keepClaims()): while voicing, the workstation renews its claims this often,
+            // so a long block never lapses mid-voicing while a dead fetcher's claims still free after the two limits above.
+            'renew_seconds' => (int) env('TV_COMMENTARY_RENEW_SECONDS', 60),
+        ],
+
+        // The voicing budget (App\Support\Caster\VoiceBudget; prod 2026-10-13: at 64 OmniVoice steps the workstation voices
+        // about as fast as real time, and of three hours' scripts 27 scenes, 15 news, 15 rubric parts and a bulletin expired
+        // unvoiced): the server writes only what the workstation can voice, in strict priority, and leaves `stock_share` of
+        // the GPU hour to the stock. The throughput (estimated seconds voiced per wall second) is measured from the uploads
+        // of the last `measure_minutes` (claim to upload, overlaps counted once), `default_rtf` until enough was voiced.
+        'budget' => [
+            'enabled' => (bool) env('TV_COMMENTARY_BUDGET', true),
+            'stock_share' => (float) env('TV_COMMENTARY_BUDGET_STOCK_SHARE', 0.3),
+            // The budget's hour: what was written and voiced in it.
+            'window_minutes' => 60,
+            // The throughput is measured over this long (prod 2026-10-13: the last hour alone held ten busy minutes of short
+            // replies and read 1.88, three hours read 0.99); fewer busy seconds than `min_busy_seconds` in it: the last
+            // measured value (kept `keep_hours`), else `default_rtf`.
+            'measure_minutes' => 180,
+            'min_busy_seconds' => 900,
+            'keep_hours' => 24,
+            'default_rtf' => (float) env('TV_COMMENTARY_BUDGET_DEFAULT_RTF', 0.8),
+            // A higher tier's script due to be written within this many minutes is kept free of the budget for it.
+            'reserve_minutes' => 30,
+            // A script is written only when it is voiced this long before it expires (a bulletin: before `ready_seconds`).
+            'margin_seconds' => 60,
+            // What one script of a tier is reckoned at before it is written (a show: its window, Shows).
+            'expected_seconds' => ['bulletin' => 120, 'news' => 150, 'rubric' => 150, 'chat' => 60, 'segment' => 60, 'scene' => 40],
+            'chat_per_hour' => 6,
+            // Tight (the tiers above the scenes ask at least `tight_share` of the hour's budget): at most `per_hour` slide scenes an hour.
+            'scene_cap' => ['per_hour' => 6, 'tight_share' => 0.6],
         ],
 
         'spool' => [

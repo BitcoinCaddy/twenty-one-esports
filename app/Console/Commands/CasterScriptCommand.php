@@ -6,6 +6,7 @@ use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\ScriptQueue;
+use App\Support\Caster\VoiceBudget;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -46,6 +47,12 @@ class CasterScriptCommand extends Command
 
         $written = $queue->fill(CarbonImmutable::now());
         $this->line(sprintf('Wrote %d script(s); %.0f s of airtime ahead.', $written, $queue->airtimeAhead()));
+
+        if (VoiceBudget::enabled()) {
+            $budget = app(VoiceBudget::class)->snapshot(CarbonImmutable::now());
+            $this->line(sprintf('Voicing: %.2f s per second (%s), budget %.0f s/h, written %.0f s, voiced %.0f s in the hour%s.',
+                $budget['rtf'], $budget['source'], $budget['hour_budget'], $budget['written_hour'], $budget['voiced_hour'], $budget['stock_turn'] ? ', stock\'s turn' : ''));
+        }
 
         return self::SUCCESS;
     }

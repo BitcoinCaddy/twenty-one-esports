@@ -170,6 +170,8 @@ Route::post('api/caster/stock/library/{hash}', [CasterFetchController::class, 's
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.stock-library-block');
 Route::post('api/caster/heartbeat', [CasterFetchController::class, 'heartbeat'])
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.heartbeat');
+Route::post('api/caster/claims/renew', [CasterFetchController::class, 'renew'])
+    ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.renew');
 Route::post('api/caster/scripts/{id}/release', [CasterFetchController::class, 'release'])->whereNumber('id')
     ->withoutMiddleware('web')->middleware('throttle:caster-fetch')->name('caster.release');
 Route::post('api/caster/podcast-transcript/status', [CasterFetchController::class, 'podcastStatus'])

@@ -166,13 +166,15 @@ class ScriptQueue
         // While a podcast replay airs (P12) only the bulletins and sport and weather are written: no talk, rubric,
         // teaser, segment or slide scene would get on air before it ends.
         $podcast = PodcastReplay::active($now);
+        // The voicing budget (VoiceBudget): a tier the workstation cannot voice in time is not written, highest tier first.
+        $budget = app(VoiceBudget::class);
         $written = $this->fillBulletin($now);
-        $written += $this->fillSportWeather($now);
-        $written += $quiet || $podcast ? 0 : $this->fillNewsTalk($now);
+        $written += $budget->opens(VoiceBudget::NEWS, $now) ? $this->fillSportWeather($now) : 0;
+        $written += $quiet || $podcast || ! $budget->opens(VoiceBudget::NEWS, $now) ? 0 : $this->fillNewsTalk($now);
         // The Programmvorschau after the news block (P14), also at 08:5x for 09:03 while the quiet hours still run.
-        $written += $podcast ? 0 : $this->fillPreview($now);
+        $written += $podcast || ! $budget->opens(VoiceBudget::RUBRIC, $now) ? 0 : $this->fillPreview($now);
         $written += $podcast ? 0 : $this->fillRubric($now);
-        $written += $quiet || $podcast ? 0 : $this->fillTeaser($now) + $this->fillSegments($now);
+        $written += $quiet || $podcast ? 0 : ($budget->opens(VoiceBudget::RUBRIC, $now) ? $this->fillTeaser($now) : 0) + $this->fillSegments($now);
         $written += $this->fillStock($now);
         $written += $this->fillPodcast($now);
 
@@ -194,7 +196,8 @@ class ScriptQueue
         $patternsLeft = max(0, (int) config('tv.commentary.patterns.per_run', 40));
         $exhausted = [];
 
-        while ($this->airtimeAhead() < ($quiet ? QuietHours::aheadSeconds() : (float) ($settings['ahead_seconds'] ?? 300)) && ($candidates = array_diff(array_keys($factsByTopic), $exhausted)) !== []) {
+        while ($this->airtimeAhead() < ($quiet ? QuietHours::aheadSeconds() : (float) ($settings['ahead_seconds'] ?? 300)) && ($candidates = array_diff(array_keys($factsByTopic), $exhausted)) !== []
+            && $budget->opens(VoiceBudget::SCENE, $now, deadline: $now->addMinutes((int) ($settings['max_age_minutes'] ?? 10)))) {
             $topic = $this->thinnestTopic(array_values($candidates));
             $phase = SceneTopic::phase($topic, $now);
             $facts = $factsByTopic[$topic] ?? [];
@@ -423,8 +426,9 @@ class ScriptQueue
         $rubrics = app(Rubrics::class);
         $id = $rubrics->plannedFor($slot, $now);
 
-        // Planned early for a long format's window, the rotation's rubric still waits for its own.
-        if ($id === null || (! Shows::isShow($id) && $ahead > 60 * $write)) {
+        // Planned early for a long format's window, the rotation's rubric still waits for its own; neither is written beyond
+        // the voicing budget of its tier (VoiceBudget: a show above the chat, a rubric below the news).
+        if ($id === null || (! Shows::isShow($id) && $ahead > 60 * $write) || ! app(VoiceBudget::class)->opens(VoiceBudget::tierOf(CasterScript::RUBRIC, $id), $now)) {
             return 0;
         }
 
@@ -783,6 +787,13 @@ class ScriptQueue
             $maxAge = max($maxAge, (int) ceil((int) config('tv.commentary.chat.max_hold_seconds', 600) / 60) + (int) config('tv.commentary.chat.reaction_voicing_minutes', 20));
         }
 
+        // Beyond the voicing budget, or voiced only after it expired, a script is not queued at all (VoiceBudget), before
+        // any of its lines is remembered as said. A bulletin always is.
+        if ($kind !== CasterScript::BULLETIN && VoiceBudget::enabled()
+            && ! app(VoiceBudget::class)->admits($kind, $topic, $scene, self::estimateSeconds($text), $expiresAt ?? $now->addMinutes($maxAge), $now)) {
+            return null;
+        }
+
         if ($kind === CasterScript::BULLETIN) {
             $this->memory ??= new SpokenMemory;
             $this->memory->remember($text, $now);
@@ -958,15 +969,16 @@ class ScriptQueue
         $this->expire($now);
 
         CasterScript::query()->where('status', CasterScript::CLAIMED)
-            ->where('claimed_at', '<', $now->subSeconds((int) config('tv.commentary.fetch.claim_seconds', 180)))
-            ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
+            ->where(fn (Builder $query) => self::lapsed($query, $now->subSeconds((int) config('tv.commentary.fetch.claim_seconds', 180))))
+            ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null, 'renewed_at' => null]);
 
         // A script the clock places is free again much sooner: a fetcher killed while voicing it (a restart, prod
         // 2026-10-13: bulletins 2644 and 2706) would otherwise hold it past its slot. A second voicing is harmless,
-        // the later upload is refused (not_claimed).
+        // the later upload is refused (not_claimed). A fetcher still voicing it renews its claim (the claim heartbeat), so
+        // a block that takes longer than this is never taken away mid-voicing.
         CasterScript::query()->where('status', CasterScript::CLAIMED)->whereNotNull('airs_at')
-            ->where('claimed_at', '<', $now->subSeconds((int) config('tv.commentary.fetch.slot_claim_seconds', 120)))
-            ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
+            ->where(fn (Builder $query) => self::lapsed($query, $now->subSeconds((int) config('tv.commentary.fetch.slot_claim_seconds', 120))))
+            ->update(['status' => CasterScript::QUEUED, 'claimed_at' => null, 'renewed_at' => null]);
 
         return DB::transaction(function () use ($now, $kinds, $stock): ?CasterScript {
             $script = CasterScript::query()->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
@@ -975,11 +987,12 @@ class ScriptQueue
                 ->where(fn ($query) => $query->whereNull('part_group')->orWhereNotExists(fn ($earlier) => $earlier->from('caster_scripts as earlier')
                     ->whereColumn('earlier.part_group', 'caster_scripts.part_group')->whereColumn('earlier.part_index', '<', 'caster_scripts.part_index')
                     ->where('earlier.status', CasterScript::QUEUED)))
-                // A bulletin first, whatever else waits: it airs at its slot or not at all.
-                ->orderByRaw('case when kind = ? then 0 else 1 end', [CasterScript::BULLETIN])
+                // A bulletin first, whatever else waits: it airs at its slot or not at all. With the voicing budget on, the
+                // tiers in strict order after it (VoiceBudget::TIERS: shows, replies, the news talk, rubrics, segments, scenes).
+                ->orderByRaw(...(VoiceBudget::enabled() ? VoiceBudget::rankSql() : ['case when kind = ? then 0 else 1 end', [CasterScript::BULLETIN]]))
                 ->orderByDesc('priority')->orderBy('id')->lockForUpdate()->first();
 
-            $script?->update(['status' => CasterScript::CLAIMED, 'claimed_at' => $now]);
+            $script?->update(['status' => CasterScript::CLAIMED, 'claimed_at' => $now, 'renewed_at' => null]);
 
             return $script;
         });
@@ -988,8 +1001,31 @@ class ScriptQueue
     public function release(CasterScript $script): void
     {
         if ($script->status === CasterScript::CLAIMED) {
-            $script->update(['status' => CasterScript::QUEUED, 'claimed_at' => null]);
+            $script->update(['status' => CasterScript::QUEUED, 'claimed_at' => null, 'renewed_at' => null]);
         }
+    }
+
+    /**
+     * The claim heartbeat: the claims of `$ids` the workstation still holds are renewed (`renewed_at`), so they do not
+     * lapse after `claim_seconds` / `slot_claim_seconds` while it voices them. `claimed_at` stays.
+     *
+     * @param  list<int>  $ids
+     * @return int claims renewed
+     */
+    public function renew(array $ids, CarbonImmutable $now): int
+    {
+        return $ids === [] ? 0 : CasterScript::query()->whereKey($ids)->where('status', CasterScript::CLAIMED)->update(['renewed_at' => $now->utc()]);
+    }
+
+    /**
+     * A query constraint: the claim was last claimed or renewed before `$cutoff`.
+     *
+     * @param  Builder<CasterScript>  $query
+     */
+    private static function lapsed(Builder $query, CarbonImmutable $cutoff): void
+    {
+        $query->where(fn (Builder $query) => $query->whereNull('renewed_at')->where('claimed_at', '<', $cutoff->utc()))
+            ->orWhere('renewed_at', '<', $cutoff->utc());
     }
 
     /**

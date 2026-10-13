@@ -181,6 +181,7 @@ final class BlockFetcher
         $opus = $block === null ? null : $fetcher->encode($block['pcm'], $block['rate']);
 
         if ($block === null || $opus === null) {
+            $fetcher->note('block '.implode(',', $ids).': '.($block === null ? 'rendering failed' : 'encoding failed').', released');
             $this->releaseAll($fetcher, $ids);
 
             return CasterFetcher::RELEASED;
@@ -201,10 +202,14 @@ final class BlockFetcher
                 ->withBody(CasterFetcher::keepLocal($opus, 'block'), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/blocks');
         } catch (ConnectionException) {
+            $fetcher->note('block '.implode(',', $ids).': upload failed, server unreachable, released');
             $this->releaseAll($fetcher, $ids);
 
             return CasterFetcher::OFFLINE;
         }
+
+        $fetcher->letGo($ids);
+        $fetcher->note(CasterFetcher::uploadLine('block '.implode(',', $ids), $upload, Pcm::seconds($block['pcm'], $block['rate'])));
 
         if ($upload->status() === 201) {
             // The day's archive for the quiet hours' best of (P6 replay); whether it may ever come again is decided there.
@@ -473,10 +478,14 @@ final class BlockFetcher
             ['ends' => $block['ends'], 'boundaries' => $block['boundaries'], 'steps' => $block['steps'], 'seconds' => $seconds], CarbonImmutable::now());
 
         if ($name === null) {
+            $fetcher->note('stock '.implode(',', $ids).': '.($block === null ? 'rendering failed' : ($opus === null ? 'encoding failed' : 'not kept')).', released');
             $this->releaseAll($fetcher, $ids);
 
             return $fetcher->stopping() ? CasterFetcher::STOPPED : CasterFetcher::RELEASED;
         }
+
+        $fetcher->letGo($ids);
+        $fetcher->note(sprintf('stock %s: %.1f s kept as %s', implode(',', $ids), $seconds, $name));
 
         try {
             $fetcher->server()->withHeaders(['X-Caster-Scripts' => implode(',', $ids)])->post($fetcher->settings()['server'].'/api/caster/stock/stored');
@@ -561,6 +570,8 @@ final class BlockFetcher
     /** An orphaned later part of a stock talk is told done without audio (`api/caster/stock/stored`): it never airs. */
     private function skipOrphan(CasterFetcher $fetcher, int $id): void
     {
+        $fetcher->letGo([$id]);
+
         try {
             $fetcher->server()->withHeaders(['X-Caster-Scripts' => (string) $id])->post($fetcher->settings()['server'].'/api/caster/stock/stored');
         } catch (ConnectionException) {
