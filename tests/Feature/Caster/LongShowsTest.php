@@ -137,12 +137,12 @@ it('turns down a segment that opens a third line with the same three words, or t
     $segment = fn (string $first): string => implode("\n", ['Markus: '.$first, ...array_slice(explode("\n", longShowSegment(3)['text']), 1)]);
 
     expect(ShowScripts::opener('[laughter] Euer Ehren, das ist grausam.'))->toBe('euer ehren das')
-        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Euer Ehren, das ist schon wieder Fritzi, der hier jammert.'), false, $previous, true, false)[1])->toContain(ShowScripts::OPENER, ShowScripts::CASE_AGAIN)
-        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Nächster Fall, Hodlbert, und der ist noch schlimmer als Fritzi.'), false, $previous, true, false)[1])->toBe([])
+        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Euer Ehren, das ist schon wieder Fritzi, der hier jammert.'), false, $previous, true, false, $previous)[1])->toContain(ShowScripts::OPENER, ShowScripts::CASE_AGAIN)
+        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Nächster Fall, Hodlbert, und der ist noch schlimmer als Fritzi.'), false, $previous, true, false, $previous)[1])->toBe([])
         // The closing segment may come back to every case.
-        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Zum Schluss noch einmal Fritzi, der Held dieses Abends im Saal.'), false, $previous, true, true)[1])->not->toContain(ShowScripts::CASE_AGAIN);
+        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Zum Schluss noch einmal Fritzi, der Held dieses Abends im Saal.'), false, $previous, true, true, $previous)[1])->not->toContain(ShowScripts::CASE_AGAIN);
 
     // The prompt names what is tried and used up.
-    expect(ShowScripts::prompt(Shows::TRIBUNAL, $material, [], null, ['number' => 2, 'first' => false, 'final' => false, 'minutes' => 30, 'previous' => $previous]))
+    expect(ShowScripts::prompt(Shows::TRIBUNAL, $material, [], null, ['number' => 2, 'first' => false, 'final' => false, 'minutes' => 30, 'previous' => $previous, 'openers' => $previous]))
         ->toContain('Schon dran (nicht noch einmal als Fall, nur als kurzer Rückgriff): Fritzi')->toContain('„euer ehren das …“');
 });

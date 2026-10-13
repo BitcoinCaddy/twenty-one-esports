@@ -66,7 +66,12 @@ it('writes a long Chat-Tribunal and a long Shitcoin-Friedhof that fill their win
         $before = $calls();
         $slot = $clock->slotAt(CarbonImmutable::parse('2026-10-13 '.$time, 'Europe/Berlin')->addDay($id === Shows::FRIEDHOF ? 1 : 0));
         $material = app(Shows::class)->material($id, CarbonImmutable::now());
-        $show = $material === null ? null : app(ShowScripts::class)->write($slot, $id, $material, CarbonImmutable::now());
+        $writer = app(ShowScripts::class);
+        $show = $material === null ? null : $writer->write($slot, $id, $material, CarbonImmutable::now());
+
+        foreach ($writer->rejectedDrafts as $draft) {
+            fwrite(STDERR, "\n----- REJECTED {$id} segment {$draft['segment']}: ".implode(', ', $draft['reasons'])."\n{$draft['raw']}\n");
+        }
         $text = $show['text'] ?? '';
         $lines = $text === '' ? [] : explode("\n", $text);
         $jabs = count(array_filter($lines, fn (string $line): bool => preg_match('/\b(?:du|alter|alte)\s+\p{Lu}[\p{L}-]+|staat|zentralbank|fiat|steuer|shitcoin|bank|behörde|finanzamt/iu', $line) === 1));
