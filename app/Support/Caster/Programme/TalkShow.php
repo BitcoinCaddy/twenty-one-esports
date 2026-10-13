@@ -6,6 +6,7 @@ use App\Models\CasterNews;
 use App\Models\CasterScript;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\CasterVoice;
+use App\Support\Caster\DuetDirector;
 use App\Support\Caster\NewsFilter;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\SpokenMemory;
@@ -168,6 +169,90 @@ class TalkShow
         return $turn;
     }
 
+    /**
+     * The model the talk is written with (`model`, P20): the global voice model is Haiku where `esports.voice.model` is
+     * unset, and Haiku stopped after 21 to 28 lines a call and copied whole lines from part to part in the first real
+     * runs (2026-10-13), so the talk names its own; empty: the global one.
+     */
+    public static function model(): ?string
+    {
+        $model = self::settings()['model'] ?? null;
+
+        return is_string($model) && trim($model) !== '' ? trim($model) : null;
+    }
+
+    /**
+     * The acts the talk is written in (`acts`, P20), each with its `id`, `brief` and the flags `factcheck`; none: one
+     * call for the whole talk (P16).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function acts(): array
+    {
+        return array_values(array_filter((array) (self::settings()['acts'] ?? []), fn (mixed $act): bool => is_array($act) && is_string($act['brief'] ?? null)));
+    }
+
+    /**
+     * How long the talk airs, at least and at most, in seconds (P20: "dann muss die TalkShow auch 30 min gehen"): the
+     * format's slot (Shows::slotMinutes()) less `slot_margin_seconds` up to the full slot; without a slot `seconds`.
+     *
+     * @return array{0: float, 1: float}
+     */
+    public static function airWindow(): array
+    {
+        $minutes = Shows::slotMinutes(self::ID);
+        $settings = self::settings();
+
+        if ($minutes === null) {
+            return [(float) ($settings['seconds']['min'] ?? 360), (float) ($settings['seconds']['max'] ?? 600)];
+        }
+
+        return [60.0 * $minutes - max(0.0, (float) ($settings['slot_margin_seconds'] ?? 120)), 60.0 * $minutes];
+    }
+
+    /**
+     * How long lines air as a rendered talk (P20): their words at `air_words_per_second` (VoiceStudio's measured pace,
+     * 2.9 to 3.3 words a second in the P17 renders: 517 words in 190.6 s, 312 in 108.0 s, 268 in 83.5 s, pauses
+     * taken out), a sentence pause inside a turn, the mean turn gap (`turn_gap_ms`) at every change of speaker, and
+     * the studio's theme and applause (studioSeconds()).
+     *
+     * @param  list<string>  $lines
+     * @param  list<string>  $speakers
+     */
+    public static function airSeconds(array $lines, array $speakers): float
+    {
+        if ($lines === []) {
+            return 0.0;
+        }
+
+        $settings = self::settings();
+        $words = count(preg_split('/\s+/u', trim(ScriptGuard::withoutMarkers(implode(' ', $lines))), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $turn = self::turnGap(self::ID) ?? ['min' => 0.45, 'max' => 0.8];
+        $changes = 0;
+
+        foreach ($speakers as $index => $speaker) {
+            if ($index > 0 && $speaker !== $speakers[$index - 1]) {
+                $changes++;
+            }
+        }
+
+        $sentencePause = (float) config('tv.commentary.voicestudio.pause.sentence', 0.2);
+
+        return $words / max(0.5, (float) ($settings['air_words_per_second'] ?? 3.0))
+            + $changes * ($turn['min'] + $turn['max']) / 2
+            + (count($lines) - 1 - $changes) * $sentencePause
+            + self::studioSeconds();
+    }
+
+    /**
+     * The seconds the studio adds to a talk (P20 probe, BlockRenderer): the intro's part before the welcome, the outro,
+     * two act-break stings and four applause pauses; `studio_seconds`.
+     */
+    public static function studioSeconds(): float
+    {
+        return max(0.0, (float) (self::settings()['studio_seconds'] ?? 35));
+    }
+
     /** The cut-ins an episode may have at `interrupt_gap_ms`; the rest get the turn's breath. */
     public static function maxInterruptions(): int
     {
@@ -314,6 +399,47 @@ class TalkShow
             ."\n\nRunning Gags (erfunden für die Sendung)\n".$list($guest['running_gags'] ?? [])
             ."\n\nDamit ziehen Markus und Sirius sie auf (nur ihre Ideen)\n".$list($guest['teased_by'] ?? [])
             ."\n\nGrenzen\n".$list($guest['rules'] ?? []);
+    }
+
+    /**
+     * The roast block of the talk show prompt (P20; user 2026-10-13: "Purer Realismus einer echten Radioshow, die
+     * sarkastisch, toxisch und zynisch ist und absolut alles und jeden roastet", "liebevolle Schimpfwörter … Trotzdem
+     * muss es sinnhaftig bleiben"): the rules, then a rotating sample of `$perRole` roast moves and three affectionate
+     * insults per voice from resources/data/voice/talkshow-roasts.json, as tone, never as text to copy; none the talk
+     * has said already (`$said`, TalkShowScripts::echoes(): the model copied examples, part after part, P20 run 4).
+     *
+     * @param  list<string>  $said  the talk's lines so far
+     */
+    public static function roastBlock(int $perRole = 7, array $said = []): string
+    {
+        $data = json_decode((string) file_get_contents(resource_path('data/voice/talkshow-roasts.json')), true);
+        $names = [self::HOST => 'Sirius', DuetDirector::MARKUS => 'Markus', self::GUEST => self::stageName()];
+        $sample = function (mixed $rows, int $count) use ($said): array {
+            $rows = array_values(array_filter((array) $rows, fn (mixed $row): bool => is_string($row) && ! TalkShowScripts::echoes($row, $said)
+                && ! array_filter($said, fn (string $line): bool => str_contains(mb_strtolower($line), mb_strtolower($row)))));
+            shuffle($rows);
+
+            return array_slice($rows, 0, $count);
+        };
+        $roles = [];
+
+        foreach ([DuetDirector::MARKUS, self::HOST, self::GUEST] as $speaker) {
+            $moves = $sample(is_array($data) ? ($data['moves'][$speaker] ?? []) : [], $perRole);
+            $insults = $sample(is_array($data) ? ($data['insults'][$speaker] ?? []) : [], 3);
+            $roles[] = $names[$speaker].' (so klingt es, übernimm keinen Satz wörtlich)'."\n".implode("\n", array_map(fn (string $move): string => '- '.$move, $moves))
+                .($insults === [] ? '' : "\n- liebevolle Schimpfwörter, die nur ".$names[$speaker].' benutzt, etwa: '.implode(', ', array_map(fn (string $insult): string => "„{$insult}“", $insults)));
+        }
+
+        return "Roasten, bis es wehtut, aber mit Sinn\n\n"
+            ."- Alle drei roasten in jedem Akt: einander, den Gastgeber, den Sender, die Hörer und die Schlagzeile; sarkastisch, zynisch, frech und so gemein, dass es beim Zuhören wehtut, und trotzdem mögen sie sich irgendwie.\n"
+            ."- Bauweise wie beim Roast der Liga-Partien: ein konkretes Ziel, ein konkretes Detail aus dem Material oder aus dem, was der andere gerade gesagt hat, die Steigerung und die Pointe am Satzende. Jeder Seitenhieb hängt an einer konkreten Behauptung, die man nachvollziehen kann.\n"
+            ."- Liebevolle Schimpfwörter fliegen hin und her, frisch und jedes Mal anders, als Anrede mit „Sie“ („Sie Zinseszins-Romantiker“); nie dasselbe zweimal, und jeder nur seine eigenen: Markus' gehen an die Genossin, ihre an Markus, Sirius' an beide.\n"
+            ."- Markus ist der großspurige, toxisch-witzige Bitcoiner: Einzeiler wie Ohrfeigen gegen ihre Ideen, ihre T-Konten-Skizze, ihre MMT-Vorbilder, Staat, Zentralbank und Fiatgeld, Herablassung und Running Gags, er fällt ihr ins Wort, lacht sie aus ([laughter]) und seufzt theatralisch ([sigh]). Nicht höflich, kein „mit Verlaub“, kein Lob ohne Stachel.\n"
+            ."- Sirius ist der Provokateur: seine Fragen sind gezinkt und sticheln, er roastet beide Gäste mit trockenem Sarkasmus, verdreht hörbar die Augen und führt jedes Ausweichen spöttisch vor, und trotzdem fragt er fast immer.\n"
+            .'- '.self::stageName()." keilt zurück (digitale Tulpenzwiebeln, Tech-Bro, Laser-Augen-Sekte), damit es ein echter Kampf bleibt.\n"
+            ."- Kein Kauderwelsch: jeder Satz sagt etwas Konkretes, das man nach einmal Hören wiedergeben kann. Höchstens ein Bild pro Satz, nie zwei Bilder gemischt, kein Vergleich, der beim ersten Hören nicht sitzt, kein Satz, der nur nach Witz klingt.\n"
+            ."- Die Grenzen bleiben: geroastet werden Ideen, Rollen und Aussagen, nie Geschlecht, Aussehen, Alter, Herkunft, Krankheit oder Behinderung, keine herablassende Anrede als Frau, keine echten Personen als Ziel, kein erfundenes Zitat, keine Zahl und kein Name außerhalb des Materials; Memes nur aus dem Kanon mit ihrem echten Wortlaut.\n\n"
+            .implode("\n\n", $roles);
     }
 
     /** The dramaturgy block of the talk show prompt: title and rule of every entry of talkshow.json. */

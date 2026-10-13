@@ -678,6 +678,12 @@ class ClipSpool
         return $counts;
     }
 
+    /** Deletes a ready clip and its file (FormatPurge: a block that carries a purged script). */
+    public function discard(CasterClip $clip): void
+    {
+        $this->delete($clip);
+    }
+
     private function delete(CasterClip $clip): void
     {
         // A podcast chunk's file is the library's: it airs again tomorrow (PodcastLibrary trims it).

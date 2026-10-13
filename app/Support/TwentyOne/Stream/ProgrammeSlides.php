@@ -371,7 +371,8 @@ class ProgrammeSlides
 
         return ['key' => $key, 'family' => self::familyOf($topic), 'title' => $title,
             'tagline' => self::TAGLINES[$topic] ?? (is_string($what) ? self::sentence($what) : 'Markus und Sirius am Mikro.'),
-            'at' => $at, 'seconds' => 0.0, 'ready' => true, 'format' => $topic, 'part' => null, 'left' => null];
+            // A show that owns a window (P20, Shows::slotMinutes()) shows the window until its clip tells the real length.
+            'at' => $at, 'seconds' => 60.0 * (Shows::slotMinutes($topic) ?? 0), 'ready' => true, 'format' => $topic, 'part' => null, 'left' => null];
     }
 
     /**

@@ -98,6 +98,39 @@ class Shows
         return config('tv.commentary.programme.shows.enabled') === true && Rubrics::enabled();
     }
 
+    /**
+     * The show windows of the schedule (P20): the local start "HH:MM" of every slot whose format has `slot_minutes`, to
+     * those minutes (BroadcastClock lets the show own the window). None while the shows are off.
+     *
+     * @return array<string, int>
+     */
+    public static function windows(): array
+    {
+        if (config('tv.commentary.programme.shows.enabled') !== true) {
+            return [];
+        }
+
+        $windows = [];
+
+        foreach ((array) config('tv.commentary.programme.shows.schedule', []) as $time => $id) {
+            $minutes = is_string($id) ? self::slotMinutes($id) : null;
+
+            if ($minutes !== null) {
+                $windows[(string) $time] = $minutes;
+            }
+        }
+
+        return $windows;
+    }
+
+    /** The minutes a format's slot lasts on air (`formats.<id>.slot_minutes`, P20), or null when it has none. */
+    public static function slotMinutes(string $id): ?int
+    {
+        $minutes = self::settings($id)['slot_minutes'] ?? null;
+
+        return is_numeric($minutes) && (int) $minutes > 0 ? (int) $minutes : null;
+    }
+
     public static function isShow(?string $id): bool
     {
         return $id !== null && isset(self::CATALOGUE[$id]);
