@@ -6,6 +6,7 @@ use App\Support\Caster\Blocks\BlockRenderer;
 use App\Support\Caster\Blocks\JingleLibrary;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\CasterFetcher;
+use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\Pcm;
 use App\Support\Caster\Programme\BroadcastClock;
@@ -497,7 +498,7 @@ it('asks for questions, reactions and a roast that hurts but makes sense in the 
     $prompt = TalkShowScripts::prompt(app(TalkShow::class)->material(CarbonImmutable::now()), false, [TalkShowScripts::HOST_QUESTIONS], [], TalkShow::hostMoves(CarbonImmutable::now(), 14));
 
     expect($prompt)->toContain('moderiert durch Fragen', 'mindestens sieben von zehn', '„Ich halte fest“ höchstens zweimal', 'Sirius hat zu wenig gefragt')
-        ->toContain('Reaktionen', '[dissatisfaction-hnn]', '[question-ah]', 'zwei bis fünf Wörter')
+        ->toContain('Reaktionen', '[dissatisfaction-hnn]', '[question-ah]', 'zwei bis fünf eigene Wörter')
         ->toContain('Roasten, bis es wehtut, aber mit Sinn', 'Kein Kauderwelsch', 'liebevolle Schimpfwörter', 'nie Geschlecht, Aussehen, Alter, Herkunft')
         ->toContain('Der Gastgeber fragt', 'Anwalt der Gegenseite', 'Mal angenommen')
         ->not->toContain('Lanz');
@@ -533,6 +534,23 @@ it('keeps the briefing off the air: "laut Positionsliste" or "im Material" turns
     expect($writer->evaluate($evergreen, talkAnswer([10 => 'Sirius: Ich lese die Schlagzeile noch einmal vor, Herr Turm, stimmt das?'])['text'], evergreen: true, last: false)[1])->toContain(TalkShowScripts::META)
         ->and(TalkShowScripts::prompt($evergreen, true, [], [], ['Ich lese Ihnen die Schlagzeile noch einmal vor, Genossin, was sagen Sie?', 'Was genau meinen Sie damit, Herr Turm?']))
         ->not->toContain('Schlagzeile noch einmal vor')->not->toContain('liest die Schlagzeile vor')->not->toContain('aus der Positionsliste')->toContain('Was genau meinen Sie damit');
+});
+
+it('drops a line the station already said from an act on its last try instead of turning the act (and the episode) down', function () {
+    $writer = app(TalkShowScripts::class);
+    talkHeadline();
+    $material = app(TalkShow::class)->material(CarbonImmutable::now());
+    config(['tv.commentary.repeat_hours' => 24, 'tv.commentary.repeat_phrase_hours' => 6]);
+    $said = 'Herr Turm, ist das jetzt Ihr letztes Wort, oder haben Sie noch eine Frage an die Genossin, die so richtig wehtut?';
+    CasterScript::query()->create(['kind' => CasterScript::RUBRIC, 'phase' => 'break', 'source' => CasterScript::SOURCE_AI, 'topic' => Shows::STAMMTISCH, 'priority' => 70,
+        'text' => $said, 'facts_hash' => 'x', 'status' => CasterScript::QUEUED, 'estimated_seconds' => 3, 'expires_at' => now()->addHour()]);
+    $act = ['id' => 'opening', 'brief' => 'Akt eins.', 'min_turns' => 3, 'number' => 1, 'of' => 5, 'part' => 1, 'first' => true, 'final' => false, 'factcheck' => false, 'previous' => [], 'previous_speakers' => [], 'seconds' => 40.0];
+    $answer = talkAnswer([6 => 'Sirius: '.$said])['text'];
+
+    // The first try asks for a new draft; the last try keeps the act without that line (and the answer to it).
+    expect($writer->evaluate($material, $answer, last: false, act: $act)[1])->toBe([CasterVoice::SPOKEN_REPEAT]);
+    [$content, $rejected] = $writer->evaluate($material, $answer, last: true, act: $act);
+    expect($rejected)->toBe([])->and($content['text'])->not->toContain('letztes Wort')->not->toContain('Ja, und zwar weil der Staat');
 });
 
 it('drops a repeated question together with its answer, and a question whose whole answer repeats, never one without the other', function () {
