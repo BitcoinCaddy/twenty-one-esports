@@ -696,7 +696,8 @@ final class RotationPlanner
      */
     private function withProgramme(array $round, array $tail = []): array
     {
-        $every = (int) config('twentyone.stream.rotation.programme_every_slots', 2);
+        // Plain unit tests build the planner without the framework: then the old once-a-round rule.
+        $every = app()->bound('config') ? (int) config('twentyone.stream.rotation.programme_every_slots', 2) : 0;
         $scenes = $this->programme['scenes'];
 
         if ($every <= 0 || $scenes === []) {
