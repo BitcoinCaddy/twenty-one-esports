@@ -11,7 +11,6 @@ use App\Support\Caster\PodcastNight;
 use App\Support\Caster\PodcastReplay;
 use App\Support\Caster\SceneDirector;
 use App\Support\Caster\SceneFacts;
-use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
 use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\TwentyOne\Stream\TournamentSlides;
@@ -81,9 +80,9 @@ function podcastNightDecodes(): void
  *
  * @param  list<array{0: float, 1: int, 2: list<float>}>  $chunks  [seconds, fill, pauses]
  */
-function podcastNightStored(string $guid, int $publishedAt, array $chunks, bool $current = false): void
+function podcastNightStored(string $guid, int $publishedAt, array $chunks, bool $current = false, string $source = 'einundzwanzig'): void
 {
-    $directory = 'caster/podcasts/einundzwanzig/'.substr(sha1($guid), 0, 12);
+    $directory = 'caster/podcasts/'.$source.'/'.substr(sha1($guid), 0, 12);
     $stored = [];
     foreach ($chunks as $index => [$seconds, $fill, $pauses]) {
         $path = sprintf('%s/chunk-%03d.opus', $directory, $index);
@@ -94,7 +93,7 @@ function podcastNightStored(string $guid, int $publishedAt, array $chunks, bool 
     Storage::disk('local')->put($directory.'/meta.json', $meta);
 
     if ($current) {
-        Storage::disk('local')->put('caster/podcasts/einundzwanzig/episode.json', $meta);
+        Storage::disk('local')->put('caster/podcasts/'.$source.'/episode.json', $meta);
     }
 }
 
@@ -147,6 +146,50 @@ it('queues the newest episodes one after the other inside the window, newest fir
         // The window's end, and the next night starts over.
         ->and($night->schedule(CarbonImmutable::parse('2026-10-13 09:00', 'Europe/Berlin')))->toBe(['einundzwanzig' => PodcastNight::NOT_DUE])
         ->and($night->schedule($start->addDay()))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-3']);
+});
+
+it('takes turns between its sources and starts the next episode only when the one before, of either source, nearly ended', function () {
+    podcastNightLibrary();
+    podcastNightStored('r-2', 2500, [[600.0, 61, [100.0]]], current: true, source: 'resat');
+    podcastNightStored('r-1', 1500, [[600.0, 71, [100.0]]], source: 'resat');
+    config([
+        'tv.commentary.podcast_replay.sources.resat.enabled' => true,
+        'tv.commentary.podcast_replay.night.sources' => ['einundzwanzig', 'resat'],
+        'tv.commentary.podcast_replay.night.episodes' => 2,
+        'tv.commentary.podcast_replay.night.queue_ahead_seconds' => 400,
+    ]);
+    $night = new PodcastNight(new PodcastLibrary);
+    $start = CarbonImmutable::parse('2026-10-13 01:00', 'Europe/Berlin');
+
+    expect($night->schedule($start))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-3', 'resat' => PodcastNight::WAITING])
+        // The EINUNDZWANZIG episode still has 600 s to play: Re:set waits for it, it does not air on top of it.
+        ->and($night->schedule($start->addMinutes(1)))->toBe(['einundzwanzig' => PodcastNight::WAITING, 'resat' => PodcastNight::WAITING]);
+
+    podcastNightPlayed();
+    expect($night->schedule($start->addMinutes(11)))->toBe(['einundzwanzig' => PodcastNight::WAITING, 'resat' => PodcastNight::QUEUED.' #r-2']);
+    podcastNightPlayed();
+    expect($night->schedule($start->addMinutes(21)))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-2', 'resat' => PodcastNight::WAITING]);
+    podcastNightPlayed();
+    expect($night->schedule($start->addMinutes(31)))->toBe(['einundzwanzig' => PodcastNight::WAITING, 'resat' => PodcastNight::QUEUED.' #r-1']);
+    podcastNightPlayed();
+    expect($night->schedule($start->addMinutes(41)))->toBe(['einundzwanzig' => PodcastNight::DONE, 'resat' => PodcastNight::DONE]);
+});
+
+it('starts no night episode while a day slot\'s airing still has to play', function () {
+    podcastNightLibrary();
+    config([
+        'tv.commentary.podcast_replay.sources.einundzwanzig.starts_at' => '14:03',
+        'tv.commentary.podcast_replay.night.from' => '13:00', 'tv.commentary.podcast_replay.night.to' => '20:00',
+        'tv.commentary.podcast_replay.night.queue_ahead_seconds' => 400,
+    ]);
+    $slot = CarbonImmutable::parse('2026-10-13 14:03', 'Europe/Berlin');
+    expect((new PodcastReplay(new PodcastLibrary))->schedule($slot->subMinutes(10)))->toBe(['einundzwanzig' => PodcastReplay::SCHEDULED]);
+
+    $night = new PodcastNight(new PodcastLibrary);
+    expect($night->schedule($slot->subMinutes(5)))->toBe(['einundzwanzig' => PodcastNight::WAITING]);
+
+    podcastNightPlayed();
+    expect($night->schedule($slot->addMinutes(11)))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-3']);
 });
 
 it('airs the night episodes from now as their own airings: the day\'s slot still airs, the chunks are the library\'s', function () {

@@ -661,7 +661,8 @@ return [
                 'enabled' => (bool) env('TV_COMMENTARY_AUTOPILOT', true),
                 // Music between two items (the next block goes into the spool once the air was free this long; the feeder
                 // looks every `poll_seconds`), in the quiet hours the night's slower rhythm.
-                'music_gap_seconds' => ['min' => 20, 'max' => 75],
+                // A whole song between two items (user 2026-10-13, music first): the tracks run about three to five minutes.
+                'music_gap_seconds' => ['min' => (int) env('TV_COMMENTARY_AUTOPILOT_GAP_MIN', 240), 'max' => (int) env('TV_COMMENTARY_AUTOPILOT_GAP_MAX', 330)],
                 'night_gap_seconds' => ['min' => 240, 'max' => 420],
                 'poll_seconds' => 15,
                 'podcast_every_hours' => (float) env('TV_COMMENTARY_AUTOPILOT_PODCAST_HOURS', 4),
@@ -1498,7 +1499,7 @@ return [
                 'to' => env('TV_PODCAST_NIGHT_TO', '09:00'),
                 'until' => env('TV_PODCAST_NIGHT_UNTIL', '2026-10-13 09:00'),
                 'episodes' => (int) env('TV_PODCAST_NIGHT_EPISODES', 6),
-                'sources' => ['einundzwanzig'],
+                'sources' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_PODCAST_NIGHT_SOURCES', 'einundzwanzig'))))),
                 'skip_daytime_episode' => (bool) env('TV_PODCAST_NIGHT_SKIP_DAYTIME', false),
                 'queue_ahead_seconds' => 900,
                 'overrun_minutes' => 30,

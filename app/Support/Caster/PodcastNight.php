@@ -118,34 +118,41 @@ final class PodcastNight
     {
         $outcomes = [];
         $settings = self::settings();
+        $counts = array_filter(array_map(fn (string $key): int => self::episodeCount($key, $now), array_combine(array_keys(PodcastLibrary::sources()), array_keys(PodcastLibrary::sources()))));
+        $window = $counts === [] ? null : self::window($now);
 
-        foreach (PodcastLibrary::sources() as $key => $source) {
-            $count = self::episodeCount($key, $now);
-            $window = $count === 0 ? null : self::window($now);
+        if ($window === null) {
+            return array_map(fn (): string => self::NOT_DUE, $counts);
+        }
 
-            if ($window === null) {
-                if ($count > 0) {
-                    $outcomes[$key] = self::NOT_DUE;
-                }
+        // One loop across all its sources (user 2026-10-13: Re:set and EINUNDZWANZIG fill a whole day): the next
+        // episode waits for whatever podcast is still to play, a night episode of either source or a day slot's airing.
+        $tonight = fn (array $topics) => CasterScript::query()->where('kind', CasterScript::PODCAST)->whereIn('topic', $topics)->where('airs_at', '>=', $window['from']->utc());
+        $pending = (float) CasterClip::query()->where('kind', CasterScript::PODCAST)->where('status', CasterClip::READY)->where('expires_at', '>', $now->utc())
+            ->sum('duration_seconds');
 
-                continue;
-            }
+        if ($pending > (float) ($settings['queue_ahead_seconds'] ?? 900)) {
+            return array_map(fn (): string => self::WAITING, $counts);
+        }
 
-            $topic = self::topic($key);
-            $night = $window['from']->format('Y-m-d');
-            $tonight = CasterScript::query()->where('kind', CasterScript::PODCAST)->where('topic', $topic)->where('airs_at', '>=', $window['from']->utc());
-            $pending = (float) CasterClip::query()->where('kind', CasterScript::PODCAST)->where('status', CasterClip::READY)->where('expires_at', '>', $now->utc())
-                ->whereIn('caster_script_id', (clone $tonight)->select('id'))->sum('duration_seconds');
+        // The sources take turns: the one with the fewest airings tonight first.
+        $airings = array_map(fn (string $key): int => $tonight([self::topic($key)])->count(), array_combine(array_keys($counts), array_keys($counts)));
+        $order = array_keys($counts);
+        usort($order, fn (string $a, string $b): int => [$airings[$a], array_search($a, array_keys($counts), true)] <=> [$airings[$b], array_search($b, array_keys($counts), true)]);
+        $night = $window['from']->format('Y-m-d');
+        $queued = false;
 
-            if ($pending > (float) ($settings['queue_ahead_seconds'] ?? 900)) {
+        foreach ($order as $key) {
+            if ($queued) {
                 $outcomes[$key] = self::WAITING;
 
                 continue;
             }
 
-            $aired = (clone $tonight)->pluck('facts_hash')->all();
+            $topic = self::topic($key);
+            $aired = $tonight([$topic])->pluck('facts_hash')->all();
             $daytime = ($settings['skip_daytime_episode'] ?? false) === true ? ($this->library->episode($key)['guid'] ?? null) : null;
-            $episodes = array_slice($this->library->episodes($key), 0, $count);
+            $episodes = array_slice($this->library->episodes($key), 0, $counts[$key]);
             $next = null;
 
             foreach ($episodes as $episode) {
@@ -170,12 +177,13 @@ final class PodcastNight
                 continue;
             }
 
-            $this->air($key, $topic, $source['name'], $next, $now);
+            $this->air($key, $topic, PodcastLibrary::sources()[$key]['name'], $next, $now);
             Cache::put(self::AIRED.$key.':'.$night.':'.sha1('night:'.$next['guid']), 1, 2 * 86_400);
             $outcomes[$key] = self::QUEUED.' '.$next['title'];
+            $queued = true;
         }
 
-        return $outcomes;
+        return array_replace(array_map(fn (): string => self::WAITING, $counts), $outcomes);
     }
 
     /** The airing topic of a source's night loop (16 characters at most, the column's width). */
