@@ -332,3 +332,32 @@ it('asks a full server again after five seconds, an idle one after the idle wait
         ->and(CasterFetchCommand::waitSeconds(CasterFetcher::VOICED, 10))->toBe(0)
         ->and(CasterFetchCommand::waitSeconds(CasterFetcher::OFFLINE, 10))->toBe(60);
 });
+
+it('sends the chosen generation settings with every VoiceStudio call', function () {
+    casterFakeWorld([casterWavResponse('aaaa1111'), casterWavResponse('bbbb2222')]);
+    Process::fake(['*' => Process::result(output: casterOpus())]);
+
+    (new CasterFetcher(fn () => null))->runOnce();
+
+    Http::assertSent(function (Request $request): bool {
+        if ($request->url() !== 'http://voicestudio.test/generate') {
+            return false;
+        }
+        $fields = collect($request->data())->pluck('contents', 'name');
+
+        return $fields['num_step'] === '64' && $fields['guidance_scale'] === '2.0' && $fields['t_shift'] === '0.1'
+            && $fields['position_temperature'] === '10' && $fields['class_temperature'] === '1.0'
+            && $fields['layer_penalty_factor'] === '7.0' && $fields['denoise'] === 'true' && $fields['postprocess_output'] === 'true';
+    });
+});
+
+it('keeps a local listening copy of every uploaded clip when a directory is set', function () {
+    $dir = sys_get_temp_dir().'/caster-keep-'.uniqid();
+    config(['tv.commentary.voicestudio.keep_local_dir' => $dir]);
+
+    expect(CasterFetcher::keepLocal('OggS-audio', 'clip'))->toBe('OggS-audio')
+        ->and(glob($dir.'/*-clip-*.ogg'))->toHaveCount(1);
+
+    array_map('unlink', glob($dir.'/*'));
+    rmdir($dir);
+});

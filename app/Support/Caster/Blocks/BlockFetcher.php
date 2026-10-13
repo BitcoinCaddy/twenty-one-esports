@@ -198,7 +198,7 @@ final class BlockFetcher
                     'X-Caster-Boundaries' => $times($block['boundaries']),
                     'X-Caster-Protected' => sprintf('%.3F', $block['protected']),
                 ])
-                ->withBody($opus, 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($opus, 'block'), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/blocks');
         } catch (ConnectionException) {
             $this->releaseAll($fetcher, $ids);
@@ -278,7 +278,7 @@ final class BlockFetcher
                     'X-Caster-Sentence-Ends' => $times($shift($pick['meta']['ends'] ?? [])),
                     'X-Caster-Boundaries' => $times($shift($pick['meta']['boundaries'] ?? [])),
                 ])
-                ->withBody($opus, 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($opus, 'item'), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/replays');
         } catch (ConnectionException) {
             return CasterFetcher::OFFLINE;
@@ -388,7 +388,7 @@ final class BlockFetcher
                     'X-Caster-Sentence-Ends' => $times($meta['ends'] ?? []),
                     'X-Caster-Boundaries' => $times($meta['boundaries'] ?? []),
                 ])
-                ->withBody($entry['opus'], 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($entry['opus'], 'stock'), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/stock/blocks');
         } catch (ConnectionException) {
             return CasterFetcher::OFFLINE;
@@ -522,7 +522,7 @@ final class BlockFetcher
                         'evergreen' => ReplayArchive::evergreen($scripts, array_values(array_filter((array) ($meta['steps'] ?? []), 'is_string'))),
                     ], JSON_UNESCAPED_UNICODE)),
                 ])
-                ->withBody($entry['opus'], 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($entry['opus'], 'stock'), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/stock/library/'.$hash);
         } catch (ConnectionException) {
             return CasterFetcher::OFFLINE;

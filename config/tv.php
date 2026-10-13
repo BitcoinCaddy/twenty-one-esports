@@ -215,7 +215,22 @@ return [
             // The breath when the speaker changes inside a clip (seconds, random within the range); 0.25 to 0.4 s put
             // Sirius too close to Markus (user 2026-10-12).
             'speaker_pause' => ['min' => 0.45, 'max' => 0.7],
-            'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.05),
+            // Generation settings sent with every call (user 2026-10-13, from the VoiceStudio sliders: "genau so die Einstellungen
+            // nun belassen"): steps 64, CFG 2.0, t_shift 0.10, position temperature 10, class temperature 1.0, layer penalty 7.0,
+            // denoise and post-processing on, duration automatic.
+            // A local copy of every uploaded clip for listening; empty = off.
+            'keep_local_dir' => (string) env('TV_VOICESTUDIO_KEEP_LOCAL_DIR', ''),
+            'generation' => [
+                'num_step' => env('TV_VOICESTUDIO_NUM_STEP', '64'),
+                'guidance_scale' => env('TV_VOICESTUDIO_CFG', '2.0'),
+                't_shift' => env('TV_VOICESTUDIO_T_SHIFT', '0.1'),
+                'position_temperature' => env('TV_VOICESTUDIO_POSITION_TEMPERATURE', '10'),
+                'class_temperature' => env('TV_VOICESTUDIO_CLASS_TEMPERATURE', '1.0'),
+                'layer_penalty_factor' => env('TV_VOICESTUDIO_LAYER_PENALTY', '7.0'),
+                'denoise' => env('TV_VOICESTUDIO_DENOISE', 'true'),
+                'postprocess_output' => env('TV_VOICESTUDIO_POSTPROCESS', 'true'),
+            ],
+            'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.0),
             // Sirius' clone speaks faster than Markus' at the same speed (user 2026-10-12: "Er redet schneller als Markus").
             'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92), 'genossin' => (float) env('TV_VOICESTUDIO_SPEED_GENOSSIN', 1.0)],
             // A speaker's tempo for a heated chunk (its last sentence ends with "!"): the talk show's guest speeds up a little.

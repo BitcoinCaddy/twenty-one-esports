@@ -297,7 +297,7 @@ class CasterFetcher
                     'X-Caster-Duration' => sprintf('%.3F', Pcm::seconds($voiced['pcm'], $voiced['rate'])),
                     'X-Caster-Sentence-Ends' => implode(',', array_map(fn (float $end): string => sprintf('%.3F', $end), $voiced['ends'])),
                 ])
-                ->withBody($opus, 'audio/ogg')
+                ->withBody(self::keepLocal($opus, 'clip'), 'audio/ogg')
                 ->post($settings['server'].'/api/caster/scripts/'.$id.'/clip');
         } catch (ConnectionException) {
             $this->release($id);
@@ -505,6 +505,29 @@ class CasterFetcher
      * VoiceStudio stretches the speech to it, the Anchor's slow jingles),
      * retried on connection errors and 5xx; its history entry deleted right after.
      */
+    /**
+     * A copy of every uploaded clip or block in `voicestudio.keep_local_dir` for listening (user 2026-10-13: "die lass
+     * ausnahmsweise für eine Abnahme auch lokal hier auf dem Rechner liegen"); off when the directory is empty. Returns the
+     * audio unchanged, so it wraps an upload body.
+     */
+    public static function keepLocal(string $opus, string $label): string
+    {
+        $dir = (string) config('tv.commentary.voicestudio.keep_local_dir', '');
+
+        if ($dir !== '' && $opus !== '') {
+            try {
+                if (! is_dir($dir)) {
+                    mkdir($dir, 0775, true);
+                }
+                file_put_contents(rtrim($dir, '/').'/'.date('Ymd-His').'-'.$label.'-'.substr(sha1($opus), 0, 8).'.ogg', $opus);
+            } catch (Throwable) {
+                // Listening copies never hold up the broadcast.
+            }
+        }
+
+        return $opus;
+    }
+
     public function generate(string $text, string $profileId, float $speed, ?string $language = null, ?float $duration = null): ?string
     {
         $settings = $this->settings();
@@ -524,6 +547,8 @@ class CasterFetcher
                     'speed' => (string) $speed,
                     'language' => $language ?? (string) $settings['language'],
                     ...($duration === null ? [] : ['duration' => sprintf('%.1F', $duration)]),
+                    // The generation settings the user chose in VoiceStudio (2026-10-13: 64 steps, CFG 2, t_shift 0.1, …).
+                    ...array_map('strval', array_filter((array) ($settings['generation'] ?? []), fn (mixed $value): bool => $value !== null && $value !== '')),
                 ]);
 
                 $this->forget($response);
