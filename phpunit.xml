@@ -43,6 +43,8 @@
         <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="TV_VOICESTUDIO_KEEP_LOCAL_DIR" value="" force="true"/>
+        <!-- The tests pin the voice model: a prod-like .env with ESPORTS_VOICE_MODEL=claude-sonnet-5-5 turned LeagueVoiceTest red (P21, 2026-10-13). -->
+        <env name="ESPORTS_VOICE_MODEL" value="claude-haiku-5-5" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

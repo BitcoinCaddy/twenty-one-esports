@@ -128,6 +128,27 @@ final class StockScripts
         'liga' => ['open' => 'Sportschau-Ton, die Liga wird erklärt, als hätte noch nie jemand von ihr gehört', 'close' => 'einer sagt in einem Satz, warum man mitspielen sollte, und der andere macht sich darüber lustig'],
     ];
 
+    /**
+     * A script to the user's bar as the writer's example (P21; the judge's gold anchors, StockCoherenceJudge): one
+     * image through the whole show, each beat on one fact, the punchline turns the opening image. Material of its own,
+     * so the prompt forbids taking a sentence or a fact from it.
+     */
+    public const EXAMPLE = <<<'TEXT'
+        Markus: Das ist die Schwarzbuch-Stunde: Karlsruhe ist pleite und zahlt einhundertzwanzig Millionen Euro für die World Games, mit Tauziehen.
+        Sirius: Tauziehen, du Pfeife, ist die einzige Disziplin, in der der Staat schon Weltmeister ist.
+        Markus: Laut Schwarzbuch leihen sich Bund, Land und Stadt das Geld dafür, alle drei gleichen ihre Haushalte nur mit Schulden aus.
+        Sirius: Dann ziehen drei Mannschaften am selben Seil, und keiner hat das Seil bezahlt.
+        Markus: Am anderen Ende hängt der Steuerzahler, du Sats-Geizhals, und den hat keiner gefragt, ob er mitzieht.
+        Sirius: Der zieht auch nicht, der wird gezogen, quer durch den ganzen Haushalt.
+        Markus: Das Schwarzbuch sagt, eine Nummer kleiner wäre angemessen.
+        Sirius: Eine Nummer kleiner wäre Tauziehen mit dem eigenen Geld, aber das kennt in Karlsruhe keiner.
+        Markus: Einhundertzwanzig Millionen, und beim Tauziehen gewinnt immer die Seite, die das Seil nicht bezahlt.
+        Markus: Das war die Schwarzbuch-Stunde.
+        TEXT;
+
+    /** The roast formats that carry ONE image through the whole show (P21: their drafts lost on stacked images). */
+    private const ONE_IMAGE = ['geschichte', Roasts::SCHWARZBUCH, Roasts::INFLATION];
+
     /** The topic prefix of a stock script (`stock:<format>`). */
     public const TOPIC_PREFIX = 'stock:';
 
@@ -631,7 +652,11 @@ final class StockScripts
                 ."\n- Sinn zuerst: jeder Satz sagt etwas Konkretes. Höchstens ein Vergleich pro Runde, und er stimmt beim ersten Hören; kein Kauderwelsch, keine gemischten Bilder (Seil und Teich in einem Satz), kein Vergleich, den man erst erklären muss; lieber eine klare, böse Behauptung als ein verunglücktes Bild. Zahlen genau so wie im Material, als Wort."
                 ."\n- Kein Wort über Gebühren, Startgeld oder Eintritt, auch nicht als Witz."
                 ."\n- Zitate, Sprüche und Memes nur, wenn sie genau diesem Thema dienen, höchstens zwei. Jedes mit WER und WO: wer es gesagt hat („gesagt von“ im Material; ohne Sprecher ist es ein Spruch der Szene, dann so ansagen) und wo es belegt ist („belegt bei“). Wer ein Meme nur erklärt, etwa eine Website oder ein Artikel, hat es nicht gesagt. Personen mit vollem Namen, genau so geschrieben wie im Material (etwa „Michael Saylor“), nie „ein Veteran“, „einer aus der Szene“ oder „irgendwer“, wenn das Material die Person nennt. Ein englisches Zitat bleibt wörtlich englisch.",
+            in_array($format, self::ONE_IMAGE, true)
+                ? "Ein Bild für die ganze Sendung\n\nDie Ansage setzt ein einziges Bild, das zum ersten Fakt passt (wie das Tauziehen im Beispiel), und jede Runde dreht genau dieses Bild an ihrem Fakt einen Schritt weiter. Kein zweites Bild, kein weiterer Vergleich; die Pointe ist der letzte Dreh dieses Bildes."
+                : null,
             self::craft($format),
+            "Beispiel für Aufbau, Ton und Bildführung (anderes Material: kein Satz und kein Fakt daraus übernehmen)\n\n".self::EXAMPLE,
             "Material (die einzige Quelle für Zahlen, Namen und Zitate)\n\n".$material,
         ];
 
@@ -655,7 +680,7 @@ final class StockScripts
         $parts[] = CasterVoice::varietyBlock();
         $parts[] = 'canon_id ist null. Schreib jetzt den Wortwechsel.';
 
-        return implode("\n\n", $parts);
+        return implode("\n\n", array_filter($parts, fn (?string $part): bool => $part !== null));
     }
 
     /**
