@@ -1883,7 +1883,7 @@ return [
     | channel falls back to its template until the month turns. The key's
     | own limit at Anthropic stays the hard stop.
     |
-    | prices_usd_per_mtok: Haiku 5.5 below 100k prompt tokens
+    | prices_usd_per_mtok: per model, Haiku 5.5 below 100k prompt tokens and Sonnet 5.5
     | (platform.claude.com/docs/en/about-claude/pricing, read 2026-10-11).
     | The cache write price is not on the plan's list; 1.25x input is assumed.
     |
@@ -1900,11 +1900,11 @@ return [
         'max_output_tokens' => 400,
         'timezone' => 'Europe/Berlin',
         'monthly_budget_usd' => (float) env('ESPORTS_VOICE_MONTHLY_BUDGET_USD', 60),
+        // Per model (platform.claude.com/docs/en/about-claude/pricing, read 2026-10-13): the month's estimate prices every
+        // call at the configured model; Sonnet is 20x Haiku, so the old Haiku-only table undercounted prod about 20-fold.
         'prices_usd_per_mtok' => [
-            'input' => 0.10,
-            'cache_read' => 0.01,
-            'cache_write' => 0.125,
-            'output' => 0.50,
+            'claude-haiku-5-5' => ['input' => 0.10, 'cache_read' => 0.01, 'cache_write' => 0.125, 'output' => 0.50],
+            'claude-sonnet-5-5' => ['input' => 2.0, 'cache_read' => 0.10, 'cache_write' => 2.50, 'output' => 10.0],
         ],
         'canon' => [
             'min' => 50,

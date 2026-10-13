@@ -121,7 +121,9 @@ final class VoiceUsage
      */
     public function cost(array $counters): float
     {
-        $prices = (array) config('esports.voice.prices_usd_per_mtok');
+        $table = (array) config('esports.voice.prices_usd_per_mtok');
+        // Keyed by model: the configured writer's prices (Sonnet when unknown, the dearer guess); a flat table is used as it is.
+        $prices = isset($table['input']) ? $table : (array) ($table[(string) config('esports.voice.model')] ?? $table['claude-sonnet-5-5'] ?? []);
         $plainInput = max(0, $counters['input_tokens'] - $counters['cache_read_tokens'] - $counters['cache_write_tokens']);
 
         return ($plainInput * (float) ($prices['input'] ?? 0)
