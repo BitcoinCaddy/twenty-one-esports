@@ -233,8 +233,9 @@ return [
             'speed' => (float) env('TV_VOICESTUDIO_SPEED', 1.0),
             // Sirius' clone speaks faster than Markus' at the same speed (user 2026-10-12: "Er redet schneller als Markus").
             'speeds' => ['sirius' => (float) env('TV_VOICESTUDIO_SPEED_SIRIUS', 0.92), 'genossin' => (float) env('TV_VOICESTUDIO_SPEED_GENOSSIN', 1.0)],
-            // A speaker's tempo for a heated chunk (its last sentence ends with "!"): the talk show's guest speeds up a little.
-            'heated_speeds' => ['genossin' => (float) env('TV_VOICESTUDIO_HEATED_SPEED_GENOSSIN', 1.08)],
+            // A speaker's tempo for a heated chunk (its last sentence ends with "!"); 1.0 since P20 (user 2026-10-13: "es geht
+            // auch viel zu schnell, die Talkshow").
+            'heated_speeds' => ['genossin' => (float) env('TV_VOICESTUDIO_HEATED_SPEED_GENOSSIN', 1.0)],
             // Speech level of every chunk (RMS dBFS) and a per-speaker offset in dB (Pcm::levelled()).
             'speech_dbfs' => (float) env('TV_VOICESTUDIO_SPEECH_DBFS', -20),
             'levels' => ['markus' => (float) env('TV_VOICESTUDIO_LEVEL_MARKUS', 0), 'sirius' => (float) env('TV_VOICESTUDIO_LEVEL_SIRIUS', -1), 'genossin' => (float) env('TV_VOICESTUDIO_LEVEL_GENOSSIN', 0)],
@@ -308,6 +309,40 @@ return [
             ],
             // The bed files sit at -16 LUFS like the voice: -24 dB puts a format bed 24 dB under the speech.
             'format_beds_gain_db' => (float) env('TV_COMMENTARY_FORMAT_BEDS_GAIN_DB', -24),
+            // The studio audience (plan "TWENTY ONE Radio" P20; user 2026-10-13: "Was ist mit Klatschgeräuschen … bei Shows? Also
+            // auch bei der Talkshow?"): synthesized applause (JingleSynth, own work, CC0) in the pauses of a show rendered on
+            // the workstation (BlockRenderer, StudioAudience): after the opening, after a hit and at the close, `gain_db`
+            // from the file's -16 LUFS (about 20 dB under the voice), at most `max_per_show`, never two within
+            // `min_gap_seconds`, never over a word (the pause grows to hold it); only the formats in `formats` (no news,
+            // bulletin, Sport und Wetter, podcast or plain rubric). `files`: the variants per moment, rotating.
+            'applause' => [
+                'enabled' => (bool) env('TV_COMMENTARY_APPLAUSE', true),
+                'gain_db' => (float) env('TV_COMMENTARY_APPLAUSE_GAIN_DB', -20),
+                'max_per_show' => (int) env('TV_COMMENTARY_APPLAUSE_MAX_PER_SHOW', 4),
+                'min_gap_seconds' => (float) env('TV_COMMENTARY_APPLAUSE_MIN_GAP_SECONDS', 20),
+                'formats' => ['stammtisch', 'tribunal', 'friedhof', 'jahrestag', 'meetups', 'partie', 'hotline',
+                    'zentralbank', 'schwarzbuch', 'altcoin_hype', 'liga_pranger', 'phrasendrescher', 'nostr_fundbuero', 'corporate_stacker', 'inflationsbeichte'],
+                'files' => [
+                    'open' => ['applause-big-1.opus', 'applause-big-2.opus', 'applause-big-3.opus'],
+                    'hit' => ['applause-short-1.opus', 'applause-short-2.opus', 'applause-short-3.opus', 'applause-short-4.opus'],
+                    'close' => ['applause-big-1.opus', 'applause-big-2.opus', 'applause-big-3.opus'],
+                ],
+            ],
+            // The talk show's own theme (P20; user 2026-10-13: "so News-Talkshow-mäßig, aber bitte auf keinen Fall zu laut"):
+            // the intro before the host's welcome (his voice starts over its last `overlap_seconds`, the tail ducked), the
+            // act-break sting before the fact check and the closing round, the outro after the last line; `gain_db` and
+            // `sting_gain_db` against the voice (the files are at -16 LUFS): measured in the P20 probe the loudest
+            // 400 ms of the intro (its downbeats) stay about 6 dB under the voice, the whole intro about 10 dB.
+            'talk_theme' => [
+                'enabled' => (bool) env('TV_COMMENTARY_TALK_THEME', true),
+                'formats' => ['stammtisch'],
+                'intro' => 'theme-talk-intro.opus',
+                'outro' => 'theme-talk-outro.opus',
+                'sting' => 'theme-talk-sting.opus',
+                'gain_db' => (float) env('TV_COMMENTARY_TALK_THEME_GAIN_DB', -11),
+                'sting_gain_db' => (float) env('TV_COMMENTARY_TALK_THEME_STING_GAIN_DB', -12),
+                'overlap_seconds' => 1.5,
+            ],
             // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
             'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
             // Six dB under the file's level (user 2026-10-12: "Das News Bett im Hintergrund muss etwas leiser werden").
@@ -856,13 +891,16 @@ return [
                     // show): Sirius hosts as the parody of an interrupting talk show host, Markus and the guest Genossin Gisela (MMT,
                     // resources/data/voice/mmt-positions.json) fight in short turns of at most `sentences_per_turn` (one-liners
                     // from `min_words` words), each of the three with at least `min_turns` turns; between two turns only
-                    // `turn_gap_ms` of breath (the duets take voicestudio.speaker_pause); the host gets `host_moves` of his
+                    // `turn_gap_ms` of breath (the duets take voicestudio.speaker_pause; P20, user 2026-10-13: "es geht auch viel
+                    // zu schnell": 450 to 800 ms like a TV talk, `interrupt_gap_ms` for at most `max_interruptions` cut-ins,
+                    // `long_gap_ms` before the fact check, the closing round and the host's reaction to a hit, TalkShow::gapFor());
+                    // the host gets `host_moves` of his
                     // phrases per episode (resources/data/voice/talkshow-host-moves.json). Live at its slots on a real money
                     // headline of the last `headline_hours` (none within `repeat_days`), else the slot falls back to the
                     // rotation; the evergreen version (a timeless topic) goes into the night stock at most `stock_per_day`
                     // times a day. Its own usage channel and `daily_cap`, `timeout_seconds` for the long write.
                     'stammtisch' => ['seconds' => ['min' => 360, 'max' => 600], 'sentences' => ['min' => 55, 'max' => 110], 'speakers' => ['markus', 'sirius', 'genossin'],
-                        'sentences_per_turn' => 3, 'min_words' => 3, 'host_moves' => 10, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 120, 'max' => 260], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 15, 'stock_per_day' => 2,
+                        'sentences_per_turn' => 3, 'min_words' => 3, 'host_moves' => 10, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 450, 'max' => 800], 'interrupt_gap_ms' => 250, 'max_interruptions' => 2, 'long_gap_ms' => ['min' => 1000, 'max' => 1400], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 15, 'stock_per_day' => 2,
                         'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 12), 'timeout_seconds' => 180, 'max_output_tokens' => 9_000],
                 ],
                 // The EINUNDZWANZIG portal's public meetup dates (GET, about five megabytes, every date ever): read at most

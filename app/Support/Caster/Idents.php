@@ -90,14 +90,12 @@ final class Idents
         }
 
         $newGain = (float) ($this->settings['beds_gain_db'] ?? -18);
-        $formatBeds = (array) ($this->settings['format_beds'] ?? []);
 
-        if ($clip->kind === 'rubric' && $formatBeds !== []) {
-            $topic = (string) $clip->script()->value('topic');
-            $file = isset($formatBeds[$topic]) ? $this->existing($formatBeds[$topic]) : null;
+        if ($clip->kind === 'rubric') {
+            $formatBed = $this->formatBed($clip->script()->value('topic'));
 
-            if ($file !== null) {
-                return ['file' => $file, 'gain_db' => (float) ($this->settings['format_beds_gain_db'] ?? $newGain)];
+            if ($formatBed !== null) {
+                return $formatBed;
             }
         }
 
@@ -119,6 +117,28 @@ final class Idents
         $file = $this->rotate('bed', array_keys($gains));
 
         return $file === null ? null : ['file' => $file, 'gain_db' => $gains[$file]];
+    }
+
+    /**
+     * The bed of a show's, roast's or rubric's format (`format_beds`) at `format_beds_gain_db`, or null: no bed for the
+     * format or its file is missing. A stock script's topic ("stock:stammtisch") counts as its format. The quiet hours
+     * are the caller's (bedUnder(), BlockRenderer).
+     *
+     * @return array{file: string, gain_db: float}|null
+     */
+    public function formatBed(mixed $topic): ?array
+    {
+        $format = is_string($topic) ? (string) preg_replace('/^stock:/', '', $topic) : '';
+        $formatBeds = (array) ($this->settings['format_beds'] ?? []);
+        $file = $format !== '' && is_string($formatBeds[$format] ?? null) ? $this->existing($formatBeds[$format]) : null;
+
+        return $file === null ? null : ['file' => $file, 'gain_db' => (float) ($this->settings['format_beds_gain_db'] ?? -24)];
+    }
+
+    /** Whether the beds play at `$now`: never in quiet hours unless `bed_at_night`. */
+    public function bedsAt(CarbonImmutable $now): bool
+    {
+        return ($this->settings['bed_at_night'] ?? false) === true || ! QuietHours::active($now);
     }
 
     /** Whether a clip of `$kind` gets the bed under its speech at `$now`. */

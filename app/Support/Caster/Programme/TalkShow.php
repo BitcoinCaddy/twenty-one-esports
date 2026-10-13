@@ -96,9 +96,82 @@ class TalkShow
         }
 
         $gap = (array) (self::settings()['turn_gap_ms'] ?? []);
-        $min = max(0.05, (float) ($gap['min'] ?? 120) / 1000);
+        $min = max(0.05, (float) ($gap['min'] ?? 450) / 1000);
 
-        return ['min' => $min, 'max' => max($min, (float) ($gap['max'] ?? 260) / 1000)];
+        return ['min' => $min, 'max' => max($min, (float) ($gap['max'] ?? 800) / 1000)];
+    }
+
+    /** A turn after the previous one at `turn_gap_ms`. */
+    public const GAP_TURN = 'turn';
+
+    /** A cut-in ("Moment, Moment …") at `interrupt_gap_ms`, at most `max_interruptions` per episode. */
+    public const GAP_INTERRUPT = 'interrupt';
+
+    /** The breath before the fact check, the closing round or the host's reaction to a hit, at `long_gap_ms`. */
+    public const GAP_LONG = 'long';
+
+    /** A host line that reacts to a hit ("Das hat gesessen …", talkshow-host-moves.json) or calls one. */
+    public const HIT = '/hat gesessen|volltreffer|\btreffer\b|das saß|der saß|autsch/iu';
+
+    /** A host line that opens an act: the fact check or the closing round. */
+    public const ACT_BREAK = '/faktencheck|schlussrunde|schlusswort/iu';
+
+    /** A turn that cuts into the one before it. */
+    private const CUT_IN = '/^(?:\[[^\]]+\]\s*)?(?:moment|stopp|halt|nee|nein, nein|warten sie|jetzt lassen sie)\b/iu';
+
+    /**
+     * How long the breath before a turn of the talk show is (P20; user 2026-10-13: "es geht auch viel zu schnell, die
+     * Talkshow"): GAP_LONG before the host's act break (the fact check, the closing round) or his reaction to a hit,
+     * GAP_INTERRUPT when the turn cuts in, else GAP_TURN.
+     *
+     * @param  list<string>  $lines  the next turn's sentences
+     */
+    public static function gapKind(string $speaker, array $lines): string
+    {
+        $text = implode(' ', $lines);
+
+        if ($speaker === self::HOST && (preg_match(self::ACT_BREAK, $text) === 1 || preg_match(self::HIT, $text) === 1)) {
+            return self::GAP_LONG;
+        }
+
+        return preg_match(self::CUT_IN, trim($lines[0] ?? '')) === 1 ? self::GAP_INTERRUPT : self::GAP_TURN;
+    }
+
+    /**
+     * The breath of a gap kind in seconds for a talk show script, null for any other script.
+     *
+     * @return array{min: float, max: float}|null
+     */
+    public static function gapFor(mixed $topic, string $kind): ?array
+    {
+        $turn = self::turnGap($topic);
+
+        if ($turn === null) {
+            return null;
+        }
+
+        $settings = self::settings();
+
+        if ($kind === self::GAP_INTERRUPT) {
+            $seconds = max(0.05, (float) ($settings['interrupt_gap_ms'] ?? 250) / 1000);
+
+            return ['min' => $seconds, 'max' => $seconds];
+        }
+
+        if ($kind === self::GAP_LONG) {
+            $long = (array) ($settings['long_gap_ms'] ?? []);
+            $min = max($turn['min'], (float) ($long['min'] ?? 1000) / 1000);
+
+            return ['min' => $min, 'max' => max($min, (float) ($long['max'] ?? 1400) / 1000)];
+        }
+
+        return $turn;
+    }
+
+    /** The cut-ins an episode may have at `interrupt_gap_ms`; the rest get the turn's breath. */
+    public static function maxInterruptions(): int
+    {
+        return max(0, (int) (self::settings()['max_interruptions'] ?? 2));
     }
 
     /**
