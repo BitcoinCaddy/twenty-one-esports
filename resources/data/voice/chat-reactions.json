@@ -1,5 +1,5 @@
 {
- "note": "Pattern lines of the TWENTY ONE TV reactions to the stream chat and to zaps (App\\Support\\Caster\\ReactionLines): spoken German, one complete sentence per line of at least seven and at most 32 words (also with {name} taken out), at most two commas, no hashtags, no fees, no Lightning address, no 'Gesicht'. Placeholders: {wer} (a trusted zapper's name or 'Jemand im Chat'/'Ein Zuschauer', always opens the sentence), {sats} (the amount spelled out with 'Sats'), {anzahl} (the number of zaps, spelled out), {name} (a trusted chatter's name). reply_* pools answer a trusted chatter's message by its intent (ReactionLines::intent()): {name} opens the line ('{name}, …'), follows a greeting word ('Servus {name}, …') or closes it (', {name}.'), so it can be taken out when there is no speakable name; at most one marker. Nothing a chatter wrote is ever read out.",
+ "note": "Pattern lines of the TWENTY ONE TV reactions to the stream chat and to zaps (App\\Support\\Caster\\ReactionLines): spoken German, one complete sentence per line of at least seven and at most 32 words (also with {name} taken out), at most two commas, no hashtags, no fees, no Lightning address, no 'Gesicht'. Placeholders: {wer} (a trusted zapper's name or 'Jemand im Chat'/'Ein Zuschauer', always opens the sentence), {sats} (the amount spelled out with 'Sats'), {anzahl} (the number of zaps, spelled out), {name} (a trusted chatter's name). reply_* pools answer a trusted chatter's message by its intent (ReactionLines::intent()): {name} opens the line ('{name}, …'), follows a greeting word ('Servus {name}, …') or closes it (', {name}.'), so it can be taken out when there is no speakable name; at most one marker. Nothing a chatter wrote is ever read out. callout_* pools call a quiet chat out (ChatCadence: no chat item for ten minutes, nothing new on YouTube): an opener that notices the silence, a roast of it, an invitation to write; no names, no numbers.",
  "zap_single": [
   "{wer} hat gerade {sats} gezappt, und das freut mich wirklich von Herzen.",
   "{wer} schickt uns {sats} rüber, und ich bin ganz ehrlich ein bisschen gerührt.",
@@ -229,5 +229,47 @@
   "Die Bühne ist jetzt frei, und ich fang direkt für euch an.",
   "Jetzt aber wirklich, denn ihr habt lange genug darauf gewartet.",
   "Ruhe im Chat bitte, denn jetzt rede ich und ihr hört zu."
+ ],
+ "callout_open": [
+  "Chat, wo seid ihr eigentlich, hier ist es gerade so still wie in einer Bank am Sonntag.",
+  "Ich schau in den Chat und sehe nichts als gähnende Leere.",
+  "Im Chat ist es gerade so ruhig, dass ich meine eigene Grafikkarte atmen höre.",
+  "Hallo, ist da draußen im Chat überhaupt noch jemand wach?",
+  "Der Chat schweigt gerade wie ein Zentralbanker, den man nach dem Geldmengenwachstum fragt.",
+  "Ich hab den Chat jetzt dreimal neu geladen, und da kommt einfach nichts.",
+  "So leer war unser Chat zuletzt, als jemand nach einem Bitcoin-Kurs in Euro gefragt hat.",
+  "Liebe Leute im Chat, ich vermisse euch, und das sag ich nicht oft.",
+  "Der Chat ist gerade stiller als ein Node ohne Peers.",
+  "Ich rede hier seit Minuten gegen eine Wand, und die Wand schreibt nicht mal zurück.",
+  "Im Chat herrscht gerade Funkstille, als hätte jemand die Relays abgeklemmt.",
+  "Kurze Durchsage an den Chat, ihr dürft auch einfach mal was schreiben."
+ ],
+ "callout_roast": [
+  "Vermutlich seid ihr alle gerade damit beschäftigt, eure Seed-Phrase im Garten zu vergraben.",
+  "Ich nehme an, ihr wartet noch auf eine Schreiberlaubnis vom Amt.",
+  "Wahrscheinlich hat euch das Finanzamt die Tastatur gepfändet.",
+  "Oder ihr stapelt gerade so konzentriert Sats, dass für Buchstaben keine Zeit bleibt.",
+  "Ich hoffe nur, ihr habt nicht alle gleichzeitig euren Hardware-Wallet-Pin vergessen.",
+  "Selbst die Inflation ist gerade aktiver als dieser Chat.",
+  "Vielleicht schreibt ihr ja alle schon, nur halt mit der Geschwindigkeit einer Banküberweisung.",
+  "Ein Chat ohne Nachrichten ist wie ein Block ohne Transaktionen, technisch gültig und trotzdem traurig.",
+  "Ich glaube, ihr verwechselt hier gerade Zuhören mit HODLn, und zwar von euren Worten.",
+  "Euer Schweigen ist so laut, dass es sogar die Zentralbank hören könnte.",
+  "Wenn das so weitergeht, muss Sirius gleich mit sich selbst chatten.",
+  "Man könnte meinen, für jede Nachricht verlangt hier jemand einen Antrag in dreifacher Ausfertigung."
+ ],
+ "callout_invite": [
+  "Also schreibt mir was in den Nostr-Chat auf der Live-Seite oder drüben auf YouTube.",
+  "Ein kurzes Hallo im Chat reicht schon, und ich antworte euch hier live.",
+  "Schreibt rein, worüber ich reden soll, und ich mach das sofort zum Thema.",
+  "Erzählt mir im Chat, was ihr gerade spielt, und ich kommentiere es gnadenlos.",
+  "Werft mir eine Frage in den Chat, und ich beantworte sie hier auf Sendung.",
+  "Ein einziges GM im Chat würde mir schon den ganzen Tag retten.",
+  "Egal ob Nostr oder YouTube, ich lese mit und antworte euch.",
+  "Schreibt mir eure steilste These in den Chat, und ich nehme sie hier auseinander.",
+  "Wer sich traut, schreibt jetzt was in den Chat und kommt damit ins Radio.",
+  "Haut in die Tasten, denn ich warte hier schon ganz ungeduldig auf euch.",
+  "Sagt im Chat einfach hallo, und ich verspreche euch eine ehrliche Antwort.",
+  "Schreibt mir was, sonst fange ich gleich an, Zentralbank-Pressemitteilungen vorzulesen."
  ]
 }

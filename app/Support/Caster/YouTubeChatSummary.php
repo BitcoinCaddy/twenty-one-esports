@@ -54,11 +54,12 @@ class YouTubeChatSummary
     ) {}
 
     /**
-     * One summary when it is due.
+     * One summary when it is due; `$force` (ChatCadence: no chat item for ten minutes) skips the cadence and needs one
+     * new line only.
      *
      * @return int clips queued (0 or 1)
      */
-    public function summarise(CarbonImmutable $now): int
+    public function summarise(CarbonImmutable $now, bool $force = false): int
     {
         if (! YouTubeChat::enabled() || ! CasterVoice::enabled() || ! ScriptQueue::aiEnabled()) {
             return 0;
@@ -67,7 +68,7 @@ class YouTubeChatSummary
         $settings = YouTubeChat::settings();
         $every = max(1, (int) ($settings['every_minutes'] ?? 15));
 
-        if ((int) Cache::get(self::LAST_ATTEMPT, 0) > $now->subMinutes($every)->getTimestamp()) {
+        if (! $force && (int) Cache::get(self::LAST_ATTEMPT, 0) > $now->subMinutes($every)->getTimestamp()) {
             return 0;
         }
 
@@ -75,7 +76,7 @@ class YouTubeChatSummary
             ->where('said_at', '>=', $now->subMinutes(self::FRESH_MINUTES)->getTimestamp())
             ->orderByDesc('id')->limit(max(1, (int) ($settings['max_messages'] ?? 40)))->get()->reverse()->values();
 
-        if ($lines->count() < max(1, (int) ($settings['min_messages'] ?? 3))) {
+        if ($lines->count() < ($force ? 1 : max(1, (int) ($settings['min_messages'] ?? 3)))) {
             return 0;
         }
 

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\ChatCadence;
 use App\Support\Caster\ChatReactions;
 use App\Support\Caster\WebOfTrust;
 use App\Support\SeasonChain\TrustJob;
@@ -15,14 +16,15 @@ use Illuminate\Support\Sleep;
  * Spoken reactions to the stream chat (plan "KI-Stimme der Liga", P6): with
  * `--wot`, recompute the web of trust of the league's trust anchors (daily);
  * otherwise read the new chat messages and zaps and queue the reactions
- * (every minute, reading every `poll_seconds` within it). Both only while
- * `tv.commentary.chat.reactions` is on.
+ * (every minute, reading every `poll_seconds` within it), then keep the chat
+ * cadence (ChatCadence: a YouTube summary or a call-out when no chat item
+ * aired for ten minutes). Both only while `tv.commentary.chat.reactions` is on.
  */
 #[Signature('caster:chat {--wot : Recompute the web-of-trust levels instead}')]
 #[Description('Queue spoken reactions to trusted stream chatters, or recompute the web of trust')]
 class CasterChatCommand extends Command
 {
-    public function handle(ChatReactions $reactions, WebOfTrust $wot, TrustJob $trust): int
+    public function handle(ChatReactions $reactions, WebOfTrust $wot, TrustJob $trust, ChatCadence $cadence): int
     {
         if (! ChatReactions::enabled()) {
             $this->line('Chat reactions are off (TV_COMMENTARY, TV_COMMENTARY_CHAT).');
@@ -57,6 +59,13 @@ class CasterChatCommand extends Command
         }
 
         $this->line("Queued {$queued} chat reaction(s) in {$polls} read(s).");
+
+        // No chat item for ten minutes: a YouTube summary or a call-out keeps the chat on air.
+        $kept = $cadence->tick(CarbonImmutable::now());
+
+        if ($kept !== null) {
+            $this->line("Chat cadence: queued a {$kept} chat item.");
+        }
 
         return self::SUCCESS;
     }

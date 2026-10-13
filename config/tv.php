@@ -1288,6 +1288,28 @@ return [
             // block at most `memory_tokens` (characters / 4).
             'memory_hours' => (int) env('TV_COMMENTARY_CHAT_MEMORY_HOURS', 24),
             'memory_tokens' => 1_500,
+            // The chat cadence (App\Support\Caster\ChatCadence, user 2026-10-13: "Die müssen alle 10 Minuten kommen, außer
+            // es läuft gerade eine fixe Show/Programm"): when no chat item aired for `every_minutes` less `lead_minutes`
+            // (the time a script needs to be voiced and reach the air) and none is on its way, `caster:chat` queues one:
+            // a YouTube summary of whatever is new there (one line is enough), else a short call-out to a quiet chat.
+            // Never while the news or a show window is on air, now or at the expected airing, nor in the autopilot.
+            'cadence' => [
+                'enabled' => (bool) env('TV_COMMENTARY_CHAT_CADENCE', true),
+                'every_minutes' => (int) env('TV_COMMENTARY_CHAT_CADENCE_MINUTES', 10),
+                'lead_minutes' => (int) env('TV_COMMENTARY_CHAT_CADENCE_LEAD_MINUTES', 3),
+            ],
+        ],
+
+        // Music breaks (App\Support\Caster\SceneDirector, user 2026-10-13: "Ab und an soll der Radiosender auch mal ein
+        // komplettes Musikstück spielen lassen, sonst wird nur ständig geredet"): `per_hour` times an hour the voice pauses
+        // for one complete vocal track of the stream music (MusicTimeline), from its first second to its last, at the music's
+        // gap level. Planned at a clip boundary for a vocal track starting within `wait_seconds`; before it starts only a
+        // single clip that ends in time may still play. Never in the quiet hours, never across the news, a rubric's slot,
+        // a show window or a story told in parts.
+        'music_breaks' => [
+            'enabled' => (bool) env('TV_COMMENTARY_MUSIC_BREAKS', true),
+            'per_hour' => (float) env('TV_COMMENTARY_MUSIC_BREAKS_PER_HOUR', 2),
+            'wait_seconds' => (int) env('TV_COMMENTARY_MUSIC_BREAK_WAIT_SECONDS', 300),
         ],
 
         // The rolling world memory (App\Support\Caster\WorldMemory, user 2026-10-12: "zu monoton und nicht reaktiv genug auf

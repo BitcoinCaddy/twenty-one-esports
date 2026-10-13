@@ -56,6 +56,15 @@ class ReactionLines
         return implode("\n", [$this->pick($messages > 1 ? 'greet_many' : 'greet_one'), $this->pick('invite')]);
     }
 
+    /**
+     * The call-out to a quiet chat (ChatCadence): the silence noticed, roasted, and an invitation to write. It may come
+     * every ten minutes, so a line returns only after every other line of its pool was spoken.
+     */
+    public function callOut(): string
+    {
+        return implode("\n", array_map(fn (string $pool): string => $this->pick($pool, null, PHP_INT_MAX), ['callout_open', 'callout_roast', 'callout_invite']));
+    }
+
     /** Hello to a trusted chatter by their public name, or the plain greeting without one. */
     public function hello(?string $name): string
     {
@@ -235,8 +244,9 @@ class ReactionLines
      * A line of the pool not among the last picks (the oldest of them when every line was used lately).
      *
      * @param  list<string>|null  $lines  the pool, when it is not one of the file's
+     * @param  int  $recent  how many of the last picks stay out (at most all but one line of the pool)
      */
-    private function pick(string $pool, ?array $lines = null): string
+    private function pick(string $pool, ?array $lines = null, int $recent = self::RECENT): string
     {
         $lines ??= $this->pool($pool);
 
@@ -244,12 +254,13 @@ class ReactionLines
             return '';
         }
 
+        $keep = $recent;
         $recent = Cache::get(self::RECENT_KEY.':'.$pool);
         $recent = is_array($recent) ? array_values(array_filter($recent, 'is_string')) : [];
         $fresh = array_values(array_diff($lines, $recent));
         $line = $fresh === [] ? (string) (array_values(array_intersect(array_reverse($recent), $lines))[0] ?? $lines[0]) : $fresh[array_rand($fresh)];
 
-        Cache::put(self::RECENT_KEY.':'.$pool, array_slice([$line, ...array_diff($recent, [$line])], 0, min(self::RECENT, max(1, count($lines) - 1))), 86_400);
+        Cache::put(self::RECENT_KEY.':'.$pool, array_slice([$line, ...array_diff($recent, [$line])], 0, min($keep, max(1, count($lines) - 1))), 86_400);
 
         return $line;
     }

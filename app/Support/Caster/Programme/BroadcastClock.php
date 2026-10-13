@@ -133,6 +133,12 @@ final class BroadcastClock
         ];
     }
 
+    /** Whether a show window (Shows::windows()) holds `$at`. */
+    public function inShowWindow(CarbonImmutable $at): bool
+    {
+        return $this->windowAt($at) !== null;
+    }
+
     /**
      * The show window on air at `$at` as its rubric slot (from the window's start), or null: no window holds `$at`, it
      * starts in the quiet hours, or neither a rubric nor a talk slot of the clock begins at its start.
