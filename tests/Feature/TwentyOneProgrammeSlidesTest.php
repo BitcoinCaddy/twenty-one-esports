@@ -63,7 +63,7 @@ function programmeClip(string $kind, ?string $topic, ?CarbonImmutable $airsAt, f
     ]);
 }
 
-function berlin(string $time): CarbonImmutable
+function programmeBerlin(string $time): CarbonImmutable
 {
     return CarbonImmutable::parse('2026-10-13 '.$time, 'Europe/Berlin');
 }
@@ -112,10 +112,10 @@ function programmeTexts(string $svg): array
 /** A busy afternoon: the tribunal on air, ready shows, a bulletin, stock blocks. */
 function programmeAfternoon(): void
 {
-    programmeClip(CasterScript::RUBRIC, Shows::TRIBUNAL, berlin('14:15'), 540, CasterClip::PLAYING)->forceFill(['updated_at' => now()->subMinutes(3)])->saveQuietly();
-    programmeClip(CasterScript::BULLETIN, null, berlin('14:30'), 150);
-    programmeClip(CasterScript::RUBRIC, Shows::FRIEDHOF, berlin('14:45'), 420);
-    programmeClip(CasterScript::RUBRIC, 'zentralbank', berlin('15:15'), 300);
+    programmeClip(CasterScript::RUBRIC, Shows::TRIBUNAL, programmeBerlin('14:15'), 540, CasterClip::PLAYING)->forceFill(['updated_at' => now()->subMinutes(3)])->saveQuietly();
+    programmeClip(CasterScript::BULLETIN, null, programmeBerlin('14:30'), 150);
+    programmeClip(CasterScript::RUBRIC, Shows::FRIEDHOF, programmeBerlin('14:45'), 420);
+    programmeClip(CasterScript::RUBRIC, 'zentralbank', programmeBerlin('15:15'), 300);
     programmeClip(CasterScript::SCENE, 'stock:talk:abc', null, 150, block: ['dressed' => true, 'stock' => true], clipKind: CasterClip::BLOCK);
     programmeClip(CasterScript::SCENE, 'stock:talk:def', null, 210, block: ['dressed' => true, 'stock' => true], clipKind: CasterClip::BLOCK);
     programmeClip(CasterScript::HISTORY, null, null, 260);
@@ -125,9 +125,9 @@ test('only what is ready in the spool reaches the programme: on air, the next sh
     programmeAfternoon();
     // Planned or unvoiced: a queued rubric script without a clip, an expired clip, a teaser (it announces, it is no show).
     CasterScript::query()->create(['kind' => CasterScript::RUBRIC, 'phase' => ScenePhase::BREAK, 'priority' => 0, 'text' => 'x', 'facts_hash' => 'q', 'status' => CasterScript::QUEUED,
-        'source' => CasterScript::SOURCE_AI, 'topic' => Shows::MEETUPS, 'estimated_seconds' => 60, 'airs_at' => berlin('15:45')->utc(), 'expires_at' => now()->addHours(2)]);
-    programmeClip(CasterScript::RUBRIC, Shows::HOTLINE, berlin('16:15'))->forceFill(['expires_at' => now()->subMinute()])->save();
-    programmeClip(CasterScript::TEASER, Shows::PARTIE, berlin('14:44'), 20);
+        'source' => CasterScript::SOURCE_AI, 'topic' => Shows::MEETUPS, 'estimated_seconds' => 60, 'airs_at' => programmeBerlin('15:45')->utc(), 'expires_at' => now()->addHours(2)]);
+    programmeClip(CasterScript::RUBRIC, Shows::HOTLINE, programmeBerlin('16:15'))->forceFill(['expires_at' => now()->subMinute()])->save();
+    programmeClip(CasterScript::TEASER, Shows::PARTIE, programmeBerlin('14:44'), 20);
 
     $p = programmeNow();
 
@@ -141,8 +141,8 @@ test('only what is ready in the spool reaches the programme: on air, the next sh
 });
 
 test('the next bulletin slot always stands, ready or not; a rubric in parts is one show with all its seconds', function () {
-    $first = programmeClip(CasterScript::RUBRIC, 'presseschau', berlin('14:45'), 100, script: ['part_group' => 'g1', 'part_index' => 1]);
-    programmeClip(CasterScript::RUBRIC, 'presseschau', berlin('14:45'), 80, script: ['part_group' => 'g1', 'part_index' => 2]);
+    $first = programmeClip(CasterScript::RUBRIC, 'presseschau', programmeBerlin('14:45'), 100, script: ['part_group' => 'g1', 'part_index' => 1]);
+    programmeClip(CasterScript::RUBRIC, 'presseschau', programmeBerlin('14:45'), 80, script: ['part_group' => 'g1', 'part_index' => 2]);
 
     $p = programmeNow();
 
@@ -168,7 +168,7 @@ test('a podcast airing shows its episode and part on air; a stored daytime episo
     $replay = collect(programmeNow()['upcoming'])->firstWhere('family', ProgrammeSlides::PODCAST);
     expect(ProgrammeSlides::time($replay['at']).' '.$replay['title'])->toBe('16:03 Folge 1890: Der Bitcoin-Standard');
 
-    programmeClip(CasterScript::PODCAST, 'einundzwanzig', berlin('14:03'), 600, CasterClip::PLAYING, ['text' => 'Der EINUNDZWANZIG Podcast: Folge 1889: Lightning für alle'], ['dressed' => true, 'podcast' => ['source' => 'einundzwanzig', 'index' => 3, 'count' => 7]]);
+    programmeClip(CasterScript::PODCAST, 'einundzwanzig', programmeBerlin('14:03'), 600, CasterClip::PLAYING, ['text' => 'Der EINUNDZWANZIG Podcast: Folge 1889: Lightning für alle'], ['dressed' => true, 'podcast' => ['source' => 'einundzwanzig', 'index' => 3, 'count' => 7]]);
 
     $air = programmeNow()['onAir'];
     expect($air['title'])->toBe('Folge 1889: Lightning für alle')
@@ -179,11 +179,11 @@ test('a podcast airing shows its episode and part on air; a stored daytime episo
 test('entries name the slides with something to show, the duel only with the talk show ready, and a show within two minutes', function () {
     expect((new ProgrammeSlides(app(PodcastLibrary::class)))->entries(now()->toImmutable()))->toBe(['scenes' => ['r1', 'r2'], 'soon' => null, 'soonScene' => null]);
 
-    $friedhof = programmeClip(CasterScript::RUBRIC, Shows::FRIEDHOF, berlin('14:19:30'), 300);
+    $friedhof = programmeClip(CasterScript::RUBRIC, Shows::FRIEDHOF, programmeBerlin('14:19:30'), 300);
     $entries = (new ProgrammeSlides(app(PodcastLibrary::class)))->entries(now()->toImmutable());
     expect($entries)->toBe(['scenes' => ['r1', 'r2'], 'soon' => 'rubric:'.$friedhof->caster_script_id, 'soonScene' => 'r2']);
 
-    $talk = programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, berlin('14:19'), 900);
+    $talk = programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, programmeBerlin('14:19'), 900);
     $entries = (new ProgrammeSlides(app(PodcastLibrary::class)))->entries(now()->toImmutable());
     expect($entries)->toBe(['scenes' => ['r1', 'r2', 'r3'], 'soon' => 'rubric:'.$talk->caster_script_id, 'soonScene' => 'r3']);
 
@@ -273,13 +273,13 @@ test('every programme slide renders at 1280 x 720 with every text inside the fra
     match ($case) {
         'afternoon' => programmeAfternoon(),
         'long' => [
-            programmeClip(CasterScript::PODCAST, 'einundzwanzig', berlin('14:03'), 2400, CasterClip::PLAYING, ['text' => 'Der EINUNDZWANZIG Podcast: Folge 1889: Warum ein Fiatgeldsystem mit eingebautem Verfallsdatum niemals die Kaufkraft deiner Ersparnisse schützt, egal was die Zentralbank verspricht'], ['dressed' => true, 'podcast' => ['source' => 'einundzwanzig', 'index' => 12, 'count' => 14]]),
-            programmeClip(CasterScript::RUBRIC, 'phrasendrescher', berlin('14:45'), 420),
-            programmeClip(CasterScript::RUBRIC, 'corporate_stacker', berlin('15:15'), 300),
-            programmeClip(CasterScript::RUBRIC, 'altcoin_hype', berlin('15:45'), 300),
-            programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, berlin('16:15'), 1500),
+            programmeClip(CasterScript::PODCAST, 'einundzwanzig', programmeBerlin('14:03'), 2400, CasterClip::PLAYING, ['text' => 'Der EINUNDZWANZIG Podcast: Folge 1889: Warum ein Fiatgeldsystem mit eingebautem Verfallsdatum niemals die Kaufkraft deiner Ersparnisse schützt, egal was die Zentralbank verspricht'], ['dressed' => true, 'podcast' => ['source' => 'einundzwanzig', 'index' => 12, 'count' => 14]]),
+            programmeClip(CasterScript::RUBRIC, 'phrasendrescher', programmeBerlin('14:45'), 420),
+            programmeClip(CasterScript::RUBRIC, 'corporate_stacker', programmeBerlin('15:15'), 300),
+            programmeClip(CasterScript::RUBRIC, 'altcoin_hype', programmeBerlin('15:45'), 300),
+            programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, programmeBerlin('16:15'), 1500),
         ],
-        'talkshow' => programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, berlin('14:31'), 1500),
+        'talkshow' => programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, programmeBerlin('14:31'), 1500),
         'empty' => null,
     };
 
