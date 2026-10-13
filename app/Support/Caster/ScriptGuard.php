@@ -46,6 +46,15 @@ final class ScriptGuard
 
     public const NAME_REPEAT = 'name_repeat';
 
+    /** The last line lands on the state, a bank, a central bank or fiat money while the material is about none of them. */
+    public const REFLEX_JAB = 'reflex_jab';
+
+    /**
+     * The money-policy targets a reflexive closing jab lands on (user 2026-10-13: "total nervige ständige
+     * End-Kommentargag in Bezug auf Banken, Staat oder Zentralbank … übertrieben eingesetzt!").
+     */
+    public const MONEY_POLICY = '/(?<![\p{L}])(?:staat\p{L}*|staatlich\p{L}*|banken?|bankster\p{L}*|zentralbank\p{L}*|notenbank\p{L}*|bundesbank|ezb|fed|federal reserve|fiat\p{L}*|finanzamt\p{L}*|lagarde|powell)(?![\p{L}])/iu';
+
     /** Fact keys whose value is a person (SceneFacts, ChatReactions). */
     private const PERSON_KEYS = ['white', 'black', 'a', 'b', 'winner', 'loser', 'draw', 'champion', 'roster', 'chatter_name'];
 
@@ -181,6 +190,18 @@ final class ScriptGuard
      * the words it stood next to. A sentence without such a cut is left as it
      * is; check() rejects it then.
      */
+    /**
+     * Whether `$text` ends on a reflexive money-policy jab (MONEY_POLICY in its last line) while `$material` (what the
+     * piece is about: the chat message, the data) mentions none of those targets.
+     */
+    public static function reflexJab(string $text, string $material): bool
+    {
+        $lines = self::lines($text);
+
+        return $lines !== [] && preg_match(self::MONEY_POLICY, self::withoutMarkers((string) end($lines))) === 1
+            && preg_match(self::MONEY_POLICY, $material) !== 1;
+    }
+
     public static function splitSentences(string $text, int $maxWords): string
     {
         $sentences = [];

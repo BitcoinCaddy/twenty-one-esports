@@ -360,7 +360,9 @@ it('puts the power intro on the timeline when the gap opens and lets a clip that
     $jingle = resource_path('audio/idents/station-ident.opus');
     imagingLibrary($this->imagingDir, ['power-intro' => 2], $jingle);
     config(['tv.commentary.imaging.enabled' => true, 'tv.commentary.imaging.power_intro_share' => 1.0, 'tv.commentary.idents.enabled' => false,
-        'tv.commentary.spool.gap_seconds' => ['min' => 20, 'max' => 20], 'tv.commentary.runs.enabled' => false]);
+        'tv.commentary.spool.gap_seconds' => ['min' => 20, 'max' => 20], 'tv.commentary.runs.enabled' => false,
+        // A reaction cutting the gap short is the mode without music first (MusicFirstTest: it waits for the track's end).
+        'tv.commentary.music_first.enabled' => false]);
     $this->travelTo(CarbonImmutable::parse('2026-10-12 14:05:00', 'Europe/Berlin'));
     imagingClip(CasterScript::SCENE, seconds: 10.0);
     Process::fake(["*'pipe:0' '-ac'*" => Process::result(output: str_repeat("\1\0", 24000 * 4))]);

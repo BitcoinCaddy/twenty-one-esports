@@ -16,7 +16,10 @@ use Illuminate\Support\Facades\Cache;
  * (YouTubeChat), the league voice writes one chat clip "Drüben auf YouTube
  * …" (CasterVoice::youTubeSummary(): themes, the funniest or dumbest message
  * roasted, a question answered briefly with at most one web lookup;
- * Sirius joins as a duet at `duet_share`). Never a reply per message.
+ * Sirius joins as a duet at `duet_share`). Since 2026-10-13 (user: "auch aus
+ * YT wieder mehr lesen und reagieren … mehr lebendige Reaction") a live
+ * reaction to the newest message or two, at most every two minutes
+ * (`every_minutes` 2, `min_messages` 1, `max_messages` 6), still without names.
  *
  * The messages are data: sanitised on the way in, the newest
  * `max_messages` go to the prompt between delimiters, each led by its

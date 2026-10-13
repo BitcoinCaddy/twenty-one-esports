@@ -283,6 +283,8 @@ it('feeds the spool by day from unaired library blocks when it runs low, never i
 it('airs a talk show of several library blocks only whole and in order: its blocks as the parts of one story, never a later block alone', function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-14 14:00', 'Europe/Berlin'));
     autopilotWorkstationSeen();
+    // Stock by day with the workstation online: the mode without live only (MusicFirstTest: no stock block then).
+    config(['tv.commentary.music_first.live_only' => false]);
     // The workstation's view: three blocks of one stock talk, parts 1–12, 13–22, 23–30 (StockLibrary::episodeOf()).
     $part = fn (int $index, bool $continues): array => ['part' => ['group' => '01JTALKEPISODE0000000000AA', 'index' => $index, 'continues' => $continues]];
     expect(StockLibrary::episodeOf([$part(1, true), $part(12, true)]))->toBe(['group' => '01JTALKEPISODE0000000000AA', 'first' => 1, 'last' => 12, 'continues' => true])

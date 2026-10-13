@@ -180,7 +180,9 @@ return [
             | at most every `poll_seconds` or the response's pollingIntervalMillis, whichever is longer. 90 s are
             | 960 reads, 4,800 of the daily 10,000 units. No live chat: no read, a new look after `idle_minutes`.
             | Messages are kept `retention_hours`, at most `max_rows`; every `every_minutes` with at least
-            | `min_messages` new ones the caster speaks one summary (a chat item). Off until a key exists.
+            | `min_messages` new ones the caster reacts live to the newest (a chat item). Off until a key exists.
+            | User 2026-10-13: "auch aus YT wieder mehr lesen und reagieren": at most every two minutes (the
+            | stream puts a music track between two), from one new message on, the newest few only.
             */
             'chat' => [
                 'enabled' => (bool) env('YOUTUBE_CHAT_ENABLED', false),
@@ -193,10 +195,10 @@ return [
                 'timeout_seconds' => 8,
                 'retention_hours' => 24,
                 'max_rows' => 500,
-                'every_minutes' => (int) env('YOUTUBE_CHAT_SUMMARY_MINUTES', 15),
-                'min_messages' => (int) env('YOUTUBE_CHAT_SUMMARY_MIN_MESSAGES', 3),
-                // Messages one summary sees at most (the newest), and the share of summaries Sirius joins as a duet.
-                'max_messages' => 40,
+                'every_minutes' => (int) env('YOUTUBE_CHAT_SUMMARY_MINUTES', 2),
+                'min_messages' => (int) env('YOUTUBE_CHAT_SUMMARY_MIN_MESSAGES', 1),
+                // Messages one reaction sees at most (the newest), and the share of reactions Sirius joins as a duet.
+                'max_messages' => (int) env('YOUTUBE_CHAT_MAX_MESSAGES', 6),
                 'duet_share' => (float) env('YOUTUBE_CHAT_DUET_SHARE', 0.3),
             ],
         ],

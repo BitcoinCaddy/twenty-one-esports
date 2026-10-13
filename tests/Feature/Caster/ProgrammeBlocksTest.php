@@ -591,6 +591,8 @@ it('places no blip with share 0, and none under a script one speaker reads alone
 /* ---------------------------------------------------------------------- workstation: the block loop */
 
 it('claims scripts up to the block length, uploads a reaction at once on its own, and the block in one loudness pass', function () {
+    // Several scripts per block: the mode without music first (MusicFirstTest covers one item per block).
+    config(['tv.commentary.music_first.enabled' => false]);
     config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.seconds' => ['min' => 30, 'max' => 60], 'tv.commentary.blocks.jingles.dir' => programmeBlockJingleDir(['s1', 's2'])]);
     $claims = [
         ['id' => 11, 'kind' => 'scene', 'sentences' => ['Eins ist ein Satz.'], 'estimated_seconds' => 12],
@@ -624,6 +626,38 @@ it('claims scripts up to the block length, uploads a reaction at once on its own
     expect($claims)->toHaveCount(1);
     // One loudness pass for the reaction, one for the whole block.
     Process::assertRanTimes(fn ($process): bool => in_array('loudnorm=I=-16:TP=-1.5:LRA=11', $process->command, true), 2);
+});
+
+it('renders one programme item per block with music first: a scene alone, a story with all its parts, the next scene alone', function () {
+    config(['tv.commentary.music_first.enabled' => true, 'tv.commentary.music_first.one_item_per_block' => true,
+        'tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.seconds' => ['min' => 30, 'max' => 60], 'tv.commentary.blocks.jingles.dir' => programmeBlockJingleDir([])]);
+    $claims = [
+        ['id' => 41, 'kind' => 'scene', 'sentences' => ['Eins ist ein Satz.'], 'estimated_seconds' => 12],
+        ['id' => 43, 'kind' => 'history', 'sentences' => ['Zwei ist ein Satz.'], 'estimated_seconds' => 12, 'part' => ['group' => 'g', 'index' => 1, 'continues' => true]],
+        ['id' => 44, 'kind' => 'history', 'sentences' => ['Drei ist ein Satz.'], 'estimated_seconds' => 12, 'part' => ['group' => 'g', 'index' => 2, 'continues' => false]],
+        ['id' => 45, 'kind' => 'scene', 'sentences' => ['Vier ist ein Satz.'], 'estimated_seconds' => 12],
+    ];
+    $blocks = [];
+    Http::fake(function (Request $request) use (&$claims, &$blocks) {
+        if (str_ends_with($request->url(), '/blocks')) {
+            $blocks[] = $request->header('X-Caster-Scripts')[0];
+        }
+
+        return match (true) {
+            str_ends_with($request->url(), '/api/caster/claim') => Http::response(['script' => array_shift($claims), 'full' => false, 'spool_seconds' => 0, 'pronunciation' => []]),
+            str_ends_with($request->url(), '/generate') => Http::response(programmeBlockWav(1.0)),
+            str_ends_with($request->url(), '/clip'), str_ends_with($request->url(), '/blocks') => Http::response(['clip' => 1], 201),
+            default => Http::response([]),
+        };
+    });
+    Process::fake(fn ($process) => Process::result(output: in_array('libopus', $process->command, true) ? casterOpus() : str_repeat(pack('v', 2), 24000)));
+
+    $fetcher = new CasterFetcher(fn () => null);
+    foreach (range(1, 3) as $run) {
+        $fetcher->runOnce();
+    }
+
+    expect($blocks)->toBe(['41', '43,44', '45']);
 });
 
 it('hands out only what cannot wait when asked for urgent scripts in the middle of a render', function () {
@@ -665,6 +699,8 @@ it('answers a reaction that arrives while a block is voiced at once, before the 
 });
 
 it('gives a short block back to the queue while the stream has audio enough, and sends it when the stream runs low', function () {
+    // Several scripts per block: the mode without music first (MusicFirstTest covers one item per block).
+    config(['tv.commentary.music_first.enabled' => false]);
     config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.seconds' => ['min' => 120, 'max' => 240], 'tv.commentary.blocks.starve_seconds' => 150, 'tv.commentary.blocks.jingles.dir' => programmeBlockJingleDir([])]);
     Process::fake(fn ($process) => Process::result(output: in_array('libopus', $process->command, true) ? casterOpus() : str_repeat(pack('v', 2), 24000)));
 

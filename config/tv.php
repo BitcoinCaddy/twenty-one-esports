@@ -196,7 +196,8 @@ return [
             'expected_seconds' => ['bulletin' => 120, 'news' => 150, 'rubric' => 150, 'chat' => 60, 'segment' => 60, 'scene' => 40],
             'chat_per_hour' => 6,
             // Tight (the tiers above the scenes ask at least `tight_share` of the hour's budget): at most `per_hour` slide scenes an hour.
-            'scene_cap' => ['per_hour' => 6, 'tight_share' => 0.6],
+            // `always` (user 2026-10-13: "Weniger statische selbst ausgedachte Gags"): the cap holds every hour, not only when tight.
+            'scene_cap' => ['per_hour' => (int) env('TV_COMMENTARY_SCENES_PER_HOUR', 2), 'tight_share' => 0.6, 'always' => (bool) env('TV_COMMENTARY_SCENE_CAP_ALWAYS', true)],
         ],
 
         'spool' => [
@@ -1234,7 +1235,7 @@ return [
         // its own scene and only a breath of `breath_seconds` between them instead of spool.gap_seconds
         // (App\Support\Caster\SceneDirector).
         'runs' => [
-            'enabled' => (bool) env('TV_COMMENTARY_RUNS', true),
+            'enabled' => (bool) env('TV_COMMENTARY_RUNS', false),
             'every_minutes' => ['min' => 10, 'max' => 15],
             'clips' => ['min' => 2, 'max' => 4],
             'breath_seconds' => ['min' => 1.0, 'max' => 3.0],
@@ -1326,7 +1327,8 @@ return [
             // Never while the news or a show window is on air, now or at the expected airing, nor in the autopilot.
             'cadence' => [
                 'enabled' => (bool) env('TV_COMMENTARY_CHAT_CADENCE', true),
-                'every_minutes' => (int) env('TV_COMMENTARY_CHAT_CADENCE_MINUTES', 10),
+                // Sixty since music first (user 2026-10-13 15:20): the call-out is a rare fallback for a chat that stayed silent.
+                'every_minutes' => (int) env('TV_COMMENTARY_CHAT_CADENCE_MINUTES', 60),
                 'lead_minutes' => (int) env('TV_COMMENTARY_CHAT_CADENCE_LEAD_MINUTES', 3),
             ],
         ],
@@ -1341,6 +1343,22 @@ return [
             'enabled' => (bool) env('TV_COMMENTARY_MUSIC_BREAKS', true),
             'per_hour' => (float) env('TV_COMMENTARY_MUSIC_BREAKS_PER_HOUR', 2),
             'wait_seconds' => (int) env('TV_COMMENTARY_MUSIC_BREAK_WAIT_SECONDS', 300),
+        ],
+
+        // Music first (user 2026-10-13: "Was ist mit den Pausen, damit Musikstücke durchlaufen können! … Maximal ein Gag und
+        // dann nicht ständig welche hintereinander!"): between two voice items at least one complete track of the stream
+        // music (MusicTimeline); the voice resumes at that track's end, a chat reaction or live moment first, at most
+        // `max_wait_seconds` after the last clip (else spool.gap_seconds). No commentary runs, no reaction cutting into a
+        // block, no block joining the next unless it is the same story or a show window; the bulletin never waits.
+        // `one_item_per_block`: the workstation renders one programme item per block (BlockFetcher), the parts of one story
+        // and a bulletin's news talk still together. Quiet hours keep their own rhythm.
+        'music_first' => [
+            'enabled' => (bool) env('TV_COMMENTARY_MUSIC_FIRST', true),
+            'max_wait_seconds' => (float) env('TV_COMMENTARY_MUSIC_FIRST_MAX_WAIT_SECONDS', 540),
+            'one_item_per_block' => (bool) env('TV_COMMENTARY_BLOCK_ONE_ITEM', true),
+            // LiveOnly (user 2026-10-13 15:20): while the workstation is online by day, no generic voice item and no stock
+            // block; only the news with one comment after it, the shows in their windows and the live chat reactions.
+            'live_only' => (bool) env('TV_COMMENTARY_LIVE_ONLY', true),
         ],
 
         // The rolling world memory (App\Support\Caster\WorldMemory, user 2026-10-12: "zu monoton und nicht reaktiv genug auf

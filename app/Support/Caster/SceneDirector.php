@@ -236,7 +236,7 @@ final class SceneDirector
     private array $held = [];
 
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}}  $settings
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}, music_first?: array{enabled?: bool, max_wait_seconds?: float|int}}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -252,10 +252,10 @@ final class SceneDirector
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}} $settings */
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}, music_first?: array{enabled?: bool, max_wait_seconds?: float|int}} $settings */
         $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120), 'rubric_late_seconds' => (float) config('tv.commentary.programme.rubrics.late_seconds', 180), 'blocks' => (array) config('tv.commentary.blocks', []), 'reaction_max_hold_seconds' => (float) config('tv.commentary.chat.max_hold_seconds', 600),
             'podcast' => ['pause_window_seconds' => (float) config('tv.commentary.podcast_replay.pause_window_seconds', 20), 'resume_within_seconds' => (float) config('tv.commentary.podcast_replay.resume_within_seconds', 1800)],
-            'music_breaks' => (array) config('tv.commentary.music_breaks', [])];
+            'music_breaks' => (array) config('tv.commentary.music_breaks', []), 'music_first' => (array) config('tv.commentary.music_first', [])];
 
         $timeline = new CommentaryTimeline(
             (int) config('tv.commentary.mix.sample_rate', 24000),
@@ -382,7 +382,8 @@ final class SceneDirector
 
         // A live moment or reaction plays at the next clip boundary: it cuts the gap short, also in the middle of
         // a quiet slot or a long silent one, and never waits for the next slot (user 2026-10-11: "as fast as possible").
-        if ($this->clip === null && $planner->slotNumber() === $this->slotNumber) {
+        // Music first: it waits for the end of the gap's track like everything else, then goes first (an overdue one not).
+        if ($this->clip === null && $planner->slotNumber() === $this->slotNumber && ($overdue || $this->gapOver($now))) {
             $live = $this->spool->nextLive(CarbonImmutable::createFromTimestamp($now));
 
             if ($live !== null && $this->play($planner, $live, $now)) {
@@ -414,8 +415,9 @@ final class SceneDirector
             }
         }
 
-        // A programme teaser that is due ends the segment on air: it plays at the next clip boundary, never inside a story.
-        if ($this->clip === null && $this->part === null && $planner->slotNumber() === $this->slotNumber) {
+        // A programme teaser that is due ends the segment on air: it plays at the next clip boundary, never inside a story
+        // (music first: after the gap's track).
+        if ($this->clip === null && $this->part === null && $planner->slotNumber() === $this->slotNumber && $this->gapOver($now)) {
             $teaser = $this->spool->teaser(CarbonImmutable::createFromTimestamp($now));
 
             if ($teaser !== null && $this->play($planner, $teaser, $now)) {
@@ -444,8 +446,9 @@ final class SceneDirector
         }
 
         // A reaction or a due programme teaser while a block is on air: it waits for the block's next segment boundary
-        // (P6), never cuts a sentence.
-        if ($this->clip !== null && $this->clip->isBlock() && ! $this->isPodcast($this->clip) && $this->held === [] && ! $this->timeline->isCut()
+        // (P6), never cuts a sentence. Music first: it waits for the block's end and the track after it (an overdue one
+        // still cuts in above).
+        if (! $this->musicFirst() && $this->clip !== null && $this->clip->isBlock() && ! $this->isPodcast($this->clip) && $this->held === [] && ! $this->timeline->isCut()
             && ($this->spool->nextLive(CarbonImmutable::createFromTimestamp($now)) !== null || $this->spool->teaser(CarbonImmutable::createFromTimestamp($now)) !== null)) {
             $at = $this->reactionCut($now);
 
@@ -487,8 +490,8 @@ final class SceneDirector
 
         $decision = $this->spool->next(ScenePhase::forSlot($slot, CarbonImmutable::createFromTimestamp($now)), CarbonImmutable::createFromTimestamp($now), SceneTopic::forSlot($slot));
 
-        // Within the gap only a live moment speaks; the slot holds until the gap is over.
-        if ($now < $this->quietUntil && $decision['source'] !== 'live') {
+        // Within the gap only a live moment speaks (music first: nothing); the slot holds until the gap is over.
+        if ($now < $this->quietUntil && ($decision['source'] !== 'live' || $this->musicFirst())) {
             $planner->hold($this->quietUntil);
 
             return null;
@@ -565,7 +568,7 @@ final class SceneDirector
 
         // A block that could not be joined seamlessly (a reaction or the news came between): the programme runs on
         // with the next block, without the music gap.
-        if ($clip->isBlock() && $this->blocksFlowOn($clip, $at) && $this->spool->nextBlock($at) !== null) {
+        if ($clip->isBlock() && $this->blocksFlowOn($clip, $at, false) && $this->spool->nextBlock($at) !== null) {
             $this->quietUntil = $now;
             $this->runPosition = 0;
 
@@ -576,7 +579,7 @@ final class SceneDirector
         // `quiet_hours.every_minutes`, counted from the start of the clip that just ended, and no runs.
         $quiet = QuietHours::active($at);
         $inRun = ! $quiet && $this->runPosition > 0 && $this->runLeft > 0;
-        $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds) : ($inRun ? $this->between('breath_seconds') : $this->gap()));
+        $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds) : ($inRun ? $this->between('breath_seconds') : $this->musicGap($now)));
         $this->runPosition = $inRun ? $this->runPosition : 0;
 
         // The music gap opens: a power intro may ride its first seconds (P11), the music ducks under it.
@@ -635,7 +638,7 @@ final class SceneDirector
         $this->spool->endGroup($group, $index);
         $this->part = null;
         // Waited long enough already; a part that will not come gets the music gap a clip end would have had.
-        $this->quietUntil = $now >= $until ? $now : $now + $this->gap();
+        $this->quietUntil = $now >= $until ? $now : $now + $this->musicGap($now);
     }
 
     /** Puts a clip on the timeline and holds the slot until it has been spoken; false when it cannot be decoded (then dropped). */
@@ -938,7 +941,7 @@ final class SceneDirector
         // waits for the story's end.
         if ($podcast ? ($this->dueBulletin($now) !== null || $this->awaitingBulletin($now)
             || $this->spool->overdueLive($at, (float) ($this->settings['reaction_max_hold_seconds'] ?? 600)) !== null)
-            : (! $this->blocksFlowOn($this->clip, $at) || $this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || (! $continues && $this->spool->teaser($at) !== null))) {
+            : (! $this->blocksFlowOn($this->clip, $at, $continues) || $this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || (! $continues && $this->spool->teaser($at) !== null))) {
             return;
         }
 
@@ -1076,9 +1079,14 @@ final class SceneDirector
      * `quiet_hours.every_minutes`) only a replayed block when
      * `blocks.replay.continuous` asks for a best of in one piece.
      */
-    private function blocksFlowOn(CasterClip $clip, CarbonImmutable $at): bool
+    private function blocksFlowOn(CasterClip $clip, CarbonImmutable $at, bool $continues): bool
     {
-        return ! QuietHours::active($at) || ($clip->isReplay() && ($this->settings['blocks']['replay']['continuous'] ?? false) === true);
+        if (QuietHours::active($at)) {
+            return $clip->isReplay() && ($this->settings['blocks']['replay']['continuous'] ?? false) === true;
+        }
+
+        // Music first: only the next block of the same story (a show told in blocks) or a show window runs on without a track.
+        return ! $this->musicFirst() || $continues || $this->clock->inShowWindow($at);
     }
 
     /** One stretch of voice that was on air, for the air log (caster:gaps). */
@@ -1277,6 +1285,45 @@ final class SceneDirector
         return $this->musicBreak;
     }
 
+    /**
+     * Music first (`music_first`, user 2026-10-13: "Was ist mit den Pausen, damit Musikstücke durchlaufen können!"): on by
+     * setting and with the music timeline known.
+     */
+    private function musicFirst(): bool
+    {
+        return ($this->settings['music_first']['enabled'] ?? false) === true && $this->musicTracks !== null;
+    }
+
+    /** Whether the music gap after the last clip is over (always, without music first). */
+    private function gapOver(float $now): bool
+    {
+        return ! $this->musicFirst() || $now >= $this->quietUntil;
+    }
+
+    /**
+     * The music gap after a clip: with music first, up to the end of the first track of the stream music that starts
+     * after the voice stopped (one complete track between two voice items, the voice resumes at its end), at most
+     * `music_first.max_wait_seconds`; without a timeline, or no whole track within that, the random `gap_seconds`.
+     */
+    private function musicGap(float $now): float
+    {
+        if (! $this->musicFirst() || $this->musicTracks === null) {
+            return $this->gap();
+        }
+
+        $max = max(60.0, (float) ($this->settings['music_first']['max_wait_seconds'] ?? 540));
+        $tracks = ($this->musicTracks)($now, $now + $max);
+        usort($tracks, fn (array $a, array $b): int => $a['start'] <=> $b['start']);
+
+        foreach ($tracks as $track) {
+            if ($track['start'] >= $now - 1.0 && $track['end'] > $track['start'] && $track['end'] <= $now + $max) {
+                return $track['end'] - $now;
+            }
+        }
+
+        return $this->gap();
+    }
+
     /** A random gap within `gap_seconds` (none when unset). */
     private function gap(): float
     {
@@ -1300,7 +1347,8 @@ final class SceneDirector
     {
         $runs = (array) ($this->settings['runs'] ?? []);
 
-        if (($runs['enabled'] ?? false) !== true) {
+        // Music first: never several clips back to back (user 2026-10-13: "nicht ständig welche hintereinander").
+        if (($runs['enabled'] ?? false) !== true || $this->musicFirst()) {
             return;
         }
 
