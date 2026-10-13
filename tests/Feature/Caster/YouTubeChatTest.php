@@ -386,6 +386,8 @@ it('keeps the lines 24 hours and at most max_rows', function () {
     expect(app(YouTubeChat::class)->prune($this->now))->toBe(3)
         ->and(YouTubeChatLine::query()->orderBy('id')->pluck('author')->all())->toBe(['Frisch 2', 'Frisch 3', 'Frisch 4']);
 
+    // The command reads the clock: pinned to the test's own day, or the fixed lines age past 24 hours a day later.
+    $this->travelTo($this->now);
     $this->artisan('caster:prune')->expectsOutputToContain('YouTube chat lines removed 0')->assertSuccessful();
 });
 
