@@ -162,7 +162,7 @@ class ShowScripts
 
             $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
             $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
-            [$content, $rejected] = $this->evaluate($id, $material, $raw, $response->steps->last()?->finishReason === FinishReason::Length, $segment['previous'] ?? []);
+            [$content, $rejected] = $this->evaluate($id, $material, $raw, $response->steps->last()?->finishReason === FinishReason::Length, $segment['previous'] ?? [], $segment !== null);
 
             if ($content !== null) {
                 $this->usage->recordOutcome(self::CHANNEL, 'accepted');
@@ -230,13 +230,14 @@ class ShowScripts
     /**
      * A model answer checked (see the class comment): the content with one speaker per line, or null with the reasons.
      *
-     * A segment of a long show drops every line that was aired in a segment before (`$previous`).
+     * A segment of a long show (`$segment`) drops every line that was aired in a segment before (`$previous`) and is short only
+     * under `segment_seconds_min`.
      *
      * @param  ShowMaterial  $material
      * @param  list<string>  $previous
      * @return array{0: array{text: string, speakers: list<string>}|null, 1: list<string>}
      */
-    public function evaluate(string $id, array $material, string $raw, bool $cutOff = false, array $previous = []): array
+    public function evaluate(string $id, array $material, string $raw, bool $cutOff = false, array $previous = [], bool $segment = false): array
     {
         $settings = Shows::settings($id);
         $cast = Shows::cast($id);
@@ -277,7 +278,9 @@ class ShowScripts
             ...self::factual($spoken, $material),
         ];
 
-        if (ScriptQueue::estimateSeconds($text) < (float) ($settings['seconds']['min'] ?? 120)) {
+        // A segment of a long show is shorter than the show it is part of: the voice model stops after two to three minutes
+        // of talk on its own (P20's first real runs, 2026-10-13), so a segment is short only under `segment_seconds_min`.
+        if (ScriptQueue::estimateSeconds($text) < ($segment ? (float) ($settings['segment_seconds_min'] ?? 90) : (float) ($settings['seconds']['min'] ?? 120))) {
             $violations[] = self::SHORT;
         }
 

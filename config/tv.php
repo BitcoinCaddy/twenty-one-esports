@@ -899,7 +899,8 @@ return [
                 'daily_cap' => (int) env('TV_COMMENTARY_SHOWS_DAILY_CAP', 120),
                 'formats' => [
                     // P21: a long show fills `slot_minutes` (the window on air) segment by segment, each segment of the format's
-                    // `seconds`/`sentences` (ShowScripts::inSegments()), to `slot_margin_seconds` short of the window's end, at
+                    // `seconds`/`sentences` (ShowScripts::inSegments(); a segment is short only under `segment_seconds_min`, default 90:
+                    // the model stops after two to three minutes on its own), to `slot_margin_seconds` short of the window's end, at
                     // most `max_segments`; under `min_share` of the window it does not air. Its material grows with it
                     // (`max_chatters`, `graves`, `max_questions`, `max_events`). Voicing thirty minutes takes VoiceStudio about
                     // as long: written `write_minutes_ahead` before the slot.

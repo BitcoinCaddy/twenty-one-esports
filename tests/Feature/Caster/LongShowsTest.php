@@ -39,6 +39,7 @@ beforeEach(function () {
         'tv.commentary.programme.shows.formats.tribunal.slot_minutes' => 6,
         'tv.commentary.programme.shows.formats.tribunal.seconds' => ['min' => 20, 'max' => 400],
         'tv.commentary.programme.shows.formats.tribunal.sentences' => ['min' => 6, 'max' => 40],
+        'tv.commentary.programme.shows.formats.tribunal.segment_seconds_min' => 20,
     ]);
     $this->travelTo(CarbonImmutable::parse('2026-10-12 19:10:00', 'Europe/Berlin'));
 });
