@@ -661,9 +661,9 @@ final class RotationPlanner
             if ($this->idleRounds++ % max(1, $this->loopEvery) === 0) {
                 $this->queue = [['kind' => self::LOOP]];
             } elseif ($tournaments !== []) {
-                $this->queue = [...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->tournamentSlides($this->nextLook(), $tournaments), ...$this->everyRound(), ...$this->blockfillRound(), ...$this->programmeRound(), ['kind' => self::TEASER]];
+                $this->queue = $this->withProgramme([...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->tournamentSlides($this->nextLook(), $tournaments), ...$this->everyRound(), ...$this->blockfillRound()], [['kind' => self::TEASER]]);
             } else {
-                $this->queue = [...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->everyRound(), ...$this->blockfillRound(), ...$this->programmeRound(), ...$teasers];
+                $this->queue = $this->withProgramme([...$this->board(), ...$this->hyperRound(), ...$this->pongRound(), ...$this->everyRound(), ...$this->blockfillRound()], $teasers);
             }
 
             return;
@@ -672,7 +672,7 @@ final class RotationPlanner
         $this->roundWithGames = true;
         $look = $this->nextLook();
         $game = $games[$this->matchTurn++ % count($games)];
-        $this->queue = [
+        $this->queue = $this->withProgramme([
             ['kind' => self::MATCH, 'look' => $look, 'gameId' => $game['id']],
             // Skipped when fewer than two games are on show by then (slotFor()).
             ['kind' => self::GALLERY, 'look' => $look],
@@ -682,9 +682,43 @@ final class RotationPlanner
             ...($tournaments === [] ? [] : $this->tournamentSlides($look, $tournaments)),
             ...$this->everyRound(),
             ...$this->blockfillRound(),
-            ...$this->programmeRound(),
-            ...$teasers,
-        ];
+        ], $teasers);
+    }
+
+    /**
+     * The round with the radio programme spread through it (user 2026-10-13: "Die Radio-Sender-Slides müssen viel
+     * viel öfter kommen"): one programme slide after every `programme_every_slots` slides, the slides in turn; 0 falls
+     * back to one per `programmeEvery`-th round at its end.
+     *
+     * @param  list<array<string, mixed>>  $round
+     * @param  list<array<string, mixed>>  $tail  the round's closing teasers
+     * @return list<array<string, mixed>>
+     */
+    private function withProgramme(array $round, array $tail = []): array
+    {
+        $every = (int) config('twentyone.stream.rotation.programme_every_slots', 2);
+        $scenes = $this->programme['scenes'];
+
+        if ($every <= 0 || $scenes === []) {
+            return [...$round, ...$this->programmeRound(), ...$tail];
+        }
+
+        $round = [...$round, ...$tail];
+        $spread = [];
+
+        foreach ($round as $index => $slide) {
+            $spread[] = $slide;
+
+            if (($index + 1) % $every === 0) {
+                $spread[] = ['kind' => self::PROGRAMME, 'scene' => $scenes[$this->programmeTurn++ % count($scenes)]];
+            }
+        }
+
+        if (count($round) < $every) {
+            $spread[] = ['kind' => self::PROGRAMME, 'scene' => $scenes[$this->programmeTurn++ % count($scenes)]];
+        }
+
+        return $spread;
     }
 
     /**

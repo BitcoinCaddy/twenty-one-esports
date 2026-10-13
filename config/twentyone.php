@@ -278,6 +278,8 @@ return [
             // spotlight and the duel card this long; a show starting within two minutes gets its spotlight next, once.
             'programme_slides' => (bool) env('TWENTYONE_STREAM_PROGRAMME_SLIDES', true),
             'programme_every_rounds' => 1,
+            // One programme slide after every this many slides of a round (user 2026-10-13: "viel viel öfter"); 0 = one per round.
+            'programme_every_slots' => (int) env('TWENTYONE_STREAM_PROGRAMME_EVERY_SLOTS', 2),
             'programme_seconds' => 20,
             'programme_spotlight_seconds' => 15,
             'programme_hours' => 12,

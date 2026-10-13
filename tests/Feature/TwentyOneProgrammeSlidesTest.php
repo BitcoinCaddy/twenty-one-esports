@@ -220,7 +220,8 @@ function programmePlanner(int $every = 1): RotationPlanner
     return new RotationPlanner(45, 60, 20, 12, 3, 3, 30, 15, false, false, 90, 120, 60, 180, 20, $every, 20, 15);
 }
 
-test('one programme slide a round, the slides in turn, about one slot in seven; none without one', function () {
+test('with spreading off: one programme slide a round, the slides in turn, about one slot in seven; none without one', function () {
+    config(['twentyone.stream.rotation.programme_every_slots' => 0]);
     $programme = ['scenes' => ['r1', 'r2', 'r3'], 'soon' => null];
     $log = programmeRotation(programmePlanner(), 1200, $programme);
     $slides = array_values(array_filter($log, fn (string $line): bool => str_contains($line, 'programme')));
@@ -231,6 +232,17 @@ test('one programme slide a round, the slides in turn, about one slot in seven; 
         ->and(count($slides) / count($shown))->toBeGreaterThan(0.12)->toBeLessThan(0.16)
         ->and(implode("\n", programmeRotation(programmePlanner(), 600, ['scenes' => [], 'soon' => null])))->not->toContain('programme')
         ->and(count(array_filter(programmeRotation(programmePlanner(2), 1200, $programme), fn (string $line): bool => str_contains($line, 'programme'))))->toBe(intdiv(count($slides) + 1, 2));
+});
+
+test('the programme slides are spread through every round: one after every second slide (user: "viel viel öfter")', function () {
+    $programme = ['scenes' => ['r1', 'r2', 'r3'], 'soon' => null];
+    $log = programmeRotation(programmePlanner(), 1200, $programme);
+    $slides = array_values(array_filter($log, fn (string $line): bool => str_contains($line, 'programme')));
+    $shown = array_values(array_filter($log, fn (string $line): bool => ! str_contains($line, 'loop')));
+
+    expect(count($slides) / count($shown))->toBeGreaterThan(0.28)
+        ->and(array_map(fn (string $line): string => substr($line, -2), array_slice($slides, 0, 4)))->toBe(['r1', 'r2', 'r3', 'r1'])
+        ->and(implode("\n", programmeRotation(programmePlanner(), 600, ['scenes' => [], 'soon' => null])))->not->toContain('programme');
 });
 
 test('a show within two minutes gets its spotlight as the next slot, once, never cutting a slot short and never while a tournament runs', function () {
