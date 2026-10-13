@@ -81,6 +81,16 @@ final class JingleSynth
     }
 
     /**
+     * A synth level (bed, stinger, hit) under the voice, lowered by `blocks.jingles.synth_gain_db` (user 2026-10-13:
+     * "die Synthese-Klimpersounds viel viel zu laut"); the master pass brings the whole jingle back to -16 LUFS, so the
+     * voice gains what the synth loses.
+     */
+    public static function synthDb(float $base): string
+    {
+        return sprintf('%.1F', $base + (float) config('tv.commentary.blocks.jingles.synth_gain_db', -12));
+    }
+
+    /**
      * The ffmpeg arguments that mix the voice (input 0, a WAV) over the bed
      * (input 1, lavfi), duck the bed under the voice and fade, into a float
      * WAV (master() brings it to its loudness).
@@ -92,7 +102,7 @@ final class JingleSynth
         $delay = (int) round($intro * 1000);
         $graph = sprintf(
             '[0:a]aresample=%1$d,aformat=channel_layouts=mono,highpass=f=70,%2$s,adelay=%3$d,apad=whole_dur=%4$.3F,asplit=2[v1][v2];'
-            .'[1:a]volume=-3dB[bed];[bed][v1]sidechaincompress=threshold=0.015:ratio=7:attack=12:release=420[ducked];'
+            .'[1:a]volume='.self::synthDb(-3).'dB[bed];[bed][v1]sidechaincompress=threshold=0.015:ratio=7:attack=12:release=420[ducked];'
             .'[ducked][v2]amix=inputs=2:normalize=0:duration=first,afade=t=in:d=0.02,afade=t=out:st=%5$.3F:d=%6$.3F[out]',
             self::RATE, self::EFFECTS[$effect] ?? 'anull', $delay, $duration, max(0.0, $duration - self::RING_OUT_FADE), self::RING_OUT_FADE,
         );
@@ -414,13 +424,13 @@ final class JingleSynth
         $duration = $intro + $voiceSeconds + $tail;
         $withBed = $bedFile !== null;
         $bed = $withBed ? sprintf(
-            '[3:a]aresample=%1$d,aformat=channel_layouts=mono,atrim=duration=%2$.3F,volume=-9dB,afade=t=in:d=0.4,afade=t=out:st=%3$.3F:d=1.5[bedraw];[bedraw][vk]sidechaincompress=threshold=0.015:ratio=6:attack=15:release=450[bed];',
+            '[3:a]aresample=%1$d,aformat=channel_layouts=mono,atrim=duration=%2$.3F,volume='.self::synthDb(-9).'dB,afade=t=in:d=0.4,afade=t=out:st=%3$.3F:d=1.5[bedraw];[bedraw][vk]sidechaincompress=threshold=0.015:ratio=6:attack=15:release=450[bed];',
             self::RATE, $duration, max(0.0, $duration - 1.5),
         ) : '';
         $graph = sprintf(
             '[0:a]aresample=%1$d,aformat=channel_layouts=mono,highpass=f=70,%2$s,adelay=%3$d,apad=whole_dur=%4$.3F%5$s;'
-            .'[1:a]aresample=%1$d,aformat=channel_layouts=mono,volume=-2dB,apad=whole_dur=%4$.3F[st];'
-            .'[2:a]aresample=%1$d,aformat=channel_layouts=mono,volume=-1dB,adelay=%6$d,apad=whole_dur=%4$.3F[hit];'
+            .'[1:a]aresample=%1$d,aformat=channel_layouts=mono,volume='.self::synthDb(-2).'dB,apad=whole_dur=%4$.3F[st];'
+            .'[2:a]aresample=%1$d,aformat=channel_layouts=mono,volume='.self::synthDb(-1).'dB,adelay=%6$d,apad=whole_dur=%4$.3F[hit];'
             .'%7$s[v][st][hit]%8$samix=inputs=%9$d:normalize=0:duration=first,atrim=duration=%4$.3F,afade=t=out:st=%10$.3F:d=%11$.3F[out]',
             self::RATE, self::EFFECTS[$effect] ?? 'anull', (int) round($intro * 1000), $duration, $withBed ? ',asplit=2[v][vk]' : '[v]',
             (int) round(($intro + $voiceSeconds + 0.05) * 1000), $bed, $withBed ? '[bed]' : '', $withBed ? 4 : 3, max(0.0, $duration - self::RING_OUT_FADE), self::RING_OUT_FADE,

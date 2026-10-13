@@ -426,6 +426,8 @@ return [
             // The tail of a jingle the next speech starts over (the jingle fades out under it).
             'crossfade_seconds' => 0.45,
             'jingles' => [
+                // The synth under the Anchor's voice in every jingle, in dB below its original level (user 2026-10-13: "viel viel leiser").
+                'synth_gain_db' => (float) env('TV_COMMENTARY_JINGLE_SYNTH_GAIN_DB', -12),
                 'dir' => env('TV_COMMENTARY_JINGLES_DIR', storage_path('app/jingles')),
                 // Relative to the speech (jingles are mastered at -16 LUFS, the speech sits at speech_dbfs).
                 'gain_db' => -3.0,

@@ -192,3 +192,11 @@ it('keeps every anchor jingle line free of German words', function (string $file
         }
     }
 })->with(['anchor-jingles.json', 'anchor-imaging.json']);
+
+it('keeps the synth under the jingle voice well below its old level', function () {
+    // User 2026-10-13: the synth in every jingle was "viel viel zu laut".
+    expect(implode(' ', JingleSynth::mixArguments('ffmpeg', 'v.wav', '0', 'dry', 1.0, 6.0, 'o.wav')))->toContain('volume=-15.0dB[bed]');
+
+    config(['tv.commentary.blocks.jingles.synth_gain_db' => 0]);
+    expect(JingleSynth::synthDb(-3))->toBe('-3.0');
+});
