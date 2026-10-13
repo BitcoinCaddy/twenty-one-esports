@@ -178,6 +178,119 @@ final class JingleSynth
     ];
 
     /**
+     * The studio's sounds (P20; user 2026-10-13: "Klatschgeräusche … bei Shows" and "typische Talkshow-Musik … am Anfang
+     * und Ende … aber bitte auf keinen Fall zu laut"), rendered by `caster:jingles --sounds` as `<name>.opus` beside the
+     * stingers: applause from synthetic clappers (each a short noise burst on its own beat, wobble, start and stop, so
+     * the crowd thins out at the end instead of fading as one), polite (1 to 2 s) or big (3 to 4 s); and the talk
+     * show's theme, an evening-talk opener in D minor over pulsing stabs with timpani and the station motif, its outro
+     * resolving to D major, and a short act-break sting. No laugh: whether a laughing crowd from filtered noise sounds
+     * like people cannot be judged without listening, so none was made (P20).
+     */
+    public const STUDIO = ['applause-short-1', 'applause-short-2', 'applause-short-3', 'applause-short-4',
+        'applause-big-1', 'applause-big-2', 'applause-big-3', 'theme-talk-intro', 'theme-talk-outro', 'theme-talk-sting'];
+
+    /**
+     * A studio sound (STUDIO) as an aevalsrc expression, its length and the filter after it.
+     *
+     * @return array{expression: string, seconds: float, filter: string}
+     */
+    public static function studio(string $name): array
+    {
+        $applause = [
+            // clappers, seconds, start spread, stop from, stop to, seed
+            'applause-short-1' => [9, 1.6, 0.06, 0.9, 1.5, 11],
+            'applause-short-2' => [12, 1.9, 0.1, 1.1, 1.8, 23],
+            'applause-short-3' => [7, 1.3, 0.05, 0.7, 1.2, 37],
+            'applause-short-4' => [14, 2.0, 0.12, 1.2, 1.9, 41],
+            'applause-big-1' => [26, 3.4, 0.35, 2.3, 3.3, 53],
+            'applause-big-2' => [30, 3.9, 0.45, 2.7, 3.8, 67],
+            'applause-big-3' => [22, 3.0, 0.3, 2.0, 2.9, 79],
+        ];
+
+        if (isset($applause[$name])) {
+            [$clappers, $seconds, $spread, $stopFrom, $stopTo, $seed] = $applause[$name];
+
+            return ['expression' => self::crowd($clappers, $spread, $stopFrom, $stopTo, $seed), 'seconds' => $seconds,
+                'filter' => 'highpass=f=450,lowpass=f=7500,equalizer=f=1600:t=q:w=1.2:g=4,aecho=0.8:0.55:23|41|67:0.28|0.18|0.1'];
+        }
+
+        // D minor stabs, then B flat, F, A (the dominant), on the eighths of 120 bpm; the motif in bells; timpani.
+        $dm = [146.83, 174.61, 220.0];
+        $bb = [116.54, 146.83, 174.61];
+        $f = [130.81, 174.61, 220.0];
+        $a = [138.59, 164.81, 220.0];
+        $d = [146.83, 185.0, 220.0];
+        $filter = 'highpass=f=45,aecho=0.8:0.5:60|110:0.2|0.1';
+
+        return match ($name) {
+            'theme-talk-outro' => ['expression' => implode('+', [
+                self::stabs(0.0, 1.0, $dm, 0.32), self::stabs(1.0, 2.0, $bb, 0.32), self::stabs(2.0, 3.0, $a, 0.32),
+                self::motif(0.5, 0.2, 2.2, 0.16, 1.0), self::motif(2.5, 0.2, 2.2, 0.16, 1.0),
+                self::timpani(3.0, 0.55, 2.0), self::chord(3.0, $d, 1.4, 0.2), self::bell(3.0, 587.33, 1.2, 0.14), self::bell(3.0, 880, 1.2, 0.1),
+            ]), 'seconds' => 6.0, 'filter' => $filter.',afade=t=out:st=4.8:d=1.2'],
+            'theme-talk-sting' => ['expression' => implode('+', [
+                self::timpani(0.0, 0.6, 2.4), self::chord(0.0, $dm, 2.0, 0.22), self::motif(0.15, 0.12, 2.8, 0.18, 1.0), self::stabs(0.6, 1.4, $a, 0.12),
+            ]), 'seconds' => 2.6, 'filter' => $filter.',afade=t=out:st=1.8:d=0.8'],
+            default => ['expression' => implode('+', [
+                // A timpani roll swelling into the downbeat, then four bars of stabs with the motif above them.
+                '0.45*lt(t,1.5)*pow(t/1.5,2)*(0.55+0.45*sin(2*PI*14*t))*(sin(2*PI*73.42*t)+0.5*sin(2*PI*110.0*t))+0.04*lt(t,1.5)*pow(t/1.5,3)*(2*random(0)-1)', self::timpani(1.5, 0.6, 2.2), self::chord(1.5, $dm, 0.8, 0.18),
+                self::stabs(2.0, 3.0, $dm, 0.32), self::stabs(3.0, 4.0, $bb, 0.32), self::stabs(4.0, 5.0, $f, 0.32), self::stabs(5.0, 6.0, $a, 0.32),
+                self::motif(2.0, 0.2, 2.2, 0.17, 1.0), self::motif(4.0, 0.2, 2.2, 0.17, 1.0),
+                self::timpani(6.0, 0.6, 1.8), self::chord(6.0, $dm, 1.2, 0.2), self::bell(6.0, 587.33, 1.4, 0.14),
+            ]), 'seconds' => 7.6, 'filter' => $filter.',afade=t=out:st=6.6:d=1.0'],
+        };
+    }
+
+    /**
+     * Synthetic clappers: each a 6 to 12 ms noise burst on its own beat (3 to 6 claps a second, slowly wobbling), entering
+     * within `$spread` seconds and stopping between `$stopFrom` and `$stopTo`; reproducible from `$seed`.
+     */
+    private static function crowd(int $clappers, float $spread, float $stopFrom, float $stopTo, int $seed): string
+    {
+        $terms = [];
+
+        for ($k = 0; $k < $clappers; $k++) {
+            $r = fn (int $salt): float => (crc32($seed.':'.$k.':'.$salt) % 10_000) / 10_000;
+            $period = 0.17 + 0.15 * $r(1);
+            $start = $spread * $r(2);
+            $stop = $stopFrom + ($stopTo - $stopFrom) * $r(3);
+            $decay = 85 + 70 * $r(4);
+            $amp = 0.25 + 0.35 * $r(5);
+            $wobble = 0.006 + 0.012 * $r(6);
+            $x = 'mod(t-'.self::f($start).'+'.self::f($wobble).'*sin(2*PI*'.self::f(0.7 + $r(7)).'*t),'.self::f($period).')';
+            $terms[] = self::f($amp).'*between(t,'.self::f($start).','.self::f($stop).')*exp(-'.$x.'*'.self::f($decay).')*(2*random(0)-1)';
+        }
+
+        return implode('+', $terms);
+    }
+
+    /** Stabs of a chord on every eighth (0.25 s) from `$t0` to `$t1`, each a plucked tone with two overtones. */
+    private static function stabs(float $t0, float $t1, array $freqs, float $amp): string
+    {
+        $tones = implode('+', array_map(fn (float $freq): string => 'sin(2*PI*'.self::f($freq).'*t)+0.45*sin(2*PI*'.self::f(2 * $freq).'*t)+0.2*sin(2*PI*'.self::f(3 * $freq).'*t)', $freqs));
+
+        return self::f($amp / count($freqs)).'*between(t,'.self::f($t0).','.self::f($t1).')*min(1,mod(t-'.self::f($t0).',0.25)*250)*exp(-mod(t-'.self::f($t0).',0.25)*11)*('.$tones.')';
+    }
+
+    /** A held chord from `$t0`, decaying over about `$decay` seconds. */
+    private static function chord(float $t0, array $freqs, float $decay, float $amp): string
+    {
+        $x = '(t-'.self::f($t0).')';
+        $tones = implode('+', array_map(fn (float $freq): string => 'sin(2*PI*'.self::f($freq).'*t)+0.4*sin(2*PI*'.self::f(2 * $freq).'*t)', $freqs));
+
+        return self::f($amp / count($freqs)).'*gte(t,'.self::f($t0).')*min(1,'.$x.'*150)*exp(-'.$x.'*'.self::f(3 / max(0.1, $decay)).')*('.$tones.')';
+    }
+
+    /** A timpani stroke at `$t0`: a low tone bending down onto 73 Hz with a soft mallet transient. */
+    private static function timpani(float $t0, float $amp, float $decay): string
+    {
+        $x = '(t-'.self::f($t0).')';
+
+        return self::f($amp).'*gte(t,'.self::f($t0).')*min(1,'.$x.'*400)*exp(-'.$x.'*'.self::f($decay).')*sin(2*PI*(73.42*'.$x.'+2*(1-exp(-'.$x.'*20))))'
+            .'+'.self::f($amp * 0.3).'*gte(t,'.self::f($t0).')*exp(-'.$x.'*60)*(2*random(0)-1)';
+    }
+
+    /**
      * The production of an imaging line (P11): its category's recipe with one stinger, hit and bed picked by a hash
      * of the line id (reproducible), the bed of its format (`$formatBeds`, tv.commentary.imaging.format_beds) first.
      *
@@ -217,6 +330,10 @@ final class JingleSynth
      */
     public static function sound(string $name): array
     {
+        if (in_array($name, self::STUDIO, true)) {
+            return self::studio($name);
+        }
+
         $q = fn (float $frequency): float => round($frequency * self::LOOP_SECONDS) / self::LOOP_SECONDS;
         $sine = fn (float $frequency, float $amp): string => self::f($amp).'*sin(2*PI*'.self::f($q($frequency)).'*t)';
         $lfo = fn (float $period): string => '(0.6+0.4*sin(2*PI*t/'.self::f($period).'))';

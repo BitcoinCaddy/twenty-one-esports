@@ -222,7 +222,9 @@ it('renders a talk show block: one batch per speaker, quicker turns, and across 
     config(['tv.commentary.voicestudio.profiles' => ['markus' => 'mmmm', 'sirius' => 'ssss', 'genossin' => 'gggg'],
         'tv.commentary.blocks.blips.share' => 1.0, 'tv.commentary.blocks.blips.min_gap_seconds' => 0,
         'tv.commentary.voicestudio.speaker_pause' => ['min' => 0.6, 'max' => 0.6],
-        'tv.commentary.programme.shows.formats.stammtisch.turn_gap_ms' => ['min' => 150, 'max' => 150]]);
+        'tv.commentary.programme.shows.formats.stammtisch.turn_gap_ms' => ['min' => 150, 'max' => 150],
+        // The studio's applause and theme lengthen the talk's pauses on purpose (StudioAudienceTest); here only the breath counts.
+        'tv.commentary.idents.applause.enabled' => false, 'tv.commentary.idents.talk_theme.enabled' => false]);
     $profiles = [];
     Http::fake(function (Request $request) use (&$profiles) {
         if (str_ends_with($request->url(), '/generate')) {

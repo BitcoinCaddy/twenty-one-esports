@@ -31,7 +31,12 @@ use Closure;
  *    the turn, on about `share` of such turns and `min_gap_seconds` apart;
  *    with three voices (the talk show) the blip is the one the turn answers,
  *    and across the sides (`opponents`) only an `across` sound, a laugh or a doubt;
- *  - the news bed under a bulletin only where Idents::bedFor() says so.
+ *  - the news bed under a bulletin only where Idents::bedFor() says so, and
+ *    the bed of its format under a show, roast or rubric (Idents::formatBed(),
+ *    P20: the server never dresses a block, so this is the only place);
+ *  - the studio (P20, StudioAudience): applause in the pauses of a show, the
+ *    talk show's theme around it, the talk show's own breath between turns
+ *    (TalkShow::gapFor()); a pause grows to hold its sound, never over a word.
  *
  * The result is raw PCM with its chunk ends (sentence ends for a cut), the
  * segment boundaries (the end of every script but the last: a reaction may
@@ -60,7 +65,7 @@ final class BlockRenderer
     /**
      * @param  list<array<array-key, mixed>>  $scripts  claimed scripts in order, the first the lead
      * @param  array<string, string>  $terms
-     * @return array{pcm: string, rate: int, ends: list<float>, boundaries: list<float>, protected: float, steps: list<string>, blips: list<array{at: float, speaker: string, file: string}>, batches: list<string>}|null null when VoiceStudio failed
+     * @return array{pcm: string, rate: int, ends: list<float>, boundaries: list<float>, protected: float, steps: list<string>, blips: list<array{at: float, speaker: string, file: string}>, studio: list<array{at: float, part: string, file: string, seconds: float}>, batches: list<string>}|null null when VoiceStudio failed
      */
     public function render(array $scripts, array $terms, CarbonImmutable $airAt, bool $evergreen = false): ?array
     {
@@ -119,6 +124,7 @@ final class BlockRenderer
         $afterJingle = false;
         $log = [];
         $blips = [];
+        $studio = [];
         $lastBlip = -INF;
 
         foreach ($steps as $step) {
@@ -160,9 +166,20 @@ final class BlockRenderer
                 $start = intdiv(strlen($pcm), Pcm::BYTES_PER_SAMPLE);
             }
 
-            // The news bed under a bulletin, where the station sound asks for it (Idents::bedFor()).
+            // The news bed under a bulletin, where the station sound asks for it (Idents::bedFor()); the bed of its format
+            // under a show, roast or rubric (P17's `format_beds`; the server never dresses a rendered block, so before P20
+            // no show of a block had one).
+            $formatBed = $this->idents?->bedsAt($airAt) === true ? $this->idents->formatBed($script['topic'] ?? null) : null;
+
             if (($script['kind'] ?? null) === CasterScript::BULLETIN && $this->idents !== null && $this->idents->bedFor(CasterScript::BULLETIN, $airAt)) {
                 $speech['pcm'] = (new Idents((array) config('tv.commentary.idents', []), $rate))->underBed($speech['pcm']) ?? $speech['pcm'];
+            } elseif ($formatBed !== null) {
+                $bedded = (new Idents((array) config('tv.commentary.idents', []), $rate))->underBed($speech['pcm'], $formatBed['file'], $formatBed['gain_db'] + self::speechOffset());
+
+                if ($bedded !== null) {
+                    $speech['pcm'] = $bedded;
+                    $log[] = 'bed:'.basename($formatBed['file']);
+                }
             }
 
             $offset = $start / $rate;
@@ -172,6 +189,10 @@ final class BlockRenderer
 
             foreach ($speech['ends'] as $end) {
                 $ends[] = round($offset + $end, 3);
+            }
+
+            foreach ($speech['studio'] as $sound) {
+                $studio[] = ['at' => round($offset + $sound['at'], 3), 'part' => $sound['part'], 'file' => $sound['file'], 'seconds' => $sound['seconds']];
             }
 
             foreach ($speech['blips'] as $blip) {
@@ -202,6 +223,7 @@ final class BlockRenderer
             'protected' => $protected,
             'steps' => $log,
             'blips' => $blips,
+            'studio' => $studio,
             'batches' => $order,
         ];
     }
@@ -216,7 +238,7 @@ final class BlockRenderer
      * @param  array<array-key, mixed>  $script
      * @param  array<string, mixed>  $settings  tv.commentary.blocks
      * @param  list<array{at: float, speaker: string, file: string}>  $placed  the blips of the block so far
-     * @return array{pcm: string, ends: list<float>, blips: list<array{at: float, speaker: string, file: string}>}|null
+     * @return array{pcm: string, ends: list<float>, blips: list<array{at: float, speaker: string, file: string}>, studio: list<array{at: float, part: string, file: string, seconds: float}>}|null
      */
     private function speech(int $index, array $chunks, array $voiced, int $rate, array $voice, array $script, array $settings, float $lastBlip, float $blockOffset, array $placed): ?array
     {
@@ -227,9 +249,17 @@ final class BlockRenderer
         }
 
         $pause = (array) ($voice['pause'] ?? []);
-        // The talk show's turns follow each other quicker than a duet's (TalkShow::turnGap()).
-        $speakerPause = TalkShow::turnGap($script['topic'] ?? null) ?? (array) ($voice['speaker_pause'] ?? []);
+        $topic = $script['topic'] ?? null;
+        // The talk show's own breath between turns (TalkShow::gapFor(): a TV talk's pause, a cut-in, the long breath).
+        $speakerPause = TalkShow::turnGap($topic) ?? (array) ($voice['speaker_pause'] ?? []);
+        $interruptions = TalkShow::maxInterruptions();
         $speakers = array_values(array_unique(array_map(fn (int $key): string => $chunks[$key]['speaker'], $mine)));
+        // The studio (P20, StudioAudience): applause in the pauses, the talk show's theme around it.
+        $own = array_map(fn (int $key): array => ['speaker' => $chunks[$key]['speaker'], 'lines' => $chunks[$key]['lines']], $mine);
+        $applause = StudioAudience::applause($topic, $own, array_map(fn (int $key): float => Pcm::seconds($voiced[$key], $rate), $mine), 0.1);
+        $theme = StudioAudience::theme($topic, $own);
+        $studio = [];
+        $overlays = [];
         $duet = count($speakers) > 1;
         $blipSettings = (array) ($settings['blips'] ?? []);
         $pcm = '';
@@ -268,19 +298,159 @@ final class BlockRenderer
             }
 
             if ($position === count($mine) - 1) {
+                // Behind the last line: the closing applause and the talk show's outro.
+                $pcm = $this->studioTail($pcm, $rate, $applause[$position] ?? null, $theme['outro'] === $position, $studio);
+
                 continue;
             }
 
-            if ($chunks[$mine[$position + 1]]['speaker'] !== $speaker) {
-                $pcm .= Pcm::silence($this->within($speakerPause, 0.45, 0.7), $rate);
+            $next = $chunks[$mine[$position + 1]];
+
+            if ($next['speaker'] !== $speaker) {
+                $kind = TalkShow::gapKind($next['speaker'], $next['lines']);
+
+                if ($kind === TalkShow::GAP_INTERRUPT && $interruptions-- <= 0) {
+                    $kind = TalkShow::GAP_TURN;
+                }
+
+                $gap = $this->within(TalkShow::gapFor($topic, $kind) ?? $speakerPause, 0.45, 0.7);
             } else {
                 $base = ScriptGuard::accented((string) end($chunks[$key]['lines'])) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
-                $pcm .= Pcm::silence(max(0.1, $base + (float) ($pause['jitter'] ?? 0.0) * (2 * ($this->random)() - 1)), $rate);
+                $gap = max(0.1, $base + (float) ($pause['jitter'] ?? 0.0) * (2 * ($this->random)() - 1));
             }
+
+            $pcm = $this->studioGap($pcm, $rate, $gap, $applause[$position] ?? null, $theme['before'][$position + 1] ?? null, $studio, $overlays);
+        }
+
+        foreach ($overlays as [$sound, $at]) {
+            $pcm = Pcm::overlay($pcm, $sound, $at);
         }
 
         // A blip may reach past the last word: the speech is as long as both.
-        return ['pcm' => $pcm, 'ends' => $ends, 'blips' => $blips];
+        return ['pcm' => $pcm, 'ends' => $ends, 'blips' => $blips, 'studio' => $studio];
+    }
+
+    /**
+     * The pause after a chunk, `$gap` seconds or longer: the applause after the chunk (0.2 s in, the next word only
+     * after its last clap) and the theme before the next one (the intro ends `talk_theme.overlap_seconds` into the next
+     * voice, that tail 12 dB down and faded out; the sting ends before it).
+     *
+     * @param  list<array{at: float, part: string, file: string, seconds: float}>  $studio
+     * @param  list<array{0: string, 1: int}>  $overlays  the sounds to lay on once the speech is complete, with their sample
+     */
+    private function studioGap(string $pcm, int $rate, float $gap, ?string $moment, ?string $themePart, array &$studio, array &$overlays): string
+    {
+        $start = Pcm::seconds($pcm, $rate);
+        $clap = $moment === null ? null : $this->applausePcm($moment, $rate, $studio);
+        $music = $themePart === null ? null : $this->themePcm($themePart, $rate);
+        $overlap = $themePart === StudioAudience::INTRO ? max(0.0, (float) config('tv.commentary.idents.talk_theme.overlap_seconds', 1.5)) : 0.0;
+
+        if ($clap !== null) {
+            $gap = max($gap, 0.2 + Pcm::seconds($clap['pcm'], $rate) + 0.25);
+        }
+
+        if ($music !== null) {
+            $overlap = min($overlap, Pcm::seconds($music['pcm'], $rate) / 2);
+            $gap = max($gap, 0.15 + Pcm::seconds($music['pcm'], $rate) - $overlap + ($overlap > 0 ? 0.0 : 0.2));
+        }
+
+        $pcm .= Pcm::silence($gap, $rate);
+
+        if ($clap !== null) {
+            $overlays[] = [$clap['pcm'], (int) round(($start + 0.2) * $rate)];
+            $studio[] = ['at' => round($start + 0.2, 3), 'part' => 'applause-'.$moment, 'file' => $clap['file'], 'seconds' => round(Pcm::seconds($clap['pcm'], $rate), 3)];
+        }
+
+        if ($music !== null) {
+            $length = Pcm::seconds($music['pcm'], $rate);
+            $at = max(0.0, $start + $gap + $overlap - $length);
+            $sound = $music['pcm'];
+
+            if ($overlap > 0) {
+                // Under the next voice only the fading tail, 12 dB down: about the bed's level.
+                $head = (int) round(($length - $overlap) * $rate) * Pcm::BYTES_PER_SAMPLE;
+                $tail = substr($sound, $head);
+                $sound = substr($sound, 0, $head).Pcm::fadeOut(Pcm::gained($tail, -12.0), intdiv(strlen($tail), Pcm::BYTES_PER_SAMPLE));
+            }
+
+            // Laid on after the next chunk is in place: an overlay reaching past the pause would push the next voice back.
+            $overlays[] = [$sound, (int) round($at * $rate)];
+            $studio[] = ['at' => round($at, 3), 'part' => 'theme-'.$themePart, 'file' => $music['file'], 'seconds' => round($length, 3)];
+        }
+
+        return $pcm;
+    }
+
+    /**
+     * Behind a script's last line: the closing applause (0.2 s after it) and the talk show's outro (0.3 s after it),
+     * the speech as long as both.
+     *
+     * @param  list<array{at: float, part: string, file: string, seconds: float}>  $studio
+     */
+    private function studioTail(string $pcm, int $rate, ?string $moment, bool $outro, array &$studio): string
+    {
+        $end = Pcm::seconds($pcm, $rate);
+        $clap = $moment === null ? null : $this->applausePcm($moment, $rate, $studio);
+        $music = $outro ? $this->themePcm(StudioAudience::OUTRO, $rate) : null;
+
+        if ($clap !== null) {
+            $pcm = Pcm::overlay($pcm, $clap['pcm'], (int) round(($end + 0.2) * $rate));
+            $studio[] = ['at' => round($end + 0.2, 3), 'part' => 'applause-'.$moment, 'file' => $clap['file'], 'seconds' => round(Pcm::seconds($clap['pcm'], $rate), 3)];
+        }
+
+        if ($music !== null) {
+            $pcm = Pcm::overlay($pcm, $music['pcm'], (int) round(($end + 0.3) * $rate));
+            $studio[] = ['at' => round($end + 0.3, 3), 'part' => 'theme-'.StudioAudience::OUTRO, 'file' => $music['file'], 'seconds' => round(Pcm::seconds($music['pcm'], $rate), 3)];
+        }
+
+        return $pcm;
+    }
+
+    /**
+     * A variant of the moment's applause at `applause.gain_db`, never the one placed last; null when there is none.
+     *
+     * @param  list<array{at: float, part: string, file: string, seconds: float}>  $studio
+     * @return array{file: string, pcm: string}|null
+     */
+    private function applausePcm(string $moment, int $rate, array $studio): ?array
+    {
+        $placed = array_values(array_filter($studio, fn (array $sound): bool => str_starts_with($sound['part'], 'applause-')));
+        $file = StudioAudience::applauseFile($moment, $this->soundDir(), $placed === [] ? null : $placed[count($placed) - 1]['file'], ($this->random)());
+        $pcm = $file === null ? null : $this->jingles->pcm($file, $rate, (float) config('tv.commentary.idents.applause.gain_db', -20) + self::speechOffset());
+
+        return $file === null || $pcm === null ? null : ['file' => $file, 'pcm' => $pcm];
+    }
+
+    /**
+     * A part of the talk theme (intro, outro: `talk_theme.gain_db`; the sting: `sting_gain_db`); null when it is missing.
+     *
+     * @return array{file: string, pcm: string}|null
+     */
+    private function themePcm(string $part, int $rate): ?array
+    {
+        $file = StudioAudience::themeFile($part, $this->soundDir());
+        $gain = (float) config('tv.commentary.idents.talk_theme.'.($part === StudioAudience::STING ? 'sting_gain_db' : 'gain_db'), -6);
+        $pcm = $file === null ? null : $this->jingles->pcm($file, $rate, $gain + self::speechOffset());
+
+        return $file === null || $pcm === null ? null : ['file' => $file, 'pcm' => $pcm];
+    }
+
+    /**
+     * How far the speech of a block sits under the -16 LUFS the station's sounds are mastered to, in dB: before the
+     * block's loudness pass the voice is at `voicestudio.speech_dbfs` RMS, which measured 1.8 dB lower in LUFS (P20
+     * probe: -20 dBFS RMS gave -21.8 LUFS). The studio's gains (`format_beds_gain_db`, `applause.gain_db`,
+     * `talk_theme.*`) are meant against the voice, so they get this on top; without it the bed sat 18 dB under the
+     * voice instead of 24.
+     */
+    private static function speechOffset(): float
+    {
+        return (float) config('tv.commentary.voicestudio.speech_dbfs', -20) + 16.0 - 1.8;
+    }
+
+    /** Where the station's own sounds lie (`idents.dir`, resources/audio/idents). */
+    private function soundDir(): string
+    {
+        return (string) config('tv.commentary.idents.dir', resource_path('audio/idents'));
     }
 
     /**

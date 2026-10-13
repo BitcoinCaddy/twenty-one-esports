@@ -37,6 +37,16 @@ goes in, and no other station's jingle was used as a model.
 | `bed-sport.opus` | 16.0 s, loops (16 s) | sport bed (Sport und Wetter) | -16.2 LUFS, true peak -1.6 dBFS | own work, CC0 1.0 |
 | `bed-tutorial.opus` | 16.0 s, loops (16 s) | tutorial bed | -16.0 LUFS, true peak -1.6 dBFS | own work, CC0 1.0 |
 | `bed-weather.opus` | 16.0 s, loops (16 s) | weather bed | -16.0 LUFS, true peak -2.0 dBFS | own work, CC0 1.0 |
+| `applause-short-1.opus` | 1.7 s | polite applause after a hit (studio audience) | -16.1 LUFS, true peak -1.3 dBFS | own work, CC0 1.0 |
+| `applause-short-2.opus` | 2.0 s | polite applause after a hit | -16.0 LUFS, true peak -1.3 dBFS | own work, CC0 1.0 |
+| `applause-short-3.opus` | 1.4 s | polite applause after a hit | -16.6 LUFS, true peak -1.2 dBFS | own work, CC0 1.0 |
+| `applause-short-4.opus` | 2.1 s | polite applause after a hit | -16.0 LUFS, true peak -1.4 dBFS | own work, CC0 1.0 |
+| `applause-big-1.opus` | 3.5 s | applause at a show's open and close | -16.0 LUFS, true peak -1.9 dBFS | own work, CC0 1.0 |
+| `applause-big-2.opus` | 4.0 s | applause at a show's open and close | -16.0 LUFS, true peak -1.4 dBFS | own work, CC0 1.0 |
+| `applause-big-3.opus` | 3.1 s | applause at a show's open and close | -16.0 LUFS, true peak -1.8 dBFS | own work, CC0 1.0 |
+| `theme-talk-intro.opus` | 7.7 s | talk show theme, intro before the host's welcome | -16.1 LUFS, true peak -1.3 dBFS | own work, CC0 1.0 |
+| `theme-talk-outro.opus` | 6.1 s | talk show theme, outro after the last line | -16.1 LUFS, true peak -1.6 dBFS | own work, CC0 1.0 |
+| `theme-talk-sting.opus` | 2.7 s | talk show act-break sting (fact check, closing round) | -16.0 LUFS, true peak -1.6 dBFS | own work, CC0 1.0 |
 
 Format: Ogg Opus, 48 kHz, mono (the stream's voice input is mono). Measured
 2026-10-12 with `ffmpeg -af ebur128=peak=sample`; the same values after the
@@ -92,3 +102,15 @@ passes, sample peaks limited at -2 dBFS so the encoded file stays under
 -1 dBTP, Ogg Opus 48 kHz mono. Every periodic part of a bed divides its 16 s
 (beats of 0.25 to 4 s, frequencies on a 1/16 Hz grid, no noise), so a bed
 loops without a seam. Measured 2026-10-12 with `ffmpeg -af ebur128=peak=true`.
+
+## The studio audience and the talk show theme (P20)
+
+`applause-*.opus` and `theme-talk-*.opus` come from
+`App\Support\Caster\Blocks\JingleSynth::studio()` the same way (`php artisan
+caster:jingles --sounds`). The applause is a crowd of synthetic clappers: each
+one a 6 to 12 ms burst of ffmpeg's deterministic noise on its own beat (3 to 6
+claps a second, slowly wobbling), entering and stopping at its own time, then
+band-limited (450 Hz to 7.5 kHz) with a small room echo. The theme is sine
+and FM tones only (stabs in D minor, timpani, the station motif D5 - A5 - F#5).
+No laugh track: whether a laughing crowd from filtered noise sounds like people
+cannot be judged without listening, so none was made. Measured 2026-10-13 with `ffmpeg -af ebur128=peak=true`.

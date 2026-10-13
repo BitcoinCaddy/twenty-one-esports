@@ -56,7 +56,9 @@ use InvalidArgumentException;
  * opening stinger, the voice, a closing hit, a bed of the category or of the
  * format (`imaging.format_beds`) ducked under it, -16 LUFS, peaks at -1 dBFS.
  * The stingers and beds are files of resources/audio/idents (sfx-*.opus,
- * bed-*.opus), rendered by --sounds from JingleSynth (own work, CC0).
+ * bed-*.opus), rendered by --sounds from JingleSynth (own work, CC0), and
+ * so are the studio's applause and the talk show's theme (applause-*.opus,
+ * theme-talk-*.opus, P20; BlockRenderer mixes them in on the workstation).
  * --lines renders only the named line ids (a probe), keeping the rest of the
  * library as it is.
  *
@@ -412,7 +414,8 @@ class CasterJinglesCommand extends Command
         $ffmpeg = (string) config('tv.commentary.voicestudio.ffmpeg', 'ffmpeg');
         $run = fn (array $arguments) => Process::timeout(120)->env(ChildEnvironment::withoutSecrets())->run($arguments);
         $failed = 0;
-        $names = [...array_map(fn (string $name): array => [$name, 'sfx-'.$name], JingleSynth::STINGERS), ...array_map(fn (string $name): array => ['bed:'.$name, 'bed-'.$name], JingleSynth::LOOP_BEDS)];
+        $names = [...array_map(fn (string $name): array => [$name, 'sfx-'.$name], JingleSynth::STINGERS), ...array_map(fn (string $name): array => ['bed:'.$name, 'bed-'.$name], JingleSynth::LOOP_BEDS),
+            ...array_map(fn (string $name): array => [$name, $name], JingleSynth::STUDIO)];
 
         foreach ($names as [$name, $file]) {
             $raw = $out.'/.raw-'.$file.'.wav';
