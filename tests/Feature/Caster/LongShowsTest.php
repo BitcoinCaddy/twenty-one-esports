@@ -50,7 +50,7 @@ function longShowSegment(int $call): array
     $subjects = ['Der Angeklagte', 'Der Richter', 'Die Verteidigung', 'Der Chat', 'Die Anklage', 'Das Gericht', 'Der Zeuge', 'Die Jury'];
     $adverbs = ['gründlich', 'gewaltig', 'peinlich', 'herrlich', 'kolossal', 'gnadenlos', 'meisterhaft', 'vollständig', 'fürchterlich', 'grandios', 'maßlos', 'tragisch', 'spektakulär', 'schamlos'];
     $adverb = $adverbs[$call % count($adverbs)];
-    $lines = array_map(fn (string $subject, int $index): string => ($index % 2 === 0 ? 'Markus' : 'Sirius').": {$subject} hat sich in dieser Verhandlung {$adverb} blamiert, und zwar vor dem versammelten Publikum im Saal.", $subjects, array_keys($subjects));
+    $lines = array_map(fn (string $subject, int $index): string => ($index % 2 === 0 ? 'Markus' : 'Sirius').": {$subject} {$adverb} blamiert, so hat sich das in dieser Verhandlung vor dem versammelten Publikum im Saal angefühlt.", $subjects, array_keys($subjects));
 
     return ['text' => implode("\n", $lines), 'canon_id' => null, 'mood' => 'fakten'];
 }
@@ -128,4 +128,21 @@ it('buries several coins in a long Shitcoin-Friedhof, one grave per segment', fu
     expect(substr_count($material['data'], 'der Verstorbene: '))->toBe(5)
         ->and($material['keys'])->toHaveCount(5)
         ->and($material['sources'])->toHaveCount(5);
+});
+
+it('turns down a segment that opens a third line with the same three words, or takes a tried case up again', function () {
+    $material = Shows::build("Angeklagt: Fritzi\nAngeklagt: Hodlbert", ['Fritzi', 'Hodlbert'], [], 'x', []);
+    $scripts = app(ShowScripts::class);
+    $previous = ['Euer Ehren, das ist grausam, was Fritzi im Chat geschrieben hat.', 'Euer Ehren, das ist grausam, und zwar ohne jede Bewährung.'];
+    $segment = fn (string $first): string => implode("\n", ['Markus: '.$first, ...array_slice(explode("\n", longShowSegment(3)['text']), 1)]);
+
+    expect(ShowScripts::opener('[laughter] Euer Ehren, das ist grausam.'))->toBe('euer ehren das')
+        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Euer Ehren, das ist schon wieder Fritzi, der hier jammert.'), false, $previous, true, false)[1])->toContain(ShowScripts::OPENER, ShowScripts::CASE_AGAIN)
+        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Nächster Fall, Hodlbert, und der ist noch schlimmer als Fritzi.'), false, $previous, true, false)[1])->toBe([])
+        // The closing segment may come back to every case.
+        ->and($scripts->evaluate(Shows::TRIBUNAL, $material, $segment('Zum Schluss noch einmal Fritzi, der Held dieses Abends im Saal.'), false, $previous, true, true)[1])->not->toContain(ShowScripts::CASE_AGAIN);
+
+    // The prompt names what is tried and used up.
+    expect(ShowScripts::prompt(Shows::TRIBUNAL, $material, [], null, ['number' => 2, 'first' => false, 'final' => false, 'minutes' => 30, 'previous' => $previous]))
+        ->toContain('Schon dran (nicht noch einmal als Fall, nur als kurzer Rückgriff): Fritzi')->toContain('„euer ehren das …“');
 });

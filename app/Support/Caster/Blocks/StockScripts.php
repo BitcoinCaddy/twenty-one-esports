@@ -97,6 +97,9 @@ final class StockScripts
     /** A league basics line that only holds on the live air (the stock airs at an unknown hour). */
     private const LIVE_ONLY = '/\b(?:live|nachts|genau jetzt|gerade|wach)\b/iu';
 
+    /** The judge found a fact, number, quote or attribution the material does not have (or could not say): the hard reject. */
+    public const INVENTED = 'stock_invented';
+
     /** The usage channel of the coherence judge (StockCoherenceJudge). */
     public const JUDGE_CHANNEL = 'caster_stock_judge';
 
@@ -402,13 +405,17 @@ final class StockScripts
         $this->usage->recordTokens(self::JUDGE_CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
         $min = (int) ($settings['min_score'] ?? 4);
-        $weak = [];
+        $invented = is_array($answer) && is_array($answer['invented'] ?? null) ? array_values(array_filter($answer['invented'], fn (mixed $line): bool => is_string($line) && trim($line) !== '')) : null;
+        $weak = $invented === null || $invented !== [] ? [self::INVENTED] : [];
 
         foreach (StockCoherenceJudge::SCORES as $score) {
             $value = is_array($answer) ? ($answer[$score] ?? null) : null;
+            // Sense needs only `sense_min_score` (user decision 2026-10-13: a clear image is airable radio); an invented fact is
+            // the hard reject (INVENTED) instead.
+            $floor = $score === 'sense' ? (int) ($settings['sense_min_score'] ?? 3) : $min;
 
             // A missing score or one outside 1..5 is no clearance.
-            if (! is_int($value) || $value < $min || $value > 5) {
+            if (! is_int($value) || $value < $floor || $value > 5) {
                 $weak[] = 'stock_weak_'.$score;
             }
         }
@@ -416,7 +423,8 @@ final class StockScripts
         $nonsense = is_array($answer) ? array_values(array_filter((array) ($answer['nonsense'] ?? []), fn (mixed $line): bool => is_string($line) && trim($line) !== '')) : [];
         $this->judgements[] = ['format' => $format, 'material' => $material, 'text' => $labelled, 'answer' => is_array($answer) ? $answer : null];
         $this->hint = trim((is_array($answer) && is_string($answer['hint'] ?? null) ? trim($answer['hint']) : '')
-            .($nonsense === [] ? '' : ' Diese Sätze sagen nichts Konkretes: '.implode(' ', array_map(fn (string $line): string => '„'.trim($line).'“', array_slice($nonsense, 0, 4)))));
+            .($nonsense === [] ? '' : ' Diese Sätze sagen nichts Konkretes: '.implode(' ', array_map(fn (string $line): string => '„'.trim($line).'“', array_slice($nonsense, 0, 4))))
+            .($invented === null || $invented === [] ? '' : ' Diese Sätze erfinden, was nicht im Material steht: '.implode(' ', array_map(fn (string $line): string => '„'.trim($line).'“', array_slice($invented, 0, 4)))));
         $this->usage->recordOutcome(self::JUDGE_CHANNEL, $weak === [] ? 'accepted' : 'rejected');
 
         if ($weak === []) {
@@ -646,6 +654,7 @@ final class StockScripts
                 ."\n- Dann genau drei Runden zu EINEM Thema, jede Runde ein konkreter Fakt aus dem Material, an dem sich die beiden reiben: einer bringt den Fakt, der andere zieht ihn ins Absurde, der Erste kontert mit einem Seitenhieb, der an genau diesem Fakt hängt. Keine Aufzählung: nicht jeden Punkt des Materials abarbeiten, höchstens drei Fakten, kein zweites Thema, kein Erklärvortrag."
                 ."\n- Die vorletzte Zeile ist die härteste Pointe der Sendung, kurz (höchstens zwölf Wörter): sie greift genau das Bild oder die Streitfrage aus den ersten zwei Zeilen wieder auf, dreht sie einen Schritt weiter und beantwortet damit die Prämisse (der Rückgriff ist die Pointe, keine Wiederholung des Kernsatzes). Danach nur noch die Abmoderation in einem Satz, und sie ist die allerletzte Zeile. Kein lauer Schluss, kein „und so weiter“, keine Zusammenfassung."
                 ."\n- Ton: purer Realismus einer echten Radioshow, sarkastisch, zynisch und frech; es soll wehtun zuzuhören. Die beiden roasten sich gegenseitig und alles in Reichweite (Staat, Banken, Fiatgeld, Shitcoiner, den Chat, den eigenen Sender), aber nie wegen Herkunft, Geschlecht, Religion, Behinderung oder Aussehen und ohne erfundene Behauptungen über echte Personen."
+                ."\n- Reibung statt Vorlesen: Markus liest keine Fakten vor, er schießt sie dem anderen als Vorwurf oder Spott um die Ohren; jeder Fakt wird sofort angezweifelt, verdreht oder gegen den anderen gewendet, und der kontert noch böser. Keine Wortmeldung ohne Seitenhieb auf den anderen oder auf das Ziel des Fakts, und jeder Seitenhieb hängt an einem Fakt aus dem Material."
                 ."\n- Das Ritual spielt ihr, ihr beschreibt es nicht: kein „im Sportschau-Ton“, kein „ich klopfe mit dem Zeigestock“, sondern ihr klingt so und tut es."
                 ."\n- Roast wie beim Liga-Pranger: ein konkretes Ziel, ein bestimmtes Detail aus dem Material, eine Steigerung, dann die Pointe. Jeder Seitenhieb hängt an einer konkreten Tatsache oder Behauptung aus dem Material."
                 ."\n- Liebevolle Beleidigungen werfen sich die beiden ständig gegenseitig an den Kopf, jedes Mal neu erfunden und passend zum Thema (etwa „du Pfeife“, „alter Fiat-Romantiker“, „Sats-Geizhals“, „Schwurbelkopf“), nie diese Wörter: ".implode(', ', array_filter((array) config('esports.voice.blocklist', []), 'is_string')).'.'
@@ -667,6 +676,7 @@ final class StockScripts
                 self::FRAME_LOST => 'Die Ansage oder die Abmoderation nannte „heute“ oder eine Tageszeit und fiel deshalb weg: „Das ist die Geschichtsstunde, es geht um …“ und „Das war die Geschichtsstunde …“, ohne „heute“.',
                 self::BACK_ANNOUNCE => 'Die letzte Zeile muss die Abmoderation mit dem Namen der Sendung sein, danach kommt nichts mehr.',
                 self::INCOHERENT => 'Als Sendung nicht schlüssig'.($hint === '' ? '.' : ': '.$hint),
+                self::INVENTED => 'Erfunden: kein Fakt, keine Zahl, kein Zitat und keine Zuschreibung, die nicht im Material stehen; bei zwei Zahlen für dasselbe nur die aus der Überschrift.',
                 'stock_weak_premise' => 'Prämisse: in den ersten zwei Sätzen Sendung, Thema und den Grund zum Zuhören nennen.',
                 'stock_weak_through_line' => 'Roter Faden: bei EINEM Thema bleiben, jede Wortmeldung baut auf der davor auf.',
                 'stock_weak_payoff' => 'Schluss: eine Pointe, die den Einstieg auflöst, dann die Abmoderation mit dem Namen der Sendung.',

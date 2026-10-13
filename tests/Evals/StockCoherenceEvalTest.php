@@ -38,8 +38,8 @@ it('writes one coherent stock programme per format, judged before it is queued',
 
     // STOCK_EVAL_FORMATS=a,b runs only those formats.
     foreach (array_filter(explode(',', (string) (getenv('STOCK_EVAL_FORMATS') ?: 'talk,tutorial,geschichte,liga,schwarzbuch,inflationsbeichte'))) as $format) {
-        // A format costs at most four calls: two drafts, two judgements.
-        if ($calls() + 4 > $budget) {
+        // A format costs two calls when its first draft passes, four with the rewrite: it starts while two still fit.
+        if ($calls() + 2 > $budget) {
             fwrite(STDERR, "\n===== {$format}: skipped, call budget\n");
 
             continue;

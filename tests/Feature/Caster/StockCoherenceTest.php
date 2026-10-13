@@ -79,7 +79,7 @@ function stockCoherenceVerdict(int $score = 5, array $weak = [], string $hint = 
         $answer[$name] = 2;
     }
 
-    return [...$answer, 'nonsense' => $weak === [] ? [] : ['Der Euro ist ein Gummiband, das jedes Jahr länger wird.'], 'hint' => $hint];
+    return [...$answer, 'nonsense' => $weak === [] ? [] : ['Der Euro ist ein Gummiband, das jedes Jahr länger wird.'], 'invented' => [], 'hint' => $hint];
 }
 
 /**
@@ -196,6 +196,23 @@ it('writes the stock with its own model and without the personas\' running gags,
     expect($duets->systemPrompt())->toContain("Running Gags\n")->toContain('Running Gags in Variation')->toContain('Nachtzug')
         ->and($duets->systemPrompt(gags: false))->not->toContain("Running Gags\n")->not->toContain('Running Gags in Variation')->not->toMatch('/\b(?:Nachtzug|Kabel|Neustart|Bierdeckel)\b/u')
         ->and($duets->systemPrompt(gags: false))->toContain('Zweite Stimme: Sirius')->toContain('Grenzen');
+});
+
+it('rejects an invented fact hard, but airs sense 3 when nothing is invented (user bar 2026-10-13)', function () {
+    VoiceAgent::fake(fn (): array => ['text' => stockCoherenceDraft(), 'canon_id' => null, 'mood' => 'fakten']);
+    $invented = [...stockCoherenceVerdict(), 'invented' => ['Die Szene sagt, das Feuer wird kleiner, wenn man es lange anschaut.']];
+    StockCoherenceJudge::fake([$invented, [...stockCoherenceVerdict(), 'sense' => 3]]);
+
+    $stock = app(StockScripts::class);
+
+    expect($stock->write())->not->toBeNull()
+        ->and($stock->judgements)->toHaveCount(2);
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Diese Sätze erfinden') && str_contains($prompt->prompt, 'das Feuer wird kleiner'));
+    expect(DB::table('voice_rejections')->where('channel', StockScripts::JUDGE_CHANNEL)->pluck('reason')->all())->toEqualCanonicalizing([StockScripts::INCOHERENT, StockScripts::INVENTED]);
+
+    // Sense 2 still fails, and an answer without the `invented` list is no clearance.
+    StockCoherenceJudge::fake([[...stockCoherenceVerdict(), 'sense' => 2], array_diff_key(stockCoherenceVerdict(), ['invented' => 0])]);
+    expect(app(StockScripts::class)->write())->toBeNull();
 });
 
 it('drops a draft the judge finds weak twice, and one whose judgement it cannot read', function (array $first, array $second) {

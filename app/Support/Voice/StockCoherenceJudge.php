@@ -37,7 +37,7 @@ final class StockCoherenceJudge implements Agent, HasProviderOptions, HasStructu
             You judge a German radio script for a comedy talk station before it is voiced. A listener tunes in at a random moment and hears it once, with no screen and no context. Be strict: a 4 means a listener understands and enjoys it, a 3 means something is missing.
             Score 1 to 5:
             - premise: within the first two or three spoken sentences the listener knows which show this is, what it is about and why it is worth listening.
-            - through_line: one subject from start to end; every turn builds on the one before; no jump to an unrelated subject, no list of loosely connected anecdotes, no filler.
+            - through_line: one subject from start to end; every turn builds on the one before; no jump to an unrelated subject, no list of loosely connected anecdotes, no filler. When the message says "Several cases", the show has several cases on purpose (a court with several defendants, a graveyard with several graves, a hotline with several calls): judge each case on its own (one subject inside it, it builds, it ends) and the show frame around them (opener, handoffs between cases, one ending); a new case is not a jump.
             - payoff: it ends on a punchline or a clear point that pays off the opening, followed by a short back-announce naming the show; it does not just stop on a limp line.
             - fit: the script matches the announced format and the material; every quote, saying or meme is introduced with who said it and where (as the material names them, the person spelled correctly), never as a vague "ein Veteran" or "irgendwer"; a source that only explains a meme is not presented as the person who said it; each quote or meme serves the subject. Hooks the material offers are optional: leaving them out is fine.
             - liveliness: it sounds like a real, sarcastic, cynical comedy radio show, not like a lecture or two people reading out turns: quick banter, the hosts roast each other and everything in reach (state, banks, fiat money, shitcoiners, the chat, the station itself), real friction and at least one joke that lands on first hearing. Polite agreement, explaining at length or harmless jokes score 3 or lower. Insults against protected traits, slurs or invented claims about real persons score 1.
@@ -45,6 +45,7 @@ final class StockCoherenceJudge implements Agent, HasProviderOptions, HasStructu
               Not nonsense: "Tauziehen ist die ehrlichste Disziplin, denn am anderen Ende des Seils hängt der Steuerzahler und verliert." / "Rekordeinnahmen und trotzdem Schulden, das schafft nur ein Staat." / "Die Belohnung halbiert sich, und keine Zentralbank kann abends beschließen, mehr zu drucken."
               Nonsense: "Beim Tauziehen um solide Finanzen lässt der Staat das Seil los und fällt mit Anlauf in den Wakeboard-Teich." (stacked images) / "Der Kaninchenbau erklärt dir erst das Geld und nimmt dir dann dein Weltbild." (no recognisable point) / "Alle zweihunderttausendundzehn Blöcke ist es so weit." (invented number)
             `nonsense`: every sentence of the script that fails `sense`, word for word without the speaker name; an empty list when there is none.
+            `invented`: every sentence that states a fact, number, quote or attribution the material does not contain (a quote put into the scene's or someone's mouth, a size, a date, an event, who said or wanted what, a second number where the material has one), word for word; when the material has two numbers for the same thing, only its headline number is allowed. Opinion, roast and images are never invented facts. An empty list when there is none.
             `hint`: one or two German sentences naming the weakest point and how to fix it; empty when every score is 4 or more.
             Affectionate insults between the hosts ("du Pfeife", "Sats-Geizhals", "alter Fiat-Romantiker", "Schwurbelkopf") are wanted, not unclear and not nonsense. Opinion and roast without a fact are fine as long as they target a concrete claim of the script.
             Anchors for the scale (material: the Schwarzbuch case of 120 million euros for the World Games 2029 in Karlsruhe, Tauziehen, Frisbee, Wasserski; Bund, Land and Stadt balance their budgets only with debt):
@@ -113,12 +114,12 @@ final class StockCoherenceJudge implements Agent, HasProviderOptions, HasStructu
             $scores[$score] = $schema->integer()->required();
         }
 
-        return [...$scores, 'nonsense' => $schema->array()->items($schema->string())->required(), 'hint' => $schema->string()->required()];
+        return [...$scores, 'nonsense' => $schema->array()->items($schema->string())->required(), 'invented' => $schema->array()->items($schema->string())->required(), 'hint' => $schema->string()->required()];
     }
 
     /** The user message: the format as announced, the material it was written from, and the script. */
-    public static function message(string $format, string $material, string $script): string
+    public static function message(string $format, string $material, string $script, bool $cases = false): string
     {
-        return "Format: {$format}\n\nMaterial (the only source for names and quotes):\n<<<material\n{$material}\nmaterial>>>\n\nScript:\n<<<script\n{$script}\nscript>>>";
+        return "Format: {$format}".($cases ? "\nSeveral cases: yes" : '')."\n\nMaterial (the only source for names and quotes):\n<<<material\n{$material}\nmaterial>>>\n\nScript:\n<<<script\n{$script}\nscript>>>";
     }
 }

@@ -70,12 +70,14 @@ it('writes a long Chat-Tribunal and a long Shitcoin-Friedhof that fill their win
         $text = $show['text'] ?? '';
         $lines = $text === '' ? [] : explode("\n", $text);
         $jabs = count(array_filter($lines, fn (string $line): bool => preg_match('/\b(?:du|alter|alte)\s+\p{Lu}[\p{L}-]+|staat|zentralbank|fiat|steuer|shitcoin|bank|behörde|finanzamt/iu', $line) === 1));
-        $judge = $show === null ? null : (new StockCoherenceJudge)->prompt(StockCoherenceJudge::message(Shows::CATALOGUE[$id]['name'], $material['data'], $text))->toArray();
+        // The judge reads every line with its speaker, and a show of several cases as such (P21, user decision 2026-10-13).
+        $labelled = implode("\n", array_map(fn (string $line, int $index): string => ucfirst($show['speakers'][$index] ?? 'markus').': '.$line, $lines, array_keys($lines)));
+        $judge = $show === null ? null : (new StockCoherenceJudge)->prompt(StockCoherenceJudge::message(Shows::CATALOGUE[$id]['name'], $material['data'], $labelled, cases: true))->toArray();
 
         fwrite(STDERR, "\n===== LONG {$id}\n[slot] ".$slot['starts_at']->setTimezone('Europe/Berlin')->format('H:i').' for '.Shows::slotMinutes($id)." min\n[writer calls] ".($calls() - $before)
             ."\n[estimate] ".round(ScriptQueue::estimateSeconds($text) / 60, 1).' min, '.count($lines).' lines, '.str_word_count($text, 0, 'äöüÄÖÜß').' words'
             ."\n[jabs] {$jabs} of ".count($lines).' lines ('.(count($lines) === 0 ? 0 : round(100 * $jabs / count($lines))).' %)'
-            ."\n[material]\n".($material['data'] ?? 'NULL')."\n[text]\n".($text === '' ? 'NULL (dropped)' : $text)."\n[judge] ".json_encode($judge, JSON_UNESCAPED_UNICODE)."\n");
+            ."\n[material]\n".($material['data'] ?? 'NULL')."\n[text]\n".($text === '' ? 'NULL (dropped)' : $labelled)."\n[judge] ".json_encode($judge, JSON_UNESCAPED_UNICODE)."\n");
     }
 
     fwrite(STDERR, "\n[rejections] ".json_encode(DB::table('voice_rejections')->get(['channel', 'reason', 'count'])->all(), JSON_UNESCAPED_UNICODE)."\n");

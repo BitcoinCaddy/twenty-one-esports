@@ -510,6 +510,8 @@ return [
                     // Sonnet: Haiku flagged plain sentences from the material as nonsense in 10 of 10 real drafts (P21, 2026-10-13).
                     'model' => env('TV_COMMENTARY_STOCK_JUDGE_MODEL', 'claude-sonnet-5-5'),
                     'min_score' => 4,
+                    // User decision 2026-10-13: sense 3 is airable when nothing is invented (`invented` empty is the hard gate).
+                    'sense_min_score' => 3,
                     'max_tokens' => 1500,
                 ],
                 'sentences_per_turn' => 4,
