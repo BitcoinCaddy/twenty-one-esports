@@ -49,6 +49,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Random\Randomizer;
 use RuntimeException;
 use Symfony\Component\Process\Exception\ProcessSignaledException;
 use Symfony\Component\Process\ExecutableFinder;
@@ -140,6 +141,9 @@ class TwentyOneStreamCommand extends Command
 
     /** The director failed this series of polls (logged once). */
     private bool $directorFailing = false;
+
+    /** The start of the music break last logged (each planned break is logged once). */
+    private ?float $loggedMusicBreak = null;
 
     private bool $stopping = false;
 
@@ -505,6 +509,12 @@ class TwentyOneStreamCommand extends Command
                     try {
                         $caption = $this->director->tick($planner, $slot, $now);
                         $this->directorFailing = false;
+                        $musicBreak = $this->director->musicBreak();
+
+                        if ($musicBreak !== null && $musicBreak['start'] !== $this->loggedMusicBreak) {
+                            $this->loggedMusicBreak = $musicBreak['start'];
+                            $this->log(sprintf('music break: %s from %s to %s', basename($musicBreak['file']), date('H:i:s', (int) $musicBreak['start']), date('H:i:s', (int) $musicBreak['end'])));
+                        }
                     } catch (Throwable $e) {
                         if (! $this->directorFailing) {
                             $this->log('commentary failed, the stream goes on without it: '.$this->describe($e));
@@ -1088,6 +1098,7 @@ class TwentyOneStreamCommand extends Command
     private function writeMusicList(): string
     {
         $ffprobe = (string) config('twentyone.stream.ffprobe');
+        $run = array_values((array) config('twentyone.stream.music.priority_run', [3, 5]));
         $timeline = new MusicTimeline(
             (string) config('twentyone.stream.music.timeline_file'),
             fn (string $file): ?array => $this->probeTrack($ffprobe, $file),
@@ -1099,6 +1110,9 @@ class TwentyOneStreamCommand extends Command
             max(1, (int) config('twentyone.stream.music.instrumentals_per_vocal', 3)),
             microtime(true),
             (float) config('twentyone.stream.music.list_hours', 12),
+            new Randomizer,
+            $this->musicFiles((string) config('twentyone.stream.music.plebrap_dir')),
+            [(int) ($run[0] ?? 3), (int) ($run[1] ?? 5)],
         );
         $path = rtrim((string) config('twentyone.stream.scene.work_dir'), '/').'/music.ffconcat';
         File::ensureDirectoryExists(dirname($path));

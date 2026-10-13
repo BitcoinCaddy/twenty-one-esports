@@ -181,6 +181,54 @@ final class MusicPlaylist
     }
 
     /**
+     * A pass over the priority music with the rest in between (user 2026-10-13: "PlebRap 3 bis 5 Lieder, dann nur
+     * einmal eins der anderen, dann wieder PlebRap mit 3 bis 5 Liedern"): every priority file once in a random order
+     * (none again before all played), cut into runs of `$min` to `$max`, each run followed by exactly one file of
+     * `$rest`, drawn from a shuffled bag. No neighbours share a title where the rest allows it, also not the rest
+     * file and the run around it; a rest file that cannot avoid both neighbours is still played (the music never stops).
+     * Without priority files the rest plays in a no-repeat order (order()); without rest files only the runs.
+     *
+     * @param  list<string>  $priority
+     * @param  list<string>  $rest
+     * @return list<string>
+     */
+    public static function priorityRuns(array $priority, array $rest, int $min, int $max, Randomizer $random = new Randomizer): array
+    {
+        if ($priority === []) {
+            return self::order($rest, 1, $random);
+        }
+
+        $min = max(1, $min);
+        $max = max($min, $max);
+        $runs = $random->shuffleArray($priority);
+        $bag = [];
+        $list = [];
+
+        while ($runs !== []) {
+            $run = array_splice($runs, 0, $random->getInt($min, $max));
+            array_push($list, ...$run);
+
+            if ($rest === []) {
+                continue;
+            }
+
+            $previous = self::title($run[count($run) - 1]);
+            $next = $runs === [] ? null : self::title($runs[0]);
+
+            if ($bag === []) {
+                $bag = $random->shuffleArray($rest);
+            }
+
+            $key = array_key_first(array_filter($bag, fn (string $file): bool => ! in_array(self::title($file), [$previous, $next], true))) ?? array_key_first($bag);
+            $list[] = $bag[$key];
+            unset($bag[$key]);
+            $bag = array_values($bag);
+        }
+
+        return $list;
+    }
+
+    /**
      * No control characters: a newline would end the ffconcat `file` line
      * and start a directive of its own.
      */

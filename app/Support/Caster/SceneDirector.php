@@ -5,8 +5,10 @@ namespace App\Support\Caster;
 use App\Models\CasterClip;
 use App\Models\CasterScript;
 use App\Support\Caster\Programme\BroadcastClock;
+use App\Support\TwentyOne\Stream\MusicTimeline;
 use App\Support\TwentyOne\Stream\RotationPlanner;
 use Carbon\CarbonImmutable;
+use Closure;
 
 /**
  * Scene and commentary as one unit (user 2026-10-11: "genug Zeit für den
@@ -113,9 +115,32 @@ use Carbon\CarbonImmutable;
  * (CasterScript::PODCAST_INTRO) plays right before the first chunk, the first
  * chunk right after it (nothing comes between), and Markus' back-announce
  * (PODCAST_OUTRO) right after the last chunk, each when it is voiced.
+ *
+ * A music break (user 2026-10-13: "Ab und an soll der Radiosender auch mal ein
+ * komplettes Musikstück spielen lassen"; `music_breaks`): `per_hour` times an
+ * hour, counted from the end of the last break (the first one half an
+ * interval after the start), the voice pauses for one complete vocal track
+ * of the stream music. It is planned at the next clip boundary (or ahead of
+ * it, while a single clip or block plays) for the first PlebRap track (else
+ * vocal track) of the music timeline that starts within `wait_seconds` of it
+ * and whose whole run
+ * crosses no bulletin, rubric or show window slot, no podcast airing and no
+ * quiet hour; never while a story told in parts, a held rest or a podcast is
+ * on air. No block joins the one on air once a break is planned. Until the
+ * track starts only a single clip that ends in time plays (no first part of
+ * a story); from its first second to its last nothing plays but a bulletin
+ * (the news never waits), and the voice resumes as the track ends. A clip
+ * still on air when the track starts cancels the break (it would no longer be
+ * complete); the next boundary plans again.
  */
 final class SceneDirector
 {
+    /** Seconds around a music break's track the voice keeps clear (the encoder starts the music a moment late). */
+    private const MUSIC_BREAK_MARGIN = 2.0;
+
+    /** Seconds a stinger or jingle may add to a clip before a music break (Idents, Imaging). */
+    private const MUSIC_BREAK_DRESSING_SECONDS = 8.0;
+
     private ?int $slotNumber = null;
 
     private ?CasterClip $clip = null;
@@ -175,6 +200,20 @@ final class SceneDirector
 
     private readonly BroadcastClock $clock;
 
+    /**
+     * The music break planned or on air: the vocal track's start and end on the wall clock, its file, and whether the
+     * voice already stood aside for it.
+     *
+     * @var array{start: float, end: float, file: string, started: bool}|null
+     */
+    private ?array $musicBreak = null;
+
+    /** When the next music break is due (null: not drawn yet). */
+    private ?float $nextMusicBreakAt = null;
+
+    /** When a music break was last looked for (at most every few seconds). */
+    private float $musicBreakAskedAt = 0.0;
+
     /** When the clip on air starts on the wall clock (the air log). */
     private float $airStart = 0.0;
 
@@ -197,7 +236,7 @@ final class SceneDirector
     private array $held = [];
 
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}}  $settings
+     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -206,15 +245,17 @@ final class SceneDirector
         private readonly ?Idents $idents = null,
         ?BroadcastClock $clock = null,
         private readonly ?Imaging $imaging = null,
+        private readonly ?Closure $musicTracks = null,
     ) {
         $this->clock = $clock ?? BroadcastClock::fromConfig();
     }
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}} $settings */
+        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}} $settings */
         $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120), 'rubric_late_seconds' => (float) config('tv.commentary.programme.rubrics.late_seconds', 180), 'blocks' => (array) config('tv.commentary.blocks', []), 'reaction_max_hold_seconds' => (float) config('tv.commentary.chat.max_hold_seconds', 600),
-            'podcast' => ['pause_window_seconds' => (float) config('tv.commentary.podcast_replay.pause_window_seconds', 20), 'resume_within_seconds' => (float) config('tv.commentary.podcast_replay.resume_within_seconds', 1800)]];
+            'podcast' => ['pause_window_seconds' => (float) config('tv.commentary.podcast_replay.pause_window_seconds', 20), 'resume_within_seconds' => (float) config('tv.commentary.podcast_replay.resume_within_seconds', 1800)],
+            'music_breaks' => (array) config('tv.commentary.music_breaks', [])];
 
         $timeline = new CommentaryTimeline(
             (int) config('tv.commentary.mix.sample_rate', 24000),
@@ -223,7 +264,27 @@ final class SceneDirector
             (float) config('tv.commentary.mix.news_fade_up_seconds', 2.0),
         );
 
-        return new self($spool, $timeline, $settings, Idents::fromConfig(), null, Imaging::fromConfig());
+        return new self($spool, $timeline, $settings, Idents::fromConfig(), null, Imaging::fromConfig(), self::musicTracksFromConfig());
+    }
+
+    /**
+     * The stream music's tracks within a stretch of the wall clock, read from the timeline the stream writes
+     * (MusicTimeline::tracks()), each marked vocal when it lies in the vocal or the PlebRap folder (the instrumentals
+     * have their own), and priority when it is PlebRap (user 2026-10-13: "absoluten Vorrang").
+     *
+     * @return Closure(float, float): list<array{file: string, start: float, end: float, vocal: bool, priority: bool}>
+     */
+    public static function musicTracksFromConfig(): Closure
+    {
+        $path = (string) config('twentyone.stream.music.timeline_file');
+        $vocals = rtrim((string) config('twentyone.stream.music.dir'), '/');
+        $plebrap = rtrim((string) config('twentyone.stream.music.plebrap_dir'), '/');
+
+        return fn (float $from, float $to): array => array_map(function (array $track) use ($vocals, $plebrap): array {
+            $priority = $plebrap !== '' && dirname($track['file']) === $plebrap;
+
+            return [...$track, 'vocal' => $priority || ($vocals !== '' && dirname($track['file']) === $vocals), 'priority' => $priority];
+        }, $path === '' ? [] : MusicTimeline::tracks($path, $from, $to));
     }
 
     /**
@@ -241,6 +302,9 @@ final class SceneDirector
                 $this->clipEnded($this->clip, $now);
             }
         }
+
+        // A music break is planned at the boundary ahead, or one already planned is no longer whole.
+        $this->planMusicBreak($now);
 
         // A programme block about to end: the next block joins it seamlessly, a breath after its last word (P6).
         if ($this->clip !== null && $this->clip->isBlock()) {
@@ -292,6 +356,11 @@ final class SceneDirector
                 $this->cut($end, $now);
                 $planner->hold($end + 0.3);
             }
+        }
+
+        // The music break's track is playing: only the music, until its last second (a due bulletin went first above).
+        if ($this->clip === null && $this->inMusicBreak($now)) {
+            return null;
         }
 
         // A podcast on air stops at the pause nearest the next bulletin's slot; stopped before the slot, nothing else plays
@@ -572,6 +641,11 @@ final class SceneDirector
     /** Puts a clip on the timeline and holds the slot until it has been spoken; false when it cannot be decoded (then dropped). */
     private function play(RotationPlanner $planner, CasterClip $clip, float $now, bool $continuation = false): bool
     {
+        // Before a planned music break only a single clip that ends before its track starts (it waits otherwise).
+        if (! $this->fitsBeforeMusicBreak($clip, $now, $continuation)) {
+            return false;
+        }
+
         $pcm = $this->spool->pcm($clip);
 
         if ($pcm === null) {
@@ -849,7 +923,8 @@ final class SceneDirector
     {
         $end = $this->timeline->endsAt();
 
-        if ($this->clip === null || $end === null || $this->timeline->isCut() || $this->held !== [] || $end - $now > 2.5 || $end <= $now) {
+        // A planned music break takes the boundary: the block on air ends, the next one waits for the track's end.
+        if ($this->clip === null || $end === null || $this->timeline->isCut() || $this->held !== [] || $end - $now > 2.5 || $end <= $now || $this->musicBreak !== null) {
             return;
         }
 
@@ -1058,6 +1133,148 @@ final class SceneDirector
     public function bulletinOnAir(): ?string
     {
         return $this->bulletinSlot;
+    }
+
+    /** Seconds between two music breaks (`3600 / per_hour`), null when music breaks are off. */
+    private function musicBreakInterval(): ?float
+    {
+        $settings = (array) ($this->settings['music_breaks'] ?? []);
+        $perHour = (float) ($settings['per_hour'] ?? 0);
+
+        return $this->musicTracks === null || ($settings['enabled'] ?? false) !== true || $perHour <= 0 ? null : 3600 / $perHour;
+    }
+
+    /**
+     * Plans the due music break around the next clip boundary (the end of the clip on air, else now): the first vocal
+     * track that starts within `wait_seconds` of it and may run whole (musicBreakFits()). Cancels a planned break whose
+     * track started while a clip was still on air.
+     */
+    private function planMusicBreak(float $now): void
+    {
+        $margin = self::MUSIC_BREAK_MARGIN;
+
+        if ($this->musicBreak !== null) {
+            if (! $this->musicBreak['started'] && $now > $this->musicBreak['start'] + $margin) {
+                // The track began under a clip that ran on: the break would not be complete any more.
+                $this->musicBreak = null;
+            }
+
+            return;
+        }
+
+        $interval = $this->musicBreakInterval();
+
+        if ($interval === null) {
+            return;
+        }
+
+        $this->nextMusicBreakAt ??= $now + $interval / 2;
+
+        if ($now < $this->nextMusicBreakAt || $now - $this->musicBreakAskedAt < 5.0) {
+            return;
+        }
+
+        $this->musicBreakAskedAt = $now;
+
+        // Never inside a story told in parts, before a held rest, around a podcast or a bulletin on air.
+        if ($this->part !== null || $this->held !== [] || $this->podcastFollows || $this->podcastEnded !== null || $this->podcastBreak !== null
+            || $this->bulletinSlot !== null || ($this->clip !== null && ($this->clipIsPart || $this->isPodcast($this->clip) || $this->timeline->isCut()))) {
+            return;
+        }
+
+        $lead = max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
+        $from = max($now, $this->clip === null ? $now : (float) ($this->timeline->endsAt() ?? $now)) + $lead;
+        $wait = max(0.0, (float) ($this->settings['music_breaks']['wait_seconds'] ?? 300));
+
+        // The first PlebRap track that fits within the wait, else the first other vocal track that does.
+        $fitting = array_values(array_filter(($this->musicTracks)($from, $from + $wait + 1200), fn (array $track): bool => ($track['vocal'] ?? false) === true
+            && $track['start'] >= $from && $track['start'] <= $from + $wait && $this->musicBreakFits($track['start'], $track['end'])));
+        $track = collect($fitting)->first(fn (array $track): bool => ($track['priority'] ?? false) === true) ?? ($fitting[0] ?? null);
+
+        if ($track !== null) {
+            $this->musicBreak = ['start' => $track['start'], 'end' => $track['end'], 'file' => $track['file'], 'started' => false];
+        }
+    }
+
+    /**
+     * Whether a music break may run from `$start` to `$end`: no quiet hour, no bulletin or rubric slot (a show window
+     * reads as its rubric slot) on air at either edge or starting in between, and no podcast airing due by its end.
+     */
+    private function musicBreakFits(float $start, float $end): bool
+    {
+        $margin = self::MUSIC_BREAK_MARGIN;
+        $from = CarbonImmutable::createFromTimestamp((int) floor($start - $margin));
+        $to = CarbonImmutable::createFromTimestamp((int) ceil($end + $margin));
+
+        if (QuietHours::active($from) || QuietHours::active($to)) {
+            return false;
+        }
+
+        if ($this->clock->enabled()) {
+            $fixed = fn (string $type): bool => $type === BroadcastClock::RUBRIC || BroadcastClock::isBulletin($type);
+
+            if ($fixed($this->clock->slotAt($from)['type']) || $fixed($this->clock->slotAt($to)['type'])) {
+                return false;
+            }
+
+            foreach ($this->clock->upcoming($from, (int) ceil(($to->getTimestamp() - $from->getTimestamp()) / 60) + 1) as $slot) {
+                if ($slot['key'] <= $to->getTimestamp() && $fixed($slot['type'])) {
+                    return false;
+                }
+            }
+        }
+
+        return $this->spool->podcast($to) === null;
+    }
+
+    /**
+     * Whether the music break's track is playing (the voice stands aside): from just before its start to its end. At
+     * its end the break is over, the next one due `3600 / per_hour` later, and the voice resumes at once.
+     */
+    private function inMusicBreak(float $now): bool
+    {
+        if ($this->musicBreak === null || $now < $this->musicBreak['start'] - self::MUSIC_BREAK_MARGIN) {
+            return false;
+        }
+
+        if ($now >= $this->musicBreak['end']) {
+            $this->nextMusicBreakAt = $this->musicBreak['end'] + (float) ($this->musicBreakInterval() ?? 1800.0);
+            $this->musicBreak = null;
+            $this->quietUntil = $now;
+
+            return false;
+        }
+
+        $this->musicBreak['started'] = true;
+
+        return true;
+    }
+
+    /**
+     * Whether `$clip` may start now with a music break planned: always without one, for a bulletin or the next part of
+     * a story; else only a single clip (no first part of a story) whose end, stingers and jingles included, comes
+     * before the track starts.
+     */
+    private function fitsBeforeMusicBreak(CasterClip $clip, float $now, bool $continuation): bool
+    {
+        if ($this->musicBreak === null || $continuation || $clip->kind === CasterScript::BULLETIN) {
+            return true;
+        }
+
+        $lead = max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
+
+        return $this->spool->partOf($clip) === null
+            && $now + $lead + (float) $clip->duration_seconds + self::MUSIC_BREAK_DRESSING_SECONDS <= $this->musicBreak['start'] - self::MUSIC_BREAK_MARGIN;
+    }
+
+    /**
+     * The music break planned or on air (tests, logging): its track's start and end on the wall clock and its file.
+     *
+     * @return array{start: float, end: float, file: string, started: bool}|null
+     */
+    public function musicBreak(): ?array
+    {
+        return $this->musicBreak;
     }
 
     /** A random gap within `gap_seconds` (none when unset). */

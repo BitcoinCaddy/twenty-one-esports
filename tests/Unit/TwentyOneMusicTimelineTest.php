@@ -74,6 +74,32 @@ test('a set plays every vocal once before any repeats, and the next set is a new
     expect($vocalsOf($sets[0]))->not->toBe($vocalsOf($sets[1]));
 });
 
+test('with PlebRap files the timeline plays them in runs of three to five with one other track between, and new PlebRap starts it anew', function () {
+    mkdir($this->dir.'/plebrap');
+    $plebrap = [];
+    foreach (range(1, 12) as $number) {
+        touch($plebrap[] = sprintf("%s/plebrap/%02d - Artist - Song 'x' %d__v1.m4a", $this->dir, $number, $number));
+    }
+
+    $timeline = ($this->timeline)();
+    $plain = $timeline->from($this->vocals, $this->instrumentals, 3, 1000.0, 1);
+    $music = $timeline->from($this->vocals, $this->instrumentals, 3, 1010.0, 2, new Randomizer(new Mt19937(3)), $plebrap, [3, 5]);
+    $pattern = implode('', array_map(fn (string $file): string => str_contains($file, '/plebrap/') ? 'P' : 'o', $music['files']));
+
+    // The first set of the new timeline: all twelve PlebRap tracks once, three to five in a row, one other after each run.
+    $first = array_slice(array_values(array_filter($music['files'], fn (string $file): bool => str_contains($file, '/plebrap/'))), 0, 12);
+    sort($first);
+
+    expect($plain['restarted'])->toBeTrue()
+        ->and($music['restarted'])->toBeTrue()
+        ->and($first)->toBe($plebrap)
+        ->and($pattern)->toMatch('/^(P{1,5}o)+$/')
+        ->and(preg_match_all('/P+/', $pattern, $runs))->toBeGreaterThan(3)
+        ->and(collect($runs[0])->every(fn (string $run): bool => strlen($run) <= 5))->toBeTrue()
+        // The same files again: the timeline goes on.
+        ->and($timeline->from($this->vocals, $this->instrumentals, 3, 1020.0, 2, new Randomizer, $plebrap, [3, 5])['restarted'])->toBeFalse();
+});
+
 test('added music, a corrupt file or a stream that was off for longer than the timeline start a new timeline', function () {
     $timeline = ($this->timeline)();
     $timeline->from($this->vocals, $this->instrumentals, 3, 1000.0, 1);

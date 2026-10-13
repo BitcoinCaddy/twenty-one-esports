@@ -178,3 +178,35 @@ test('three instrumentals play between two vocal tracks, never next to the same 
         expect(count($played))->toBe(count($instrumentals));
     }
 });
+
+test('PlebRap plays in runs of three to five, each followed by exactly one other track, every PlebRap track once a pass', function () {
+    $plebrap = array_map(fn (int $n): string => sprintf("/music/plebrap/%02d - Pleb %d - Song 'Nr' %d (Grüße)__v1.m4a", $n, $n, $n), range(1, 38));
+    $rest = [...array_map(fn (int $n): string => "/music/song-{$n}__v1.m4a", range(1, 32)), ...array_map(fn (int $n): string => sprintf('/music/instrumental/%02d__v1.m4a', $n), range(1, 130))];
+
+    foreach ([1, 2, 3, 4, 5] as $seed) {
+        $list = MusicPlaylist::priorityRuns($plebrap, $rest, 3, 5, new Randomizer(new Mt19937($seed)));
+        // The pattern as letters: P for PlebRap, o for one of the others.
+        $pattern = implode('', array_map(fn (string $file): string => str_contains($file, '/plebrap/') ? 'P' : 'o', $list));
+        $played = array_values(array_filter($list, fn (string $file): bool => str_contains($file, '/plebrap/')));
+        sort($played);
+        $sorted = $plebrap;
+        sort($sorted);
+
+        // Runs of three to five, a single other track after each (the last run may be shorter: 38 is not a multiple).
+        expect($played)->toBe($sorted)
+            ->and($pattern)->toMatch('/^(P{3,5}o)*P{1,5}o$/');
+
+        foreach (array_slice($list, 1) as $index => $file) {
+            expect(MusicPlaylist::title($file))->not->toBe(MusicPlaylist::title($list[$index]));
+        }
+    }
+});
+
+test('a PlebRap name with spaces, apostrophes, umlauts and parentheses is quoted for the concat demuxer', function () {
+    $file = "/srv/music/plebrap/20 - Orange Pill 'o' Sophie - Too Bit to Fail (Grüße)__v1.m4a";
+
+    expect(MusicPlaylist::ffconcat([$file]))
+        ->toBe("ffconcat version 1.0\nfile '/srv/music/plebrap/20 - Orange Pill '\\''o'\\'' Sophie - Too Bit to Fail (Grüße)__v1.m4a'\n")
+        ->and(MusicPlaylist::isSafePath($file))->toBeTrue()
+        ->and(MusicPlaylist::title($file))->toBe("20 - Orange Pill 'o' Sophie - Too Bit to Fail (Grüße)");
+});

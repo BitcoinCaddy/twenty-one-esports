@@ -213,6 +213,11 @@ return [
             'instrumental_dir' => env('TWENTYONE_STREAM_INSTRUMENTAL_DIR') ?: storage_path('app/stream/music/instrumental'),
             // How many instrumentals play between two vocal tracks.
             'instrumentals_per_vocal' => (int) env('TWENTYONE_STREAM_INSTRUMENTALS_PER_VOCAL', 6),
+            // The priority music (user 2026-10-13: "Die Musik aus PlebRap hat absoluten Vorrang … PlebRap 3 bis 5 Lieder,
+            // dann nur einmal eins der anderen"): with files here, `priority_run` (min, max) of them in a row, then exactly
+            // one of the vocals and instrumentals above, again and again (MusicPlaylist::priorityRuns()). Empty: as before.
+            'plebrap_dir' => env('TWENTYONE_STREAM_PLEBRAP_DIR') ?: storage_path('app/stream/music/plebrap'),
+            'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
             'list_hours' => 12,
             // Where the music is on the wall clock (MusicTimeline): a new encoder goes on from there.
             'timeline_file' => env('TWENTYONE_STREAM_MUSIC_TIMELINE_FILE') ?: storage_path('app/stream/music-timeline.json'),
