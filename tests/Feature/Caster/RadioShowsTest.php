@@ -65,10 +65,14 @@ beforeEach(function () {
         'esports.voice.monthly_budget_usd' => 100,
     ]);
 
-    // Short formats for the fakes: the length rules are the same code as the rubrics'.
+    // Short formats for the fakes: the length rules are the same code as the rubrics'. These tests cover the one-call
+    // show on a rubric slot; the long shows in segments at :03 (P21) have their own (LongShowsTest).
     foreach (array_keys(Shows::CATALOGUE) as $id) {
-        config(["tv.commentary.programme.shows.formats.{$id}.seconds" => ['min' => 20, 'max' => 400], "tv.commentary.programme.shows.formats.{$id}.sentences" => ['min' => 6, 'max' => 40]]);
+        config(["tv.commentary.programme.shows.formats.{$id}.seconds" => ['min' => 20, 'max' => 400], "tv.commentary.programme.shows.formats.{$id}.sentences" => ['min' => 6, 'max' => 40],
+            "tv.commentary.programme.shows.formats.{$id}.slot_minutes" => null, "tv.commentary.programme.shows.formats.{$id}.graves" => 1]);
     }
+    config(['tv.commentary.programme.shows.formats.hotline.write_minutes_ahead' => 14, 'tv.commentary.programme.shows.formats.tribunal.write_minutes_ahead' => null,
+        'tv.commentary.programme.shows.schedule' => ['10:15' => 'jahrestag', '11:15' => 'meetups', '12:45' => 'friedhof', '15:15' => 'partie', '17:15' => 'partie', '20:45' => 'tribunal', '21:15' => 'hotline']]);
 
     $this->travelTo(CarbonImmutable::parse('2026-10-12 20:38:00', 'Europe/Berlin'));
     WorldMemory::forget();

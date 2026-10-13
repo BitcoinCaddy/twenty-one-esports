@@ -135,7 +135,7 @@ final class BroadcastClock
 
     /**
      * The show window on air at `$at` as its rubric slot (from the window's start), or null: no window holds `$at`, it
-     * starts in the quiet hours, or no rubric slot of the clock begins at its start.
+     * starts in the quiet hours, or neither a rubric nor a talk slot of the clock begins at its start.
      *
      * @return Slot|null
      */
@@ -155,13 +155,14 @@ final class BroadcastClock
                 $index = array_search((int) $match[2], array_column($this->slots, 'minute'), true);
                 $slot = $index === false ? null : $this->slots[$index];
 
-                if ($slot === null || $slot['type'] !== self::RUBRIC || $at->getTimestamp() < $startLocal->getTimestamp() || $at->getTimestamp() >= $end || QuietHours::active($startLocal)) {
+                // A long show also starts on a talk slot (P21, user 2026-10-13: right after the news at :03).
+                if ($slot === null || ! in_array($slot['type'], [self::RUBRIC, self::TALK], true) || $at->getTimestamp() < $startLocal->getTimestamp() || $at->getTimestamp() >= $end || QuietHours::active($startLocal)) {
                     continue;
                 }
 
                 $start = CarbonImmutable::createFromTimestamp($startLocal->getTimestamp());
 
-                return ['type' => self::RUBRIC, 'minute' => (int) $match[2], 'label' => $slot['label'], 'stinger' => $slot['stinger'], 'starts_at' => $start, 'key' => $start->getTimestamp()];
+                return ['type' => self::RUBRIC, 'minute' => (int) $match[2], 'label' => $slot['type'] === self::RUBRIC ? $slot['label'] : 'die Sendung', 'stinger' => $slot['stinger'], 'starts_at' => $start, 'key' => $start->getTimestamp()];
             }
         }
 

@@ -879,28 +879,42 @@ return [
             // its material does not come again (`repeat_days`).
             'shows' => [
                 'enabled' => (bool) env('TV_COMMENTARY_SHOWS', true),
+                // P21 (user 2026-10-13): a long show starts at :03 right after the news and owns its window up to thirty
+                // minutes (`slot_minutes`, BroadcastClock: no rubric or headlines inside it); one long show an hour.
                 'schedule' => [
-                    '10:15' => 'jahrestag',
-                    '11:15' => 'meetups',
-                    '12:45' => 'friedhof',
-                    '15:15' => 'partie',
-                    '17:15' => 'partie',
-                    '20:45' => 'tribunal',
-                    '21:15' => 'hotline',
+                    '10:03' => 'jahrestag',
+                    '11:03' => 'meetups',
+                    '12:03' => 'friedhof',
+                    '15:03' => 'partie',
+                    '17:03' => 'partie',
+                    '20:03' => 'tribunal',
+                    '21:03' => 'hotline',
                     '18:15' => 'stammtisch',
                     '22:15' => 'stammtisch',
                 ],
                 'max_output_tokens' => 6_000,
                 // A five-minute show is about a thousand words: longer to write than `esports.voice.timeout_seconds` allows a post.
                 'timeout_seconds' => (int) env('TV_COMMENTARY_SHOWS_TIMEOUT', 90),
-                'daily_cap' => (int) env('TV_COMMENTARY_SHOWS_DAILY_CAP', 40),
+                // A long show is written in segments (ShowScripts::inSegments()): six to twelve calls a show.
+                'daily_cap' => (int) env('TV_COMMENTARY_SHOWS_DAILY_CAP', 120),
                 'formats' => [
-                    'tribunal' => ['seconds' => ['min' => 240, 'max' => 360], 'sentences' => ['min' => 30, 'max' => 48], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_chatters' => 4, 'notes_per_chatter' => 3, 'repeat_days' => 1],
-                    'friedhof' => ['seconds' => ['min' => 180, 'max' => 240], 'sentences' => ['min' => 22, 'max' => 34], 'speakers' => ['markus', 'sirius'], 'repeat_days' => 30],
-                    'jahrestag' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'repeat_days' => 2, 'wikipedia' => (bool) env('TV_COMMENTARY_SHOWS_WIKIPEDIA', true)],
-                    'meetups' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'days' => 7, 'max_events' => 12, 'repeat_days' => 1],
-                    'partie' => ['seconds' => ['min' => 180, 'max' => 300], 'sentences' => ['min' => 22, 'max' => 40], 'speakers' => ['markus', 'sirius'], 'hours' => 24, 'repeat_days' => 2],
-                    'hotline' => ['seconds' => ['min' => 240, 'max' => 330], 'sentences' => ['min' => 28, 'max' => 44], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_questions' => 4, 'searches_per_question' => 2, 'write_minutes_ahead' => 14, 'repeat_days' => 1],
+                    // P21: a long show fills `slot_minutes` (the window on air) segment by segment, each segment of the format's
+                    // `seconds`/`sentences` (ShowScripts::inSegments()), to `slot_margin_seconds` short of the window's end, at
+                    // most `max_segments`; under `min_share` of the window it does not air. Its material grows with it
+                    // (`max_chatters`, `graves`, `max_questions`, `max_events`). Voicing thirty minutes takes VoiceStudio about
+                    // as long: written `write_minutes_ahead` before the slot.
+                    'tribunal' => ['seconds' => ['min' => 240, 'max' => 360], 'sentences' => ['min' => 30, 'max' => 48], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_chatters' => 8, 'notes_per_chatter' => 3, 'repeat_days' => 1,
+                        'slot_minutes' => 30, 'slot_margin_seconds' => 120, 'max_segments' => 10, 'min_share' => 0.75, 'write_minutes_ahead' => 120],
+                    'friedhof' => ['seconds' => ['min' => 180, 'max' => 240], 'sentences' => ['min' => 22, 'max' => 34], 'speakers' => ['markus', 'sirius'], 'repeat_days' => 30,
+                        'graves' => 5, 'slot_minutes' => 25, 'slot_margin_seconds' => 120, 'max_segments' => 10, 'min_share' => 0.75, 'write_minutes_ahead' => 120],
+                    'jahrestag' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'repeat_days' => 2, 'wikipedia' => (bool) env('TV_COMMENTARY_SHOWS_WIKIPEDIA', true),
+                        'slot_minutes' => 20, 'slot_margin_seconds' => 120, 'max_segments' => 10, 'min_share' => 0.75, 'write_minutes_ahead' => 90],
+                    'meetups' => ['seconds' => ['min' => 120, 'max' => 180], 'sentences' => ['min' => 15, 'max' => 26], 'speakers' => ['markus', 'sirius'], 'days' => 7, 'max_events' => 20, 'repeat_days' => 1,
+                        'slot_minutes' => 20, 'slot_margin_seconds' => 120, 'max_segments' => 10, 'min_share' => 0.75, 'write_minutes_ahead' => 90],
+                    'partie' => ['seconds' => ['min' => 180, 'max' => 300], 'sentences' => ['min' => 22, 'max' => 40], 'speakers' => ['markus', 'sirius'], 'hours' => 24, 'repeat_days' => 2,
+                        'slot_minutes' => 20, 'slot_margin_seconds' => 120, 'max_segments' => 8, 'min_share' => 0.75, 'write_minutes_ahead' => 90],
+                    'hotline' => ['seconds' => ['min' => 240, 'max' => 330], 'sentences' => ['min' => 28, 'max' => 44], 'speakers' => ['markus', 'sirius'], 'chat_hours' => 24, 'max_questions' => 8, 'searches_per_question' => 2, 'repeat_days' => 1,
+                        'slot_minutes' => 25, 'slot_margin_seconds' => 120, 'max_segments' => 10, 'min_share' => 0.75, 'write_minutes_ahead' => 120],
                     // Turm und Genossin, der Talk (P16, Programme\TalkShow, TalkShowScripts; user 2026-10-13: like a real TV talk
                     // show): Sirius hosts as the parody of an interrupting talk show host, Markus and the guest Genossin Gisela (MMT,
                     // resources/data/voice/mmt-positions.json) fight in short turns of at most `sentences_per_turn` (one-liners

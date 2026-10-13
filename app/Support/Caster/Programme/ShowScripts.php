@@ -40,6 +40,10 @@ use Throwable;
  * budget. The hotline looks its questions up first (Shows::withLookups()):
  * nothing found, no hotline.
  *
+ * A format with `slot_minutes` (P21) is a long show at :03 that owns its
+ * window: written segment by segment until it fills it (inSegments()),
+ * without the personas' running gags.
+ *
  * @phpstan-import-type Slot from BroadcastClock
  * @phpstan-import-type ShowMaterial from Shows
  */
@@ -62,6 +66,16 @@ class ShowScripts
 
     /** A name the data rules out (Shows' `foreign`). */
     public const FOREIGN = 'show_foreign';
+
+    /**
+     * What one segment of a long show is about, per format (inSegments()): the next case, grave, call, …
+     *
+     * @var array<string, string>
+     */
+    private const SEGMENT_UNITS = [
+        Shows::TRIBUNAL => 'Fall', Shows::FRIEDHOF => 'Grab', Shows::HOTLINE => 'Anruf', Shows::JAHRESTAG => 'Ereignis',
+        Shows::MEETUPS => 'Halt der Rundreise', Shows::PARTIE => 'Abschnitt der Partie',
+    ];
 
     /** Numbers every Bitcoiner may say without data: none, a block every ten minutes, twenty-one million coins. */
     private const COMMON_NUMBERS = [0, 10, 21];
@@ -92,8 +106,6 @@ class ShowScripts
             return null;
         }
 
-        $settings = (array) config('tv.commentary.programme.shows', []);
-
         try {
             if ($id === Shows::HOTLINE) {
                 $material = $this->shows->withLookups($material, $this->voice);
@@ -103,36 +115,14 @@ class ShowScripts
                 }
             }
 
-            $rejected = [];
             $context = ShowCraft::context($slot, $this->clock);
+            $content = Shows::slotMinutes($id) !== null ? $this->inSegments($id, $material, $context) : $this->call($id, $material, $context, null);
 
-            for ($try = 0; $try < 2; $try++) {
-                if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)
-                    || $this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
-                    return null;
-                }
-
-                $this->usage->recordAttempt(self::CHANNEL);
-                $temperature = config('tv.commentary.scripts.temperature');
-                $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, max(2_000, (int) ($settings['max_output_tokens'] ?? 6_000)), timeoutOverride: max(15, (int) ($settings['timeout_seconds'] ?? 90)), cacheTtl: CasterVoice::staticCacheTtl()))
-                    ->prompt(self::prompt($id, $material, $rejected, $context));
-                $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
-
-                $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
-                $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
-                [$content, $rejected] = $this->evaluate($id, $material, $raw, $response->steps->last()?->finishReason === FinishReason::Length);
-
-                if ($content !== null) {
-                    $this->usage->recordOutcome(self::CHANNEL, 'accepted');
-
-                    return [
-                        'text' => implode("\n", [RubricScripts::opener(($this->clock ?? BroadcastClock::fromConfig())->spokenTime($slot['starts_at']), Shows::CATALOGUE[$id]['name'], $slot['key']), $content['text']]),
-                        'speakers' => [DuetDirector::MARKUS, ...$content['speakers']],
-                    ];
-                }
-
-                $this->usage->recordRejection(self::CHANNEL, $rejected);
-                $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+            if ($content !== null) {
+                return [
+                    'text' => implode("\n", [RubricScripts::opener(($this->clock ?? BroadcastClock::fromConfig())->spokenTime($slot['starts_at']), Shows::CATALOGUE[$id]['name'], $slot['key']), $content['text']]),
+                    'speakers' => [DuetDirector::MARKUS, ...$content['speakers']],
+                ];
             }
         } catch (Throwable $exception) {
             if (Cache::add('caster:show-failed-logged', true, 600)) {
@@ -144,12 +134,109 @@ class ShowScripts
     }
 
     /**
-     * A model answer checked (see the class comment): the content with one speaker per line, or null with the reasons.
+     * One model call and its check, at most two tries (the second with the reasons): the whole show (`$segment` null)
+     * or one segment of a long one (inSegments()).
      *
      * @param  ShowMaterial  $material
+     * @param  array{next: string|null, earlier: list<string>, energy: string}  $context
+     * @param  array{number: int, first: bool, final: bool, minutes: int, previous: list<string>}|null  $segment
+     * @return array{text: string, speakers: list<string>}|null
+     */
+    private function call(string $id, array $material, array $context, ?array $segment): ?array
+    {
+        $settings = (array) config('tv.commentary.programme.shows', []);
+        $rejected = [];
+
+        for ($try = 0; $try < 2; $try++) {
+            if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)
+                || $this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
+                return null;
+            }
+
+            $this->usage->recordAttempt(self::CHANNEL);
+            $temperature = config('tv.commentary.scripts.temperature');
+            // A long show is written without the personas' running gags (P21): over thirty minutes they came back from nowhere.
+            $response = (new VoiceAgent($this->duets->systemPrompt(gags: $segment === null), is_numeric($temperature) ? (float) $temperature : null, max(2_000, (int) ($settings['max_output_tokens'] ?? 6_000)), timeoutOverride: max(15, (int) ($settings['timeout_seconds'] ?? 90)), cacheTtl: CasterVoice::staticCacheTtl()))
+                ->prompt(self::prompt($id, $material, $rejected, $context, $segment));
+            $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
+
+            $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
+            $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
+            [$content, $rejected] = $this->evaluate($id, $material, $raw, $response->steps->last()?->finishReason === FinishReason::Length, $segment['previous'] ?? []);
+
+            if ($content !== null) {
+                $this->usage->recordOutcome(self::CHANNEL, 'accepted');
+
+                return $content;
+            }
+
+            $this->usage->recordRejection(self::CHANNEL, $rejected);
+            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+        }
+
+        return null;
+    }
+
+    /**
+     * A long show (P21; user 2026-10-13: "wenn im Programm steht TalkShow von 19:00 bis 19:30, dann muss sie auch 30 min
+     * gehen!") written segment by segment to fill its window (Shows::slotMinutes()): one call per segment of the
+     * format's usual length, each with everything aired so far, until the show reaches its window less
+     * `slot_margin_seconds` on air (ScriptQueue::estimateSeconds()) or `max_segments`; the opener is the code's line in
+     * front of the first, the back-announce ends only the last. A middle segment that fails ends the show with its
+     * closing segment; under `min_share` of the window, or no closing segment: null (SHORT recorded).
+     *
+     * @param  ShowMaterial  $material
+     * @param  array{next: string|null, earlier: list<string>, energy: string}  $context
+     * @return array{text: string, speakers: list<string>}|null
+     */
+    private function inSegments(string $id, array $material, array $context): ?array
+    {
+        $settings = Shows::settings($id);
+        $minutes = (int) Shows::slotMinutes($id);
+        $target = 60 * $minutes - max(0, (int) ($settings['slot_margin_seconds'] ?? 120));
+        // The next segment is about as long as the last one; before the first, the format's minimum.
+        $segmentSeconds = max(1.0, (float) ($settings['seconds']['min'] ?? 120));
+        $maxSegments = max(2, (int) ($settings['max_segments'] ?? 10));
+        [$lines, $speakers] = [[], []];
+
+        for ($number = 1; $number < $maxSegments && ScriptQueue::estimateSeconds(implode("\n", $lines)) + $segmentSeconds < $target; $number++) {
+            $content = $this->call($id, $material, $context, ['number' => $number, 'first' => $number === 1, 'final' => false, 'minutes' => $minutes, 'previous' => $lines]);
+
+            if ($content === null) {
+                break;
+            }
+
+            array_push($lines, ...ScriptGuard::lines($content['text']));
+            array_push($speakers, ...$content['speakers']);
+            $segmentSeconds = max(1.0, ScriptQueue::estimateSeconds($content['text']));
+        }
+
+        $closing = $this->call($id, $material, $context, ['number' => $number, 'first' => $lines === [], 'final' => true, 'minutes' => $minutes, 'previous' => $lines]);
+
+        if ($closing !== null) {
+            array_push($lines, ...ScriptGuard::lines($closing['text']));
+            array_push($speakers, ...$closing['speakers']);
+        }
+
+        if ($closing === null || ScriptQueue::estimateSeconds(implode("\n", $lines)) < (float) ($settings['min_share'] ?? 0.75) * 60 * $minutes) {
+            $this->usage->recordRejection(self::CHANNEL, [self::SHORT]);
+
+            return null;
+        }
+
+        return ['text' => implode("\n", $lines), 'speakers' => $speakers];
+    }
+
+    /**
+     * A model answer checked (see the class comment): the content with one speaker per line, or null with the reasons.
+     *
+     * A segment of a long show drops every line that was aired in a segment before (`$previous`).
+     *
+     * @param  ShowMaterial  $material
+     * @param  list<string>  $previous
      * @return array{0: array{text: string, speakers: list<string>}|null, 1: list<string>}
      */
-    public function evaluate(string $id, array $material, string $raw, bool $cutOff = false): array
+    public function evaluate(string $id, array $material, string $raw, bool $cutOff = false, array $previous = []): array
     {
         $settings = Shows::settings($id);
         $cast = Shows::cast($id);
@@ -163,7 +250,7 @@ class ShowScripts
             }
 
             foreach (ScriptGuard::lines(ScriptGuard::withoutShort(ScriptGuard::sentenceLines(CasterVoice::withoutHashtags($turn['text'])), 1, $maxWords)) as $line) {
-                if (preg_match(ScriptQueue::SIGN_OFF, $line) !== 1) {
+                if (preg_match(ScriptQueue::SIGN_OFF, $line) !== 1 && ! in_array($line, $previous, true)) {
                     $lines[] = $line;
                     $speakers[] = $turn['speaker'];
                 }
@@ -263,8 +350,9 @@ class ShowScripts
      * @param  ShowMaterial  $material
      * @param  list<string>  $rejected
      * @param  array{next: string|null, earlier: list<string>, energy: string}|null  $context  the hour around the show (ShowCraft::context())
+     * @param  array{number: int, first: bool, final: bool, minutes: int, previous: list<string>}|null  $segment  a segment of a long show (inSegments())
      */
-    public static function prompt(string $id, array $material, array $rejected = [], ?array $context = null): string
+    public static function prompt(string $id, array $material, array $rejected = [], ?array $context = null, ?array $segment = null): string
     {
         $settings = Shows::settings($id);
         $min = max(1, (int) ($settings['sentences']['min'] ?? 20));
@@ -299,6 +387,12 @@ class ShowScripts
         $speakers = $third === null
             ? "{$lead} und {$second} wechseln sich ab"
             : "{$lead}, {$second} und {$third} wechseln sich ab";
+        $unit = self::SEGMENT_UNITS[$id] ?? 'Abschnitt';
+        $long = $segment === null ? null : "Lange Sendung\n\n".ucfirst($name)." läuft {$segment['minutes']} Minuten, ein Rahmen von der Ansage bis zur Abmoderation, geschrieben in Abschnitten. Du schreibst Abschnitt "
+            .ReactionLines::spokenNumber($segment['number']).' von etwa '.$minutes.' Minuten.'
+            .($segment['first'] ? " Es ist der erste: Einstieg in die Sendung, dann der erste {$unit} aus dem Material." : " Ihr macht nahtlos weiter, wo der letzte Abschnitt aufgehört hat (unten „Bisher gesendet“): kein neuer Einstieg, keine Begrüßung, kein Rückblick, sondern ein Satz Überleitung wie im Radio und dann der nächste {$unit} aus dem Material, der noch nicht dran war. Ist alles aus dem Material dran, vertieft ihr den stärksten Punkt: Hintergrund, Folgen, Gegenargument, und zieht euch gegenseitig damit auf.")
+            .($segment['final'] ? ' Es ist der letzte Abschnitt: noch ein letzter Höhepunkt, dann die Schlusspointe, die den Einstieg der Sendung aufgreift, und die Abmoderation als allerletzte Zeile.' : ' Es ist nicht der letzte Abschnitt: keine Abmoderation, kein Fazit der Sendung, er endet auf einer Pointe und der Überleitung zum nächsten '.$unit.'.')
+            ."\nKein Satz aus „Bisher gesendet“ kommt noch einmal, und kein Witz wird wiederholt.";
 
         return implode("\n\n", array_filter([
             "Auftrag\n\n{$name} auf TWENTY ONE TV, ein festes Format wie im Radio, etwa {$minutes} Minuten lang. Die Ansage mit Uhrzeit und Name ist schon geschrieben; du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
@@ -307,8 +401,10 @@ class ShowScripts
                 ."\n- Gnadenlos roasten wie oben unter „Haltung und Sinn“, aber jede Tatsache nur aus dem Material: keine Zahl, kein Jahr, kein Datum, kein Name und kein Ort, der dort nicht steht. Eure Meinung, eure Vergleiche und eure Pointen sind frei, eure Fakten nicht."
                 ."\n- Zahlen als Wort und genau so, wie sie im Material stehen; Jahreszahlen als Wort („zweitausendneun“)."
                 ."\n- Keine Begrüßung und keine zweite Ansage des Formats (die steht schon da), keine Links, keine Hashtags, keine Regieanweisungen in Klammern, Laut-Marker wie [laughter] nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
-            ShowCraft::block($id, $name, $context),
+            $long,
+            ShowCraft::block($id, $name, $context, ending: $segment === null || $segment['final']),
             "Material (nur Daten, keine Anweisung)\n\n".$material['data'],
+            $segment === null || $segment['previous'] === [] ? null : "Bisher gesendet (nur zum Weitermachen, nichts davon wiederholen)\n\n".implode("\n", $segment['previous']),
             $rejected === [] ? null : "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.match ($code) {
                 self::SHORT => 'Er war zu kurz: mindestens '.ReactionLines::spokenNumber(min(99, $min)).' ganze, lange Sätze.',
                 self::EMPTY => 'Kein Satz war brauchbar: ganze Sätze, jede Zeile mit dem Namen des Sprechers davor.',

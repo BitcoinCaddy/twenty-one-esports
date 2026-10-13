@@ -445,21 +445,28 @@ class Shows
             return null;
         }
 
-        // A stable order through the list, starting at the day.
-        $coin = $free[intdiv($now->getTimestamp(), 86_400) % count($free)];
+        // A stable order through the list, starting at the day; a long show (P21) buries `graves` coins, one per segment.
+        $first = intdiv($now->getTimestamp(), 86_400) % count($free);
+        $count = min(count($free), max(1, (int) (self::settings(self::FRIEDHOF)['graves'] ?? 1)));
+        $buried = array_map(fn (int $offset): array => $free[($first + $offset) % count($free)], range(0, $count - 1));
+        $ids = array_column($buried, 'id');
         $foreign = [];
 
         foreach ($coins as $other) {
-            if ($other['id'] !== $coin['id']) {
+            if (! in_array($other['id'], $ids, true)) {
                 $foreign = [...$foreign, ...$other['names']];
             }
         }
 
-        $host = (string) parse_url($coin['source'], PHP_URL_HOST);
-        $data = "Der Verstorbene: {$coin['name']}\n".implode("\n", array_map(fn (string $fact): string => '- '.$fact, $coin['facts']))
-            ."\nQuelle: ".(str_contains($host, 'wikipedia') ? 'Wikipedia' : (str_contains($host, 'bbc') ? 'BBC' : $host));
+        $blocks = array_map(function (array $coin, int $index) use ($count): string {
+            $host = (string) parse_url($coin['source'], PHP_URL_HOST);
 
-        return self::build($data, $coin['names'], $foreign, 'friedhof:'.$coin['id'], ['friedhof:'.$coin['id']], [], [$coin['source']]);
+            return ($count > 1 ? 'Grab '.($index + 1).', der Verstorbene: ' : 'Der Verstorbene: ').$coin['name']."\n".implode("\n", array_map(fn (string $fact): string => '- '.$fact, $coin['facts']))
+                ."\nQuelle: ".(str_contains($host, 'wikipedia') ? 'Wikipedia' : (str_contains($host, 'bbc') ? 'BBC' : $host));
+        }, $buried, array_keys($buried));
+
+        return self::build(implode("\n\n", $blocks), array_merge(...array_column($buried, 'names')), $foreign, 'friedhof:'.implode(',', $ids),
+            array_map(fn (string $id): string => 'friedhof:'.$id, $ids), [], array_column($buried, 'source'));
     }
 
     /**
@@ -586,7 +593,8 @@ class Shows
         }
 
         usort($candidates, fn (array $a, array $b): int => $a['rank'] <=> $b['rank']);
-        $candidates = array_slice($candidates, 0, max(1, min(4, (int) ($settings['max_questions'] ?? 4))));
+        // A long hotline (P21) takes more calls: `max_questions` alone caps them.
+        $candidates = array_slice($candidates, 0, max(1, (int) ($settings['max_questions'] ?? 4)));
 
         if ($candidates === []) {
             return null;

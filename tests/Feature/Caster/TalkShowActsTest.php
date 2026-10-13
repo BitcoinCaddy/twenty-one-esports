@@ -149,7 +149,8 @@ it('lets a show with slot_minutes own its window: no headlines inside, the news 
     $clock = BroadcastClock::fromConfig();
     $at = fn (string $time): CarbonImmutable => CarbonImmutable::parse('2026-10-13 '.$time, 'Europe/Berlin');
 
-    expect(Shows::windows())->toBe(['18:15' => 30, '22:15' => 30])
+    // The long shows at :03 (P21) and the talk show.
+    expect(Shows::windows())->toBe(['10:03' => 20, '11:03' => 20, '12:03' => 25, '15:03' => 20, '17:03' => 20, '20:03' => 30, '21:03' => 25, '18:15' => 30, '22:15' => 30])
         ->and($clock->slotAt($at('18:31'))['type'])->toBe(BroadcastClock::RUBRIC)
         ->and($clock->slotAt($at('18:31'))['starts_at']->equalTo($at('18:15')))->toBeTrue()
         ->and($clock->slotAt($at('18:44:59'))['key'])->toBe($at('18:15')->getTimestamp())
@@ -263,7 +264,8 @@ it('takes a thirty-minute block everywhere on its way: the spool, the stock libr
 
     $method = new ReflectionMethod(ProgrammeSlides::class, 'formatItem');
     expect($method->invoke(null, 'k', Shows::STAMMTISCH, 0)['seconds'])->toBe(1800.0)
-        ->and($method->invoke(null, 'k', Shows::TRIBUNAL, 0)['seconds'])->toBe(0.0)
+        ->and($method->invoke(null, 'k', Shows::TRIBUNAL, 0)['seconds'])->toBe(1800.0)
+        ->and($method->invoke(null, 'k', 'chat', 0)['seconds'])->toBe(0.0)
         ->and(CasterVoice::SPOKEN_REPEAT)->toBeString();
 });
 
