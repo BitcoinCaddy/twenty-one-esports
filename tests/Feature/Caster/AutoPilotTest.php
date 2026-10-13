@@ -280,6 +280,62 @@ it('feeds the spool by day from unaired library blocks when it runs low, never i
     expect($feeder->tick(CarbonImmutable::now()))->toBe([]);
 });
 
+it('airs a talk show of several library blocks only whole and in order: its blocks as the parts of one story, never a later block alone', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 14:00', 'Europe/Berlin'));
+    autopilotWorkstationSeen();
+    // The workstation's view: three blocks of one stock talk, parts 1–12, 13–22, 23–30 (StockLibrary::episodeOf()).
+    $part = fn (int $index, bool $continues): array => ['part' => ['group' => '01JTALKEPISODE0000000000AA', 'index' => $index, 'continues' => $continues]];
+    expect(StockLibrary::episodeOf([$part(1, true), $part(12, true)]))->toBe(['group' => '01JTALKEPISODE0000000000AA', 'first' => 1, 'last' => 12, 'continues' => true])
+        ->and(StockLibrary::episodeOf([$part(23, true), $part(30, false)]))->toBe(['group' => '01JTALKEPISODE0000000000AA', 'first' => 23, 'last' => 30, 'continues' => false])
+        ->and(StockLibrary::episodeOf([$part(1, true), $part(9, false)]))->toBeNull()
+        ->and(StockLibrary::episodeOf([['id' => 1]]))->toBeNull();
+
+    $episode = fn (int $first, int $last, bool $continues): array => ['episode' => ['group' => '01JTALKEPISODE0000000000AA', 'first' => $first, 'last' => $last, 'continues' => $continues],
+        'format' => 'stammtisch', 'subjects' => ['stock:stammtisch:topic-a']];
+    // The last block uploaded first, through the endpoint (its meta header): no block of an incomplete episode airs.
+    $opus = autopilotOpus('talk-3');
+    autopilotPost('/api/caster/stock/library/'.sha1($opus), $opus, ['X-Caster-Duration' => '480', 'X-Caster-Sentence-Ends' => '10,480', 'X-Caster-Boundaries' => '',
+        'X-Caster-Stock-Meta' => base64_encode((string) json_encode(['format' => 'stammtisch', 'subjects' => ['stock:stammtisch:topic-a'], 'evergreen' => true] + $episode(23, 30, false)))])->assertCreated();
+    $third = sha1($opus);
+    $first = autopilotBlock('talk-1', $episode(1, 12, true), CarbonImmutable::now()->subMinutes(30));
+    expect(StockLibrary::fromConfig()->entries()[$third]['episode'])->toBe(['group' => '01JTALKEPISODE0000000000AA', 'first' => 23, 'last' => 30, 'continues' => false])
+        ->and(StockLibrary::fromConfig()->pick(CarbonImmutable::now(), repeats: true))->toBeNull();
+
+    $second = autopilotBlock('talk-2', $episode(13, 22, true), CarbonImmutable::now()->subMinutes(20));
+    $feeder = app(StockFeeder::class);
+
+    expect($feeder->tick(CarbonImmutable::now()))->toBe(['block '.substr($first, 0, 8).' stammtisch 300 s + 2 more of the episode']);
+
+    $clips = CasterClip::query()->with('script')->orderBy('id')->get();
+    $group = $clips[0]->script->part_group;
+    expect($clips->map(fn (CasterClip $clip): array => [$clip->block['library'], $clip->script->part_group, $clip->script->part_index])->all())
+        ->toBe([[$first, $group, 1], [$second, $group, 2], [$third, $group, 3]])
+        // The stream starts only the first; the others come as its next parts, back to back (SceneDirector::joinNextBlock()).
+        ->and(app(ClipSpool::class)->nextBlock(CarbonImmutable::now())?->id)->toBe($clips[0]->id)
+        ->and(app(ClipSpool::class)->part($group, 2, CarbonImmutable::now())?->id)->toBe($clips[1]->id)
+        ->and(collect(StockLibrary::fromConfig()->entries())->only([$first, $second, $third])->pluck('aired_count')->all())->toBe([1, 1, 1]);
+});
+
+it('opens a repeated talk show episode with one replay jingle, not one per block', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-14 14:10', 'Europe/Berlin'));
+    autopilotImaging(['replay', 'station-long']);
+    autopilotFfmpeg();
+    $episode = fn (int $first, int $last, bool $continues): array => ['episode' => ['group' => 'G1', 'first' => $first, 'last' => $last, 'continues' => $continues], 'format' => 'stammtisch'];
+    $library = StockLibrary::fromConfig();
+    $one = autopilotBlock('rep-1', $episode(1, 10, true));
+    $two = autopilotBlock('rep-2', $episode(11, 20, false));
+    $library->markAired($one, CarbonImmutable::now()->subHours(30));
+    $library->markAired($two, CarbonImmutable::now()->subHours(30));
+    $feeder = app(StockFeeder::class);
+    $feeder->tick(CarbonImmutable::now());
+    $this->travel(31)->seconds();
+
+    expect($feeder->tick(CarbonImmutable::now()))->toBe(['repeat '.substr($one, 0, 8).' stammtisch 2 s + 1 more of the episode']);
+    $clips = CasterClip::query()->where('kind', CasterClip::BLOCK)->orderBy('id')->get();
+    expect($clips->map(fn (CasterClip $clip): bool => $clip->isReplay())->all())->toBe([true, false]);
+    Process::assertRanTimes(fn (PendingProcess $process): bool => in_array('libopus', (array) $process->command, true), 1);
+});
+
 it('switches to the autopilot when the workstation is gone: claims back at once, a block after the music gap, a repeat behind the replay jingle', function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-14 14:10', 'Europe/Berlin'));
     autopilotImaging(['replay', 'station-long']);

@@ -343,9 +343,14 @@ class TalkShowScripts
         // it was shown once more before it continues (first real runs, 2026-10-13), so such lines leave, the rest stays.
         // A near copy counts too (P20 run 4: "Gießkanne für alle, bezahlt mit Geld, das morgen weniger wert ist" in three parts).
         $earlier = array_values(array_filter((array) ($act['previous'] ?? []), 'is_string'));
-        // On the last try a line with the briefing's words leaves (with its question or answer) instead of the whole part.
-        $meta = fn (string $line): bool => preg_match(self::META_WORDS, ScriptGuard::withoutMarkers($line)) === 1 || ($evergreen && preg_match(self::HEADLINE_WORDS, $line) === 1);
-        [$lines, $speakers] = self::withoutEchoes($lines, $speakers, $earlier, $last ? $meta : null);
+        // On the last try a line with the briefing's words leaves (with its question or answer) instead of the whole part,
+        // and in an act so does a line the station said within the repeat window: measured 2026-10-13 (real Sonnet run),
+        // one repeated host move turned the opening act down as SHORT (the whole talk's `seconds.min` against the act
+        // cut at its first repeat), and with it the whole episode.
+        $spokenBefore = $last && $act !== null ? self::repeatedLines(implode("\n", $lines), $now ?? CarbonImmutable::now()) : [];
+        $drop = fn (string $line): bool => preg_match(self::META_WORDS, ScriptGuard::withoutMarkers($line)) === 1 || ($evergreen && preg_match(self::HEADLINE_WORDS, $line) === 1)
+            || array_filter($spokenBefore, fn (string $sentence): bool => $sentence !== '' && str_contains($line, $sentence)) !== [];
+        [$lines, $speakers] = self::withoutEchoes($lines, $speakers, $earlier, $last ? $drop : null);
 
         if ($lines === []) {
             return [null, [ShowScripts::EMPTY]];
@@ -771,7 +776,7 @@ class TalkShowScripts
                 ."\n8. Sirius spricht zuletzt: ein Satz Zusammenfassung und neugierig machen auf den nächsten Talk, ohne Termin und ohne Abschiedsfloskel.",
             $act !== null ? self::soFarBlock($act) : null,
             "Reaktionen\n\nWer zuhört, reagiert hörbar auf das eben Gesagte, am Anfang der eigenen Wortmeldung: [sigh] oder [dissatisfaction-hnn] auf eine absurde Behauptung, [surprise-oh] oder [surprise-wa] auf eine Provokation, [laughter] auf einen guten Seitenhieb, [question-ah] als ungläubiges „Hä?“. Jede dritte Wortmeldung beginnt mit so einer Reaktion, verteilt auf alle drei, nie zwei Marker in einem Satz, höchstens ein Marker auf zwei Sätze im ganzen Talk. In diesem Teil "
-                .$count(self::MAX_REACTION_TURNS).' Wortmeldungen, die nur aus der Reaktion bestehen, zwei bis fünf Wörter mit dem Marker vorn, etwa „Genossin: [sigh] Ach, Herr Turm.“ oder „Markus: [laughter] Großartig, wirklich.“.',
+                .$count(self::MAX_REACTION_TURNS).' Wortmeldungen, die nur aus der Reaktion bestehen: der Marker vorn, dann zwei bis fünf eigene Wörter, jedes Mal andere (so gebaut wie „[sigh] Ach, Herr Turm.“, nie dieser Wortlaut).',
             TalkShow::roastBlock(7, array_values(array_filter((array) ($act['previous'] ?? []), 'is_string')), $evergreen),
             "Sprecher und Form\n\nJeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt: „Sirius: …“, „Markus: …“ oder „Genossin: …“. Jeder der drei hat mindestens ".$count($minTurns).' Wortmeldungen. Kein Satz beginnt mit Zustimmungsfloskeln wie „Genau“ oder „Stimmt“.'
                 ."\n- Jede Tatsache nur aus dem Material: keine Zahl, kein Jahr, kein Datum, kein Name und keine Studie, die dort nicht steht; Zahlen als Wort."

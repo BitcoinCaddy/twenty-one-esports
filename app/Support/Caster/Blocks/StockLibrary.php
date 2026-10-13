@@ -25,6 +25,14 @@ use Closure;
  * closed: a body whose sha1 is not its name, not Opus, empty or too long, or
  * a block not marked evergreen is refused (InvalidClip).
  *
+ * A show longer than a block (the 30-minute talk show, P20) reaches the
+ * library as consecutive blocks of one `episode` (its story's part group,
+ * the first and last part each block covers, whether the story goes on):
+ * such an episode airs only whole and in order (pick() returns its first
+ * block with the rest in `episode`, StockFeeder queues them back to back);
+ * a later block is never picked on its own, and an episode with a block
+ * missing (not uploaded yet, evicted) not at all.
+ *
  * pick() is the programme's choice (StockFeeder): never a block within
  * `repeat_hours` of its last airing; a block whose subjects aired within
  * `subject_spacing_hours` only when nothing else is left; never-aired
@@ -86,7 +94,7 @@ final class StockLibrary
     /**
      * Takes a block under its sha1: STORED, or EXISTS when it is there already.
      *
-     * @param  array{format?: string, topics?: list<string>, subjects?: list<string>, seconds: float, ends?: list<float>, boundaries?: list<float>, rendered_at?: int, evergreen?: bool}  $meta
+     * @param  array{format?: string, topics?: list<string>, subjects?: list<string>, seconds: float, ends?: list<float>, boundaries?: list<float>, rendered_at?: int, evergreen?: bool, episode?: mixed}  $meta
      *
      * @throws InvalidClip when the body is not the block it claims to be
      * @throws SpoolFull when even after eviction the library would pass `max_bytes`
@@ -138,6 +146,7 @@ final class StockLibrary
                 'aired_count' => 0,
                 'last_aired_at' => null,
                 'evergreen' => true,
+                'episode' => self::cleanEpisode($meta['episode'] ?? null),
             ];
 
             return [$index, self::STORED];
@@ -155,9 +164,85 @@ final class StockLibrary
     }
 
     /**
-     * Picks the next block to air at `$now`, or null. `$repeats`: a block that aired already may come (the autopilot).
+     * The episode a stock block belongs to (workstation, for `X-Caster-Stock-Meta`): its story's part group, the first
+     * and last part it covers and whether the story goes on after it; null for a block of whole scripts.
      *
-     * @return array{hash: string, meta: array<string, mixed>, repeat: bool}|null
+     * @param  list<array<array-key, mixed>>  $scripts  the block's scripts (claim payloads, in order)
+     * @return array{group: string, first: int, last: int, continues: bool}|null
+     */
+    public static function episodeOf(array $scripts): ?array
+    {
+        $first = $scripts[0]['part'] ?? null;
+        $last = $scripts === [] ? null : ($scripts[count($scripts) - 1]['part'] ?? null);
+
+        if (! is_array($first) || ! is_array($last) || ! is_string($first['group'] ?? null) || ($last['group'] ?? null) !== $first['group']) {
+            return null;
+        }
+
+        $episode = ['group' => $first['group'], 'first' => (int) ($first['index'] ?? 1), 'last' => (int) ($last['index'] ?? 1), 'continues' => ($last['continues'] ?? false) === true];
+
+        // One block with the whole story is no episode of several.
+        return $episode['first'] <= 1 && ! $episode['continues'] ? null : $episode;
+    }
+
+    /**
+     * An uploaded episode, or null when it is none or malformed.
+     *
+     * @return array{group: string, first: int, last: int, continues: bool}|null
+     */
+    private static function cleanEpisode(mixed $episode): ?array
+    {
+        if (! is_array($episode) || ! is_string($episode['group'] ?? null) || preg_match('/^[A-Za-z0-9:_-]{1,64}$/', $episode['group']) !== 1
+            || ! is_int($episode['first'] ?? null) || ! is_int($episode['last'] ?? null) || $episode['first'] < 1 || $episode['last'] < $episode['first']) {
+            return null;
+        }
+
+        return ['group' => $episode['group'], 'first' => $episode['first'], 'last' => $episode['last'], 'continues' => ($episode['continues'] ?? false) === true];
+    }
+
+    /**
+     * The blocks of a whole episode in order, starting with `$hash` (its first block): each next block starts with the
+     * part after the last of the one before, the last does not go on; null when one is missing.
+     *
+     * @param  array<string, array<string, mixed>>  $blocks
+     * @return list<string>|null
+     */
+    private function chain(array $blocks, string $hash): ?array
+    {
+        $episode = self::cleanEpisode($blocks[$hash]['episode'] ?? null);
+
+        if ($episode === null) {
+            return [$hash];
+        }
+
+        $chain = [$hash];
+
+        while ($episode['continues']) {
+            $group = $episode['group'];
+            $wanted = $episode['last'] + 1;
+            $next = collect($blocks)->search(fn (array $meta, string $other): bool => ($meta['episode']['group'] ?? null) === $group
+                && ($meta['episode']['first'] ?? null) === $wanted && is_file($this->file($other)));
+
+            if (! is_string($next) || count($chain) > 50) {
+                return null;
+            }
+
+            $chain[] = $next;
+            $episode = self::cleanEpisode($blocks[$next]['episode']);
+
+            if ($episode === null) {
+                return null;
+            }
+        }
+
+        return $chain;
+    }
+
+    /**
+     * Picks the next block to air at `$now`, or null. `$repeats`: a block that aired already may come (the autopilot).
+     * The first block of an episode comes with the rest of it (`episode`, in order).
+     *
+     * @return array{hash: string, meta: array<string, mixed>, repeat: bool, episode: list<array{hash: string, meta: array<string, mixed>}>}|null
      */
     public function pick(CarbonImmutable $now, bool $repeats, ?string $previousFormat = null): ?array
     {
@@ -169,9 +254,12 @@ final class StockLibrary
         foreach ($index['blocks'] as $hash => $meta) {
             $aired = (int) ($meta['aired_count'] ?? 0);
             $last = is_int($meta['last_aired_at'] ?? null) ? $meta['last_aired_at'] : null;
+            $episode = self::cleanEpisode($meta['episode'] ?? null);
 
             if (($meta['evergreen'] ?? false) !== true || ! is_file($this->file($hash)) || ($aired > 0 && ! $repeats)
-                || ($last !== null && $at - $last < 3600 * $this->repeatHours)) {
+                || ($last !== null && $at - $last < 3600 * $this->repeatHours)
+                // A later block of an episode only behind the one before it; an episode only whole.
+                || ($episode !== null && ($episode['first'] > 1 || $this->chain($index['blocks'], (string) $hash) === null))) {
                 continue;
             }
 
@@ -190,7 +278,14 @@ final class StockLibrary
 
         usort($candidates, fn (array $a, array $b): int => $a['rank'] <=> $b['rank']);
 
-        return isset($candidates[0]) ? ['hash' => $candidates[0]['hash'], 'meta' => $candidates[0]['meta'], 'repeat' => $candidates[0]['repeat']] : null;
+        if (! isset($candidates[0])) {
+            return null;
+        }
+
+        $rest = array_slice((array) $this->chain($index['blocks'], $candidates[0]['hash']), 1);
+
+        return ['hash' => $candidates[0]['hash'], 'meta' => $candidates[0]['meta'], 'repeat' => $candidates[0]['repeat'],
+            'episode' => array_map(fn (string $hash): array => ['hash' => $hash, 'meta' => $index['blocks'][$hash]], $rest)];
     }
 
     /**

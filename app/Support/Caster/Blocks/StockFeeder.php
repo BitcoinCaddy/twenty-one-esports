@@ -42,6 +42,12 @@ use Illuminate\Support\Facades\DB;
  *  - every `podcast_every_hours` a podcast episode of the library airs from
  *    a minute past the next full hour (AutoPilot::pickEpisode()).
  *
+ * An episode of several library blocks (the 30-minute talk show, P20) goes
+ * in whole: its blocks as the parts of one story (`part_group`, `part_index`),
+ * so the stream joins them back to back like any story told in parts
+ * (SceneDirector::joinNextBlock(), ClipSpool::nextBlock() never starts a
+ * later part); no music gap and no replay jingle between them.
+ *
  * When the workstation is back (yieldBack(), once): the repeats, station
  * IDs and podcast airings the autopilot put in and that did not start yet
  * leave the spool (a repeat's airing is undone in the library); unaired
@@ -165,11 +171,40 @@ final class StockFeeder
     }
 
     /**
-     * A library block into the spool as a day-stock block; a repeat behind the replay jingle. A one-line outcome.
+     * A library block into the spool as a day-stock block; a repeat behind the replay jingle. An episode's further blocks
+     * follow as the next parts of one story, without a jingle; refused by the spool, the episode ends there (the stream
+     * ends a story whose next part does not come). A one-line outcome.
+     *
+     * @param  array{hash: string, meta: array<string, mixed>, repeat: bool, episode?: list<array{hash: string, meta: array<string, mixed>}>}  $pick
+     */
+    private function insert(StockLibrary $library, array $pick, CarbonImmutable $now, bool $autopilot): string
+    {
+        $rest = $pick['episode'] ?? [];
+        $group = $rest === [] ? null : substr('lib'.sha1($pick['hash']), 0, 26);
+        $done = $this->insertOne($library, $pick, $now, $autopilot, $group, 1);
+
+        if ($group === null || ! str_starts_with($done, $pick['repeat'] ? 'repeat ' : 'block ')) {
+            return $done;
+        }
+
+        foreach ($rest as $position => $next) {
+            $outcome = $this->insertOne($library, ['hash' => $next['hash'], 'meta' => $next['meta'], 'repeat' => false], $now, $autopilot, $group, $position + 2);
+
+            if (! str_starts_with($outcome, 'block ')) {
+                return $done.', episode cut after '.($position + 1).': '.$outcome;
+            }
+        }
+
+        return $done.' + '.count($rest).' more of the episode';
+    }
+
+    /**
+     * One library block into the spool (see insert()), as part `$partIndex` of `$partGroup` when it belongs to an
+     * episode.
      *
      * @param  array{hash: string, meta: array<string, mixed>, repeat: bool}  $pick
      */
-    private function insert(StockLibrary $library, array $pick, CarbonImmutable $now, bool $autopilot): string
+    private function insertOne(StockLibrary $library, array $pick, CarbonImmutable $now, bool $autopilot, ?string $partGroup, int $partIndex): string
     {
         $meta = $pick['meta'];
         $opus = (string) @file_get_contents($library->file($pick['hash']));
@@ -194,6 +229,7 @@ final class StockFeeder
             'topic' => is_string($meta['format'] ?? null) ? StockScripts::TOPIC_PREFIX.$meta['format'] : null,
             'status' => CasterScript::CLAIMED, 'source' => CasterScript::SOURCE_AI, 'estimated_seconds' => $seconds, 'claimed_at' => $now,
             'expires_at' => $now->addHours(max(1, (int) config('tv.commentary.blocks.autopilot.spool_hours', 3))),
+            'part_group' => $partGroup, 'part_index' => $partGroup === null ? null : $partIndex,
         ]);
         $before = $library->markAired($pick['hash'], $now);
 

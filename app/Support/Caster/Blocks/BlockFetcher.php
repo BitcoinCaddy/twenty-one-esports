@@ -520,6 +520,7 @@ final class BlockFetcher
                         'subjects' => $subjects,
                         'rendered_at' => is_int($meta['rendered_at'] ?? null) ? $meta['rendered_at'] : null,
                         'evergreen' => ReplayArchive::evergreen($scripts, array_values(array_filter((array) ($meta['steps'] ?? []), 'is_string'))),
+                        'episode' => StockLibrary::episodeOf($scripts),
                     ], JSON_UNESCAPED_UNICODE)),
                 ])
                 ->withBody(CasterFetcher::keepLocal($entry['opus'], 'stock'), 'audio/ogg')

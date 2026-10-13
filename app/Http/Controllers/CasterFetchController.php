@@ -355,7 +355,7 @@ final class CasterFetchController
      * api/caster/stock/library/{sha1}`, P18): the raw Opus body under its
      * sha1, its length, sentence ends and boundaries as for any block, and
      * `X-Caster-Stock-Meta` (base64 JSON: format, topics, subjects,
-     * rendered_at, evergreen). 201 stored, 200 already there (idempotent),
+     * rendered_at, evergreen, episode). 201 stored, 200 already there (idempotent),
      * 422 not that block (hash, format, length, not evergreen), 507 the
      * library is full of blocks that never aired, 409 the library is off.
      */
@@ -384,6 +384,7 @@ final class CasterFetchController
                 'boundaries' => $times('X-Caster-Boundaries'),
                 'rendered_at' => is_int($meta['rendered_at'] ?? null) ? $meta['rendered_at'] : null,
                 'evergreen' => ($meta['evergreen'] ?? false) === true,
+                'episode' => $meta['episode'] ?? null,
             ], CarbonImmutable::now());
         } catch (SpoolFull) {
             return response()->json(['error' => 'library_full'], 507);
