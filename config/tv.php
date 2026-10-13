@@ -409,8 +409,9 @@ return [
             // voicing three to six minutes of talk with the bulletin would make the bulletin miss its slot at
             // VoiceStudio's pace (2026-10-12, P6 demo: rtf in the Phasen-Status); its own block follows the news anyway.
             'news_talk_topics' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BLOCKS_NEWS_TALK', '')))),
-            'max_clip_seconds' => 600,
-            'max_clip_bytes' => 6 * 1024 * 1024,
+            // A thirty-minute talk show (P20) is one block: 1800 s and about 11 MB at 48 kbps.
+            'max_clip_seconds' => 2100,
+            'max_clip_bytes' => 16 * 1024 * 1024,
             'join_seconds' => ['min' => 0.35, 'max' => 0.7],
             'reaction_wait_seconds' => (float) env('TV_COMMENTARY_REACTION_WAIT_SECONDS', 90),
             // A block holds the slide only this long; the slides rotate under a block of several minutes.
@@ -913,8 +914,24 @@ return [
                     // rotation; the evergreen version (a timeless topic) goes into the night stock at most `stock_per_day`
                     // times a day. Its own usage channel and `daily_cap`, `timeout_seconds` for the long write.
                     'stammtisch' => ['seconds' => ['min' => 360, 'max' => 600], 'sentences' => ['min' => 55, 'max' => 110], 'speakers' => ['markus', 'sirius', 'genossin'],
-                        'sentences_per_turn' => 3, 'min_words' => 3, 'host_moves' => 10, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 450, 'max' => 800], 'interrupt_gap_ms' => 250, 'max_interruptions' => 2, 'long_gap_ms' => ['min' => 1000, 'max' => 1400], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 15, 'stock_per_day' => 2,
-                        'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 12), 'timeout_seconds' => 180, 'max_output_tokens' => 9_000],
+                        'sentences_per_turn' => 3, 'min_words' => 3, 'host_moves' => 14, 'host_question_share' => 0.6, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 450, 'max' => 800], 'interrupt_gap_ms' => 250, 'max_interruptions' => 2, 'long_gap_ms' => ['min' => 1000, 'max' => 1400], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 120, 'stock_per_day' => 2,
+                        'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 60), 'timeout_seconds' => 180, 'max_output_tokens' => 9_000,
+                        // P20 (user 2026-10-13: "wenn im Programm steht TalkShow von 19:00 bis 19:30, dann muss die TalkShow auch 30
+                        // min gehen!"): the talk owns a window of `slot_minutes` (BroadcastClock: no headlines inside it) and fills it
+                        // to `slot_margin_seconds` short of its end on air (TalkShow::airSeconds(): `air_words_per_second`, the turn
+                        // gaps, `studio_seconds` of theme and applause). Written in `acts`, each in parts of about `part_seconds`
+                        // (one call each, at most `max_parts_per_act`; the voice model writes 21 to 28 lines per call on its own,
+                        // measured 2026-10-13); short before the closing round: up to `max_extra_acts` parts of `extra_act`. Voicing thirty minutes takes VoiceStudio about as long,
+                        // so the live talk is written `write_minutes_ahead` before its slot.
+                        'model' => (string) env('TV_COMMENTARY_TALKSHOW_MODEL', 'claude-sonnet-5-5'), 'slot_minutes' => 30, 'slot_margin_seconds' => 120, 'air_words_per_second' => 3.0, 'studio_seconds' => 35, 'max_extra_acts' => 2, 'act_short_share' => 0.5, 'part_seconds' => 150, 'max_parts_per_act' => 4,
+                        'acts' => [
+                            ['id' => 'opening', 'brief' => 'Akt eins: der kalte Einstieg, die Genossin mit ihrer steilsten These, Markus fährt ihr sofort in die Parade; dann begrüßt Sirius die Hörer, stellt beide Gäste mit Namen und Haltung vor und stellt das Thema als zugespitzte Frage, ausgehend von der Schlagzeile mit ihrer Quelle; danach die erste Runde Kreuzfeuer.', 'min_turns' => 4],
+                            ['id' => 'headline', 'brief' => 'Akt zwei: die Schlagzeile im Kreuzfeuer. Sirius liest sie noch einmal vor und konfrontiert beide abwechselnd mit dem Argument des anderen, hakt bei jeder ausweichenden Antwort nach; die Genossin landet einen Treffer, den Markus nicht sofort kontern kann, und es eskaliert.', 'min_turns' => 4],
+                            ['id' => 'everyday', 'brief' => 'Akt drei: Was heißt das für die Leute? Sirius stellt hypothetische Fragen („Mal angenommen, …, was dann?“), fragt nach der Rentnerin, dem Sparer und dem Einkauf im Supermarkt, stellt Entweder-oder-Fragen; die Running Gags kommen zurück.', 'min_turns' => 4],
+                            ['id' => 'factcheck', 'brief' => 'Akt vier: Sirius ruft den Faktencheck aus, mit genau diesem Wort, und prüft eine strittige Behauptung nur mit dem, was im Material steht; danach liest er eine Zuschauerfrage vor, ohne einen Namen zu erfinden („Ein Zuschauer fragt …“), und zwingt beide zu einer Antwort.', 'factcheck' => true, 'min_turns' => 4],
+                            ['id' => 'closing', 'brief' => 'Letzter Akt: ein letztes Aufbäumen, dann die Schlussrunde: Sirius verlangt von jedem genau einen Satz („Ein Satz, Herr Turm, ein Satz!“), die Genossin zuerst, dann Markus; Sirius spricht zuletzt, mit einer bissigen Zusammenfassung als Pointe: kein Dank, kein Gruß, kein „bleiben Sie dran“ (eine Verabschiedung wird gestrichen, dann spräche nicht er zuletzt).', 'min_turns' => 3],
+                        ],
+                        'extra_act' => ['id' => 'extra', 'brief' => 'Zusatzrunde: noch eine Runde Kreuzfeuer zu einem Aspekt aus dem Material, der noch nicht dran war; Sirius fragt nach, die beiden Gäste roasten sich, keiner gibt nach.', 'min_turns' => 4]],
                 ],
                 // The EINUNDZWANZIG portal's public meetup dates (GET, about five megabytes, every date ever): read at most
                 // every `cache_minutes`, a failed read tried again after `retry_minutes`.

@@ -264,7 +264,11 @@ final class JingleSynth
         return implode('+', $terms);
     }
 
-    /** Stabs of a chord on every eighth (0.25 s) from `$t0` to `$t1`, each a plucked tone with two overtones. */
+    /**
+     * Stabs of a chord on every eighth (0.25 s) from `$t0` to `$t1`, each a plucked tone with two overtones.
+     *
+     * @param  list<float>  $freqs
+     */
     private static function stabs(float $t0, float $t1, array $freqs, float $amp): string
     {
         $tones = implode('+', array_map(fn (float $freq): string => 'sin(2*PI*'.self::f($freq).'*t)+0.45*sin(2*PI*'.self::f(2 * $freq).'*t)+0.2*sin(2*PI*'.self::f(3 * $freq).'*t)', $freqs));
@@ -272,7 +276,11 @@ final class JingleSynth
         return self::f($amp / count($freqs)).'*between(t,'.self::f($t0).','.self::f($t1).')*min(1,mod(t-'.self::f($t0).',0.25)*250)*exp(-mod(t-'.self::f($t0).',0.25)*11)*('.$tones.')';
     }
 
-    /** A held chord from `$t0`, decaying over about `$decay` seconds. */
+    /**
+     * A held chord from `$t0`, decaying over about `$decay` seconds.
+     *
+     * @param  list<float>  $freqs
+     */
     private static function chord(float $t0, array $freqs, float $decay, float $amp): string
     {
         $x = '(t-'.self::f($t0).')';

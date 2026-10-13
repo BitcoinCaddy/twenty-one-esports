@@ -235,6 +235,12 @@ final class ReplayArchive
         return $entries;
     }
 
+    /** Removes an archived block and its twin (FormatPurge). */
+    public function remove(string $name): void
+    {
+        $this->delete(basename($name));
+    }
+
     private function delete(string $name): void
     {
         @unlink($this->dir.'/'.$name.'.opus');

@@ -1,5 +1,5 @@
 {
-    "about": "The host moves of Sirius in Turm und Genossin, der Talk (plan \"TWENTY ONE Radio\", P16; user 2026-10-13: the host's phrases must be very extensive for lots of variance). Written for the show as a parody of an interrupting talk show host's STYLE (dramaturgy rule host-interrupts, resources/data/voice/talkshow.json); none of them is a quote of a real person, none names a real host. TalkShow::hostMoves() offers a rotating sample per episode (one per group first, the ones offered longest ago first) and never a move said on air within `tv.commentary.repeat_hours` (SpokenMemory); the host may also invent new ones in the same style.",
+    "about": "The host moves of Sirius in Turm und Genossin, der Talk (plan \"TWENTY ONE Radio\", P16; user 2026-10-13: the host's phrases must be very extensive for lots of variance). Written for the show as a parody of an interrupting talk show host's STYLE (dramaturgy rule host-interrupts, resources/data/voice/talkshow.json); none of them is a quote of a real person, none names a real host. TalkShow::hostMoves() offers a rotating sample per episode (one per group first, the ones offered longest ago first) and never a move said on air within `tv.commentary.repeat_hours` (SpokenMemory); the host may also invent new ones in the same style. P20 (user 2026-10-13: \"Und der Moderator stellt keine Fragen … Der Moderator ist Lanz, und der moderiert nicht durch Fragen?\"): the groups nachfrage, umformulieren, hypothetisch, entweder_oder, konfrontieren, ausreden_dann_fragen, sticheln and festnageln are questions to a guest by name, after the question techniques of talkshow.json (host-asks, controversial-interview, closed-questions, reflexive-questions, loaded-questions).",
     "groups": {
         "unterbrechen": [
             "Moment, Moment, Moment, da muss ich jetzt mal dazwischen.",
@@ -120,6 +120,60 @@
             "Das war jetzt viel, ich versuche mal, das zu übersetzen.",
             "Kurz und knapp bitte, die Zuhörer schlafen sonst ein.",
             "Sie reden jetzt schon so lange am Stück, das ist hier Rekord."
+        ],
+        "nachfrage": [
+            "Das war keine Antwort auf meine Frage, Herr Turm, also noch einmal: wer bezahlt das am Ende?",
+            "Genossin, Sie weichen aus, ich frage ein drittes Mal: wer trägt den Schaden?",
+            "Schön gesagt, aber was heißt das jetzt konkret für den Mann an der Supermarktkasse?",
+            "Und wenn das nicht klappt, Herr Turm, was dann?",
+            "Moment, da hake ich nach, Genossin: woher wissen Sie das eigentlich so genau?",
+            "Das klang gut, aber was genau meinen Sie damit, Herr Turm?"
+        ],
+        "umformulieren": [
+            "Ich stelle die Frage mal anders, vielleicht klappt es dann, Genossin: wer verliert dabei Geld?",
+            "Ganz einfach gefragt, für alle ohne Wirtschaftsstudium: wird das Brot dadurch teurer oder nicht?",
+            "Lassen Sie mich das übersetzen, Genossin: Sie wollen also einfach mehr Geld drucken, richtig?",
+            "Noch mal zum Mitschreiben, Herr Turm: Sie würden dem Staat also das Geld komplett wegnehmen?"
+        ],
+        "hypothetisch": [
+            "Mal angenommen, die Zentralbank druckt morgen das Doppelte, Genossin, was passiert dann mit meinem Sparbuch?",
+            "Stellen Sie sich vor, Sie wären Finanzministerin, Genossin, was machen Sie am ersten Tag?",
+            "Angenommen, ab morgen zahlen alle nur noch in Bitcoin, Herr Turm, wer kassiert dann die Steuern?",
+            "Was würden Sie einer Rentnerin sagen, Herr Turm, deren Erspartes gerade weniger wert geworden ist?",
+            "Wenn Sie recht haben, Genossin, warum hat dann nicht längst jedes Land seine Schulden einfach weggedruckt?"
+        ],
+        "entweder_oder": [
+            "Ja oder nein, Herr Turm, braucht es überhaupt eine Zentralbank?",
+            "Genossin, die Schuldenbremse abschaffen, ja oder nein?",
+            "Inflation, Genossin, ist das jetzt die Gier der Konzerne oder zu viel Geld?",
+            "Mehr Staat oder weniger Staat, Herr Turm, in einem Wort?",
+            "Sparen oder ausgeben, Genossin, was raten Sie unseren Hörern heute Abend?"
+        ],
+        "konfrontieren": [
+            "Herr Turm, die Genossin nennt Bitcoin ein Spielzeug für Spekulanten, was antworten Sie ihr?",
+            "Genossin, Herr Turm sagt, Sie enteignen die Sparer, stimmt das?",
+            "Viele Hörer denken jetzt, das ist doch Wunschdenken, was sagen Sie denen, Genossin?",
+            "Ich spiele mal den Anwalt der Gegenseite, Herr Turm: wer baut ohne Staat die Straßen?",
+            "Ich lese Ihnen die Schlagzeile noch einmal vor, Genossin, und dann will ich eine Reaktion, was sagen Sie?"
+        ],
+        "ausreden_dann_fragen": [
+            "Moment, Moment, lassen Sie ihn ausreden, und dann frage ich Sie, Genossin: was genau ist daran falsch?",
+            "Jetzt lassen Sie sie doch mal ausreden, Herr Turm, und danach sagen Sie mir, wo der Fehler liegt, ja?"
+        ],
+        "sticheln": [
+            "Herr Turm, ist das jetzt ein Argument oder schon die Midlife-Crisis mit Laseraugen?",
+            "Genossin, druckt man sich so auch die Pointe, wenn einem keine einfällt?",
+            "Herr Turm, haben Sie das Argument aus einem Whitepaper oder aus einem Glückskeks?",
+            "Genossin, wann haben Sie zuletzt einem Politiker Ihr Geld anvertraut, und wie ging das aus?",
+            "Ist das Ihre Meinung, Genossin, oder steht das so in Ihrer Jobgarantie?",
+            "Herr Turm, wie viele Bitcoin-Witze braucht es noch, bis hier im Studio jemand lacht?"
+        ],
+        "festnageln": [
+            "Bevor wir weitermachen, Herr Turm, würden Sie darauf Ihr eigenes Geld verwetten?",
+            "Genossin, wenn Sie in einem Jahr falsch liegen, kommen Sie dann wieder und geben das zu?",
+            "Herr Turm, was wäre für Sie der Beweis, dass Sie sich geirrt haben?",
+            "Und was genau hat das mit dem Geld der Leute zu tun, die uns gerade zuhören, Genossin?",
+            "Genossin, wenn Geld nur Buchhaltung ist, warum wollen dann alle mehr davon?"
         ]
     }
 }

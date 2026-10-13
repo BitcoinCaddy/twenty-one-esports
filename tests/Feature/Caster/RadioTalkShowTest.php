@@ -14,6 +14,7 @@ use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\ShowScripts;
 use App\Support\Caster\Programme\TalkShow;
 use App\Support\Caster\Programme\TalkShowScripts;
+use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
 use App\Support\Caster\WorldMemory;
 use App\Support\Voice\VoiceAgent;
@@ -58,6 +59,8 @@ beforeEach(function () {
         'tv.commentary.programme.shows.formats.stammtisch.seconds' => ['min' => 20, 'max' => 600],
         'tv.commentary.programme.shows.formats.stammtisch.sentences' => ['min' => 10, 'max' => 110],
         'tv.commentary.programme.shows.formats.stammtisch.min_turns' => 3,
+        // One call for the whole talk (P16); the acts of P20 have their own tests (TalkShowActsTest).
+        'tv.commentary.programme.shows.formats.stammtisch.acts' => [],
     ]);
 
     $this->travelTo(CarbonImmutable::parse('2026-10-13 17:58:00', 'Europe/Berlin'));
@@ -85,17 +88,17 @@ function talkAnswer(array $lines = []): array
         'Genossin: Der Staat kann in seiner eigenen Währung niemals pleitegehen, das ist reine Buchhaltung!',
         'Markus: Nein, nein, nein, so einfach ist das wirklich nicht!',
         'Sirius: Moment, Moment, Moment, da muss ich jetzt mal dazwischen.',
-        'Sirius: Willkommen zum Talk, heute streiten Herr Turm und Genossin Gisela über die Zinsen der Notenbank.',
+        'Sirius: Willkommen zum Talk, heute streiten Herr Turm und Genossin Gisela über die Zinsen, Genossin, was soll das bringen?',
         'Genossin: Wie Stephanie Kelton argumentiert, wirkt eine Zinserhöhung eigentlich wie ein Konjunkturprogramm.',
         'Markus: Das ist ungefähr so logisch, wie Feuer mit Benzin zu löschen und sich über die Wärme zu freuen.',
-        'Sirius: Ja oder nein, mehr will ich von Ihnen gar nicht wissen.',
+        'Sirius: Ja oder nein, Genossin, ist das nicht einfach Wunschdenken?',
         'Genossin: Ja, und zwar weil der Staat dann mehr Zinsen zahlt!',
         'Markus: Und wer bezahlt diese Zinsen am Ende, wenn nicht die Sparer selbst?',
         'Sirius: Dann machen wir doch jetzt mal einen kleinen Faktencheck.',
-        'Sirius: Die Positionsliste sagt genau das, ob es stimmt, ist eine ganz andere Frage.',
+        'Sirius: Die Positionsliste sagt genau das, aber stimmt es auch, Herr Turm?',
         'Genossin: Danke, endlich sagt das mal jemand deutlich hier im Studio.',
         'Markus: Gutes Geld braucht keine Erlaubnis von irgendeinem Ministerium oder einer Notenbank.',
-        'Sirius: Ein Satz, Herr Turm, ein einziger Satz bitte!',
+        'Sirius: Ein Satz, Herr Turm, was bleibt am Ende übrig?',
         'Genossin: Geld ist ein Werkzeug der Gesellschaft und kein Spielzeug für Spekulanten.',
         'Markus: Wer das Geld kontrolliert, kontrolliert die Menschen, und das sollte niemand dürfen.',
         'Sirius: Ich halte fest, beide haben recht, nur nicht gleichzeitig, und beim nächsten Talk geht es weiter.',
@@ -444,4 +447,67 @@ it('offers ten host moves per episode from every group, rotating, and never one 
         $offered = [...$offered, ...TalkShow::hostMoves(CarbonImmutable::now())];
     }
     expect($offered)->toContain($said);
+});
+
+it('turns down a talk whose host states instead of asking: fewer than host_question_share of his turns with a question', function () {
+    $writer = app(TalkShowScripts::class);
+    talkHeadline();
+    $material = app(TalkShow::class)->material(CarbonImmutable::now());
+    $statements = [6 => 'Sirius: Ja oder nein, mehr will ich von Ihnen gar nicht wissen.', 10 => 'Sirius: Die Positionsliste sagt genau das, und das halte ich jetzt mal fest.'];
+
+    // Five host turns, four ask (80 %); three of five (60 %) still pass, two of five do not.
+    expect(TalkShowScripts::hostQuestionShare(DuetScripts::parse(talkAnswer()['text'])))->toBe(0.8)
+        ->and($writer->evaluate($material, talkAnswer([6 => $statements[6]])['text'])[1])->toBe([])
+        ->and($writer->evaluate($material, talkAnswer($statements)['text'])[1])->toBe([TalkShowScripts::HOST_QUESTIONS]);
+
+    config(['tv.commentary.programme.shows.formats.stammtisch.host_question_share' => 0.9]);
+    expect($writer->evaluate($material, talkAnswer()['text'])[1])->toBe([TalkShowScripts::HOST_QUESTIONS]);
+});
+
+it('keeps up to three reaction-only turns under the sentence floor, and allows every sound marker OmniVoice speaks', function () {
+    $writer = app(TalkShowScripts::class);
+    talkHeadline();
+    $material = app(TalkShow::class)->material(CarbonImmutable::now());
+    $text = talkAnswer([
+        1 => "Markus: Nein, nein, nein, so einfach ist das wirklich nicht!\nGenossin: [sigh] Ach komm.",
+        4 => "Genossin: Wie Stephanie Kelton argumentiert, wirkt eine Zinserhöhung eigentlich wie ein Konjunkturprogramm.\nSirius: [laughter] Wie herrlich.",
+        7 => "Genossin: Ja, und zwar weil der Staat dann mehr Zinsen zahlt!\nSirius: [question-ah] Bitte was?",
+        10 => "Sirius: Die Positionsliste sagt genau das, aber stimmt es auch, Herr Turm?\nMarkus: [dissatisfaction-hnn] Na klar.",
+    ])['text'];
+
+    [$talk, $violations] = $writer->evaluate($material, $text);
+
+    // Three stay (two words each, under the talk's three), the fourth is a fragment and leaves.
+    expect($violations)->toBe([])
+        ->and($talk['text'])->toContain('[sigh] Ach komm.')->toContain('[laughter] Wie herrlich.')->toContain('[question-ah] Bitte was?')
+        ->not->toContain('Na klar.')
+        ->and(TalkShowScripts::reactionOnly('[sigh] Ach, Herr Turm.'))->toBeTrue()
+        ->and(TalkShowScripts::reactionOnly('Ach, Herr Turm.'))->toBeFalse()
+        ->and(TalkShowScripts::reactionOnly('[sigh] Das ist jetzt aber wirklich ein sehr langer Satz.'))->toBeFalse();
+
+    $markers = ['laughter', 'sigh', 'confirmation-en', 'question-en', 'question-ah', 'question-oh', 'question-ei', 'question-yi', 'surprise-ah', 'surprise-oh', 'surprise-wa', 'surprise-yo', 'dissatisfaction-hnn'];
+    foreach ($markers as $marker) {
+        expect((new ScriptGuard)->check("[{$marker}] Das ist ein ganz normaler Satz mit genug Wörtern drin.\nUnd das ist noch ein zweiter Satz mit genug Wörtern.", 1, 10, 32))->not->toContain(ScriptGuard::MARKER_UNKNOWN);
+    }
+    expect((new ScriptGuard)->check("[giggle] Das ist ein ganz normaler Satz mit genug Wörtern drin.\nUnd das ist noch ein zweiter Satz mit genug Wörtern.", 1, 10, 32))->toContain(ScriptGuard::MARKER_UNKNOWN);
+});
+
+it('asks for questions, reactions and a roast that hurts but makes sense in the talk show prompt, within the standing limits', function () {
+    talkHeadline();
+    $prompt = TalkShowScripts::prompt(app(TalkShow::class)->material(CarbonImmutable::now()), false, [TalkShowScripts::HOST_QUESTIONS], [], TalkShow::hostMoves(CarbonImmutable::now(), 14));
+
+    expect($prompt)->toContain('moderiert durch Fragen', 'mindestens sieben von zehn', '„Ich halte fest“ höchstens zweimal', 'Sirius hat zu wenig gefragt')
+        ->toContain('Reaktionen', '[dissatisfaction-hnn]', '[question-ah]', 'zwei bis fünf Wörter')
+        ->toContain('Roasten, bis es wehtut, aber mit Sinn', 'Kein Kauderwelsch', 'liebevolle Schimpfwörter', 'nie Geschlecht, Aussehen, Alter, Herkunft')
+        ->toContain('Der Gastgeber fragt', 'Anwalt der Gegenseite', 'Mal angenommen')
+        ->not->toContain('Lanz');
+
+    // Every role gets roast moves, and the host moves carry the question techniques.
+    $data = json_decode((string) file_get_contents(resource_path('data/voice/talkshow-roasts.json')), true);
+    foreach (['markus', 'sirius', 'genossin'] as $speaker) {
+        expect(count($data['moves'][$speaker]))->toBeGreaterThanOrEqual(15)->toBeLessThanOrEqual(20);
+    }
+    $questions = array_merge(...array_map(fn (string $group): array => TalkShow::hostMoveGroups()[$group], ['nachfrage', 'umformulieren', 'hypothetisch', 'entweder_oder', 'konfrontieren', 'ausreden_dann_fragen', 'sticheln', 'festnageln']));
+    expect(count($questions))->toBeGreaterThanOrEqual(35)
+        ->and(array_filter($questions, fn (string $move): bool => ! str_contains($move, '?')))->toBe([]);
 });
