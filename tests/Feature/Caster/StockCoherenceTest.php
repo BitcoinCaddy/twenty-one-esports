@@ -152,6 +152,15 @@ it('hands a claim of another talk back to the queue instead of gluing it into th
         ->and($calls)->not->toContain('https://tv.test/api/caster/scripts/31/release');
 });
 
+it('never opens a block with an orphaned later part: it is told done without audio and the next talk starts the block', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-13 03:00', 'Europe/Berlin'));
+
+    $calls = stockCoherenceRender([stockCoherenceScript(51, 'stock:talk', 'g9', 2, false), stockCoherenceScript(61, 'stock:tutorial')]);
+
+    expect(array_column(array_values(DayStock::fromConfig()->entries())[0]['scripts'], 'id'))->toBe([61]);
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/api/caster/stock/stored') && $request->header('X-Caster-Scripts')[0] === '51');
+});
+
 it('writes a draft the judge finds weak once more with its hint, records why, and queues the second', function () {
     VoiceAgent::fake(fn (): array => ['text' => stockCoherenceDraft(), 'canon_id' => null, 'mood' => 'fakten']);
     StockCoherenceJudge::fake([stockCoherenceVerdict(5, ['payoff'], 'Am Ende fehlt die Pointe.'), stockCoherenceVerdict()]);
@@ -216,7 +225,7 @@ it('opens every stock format with its name and ritual and ends it with a back-an
         ->and($prompt)->not->toContain('kalt und mitten hinein')
         ->and($prompt)->toContain($ritual)
         ->and($prompt)->toContain('Abmoderation: einer sagt, dass das '.StockScripts::SHOW_NAMES[$format].' war')
-        ->and($prompt)->toContain('Prämisse in den ersten zwei Sätzen')->toContain('Ein roter Faden')->toContain('Kauderwelsch')
+        ->and($prompt)->toContain('die kalte Prämisse')->toContain('genau drei Runden')->toContain('härteste Pointe')->toContain('Kauderwelsch')
         ->and($prompt)->not->toContain('keine Ansage wie');
 })->with([
     'own ritual' => ['geschichte', 'klopft mit dem Zeigestock'],
@@ -230,6 +239,21 @@ it('keeps the live-air lines of the league basics out of the stock material', fu
     expect($format)->toBe('liga')
         ->and($material)->toContain('Elo')
         ->and($material)->not->toMatch('/\b(?:live|nachts|genau jetzt)\b/iu');
+});
+
+it('writes a draft again when a line follows the back-announce: the back-announce is the last line', function () {
+    VoiceAgent::fake([
+        ['text' => stockCoherenceDraft()."\nMarkus: Und dann rechnet euch das mal selbst aus mit eurem Bierdeckel.", 'canon_id' => null, 'mood' => 'fakten'],
+        ['text' => stockCoherenceDraft(), 'canon_id' => null, 'mood' => 'fakten'],
+    ]);
+
+    $talk = app(StockScripts::class)->write();
+
+    expect($talk)->not->toBeNull()
+        ->and(StockScripts::endsWithBackAnnounce('schwarzbuch', "Markus: Das war die Schwarzbuch-Stunde.\nSirius: Rechnet selbst."))->toBeFalse()
+        ->and(StockScripts::endsWithBackAnnounce('schwarzbuch', 'Markus: Das Buch ist zu, das war die Schwarzbuch-Stunde.'))->toBeTrue();
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'danach kommt nichts mehr'));
+    expect(DB::table('voice_rejections')->where('channel', StockScripts::CHANNEL)->pluck('reason')->all())->toBe([StockScripts::BACK_ANNOUNCE]);
 });
 
 it('turns down a draft whose opener or back-announce names the time, instead of airing it without its frame', function () {

@@ -402,7 +402,7 @@ it('leaves the night stock to the next format when the talk show draft does not 
         'Markus: Die Liga hat immer offen, und jeder kann jederzeit einfach mitspielen.',
         'Sirius: Und wer verliert, bekommt wenigstens eine Geschichte, die er im Chat erzählen kann.',
         'Markus: Genau dafür gibt es die Tabelle, damit jeder sieht, wie weit er noch weg ist.',
-        'Sirius: Die Tabelle ist ehrlicher als jede Zentralbank, das muss man ihr lassen.',
+        'Sirius: Die Tabelle ist ehrlicher als jede Zentralbank, und das war die Liga-Fibel.',
     ]), 'canon_id' => null, 'mood' => 'fakten']);
     Cache::put('caster:stock:last_formats', ['liga'], now()->addDay());
 

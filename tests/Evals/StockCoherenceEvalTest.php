@@ -53,6 +53,10 @@ it('writes one coherent stock programme per format, judged before it is queued',
             fwrite(STDERR, "\n===== AFTER {$format} try ".($try + 1)."\n[material]\n{$judged['material']}\n[draft]\n{$judged['text']}\n[judge] ".json_encode($judged['answer'], JSON_UNESCAPED_UNICODE)."\n");
         }
 
+        foreach ($stock->answers as $try => $raw) {
+            fwrite(STDERR, "\n===== RAW {$format} try ".($try + 1)."\n{$raw}\n");
+        }
+
         fwrite(STDERR, "\n===== AFTER {$format} result: ".($talk === null ? 'dropped' : 'queued')."\n");
     }
 

@@ -425,7 +425,7 @@ final class BlockFetcher
      */
     public function stock(CasterFetcher $fetcher): ?string
     {
-        [$batch, $terms] = [[], []];
+        [$batch, $terms, $orphans] = [[], [], 0];
 
         while (count($batch) < (int) config('tv.commentary.blocks.max_scripts', 40)) {
             $last = $batch === [] ? null : $batch[count($batch) - 1];
@@ -439,6 +439,14 @@ final class BlockFetcher
 
             if (! is_array($script) || ! is_int($script['id'] ?? null)) {
                 break;
+            }
+
+            // A later part whose beginning is gone (voiced in an older block, or lost) would open a block mid-talk: it
+            // is told done without audio and never airs, and the next claim starts the block.
+            if ($last === null && is_int($script['part']['index'] ?? null) && $script['part']['index'] > 1 && $orphans++ < 10) {
+                $this->skipOrphan($fetcher, $script['id']);
+
+                continue;
             }
 
             // Only the next part of the same talk joins the block; anything else waits for a block of its own.
@@ -547,6 +555,16 @@ final class BlockFetcher
         $this->rendered[] = ['library_upload' => $entry['name'], 'hash' => $hash, 'seconds' => (float) $meta['seconds'], 'status' => $upload->status()];
 
         return CasterFetcher::VOICED;
+    }
+
+    /** An orphaned later part of a stock talk is told done without audio (`api/caster/stock/stored`): it never airs. */
+    private function skipOrphan(CasterFetcher $fetcher, int $id): void
+    {
+        try {
+            $fetcher->server()->withHeaders(['X-Caster-Scripts' => (string) $id])->post($fetcher->settings()['server'].'/api/caster/stock/stored');
+        } catch (ConnectionException) {
+            // Its claim runs out; it comes back and is skipped again.
+        }
     }
 
     /**

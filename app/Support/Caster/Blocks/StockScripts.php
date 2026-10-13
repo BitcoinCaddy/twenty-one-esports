@@ -88,6 +88,9 @@ final class StockScripts
     /** The opener or the back-announce named a time ("heute") and would leave the draft with the time filter. */
     public const FRAME_LOST = 'stock_frame_lost';
 
+    /** The last line is not the back-announce naming the show. */
+    public const BACK_ANNOUNCE = 'stock_back_announce_not_last';
+
     /** The judge scored a draft below `stock.judge.min_score` on one of its scores, or its answer was unreadable. */
     public const INCOHERENT = 'stock_incoherent';
 
@@ -158,6 +161,13 @@ final class StockScripts
      * @var list<array{format: string, material: string, text: string, answer: array<array-key, mixed>|null}>
      */
     public array $judgements = [];
+
+    /**
+     * The raw model answer of every draft of this writer, before any check (draft()), for the eval's listening report.
+     *
+     * @var list<string>
+     */
+    public array $answers = [];
 
     public function __construct(
         private readonly DuetScripts $duets,
@@ -310,7 +320,13 @@ final class StockScripts
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
         $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
+        $this->answers[] = $raw;
         [$talk, $violations] = $this->evaluate($raw, $response->steps->last()?->finishReason === FinishReason::Length);
+
+        // The back-announce is the last line (P21: a draft went on with a line after it).
+        if ($talk !== null && ! self::endsWithBackAnnounce($format, $talk['text'])) {
+            [$talk, $violations] = [null, [self::BACK_ANNOUNCE]];
+        }
 
         if ($violations !== []) {
             $this->usage->recordRejection(self::CHANNEL, $violations);
@@ -329,6 +345,15 @@ final class StockScripts
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
         return [$talk, []];
+    }
+
+    /** Whether the last line of `$text` names the show of `$format` (its back-announce), e.g. "Schwarzbuch-Stunde". */
+    public static function endsWithBackAnnounce(string $format, string $text): bool
+    {
+        $lines = ScriptGuard::lines($text);
+        $name = (string) preg_replace('/^(?:der|die|das)\s+/u', '', self::SHOW_NAMES[$format] ?? self::SHOW_NAMES['talk']);
+
+        return $lines !== [] && mb_stripos($lines[count($lines) - 1], $name) !== false;
     }
 
     /**
@@ -594,14 +619,15 @@ final class StockScripts
                 ."\nLustig, aber mit Sinn: konkrete Geschichten, Gründe und Beispiele, kein Geschwafel über nichts. Keine Begrüßung wie „Hallo“ und kein Abschied, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
             "Aufbau (der Hörer schaltet irgendwann ein und hört es genau einmal)\n\n"
                 ."- Die erste Zeile ist die Ansage: {$lead} nennt die Sendung beim Namen ({$show}) und das Thema in einem Satz, ohne „heute“ und ohne Gruß (etwa „Das ist {$show}, und es geht um …“)."
-                ."\n- Prämisse in den ersten zwei Sätzen: worum es geht und warum es sich lohnt zuzuhören (eine Streitfrage, ein Widerspruch, ein verrückter Fakt aus dem Material)."
-                ."\n- Ein roter Faden: EIN Thema von der ersten bis zur letzten Zeile, jede Wortmeldung baut auf der davor auf. Kein Sprung zu einem anderen Thema, keine Liste lose verbundener Anekdoten, kein zweiter Beitrag hinten dran."
-                ."\n- Die Pointe vor der Abmoderation löst die Prämisse auf: die Antwort, die Moral oder der böse Schluss, auf den alles zulief."
+                ."\n- Gleich danach die kalte Prämisse in einem Satz: die Streitfrage oder der verrückteste Fakt aus dem Material, und warum es sich lohnt dranzubleiben."
+                ."\n- Dann genau drei Runden zu EINEM Thema, jede Runde ein konkreter Fakt aus dem Material, an dem sich die beiden reiben: einer bringt den Fakt, der andere zieht ihn ins Absurde, der Erste kontert mit einem Seitenhieb, der an genau diesem Fakt hängt. Keine Aufzählung: nicht jeden Punkt des Materials abarbeiten, höchstens drei Fakten, kein zweites Thema, kein Erklärvortrag."
+                ."\n- In der dritten Runde greift einer den Einstieg wieder auf und dreht ihn weiter (der Rückgriff)."
+                ."\n- Die vorletzte Zeile ist die härteste Pointe der Sendung, kurz (höchstens zwölf Wörter), und sie beantwortet die Prämisse; danach nur noch die Abmoderation in einem Satz, und sie ist die allerletzte Zeile. Kein lauer Schluss, kein „und so weiter“, keine Zusammenfassung."
                 ."\n- Ton: purer Realismus einer echten Radioshow, sarkastisch, zynisch und frech; es soll wehtun zuzuhören. Die beiden roasten sich gegenseitig und alles in Reichweite (Staat, Banken, Fiatgeld, Shitcoiner, den Chat, den eigenen Sender), aber nie wegen Herkunft, Geschlecht, Religion, Behinderung oder Aussehen und ohne erfundene Behauptungen über echte Personen."
                 ."\n- Das Ritual spielt ihr, ihr beschreibt es nicht: kein „im Sportschau-Ton“, kein „ich klopfe mit dem Zeigestock“, sondern ihr klingt so und tut es."
                 ."\n- Roast wie beim Liga-Pranger: ein konkretes Ziel, ein bestimmtes Detail aus dem Material, eine Steigerung, dann die Pointe. Jeder Seitenhieb hängt an einer konkreten Tatsache oder Behauptung aus dem Material."
                 ."\n- Liebevolle Beleidigungen werfen sich die beiden ständig gegenseitig an den Kopf, jedes Mal neu erfunden und passend zum Thema (etwa „du Pfeife“, „alter Fiat-Romantiker“, „Sats-Geizhals“, „Schwurbelkopf“), nie diese Wörter: ".implode(', ', array_filter((array) config('esports.voice.blocklist', []), 'is_string')).'.'
-                ."\n- Sinn zuerst: jeder Satz sagt etwas Konkretes. Kein Kauderwelsch, keine schiefen oder gemischten Bilder, kein Vergleich, den man erst erklären muss; lieber eine klare, böse Behauptung als ein verunglücktes Bild."
+                ."\n- Sinn zuerst: jeder Satz sagt etwas Konkretes. Höchstens ein Vergleich pro Runde, und er stimmt beim ersten Hören; kein Kauderwelsch, keine gemischten Bilder (Seil und Teich in einem Satz), kein Vergleich, den man erst erklären muss; lieber eine klare, böse Behauptung als ein verunglücktes Bild. Zahlen genau so wie im Material, als Wort."
                 ."\n- Kein Wort über Gebühren, Startgeld oder Eintritt, auch nicht als Witz."
                 ."\n- Zitate, Sprüche und Memes nur, wenn sie genau diesem Thema dienen, höchstens zwei. Jedes mit WER und WO: wer es gesagt hat („gesagt von“ im Material; ohne Sprecher ist es ein Spruch der Szene, dann so ansagen) und wo es belegt ist („belegt bei“). Wer ein Meme nur erklärt, etwa eine Website oder ein Artikel, hat es nicht gesagt. Personen mit vollem Namen, genau so geschrieben wie im Material (etwa „Michael Saylor“), nie „ein Veteran“, „einer aus der Szene“ oder „irgendwer“, wenn das Material die Person nennt. Ein englisches Zitat bleibt wörtlich englisch.",
             self::craft($format),
@@ -613,6 +639,7 @@ final class StockScripts
                 self::TIMESTAMPED => 'Zu viele Zeilen nannten eine Uhrzeit, eine Tageszeit oder „heute“, oder einer kam kaum zu Wort: zeitlos schreiben, alle sprechen im Wechsel.',
                 DuetScripts::TURNS => 'Einer kam gar nicht zu Wort: jede Zeile mit dem Namen des Sprechers beginnen, alle sprechen.',
                 self::FRAME_LOST => 'Die Ansage oder die Abmoderation nannte „heute“ oder eine Tageszeit und fiel deshalb weg: „Das ist die Geschichtsstunde, es geht um …“ und „Das war die Geschichtsstunde …“, ohne „heute“.',
+                self::BACK_ANNOUNCE => 'Die letzte Zeile muss die Abmoderation mit dem Namen der Sendung sein, danach kommt nichts mehr.',
                 self::INCOHERENT => 'Als Sendung nicht schlüssig'.($hint === '' ? '.' : ': '.$hint),
                 'stock_weak_premise' => 'Prämisse: in den ersten zwei Sätzen Sendung, Thema und den Grund zum Zuhören nennen.',
                 'stock_weak_through_line' => 'Roter Faden: bei EINEM Thema bleiben, jede Wortmeldung baut auf der davor auf.',
