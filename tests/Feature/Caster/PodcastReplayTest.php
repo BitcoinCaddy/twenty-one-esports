@@ -339,8 +339,9 @@ it('falls back to the general podcast opener when its source has none', function
 function podcastReplayFeed(array $items): string
 {
     $xml = '<?xml version="1.0"?><rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>Feed</title>';
-    foreach ($items as [$guid, $title, $url]) {
-        $xml .= '<item><title>'.htmlspecialchars($title).'</title><guid>'.$guid.'</guid><pubDate>Fri, 02 Oct 2026 21:19:42 GMT</pubDate><enclosure url="'.$url.'" type="audio/mpeg" length="9"/></item>';
+    foreach ($items as $item) {
+        [$guid, $title, $url] = $item;
+        $xml .= '<item><title>'.htmlspecialchars($title).'</title>'.(isset($item[3]) ? '<description>'.htmlspecialchars($item[3]).'</description>' : '').'<guid>'.$guid.'</guid><pubDate>Fri, 02 Oct 2026 21:19:42 GMT</pubDate><enclosure url="'.$url.'" type="audio/mpeg" length="9"/></item>';
     }
 
     return $xml.'</channel></rss>';
@@ -430,17 +431,23 @@ it('never reads the feed of a disabled source, and nothing at all while the repl
     Http::assertSentCount(1);
 });
 
-it('takes only the Re:set episodes of the Blocktrainer feed once the user switches the source on', function () {
+it('takes only the Re:set episodes of Markus Turm and DerPhiL alone from the Blocktrainer feed once the user switches the source on', function () {
     config(['tv.commentary.podcast_replay.sources.resat.enabled' => true, 'tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => false]);
     Http::fake([
-        'serve.podhome.fm/*' => Http::response(podcastReplayFeed([['w-149', 'Wochenrückblick #149 - Korrektur', 'https://cdn.test/w149.mp3'], ['r-19', 'Re:set #19 - Blocktrainer Event Special', 'https://cdn.test/r19.mp3']])),
-        'cdn.test/r19.mp3' => fn () => Http::response('MP3'),
+        'serve.podhome.fm/*' => Http::response(podcastReplayFeed([
+            ['w-149', 'Wochenrückblick #149 - Korrektur', 'https://cdn.test/w149.mp3', 'MarkusTurm und DerPhiL'],
+            ['r-19', 'Re:set #19 - Blocktrainer Event Special', 'https://cdn.test/r19.mp3', 'MarkusTurm und DerPhiL mit vielen Stimmen vom Event'],
+            ['r-15', 'Re:set #15 - auf zum letzten Gefecht', 'https://cdn.test/r15.mp3', 'Markus und PhiL. Plus: Stimmen und Eindrücke von der BTCPrague'],
+            ['r-x', 'Re:set Spezial', 'https://cdn.test/rx.mp3', 'Roman erzählt'],
+            ['r-18', 'Re:set #18 - Der gefährlichste Podcast', 'https://cdn.test/r18.mp3', 'MarkusTurm und DerPhiL mit ihrem Blick auf aktuelle Geschehnisse'],
+        ])),
+        'cdn.test/r18.mp3' => fn () => Http::response('MP3'),
     ]);
     podcastReplayFfmpeg(400.0, [200.0]);
 
     expect((new PodcastLibrary)->refresh(CarbonImmutable::now()))->toBe(['resat' => PodcastLibrary::STORED])
-        ->and((new PodcastLibrary)->episode('resat')['guid'])->toBe('r-19');
-    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'w149'));
+        ->and((new PodcastLibrary)->episode('resat')['guid'])->toBe('r-18');
+    Http::assertNotSent(fn (Request $request): bool => preg_match('/w149|r19|r15|rx\./', $request->url()) === 1);
 });
 
 it('keeps the stored episode while the feed names it again, and reads a feed at most every check_minutes', function () {

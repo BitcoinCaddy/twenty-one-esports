@@ -192,6 +192,20 @@ it('starts no night episode while a day slot\'s airing still has to play', funct
     expect($night->schedule($slot->addMinutes(11)))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-3']);
 });
 
+it('leaves a music break of `break_minutes` after every episode before the next one starts', function () {
+    podcastNightLibrary();
+    config(['tv.commentary.podcast_replay.night.break_minutes' => 60]);
+    $night = new PodcastNight(new PodcastLibrary);
+    $start = CarbonImmutable::parse('2026-10-13 01:00', 'Europe/Berlin');
+
+    expect($night->schedule($start))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-3']);
+    podcastNightPlayed();
+    // g-3 ran 600 s: until an hour after its end only music, then g-2.
+    expect($night->schedule($start->addMinutes(11)))->toBe(['einundzwanzig' => PodcastNight::WAITING])
+        ->and($night->schedule($start->addMinutes(69)))->toBe(['einundzwanzig' => PodcastNight::WAITING])
+        ->and($night->schedule($start->addMinutes(71)))->toBe(['einundzwanzig' => PodcastNight::QUEUED.' #g-2']);
+});
+
 it('airs the night episodes from now as their own airings: the day\'s slot still airs, the chunks are the library\'s', function () {
     podcastNightLibrary();
     $now = CarbonImmutable::parse('2026-10-13 02:00', 'Europe/Berlin');

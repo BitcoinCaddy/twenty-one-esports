@@ -1439,6 +1439,11 @@ return [
                     'spoken' => 'Blocktrainer-Podcast Reset',
                     'feed' => 'https://serve.podhome.fm/rss/9b654631-a45c-58e4-a237-2e8aa65262b8',
                     'title_pattern' => '/^Re:s[ae]t\b/i',
+                    // Only Markus Turm and DerPhiL (user 2026-10-13: "nur Folgen mit MarkusTurm und DerPhiL und keine anderen"):
+                    // both named in the notes, and none with other voices (the event special, "Stimmen" from a conference,
+                    // "Bonusmaterial", guests, interviews; measured on the feed 2026-10-13: #19, #15, #14 leave).
+                    'require_pattern' => '/(?=.*\bMarkus)(?=.*PhiL\b)/isu',
+                    'exclude_pattern' => '/Special|Stimmen|Bonusmaterial|\bzu Gast\b|\bGäste\b|\bGast:|Interview/iu',
                     'starts_at' => env('TV_PODCAST_REPLAY_RESAT_AT', '16:03'),
                 ],
             ],
@@ -1502,6 +1507,8 @@ return [
                 'sources' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_PODCAST_NIGHT_SOURCES', 'einundzwanzig'))))),
                 'skip_daytime_episode' => (bool) env('TV_PODCAST_NIGHT_SKIP_DAYTIME', false),
                 'queue_ahead_seconds' => 900,
+                // Music between two episodes for this many minutes (0: back to back).
+                'break_minutes' => (int) env('TV_PODCAST_NIGHT_BREAK_MINUTES', 0),
                 'overrun_minutes' => 30,
                 'prefetch_per_run' => 6,
             ],

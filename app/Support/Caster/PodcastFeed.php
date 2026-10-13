@@ -159,7 +159,7 @@ class PodcastFeed
      *
      * @return list<array{guid: string, title: string, published_at: int, url: string, episode_number: int|null, notes: string}>
      */
-    public static function newestAudios(string $xml, ?string $titlePattern = null, int $limit = 1): array
+    public static function newestAudios(string $xml, ?string $titlePattern = null, int $limit = 1, ?string $requirePattern = null, ?string $excludePattern = null): array
     {
         $previous = libxml_use_internal_errors(true);
 
@@ -181,6 +181,13 @@ class PodcastFeed
             $title = self::plain((string) $item->title);
 
             if ($title === '' || ! str_starts_with($url, 'https://') || ($titlePattern !== null && @preg_match($titlePattern, $title) !== 1)) {
+                continue;
+            }
+
+            // Title and show notes together: `$requirePattern` must match (the hosts named), `$excludePattern` must not (other voices).
+            $text = $title."\n".self::plain((string) $item->description);
+
+            if (($requirePattern !== null && @preg_match($requirePattern, $text) !== 1) || ($excludePattern !== null && @preg_match($excludePattern, $text) !== 0)) {
                 continue;
             }
 

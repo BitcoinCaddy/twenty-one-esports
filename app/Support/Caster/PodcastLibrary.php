@@ -87,7 +87,7 @@ class PodcastLibrary
     /**
      * The enabled sources by key, each with its feed and slot; none while the replay is off.
      *
-     * @return array<string, array{name: string, spoken: string, feed: string, title_pattern: string|null, starts_at: string}>
+     * @return array<string, array{name: string, spoken: string, feed: string, title_pattern: string|null, require_pattern: string|null, exclude_pattern: string|null, starts_at: string}>
      */
     public static function sources(): array
     {
@@ -108,6 +108,8 @@ class PodcastLibrary
                 'spoken' => is_string($source['spoken'] ?? null) ? $source['spoken'] : (is_string($source['name'] ?? null) ? $source['name'] : $key),
                 'feed' => $source['feed'],
                 'title_pattern' => is_string($source['title_pattern'] ?? null) && $source['title_pattern'] !== '' ? $source['title_pattern'] : null,
+                'require_pattern' => is_string($source['require_pattern'] ?? null) && $source['require_pattern'] !== '' ? $source['require_pattern'] : null,
+                'exclude_pattern' => is_string($source['exclude_pattern'] ?? null) && $source['exclude_pattern'] !== '' ? $source['exclude_pattern'] : null,
                 'starts_at' => is_string($source['starts_at'] ?? null) ? $source['starts_at'] : '14:03',
             ];
         }
@@ -232,7 +234,7 @@ class PodcastLibrary
     /**
      * One source: the newest episode of its feed, stored when it is not the one already here.
      *
-     * @param  array{name: string, spoken: string, feed: string, title_pattern: string|null, starts_at: string}  $source
+     * @param  array{name: string, spoken: string, feed: string, title_pattern: string|null, require_pattern: string|null, exclude_pattern: string|null, starts_at: string}  $source
      */
     public function refreshSource(string $key, array $source): string
     {
@@ -252,7 +254,7 @@ class PodcastLibrary
 
         // The night loop (PodcastNight) plays the newest few: those are stored too, after the newest.
         $night = PodcastNight::episodeCount($key);
-        $episodes = PodcastFeed::newestAudios($response->body(), $source['title_pattern'], max(1, $night));
+        $episodes = PodcastFeed::newestAudios($response->body(), $source['title_pattern'], max(1, $night), $source['require_pattern'], $source['exclude_pattern']);
 
         if ($episodes === []) {
             return self::NO_EPISODE;

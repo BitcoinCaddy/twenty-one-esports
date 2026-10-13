@@ -135,6 +135,19 @@ final class PodcastNight
             return array_map(fn (): string => self::WAITING, $counts);
         }
 
+        // Music between two episodes (user 2026-10-13: "eine Stunde Musik und dann wieder eine Stunde Podcast"): with
+        // `break_minutes` the next episode waits until the last podcast airing ended that long ago, not just near its end.
+        $break = 60 * (int) ($settings['break_minutes'] ?? 0);
+
+        if ($break > 0) {
+            $lastEnd = CasterScript::query()->where('kind', CasterScript::PODCAST)->where('airs_at', '>=', $now->utc()->subDay())->get(['airs_at', 'estimated_seconds'])
+                ->map(fn (CasterScript $airing): int => CarbonImmutable::parse($airing->airs_at)->getTimestamp() + (int) ceil((float) $airing->estimated_seconds))->max();
+
+            if ($pending > 0 || (is_int($lastEnd) && $now->getTimestamp() < $lastEnd + $break)) {
+                return array_map(fn (): string => self::WAITING, $counts);
+            }
+        }
+
         // The sources take turns: the one with the fewest airings tonight first.
         $airings = array_map(fn (string $key): int => $tonight([self::topic($key)])->count(), array_combine(array_keys($counts), array_keys($counts)));
         $order = array_keys($counts);
