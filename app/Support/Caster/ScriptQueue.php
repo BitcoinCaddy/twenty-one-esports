@@ -398,19 +398,27 @@ class ScriptQueue
         // A long format may start writing earlier (the hotline looks its questions up first).
         $furthest = max($write, ...array_values(array_map(fn (mixed $format): int => is_array($format) ? (int) ($format['write_minutes_ahead'] ?? 0) : 0, (array) config('tv.commentary.programme.shows.formats', []))));
         $slots = array_values(array_filter(BroadcastClock::fromConfig()->upcoming($now, $furthest), fn (array $slot): bool => $slot['type'] === BroadcastClock::RUBRIC));
-        $slot = $slots[0] ?? null;
+        $slot = null;
+
+        // The first slot due for writing: a long show two hours ahead is not held up by the rubrics written before it (P21:
+        // voicing thirty minutes takes about as long, so it cannot wait until the slot before it is gone).
+        foreach ($slots as $candidate) {
+            $ahead = $candidate['key'] - $now->getTimestamp();
+            $show = app(Shows::class)->scheduledFor($candidate);
+            $window = $show === null ? $write : max($write, (int) (Shows::settings($show)['write_minutes_ahead'] ?? 0));
+
+            if ($ahead <= 60 * $window && $ahead >= 60 * (float) ($settings['last_write_minutes'] ?? 2) && ! Rubrics::written($candidate['key'])) {
+                $slot = $candidate;
+
+                break;
+            }
+        }
 
         if ($slot === null) {
             return 0;
         }
 
         $ahead = $slot['key'] - $now->getTimestamp();
-        $show = app(Shows::class)->scheduledFor($slot);
-        $window = $show === null ? $write : max($write, (int) (Shows::settings($show)['write_minutes_ahead'] ?? 0));
-
-        if ($ahead > 60 * $window || $ahead < 60 * (float) ($settings['last_write_minutes'] ?? 2) || Rubrics::written($slot['key'])) {
-            return 0;
-        }
 
         $rubrics = app(Rubrics::class);
         $id = $rubrics->plannedFor($slot, $now);

@@ -27,10 +27,13 @@ namespace App\Support\Caster;
 final class RadioCraft
 {
     /** The compact prompt block: one line per rule, under the house rules. */
-    public static function block(): string
+    public static function block(bool $gags = true): string
     {
+        // Without the running gags (day stock and long shows, P21): their rule would ask for the gags the personas left out.
+        $rules = array_filter(self::rules(), fn (array $rule): bool => $gags || $rule['id'] !== 'running_gags');
+
         return "Radio-Handwerk (für Markus und Sirius; wie bei einem echten Talk- und Newssender, die Hausregeln oben gehen vor)\n\n"
-            .implode("\n", array_map(fn (array $rule): string => "- {$rule['title']}: {$rule['rule']}", self::rules()));
+            .implode("\n", array_map(fn (array $rule): string => "- {$rule['title']}: {$rule['rule']}", $rules));
     }
 
     /**

@@ -142,7 +142,7 @@ it('lists the next hour as a rundown, so a teaser names only a slot that really 
     $entries = $rundown->next($now);
 
     expect(array_map(fn (array $entry): string => $entry['starts_at']->setTimezone('Europe/Berlin')->format('H:i').' '.$entry['type'], $entries))
-        ->toBe(['14:15 rubric', '14:20 talk', '14:30 headlines', '14:33 talk', '14:45 rubric', '14:50 talk', '15:00 news', '15:03 talk'])
+        ->toBe(['14:15 rubric', '14:20 talk', '14:30 headlines', '14:33 talk', '14:45 rubric', '14:50 talk', '15:00 news', '15:03 rubric'])
         ->and($rundown->nextOf('headlines', $now)['in_minutes'])->toBe(20)
         ->and($rundown->nextOf('headlines', $now)['spoken_time'])->toBe('vierzehn Uhr dreißig')
         ->and($rundown->nextOf('news', $now)['label'])->toBe('die Nachrichten')

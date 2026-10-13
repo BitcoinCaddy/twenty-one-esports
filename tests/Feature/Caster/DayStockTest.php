@@ -88,11 +88,12 @@ function dayStockAnswer(bool $withHour = true): string
         'Markus: Und niemand fragt dich je nach diesen Wörtern, weder der Support noch eine Bank und auch kein freundlicher Fremder.',
         'Sirius: Der freundliche Fremde im Chat wollte meine Wörter neulich zur Sicherheit überprüfen und war dann plötzlich weg.',
         'Markus: Der war so freundlich wie eine Zentralbank, die dir verspricht, dass dein Geld nächstes Jahr noch genauso viel wert ist.',
-        'Sirius: Dann schreibe ich die Wörter jetzt auf Metall und lege den Bierdeckel als Köder für die Gauner in die Schublade.',
+        'Sirius: Dann schreibe ich die Wörter auf Metall, und damit war das das Bitcoin-Tutorial, zurück ins Programm.',
     ];
 
+    // In the middle: the opener and the back-announce frame the show and never name the hour (P21, StockScripts::FRAME_LOST).
     if ($withHour) {
-        $lines[] = 'Markus: Es ist jetzt kurz nach drei Uhr in der Nacht, und wir machen einfach weiter mit unserem Thema hier.';
+        array_splice($lines, 4, 0, ['Markus: Es ist jetzt kurz nach drei Uhr in der Nacht, und wir machen einfach weiter mit unserem Thema hier.']);
     }
 
     return implode("\n", $lines);
@@ -113,8 +114,8 @@ it('writes an evergreen talk without the line that names the hour, and turns dow
         ->and(count($talk['speakers']))->toBe(8)
         ->and(array_unique($talk['speakers']))->toBe(['markus', 'sirius']);
 
-    // Six lines naming the time leave two turns: under turns.min, turned down.
-    $short = implode("\n", array_map(fn (string $line): string => str_replace(['Wohnungsbrand', 'Datenleck', 'Internet', 'Bank und', 'Fremde im', 'Zentralbank'], 'heute', $line), explode("\n", dayStockAnswer(false))));
+    // Five lines naming the time leave three turns: under turns.min, turned down.
+    $short = implode("\n", array_map(fn (string $line): string => str_replace(['Wohnungsbrand', 'Internet', 'Bank und', 'Fremde im', 'Zentralbank'], 'heute', $line), explode("\n", dayStockAnswer(false))));
     expect($stock->evaluate($short)[1])->toBe([StockScripts::TIMESTAMPED]);
 });
 
@@ -143,6 +144,8 @@ it('rotates the formats, a tutorial with its rules and no advice, a format witho
 });
 
 it('hands out stock scripts only to a stock claim in the stock window, written on demand, and marks them done', function () {
+    // The fixture ends on the tutorial's back-announce (StockScripts::BACK_ANNOUNCE).
+    config(['tv.commentary.blocks.stock.formats' => ['tutorial']]);
     VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(), 'canon_id' => null, 'mood' => 'fakten']);
     $this->travelTo(CarbonImmutable::parse('2026-10-13 03:00', 'Europe/Berlin'));
 
@@ -353,6 +356,7 @@ it('logs the airtime mix per hour: fresh, stock, replay and music', function () 
 });
 
 it('writes stock talks ahead only in the stock window and while the workstation reports room', function () {
+    config(['tv.commentary.blocks.stock.formats' => ['tutorial']]);
     VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(), 'canon_id' => null, 'mood' => 'fakten']);
     $queue = app(ScriptQueue::class);
     $stockTalks = fn (): int => CasterScript::query()->where('scene', StockScripts::SCENE)->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count();

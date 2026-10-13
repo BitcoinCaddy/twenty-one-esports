@@ -10,6 +10,7 @@ use App\Support\SeasonChain\LadderEvents;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\SeasonChain\SeasonChains;
 use App\Support\Voice\ChatFactCheck;
+use App\Support\Voice\StockCoherenceJudge;
 use App\Support\Voice\VoiceFactCheck;
 use App\Support\Voice\WebLookupAgent;
 use Carbon\CarbonImmutable;
@@ -78,6 +79,8 @@ pest()->extend(TestCase::class)
         ChatFactCheck::fake(fn (): array => ['claims' => []]);
         // A chat question's web lookup is a model call too: nothing to look up by default (ChatContextTest fakes findings).
         WebLookupAgent::fake(fn (): string => WebLookupAgent::NOTHING);
+        // The day stock's coherence judge is a model call: every score passes by default (StockCoherenceTest fakes weak ones).
+        StockCoherenceJudge::fake(fn (): array => ['premise' => 5, 'through_line' => 5, 'payoff' => 5, 'fit' => 5, 'liveliness' => 5, 'sense' => 5, 'nonsense' => [], 'invented' => [], 'hint' => '']);
         // Quiet hours follow the wall clock: off by default so a run after one at night tests the day schedule (QuietHoursTest switches them on).
         config(['tv.commentary.spool.quiet_hours.from' => '']);
         // The stream command refreshes the cover picture at config('twentyone.stream.cover.path'); with the fake renderer
@@ -141,6 +144,8 @@ pest()->extend(TestCase::class)
         ChatFactCheck::fake(fn (): array => ['claims' => []]);
         // A chat question's web lookup is a model call too: nothing to look up by default (ChatContextTest fakes findings).
         WebLookupAgent::fake(fn (): string => WebLookupAgent::NOTHING);
+        // The day stock's coherence judge is a model call: every score passes by default (StockCoherenceTest fakes weak ones).
+        StockCoherenceJudge::fake(fn (): array => ['premise' => 5, 'through_line' => 5, 'payoff' => 5, 'fit' => 5, 'liveliness' => 5, 'sense' => 5, 'nonsense' => [], 'invented' => [], 'hint' => '']);
         // Quiet hours follow the wall clock: off by default so a run after one at night tests the day schedule (QuietHoursTest switches them on).
         config(['tv.commentary.spool.quiet_hours.from' => '']);
         config(['session.expire_on_close' => true]);

@@ -47,7 +47,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
      * @param  int|null  $timeoutOverride  seconds (null: `esports.voice.timeout_seconds`); a five-minute show takes longer to write than a post
      * @param  string|null  $context  a second cached system block behind the fixed part (null: none)
      * @param  string|null  $cacheTtl  the fixed part's cache TTL, "1h" or "5m" (null: the API's default, five minutes)
-     * @param  string|null  $modelOverride  the model (null: `esports.voice.model`); the talk show writes with its own (P20)
+     * @param  string|null  $modelOverride  the model (null: `esports.voice.model`); the talk show (P20) and the day stock (`stock.model`) write with their own
      */
     public function __construct(
         private readonly string $fixedPart = '',
