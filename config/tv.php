@@ -509,7 +509,8 @@ return [
                     'enabled' => (bool) env('TV_COMMENTARY_STOCK_JUDGE', true),
                     // Sonnet: Haiku flagged plain sentences from the material as nonsense in 10 of 10 real drafts (P21, 2026-10-13).
                     'model' => env('TV_COMMENTARY_STOCK_JUDGE_MODEL', 'claude-sonnet-5-5'),
-                    'min_score' => 4,
+                    // User 2026-10-13 07:20: "PASST ERSTMAL, WIR VERBESSERN ROLLEND" — airable at 3 on every axis; invented facts stay a hard reject.
+                    'min_score' => (int) env('TV_COMMENTARY_STOCK_JUDGE_MIN', 3),
                     // User decision 2026-10-13: sense 3 is airable when nothing is invented (`invented` empty is the hard gate).
                     'sense_min_score' => 3,
                     'max_tokens' => 1500,
