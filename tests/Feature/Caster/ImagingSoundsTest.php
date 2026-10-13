@@ -180,3 +180,15 @@ it('produces each imaging category to its length: voice length by tempo, stinger
     expect(JingleSynth::imagingRecipe('img-op-tribunal-1', 'opener-tribunal', (array) config('tv.commentary.imaging.format_beds'))['bed'])->toBe('courtroom')
         ->and(JingleSynth::imagingRecipe('img-pi-01', 'power-intro')['bed'])->toBeNull();
 });
+
+it('keeps every anchor jingle line free of German words', function (string $file) {
+    $lines = json_decode((string) file_get_contents(resource_path('data/voice/'.$file)), true)['lines'];
+
+    foreach ($lines as $line) {
+        foreach (['text', 'spoken'] as $field) {
+            // User 2026-10-13: "es dürfen keine deutschen Wörter in den JINGLES vorkommen", EINUNDZWANZIG becomes TWENTY-ONE.
+            expect(preg_match('/einundzwanzig|[äöüß]|\b(und|der|die|das|mit|nach|jetzt|hier|nachrichten|wetter|sendung|genossin)\b/iu', (string) ($line[$field] ?? '')))
+                ->toBe(0, $line['id'].' '.$field);
+        }
+    }
+})->with(['anchor-jingles.json', 'anchor-imaging.json']);
