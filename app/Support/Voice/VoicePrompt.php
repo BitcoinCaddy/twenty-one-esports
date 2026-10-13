@@ -50,6 +50,7 @@ final class VoicePrompt
         VoiceHygiene::SIGN_OFF => 'Kein Abschiedsgruß am Ende.',
         VoiceGuard::MISSING_FACT => 'Ein Pflicht-Fakt fehlte oder war umformuliert: wörtlich übernehmen.',
         VoiceGuard::BLOCKLIST => 'Ein gesperrtes Wort.',
+        VoiceGuard::SELF_LABEL => 'Ihr habt euch ein Etikett gegeben: nennt euch nie Anarchokapitalisten oder Libertäre, eure Haltung zeigt sich nur in dem, was ihr verspottet.',
         VoiceGuard::EMOJI => 'Höchstens zwei Emoji.',
         VoiceHygiene::TOO_MANY_SENTENCES => 'Zu viele Sätze.',
         VoiceHygiene::LONG_SENTENCE => 'Ein Satz war zu lang: höchstens 14 Wörter.',

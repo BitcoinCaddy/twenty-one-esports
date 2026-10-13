@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Caster\CasterVoice;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoiceGuard;
 
@@ -102,6 +103,27 @@ it('rejects a blocklisted word', function () {
 
 it('rejects a fee mention', function () {
     expect(voiceGuard()->check('Satoshi_Fan schlägt Hal 3:1, ganz ohne Startgeld.', voiceGuardFacts(), 280, null))->toContain(VoiceGuard::BLOCKLIST);
+});
+
+it('rejects a self-label of the station\'s worldview, and lets the word through where it labels someone else', function (string $text, bool $label) {
+    // User 2026-10-13: the lens shows in what they mock, never as "Anarchokapitalist" or "wir sind Libertäre".
+    expect(in_array(VoiceGuard::SELF_LABEL, voiceGuard()->check($text, [], 400, null), true))->toBe($label);
+})->with([
+    'Anarchokapitalist' => ['Der Anarchokapitalist in mir lacht über jede neue Steuer.', true],
+    'Anarcho-Kapitalismus' => ['Das ist reiner Anarcho-Kapitalismus, und der Staat weint.', true],
+    'Ankap' => ['Als Ankap sag ich dir, dass die Zentralbank Geld druckt.', true],
+    'wir als Libertäre' => ['Wir als Libertäre finden das natürlich herrlich.', true],
+    'als Libertärer' => ['Als Libertärer sage ich dir, dass das Amt zu teuer ist.', true],
+    'ich bin libertär' => ['Ich bin halt libertär und das Finanzamt weiß das.', true],
+    'wir Libertären' => ['Wir Libertären haben das schon immer gewusst.', true],
+    'about others' => ['Die Libertären in den USA streiten gerade über eine Steuer.', false],
+    'a think tank' => ['Ein libertärer Thinktank aus Wien hat die Zahl ausgerechnet.', false],
+    'Kap Hoorn' => ['Wir segeln an Kap Hoorn vorbei und zahlen dort keine Steuern.', false],
+]);
+
+it('counts the self-label among the free rules of every TV text', function () {
+    expect(CasterVoice::FREE_RULES)->toContain(VoiceGuard::SELF_LABEL)
+        ->and(CasterVoice::free([VoiceGuard::SELF_LABEL, VoiceGuard::NUMBER]))->toBe([VoiceGuard::SELF_LABEL]);
 });
 
 it('rejects a sentence put into a real person\'s mouth', function () {

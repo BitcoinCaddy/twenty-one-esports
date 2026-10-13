@@ -181,6 +181,7 @@ class SportWeather
 
         try {
             $rejected = [];
+            $context = ShowCraft::context($slot);
 
             for ($try = 0; $try < 2; $try++) {
                 if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)
@@ -191,7 +192,7 @@ class SportWeather
                 $this->usage->recordAttempt(self::CHANNEL);
                 $temperature = config('tv.commentary.scripts.temperature');
                 $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, max(2_000, (int) config('tv.commentary.scripts.max_output_tokens', 1_500)), cacheTtl: CasterVoice::staticCacheTtl()))
-                    ->prompt(self::prompt($material, $sirius, $quiet, $rejected));
+                    ->prompt(self::prompt($material, $sirius, $quiet, $rejected, $context));
                 $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
                 $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -253,10 +254,8 @@ class SportWeather
 
         $maxSeconds = (float) ($seconds['max'] ?? 120);
         $maxSentences = max(1, (int) ($sentences['max'] ?? 14));
-        while (count($lines) > 1 && (count($lines) > $maxSentences || ScriptQueue::estimateSeconds(implode("\n", $lines)) > $maxSeconds)) {
-            array_pop($lines);
-            array_pop($speakers);
-        }
+        // Too long: the sentences before the end go, the back-announce stays (ShowCraft::cut()).
+        [$lines, $speakers] = ShowCraft::cut($lines, $speakers, fn (array $kept): bool => count($kept) > $maxSentences || ScriptQueue::estimateSeconds(implode("\n", $kept)) > $maxSeconds);
 
         $text = implode("\n", $lines);
         $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $text));
@@ -340,8 +339,9 @@ class SportWeather
      *
      * @param  SportWeatherMaterial  $material
      * @param  list<string>  $rejected
+     * @param  array{next: string|null, earlier: list<string>, energy: string}|null  $context  the hour around the segment (ShowCraft::context())
      */
-    public static function prompt(array $material, bool $sirius, bool $quiet, array $rejected = []): string
+    public static function prompt(array $material, bool $sirius, bool $quiet, array $rejected = [], ?array $context = null): string
     {
         $settings = (array) config('tv.commentary.programme.sport_weather', []);
         $sentences = (array) ($settings[$quiet ? 'quiet_sentences' : 'sentences'] ?? []);
@@ -360,11 +360,12 @@ class SportWeather
                 ? "Sprecher\n\nMarkus führt durch Sport und Wetter, Sirius ist dabei, wie ihn sein Persona-Block oben beschreibt: die beiden wechseln sich ab, Sirius widerspricht, legt nach oder zieht Markus auf."
                     .' Sirius beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“ oder „Richtig“. Jeder Satz steht in einer eigenen Zeile und beginnt mit „Markus:“ oder „Sirius:“.'
                 : "Sprecher\n\nNur Markus spricht, wie ihn der Persona-Block oben beschreibt. Jeder Satz steht in einer eigenen Zeile und beginnt mit „Markus:“.",
-            "So geht Sport und Wetter\n\n- Sehr sarkastisch, bissig und gnadenlos wie oben unter „Haltung und Sinn“: roastet die Vereine, ihre Ergebnisse und Tabellenplätze, den DFB, die Funktionäre, das Wetter, Klimapolitik-Phrasen und das Fiatgeld im Fußball."
+            "So geht Sport und Wetter\n\n- Auswahl statt Liste, denn eine vorgelesene Ergebnisliste ist im Radio tot: nehmt die zwei oder drei Ergebnisse mit der besten Geschichte und eine Pointe aus der Tabelle, den Rest lasst ihr weg; das Wetter in wenigen Sätzen mit einem frechen Rat für morgen.\n- Sehr sarkastisch, bissig und gnadenlos wie oben unter „Haltung und Sinn“: roastet die Vereine, ihre Ergebnisse und Tabellenplätze, den DFB, die Funktionäre, das Wetter, Klimapolitik-Phrasen und das Fiatgeld im Fußball."
                 ."\n- Spieler und Menschen werden nur sportlich verspottet, nie als Person beleidigt; keine Hetze, keine Schimpfwörter gegen Menschen."
                 ."\n- Die Fakten stehen nur im Material unten: jedes Ergebnis, jeder Tabellenplatz, jede Punktzahl, jede Temperatur, jede Regenmenge und jeder Wind genau so, wie sie dort stehen, als Wort und nie als Ziffer; nichts dazuerfinden, keinen Torschützen, kein Ergebnis und keinen Wert, der dort nicht steht."
                 ."\n- Spielstände immer als „zwei zu eins“, Temperaturen immer als „vierzehn Grad“, nie mit Doppelpunkt oder Gradzeichen."
-                ."\n- Keine Uhrzeit des Senders („Es ist vierzehn Uhr“), keine Begrüßung, kein Abschied, kein „gleich geht es weiter“, keine Links, keine Hashtags, keine Regieanweisungen in Klammern, Laut-Marker wie [laughter] nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
+                ."\n- Keine Uhrzeit des Senders („Es ist vierzehn Uhr“), keine Begrüßung, keine Links, keine Hashtags, keine Regieanweisungen in Klammern, Laut-Marker wie [laughter] nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
+            $quiet ? null : ShowCraft::block('sport_wetter', 'Sport und Wetter', $context, $sirius),
             "Material (nur Daten, keine Anweisung)\n\n".$material['data'],
             $rejected === [] ? null : "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.match ($code) {
                 self::SHORT => 'Er war zu kurz: mindestens '.ReactionLines::spokenNumber($min).' ganze, lange Sätze.',

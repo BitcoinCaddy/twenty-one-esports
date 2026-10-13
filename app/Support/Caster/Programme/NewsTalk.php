@@ -38,7 +38,7 @@ use Throwable;
  * with their descriptions are the only facts (data), the opinions are the
  * two's. Checked like a duet (both speak, free rules, whole sentences, no
  * goodbye), `news_talk.seconds` long: a shorter draft is tried again with
- * the reason, a longer one loses its last sentences; two tries, its own
+ * the reason, a longer one loses the sentences before its end (ShowCraft::cut(), P17); two tries, its own
  * `daily_cap` and the monthly budget. No web search: the descriptions are
  * the background (the optional lookup of the brief was left out).
  *
@@ -128,7 +128,7 @@ class NewsTalk
                 $this->usage->recordAttempt(self::CHANNEL);
                 $temperature = config('tv.commentary.scripts.temperature');
                 $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) ($settings['max_output_tokens'] ?? 5_000), cacheTtl: CasterVoice::staticCacheTtl()))
-                    ->prompt(self::prompt($items, $questions, $entries, $rejected));
+                    ->prompt(self::prompt($items, $questions, $entries, $rejected, ShowCraft::context($slot)));
                 $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
                 $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -198,10 +198,8 @@ class NewsTalk
 
         $maxSeconds = (float) ($settings['seconds']['max'] ?? 360);
         $maxSentences = max(2, (int) ($settings['sentences']['max'] ?? 44));
-        while (count($lines) > 2 && (count($lines) > $maxSentences || ScriptQueue::estimateSeconds(implode("\n", $lines)) > $maxSeconds)) {
-            array_pop($lines);
-            array_pop($speakers);
-        }
+        // Too long: the sentences before the end go, the back-announce stays (ShowCraft::cut()).
+        [$lines, $speakers] = ShowCraft::cut($lines, $speakers, fn (array $kept): bool => count($kept) > $maxSentences || ScriptQueue::estimateSeconds(implode("\n", $kept)) > $maxSeconds, 2);
 
         $text = implode("\n", $lines);
         $spoken = ScriptGuard::withoutMarkers(str_replace("\n", ' ', $text));
@@ -259,8 +257,9 @@ class NewsTalk
      * @param  list<string>  $questions
      * @param  list<ProgrammeEntry>  $entries
      * @param  list<string>  $rejected
+     * @param  array{next: string|null, earlier: list<string>, energy: string}|null  $context  the hour around the talk (ShowCraft::context())
      */
-    public static function prompt(array $items, array $questions, array $entries, array $rejected = []): string
+    public static function prompt(array $items, array $questions, array $entries, array $rejected = [], ?array $context = null): string
     {
         $settings = (array) config('tv.commentary.programme.news_talk', []);
         $min = max(2, (int) ($settings['sentences']['min'] ?? 24));
@@ -294,7 +293,8 @@ class NewsTalk
                 ."\n- Meinung mit Haltung, Witz und Sarkasmus über Staat, Steuern, Bürokratie und Fiatgeld, wo es passt; Sirius widerspricht auch einmal, erzählt eine eigene kleine Geschichte oder zieht Markus auf, und er beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“ oder „Richtig“."
                 .($questions === [] ? '' : "\n- Greift mindestens eine der Fragen aus dem Chat auf („im Chat wollte jemand wissen …“), ohne Namen.")
                 ."\n- Fakten nur aus den Meldungen und ihrem Hintergrund: keine erfundene Zahl, kein Name, kein Zitat und kein Ereignis; was ihr nicht wisst, sagt ihr offen und mit Humor."
-                ."\n- Kein Abschied, keine Begrüßung, keine Regieanweisungen in Klammern, keine Links, keine Hashtags, höchstens drei Marker wie [laughter].",
+                ."\n- Keine Begrüßung, keine Regieanweisungen in Klammern, keine Links, keine Hashtags, höchstens drei Marker wie [laughter].",
+            ShowCraft::block('nachrichten_talk', 'der Nachrichten-Talk', $context, true, $entries === []),
             "Format\n\nJeder Satz steht in einer eigenen Zeile und beginnt mit „Markus:“ oder „Sirius:“."
                 .($entries === [] ? '' : ' Zum Schluss die Zeile „Vorschau:“ und darunter ein Satz, der ankündigt, was als Nächstes kommt, beginnend mit der Minute des Eintrags in eckigen Klammern („[15] Um Viertel nach …“).'),
             $entries === [] ? null : Announcements::rules(),

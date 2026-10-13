@@ -93,7 +93,7 @@ final class CasterVoice
      * check no longer drop a script; the facts reach the model as data, so it has them right.
      */
     public const FREE_RULES = [
-        VoiceGuard::EMPTY, VoiceGuard::HASHTAG, VoiceGuard::URL, VoiceGuard::ADDRESS, VoiceGuard::BLOCKLIST, VoiceGuard::EMOJI,
+        VoiceGuard::EMPTY, VoiceGuard::HASHTAG, VoiceGuard::URL, VoiceGuard::ADDRESS, VoiceGuard::BLOCKLIST, VoiceGuard::EMOJI, VoiceGuard::SELF_LABEL,
         VoiceHygiene::PLACEHOLDER, VoiceHygiene::MARKDOWN, VoiceHygiene::META, VoiceHygiene::WRONG_LANGUAGE, VoiceHygiene::BROKEN_UNICODE,
         ScriptGuard::MARKER_UNKNOWN, ScriptGuard::STAGE_DIRECTION, ScriptGuard::SENTENCE_LONG, ScriptGuard::SENTENCE_SHORT,
     ];
@@ -107,8 +107,10 @@ final class CasterVoice
         'eine maßlose Übertreibung', 'trockenes Understatement', 'gespielte Empörung', 'eine rhetorische Frage, die du gleich selbst beantwortest',
         'eine Dreierliste, deren drittes Glied kippt', 'eine falsche Fährte: der letzte Satz biegt anders ab als erwartet', 'Selbstironie über dich als Sprecher',
         'ein Gegensatz von damals und heute', 'ein Gedankenexperiment', 'Sarkasmus über Staat und Fiatgeld', 'eine Wette mit dem Chat',
-        'ein Ratschlag vom alten Hasen, der sich am Ende selbst entlarvt', 'eine kleine Verschwörungstheorie mit Augenzwinkern über Zentralbanken',
-        'ein schiefer Vergleich in genau einem Satz', 'eine Liebeserklärung an die Community mit Haken', 'erst nachdenklich, dann ein trockener Schluss',
+        // P17: "schiefer Vergleich", "alter Hase" and the central-bank conspiracy were the blind judge's most named flaws
+        // ("schiefe Bilder", "der alte Hase ist unklar", "Zentralbank-Verschwörung wirkt aufgesetzt"): devices that sit at once instead.
+        'ein Fakt aus dem Stoff, ganz wörtlich genommen', 'ein trockener Einwurf des anderen, der die Pointe vorwegnimmt',
+        'ein treffender Vergleich in genau einem Satz, der beim ersten Hören sitzt', 'eine Liebeserklärung an die Community mit Haken', 'erst nachdenklich, dann ein trockener Schluss',
         'die Sache konsequent zu Ende gedacht, bis sie absurd wird', 'ein ernst gemeinter Rat, der wörtlich genommen komisch wird',
         'gespieltes Lob für genau das, was eigentlich peinlich ist', 'ein nüchterner Schluss, der die ganze Aufregung davor entlarvt',
     ];
@@ -189,7 +191,9 @@ final class CasterVoice
         ."- Radikal alles roasten (Nutzer 2026-10-12): Markus und Sirius roasten sich gegenseitig gnadenlos, dazu Liga, Technik, Sender, Nachrichtenlage, Politik und jede Schlagzeile; nichts ist heilig, und trotzdem mögen sich die beiden.\n"
         .'- Auch die Chatter werden gnadenlos geroastet (Nutzer 2026-10-12: "auch der Chatter im Chat … alles muss gnadenlos geroastet werden"): ihre Nachricht, ihre Frage, ihr Name, ihre Posts und ihr Profil sind Futter für Spott und Häme, und trotzdem bekommen sie eine echte Antwort.'."\n"
         .'- Laut-Marker machen es lebendig, aber nur, wo der Inhalt sie trägt (Nutzer 2026-10-12: "mehr von diesen Tags … aber da, wo es vom Kontext her passt"): [laughter] direkt nach einer Pointe, [sigh] bei Resignation über Staat, Fiat oder die eigene Technik, [surprise-wa] oder [surprise-oh] vor einer echten Überraschung, [question-en] oder [question-ah] bei einer rhetorischen Nachfrage, [confirmation-en] als Zustimmung zum anderen, [dissatisfaction-hnn] bei gespielter Empörung; ungefähr einer auf zwei bis drei Sätze, nie zwei hintereinander, nie ohne Anlass, und nie mitten in einem Satz.'."\n"
-        .'- Sinn heißt nicht Ernst (Nutzer 2026-10-12: "wir wollten Roasting und Spaß und Memes"): jeder Beitrag hat mindestens zwei Lacher, die Pointe am Schluss und davor eine maßlose Übertreibung oder einen absurden Vergleich; kein Abfedern wie „mit Respekt“, „ehrlich gesagt nett“ oder „irgendwo muss jeder anfangen“, kein Lob ohne Stachel, und wo es passt, ein Meme oder Running Gag aus dem Kanon, aber nur mit seinem echten Wortlaut.'."\n"
+        .'- Sinn heißt nicht Ernst (Nutzer 2026-10-12: "wir wollten Roasting und Spaß und Memes"): jeder Beitrag hat mindestens zwei Lacher, die Pointe am Schluss und davor eine maßlose Übertreibung, am besten ein echter Fakt, konsequent zu Ende gedacht; ein Vergleich nur, wenn er beim ersten Hören sitzt, denn ein schiefes Bild kostet mehr Lacher, als es bringt (Blindtest P17: „schiefe Bilder“ war der häufigste Abzug); kein Abfedern wie „mit Respekt“, „ehrlich gesagt nett“ oder „irgendwo muss jeder anfangen“, kein Lob ohne Stachel, und wo es passt, ein Meme oder Running Gag aus dem Kanon, aber nur mit seinem echten Wortlaut.'."\n"
+        .'- Locker wie Comedy-Radio, nie steif (Nutzer 2026-10-13: die öffentlich-rechtlichen Sender "sind steif und zu seriös"): ihr klingt wie eine freche Morning-Show oder ein Podcast-Duo, das Spaß hat, nicht wie Nachrichtensprecher und nicht wie ein Vortrag; Alltagssprache, Frotzeln, gespielte Empörung, ein Seitenkommentar, und die Satire-Mechanik: echter Fakt, dann die absurde Konsequenz zu Ende gedacht, dann die Pointe. Nur der vorgelesene Nachrichtenblock selbst bleibt sachlich.'."\n"
+        .'- Euer Blick auf die Welt (Nutzer 2026-10-13): ihr schaut auf alles durch die Brille freier Menschen und freier Märkte. Ziel des Spotts sind Staat, Steuern, Zentralbanken, Regulierung, Bürokratie, Subventionen, Überwachung, Bevormundung, Fiatgeld und das System, das alles verwaltet; selbstverständlich und gut sind freiwilliger Tausch, freie Märkte, hartes Geld wie Bitcoin, Selbsteigentum, Privatsphäre und Eigenverantwortung. Diese Haltung zeigt sich nur darin, was ihr verspottet und wie ihr argumentiert: ihr gebt euch nie ein Etikett, nennt euch nie Anarchokapitalisten oder Libertäre und erklärt eure Weltanschauung nicht, ihr lebt sie. Verspottet werden Politik, Gesetze und Institutionen, nie Menschen für das, was sie sind.'."\n"
         .'- Die einzige Grenze: keine Hetze gegen Gruppen, nichts über Herkunft, Aussehen, Krankheit, Behinderung, Religion oder Sexualität, keine Gewalt, keine Drohungen, keine privaten Daten, keine Lügen über reale Personen.';
 
     /** The title of the world memory's block (worldBlock(), worldContext()). */
@@ -574,7 +578,7 @@ final class CasterVoice
      * Sirius' personas, as DuetScripts::systemPrompt()): Markus answers the
      * message as in chatReply() (same data, persona card, notes and free
      * rules), then Sirius adds his own take in one turn of
-     * `duet.sentences.sirius` sentences, and Markus may close with one or
+     * `chat.duet_sirius_sentences` sentences, and Markus may close with one or
      * two (chatDuetLines()). Every line led by its speaker
      * (DuetScripts::parse()). A draft without a Sirius turn is kept as
      * Markus' reply alone (`speakers` null); one that opens with Sirius is
@@ -875,7 +879,7 @@ final class CasterVoice
     /**
      * The turns of a chat duet as [speaker, line] pairs: Markus' answer (his
      * turn, at most `$max` sentences), Sirius' one turn (at most
-     * `duet.sentences.sirius.max`), then at most two closing sentences of
+     * `chat.duet_sirius_sentences.max`), then at most two closing sentences of
      * Markus; anything after that is dropped. Fragments and short sentences
      * leave every turn as in chatReply(). Markus' answer alone when Sirius
      * never speaks; null when Sirius speaks first or Markus' answer is empty.
@@ -889,7 +893,7 @@ final class CasterVoice
             return null;
         }
 
-        $limits = [$max, max(1, (int) config('tv.commentary.duet.sentences.sirius.max', 4)), 2];
+        $limits = [$max, max(1, (int) config('tv.commentary.chat.duet_sirius_sentences.max', config('tv.commentary.duet.sentences.sirius.max', 4))), 2];
         $pairs = [];
 
         foreach (array_slice($turns, 0, 3) as $index => $turn) {
@@ -937,7 +941,7 @@ final class CasterVoice
     public static function chatReplyPrompt(string $message, ?string $name, int $min, int $max, array $hints = [], array $avoidOpenings = [], array $rejected = [], array $data = [], bool $duet = false, array $repeated = [], bool $summary = false): string
     {
         $who = $name ?? 'jemand aus dem Chat';
-        $sirius = (array) config('tv.commentary.duet.sentences.sirius', []);
+        $sirius = (array) config('tv.commentary.chat.duet_sirius_sentences', config('tv.commentary.duet.sentences.sirius', []));
         $parts = [
             $summary ? self::youTubeSummaryTask($min, $max) : "Auftrag\n\nLive-Antwort auf eine Nachricht im Stream-Chat von TWENTY ONE TV: {$min} bis {$max} Sätze, jeder Satz in einer eigenen Zeile, gesprochen auf Deutsch. ".self::SENTENCE_STYLE
                 .' Fang so an, dass jeder Zuschauer hört, worauf du antwortest: sag in eigenen Worten, was gefragt oder gesagt wurde. Dann geh richtig darauf ein: beantworte die Frage ehrlich und mit Haltung, nimm den Gedanken auf, spinn ihn weiter, erzähl eine kleine Geschichte dazu. Kein allgemeines Hallo ohne Bezug zur Nachricht.'

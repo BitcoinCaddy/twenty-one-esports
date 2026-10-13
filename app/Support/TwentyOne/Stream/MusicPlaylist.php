@@ -191,12 +191,14 @@ final class MusicPlaylist
 
     /**
      * An ffconcat file for `-f concat -safe 0` with absolute paths; the first
-     * file starts `$inpoint` seconds in (MusicTimeline: a new encoder goes on
-     * where the music is).
+     * file starts `$inpoint` seconds into its sound (MusicTimeline: a new
+     * encoder goes on where the music is). `$points` (MusicTimeline, P17)
+     * trims a file's silent edges: it plays from `in` to `out` (null: to its end).
      *
      * @param  list<string>  $files
+     * @param  list<array{in: float, out: float|null}>  $points  by the index of `$files`
      */
-    public static function ffconcat(array $files, float $inpoint = 0.0): string
+    public static function ffconcat(array $files, float $inpoint = 0.0, array $points = []): string
     {
         $lines = ['ffconcat version 1.0'];
 
@@ -207,8 +209,15 @@ final class MusicPlaylist
 
             $lines[] = "file '".str_replace("'", "'\\''", $file)."'";
 
-            if ($index === 0 && $inpoint > 0) {
-                $lines[] = 'inpoint '.sprintf('%.3F', $inpoint);
+            $in = (float) ($points[$index]['in'] ?? 0.0) + ($index === 0 ? $inpoint : 0.0);
+            $out = $points[$index]['out'] ?? null;
+
+            if ($in > 0) {
+                $lines[] = 'inpoint '.sprintf('%.3F', $in);
+            }
+
+            if ($out !== null && $out > $in) {
+                $lines[] = 'outpoint '.sprintf('%.3F', $out);
             }
         }
 

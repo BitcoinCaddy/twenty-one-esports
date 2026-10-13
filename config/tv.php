@@ -281,7 +281,18 @@ return [
             // `bed_gain_db` (-28 - 6 = -16 - 18). A rubric whose format has a bed gets it under its speech.
             'beds' => ['bed-news-pulse.opus', 'bed-news-drive.opus'],
             'beds_gain_db' => (float) env('TV_COMMENTARY_BEDS_GAIN_DB', -18),
-            'format_beds' => ['sport_wetter' => 'bed-sport.opus', 'tribunal' => 'bed-courtroom.opus'],
+            // Every show, roast and rubric gets the bed of its format under its talk (plan "TWENTY ONE Radio" P17: a format
+            // bed under talk, -22 to -26 dB under the voice), at `format_beds_gain_db` from the bed file's own level.
+            'format_beds' => [
+                'sport_wetter' => 'bed-sport.opus', 'tribunal' => 'bed-courtroom.opus', 'liga_pranger' => 'bed-courtroom.opus', 'schwarzbuch' => 'bed-courtroom.opus',
+                'partie' => 'bed-sport.opus', 'liga' => 'bed-sport.opus', 'hotline' => 'bed-late-night.opus', 'inflationsbeichte' => 'bed-late-night.opus',
+                'zentralbank' => 'bed-late-night.opus', 'friedhof' => 'bed-late-night.opus', 'geschichte' => 'bed-late-night.opus', 'chat' => 'bed-late-night.opus',
+                'jahrestag' => 'bed-weather.opus', 'meetups' => 'bed-weather.opus', 'nostr_fundbuero' => 'bed-tutorial.opus', 'phrasendrescher' => 'bed-tutorial.opus',
+                'podcast' => 'bed-tutorial.opus', 'corporate_stacker' => 'bed-news-drive.opus', 'altcoin_hype' => 'bed-news-drive.opus', 'presseschau' => 'bed-news-drive.opus',
+                'nachrichten_talk' => 'bed-news-pulse.opus', 'stammtisch' => 'bed-news-pulse.opus',
+            ],
+            // The bed files sit at -16 LUFS like the voice: -24 dB puts a format bed 24 dB under the speech.
+            'format_beds_gain_db' => (float) env('TV_COMMENTARY_FORMAT_BEDS_GAIN_DB', -24),
             // The bed under the bulletin stays (user 2026-10-12: "Das News-Bett war gut"); the stream music is ducked away under it instead.
             'bed_kinds' => array_values(array_filter(explode(',', (string) env('TV_COMMENTARY_BED_KINDS', 'bulletin')))),
             // Six dB under the file's level (user 2026-10-12: "Das News Bett im Hintergrund muss etwas leiser werden").
@@ -1057,18 +1068,21 @@ return [
             'share' => (float) env('TV_COMMENTARY_DUET_SHARE', 0.35),
             'tolerance' => 0.05,
             'window_segments' => 20,
-            'turns' => ['min' => 2, 'max' => 5],
+            // Banter, not two monologues (plan "TWENTY ONE Radio" P17, user 2026-10-12: "wie echte Programme aus dem Radio"):
+            // live 2026-10-12 most duets were one Markus turn and one Sirius turn of three to six sentences; now mostly four to
+            // six short turns of one to three sentences, about as many sentences in all.
+            'turns' => ['min' => 2, 'max' => 6],
             'max_run' => 2,
-            'stop' => [2 => 0.35, 3 => 0.55, 4 => 0.8, 5 => 1.0],
+            'stop' => [2 => 0.2, 3 => 0.3, 4 => 0.5, 5 => 0.7, 6 => 1.0],
             'patterns' => [
-                'MS' => 30, 'MSM' => 20, 'MSS' => 9, 'MSMS' => 8, 'MMS' => 10, 'MSSM' => 4, 'MSMSM' => 4,
-                'SM' => 18, 'SMS' => 9,
+                'MS' => 6, 'MSM' => 12, 'MSS' => 4, 'MSMS' => 22, 'MMS' => 4, 'MSSM' => 4, 'MSMSM' => 18, 'MSMSMS' => 10,
+                'SM' => 4, 'SMS' => 8, 'SMSM' => 8,
             ],
             'sirius_share' => ['min' => (float) env('TV_COMMENTARY_SIRIUS_SHARE_MIN', 0.25), 'max' => (float) env('TV_COMMENTARY_SIRIUS_SHARE_MAX', 0.35), 'window_minutes' => 60],
             'cooldown' => 0.35,
             // The previous duet's last turns a follow-up may pick up, if it ran within this many minutes.
             'follow_up_minutes' => 30,
-            'sentences' => ['markus' => ['min' => 2, 'max' => 4], 'sirius' => ['min' => 3, 'max' => 6]],
+            'sentences' => ['markus' => ['min' => 1, 'max' => 3], 'sirius' => ['min' => 1, 'max' => 4]],
             'daily_cap' => (int) env('TV_COMMENTARY_DUET_DAILY_CAP', 1000),
             // Share of duets in which Sirius may pick his beer topic (the running gag, not every time).
             'beer_percent' => (int) env('TV_COMMENTARY_DUET_BEER_PERCENT', 15),
@@ -1098,6 +1112,8 @@ return [
             'reaction_voicing_minutes' => 20,
             // The share of trusted chat replies that are a short duet: Markus answers, Sirius adds his take (user 2026-10-12).
             'duet_share' => (float) env('TV_COMMENTARY_CHAT_DUET_SHARE', 0.5),
+            // Sirius' one turn in a chat duet keeps three to six sentences (P17 shortened the scene duets' turns, not this one).
+            'duet_sirius_sentences' => ['min' => 3, 'max' => 6],
             'notes_per_person' => 50,
             // Ninety days, not thirty (prod 2026-10-12): two of the six chatters who post at all had one note in thirty days.
             'notes_days' => 90,

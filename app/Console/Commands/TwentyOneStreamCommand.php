@@ -129,6 +129,9 @@ class TwentyOneStreamCommand extends Command
     /** For sizing the music list only: the 32 tracks average ~181 s (96.5 min). */
     private const ASSUMED_TRACK_SECONDS = 180;
 
+    /** Seconds at each end of a music file searched for silence (MusicTimeline, P17). */
+    private const EDGE_WINDOW = 12.0;
+
     /**
      * The spoken commentary (plan "KI-Stimme der Liga", P6), only while `tv.commentary.enabled`: it holds each
      * slot until its clip has been spoken and feeds the voice into every encoder run (VoiceFeed).
@@ -1087,7 +1090,7 @@ class TwentyOneStreamCommand extends Command
         $ffprobe = (string) config('twentyone.stream.ffprobe');
         $timeline = new MusicTimeline(
             (string) config('twentyone.stream.music.timeline_file'),
-            fn (string $file): ?float => $this->probeSeconds($ffprobe, $file),
+            fn (string $file): ?array => $this->probeTrack($ffprobe, $file),
             self::ASSUMED_TRACK_SECONDS,
         );
         $music = $timeline->from(
@@ -1099,10 +1102,87 @@ class TwentyOneStreamCommand extends Command
         );
         $path = rtrim((string) config('twentyone.stream.scene.work_dir'), '/').'/music.ffconcat';
         File::ensureDirectoryExists(dirname($path));
-        PlaylistWriter::writeAtomically($path, MusicPlaylist::ffconcat($music['files'], $music['inpoint']));
+        PlaylistWriter::writeAtomically($path, MusicPlaylist::ffconcat($music['files'], $music['inpoint'], $music['points']));
         $this->log(sprintf('music: %s %s at %.0f s', $music['restarted'] ? 'new timeline,' : 'continuing', basename($music['files'][0]), $music['inpoint']));
 
         return $path;
+    }
+
+    /**
+     * A music file's length (ffprobe) and its silent lead and tail (MusicTimeline, P17), null when it cannot be read; a
+     * file whose edges cannot be read comes without them and plays whole.
+     *
+     * @return array{seconds: float, lead?: float, tail?: float}|null
+     */
+    private function probeTrack(string $ffprobe, string $file): ?array
+    {
+        $seconds = $this->probeSeconds($ffprobe, $file);
+
+        if ($seconds === null) {
+            return null;
+        }
+
+        $edges = self::silentEdges((string) config('twentyone.stream.ffmpeg', 'ffmpeg'), $file, $seconds);
+
+        return $edges === null ? ['seconds' => $seconds] : ['seconds' => $seconds, 'lead' => $edges[0], 'tail' => $edges[1]];
+    }
+
+    /**
+     * The digital silence at the start and the end of a music file in seconds (ffmpeg silencedetect over its first and
+     * last EDGE_WINDOW seconds, below -50 dB for at least 0.3 s), a tenth of a second of it kept on each side; null
+     * when ffmpeg fails.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    public static function silentEdges(string $ffmpeg, string $file, float $seconds): ?array
+    {
+        $window = min(self::EDGE_WINDOW, $seconds);
+        $detect = function (array $input) use ($ffmpeg): ?string {
+            $result = Process::timeout(15)->env(ChildEnvironment::withoutSecrets())
+                ->run([$ffmpeg, '-nostdin', '-hide_banner', ...$input, '-af', 'silencedetect=noise=-50dB:d=0.3', '-f', 'null', '-']);
+
+            return $result->successful() ? $result->errorOutput() : null;
+        };
+
+        $head = $detect(['-t', sprintf('%.3F', $window), '-i', $file]);
+        $tail = $detect(['-sseof', sprintf('-%.3F', $window), '-i', $file]);
+
+        if ($head === null || $tail === null) {
+            return null;
+        }
+
+        return [self::leadSilence($head), self::tailSilence($tail, $window)];
+    }
+
+    /** The silence a silencedetect log of a file's first seconds reports from its very start, less a tenth kept. */
+    public static function leadSilence(string $log): float
+    {
+        if (preg_match('/silence_start: (-?[\d.]+)/', $log, $start) !== 1 || abs((float) $start[1]) > 0.05) {
+            return 0.0;
+        }
+
+        return preg_match('/silence_end: ([\d.]+)/', $log, $end) === 1 ? max(0.0, round((float) $end[1] - 0.1, 3)) : 0.0;
+    }
+
+    /** The silence a silencedetect log of a file's last `$window` seconds reports up to its very end, less a tenth kept. */
+    public static function tailSilence(string $log, float $window): float
+    {
+        preg_match_all('/silence_start: (-?[\d.]+)/', $log, $starts);
+        preg_match_all('/silence_end: ([\d.]+)/', $log, $ends);
+
+        if ($starts[1] === []) {
+            return 0.0;
+        }
+
+        $last = (float) end($starts[1]);
+        $lastEnd = $ends[1] === [] ? null : (float) end($ends[1]);
+
+        // The last silence runs to the end: no end after its start, or an end at the window's end (ffmpeg closes it at EOF).
+        if ($lastEnd !== null && $lastEnd > $last && $lastEnd < $window - 0.05) {
+            return 0.0;
+        }
+
+        return max(0.0, round($window - $last - 0.1, 3));
     }
 
     /**
