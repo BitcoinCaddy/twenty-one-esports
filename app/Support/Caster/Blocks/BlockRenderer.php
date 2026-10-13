@@ -11,6 +11,7 @@ use App\Support\Caster\Programme\TalkShow;
 use App\Support\Caster\ScriptGuard;
 use Carbon\CarbonImmutable;
 use Closure;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Renders a programme block on the workstation (plan "TWENTY ONE Radio",
@@ -37,6 +38,13 @@ use Closure;
  *  - the studio (P20, StudioAudience): applause in the pauses of a show, the
  *    talk show's theme around it, the talk show's own breath between turns
  *    (TalkShow::gapFor()); a pause grows to hold its sound, never over a word.
+ *
+ * A show queued in parts is one show, not one per part (P20 probe 2026-10-13:
+ * the 30-minute talk in 39 parts aired 75 theme plays, 51 applause, a bed
+ * fading out and in at every part and 39.3 minutes for its 30): the parts of
+ * one story in a block are one run under one bed, the turn's breath between
+ * them, the theme and applause placed once per episode over all its blocks
+ * (studioPlan(), the episode's earlier blocks remembered in the cache).
  *
  * The result is raw PCM with its chunk ends (sentence ends for a cut), the
  * segment boundaries (the end of every script but the last: a reaction may
@@ -113,6 +121,12 @@ final class BlockRenderer
         }
 
         $rate = (int) $rate;
+        $plan = $this->studioPlan($scripts, $chunks, $voiced, $rate);
+        $interruptions = $plan['interruptions'];
+        // The bed of a show's format under its whole run (where the station sound plays it at air time; a stock block airs
+        // at an unknown hour, by day as well, so it always gets it: P20 probe, a stock block rendered at night had none).
+        $bedsOn = $this->idents !== null && ($evergreen || $this->idents->bedsAt($airAt));
+        $runStart = null;
         $steps = BlockComposer::plan($scripts, $airAt, (float) ($settings['jingles']['sweeper_share'] ?? 0.5), $this->random, evergreen: $evergreen);
         $crossfade = (int) round((float) ($settings['crossfade_seconds'] ?? 0.45) * $rate);
         $jingleGain = (float) ($settings['jingles']['gain_db'] ?? -3.0);
@@ -148,44 +162,54 @@ final class BlockRenderer
 
             $index = (int) ($step['index'] ?? 0);
             $script = $scripts[$index];
-            $speech = $this->speech($index, $chunks, $voiced, $rate, $voice, $script, $settings, $lastBlip, Pcm::seconds($pcm, $rate), $blips);
+            $run = $plan['runs'][$index];
+            $speech = $this->speech($index, $chunks, $voiced, $rate, $voice, $script, $settings, $lastBlip, Pcm::seconds($pcm, $rate), $blips, $plan, $interruptions[$run]);
 
             if ($speech === null) {
                 continue;
             }
 
+            $sameStory = $index > 0 && ($plan['runs'][$index - 1] ?? null) === $run;
+
             if ($afterJingle) {
                 $start = max(0, intdiv(strlen($pcm), Pcm::BYTES_PER_SAMPLE) - $crossfade);
             } else {
                 if ($pcm !== '') {
-                    $previous = $scripts[$index - 1] ?? null;
-                    $sameStory = is_array($script['part'] ?? null) && is_array($previous['part'] ?? null) && $script['part']['group'] === $previous['part']['group'];
-                    $pcm .= Pcm::silence($sameStory ? 0.45 : $this->between((array) ($settings['pause_seconds'] ?? [])), $rate);
+                    // The next part of the same show follows like the next turn (its breath), never a gap between shows.
+                    $pcm .= Pcm::silence($sameStory ? $this->partGap($index, $chunks, $script, $voice, $interruptions[$run]) : $this->between((array) ($settings['pause_seconds'] ?? [])), $rate);
                 }
 
                 $start = intdiv(strlen($pcm), Pcm::BYTES_PER_SAMPLE);
             }
 
-            // The news bed under a bulletin, where the station sound asks for it (Idents::bedFor()); the bed of its format
-            // under a show, roast or rubric (P17's `format_beds`; the server never dresses a rendered block, so before P20
-            // no show of a block had one).
-            $formatBed = $this->idents?->bedsAt($airAt) === true ? $this->idents->formatBed($script['topic'] ?? null) : null;
+            if (! $sameStory || $runStart === null) {
+                $runStart = $start;
+            }
 
+            // The news bed under a bulletin, where the station sound asks for it at air time (Idents::bedFor()).
             if (($script['kind'] ?? null) === CasterScript::BULLETIN && $this->idents !== null && $this->idents->bedFor(CasterScript::BULLETIN, $airAt)) {
                 $speech['pcm'] = (new Idents((array) config('tv.commentary.idents', []), $rate))->underBed($speech['pcm']) ?? $speech['pcm'];
-            } elseif ($formatBed !== null) {
-                $bedded = (new Idents((array) config('tv.commentary.idents', []), $rate))->underBed($speech['pcm'], $formatBed['file'], $formatBed['gain_db'] + self::speechOffset());
-
-                if ($bedded !== null) {
-                    $speech['pcm'] = $bedded;
-                    $log[] = 'bed:'.basename($formatBed['file']);
-                }
             }
 
             $offset = $start / $rate;
             $pcm = Pcm::overlay($pcm, $speech['pcm'], $start);
             $afterJingle = false;
             $log[] = 'script:'.($script['id'] ?? $index);
+
+            // The bed of its format under a show, roast or rubric (P17's `format_beds`; the server never dresses a rendered
+            // block, so before P20 no show of a block had one), once under the whole run of its parts: under each part
+            // alone it faded out and in again every five lines.
+            $formatBed = $bedsOn && ($script['kind'] ?? null) !== CasterScript::BULLETIN ? $this->idents->formatBed($script['topic'] ?? null) : null;
+
+            if ($formatBed !== null && ($plan['runs'][$index + 1] ?? null) !== $run) {
+                $head = $runStart * Pcm::BYTES_PER_SAMPLE;
+                $bedded = (new Idents((array) config('tv.commentary.idents', []), $rate))->underBed(substr($pcm, $head), $formatBed['file'], $formatBed['gain_db'] + self::speechOffset());
+
+                if ($bedded !== null) {
+                    $pcm = substr($pcm, 0, $head).$bedded;
+                    $log[] = 'bed:'.basename($formatBed['file']);
+                }
+            }
 
             foreach ($speech['ends'] as $end) {
                 $ends[] = round($offset + $end, 3);
@@ -238,9 +262,11 @@ final class BlockRenderer
      * @param  array<array-key, mixed>  $script
      * @param  array<string, mixed>  $settings  tv.commentary.blocks
      * @param  list<array{at: float, speaker: string, file: string}>  $placed  the blips of the block so far
+     * @param  array{runs: array<int, string>, applause: array<int, string>, before: array<int, string>, outro: array<int, true>, interruptions: array<string, int>}  $plan  studioPlan()
+     * @param  int  $interruptions  the cut-ins its show has left (TalkShow::maxInterruptions() per episode)
      * @return array{pcm: string, ends: list<float>, blips: list<array{at: float, speaker: string, file: string}>, studio: list<array{at: float, part: string, file: string, seconds: float}>}|null
      */
-    private function speech(int $index, array $chunks, array $voiced, int $rate, array $voice, array $script, array $settings, float $lastBlip, float $blockOffset, array $placed): ?array
+    private function speech(int $index, array $chunks, array $voiced, int $rate, array $voice, array $script, array $settings, float $lastBlip, float $blockOffset, array $placed, array $plan, int &$interruptions): ?array
     {
         $mine = array_values(array_filter(array_keys($chunks), fn (int $key): bool => $chunks[$key]['script'] === $index));
 
@@ -252,12 +278,7 @@ final class BlockRenderer
         $topic = $script['topic'] ?? null;
         // The talk show's own breath between turns (TalkShow::gapFor(): a TV talk's pause, a cut-in, the long breath).
         $speakerPause = TalkShow::turnGap($topic) ?? (array) ($voice['speaker_pause'] ?? []);
-        $interruptions = TalkShow::maxInterruptions();
         $speakers = array_values(array_unique(array_map(fn (int $key): string => $chunks[$key]['speaker'], $mine)));
-        // The studio (P20, StudioAudience): applause in the pauses, the talk show's theme around it.
-        $own = array_map(fn (int $key): array => ['speaker' => $chunks[$key]['speaker'], 'lines' => $chunks[$key]['lines']], $mine);
-        $applause = StudioAudience::applause($topic, $own, array_map(fn (int $key): float => Pcm::seconds($voiced[$key], $rate), $mine), 0.1);
-        $theme = StudioAudience::theme($topic, $own);
         $studio = [];
         $overlays = [];
         $duet = count($speakers) > 1;
@@ -266,6 +287,11 @@ final class BlockRenderer
         $ends = [];
         $blips = [];
         $lastFile = $placed === [] ? null : $placed[count($placed) - 1]['file'];
+
+        // The theme before the script's first chunk (the welcome or an act break opening a part): its own lead-in.
+        if (isset($plan['before'][$mine[0]])) {
+            $pcm = $this->studioGap($pcm, $rate, 0.0, null, $plan['before'][$mine[0]], $studio, $overlays);
+        }
 
         foreach ($mine as $position => $key) {
             $speaker = $chunks[$key]['speaker'];
@@ -299,7 +325,7 @@ final class BlockRenderer
 
             if ($position === count($mine) - 1) {
                 // Behind the last line: the closing applause and the talk show's outro.
-                $pcm = $this->studioTail($pcm, $rate, $applause[$position] ?? null, $theme['outro'] === $position, $studio);
+                $pcm = $this->studioTail($pcm, $rate, $plan['applause'][$key] ?? null, isset($plan['outro'][$key]), $studio);
 
                 continue;
             }
@@ -319,7 +345,7 @@ final class BlockRenderer
                 $gap = max(0.1, $base + (float) ($pause['jitter'] ?? 0.0) * (2 * ($this->random)() - 1));
             }
 
-            $pcm = $this->studioGap($pcm, $rate, $gap, $applause[$position] ?? null, $theme['before'][$position + 1] ?? null, $studio, $overlays);
+            $pcm = $this->studioGap($pcm, $rate, $gap, $plan['applause'][$key] ?? null, $plan['before'][$mine[$position + 1]] ?? null, $studio, $overlays);
         }
 
         foreach ($overlays as [$sound, $at]) {
@@ -404,6 +430,116 @@ final class BlockRenderer
         }
 
         return $pcm;
+    }
+
+    /**
+     * The studio of the block, per show (see the class comment): the scripts in runs (the consecutive parts of one story
+     * are one run), and for each run its applause (after a chunk), theme (before a chunk, the outro behind one) and
+     * the cut-ins it has left. A run holds its story's first part (`opens`) or last (`closes`) or neither; what the
+     * story's earlier blocks placed is read from the cache, keyed by the story and the part the run starts with (a
+     * block rendered again overwrites its own entry), and this run's share is written back.
+     *
+     * @param  list<array<array-key, mixed>>  $scripts
+     * @param  list<array{script: int, speaker: string, lines: list<string>}>  $chunks
+     * @param  array<int, string>  $voiced
+     * @return array{runs: array<int, string>, applause: array<int, string>, before: array<int, string>, outro: array<int, true>, interruptions: array<string, int>}
+     */
+    private function studioPlan(array $scripts, array $chunks, array $voiced, int $rate): array
+    {
+        $plan = ['runs' => [], 'applause' => [], 'before' => [], 'outro' => [], 'interruptions' => []];
+        $members = [];
+        $previous = null;
+        $previousGroup = null;
+
+        foreach ($scripts as $index => $script) {
+            $group = is_array($script['part'] ?? null) && is_string($script['part']['group'] ?? null) ? $script['part']['group'] : null;
+            $run = $group !== null && $group === $previousGroup && $previous !== null ? $previous : 'run:'.$index;
+            $plan['runs'][$index] = $run;
+            $members[$run][] = $index;
+            [$previous, $previousGroup] = [$run, $group];
+        }
+
+        foreach ($members as $run => $indexes) {
+            $first = $scripts[$indexes[0]];
+            $last = $scripts[$indexes[count($indexes) - 1]];
+            $topic = $first['topic'] ?? null;
+            $keys = array_values(array_filter(array_keys($chunks), fn (int $key): bool => in_array($chunks[$key]['script'], $indexes, true)));
+            $part = is_array($first['part'] ?? null) && is_string($first['part']['group'] ?? null) ? $first['part'] : null;
+            $from = $part === null ? 1 : max(1, (int) ($part['index'] ?? 1));
+            $opens = $from <= 1;
+            $closes = ! is_array($last['part'] ?? null) || ($last['part']['continues'] ?? false) !== true;
+            $memoryKey = $part === null || ($opens && $closes) ? null : 'caster:studio:episode:'.sha1((string) $part['group']);
+            $memory = $memoryKey === null ? [] : (array) Cache::get($memoryKey, []);
+            $earlier = array_filter($memory, fn (mixed $entry, int|string $at): bool => is_array($entry) && (int) $at < $from, ARRAY_FILTER_USE_BOTH);
+            ksort($earlier);
+            $latest = $earlier === [] ? [] : (array) end($earlier);
+            $left = max(0, TalkShow::maxInterruptions() - (int) array_sum(array_map(fn (array $entry): int => (int) ($entry['interruptions'] ?? 0), $earlier)));
+            $plan['interruptions'][$run] = $left;
+
+            if ($keys === []) {
+                continue;
+            }
+
+            $own = array_map(fn (int $key): array => ['speaker' => $chunks[$key]['speaker'], 'lines' => $chunks[$key]['lines']], $keys);
+            $applause = StudioAudience::applause($topic, $own, array_map(fn (int $key): float => Pcm::seconds($voiced[$key], $rate), $keys), 0.1,
+                $opens, $closes, (int) array_sum(array_map(fn (array $entry): int => (int) ($entry['applause'] ?? 0), $earlier)));
+            $stung = array_values(array_unique(array_merge([], ...array_values(array_map(fn (array $entry): array => array_values(array_filter((array) ($entry['acts'] ?? []), 'is_string')), $earlier)))));
+            $theme = StudioAudience::theme($topic, $own, $opens, $closes, $stung, ($latest['welcome_pending'] ?? false) === true);
+
+            foreach ($applause as $position => $moment) {
+                $plan['applause'][$keys[$position]] = $moment;
+            }
+
+            foreach ($theme['before'] as $position => $sound) {
+                $plan['before'][$keys[$position]] = $sound;
+            }
+
+            if ($theme['outro'] !== null) {
+                $plan['outro'][$keys[$theme['outro']]] = true;
+            }
+
+            if ($memoryKey !== null) {
+                // The cut-ins of the run (inside a part and between two parts), as many as it may still have.
+                $cutIns = 0;
+                foreach ($keys as $position => $key) {
+                    if ($position > 0 && $chunks[$keys[$position - 1]]['speaker'] !== $chunks[$key]['speaker'] && TalkShow::gapKind($chunks[$key]['speaker'], $chunks[$key]['lines']) === TalkShow::GAP_INTERRUPT) {
+                        $cutIns++;
+                    }
+                }
+
+                $memory[$from] = ['applause' => count($applause), 'acts' => $theme['acts'], 'welcome_pending' => $theme['welcome_pending'], 'interruptions' => min($left, $cutIns)];
+                Cache::put($memoryKey, $memory, now()->addDays(2));
+            }
+        }
+
+        return $plan;
+    }
+
+    /**
+     * The pause between two parts of one show in a block: the turn's breath (TalkShow::gapFor() in the talk show,
+     * `speaker_pause` elsewhere) where the speaker changes, the sentence pause where the same one goes on.
+     *
+     * @param  list<array{script: int, speaker: string, lines: list<string>}>  $chunks
+     * @param  array<array-key, mixed>  $script
+     * @param  array<string, mixed>  $voice  tv.commentary.voicestudio
+     */
+    private function partGap(int $index, array $chunks, array $script, array $voice, int &$interruptions): float
+    {
+        $before = array_values(array_filter($chunks, fn (array $chunk): bool => $chunk['script'] === $index - 1));
+        $next = collect($chunks)->first(fn (array $chunk): bool => $chunk['script'] === $index);
+
+        if ($before === [] || $next === null || $before[count($before) - 1]['speaker'] === $next['speaker']) {
+            return (float) ($voice['pause']['sentence'] ?? 0.2);
+        }
+
+        $topic = $script['topic'] ?? null;
+        $kind = TalkShow::gapKind($next['speaker'], $next['lines']);
+
+        if ($kind === TalkShow::GAP_INTERRUPT && $interruptions-- <= 0) {
+            $kind = TalkShow::GAP_TURN;
+        }
+
+        return $this->within(TalkShow::gapFor($topic, $kind) ?? (array) ($voice['speaker_pause'] ?? []), 0.45, 0.7);
     }
 
     /**

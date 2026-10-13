@@ -21,7 +21,8 @@ use Closure;
  *                 next one's kind (Geschichtsstunde before a history segment, coming-up before a teaser),
  *                 else a sweeper on about `sweeper_share` of the transitions, else a breath
  *
- * Never a jingle between two parts of one story. A category list names its
+ * Never a jingle between two parts of one story, nor in front of a block
+ * that goes on with a story of the block before. A category list names its
  * fallbacks in order (JingleLibrary::pick() takes the first that has one).
  */
 final class BlockComposer
@@ -48,7 +49,10 @@ final class BlockComposer
             $sameStory = $previous !== null && is_array($script['part'] ?? null) && is_array($previous['part'] ?? null)
                 && ($script['part']['group'] ?? null) === ($previous['part']['group'] ?? null);
 
-            if ($index === 0) {
+            if ($index === 0 && is_array($script['part'] ?? null) && (int) ($script['part']['index'] ?? 1) > 1) {
+                // A block that goes on with a story of the block before (the next ten minutes of the talk show) is no new
+                // programme: no opener (P20 probe: three format jingles in the middle of one episode).
+            } elseif ($index === 0) {
                 $steps[] = ['type' => self::STEP_JINGLE, 'categories' => self::opener($script, $scripts, $airAt, $random, $clock, $evergreen)];
             } elseif ($previous !== null && ($previous['kind'] ?? null) === CasterScript::BULLETIN && ($script['topic'] ?? null) === SportWeather::TOPIC) {
                 // Sport und Wetter belongs to the news: it follows the bulletin without a jingle.

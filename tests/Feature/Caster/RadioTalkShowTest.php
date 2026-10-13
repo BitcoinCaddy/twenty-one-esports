@@ -95,7 +95,7 @@ function talkAnswer(array $lines = []): array
         'Genossin: Ja, und zwar weil der Staat dann mehr Zinsen zahlt!',
         'Markus: Und wer bezahlt diese Zinsen am Ende, wenn nicht die Sparer selbst?',
         'Sirius: Dann machen wir doch jetzt mal einen kleinen Faktencheck.',
-        'Sirius: Die Positionsliste sagt genau das, aber stimmt es auch, Herr Turm?',
+        'Sirius: Die Genossin sagt genau das, aber stimmt es auch, Herr Turm?',
         'Genossin: Danke, endlich sagt das mal jemand deutlich hier im Studio.',
         'Markus: Gutes Geld braucht keine Erlaubnis von irgendeinem Ministerium oder einer Notenbank.',
         'Sirius: Ein Satz, Herr Turm, was bleibt am Ende übrig?',
@@ -330,7 +330,7 @@ it('takes its slots at 18:15 and 22:15 on a real money headline, and leaves the 
 
     talkHeadline();
     $material = app(TalkShow::class)->material(CarbonImmutable::now());
-    expect($material['data'])->toContain('EZB lässt den Leitzins unverändert')->toContain('Positionsliste der Genossin')->toContain('kelton-haushalt')
+    expect($material['data'])->toContain('EZB lässt den Leitzins unverändert')->toContain('Was die Genossin vertritt')->toContain('kelton-haushalt')
         ->and($material['names'])->toContain('Genossin Gisela', 'Stephanie Kelton')
         ->and($rubrics->plannedFor(talkSlot('2026-10-13 22:15:00'), CarbonImmutable::now()))->toBe(Shows::STAMMTISCH);
 
@@ -453,7 +453,7 @@ it('turns down a talk whose host states instead of asking: fewer than host_quest
     $writer = app(TalkShowScripts::class);
     talkHeadline();
     $material = app(TalkShow::class)->material(CarbonImmutable::now());
-    $statements = [6 => 'Sirius: Ja oder nein, mehr will ich von Ihnen gar nicht wissen.', 10 => 'Sirius: Die Positionsliste sagt genau das, und das halte ich jetzt mal fest.'];
+    $statements = [6 => 'Sirius: Ja oder nein, mehr will ich von Ihnen gar nicht wissen.', 10 => 'Sirius: Die Genossin sagt genau das, und das halte ich jetzt mal fest.'];
 
     // Five host turns, four ask (80 %); three of five (60 %) still pass, two of five do not.
     expect(TalkShowScripts::hostQuestionShare(DuetScripts::parse(talkAnswer()['text'])))->toBe(0.8)
@@ -472,7 +472,7 @@ it('keeps up to three reaction-only turns under the sentence floor, and allows e
         1 => "Markus: Nein, nein, nein, so einfach ist das wirklich nicht!\nGenossin: [sigh] Ach komm.",
         4 => "Genossin: Wie Stephanie Kelton argumentiert, wirkt eine Zinserhöhung eigentlich wie ein Konjunkturprogramm.\nSirius: [laughter] Wie herrlich.",
         7 => "Genossin: Ja, und zwar weil der Staat dann mehr Zinsen zahlt!\nSirius: [question-ah] Bitte was?",
-        10 => "Sirius: Die Positionsliste sagt genau das, aber stimmt es auch, Herr Turm?\nMarkus: [dissatisfaction-hnn] Na klar.",
+        10 => "Sirius: Die Genossin sagt genau das, aber stimmt es auch, Herr Turm?\nMarkus: [dissatisfaction-hnn] Na klar.",
     ])['text'];
 
     [$talk, $violations] = $writer->evaluate($material, $text);
@@ -510,4 +510,47 @@ it('asks for questions, reactions and a roast that hurts but makes sense in the 
     $questions = array_merge(...array_map(fn (string $group): array => TalkShow::hostMoveGroups()[$group], ['nachfrage', 'umformulieren', 'hypothetisch', 'entweder_oder', 'konfrontieren', 'ausreden_dann_fragen', 'sticheln', 'festnageln']));
     expect(count($questions))->toBeGreaterThanOrEqual(35)
         ->and(array_filter($questions, fn (string $move): bool => ! str_contains($move, '?')))->toBe([]);
+});
+
+it('keeps the briefing off the air: "laut Positionsliste" or "im Material" turns a draft down, on the last try only that line leaves, and an evergreen talk names no headline', function () {
+    $writer = app(TalkShowScripts::class);
+    talkHeadline();
+    $material = app(TalkShow::class)->material(CarbonImmutable::now());
+    $leak = [12 => 'Markus: Laut Positionsliste ist das ihre Behauptung, und laut Liste auch noch belegt.'];
+
+    expect($writer->evaluate($material, talkAnswer($leak)['text'], last: false)[1])->toBe([TalkShowScripts::META])
+        ->and($writer->evaluate($material, talkAnswer([12 => 'Markus: Das steht so im Material, und zwar ganz unten.'])['text'], last: false)[1])->toBe([TalkShowScripts::META]);
+
+    // On the last try the line leaves instead of the part.
+    [$content, $rejected] = $writer->evaluate($material, talkAnswer($leak)['text'], last: true);
+    expect($rejected)->toBe([])->and($content['text'])->not->toContain('Positionsliste')->toContain('Ein Satz, Herr Turm');
+
+    // Her own point stays: "Arbeit, Energie und Material" is no briefing.
+    expect($writer->evaluate($material, talkAnswer([11 => 'Genossin: Knapp sind nur Arbeit, Energie und Material, nie das Geld selbst!'])['text'], last: false)[1])->toBe([]);
+
+    // The evergreen talk has no headline: the word turns it down, and the prompt offers no move that reads one out.
+    $evergreen = app(TalkShow::class)->evergreen(CarbonImmutable::now());
+    expect($writer->evaluate($evergreen, talkAnswer([10 => 'Sirius: Ich lese die Schlagzeile noch einmal vor, Herr Turm, stimmt das?'])['text'], evergreen: true, last: false)[1])->toContain(TalkShowScripts::META)
+        ->and(TalkShowScripts::prompt($evergreen, true, [], [], ['Ich lese Ihnen die Schlagzeile noch einmal vor, Genossin, was sagen Sie?', 'Was genau meinen Sie damit, Herr Turm?']))
+        ->not->toContain('Schlagzeile noch einmal vor')->not->toContain('liest die Schlagzeile vor')->not->toContain('aus der Positionsliste')->toContain('Was genau meinen Sie damit');
+});
+
+it('drops a repeated question together with its answer, and a question whose whole answer repeats, never one without the other', function () {
+    $earlier = ['Herr Turm, wer bezahlt am Ende eigentlich die ganzen Zinsen für die Staatsschulden?', 'Der Sparer bezahlt am Ende die Zinsen, mit seinem schrumpfenden Ersparten.'];
+    $lines = [
+        'Herr Turm, wer bezahlt am Ende eigentlich die ganzen Zinsen für die Staatsschulden?',
+        'Na wer schon, die Leute mit dem Sparbuch und sonst niemand.',
+        'Genossin, und was sagt die Gesellschaft zu Ihren Gutscheinen?',
+        'Der Sparer bezahlt am Ende die Zinsen, mit seinem schrumpfenden Ersparten.',
+        'Die Gesellschaft entscheidet selbst, und das ist auch gut so!',
+    ];
+    $speakers = ['sirius', 'markus', 'sirius', 'markus', 'genossin'];
+
+    [$kept, $by] = TalkShowScripts::withoutEchoes($lines, $speakers, $earlier);
+
+    // The repeated question (0) takes its new answer (1) with it; the new question (2) loses its answer (3, a repeat) and goes too.
+    expect($kept)->toBe([$lines[4]])->and($by)->toBe(['genossin']);
+
+    // Nothing repeated: everything stays.
+    expect(TalkShowScripts::withoutEchoes($lines, $speakers, [])[0])->toBe($lines);
 });

@@ -48,6 +48,8 @@ class CasterFetchCommand extends Command
 
     public function handle(CasterFetcher $fetcher): int
     {
+        self::raiseMemoryLimit();
+
         // A shutdown (systemd sends SIGTERM, then SIGKILL after TimeoutStopSec) or Ctrl-C: the fetcher stops claiming and
         // calling VoiceStudio at once, the run in progress releases what it holds, and the command exits 0 (P18).
         $this->trap([SIGTERM, SIGINT], function () use ($fetcher): void {
@@ -98,6 +100,40 @@ class CasterFetchCommand extends Command
     public static function voiceDownWait(int $runs, int $idle): int
     {
         return (int) min(self::MAX_VOICE_DOWN_WAIT, $idle * 2 ** max(0, min(10, $runs - 1)));
+    }
+
+    /**
+     * Raises PHP's memory limit to `voicestudio.memory_limit` (default 512M) when it is lower, never lowers it: a block
+     * is rendered in memory, and the talk show's ten-minute blocks under one bed peaked at 121 MB in the P20 remix
+     * (2026-10-13) against the CLI default of 128M the systemd unit runs with. -1 (no limit) stays.
+     */
+    public static function raiseMemoryLimit(): void
+    {
+        $wanted = (string) config('tv.commentary.voicestudio.memory_limit', '512M');
+        $current = (string) ini_get('memory_limit');
+
+        if ($current !== '-1' && self::bytes($wanted) > self::bytes($current)) {
+            ini_set('memory_limit', $wanted);
+        }
+    }
+
+    /** A php.ini size ("128M", "1G", "-1") in bytes; -1 is PHP_INT_MAX. */
+    private static function bytes(string $size): int
+    {
+        $size = trim($size);
+
+        if ($size === '-1') {
+            return PHP_INT_MAX;
+        }
+
+        $number = (int) $size;
+
+        return match (strtoupper(substr($size, -1))) {
+            'G' => $number * 1024 ** 3,
+            'M' => $number * 1024 ** 2,
+            'K' => $number * 1024,
+            default => $number,
+        };
     }
 
     /**

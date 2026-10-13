@@ -175,8 +175,8 @@ it('measures a talk on air: words at the talk pace, the turn gaps, the sentence 
     // Twelve words, two changes of speaker (0.625 s each), one sentence pause, thirty seconds of studio.
     $seconds = TalkShow::airSeconds(['Eins zwei drei vier.', 'Fünf sechs sieben acht.', 'Neun zehn elf.', 'Zwölf.'], ['markus', 'genossin', 'genossin', 'sirius']);
 
-    expect($seconds)->toEqualWithDelta(12 / 3.0 + 2 * 0.625 + 0.2 + 30, 0.001)
-        ->and(TalkShow::airWindow())->toBe([1680.0, 1800.0]);
+    expect($seconds)->toEqualWithDelta(12 / 2.9 + 2 * 0.625 + 0.2 + 30, 0.001)
+        ->and(TalkShow::airWindow())->toBe([1740.0, 1800.0]);
 });
 
 it('writes the talk in acts that continue each other, the guest opening the first and the host closing the last', function () {

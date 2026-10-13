@@ -561,6 +561,26 @@ it('waits for VoiceStudio at boot with growing pauses, reports it down to the se
     expect(array_map(fn (int $runs): int => CasterFetchCommand::voiceDownWait($runs, 10), [1, 2, 3, 4, 5, 9]))->toBe([10, 20, 40, 80, 120, 120]);
 });
 
+it('gives the fetcher room for a ten-minute block: the CLI default of 128M rises to voicestudio.memory_limit, a higher limit or none stays', function () {
+    $before = ini_get('memory_limit');
+
+    try {
+        ini_set('memory_limit', '128M');
+        CasterFetchCommand::raiseMemoryLimit();
+        expect(ini_get('memory_limit'))->toBe('512M');
+
+        ini_set('memory_limit', '2G');
+        CasterFetchCommand::raiseMemoryLimit();
+        expect(ini_get('memory_limit'))->toBe('2G');
+
+        ini_set('memory_limit', '-1');
+        CasterFetchCommand::raiseMemoryLimit();
+        expect(ini_get('memory_limit'))->toBe('-1');
+    } finally {
+        ini_set('memory_limit', (string) $before);
+    }
+});
+
 it('writes the local stock atomically: a failed write keeps the old file and leaves no temporary file', function () {
     $dir = autopilotDir();
     File::ensureDirectoryExists($dir);

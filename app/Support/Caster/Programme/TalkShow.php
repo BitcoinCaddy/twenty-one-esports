@@ -409,8 +409,9 @@ class TalkShow
      * has said already (`$said`, TalkShowScripts::echoes(): the model copied examples, part after part, P20 run 4).
      *
      * @param  list<string>  $said  the talk's lines so far
+     * @param  bool  $evergreen  an evergreen episode: no headline to roast
      */
-    public static function roastBlock(int $perRole = 7, array $said = []): string
+    public static function roastBlock(int $perRole = 7, array $said = [], bool $evergreen = false): string
     {
         $data = json_decode((string) file_get_contents(resource_path('data/voice/talkshow-roasts.json')), true);
         $names = [self::HOST => 'Sirius', DuetDirector::MARKUS => 'Markus', self::GUEST => self::stageName()];
@@ -431,11 +432,11 @@ class TalkShow
         }
 
         return "Roasten, bis es wehtut, aber mit Sinn\n\n"
-            ."- Alle drei roasten in jedem Akt: einander, den Gastgeber, den Sender, die Hörer und die Schlagzeile; sarkastisch, zynisch, frech und so gemein, dass es beim Zuhören wehtut, und trotzdem mögen sie sich irgendwie.\n"
+            .'- Alle drei roasten in jedem Akt: einander, den Gastgeber, den Sender, die Hörer und '.($evergreen ? 'das Thema' : 'die Schlagzeile')."; sarkastisch, zynisch, frech und so gemein, dass es beim Zuhören wehtut, und trotzdem mögen sie sich irgendwie.\n"
             ."- Bauweise wie beim Roast der Liga-Partien: ein konkretes Ziel, ein konkretes Detail aus dem Material oder aus dem, was der andere gerade gesagt hat, die Steigerung und die Pointe am Satzende. Jeder Seitenhieb hängt an einer konkreten Behauptung, die man nachvollziehen kann.\n"
             ."- Liebevolle Schimpfwörter fliegen hin und her, frisch und jedes Mal anders, als Anrede mit „Sie“ („Sie Zinseszins-Romantiker“); nie dasselbe zweimal, und jeder nur seine eigenen: Markus' gehen an die Genossin, ihre an Markus, Sirius' an beide.\n"
             ."- Markus ist der großspurige, toxisch-witzige Bitcoiner: Einzeiler wie Ohrfeigen gegen ihre Ideen, ihre T-Konten-Skizze, ihre MMT-Vorbilder, Staat, Zentralbank und Fiatgeld, Herablassung und Running Gags, er fällt ihr ins Wort, lacht sie aus ([laughter]) und seufzt theatralisch ([sigh]). Nicht höflich, kein „mit Verlaub“, kein Lob ohne Stachel.\n"
-            ."- Sirius ist der Provokateur: seine Fragen sind gezinkt und sticheln, er roastet beide Gäste mit trockenem Sarkasmus, verdreht hörbar die Augen und führt jedes Ausweichen spöttisch vor, und trotzdem fragt er fast immer.\n"
+            ."- Sirius ist der Provokateur: seine Fragen sind gezinkt und sticheln, er roastet beide Gäste mit trockenem Sarkasmus, verdreht hörbar die Augen und führt jedes Ausweichen spöttisch vor, und trotzdem fragt er fast immer. Er verpasst beiden liebevolle Schimpfwörter, in jedem Teil mindestens zwei, eins für Markus und eins für die Genossin, gern mitten in der Frage („Herr Turm, Sie Goldbarren-Romantiker, wer zahlt die Straße?“).\n"
             .'- '.self::stageName()." keilt zurück (digitale Tulpenzwiebeln, Tech-Bro, Laser-Augen-Sekte), damit es ein echter Kampf bleibt.\n"
             ."- Kein Kauderwelsch: jeder Satz sagt etwas Konkretes, das man nach einmal Hören wiedergeben kann. Höchstens ein Bild pro Satz, nie zwei Bilder gemischt, kein Vergleich, der beim ersten Hören nicht sitzt, kein Satz, der nur nach Witz klingt.\n"
             ."- Die Grenzen bleiben: geroastet werden Ideen, Rollen und Aussagen, nie Geschlecht, Aussehen, Alter, Herkunft, Krankheit oder Behinderung, keine herablassende Anrede als Frau, keine echten Personen als Ziel, kein erfundenes Zitat, keine Zahl und kein Name außerhalb des Materials; Memes nur aus dem Kanon mit ihrem echten Wortlaut.\n\n"
@@ -586,8 +587,8 @@ class TalkShow
             .($row['verbatim'] === [] ? '' : ' Wörtlich belegt: '.implode(' / ', array_map(fn (string $quote): string => '„'.$quote.'“', $row['verbatim'])))
             .' Quelle: '.$row['source_title'].'.';
 
-        return "Positionsliste der Genossin (die einzigen Positionen, die sie vertritt; sinngemäß, mit Quelle)\n".implode("\n", array_map($line, self::positions()))
-            ."\n\nGegenargumente mit Quelle (für Markus und Sirius, zusätzlich zu ihrer Bitcoin-Sicht)\n".implode("\n", array_map($line, self::positions(true)));
+        return "Was die Genossin vertritt (ihre einzigen Positionen, als ihre eigene Sicht und sinngemäß; die Quelle ist für dich, nicht zum Vorlesen)\n".implode("\n", array_map($line, self::positions()))
+            ."\n\nWas Markus und Sirius dagegen wissen (zusätzlich zu ihrer Bitcoin-Sicht, als eigene Sicht; die Quelle ist für dich)\n".implode("\n", array_map($line, self::positions(true)));
     }
 
     /**

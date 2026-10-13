@@ -80,6 +80,19 @@ class TalkShowScripts
      */
     public const MAX_REACTION_TURNS = 3;
 
+    /**
+     * The prompt's own words on air (P20 probe 2026-10-13: "laut Positionsliste" eight times in one episode, the host
+     * "reads out the headline" of an evergreen episode that has none): the voices talk about the briefing instead of
+     * knowing it.
+     */
+    public const META = 'talkshow_meta';
+
+    /** The briefing's words the voices never say ("Material" alone stays: "Arbeit, Energie und Material" is her point). */
+    private const META_WORDS = '/(?<![\p{L}])(?:positionsliste\p{L}*|positionspapier\p{L}*|gegenargumente mit quelle|wörtlich belegt|(?:im|aus dem|laut|ins|vom|laut dem) material|material (?:steht|sagt|nennt)|(?:laut|auf) (?:der |meiner |ihrer |deiner |unserer |dieser )?liste|wie es hier steht|laut unterlagen|in (?:meinen|ihren|den) unterlagen)(?![\p{L}])/iu';
+
+    /** In an evergreen episode there is no headline to read out. */
+    private const HEADLINE_WORDS = '/schlagzeile/iu';
+
     /** The share of a line's longer words found in one earlier line that makes it a near copy (echoes()). */
     public const ECHO_SHARE = 0.6;
 
@@ -330,14 +343,9 @@ class TalkShowScripts
         // it was shown once more before it continues (first real runs, 2026-10-13), so such lines leave, the rest stays.
         // A near copy counts too (P20 run 4: "Gießkanne für alle, bezahlt mit Geld, das morgen weniger wert ist" in three parts).
         $earlier = array_values(array_filter((array) ($act['previous'] ?? []), 'is_string'));
-        [$keptLines, $keptSpeakers] = [[], []];
-        foreach ($lines as $index => $line) {
-            if (! self::echoes($line, [...$earlier, ...$keptLines])) {
-                $keptLines[] = $line;
-                $keptSpeakers[] = $speakers[$index];
-            }
-        }
-        [$lines, $speakers] = [$keptLines, $keptSpeakers];
+        // On the last try a line with the briefing's words leaves (with its question or answer) instead of the whole part.
+        $meta = fn (string $line): bool => preg_match(self::META_WORDS, ScriptGuard::withoutMarkers($line)) === 1 || ($evergreen && preg_match(self::HEADLINE_WORDS, $line) === 1);
+        [$lines, $speakers] = self::withoutEchoes($lines, $speakers, $earlier, $last ? $meta : null);
 
         if ($lines === []) {
             return [null, [ShowScripts::EMPTY]];
@@ -389,6 +397,10 @@ class TalkShowScripts
 
         if (self::hostQuestionShare($turns) < (float) ($settings['host_question_share'] ?? 0.6)) {
             $violations[] = self::HOST_QUESTIONS;
+        }
+
+        if (preg_match(self::META_WORDS, $spoken) === 1 || ($evergreen && preg_match(self::HEADLINE_WORDS, $spoken) === 1)) {
+            $violations[] = self::META;
         }
 
         foreach ($lines as $index => $line) {
@@ -587,6 +599,66 @@ class TalkShowScripts
     }
 
     /**
+     * The lines without the ones that repeat an earlier line (echoes()), a question and its answer kept or dropped
+     * together (P20 probe 2026-10-13: dropping a repeated question left its answer standing alone): when a turn's
+     * closing question goes, the next turn (its answer) goes with it; when a whole turn goes, the question before it
+     * that it answered goes too.
+     *
+     * @param  list<string>  $lines
+     * @param  list<string>  $speakers
+     * @param  list<string>  $earlier  the lines of the parts before
+     * @param  (Closure(string): bool)|null  $drop  a line that leaves as well (dropped the same way)
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    public static function withoutEchoes(array $lines, array $speakers, array $earlier, ?Closure $drop = null): array
+    {
+        $dropped = [];
+        $kept = [];
+        foreach ($lines as $index => $line) {
+            if (($drop !== null && $drop($line)) || self::echoes($line, [...$earlier, ...$kept])) {
+                $dropped[$index] = true;
+            } else {
+                $kept[] = $line;
+            }
+        }
+
+        // The turns: consecutive lines of one speaker.
+        $turns = [];
+        foreach ($lines as $index => $line) {
+            $last = array_key_last($turns);
+
+            if ($last !== null && $speakers[$turns[$last][0]] === $speakers[$index]) {
+                $turns[$last][] = $index;
+            } else {
+                $turns[] = [$index];
+            }
+        }
+
+        $echoed = $dropped;
+        foreach ($turns as $position => $turn) {
+            $closing = $turn[count($turn) - 1];
+            $next = $turns[$position + 1] ?? null;
+
+            // The question went: its answer goes too.
+            if ($next !== null && isset($echoed[$closing]) && str_contains($lines[$closing], '?')) {
+                foreach ($next as $index) {
+                    $dropped[$index] = true;
+                }
+            }
+
+            // The whole answer went: the question it answered goes too.
+            if ($next !== null && ! isset($dropped[$closing]) && str_contains($lines[$closing], '?')
+                && array_filter($next, fn (int $index): bool => ! isset($echoed[$index])) === []) {
+                $dropped[$closing] = true;
+            }
+        }
+
+        $keep = array_values(array_filter(array_keys($lines), fn (int $index): bool => ! isset($dropped[$index])));
+
+        return [array_map(fn (int $index): string => $lines[$index], $keep), array_map(fn (int $index): string => $speakers[$index], $keep)];
+    }
+
+    /**
      * Whether a line repeats one of `$earlier`: the same words, or at least `ECHO_SHARE` of its words of four letters
      * and more in one earlier line (a near copy with a word swapped).
      *
@@ -655,6 +727,15 @@ class TalkShowScripts
         $guest = TalkShow::stageName();
         $count = fn (int $number): string => ReactionLines::spokenNumber(min(99, $number));
 
+        if ($evergreen) {
+            // No headline in an evergreen episode: no move or brief that reads one out.
+            $moves = array_values(array_filter($moves, fn (string $move): bool => preg_match(self::HEADLINE_WORDS, $move) !== 1));
+
+            if ($act !== null && is_string($act['evergreen_brief'] ?? null)) {
+                $act['brief'] = $act['evergreen_brief'];
+            }
+        }
+
         if ($act !== null) {
             // One act's share of the slot in sentences, at the talk's pace (about four seconds a line on air).
             $min = max(10, (int) round(0.85 * (float) ($act['seconds'] ?? 300) / 4.2));
@@ -674,7 +755,8 @@ class TalkShowScripts
                     ? 'Diese Ausgabe läuft im Programmvorrat an einem späteren Tag zu einer unbekannten Uhrzeit: zeitlos, ohne Uhrzeit, Tageszeit, Wochentag oder Datum, nie „heute“, „gestern“, „morgen“, „gerade eben“ oder „vorhin“, keine aktuellen Nachrichten. Das Thema steht im Material.'
                     : 'Die Ansage mit Uhrzeit und Name ist schon geschrieben; du schreibst nur, was danach kommt. Anlass ist die echte Schlagzeile im Material.')
                 ." {$min} bis {$max} Sätze, gesprochen auf Deutsch, höchstens zweiunddreißig Wörter pro Satz; im Kreuzfeuer gern kurze Einzeiler ab drei Wörtern, sonst ganze Sätze.",
-            "Die Rollen\n\n- Sirius, der Gastgeber: die Parodie eines bekannten Typs von Fernseh-Talkmaster, ohne je einen echten Namen zu nennen oder jemand Echtes zu sein. Er moderiert durch Fragen: mindestens sieben von zehn seiner Wortmeldungen sind eine zugespitzte Frage oder enden mit einer, gerichtet an einen Gast mit Namen („Herr Turm, ganz konkret: wer bezahlt dann die Straße?“, „Genossin Gisela, ja oder nein?“, „Was heißt das denn jetzt für die Rentnerin an der Kasse?“). Er hakt nach, wenn eine Antwort ausweicht („Das war keine Antwort auf meine Frage“), stellt die Frage anders, fragt „Mal angenommen, …, was dann?“, liest die Schlagzeile vor und will eine Reaktion, unterbricht mit „Moment, Moment, lassen Sie ihn ausreden“ und fragt dann den anderen, liest eine Zuschauerfrage vor, stellt Entweder-oder-Fragen und fragt „Was genau meinen Sie damit?“. Feststellungen wie „Ich halte fest“ höchstens zweimal pro Sendung, und danach kommt sofort eine Frage. Er siezt beide Gäste („Herr Turm“, „Genossin Gisela“), fällt ins Wort, würgt Monologe ab und gießt Öl ins Feuer; seine Wendungen stehen unten im eigenen Block."
+            "Die Rollen\n\n- Sirius, der Gastgeber: die Parodie eines bekannten Typs von Fernseh-Talkmaster, ohne je einen echten Namen zu nennen oder jemand Echtes zu sein. Er moderiert durch Fragen: mindestens sieben von zehn seiner Wortmeldungen sind eine zugespitzte Frage oder enden mit einer, gerichtet an einen Gast mit Namen („Herr Turm, ganz konkret: wer bezahlt dann die Straße?“, „Genossin Gisela, ja oder nein?“, „Was heißt das denn jetzt für die Rentnerin an der Kasse?“). Er hakt nach, wenn eine Antwort ausweicht („Das war keine Antwort auf meine Frage“), stellt die Frage anders, fragt „Mal angenommen, …, was dann?“, ".($evergreen ? 'spitzt eine These eines Gastes zu und will eine Reaktion des anderen' : 'liest die Schlagzeile vor und will eine Reaktion')
+                .', unterbricht mit „Moment, Moment, lassen Sie ihn ausreden“ und fragt dann den anderen, liest eine Zuschauerfrage vor, stellt Entweder-oder-Fragen und fragt „Was genau meinen Sie damit?“. Feststellungen wie „Ich halte fest“ höchstens zweimal pro Sendung, und danach kommt sofort eine Frage. Er siezt beide Gäste („Herr Turm“, „Genossin Gisela“), fällt ins Wort, würgt Monologe ab und gießt Öl ins Feuer; seine Wendungen stehen unten im eigenen Block.'
                 ."\n- Markus Turm, Gast: argumentiert aus der Sicht freier Märkte, guten Geldes und von Bitcoin: Staat, Zentralbanken, Steuern, Regulierung und Fiatgeld sind das Problem, freiwilliger Tausch und Selbstbestimmung über das eigene Leben der Maßstab. Er zeigt das in Argumenten, nie mit einem Etikett: „Anarchokapitalist“, „libertär“ oder „wir Libertären“ sagt er nie. Satire-Technik: ein Fakt aus dem Material, die absurde Konsequenz, die Pointe."
                 ."\n- {$guest}, Gast: wie in ihrem Persona-Block oben; wird sie hitzig, werden ihre Sätze kürzer und enden mit Ausrufezeichen."
                 ."\n- Geroastet werden Ideen, nie Geschlecht, Aussehen, Alter oder Herkunft, keine herablassende Anrede wie „Gnädigste“, und nie die echten Autorinnen und Autoren als Personen.",
@@ -683,17 +765,19 @@ class TalkShowScripts
                 ."\n2. Sirius begrüßt die Hörer, stellt beide Gäste mit Namen und Haltung vor und nennt das Thema als zugespitzte Frage".($evergreen ? '.' : ', ausgehend von der Schlagzeile mit ihrer Quelle.')
                 ."\n3. Kreuzfeuer in mehreren Runden: sehr kurze Wortmeldungen von einem bis ".$count($perTurn).' Sätzen, die Gäste fallen sich ins Wort, Durcheinanderreden als schnell wechselnde Einzeiler wie „Nein, nein, nein, so nicht!“, Sirius heizt an, unterbricht und fragt nach.'
                 ."\n4. Sirius liest eine Zuschauerfrage vor, ohne einen Namen zu erfinden („Ein Zuschauer fragt …“), und zwingt beide zu einer Antwort."
-                ."\n5. Einmal ruft Sirius den Faktencheck aus, mit genau diesem Wort, und prüft eine strittige Behauptung nur mit dem, was im Material steht."
+                ."\n5. Einmal ruft Sirius den Faktencheck aus, mit genau diesem Wort, und prüft eine strittige Behauptung nur mit den Tatsachen unten im Material, ausgesprochen als eigenes Wissen (nie „laut Liste“ oder „im Material“)."
                 ."\n6. {$guest} landet mindestens einen Treffer, den Markus nicht sofort kontern kann; die Sache eskaliert, bevor Sirius sie einfängt."
                 ."\n7. Schlussrunde: Sirius verlangt von jedem genau einen Satz („Ein Satz, Herr Turm, ein Satz!“), {$guest} zuerst, dann Markus."
                 ."\n8. Sirius spricht zuletzt: ein Satz Zusammenfassung und neugierig machen auf den nächsten Talk, ohne Termin und ohne Abschiedsfloskel.",
             $act !== null ? self::soFarBlock($act) : null,
-            "Reaktionen\n\nWer zuhört, reagiert hörbar auf das eben Gesagte, am Anfang der eigenen Wortmeldung: [sigh] oder [dissatisfaction-hnn] auf eine absurde Behauptung, [surprise-oh] oder [surprise-wa] auf eine Provokation, [laughter] auf einen guten Seitenhieb, [question-ah] als ungläubiges „Hä?“. Etwa eine solche Reaktion auf zwei bis drei Wortmeldungen, nie zwei Marker in einem Satz, höchstens ein Marker auf zwei Sätze im ganzen Talk. Bis zu "
-                .$count(self::MAX_REACTION_TURNS).' Wortmeldungen dürfen nur aus der Reaktion bestehen, zwei bis fünf Wörter mit dem Marker vorn, etwa „Genossin: [sigh] Ach, Herr Turm.“.',
-            TalkShow::roastBlock(7, array_values(array_filter((array) ($act['previous'] ?? []), 'is_string'))),
+            "Reaktionen\n\nWer zuhört, reagiert hörbar auf das eben Gesagte, am Anfang der eigenen Wortmeldung: [sigh] oder [dissatisfaction-hnn] auf eine absurde Behauptung, [surprise-oh] oder [surprise-wa] auf eine Provokation, [laughter] auf einen guten Seitenhieb, [question-ah] als ungläubiges „Hä?“. Jede dritte Wortmeldung beginnt mit so einer Reaktion, verteilt auf alle drei, nie zwei Marker in einem Satz, höchstens ein Marker auf zwei Sätze im ganzen Talk. In diesem Teil "
+                .$count(self::MAX_REACTION_TURNS).' Wortmeldungen, die nur aus der Reaktion bestehen, zwei bis fünf Wörter mit dem Marker vorn, etwa „Genossin: [sigh] Ach, Herr Turm.“ oder „Markus: [laughter] Großartig, wirklich.“.',
+            TalkShow::roastBlock(7, array_values(array_filter((array) ($act['previous'] ?? []), 'is_string')), $evergreen),
             "Sprecher und Form\n\nJeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt: „Sirius: …“, „Markus: …“ oder „Genossin: …“. Jeder der drei hat mindestens ".$count($minTurns).' Wortmeldungen. Kein Satz beginnt mit Zustimmungsfloskeln wie „Genau“ oder „Stimmt“.'
                 ."\n- Jede Tatsache nur aus dem Material: keine Zahl, kein Jahr, kein Datum, kein Name und keine Studie, die dort nicht steht; Zahlen als Wort."
-                ."\n- Echte Personen nur mit ihren Positionen aus der Positionsliste, sinngemäß („wie Stephanie Kelton argumentiert, …“); in Anführungszeichen steht neben einem echten Namen nur, was in der Positionsliste als „Wörtlich belegt“ steht. Kein erfundenes Zitat, von niemandem."
+                ."\n- Echte Personen nur mit ihren Positionen von unten, sinngemäß („wie Stephanie Kelton argumentiert, …“); in Anführungszeichen steht neben einem echten Namen nur, was unten als „Wörtlich belegt“ steht. Kein erfundenes Zitat, von niemandem."
+                ."\n- Die drei wissen das alles einfach, sie reden nie über ihre Unterlagen: nie „Positionsliste“, „laut Liste“, „im Material“, „wie es hier steht“ oder „Wörtlich belegt“; die Genossin sagt „ich sage seit Jahren …“, nicht „laut meiner Liste“."
+                .($evergreen ? "\n- Diese Ausgabe hat keine Schlagzeile: das Wort „Schlagzeile“ kommt nicht vor, niemand liest etwas vor." : '')
                 ."\n- Keine Begrüßung außer der von Sirius in Schritt zwei, kein Abschied, keine Links, keine Hashtags, keine Regieanweisungen in Klammern.",
             $moves === [] ? null : "Wendungen des Gastgebers für diese Sendung (eine Auswahl; jede höchstens einmal, gern abgewandelt und an die Lage angepasst; neue im selben Stil sind erlaubt)\n\n"
                 .implode("\n", array_map(fn (string $move): string => '- '.$move, $moves)),
@@ -709,6 +793,7 @@ class TalkShowScripts
                 self::SHAPE => "Der Ablauf stimmte nicht: {$guest} spricht zuerst, Sirius ruft einmal den Faktencheck aus und spricht zuletzt.",
                 self::LABEL => 'Markus oder Sirius nannten ein Etikett für ihre Haltung: sie nur in Argumenten zeigen.',
                 self::HOST_QUESTIONS => 'Sirius hat zu wenig gefragt: mindestens sieben von zehn seiner Wortmeldungen sind eine Frage an einen Gast mit Namen oder enden mit einer.',
+                self::META => 'Jemand redete über die Unterlagen statt aus ihnen („laut Positionsliste“, „im Material“'.($evergreen ? ', eine Schlagzeile, die es nicht gibt' : '').'): die drei wissen das einfach und sagen es als ihre eigene Sicht.',
                 self::GENDERED => 'Markus oder Sirius redeten die Genossin herablassend als Frau an (etwa „Gnädigste“): sie heißt „Genossin Gisela“ oder „Frau Genossin“, geroastet werden nur ihre Ideen.',
                 default => VoicePrompt::REASON_HINTS[$code] ?? $code,
             }, $rejected)),

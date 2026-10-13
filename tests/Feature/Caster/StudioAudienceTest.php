@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Caster\Blocks\BlockComposer;
 use App\Support\Caster\Blocks\BlockRenderer;
 use App\Support\Caster\Blocks\JingleLibrary;
 use App\Support\Caster\Blocks\JingleSynth;
@@ -13,6 +14,7 @@ use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\TalkShow;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -198,12 +200,12 @@ it('gives no applause to news, a bulletin, Sport und Wetter, the podcast corner 
 });
 
 it('opens the talk show with its theme before the welcome, stings the fact check and the closing round, and closes with the outro', function () {
-    expect(StudioAudience::theme(TalkShow::ID, studioTalkChunks()))->toBe(['before' => [3 => StudioAudience::INTRO, 8 => StudioAudience::STING, 10 => StudioAudience::STING], 'outro' => 13])
+    expect(StudioAudience::theme(TalkShow::ID, studioTalkChunks()))->toBe(['before' => [3 => StudioAudience::INTRO, 8 => StudioAudience::STING, 10 => StudioAudience::STING], 'outro' => 13, 'acts' => ['fact', 'close'], 'welcome_pending' => false])
         // Only the talk show has a theme, and none while it is off.
-        ->and(StudioAudience::theme(Shows::TRIBUNAL, studioTalkChunks()))->toBe(['before' => [], 'outro' => null]);
+        ->and(StudioAudience::theme(Shows::TRIBUNAL, studioTalkChunks()))->toBe(['before' => [], 'outro' => null, 'acts' => [], 'welcome_pending' => false]);
 
     config(['tv.commentary.idents.talk_theme.enabled' => false]);
-    expect(StudioAudience::theme(TalkShow::ID, studioTalkChunks()))->toBe(['before' => [], 'outro' => null]);
+    expect(StudioAudience::theme(TalkShow::ID, studioTalkChunks()))->toBe(['before' => [], 'outro' => null, 'acts' => [], 'welcome_pending' => false]);
 });
 
 it('mixes applause and theme into the pauses of a rendered talk show, never over a word, quiet against the voice', function () {
@@ -284,4 +286,111 @@ it('ships every studio sound it names: rendered by JingleSynth, in resources/aud
         ->and(JingleSynth::sound('theme-talk-intro')['seconds'])->toBeGreaterThanOrEqual(6.0)->toBeLessThanOrEqual(9.0)
         ->and(JingleSynth::sound('theme-talk-outro')['seconds'])->toBeGreaterThanOrEqual(5.0)->toBeLessThanOrEqual(7.0)
         ->and(JingleSynth::sound('theme-talk-sting')['seconds'])->toBeGreaterThanOrEqual(2.0)->toBeLessThanOrEqual(3.0);
+});
+
+/**
+ * A talk show queued in parts of `$perPart` chunks (ScriptQueue::parts()), rendered in blocks of `$perBlock` parts through
+ * the real BlockRenderer, block after block like the fetcher does; each block's render.
+ */
+function studioEpisode(array $chunks, int $perPart, int $perBlock, string $topic = TalkShow::ID, bool $evergreen = false, string $at = '2026-10-13 18:15'): array
+{
+    Http::fake(fn (Request $request) => str_ends_with($request->url(), '/generate') ? Http::response(studioWav(3.0)) : Http::response([]));
+    $dir = sys_get_temp_dir().'/studio-jingles-'.bin2hex(random_bytes(4));
+    mkdir($dir, 0755, true);
+    $parts = array_chunk($chunks, $perPart);
+    $scripts = [];
+    foreach ($parts as $index => $part) {
+        $scripts[] = ['id' => 100 + $index, 'kind' => 'rubric', 'topic' => $topic,
+            'sentences' => array_merge(...array_column($part, 'lines')),
+            'speakers' => array_merge(...array_map(fn (array $chunk): array => array_fill(0, count($chunk['lines']), $chunk['speaker']), $part)),
+            'part' => ['group' => 'episode-1', 'index' => $index + 1, 'continues' => $index < count($parts) - 1]];
+    }
+
+    $renderer = new BlockRenderer(new CasterFetcher(fn () => null), new JingleLibrary($dir, 30), Idents::fromConfig(), fn (): float => 0.0);
+
+    return array_map(fn (array $block): array => $renderer->render($block, [], CarbonImmutable::parse($at, 'Europe/Berlin'), $evergreen), array_chunk($scripts, $perBlock));
+}
+
+/** A long talk show: the opener line, the cold open, the welcome, eight hits, the fact check, the closing round. */
+function studioLongTalk(): array
+{
+    $chunks = array_slice(studioTalkChunks(), 0, 4);
+    for ($i = 0; $i < 8; $i++) {
+        $chunks[] = studioChunk('genossin', 'Sie verwechseln schon wieder Geld mit Gold, Herr Turm!');
+        $chunks[] = studioChunk('sirius', 'Das hat gesessen, Herr Turm, was sagen Sie jetzt?');
+        $chunks[] = studioChunk('markus', 'Ich zähle nur nach, und das macht in Ihrer Partei keiner.');
+    }
+
+    return [...$chunks, ...array_slice(studioTalkChunks(), 8)];
+}
+
+it('treats a talk show queued in parts as one show over all its blocks: one intro, the stings once, one outro, applause capped per episode', function () {
+    config(['tv.commentary.idents.applause.min_gap_seconds' => 5]);
+    // 34 chunks in parts of two (17 parts), three parts a block: six blocks, like the 39 parts of the live talk.
+    $blocks = studioEpisode(studioLongTalk(), 2, 3);
+    $parts = array_merge(...array_map(fn (array $block): array => array_column($block['studio'], 'part'), $blocks));
+    $count = fn (string $part): int => count(array_filter($parts, fn (string $placed): bool => $placed === $part));
+    $applause = count(array_filter($parts, fn (string $placed): bool => str_starts_with($placed, 'applause-')));
+
+    expect(count($blocks))->toBe(6)
+        ->and($count('theme-intro'))->toBe(1)
+        ->and($count('theme-sting'))->toBe(2)
+        ->and($count('theme-outro'))->toBe(1)
+        ->and($applause)->toBeLessThanOrEqual((int) config('tv.commentary.idents.applause.max_per_show'))->toBeGreaterThanOrEqual(3)
+        ->and($count('applause-open'))->toBe(1)
+        ->and($count('applause-close'))->toBe(1)
+        // The intro and the open in the first block, the outro and the close in the last.
+        ->and(array_column($blocks[0]['studio'], 'part'))->toContain('theme-intro', 'applause-open')
+        ->and(array_column($blocks[5]['studio'], 'part'))->toContain('theme-outro', 'applause-close');
+
+    // The same episode rendered again (a failed upload): the same studio, not a second share of the cap.
+    $again = studioEpisode(studioLongTalk(), 2, 3);
+    expect(array_merge(...array_map(fn (array $block): array => array_column($block['studio'], 'part'), $again)))->toBe($parts);
+});
+
+it('opens a block that continues a story without a jingle, and only the first block of an episode with one', function () {
+    $slot = CarbonImmutable::parse('2026-10-13 18:15', 'Europe/Berlin');
+    $first = BlockComposer::plan([['id' => 1, 'kind' => 'scene', 'topic' => 'stock:stammtisch', 'part' => ['group' => 'g', 'index' => 1, 'continues' => true]]], $slot, 0.0, fn (): float => 0.0, evergreen: true);
+    $next = BlockComposer::plan([
+        ['id' => 2, 'kind' => 'scene', 'topic' => 'stock:stammtisch', 'part' => ['group' => 'g', 'index' => 13, 'continues' => true]],
+        ['id' => 3, 'kind' => 'scene', 'topic' => 'stock:stammtisch', 'part' => ['group' => 'g', 'index' => 14, 'continues' => true]],
+    ], $slot, 0.0, fn (): float => 0.0, evergreen: true);
+
+    expect($first[0]['type'])->toBe('jingle')
+        ->and($next)->toBe([['type' => 'script', 'index' => 0], ['type' => 'script', 'index' => 1]]);
+});
+
+it('plays the parts of one show in a block back to back: the turn breath between two parts, one bed under all of them', function () {
+    config(['tv.commentary.idents.applause.enabled' => false, 'tv.commentary.idents.talk_theme.enabled' => false,
+        'tv.commentary.programme.shows.formats.stammtisch.turn_gap_ms' => ['min' => 600, 'max' => 600], 'tv.commentary.programme.shows.formats.stammtisch.max_interruptions' => 0]);
+    $chunks = [];
+    for ($i = 0; $i < 4; $i++) {
+        $chunks[] = studioChunk('markus', 'Ich zähle nur nach, und das macht in Ihrer Partei keiner.');
+        $chunks[] = studioChunk('genossin', 'Sie verwechseln schon wieder Geld mit Gold, Herr Turm!');
+    }
+
+    // Eight chunks in four parts, all in one block.
+    $block = studioEpisode($chunks, 2, 4)[0];
+    $gaps = array_map(fn (int $i): float => round($block['ends'][$i] - $block['ends'][$i - 1] - $block['ends'][0], 2), range(1, count($chunks) - 1));
+
+    // Inside a part and between two parts alike: the turn's 0.6 s, no gap between the parts.
+    expect($gaps)->toBe(array_fill(0, 7, 0.6))
+        ->and(array_values(array_filter($block['steps'], fn (string $step): bool => str_starts_with($step, 'bed:'))))->toBe(['bed:bed-news-pulse.opus']);
+
+    // Under the bed the pause between two parts is never silent (the bed does not fade out and in at a part).
+    $pause = $block['ends'][1];
+    expect(studioPeak($block['pcm'], $pause + 0.15, $pause + 0.45))->toBeGreaterThan(0);
+});
+
+it('beds a stock block by air time, not by the hour it is rendered: rendered in the quiet hours it still gets its bed', function () {
+    config(['tv.commentary.idents.bed_at_night' => false, 'tv.commentary.idents.applause.enabled' => false, 'tv.commentary.idents.talk_theme.enabled' => false,
+        'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00']);
+    $chunks = [studioChunk('markus', 'Ich zähle nur nach, und das macht in Ihrer Partei keiner.'), studioChunk('genossin', 'Sie verwechseln schon wieder Geld mit Gold, Herr Turm!')];
+
+    $stock = studioEpisode($chunks, 1, 2, 'stock:'.TalkShow::ID, evergreen: true, at: '2026-10-13 03:00')[0];
+    Cache::flush();
+    $live = studioEpisode($chunks, 1, 2, TalkShow::ID, evergreen: false, at: '2026-10-13 03:00')[0];
+
+    expect($stock['steps'])->toContain('bed:bed-news-pulse.opus')
+        ->and($live['steps'])->not->toContain('bed:bed-news-pulse.opus');
 });

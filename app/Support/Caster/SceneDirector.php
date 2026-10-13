@@ -856,15 +856,17 @@ final class SceneDirector
         $at = CarbonImmutable::createFromTimestamp($now);
         // A podcast's next chunk follows whatever waits, only the news and an overdue reaction take the boundary (P12).
         $podcast = $this->isPodcast($this->clip);
+        $part = $this->clipIsPart ? $this->spool->partOf($this->clip) : null;
+        $continues = $part !== null && $this->spool->partPending($part['group'], $part['index'] + 1, $at);
 
+        // A programme teaser never comes between two blocks of one story (the talk show's next ten minutes, P20): it
+        // waits for the story's end.
         if ($podcast ? ($this->dueBulletin($now) !== null || $this->awaitingBulletin($now)
             || $this->spool->overdueLive($at, (float) ($this->settings['reaction_max_hold_seconds'] ?? 600)) !== null)
-            : (! $this->blocksFlowOn($this->clip, $at) || $this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || $this->spool->teaser($at) !== null)) {
+            : (! $this->blocksFlowOn($this->clip, $at) || $this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || (! $continues && $this->spool->teaser($at) !== null))) {
             return;
         }
 
-        $part = $this->clipIsPart ? $this->spool->partOf($this->clip) : null;
-        $continues = $part !== null && $this->spool->partPending($part['group'], $part['index'] + 1, $at);
         $next = $podcast ? $this->spool->nextPodcastChunk($this->clip)
             : ($continues ? $this->spool->part($part['group'], $part['index'] + 1, $at) : $this->spool->nextBlock($at));
 

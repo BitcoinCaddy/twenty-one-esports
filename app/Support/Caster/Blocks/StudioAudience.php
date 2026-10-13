@@ -24,10 +24,18 @@ use App\Support\Caster\Programme\TalkShow;
  *    before the host's welcome, the sting before the first fact check and
  *    the first closing round (TalkShow::ACT_BREAK), the outro at the end.
  *
- * A position is a chunk of the script (CasterFetcher::plannedChunks()):
+ * A position is a chunk of the show (CasterFetcher::plannedChunks()):
  * "after chunk n" is the pause behind it, "before chunk n" the pause in
  * front of it. Off, an unknown format, or a script of one chunk without an
  * end: nothing.
+ *
+ * A show queued in parts (the 30-minute talk: 39 parts of five lines, P20
+ * probe 2026-10-13) is ONE show over all its parts, also across blocks: the
+ * caller passes the parts of a block as one run of chunks with `opens` (its
+ * first part is in it), `closes` (its last part is in it) and what the
+ * episode's earlier blocks placed (`used` applause, the acts already stung,
+ * a welcome still to come). Per part, the probe aired 75 theme plays and 51
+ * applause in one episode.
  */
 final class StudioAudience
 {
@@ -78,16 +86,22 @@ final class StudioAudience
      * @param  list<array{speaker: string, lines: list<string>}>  $chunks  the script's chunks in order
      * @param  list<float>  $seconds  each chunk's length
      * @param  float  $shortestGap  the shortest pause between two chunks (the cap is kept on the tightest timing)
+     * @param  bool  $opens  the show's first chunk is in `$chunks` (the opening applause may come)
+     * @param  bool  $closes  the show's last chunk is in `$chunks` (the closing applause comes; else one stays reserved for it)
+     * @param  int  $used  the applause the show's earlier blocks placed (`max_per_show` counts per show, not per block)
      * @return array<int, string>
      */
-    public static function applause(mixed $topic, array $chunks, array $seconds, float $shortestGap = 0.1): array
+    public static function applause(mixed $topic, array $chunks, array $seconds, float $shortestGap = 0.1, bool $opens = true, bool $closes = true, int $used = 0): array
     {
         if (! self::applauds($topic) || $chunks === []) {
             return [];
         }
 
         $settings = (array) config('tv.commentary.idents.applause', []);
-        $max = max(0, (int) ($settings['max_per_show'] ?? 4));
+        // The show's cap less what its earlier blocks placed, and one kept back for the close still to come.
+        $max = max(0, (int) ($settings['max_per_show'] ?? 4) - max(0, $used) - ($closes ? 0 : 1));
+        // A show spread over several blocks: at most one hit per block, so the hits spread over the episode.
+        $maxHits = $opens && $closes ? PHP_INT_MAX : 1;
         $minGap = max(0.0, (float) ($settings['min_gap_seconds'] ?? 20));
         $last = count($chunks) - 1;
         $turns = self::turns($chunks);
@@ -95,12 +109,14 @@ final class StudioAudience
         $candidates = [];
 
         // The opening: the host's welcome after the cold open, or the first chunk of any other show.
-        $open = $talk ? self::welcome($turns) : ['last' => 0];
+        $open = ! $opens ? null : ($talk ? self::welcome($turns) : ['last' => 0]);
         if ($open !== null && $open['last'] !== $last) {
             $candidates[] = [$open['last'], self::OPEN];
         }
 
-        $candidates[] = [$last, self::CLOSE];
+        if ($closes) {
+            $candidates[] = [$last, self::CLOSE];
+        }
 
         foreach ($turns as $index => $turn) {
             $text = implode(' ', array_merge(...array_map(fn (int $position): array => $chunks[$position]['lines'], $turn['positions'])));
@@ -108,7 +124,12 @@ final class StudioAudience
             $next = $turns[$index + 1] ?? null;
             $answeredWithLaughter = $next !== null && preg_match('/^\s*\[laughter\]/u', (string) ($chunks[$next['first']]['lines'][0] ?? '')) === 1;
 
-            if ($turn['last'] !== $last && (($talk && $turn['speaker'] === TalkShow::HOST && preg_match(TalkShow::HIT, $text) === 1)
+            // No hit in the talk show's cold open: the first applause of an episode is the welcome's.
+            if ($talk && $opens && $open !== null && $turn['last'] < $open['last']) {
+                continue;
+            }
+
+            if (($turn['last'] !== $last || ! $closes) && (($talk && $turn['speaker'] === TalkShow::HOST && preg_match(TalkShow::HIT, $text) === 1)
                 || (str_ends_with(trim(self::withoutMarkers($closing)), '!') && $answeredWithLaughter))) {
                 $candidates[] = [$turn['last'], self::HIT];
             }
@@ -124,8 +145,9 @@ final class StudioAudience
         }
 
         $chosen = [];
+        $hits = 0;
         foreach ($candidates as [$position, $moment]) {
-            if (count($chosen) >= $max || isset($chosen[$position])) {
+            if (count($chosen) >= $max || isset($chosen[$position]) || ($moment === self::HIT && $hits >= $maxHits)) {
                 continue;
             }
 
@@ -133,6 +155,7 @@ final class StudioAudience
 
             if ($tooClose === []) {
                 $chosen[$position] = $moment;
+                $hits += $moment === self::HIT ? 1 : 0;
             }
         }
 
@@ -145,29 +168,35 @@ final class StudioAudience
      * The talk theme of a script: chunk position => INTRO or STING (in the pause before that chunk), and the last
      * position => OUTRO (behind the script).
      *
+     * With a show in parts (see the class comment): the intro only in the block that holds the welcome (`opens`, or
+     * `$welcomePending` when the block before ended in the cold open: then the host's first turn is the welcome), the
+     * sting only for an act no earlier block stung (`$stung`), the outro only where the show ends (`closes`).
+     * `acts` are the acts stung so far, `welcome_pending` whether the welcome is still to come.
+     *
      * @param  list<array{speaker: string, lines: list<string>}>  $chunks
-     * @return array{before: array<int, string>, outro: int|null}
+     * @param  list<string>  $stung  the acts ('fact', 'close') the show's earlier blocks stung
+     * @return array{before: array<int, string>, outro: int|null, acts: list<string>, welcome_pending: bool}
      */
-    public static function theme(mixed $topic, array $chunks): array
+    public static function theme(mixed $topic, array $chunks, bool $opens = true, bool $closes = true, array $stung = [], bool $welcomePending = false): array
     {
         if (! self::themed($topic) || $chunks === []) {
-            return ['before' => [], 'outro' => null];
+            return ['before' => [], 'outro' => null, 'acts' => $stung, 'welcome_pending' => false];
         }
 
         $turns = self::turns($chunks);
         $before = [];
-        $welcome = self::welcome($turns);
+        $welcome = $opens ? self::welcome($turns) : ($welcomePending ? collect($turns)->first(fn (array $turn): bool => $turn['speaker'] === TalkShow::HOST) : null);
 
         if ($welcome !== null) {
             $before[$welcome['first']] = self::INTRO;
         }
 
-        // The first fact check and the first closing round each open their act with the sting.
-        $seen = [];
+        // The first fact check and the first closing round each open their act with the sting, once per show.
+        $seen = array_fill_keys($stung, true);
         foreach ($turns as $turn) {
             $text = implode(' ', $chunks[$turn['first']]['lines']);
 
-            if ($turn['speaker'] !== TalkShow::HOST || $turn['first'] === 0 || isset($before[$turn['first']]) || preg_match(TalkShow::ACT_BREAK, $text, $match) !== 1) {
+            if ($turn['speaker'] !== TalkShow::HOST || ($turn['first'] === 0 && $opens) || isset($before[$turn['first']]) || preg_match(TalkShow::ACT_BREAK, $text, $match) !== 1) {
                 continue;
             }
 
@@ -181,7 +210,7 @@ final class StudioAudience
 
         ksort($before);
 
-        return ['before' => $before, 'outro' => count($chunks) - 1];
+        return ['before' => $before, 'outro' => $closes ? count($chunks) - 1 : null, 'acts' => array_keys($seen), 'welcome_pending' => ($opens || $welcomePending) && $welcome === null];
     }
 
     /**
