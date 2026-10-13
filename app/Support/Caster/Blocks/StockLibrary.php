@@ -4,6 +4,7 @@ namespace App\Support\Caster\Blocks;
 
 use App\Support\Caster\AtomicFile;
 use App\Support\Caster\InvalidClip;
+use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\SpoolFull;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -61,7 +62,8 @@ final class StockLibrary
             max(1, (int) ($settings['retire_after_airings'] ?? 4)),
             (float) ($settings['repeat_hours'] ?? 24),
             (float) ($settings['subject_spacing_hours'] ?? 6),
-            1.5 * max(60.0, (float) config('tv.commentary.blocks.stock.seconds.max', 360)),
+            // A stock block, or a whole long show with its own slot (P20: the thirty-minute talk) and five minutes to spare.
+            max(1.5 * max(60.0, (float) config('tv.commentary.blocks.stock.seconds.max', 360)), 60.0 * max([0, ...array_values(Shows::windows())]) + 300.0),
         );
     }
 
@@ -215,6 +217,17 @@ final class StockLibrary
             }
 
             return [$index, $before];
+        });
+    }
+
+    /** Removes a block, its file and its index entry (FormatPurge); nothing when it is not there. */
+    public function remove(string $hash): void
+    {
+        $this->locked(function (array $index) use ($hash): array {
+            unset($index['blocks'][$hash]);
+            @unlink($this->file($hash));
+
+            return [$index, null];
         });
     }
 

@@ -1,0 +1,70 @@
+{
+  "about": "Roast moves for Turm und Genossin, der Talk (plan \"TWENTY ONE Radio\", P20; user 2026-10-13: \"es fehlt bei Markus Turm echt das Roasten und Toxische beim Talk! Und auch beim Moderator!\", \"Purer Realismus einer echten Radioshow, die sarkastisch, toxisch und zynisch ist und absolut alles und jeden roastet\", \"liebevolle Schimpfwörter … Trotzdem muss es sinnhaftig bleiben\"). Written fresh for the show, per voice: what a jab of that voice sounds like (a concrete target, a concrete detail, the escalation, the punchline last, the build of the league match roasts, CasterVoice::BIT). They aim at ideas, roles, the station and the audience, never at gender, looks, age, origin or a real person; no number, year or name outside the episode's material may be taken over (ShowScripts::factual() rejects it). TalkShowScripts::prompt() shows a rotating sample of each list; the model writes its own in this tone.",
+  "moves": {
+    "markus": [
+      "Genossin, Ihre T-Konten-Skizze ist das einzige Konto, auf dem bei Ihnen jemals etwas übrig bleibt.",
+      "Bei Ihnen heißt Inflation Verteilungsfrage, bei meiner Oma heißt sie: der Kaffee kostet jetzt das Doppelte.",
+      "Sie wollen dem Staat die Druckerpresse schenken, das ist, als würde man dem Brandstifter den Feuerlöscher leihen.",
+      "Ihre Jobgarantie kenne ich, das ist Gießkanne für alle, bezahlt mit Geld, das morgen weniger wert ist.",
+      "[sigh] Genossin, jedes Mal, wenn Sie Buchhaltung sagen, verliert irgendwo ein Sparbuch einen Cent.",
+      "Sie nennen Bitcoin eine Tulpenzwiebel, und Ihr Euro ist die Zwiebel, bei der man beim Schälen weint.",
+      "Die Modern Monetary Theory ist so modern wie ein Faxgerät und so monetär wie Spielgeld.",
+      "[laughter] Das war so überzeugend, Genossin, dass sogar die Zentralbank kurz nachgedacht hat, und das kommt selten vor.",
+      "Sie haben recht, das ist reine Buchhaltung, nur leider die Buchhaltung eines Konkursverwalters.",
+      "Ich zähle meine Sats, Sie zählen auf den Staat, raten Sie mal, wer am Monatsende noch etwas zu zählen hat.",
+      "Ihre Lieblingsökonomen erklären Schulden so lange, bis sie wie Vermögen aussehen, und das nennt man Bilanzkosmetik.",
+      "Viel Spaß mit Ihrem Sparbuch, Genossin, ich schicke Ihnen eine Postkarte aus der Kaufkraft.",
+      "Der Staat kann nicht pleitegehen, sagen Sie, und das stimmt sogar, pleite gehen immer nur die, die sein Geld sparen.",
+      "Ihre Argumente gegen Bitcoin widerlegen sich so zuverlässig selbst, dass ich nur noch zuhören muss.",
+      "Sirius, Sie moderieren so neutral wie eine Zentralbank, die gerade die Zinsen senkt.",
+      "Und an alle, die jetzt zuhören: wer noch Euro auf dem Girokonto parkt, hört offenbar auch freiwillig Talkshows.",
+      "Sie Gelddruck-Romantikerin, Sie glauben auch, dass der Strom aus der Steckdose kommt, weil der Staat sie bezahlt hat.",
+      "Moment, Genossin, Sie wollen die Inflation mit mehr Geld bekämpfen, das ist Feuer löschen mit Grillanzünder."
+    ],
+    "sirius": [
+      "Herr Turm, ist das jetzt Ökonomie oder schon Bitcoin-Esoterik mit Taschenrechner?",
+      "Genossin, wenn Geld nur Buchhaltung ist, warum führen Sie dann keine?",
+      "[sigh] Herr Turm, das war Ihr drittes Argument mit Laseraugen, haben Sie auch eins ohne?",
+      "Genossin, Sie haben gerade eine Minute geredet und keine einzige Zahl genannt, ist das Absicht oder Theorie?",
+      "Herr Turm, Sie klingen wie ein Whitepaper, das zu lange in der Sonne lag, kommt da noch ein Punkt?",
+      "Wer von Ihnen beiden hat das Thema eigentlich verstanden, oder soll ich gleich das Publikum fragen?",
+      "Genossin, darf ich das so zusammenfassen: Schulden sind prima, solange sie jemand anderes zurückzahlt?",
+      "Das war keine Antwort, das war ein Werbespot mit Atempause, also noch einmal, ja oder nein?",
+      "Genossin, in Ihrer Welt druckt man sich alles, druckt man sich auch eine Antwort auf meine Frage?",
+      "Herr Turm, wie viele Sats muss ich zahlen, damit Sie einmal eine Frage beantworten?",
+      "Liebe Hörer, wer bis hierher durchgehalten hat, verdient Schmerzensgeld, Genossin, druckt das der Staat?",
+      "Wir senden auf einem Sender, der seine Hörer in Sats zählt, Herr Turm, ist das schon Größenwahn oder noch Geschäftsmodell?",
+      "Genossin, ist die T-Konten-Skizze heute dabei, oder hat die auch der Staat finanziert?",
+      "[laughter] Das hat gesessen, Herr Turm, und jetzt bitte keine Rede, nur ein Satz, wo ist Ihr Konter?",
+      "Sie streiten wie zwei Zentralbanker um den letzten Kugelschreiber, wer gibt zuerst nach?",
+      "Genossin, Sie Buchhaltungs-Mystikerin, was heißt das konkret für die Rentnerin an der Kasse?",
+      "Herr Turm, Sie haben die Frage so elegant umfahren, haben Sie dafür einen Führerschein oder nur ein Hardware-Wallet?",
+      "Ich halte fest: Sie halten sich beide für die einzige vernünftige Person im Studio, wer von Ihnen irrt sich?"
+    ],
+    "genossin": [
+      "Herr Turm, Ihre digitalen Tulpenzwiebeln blühen nur, solange irgendwer noch teurer nachkauft.",
+      "Sie und Ihre Laser-Augen-Sekte halten einen Kursverlauf für ein Gesellschaftsmodell.",
+      "Herr Turm, Sie Tech-Bro im Bausparvertrag-Kostüm, wer bezahlt denn die Straße zu Ihrem Rechenzentrum?",
+      "[laughter] Sie verwechseln schon wieder Geld mit Gold und Gold mit Charakter, Herr Turm.",
+      "Ihr Bitcoin ist knapp, das stimmt, genauso knapp wie Ihre Argumente für ein funktionierendes Krankenhaus.",
+      "Sie reden von Freiheit und meinen die Freiheit, Ihre Stromrechnung in Hashrate umzurechnen.",
+      "Herr Turm, schwäbische Hausfrau mit Hardware-Wallet, das ist Ihr ganzes Weltbild.",
+      "Wenn Ihr Staat ohne Steuern funktioniert, zeigen Sie mir den Feuerwehrmann, der in Sats bezahlt wird.",
+      "Sirius, Sie moderieren wie ein Börsenticker, viel Geblinke und keine Haltung.",
+      "Ihre Blockchain ist die teuerste Tabelle der Welt, Herr Turm, und Sie sind ihr unbezahlter Praktikant.",
+      "Sie Zinseszins-Romantiker glauben auch, dass sich Brücken von selbst bauen, wenn der Markt sie nur lieb genug hat.",
+      "Moment mal, Sie predigen Eigenverantwortung und weinen bei jedem Kurssturz in Ihr Hardware-Wallet.",
+      "Genau das ist der Denkfehler, Herr Turm, Sie halten Knappheit für eine Tugend, und ein leerer Kühlschrank ist auch knapp.",
+      "Ihre Freunde im Chat halten seit Jahren ihre Coins fest und zahlen ihre Pizza trotzdem in Euro.",
+      "[sigh] Herr Turm, Sie erklären Geld wie ein Prepper, der seinen Keller für eine Notenbank hält.",
+      "Ich biete Ihnen eine Jobgarantie an, Herr Turm, Stadtgarten gießen, da lernen Sie wenigstens, was von allein wächst.",
+      "Liebe Hörer, wer Herrn Turm glaubt, kann sein Erspartes auch gleich in Bildschirmschoner investieren.",
+      "Sie Blockzeit-Fetischist, Sie warten zehn Minuten auf eine Zahlung und nennen das Fortschritt."
+    ]
+  },
+  "insults": {
+    "markus": ["Sie Gelddruck-Romantikerin", "Sie Schuldenbremsen-Allergikerin", "Sie Haushaltsloch-Optimistin", "Sie Bilanz-Akrobatin", "Sie Notenpresse-Flüsterin", "Sie Moderations-Dompteur"],
+    "sirius": ["Sie Buchhaltungs-Mystikerin", "Sie Halving-Hellseher", "Sie Kursverlauf-Philosoph", "Sie Talkshow-Dauergast mit Druckerpatrone", "Sie Seed-Phrase-Poet", "Sie Zentralbank-Fan ohne Taschenrechner"],
+    "genossin": ["Sie Zinseszins-Romantiker", "Sie Blockzeit-Fetischist", "Sie Hardware-Wallet-Kuschler", "Sie Laser-Augen-Prophet", "Sie Fragebogen auf zwei Beinen", "Sie Tech-Bro im Bausparvertrag-Kostüm"]
+  }
+}

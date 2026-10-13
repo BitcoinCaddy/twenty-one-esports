@@ -22,6 +22,13 @@ use Carbon\CarbonImmutable;
  * In the quiet hours (QuietHours, 01 to 09) a slot without `quiet` turns into
  * talk: at night only the full-hour bulletin and the ten-minute rhythm.
  *
+ * A show window (P20; user 2026-10-13: "wenn im Programm steht TalkShow von
+ * 19:00 bis 19:30, dann muss die TalkShow auch 30 min gehen!"): a long format
+ * with `slot_minutes` (Shows::windows()) owns its window from its rubric
+ * slot on: every slot inside it is the show's rubric slot, so no headlines
+ * bulletin is written or aired there. The window ends at the next full hour at
+ * the latest: the news at :00 is never swallowed. Not in the quiet hours.
+ *
  * @phpstan-type Slot array{type: string, minute: int, label: string, stinger: bool, starts_at: CarbonImmutable, key: int}
  */
 final class BroadcastClock
@@ -50,8 +57,9 @@ final class BroadcastClock
 
     /**
      * @param  array<array-key, mixed>  $slots  `tv.commentary.programme.slots`
+     * @param  array<string, int>  $windows  show windows: the local start "HH:MM" to its minutes (Shows::windows())
      */
-    public function __construct(array $slots, private readonly string $timezone = 'Europe/Berlin', private readonly bool $enabled = true)
+    public function __construct(array $slots, private readonly string $timezone = 'Europe/Berlin', private readonly bool $enabled = true, private readonly array $windows = [])
     {
         $clean = [];
 
@@ -76,7 +84,7 @@ final class BroadcastClock
     public static function fromConfig(): self
     {
         return new self((array) config('tv.commentary.programme.slots', []), (string) config('tv.commentary.programme.timezone', 'Europe/Berlin'),
-            config('tv.commentary.programme.enabled') === true);
+            config('tv.commentary.programme.enabled') === true, Shows::windows());
     }
 
     /** Whether the stream runs by the clock at all (`programme.enabled`); off, there are no bulletins. */
@@ -94,6 +102,12 @@ final class BroadcastClock
      */
     public function slotAt(CarbonImmutable $at): array
     {
+        $window = $this->windowAt($at);
+
+        if ($window !== null) {
+            return $window;
+        }
+
         $local = $at->setTimezone($this->timezone);
         $minute = (int) $local->format('i');
         $slot = $this->slots[count($this->slots) - 1];
@@ -117,6 +131,41 @@ final class BroadcastClock
             'starts_at' => $start,
             'key' => $start->getTimestamp(),
         ];
+    }
+
+    /**
+     * The show window on air at `$at` as its rubric slot (from the window's start), or null: no window holds `$at`, it
+     * starts in the quiet hours, or no rubric slot of the clock begins at its start.
+     *
+     * @return Slot|null
+     */
+    private function windowAt(CarbonImmutable $at): ?array
+    {
+        $local = $at->setTimezone($this->timezone);
+
+        foreach ($this->windows as $time => $minutes) {
+            if (preg_match('/^(\d{2}):(\d{2})$/', (string) $time, $match) !== 1) {
+                continue;
+            }
+
+            foreach ([$local, $local->subDay()] as $day) {
+                $startLocal = $day->setTime((int) $match[1], (int) $match[2]);
+                // Never past the next full hour: the news at :00 stays.
+                $end = min($startLocal->addMinutes(max(1, $minutes))->getTimestamp(), $startLocal->startOfHour()->addHour()->getTimestamp());
+                $index = array_search((int) $match[2], array_column($this->slots, 'minute'), true);
+                $slot = $index === false ? null : $this->slots[$index];
+
+                if ($slot === null || $slot['type'] !== self::RUBRIC || $at->getTimestamp() < $startLocal->getTimestamp() || $at->getTimestamp() >= $end || QuietHours::active($startLocal)) {
+                    continue;
+                }
+
+                $start = CarbonImmutable::createFromTimestamp($startLocal->getTimestamp());
+
+                return ['type' => self::RUBRIC, 'minute' => (int) $match[2], 'label' => $slot['label'], 'stinger' => $slot['stinger'], 'starts_at' => $start, 'key' => $start->getTimestamp()];
+            }
+        }
+
+        return null;
     }
 
     /**
