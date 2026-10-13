@@ -7,10 +7,13 @@ use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Programme\Roasts;
+use App\Support\Caster\Programme\Rubrics;
+use App\Support\Caster\Programme\ShowCraft;
 use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\TalkShow;
 use App\Support\Caster\Programme\TalkShowScripts;
 use App\Support\Caster\ScriptGuard;
+use App\Support\Voice\StockCoherenceJudge;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceCanon;
 use App\Support\Voice\VoicePrompt;
@@ -57,6 +60,19 @@ use Throwable;
  * guards as a duet (DuetScripts::evaluate()), its own usage channel and
  * daily cap (`stock.daily_cap`), the monthly budget, at most two tries.
  *
+ * One coherent programme item (P21; user 2026-10-13 about a stock block that
+ * glued a league explainer onto an unrelated history talk: "Was soll das
+ * sein? Das war total sinnlos!"): one format and one subject per script
+ * (the Geschichtsstunde tells ONE canon story, not three), the format's
+ * opener (ShowCraft::block() with the format's ritual, a stock ritual of its
+ * own where ShowCraft has none or one that is not evergreen) and its
+ * back-announce, a premise in the first two sentences, a through-line and a
+ * payoff. Canon quotes come with who said them and where they are
+ * documented (VoiceCanon `speaker`, `source`). Before a draft is queued,
+ * StockCoherenceJudge scores it (coherent()): below `stock.judge.min_score`
+ * on any score it is written once more with the judge's hint, then dropped
+ * (fail closed: an unreadable judgement is no clearance).
+ *
  * @phpstan-import-type ShowMaterial from Shows
  */
 final class StockScripts
@@ -68,6 +84,46 @@ final class StockScripts
 
     /** The draft named the time of day or a date in too many lines, or a speaker hardly spoke. */
     public const TIMESTAMPED = 'stock_timestamped';
+
+    /** The opener or the back-announce named a time ("heute") and would leave the draft with the time filter. */
+    public const FRAME_LOST = 'stock_frame_lost';
+
+    /** The judge scored a draft below `stock.judge.min_score` on one of its scores, or its answer was unreadable. */
+    public const INCOHERENT = 'stock_incoherent';
+
+    /** A league basics line that only holds on the live air (the stock airs at an unknown hour). */
+    private const LIVE_ONLY = '/\b(?:live|nachts|genau jetzt|gerade|wach)\b/iu';
+
+    /** The usage channel of the coherence judge (StockCoherenceJudge). */
+    public const JUDGE_CHANNEL = 'caster_stock_judge';
+
+    /**
+     * What each format is called on air: the opener names it, the back-announce says that this was it.
+     *
+     * @var array<string, string>
+     */
+    public const SHOW_NAMES = [
+        'talk' => 'der Themen-Talk',
+        'tutorial' => 'das Bitcoin-Tutorial',
+        'geschichte' => 'die Geschichtsstunde',
+        'podcast' => 'die Podcast-Ecke',
+        'liga' => 'die Liga-Fibel',
+        Roasts::SCHWARZBUCH => 'die Schwarzbuch-Stunde',
+        Roasts::INFLATION => 'die Inflationsbeichte',
+    ];
+
+    /**
+     * The stock's own rituals where ShowCraft::RITUALS has none, or one that names a time (the league's "letzten
+     * vierundzwanzig Stunden", the Bauernkrieg history): an opening and a closing gesture, kept from show to show.
+     *
+     * @var array<string, array{open: string, close: string}>
+     */
+    public const RITUALS = [
+        'talk' => ['open' => 'einer knallt die Frage der Sendung auf den Tisch wie eine Streitfrage am Stammtisch, und der andere hält sofort dagegen', 'close' => 'beide sagen in je einem Satz, wo sie jetzt stehen, und einer zieht den anderen damit auf'],
+        'tutorial' => ['open' => 'Markus stellt die Tafel auf, und Sirius gesteht, was er bisher dazu falsch gemacht hat', 'close' => 'Sirius fasst die Lektion in seinen eigenen, etwas schiefen Worten zusammen, und Markus korrigiert den einen Punkt, auf den es ankommt'],
+        'geschichte' => ['open' => 'die Geschichtsstunde beginnt, einer klopft mit dem Zeigestock auf die Tafel und nennt das Jahr oder die Person, um die es geht', 'close' => 'die Moral von der Geschicht in einem Satz, mit einem Seitenhieb auf Staat oder Fiatgeld'],
+        'liga' => ['open' => 'Sportschau-Ton, die Liga wird erklärt, als hätte noch nie jemand von ihr gehört', 'close' => 'einer sagt in einem Satz, warum man mitspielen sollte, und der andere macht sich darüber lustig'],
+    ];
 
     /** The topic prefix of a stock script (`stock:<format>`). */
     public const TOPIC_PREFIX = 'stock:';
@@ -92,6 +148,16 @@ final class StockScripts
 
     /** What the material of the programme in the writing is about (subjectKey()), set by materialFor(). */
     private string $subject = '';
+
+    /** The judge's hint on the draft before (coherent()), for the second try. */
+    private string $hint = '';
+
+    /**
+     * Every judgement of this writer (coherent()): the format, the material, the draft and the answer as it came (null when unreadable), for the eval's listening report.
+     *
+     * @var list<array{format: string, material: string, text: string, answer: array<array-key, mixed>|null}>
+     */
+    public array $judgements = [];
 
     public function __construct(
         private readonly DuetScripts $duets,
@@ -122,7 +188,8 @@ final class StockScripts
                 $talk = app(TalkShowScripts::class)->evergreen($this->talkShow);
                 $this->remember(self::LAST_FORMATS, $format);
 
-                if ($talk !== null) {
+                // Judged like every stock draft; its own writer has no second try for the hint, so a weak one leaves.
+                if ($talk !== null && $this->coherent($format, $material, $talk['text'], $talk['speakers']) === []) {
                     return $talk + ['format' => $format, 'subject' => self::subjectKey($format, $this->subject)];
                 }
 
@@ -134,7 +201,7 @@ final class StockScripts
                 }
             }
 
-            $rejected = [];
+            [$rejected, $this->hint] = [[], ''];
 
             for ($try = 0; $try < 2; $try++) {
                 if ($this->usage->attemptsToday(self::CHANNEL) >= (int) config('tv.commentary.blocks.stock.daily_cap', 0)
@@ -206,11 +273,20 @@ final class StockScripts
 
         [$lines, $speakers] = [[], []];
 
-        foreach (ScriptGuard::lines($duet['text']) as $index => $line) {
+        $all = ScriptGuard::lines($duet['text']);
+
+        foreach ($all as $index => $line) {
             if (preg_match(ReplayArchive::TIMESTAMPED, $line) !== 1) {
                 $lines[] = $line;
                 $speakers[] = $duet['speakers'][$index] ?? DuetDirector::MARKUS;
             }
+        }
+
+        // The opener and the back-announce frame the show: losing one to the time filter ("Heute in der
+        // Geschichtsstunde …", 8 of 10 real drafts on 2026-10-13 opened without it) leaves a programme without a
+        // beginning or an end, so the draft is written again instead.
+        if ($all !== [] && (preg_match(ReplayArchive::TIMESTAMPED, $all[0]) === 1 || preg_match(ReplayArchive::TIMESTAMPED, $all[count($all) - 1]) === 1)) {
+            return [null, [self::FRAME_LOST]];
         }
 
         if (count(DuetDirector::turns($lines, $speakers)) < (int) ($settings['turns']['min'] ?? 6) || array_diff(self::speakers(), $speakers) !== []) {
@@ -229,7 +305,7 @@ final class StockScripts
         $this->usage->recordAttempt(self::CHANNEL);
         $temperature = config('tv.commentary.scripts.temperature');
         $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000), cacheTtl: CasterVoice::staticCacheTtl()))
-            ->prompt(self::prompt($format, $material, $rejected));
+            ->prompt(self::prompt($format, $material, $rejected, $this->hint));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -238,6 +314,13 @@ final class StockScripts
 
         if ($violations !== []) {
             $this->usage->recordRejection(self::CHANNEL, $violations);
+        } elseif ($talk !== null) {
+            // The judge records its own reasons under its channel (coherent()).
+            $violations = $this->coherent($format, $material, $talk['text'], $talk['speakers']);
+            $talk = $violations === [] ? $talk : null;
+        }
+
+        if ($violations !== []) {
             $this->usage->recordOutcome(self::CHANNEL, 'rejected');
 
             return [null, $violations];
@@ -246,6 +329,56 @@ final class StockScripts
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
         return [$talk, []];
+    }
+
+    /**
+     * The coherence gate (StockCoherenceJudge): the reason codes of a draft the judge scored below
+     * `stock.judge.min_score` on premise, through-line, payoff, fit, liveliness or sense ([INCOHERENT, "stock_weak_<score>", …]), or of
+     * an unreadable judgement; empty when it passed or the judge is off. Keeps the judge's hint for the second try.
+     * The judge reads every line with its speaker ("Markus: …"): banter and who roasts whom are half the score.
+     *
+     * @param  list<string>  $speakers  the speaker of each line of `$text`
+     * @return list<string>
+     */
+    public function coherent(string $format, string $material, string $text, array $speakers = []): array
+    {
+        $settings = (array) config('tv.commentary.blocks.stock.judge', []);
+
+        if (($settings['enabled'] ?? true) !== true) {
+            return [];
+        }
+
+        $this->usage->recordAttempt(self::JUDGE_CHANNEL);
+        $labelled = implode("\n", array_map(fn (int $index, string $line): string => (self::NAMES[$speakers[$index] ?? ''] ?? ucfirst($speakers[$index] ?? 'Markus')).': '.$line, array_keys($lines = ScriptGuard::lines($text)), $lines));
+        $response = (new StockCoherenceJudge)->prompt(StockCoherenceJudge::message(self::SHOW_NAMES[$format] ?? $format, $material, $labelled));
+        $this->usage->recordTokens(self::JUDGE_CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
+        $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
+        $min = (int) ($settings['min_score'] ?? 4);
+        $weak = [];
+
+        foreach (StockCoherenceJudge::SCORES as $score) {
+            $value = is_array($answer) ? ($answer[$score] ?? null) : null;
+
+            // A missing score or one outside 1..5 is no clearance.
+            if (! is_int($value) || $value < $min || $value > 5) {
+                $weak[] = 'stock_weak_'.$score;
+            }
+        }
+
+        $nonsense = is_array($answer) ? array_values(array_filter((array) ($answer['nonsense'] ?? []), fn (mixed $line): bool => is_string($line) && trim($line) !== '')) : [];
+        $this->judgements[] = ['format' => $format, 'material' => $material, 'text' => $labelled, 'answer' => is_array($answer) ? $answer : null];
+        $this->hint = trim((is_array($answer) && is_string($answer['hint'] ?? null) ? trim($answer['hint']) : '')
+            .($nonsense === [] ? '' : ' Diese Sätze sagen nichts Konkretes: '.implode(' ', array_map(fn (string $line): string => '„'.trim($line).'“', array_slice($nonsense, 0, 4)))));
+        $this->usage->recordOutcome(self::JUDGE_CHANNEL, $weak === [] ? 'accepted' : 'rejected');
+
+        if ($weak === []) {
+            return [];
+        }
+
+        $reasons = [self::INCOHERENT, ...$weak];
+        $this->usage->recordRejection(self::JUDGE_CHANNEL, $reasons);
+
+        return $reasons;
     }
 
     /**
@@ -292,12 +425,16 @@ final class StockScripts
 
         $material = match ($format) {
             'talk' => ($question = $this->pick((array) ($settings['questions'] ?? []), $format, $subjects)) === null ? null
-                : "Die Frage: {$question}\n\nAufhänger aus dem Kanon (höchstens einer davon):\n".($this->canonLines(['einundzwanzig', 'bitcoin', 'nostr'], 2) ?? '-'),
+                : "Die Frage: {$question}\n\nAufhänger aus dem Kanon (höchstens einer davon, und nur wenn er der Frage dient):\n".($this->canonLines(['einundzwanzig', 'bitcoin', 'nostr'], 2) ?? '-'),
             'tutorial' => ($topic = $this->pick((array) ($settings['tutorials'] ?? []), $format, $subjects)) === null ? null
-                : "Das Tutorial: {$topic}\n\nAufhänger aus dem Kanon (höchstens einer davon):\n".($this->canonLines(['bitcoin'], 2) ?? '-'),
-            'geschichte' => $this->canonLines(['bitcoin'], 3),
+                : "Das Tutorial: {$topic}\n\nAufhänger aus dem Kanon (höchstens einer davon, und nur wenn er dem Tutorial dient):\n".($this->canonLines(['bitcoin'], 2) ?? '-'),
+            // ONE story: three canon entries made the history talk hop from a saying to a veteran to a meme (P21).
+            'geschichte' => ($story = $this->canonLines(['bitcoin'], 1)) === null ? null : "Die Geschichte (um diesen einen Eintrag dreht sich die ganze Sendung):\n".$story,
             'podcast' => app(PodcastTranscripts::class)->digestBlock(),
-            'liga' => ($lines = CasterVoice::leagueBasics()) === [] ? null : implode("\n", array_map(fn (string $line): string => '- '.$line, $lines)),
+            // The basics without the lines written for the live air ("ihr seid live mit dabei", "Nachts ist die Lobby ruhiger"):
+            // the stock airs at an unknown hour (P21, measured in a real draft 2026-10-13).
+            'liga' => ($lines = array_values(array_filter(CasterVoice::leagueBasics(), fn (string $line): bool => preg_match(ReplayArchive::TIMESTAMPED, $line) !== 1 && preg_match(self::LIVE_ONLY, $line) !== 1))) === []
+                ? null : implode("\n", array_map(fn (string $line): string => '- '.$line, $lines)),
             Roasts::SCHWARZBUCH, Roasts::INFLATION => $this->roastMaterial($format),
             Shows::STAMMTISCH => ($this->talkShow = app(TalkShow::class)->evergreen(CarbonImmutable::now())) === null ? null : (string) $this->talkShow['data'],
             default => null,
@@ -406,15 +543,30 @@ final class StockScripts
         $picked = array_slice($entries, 0, $count);
         Cache::put(self::USED_CANON, array_slice([...$used, ...array_column($picked, 'id')], -600), now()->addDays(7));
 
-        return implode("\n", array_map(fn (array $entry): string => CasterVoice::canonSourceLine($entry), $picked));
+        return implode("\n", array_map(self::canonLine(...), $picked));
+    }
+
+    /**
+     * A canon entry as the stock's material shows it (P21): the wording, what it means, WHO said it and WHERE it is
+     * documented, so the talk introduces a quote with both and never as "ein Veteran" or as said by the site that
+     * only explains it. The entry's league usage ("für einen Spieler im Tunnelblick-Lauf") stays out: no league here.
+     *
+     * @param  array{wording: string, meaning: string, speaker: ?string, source?: ?string}  $entry
+     */
+    public static function canonLine(array $entry): string
+    {
+        $speaker = $entry['speaker'] === null ? 'kein Sprecher belegt (ein Spruch der Szene, so ansagen)' : $entry['speaker'];
+
+        return "- „{$entry['wording']}“ — Bedeutung: {$entry['meaning']} — gesagt von: {$speaker} — belegt bei: ".($entry['source'] ?? 'ohne Quellenangabe');
     }
 
     /**
      * The variable half of a stock call.
      *
      * @param  list<string>  $rejected
+     * @param  string  $hint  the coherence judge's hint on the draft before (coherent())
      */
-    public static function prompt(string $format, string $material, array $rejected = []): string
+    public static function prompt(string $format, string $material, array $rejected = [], string $hint = ''): string
     {
         $settings = (array) config('tv.commentary.blocks.stock', []);
         $turns = (array) ($settings['turns'] ?? []);
@@ -422,6 +574,7 @@ final class StockScripts
         $names = array_map(fn (string $speaker): string => self::NAMES[$speaker] ?? ucfirst($speaker), $speakers);
         $lead = $names[0];
         $others = implode(' und ', array_slice($names, 1));
+        $show = self::SHOW_NAMES[$format] ?? self::SHOW_NAMES['talk'];
         $what = match ($format) {
             'tutorial' => "ein Bitcoin-Tutorial im Gespräch: {$lead} erklärt Schritt für Schritt und verständlich, {$others} stellt die dummen Fragen, die sich jeder Hörer auch stellt, und roastet die Fachsprache."
                 .' Nur allgemein bekanntes, sachlich richtiges Grundwissen; wo es unsicher ist, sagt ihr das. Keine Anlage-, Rechts- oder Steuerberatung (sagt das einmal beiläufig, wenn es um Geld oder Steuern geht), keine Kaufempfehlung, keine Produkt- oder Markennamen und keine Behauptungen über einzelne Produkte.',
@@ -434,11 +587,24 @@ final class StockScripts
         };
 
         $parts = [
-            "Auftrag\n\nEin langer Wortwechsel für den Programmvorrat von TWENTY ONE ESPORTS RADIO, {$what}"
-                ."\n\n".(int) ($turns['min'] ?? 6).' bis '.(int) ($turns['max'] ?? 10).' Wortmeldungen im Wechsel zwischen '.implode(', ', $names).", {$lead} beginnt, jede Wortmeldung zwei bis ".(int) ($settings['sentences_per_turn'] ?? 4).' Sätze, jede spätere greift die davor auf, und jeder kommt zu Wort.'
+            "Auftrag\n\nEine eigene, in sich geschlossene Sendung für den Programmvorrat von TWENTY ONE ESPORTS RADIO: {$show}, {$what}"
+                ."\n\n".(int) ($turns['min'] ?? 6).' bis '.(int) ($turns['max'] ?? 10).' Wortmeldungen im Wechsel zwischen '.implode(', ', $names).", {$lead} beginnt, jede Wortmeldung ein bis ".(int) ($settings['sentences_per_turn'] ?? 4).' Sätze, jede spätere greift die davor auf, und jeder kommt zu Wort.'
                 .' Jeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt („'.$lead.': …“). Gesprochen auf Deutsch. '.CasterVoice::SENTENCE_STYLE
                 ."\nZEITLOS: Der Beitrag läuft an einem späteren Tag zu einer unbekannten Uhrzeit. Nenne nie eine Uhrzeit, eine Tageszeit, einen Wochentag oder ein Datum von heute, nie „heute“, „gestern“, „morgen“, „gerade eben“, „vorhin“, „guten Morgen“ oder „gute Nacht“, nichts Aktuelles aus den Nachrichten und keine Ergebnisse. Geschichtliche Jahreszahlen sind erlaubt."
-                ."\nLustig, aber mit Sinn: konkrete Geschichten, Gründe und Beispiele, kein Geschwafel über nichts. Kein Abschied, keine Begrüßung, keine Ansage wie „und jetzt zu …“, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
+                ."\nLustig, aber mit Sinn: konkrete Geschichten, Gründe und Beispiele, kein Geschwafel über nichts. Keine Begrüßung wie „Hallo“ und kein Abschied, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",
+            "Aufbau (der Hörer schaltet irgendwann ein und hört es genau einmal)\n\n"
+                ."- Die erste Zeile ist die Ansage: {$lead} nennt die Sendung beim Namen ({$show}) und das Thema in einem Satz, ohne „heute“ und ohne Gruß (etwa „Das ist {$show}, und es geht um …“)."
+                ."\n- Prämisse in den ersten zwei Sätzen: worum es geht und warum es sich lohnt zuzuhören (eine Streitfrage, ein Widerspruch, ein verrückter Fakt aus dem Material)."
+                ."\n- Ein roter Faden: EIN Thema von der ersten bis zur letzten Zeile, jede Wortmeldung baut auf der davor auf. Kein Sprung zu einem anderen Thema, keine Liste lose verbundener Anekdoten, kein zweiter Beitrag hinten dran."
+                ."\n- Die Pointe vor der Abmoderation löst die Prämisse auf: die Antwort, die Moral oder der böse Schluss, auf den alles zulief."
+                ."\n- Ton: purer Realismus einer echten Radioshow, sarkastisch, zynisch und frech; es soll wehtun zuzuhören. Die beiden roasten sich gegenseitig und alles in Reichweite (Staat, Banken, Fiatgeld, Shitcoiner, den Chat, den eigenen Sender), aber nie wegen Herkunft, Geschlecht, Religion, Behinderung oder Aussehen und ohne erfundene Behauptungen über echte Personen."
+                ."\n- Das Ritual spielt ihr, ihr beschreibt es nicht: kein „im Sportschau-Ton“, kein „ich klopfe mit dem Zeigestock“, sondern ihr klingt so und tut es."
+                ."\n- Roast wie beim Liga-Pranger: ein konkretes Ziel, ein bestimmtes Detail aus dem Material, eine Steigerung, dann die Pointe. Jeder Seitenhieb hängt an einer konkreten Tatsache oder Behauptung aus dem Material."
+                ."\n- Liebevolle Beleidigungen werfen sich die beiden ständig gegenseitig an den Kopf, jedes Mal neu erfunden und passend zum Thema (etwa „du Pfeife“, „alter Fiat-Romantiker“, „Sats-Geizhals“, „Schwurbelkopf“), nie diese Wörter: ".implode(', ', array_filter((array) config('esports.voice.blocklist', []), 'is_string')).'.'
+                ."\n- Sinn zuerst: jeder Satz sagt etwas Konkretes. Kein Kauderwelsch, keine schiefen oder gemischten Bilder, kein Vergleich, den man erst erklären muss; lieber eine klare, böse Behauptung als ein verunglücktes Bild."
+                ."\n- Kein Wort über Gebühren, Startgeld oder Eintritt, auch nicht als Witz."
+                ."\n- Zitate, Sprüche und Memes nur, wenn sie genau diesem Thema dienen, höchstens zwei. Jedes mit WER und WO: wer es gesagt hat („gesagt von“ im Material; ohne Sprecher ist es ein Spruch der Szene, dann so ansagen) und wo es belegt ist („belegt bei“). Wer ein Meme nur erklärt, etwa eine Website oder ein Artikel, hat es nicht gesagt. Personen mit vollem Namen, genau so geschrieben wie im Material (etwa „Michael Saylor“), nie „ein Veteran“, „einer aus der Szene“ oder „irgendwer“, wenn das Material die Person nennt. Ein englisches Zitat bleibt wörtlich englisch.",
+            self::craft($format),
             "Material (die einzige Quelle für Zahlen, Namen und Zitate)\n\n".$material,
         ];
 
@@ -446,6 +612,14 @@ final class StockScripts
             $parts[] = "Dein erster Entwurf ging nicht durch\n\n".implode("\n", array_map(fn (string $code): string => '- '.match ($code) {
                 self::TIMESTAMPED => 'Zu viele Zeilen nannten eine Uhrzeit, eine Tageszeit oder „heute“, oder einer kam kaum zu Wort: zeitlos schreiben, alle sprechen im Wechsel.',
                 DuetScripts::TURNS => 'Einer kam gar nicht zu Wort: jede Zeile mit dem Namen des Sprechers beginnen, alle sprechen.',
+                self::FRAME_LOST => 'Die Ansage oder die Abmoderation nannte „heute“ oder eine Tageszeit und fiel deshalb weg: „Das ist die Geschichtsstunde, es geht um …“ und „Das war die Geschichtsstunde …“, ohne „heute“.',
+                self::INCOHERENT => 'Als Sendung nicht schlüssig'.($hint === '' ? '.' : ': '.$hint),
+                'stock_weak_premise' => 'Prämisse: in den ersten zwei Sätzen Sendung, Thema und den Grund zum Zuhören nennen.',
+                'stock_weak_through_line' => 'Roter Faden: bei EINEM Thema bleiben, jede Wortmeldung baut auf der davor auf.',
+                'stock_weak_payoff' => 'Schluss: eine Pointe, die den Einstieg auflöst, dann die Abmoderation mit dem Namen der Sendung.',
+                'stock_weak_liveliness' => 'Lebendigkeit: wie eine echte, sarkastische Radioshow, schnelle Wechsel, die beiden roasten sich und alles in Reichweite, kein Vortrag, keine höfliche Zustimmung.',
+                'stock_weak_sense' => 'Sinn: jeder Satz sagt etwas Konkretes, jeder Seitenhieb hängt an einer Tatsache aus dem Material, kein schiefes Bild.',
+                'stock_weak_fit' => 'Passung: Format einhalten, jedes Zitat mit wer und wo aus dem Material, nur Zitate, die dem Thema dienen.',
                 default => VoicePrompt::REASON_HINTS[$code] ?? $code,
             }, $rejected));
         }
@@ -454,5 +628,26 @@ final class StockScripts
         $parts[] = 'canon_id ist null. Schreib jetzt den Wortwechsel.';
 
         return implode("\n\n", $parts);
+    }
+
+    /**
+     * The format's show craft (ShowCraft::block(): ritual, duo rhythm, back-announce) for a stock programme: the
+     * format's own ShowCraft ritual where it is evergreen, else the stock's (RITUALS). No context: the block airs at an
+     * unknown hour, so the back-announce sends the listener back to the programme and names nothing that follows.
+     */
+    public static function craft(string $format): string
+    {
+        $name = self::SHOW_NAMES[$format] ?? self::SHOW_NAMES['talk'];
+        $own = self::RITUALS[$format] ?? null;
+        $evergreen = in_array($format, [Roasts::SCHWARZBUCH, Roasts::INFLATION, Rubrics::PODCAST], true);
+        // The stock has no code line before it (only a jingle): the show names itself first, the cold open comes second.
+        $craft = (string) preg_replace('/^- Einstieg: .*$/mu', "- Einstieg: die erste Zeile ist die Ansage mit dem Namen der Sendung ({$name}) und dem Thema, gleich danach kommt der verrückteste Fakt aus dem Material oder die Streitfrage, die Erklärung danach.",
+            ShowCraft::block($evergreen ? $format : self::SCENE.'-'.$format, $name, null), 1);
+
+        if ($own === null) {
+            return $craft;
+        }
+
+        return str_replace("So klingt die Sendung\n\n", "So klingt die Sendung\n\n- Ritual von {$name}: Nach der Ansage eröffnet ihr mit dieser Geste: {$own['open']}. Am Schluss steht diese Geste: {$own['close']}. Die Geste ist jedes Mal dieselbe, eure Worte dafür sind jedes Mal neu.\n", $craft);
     }
 }

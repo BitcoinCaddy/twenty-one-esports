@@ -413,26 +413,24 @@ final class BlockFetcher
     }
 
     /**
-     * Renders one block for the day stock: claims evergreen talks
-     * (`?only=stock`) until the block holds `stock.seconds.min` of airtime
-     * and no talk is cut mid-way (never past 1.5 times `seconds.max`),
-     * renders them without a time-of-day jingle, keeps the block in the
+     * Renders one block for the day stock: ONE evergreen talk (`?only=stock`)
+     * with all its parts and nothing else (P21: filling up to
+     * `stock.seconds.min` glued a league explainer and an unrelated history
+     * talk into one block, user 2026-10-13: "Das war total sinnlos!"; a
+     * claim of another talk goes back to the queue and opens the next
+     * block), renders it without a time-of-day jingle, keeps the block in the
      * DayStock and tells the server the scripts are done. Urgent scripts
      * are answered during the render like in any block (answerUrgent()).
      * null when the server had no stock script; any failure releases them.
      */
     public function stock(CasterFetcher $fetcher): ?string
     {
-        $settings = (array) config('tv.commentary.blocks.stock', []);
-        $min = (float) ($settings['seconds']['min'] ?? 180);
-        $max = max($min, (float) ($settings['seconds']['max'] ?? 360));
         [$batch, $terms] = [[], []];
 
         while (count($batch) < (int) config('tv.commentary.blocks.max_scripts', 40)) {
             $last = $batch === [] ? null : $batch[count($batch) - 1];
-            $continues = is_array($last['part'] ?? null) && ($last['part']['continues'] ?? false) === true;
 
-            if ($batch !== [] && ((! $continues && self::estimate($batch) >= $min) || self::estimate($batch) >= $max * 1.5)) {
+            if ($last !== null && ! self::continues($last)) {
                 break;
             }
 
@@ -440,6 +438,13 @@ final class BlockFetcher
             $script = $claim?->json('script');
 
             if (! is_array($script) || ! is_int($script['id'] ?? null)) {
+                break;
+            }
+
+            // Only the next part of the same talk joins the block; anything else waits for a block of its own.
+            if ($last !== null && (($script['part']['group'] ?? null) !== $last['part']['group'] || ($script['part']['index'] ?? null) !== $last['part']['index'] + 1)) {
+                $fetcher->release($script['id']);
+
                 break;
             }
 
@@ -552,6 +557,17 @@ final class BlockFetcher
         foreach ($ids as $id) {
             $fetcher->release($id);
         }
+    }
+
+    /**
+     * Whether a claimed script is a part of a talk with more parts to come.
+     *
+     * @param  array<array-key, mixed>  $script
+     */
+    private static function continues(array $script): bool
+    {
+        return is_array($script['part'] ?? null) && is_string($script['part']['group'] ?? null) && is_int($script['part']['index'] ?? null)
+            && ($script['part']['continues'] ?? false) === true;
     }
 
     /**

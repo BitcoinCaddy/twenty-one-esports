@@ -497,7 +497,18 @@ return [
                 // The writer: one model call per script, `turns` turns of up to `sentences_per_turn` sentences.
                 'daily_cap' => (int) env('TV_COMMENTARY_STOCK_DAILY_CAP', 220),
                 'max_output_tokens' => 3000,
-                'turns' => ['min' => 6, 'max' => 10],
+                // One talk is one block (P21: no second talk glued on to reach a length), so a talk carries its own
+                // length: up to sixteen short turns of quick banter.
+                'turns' => ['min' => 8, 'max' => 16],
+                // The coherence gate before a draft is queued (StockCoherenceJudge, P21): premise, through-line, payoff,
+                // fit and liveliness 1 to 5; below `min_score` on any, written once more with the judge's hint, then dropped.
+                'judge' => [
+                    'enabled' => (bool) env('TV_COMMENTARY_STOCK_JUDGE', true),
+                    // Sonnet: Haiku flagged plain sentences from the material as nonsense in 10 of 10 real drafts (P21, 2026-10-13).
+                    'model' => env('TV_COMMENTARY_STOCK_JUDGE_MODEL', 'claude-sonnet-5-5'),
+                    'min_score' => 4,
+                    'max_tokens' => 1500,
+                ],
                 'sentences_per_turn' => 4,
                 // An unvoiced stock script expires this long after it was written; an uploaded stock block keeps
                 // `spool_hours` in the server's spool.

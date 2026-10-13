@@ -19,7 +19,7 @@ use RuntimeException;
  * The example posts (resources/data/voice/examples.json, from the same
  * research) are grouped by moment; examplesFor() returns a moment's lines.
  *
- * @phpstan-type CanonEntry array{id: string, wording: string, meaning: string, usage: string, category: string, type: string, contexts: list<string>, speaker: ?string, en_ok: bool}
+ * @phpstan-type CanonEntry array{id: string, wording: string, meaning: string, usage: string, category: string, type: string, contexts: list<string>, speaker: ?string, source: ?string, en_ok: bool}
  * @phpstan-type Example array{line: string, canon_id: ?string, form: string}
  */
 final class VoiceCanon
@@ -103,6 +103,8 @@ final class VoiceCanon
                 'type' => (string) ($row['type'] ?? ''),
                 'contexts' => $contexts,
                 'speaker' => is_string($row['speaker'] ?? null) ? $row['speaker'] : null,
+                // Where the entry is documented (P21: the stock names it; "Blocktrainer" explains a meme, it did not say it).
+                'source' => is_string($row['source_label'] ?? null) && trim($row['source_label']) !== '' ? trim($row['source_label']) : null,
                 'en_ok' => ($row['en_ok'] ?? false) === true,
             ];
 

@@ -91,8 +91,9 @@ function dayStockAnswer(bool $withHour = true): string
         'Sirius: Dann schreibe ich die Wörter jetzt auf Metall und lege den Bierdeckel als Köder für die Gauner in die Schublade.',
     ];
 
+    // In the middle: the opener and the back-announce frame the show and never name the hour (P21, StockScripts::FRAME_LOST).
     if ($withHour) {
-        $lines[] = 'Markus: Es ist jetzt kurz nach drei Uhr in der Nacht, und wir machen einfach weiter mit unserem Thema hier.';
+        array_splice($lines, 4, 0, ['Markus: Es ist jetzt kurz nach drei Uhr in der Nacht, und wir machen einfach weiter mit unserem Thema hier.']);
     }
 
     return implode("\n", $lines);
@@ -113,8 +114,8 @@ it('writes an evergreen talk without the line that names the hour, and turns dow
         ->and(count($talk['speakers']))->toBe(8)
         ->and(array_unique($talk['speakers']))->toBe(['markus', 'sirius']);
 
-    // Six lines naming the time leave two turns: under turns.min, turned down.
-    $short = implode("\n", array_map(fn (string $line): string => str_replace(['Wohnungsbrand', 'Datenleck', 'Internet', 'Bank und', 'Fremde im', 'Zentralbank'], 'heute', $line), explode("\n", dayStockAnswer(false))));
+    // Five lines naming the time leave three turns: under turns.min, turned down.
+    $short = implode("\n", array_map(fn (string $line): string => str_replace(['Wohnungsbrand', 'Internet', 'Bank und', 'Fremde im', 'Zentralbank'], 'heute', $line), explode("\n", dayStockAnswer(false))));
     expect($stock->evaluate($short)[1])->toBe([StockScripts::TIMESTAMPED]);
 });
 
