@@ -46,6 +46,30 @@ final class StockCoherenceJudge implements Agent, HasProviderOptions, HasStructu
               Nonsense: "Beim Tauziehen um solide Finanzen lässt der Staat das Seil los und fällt mit Anlauf in den Wakeboard-Teich." (stacked images) / "Der Kaninchenbau erklärt dir erst das Geld und nimmt dir dann dein Weltbild." (no recognisable point) / "Alle zweihunderttausendundzehn Blöcke ist es so weit." (invented number)
             `nonsense`: every sentence of the script that fails `sense`, word for word without the speaker name; an empty list when there is none.
             `hint`: one or two German sentences naming the weakest point and how to fix it; empty when every score is 4 or more.
+            Affectionate insults between the hosts ("du Pfeife", "Sats-Geizhals", "alter Fiat-Romantiker", "Schwurbelkopf") are wanted, not unclear and not nonsense. Opinion and roast without a fact are fine as long as they target a concrete claim of the script.
+            Anchors for the scale (material: the Schwarzbuch case of 120 million euros for the World Games 2029 in Karlsruhe, Tauziehen, Frisbee, Wasserski; Bund, Land and Stadt balance their budgets only with debt):
+            <anchor score="4 on every score">
+            Markus: Das ist die Schwarzbuch-Stunde, und es geht um einhundertzwanzig Millionen Euro für Tauziehen in Karlsruhe.
+            Sirius: Tauziehen, du Pfeife, ist die einzige Sportart, in der der Staat schon Weltmeister ist.
+            Markus: Laut Schwarzbuch haben Bund, Land und Stadt kein Geld und leihen es sich für die World Games.
+            Sirius: Schulden für Frisbee, das ist wenigstens ehrlich, das Geld fliegt ja auch weg.
+            Markus: Und beim Tauziehen hängt am anderen Ende des Seils der Steuerzahler, du Sats-Geizhals.
+            Sirius: Den hat aber keiner gefragt, ob er mitziehen will.
+            Markus: Einhundertzwanzig Millionen, und gewinnen tut beim Tauziehen immer die Seite, die nicht zahlt.
+            Markus: Das war die Schwarzbuch-Stunde.
+            </anchor>
+            <anchor score="5 on every score">
+            Markus: Das ist die Schwarzbuch-Stunde: Karlsruhe ist pleite und holt sich für einhundertzwanzig Millionen Euro die World Games.
+            Sirius: Pleite und Party, du alter Fiat-Romantiker, das ist kein Skandal, das ist das Geschäftsmodell.
+            Markus: Bund, Land und Stadt gleichen laut Schwarzbuch alle drei ihre Haushalte nur mit Schulden aus.
+            Sirius: Drei Pleitegeier legen zusammen, und keiner bringt Geld mit, das ist der ehrlichste Verein der Republik.
+            Markus: Auf dem Programm stehen Tauziehen, Frisbee und Wasserski.
+            Sirius: Tauziehen passt, da zieht der Staat am einen Ende und am anderen hängt der Steuerzahler, du Schwurbelkopf.
+            Markus: Und Wasserski passt auch, die Stadt wird ja schon von ihren Schulden übers Wasser gezogen.
+            Sirius: Einhundertzwanzig Millionen für Tauziehen, und am Ende hat der Steuerzahler als Einziger losgelassen: seine Ersparnisse.
+            Markus: Das war die Schwarzbuch-Stunde.
+            </anchor>
+            Score a script against these anchors: as clear, concrete and funny as the first is a 4.
             Answer only in the schema.
             TEXT;
     }
