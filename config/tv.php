@@ -497,6 +497,8 @@ return [
                 // The writer: one model call per script, `turns` turns of up to `sentences_per_turn` sentences.
                 'daily_cap' => (int) env('TV_COMMENTARY_STOCK_DAILY_CAP', 220),
                 'max_output_tokens' => 3000,
+                // The stock's writer (P21): Sonnet like prod's ESPORTS_VOICE_MODEL, whatever the local default is.
+                'model' => env('TV_COMMENTARY_STOCK_MODEL', 'claude-sonnet-5-5'),
                 // One talk is one block (P21: no second talk glued on to reach a length), so a talk carries its own
                 // length: up to sixteen short turns of quick banter.
                 'turns' => ['min' => 8, 'max' => 16],

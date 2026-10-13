@@ -27,7 +27,7 @@ beforeEach(function () {
         $this->markTestSkipped('No ANTHROPIC_API_KEY.');
     }
 
-    config(['tv.commentary.enabled' => true, 'tv.commentary.ai' => true, 'esports.voice.model' => 'claude-sonnet-5-5', 'esports.voice.timeout_seconds' => 120,
+    config(['tv.commentary.enabled' => true, 'tv.commentary.ai' => true, 'esports.voice.timeout_seconds' => 120,
         'tv.commentary.blocks.stock.library.enabled' => false, 'tv.commentary.blocks.stock.daily_cap' => 100, 'esports.voice.monthly_budget_usd' => 5]);
 });
 

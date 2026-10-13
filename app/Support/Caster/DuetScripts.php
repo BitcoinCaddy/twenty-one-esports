@@ -45,7 +45,8 @@ final class DuetScripts
     /** @var array<string, string> */
     private const NAMES = [DuetDirector::MARKUS => 'Markus', DuetDirector::SIRIUS => 'Sirius'];
 
-    private ?string $system = null;
+    /** @var array<int, string> the system prompt by variant (1 with the running gags, 0 without) */
+    private array $system = [];
 
     /** @var list<string> the repeated sentences of the last draft turned down for CasterVoice::SPOKEN_REPEAT */
     private array $repeated = [];
@@ -307,9 +308,10 @@ final class DuetScripts
     }
 
     /** The system prompt of every duet: the caster's with Markus' persona, then Sirius' (cached as one prefix). */
-    public function systemPrompt(): string
+    /** The duets' cached system prompt; `$gags` false: without the personas' running gags (day stock, long shows; P21). */
+    public function systemPrompt(bool $gags = true): string
     {
-        return $this->system ??= $this->voice->fixedPart()."\n".CasterPersonas::sirius()."\n";
+        return $this->system[(int) $gags] ??= $this->voice->fixedPart($gags)."\n".CasterPersonas::sirius($gags)."\n";
     }
 
     /**

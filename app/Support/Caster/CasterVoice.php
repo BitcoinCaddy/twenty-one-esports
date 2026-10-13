@@ -239,7 +239,8 @@ final class CasterVoice
     /** Canon entries offered to the model lately: none of them is offered again before about this many others were. */
     private const CANON_ROTATION = 1_500;
 
-    private ?string $fixed = null;
+    /** @var array<int, string> the fixed part by variant (1 with the running gags, 0 without, basePart()) */
+    private array $fixed = [];
 
     private ?VoiceGuard $guard = null;
 
@@ -1436,7 +1437,7 @@ final class CasterVoice
      * provider's prompt cache serves it. The latest podcast episode's digest (PodcastTranscripts) closes it: it
      * changes at most once per episode, so it belongs in the cached part (user 2026-10-12), not in the per-call message.
      */
-    public function fixedPart(): string
+    public function fixedPart(bool $gags = true): string
     {
         $podcast = null;
 
@@ -1446,14 +1447,17 @@ final class CasterVoice
             // No digest readable: the prompt goes without it.
         }
 
-        return $this->basePart().($podcast === null ? '' : "\n".self::withoutHashes($podcast)."\n");
+        return $this->basePart($gags).($podcast === null ? '' : "\n".self::withoutHashes($podcast)."\n");
     }
 
-    /** The fixed part without the podcast digest, built once per instance. */
-    private function basePart(): string
+    /**
+     * The fixed part without the podcast digest, built once per instance and variant: `$gags` false leaves Markus'
+     * running gags out (CasterPersonas::markus(); the day stock and the long shows, P21).
+     */
+    private function basePart(bool $gags = true): string
     {
-        if ($this->fixed !== null) {
-            return $this->fixed;
+        if (isset($this->fixed[(int) $gags])) {
+            return $this->fixed[(int) $gags];
         }
 
         $games = implode(', ', array_map(fn ($game): string => $game->name(), app(GameRegistry::class)->all()));
@@ -1462,7 +1466,7 @@ final class CasterVoice
         // verantwortlich für lauter Wiederholungen"): the model copied their phrasing; it gets the facts and writes its own.
         // Nor the posts' style guide (P8): written for chat posts, it asked for friendliness to everyone, a canon line
         // word for word and a mood per text, against the roast, the free retelling and the one point of a TV bit.
-        return $this->fixed = self::withoutHashes(trim((string) file_get_contents(resource_path('data/voice/caster-guide.md')))
+        return $this->fixed[(int) $gags] = self::withoutHashes(trim((string) file_get_contents(resource_path('data/voice/caster-guide.md')))
             ."\n\n## Die Liga in Fakten (nur Wissen, keine Formulierungen zum Nachsprechen)\n\n"
             ."- TWENTY ONE ist die eSports-Liga der EINUNDZWANZIG-Community unter esports punkt einundzwanzig punkt space, der Sender heißt TWENTY ONE TV.\n"
             ."- Gespielt wird {$games}, dazu die Brettspiele Mühle, Dame und Blockli ohne Uhr.\n"
@@ -1471,13 +1475,13 @@ final class CasterVoice
             ."- Zuschauer können im Stream-Chat schreiben, sich etwas wünschen und mit Zaps Sats schicken.\n"
             .'- Erfinde jede Einladung jedes Mal neu und anders und wiederhol keine Wendung, die du schon einmal gesagt hast.')
             // Radio craft with its sources (RadioCraft, plan "TWENTY ONE Radio" P3): every TV text and the duets carry it.
-            ."\n\n".RadioCraft::block()
+            ."\n\n".RadioCraft::block($gags)
             // Tone and sense (user 2026-10-12: "Die Texte müssen sinnhafter werden … viel mehr Sarkasmus und Zynismus … toxischer").
             ."\n\n".self::TONE
             // One point per bit, punchline last, planned before it is written (P8).
             ."\n\n".self::BIT
             // Who Markus is in the podcast, topics, style and gags with their sources (CasterPersonas, user 2026-10-12).
-            ."\n\n".CasterPersonas::markus()."\n";
+            ."\n\n".CasterPersonas::markus($gags)."\n";
     }
 
     /**

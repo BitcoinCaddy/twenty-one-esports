@@ -34,19 +34,27 @@ final class CasterPersonas
 
     public const SIRIUS = DuetDirector::SIRIUS;
 
-    /** Markus' persona: part of every TV prompt's cached prefix. */
-    public static function markus(): string
+    /**
+     * The words of the running gags (beer, the night train, the cable and the restart, the hotel): a stock programme
+     * or a long show without gags (P21, user 2026-10-13) leaves every persona line that carries one out; measured in
+     * 10 real stock drafts, the gags came out of nowhere ("Bierdeckel", "Nachtzug", "Kühlschrank").
+     */
+    private const GAG_WORDS = '/(?:bier|kölsch|nachtzug|kabel|neustart|hotel|kühlschrank|verspätung|lokführer|bahn)/iu';
+
+    /** Markus' persona: part of every TV prompt's cached prefix; without his running gags when `$gags` is false. */
+    public static function markus(bool $gags = true): string
     {
-        return "Persona: Markus Turm (das bist du)\n\n".self::block(self::MARKUS);
+        return "Persona: Markus Turm (das bist du)\n\n".self::block(self::MARKUS, $gags);
     }
 
-    /** Sirius' persona and how the two play together: the duets' cached prefix behind markus(). */
-    public static function sirius(): string
+    /** Sirius' persona and how the two play together: the duets' cached prefix behind markus(); `$gags` as there. */
+    public static function sirius(bool $gags = true): string
     {
         $data = self::data();
+        $interplay = $gags ? $data['interplay'] : array_values(array_filter($data['interplay'], fn (string $line): bool => preg_match(self::GAG_WORDS, $line) !== 1));
 
-        return "Zweite Stimme: Sirius (nur bei einem Wortwechsel)\n\n".self::block(self::SIRIUS)
-            ."\n\nZusammenspiel der beiden\n\n".implode("\n", array_map(fn (string $line): string => '- '.$line, $data['interplay']));
+        return "Zweite Stimme: Sirius (nur bei einem Wortwechsel)\n\n".self::block(self::SIRIUS, $gags)
+            ."\n\nZusammenspiel der beiden\n\n".implode("\n", array_map(fn (string $line): string => '- '.$line, $interplay));
     }
 
     /**
@@ -73,22 +81,26 @@ final class CasterPersonas
         return self::data()['personas'][$speaker];
     }
 
-    private static function block(string $speaker): string
+    private static function block(string $speaker, bool $gags = true): string
     {
         $persona = self::persona($speaker);
         $rules = self::data()['rules'];
         $list = fn (array $rows, callable $line): string => implode("\n", array_map(fn (array $row): string => '- '.$line($row), $rows));
+        // Without gags: no line that carries one, in any part of the persona.
+        $keep = fn (array $rows): array => $gags ? $rows : array_values(array_filter($rows, fn (mixed $row): bool => preg_match(self::GAG_WORDS, (string) json_encode($row, JSON_UNESCAPED_UNICODE)) !== 1));
+        $humor = $gags ? $persona['style']['humor'] : implode(',', array_filter(explode(',', $persona['style']['humor']), fn (string $part): bool => preg_match(self::GAG_WORDS, $part) !== 1));
+        $limits = $gags ? $rules : array_values(array_filter($rules, fn (string $rule): bool => preg_match(self::GAG_WORDS, $rule) !== 1 && ! str_contains($rule, 'Running Gags')));
 
-        return implode("\n\n", [
+        return implode("\n\n", array_values(array_filter([
             $persona['role'],
-            "Themengebiete (die ersten zuerst)\n".$list($persona['topics'], fn (array $topic): string => "{$topic['name']}: {$topic['what']} ({$topic['source']})"),
+            "Themengebiete (die ersten zuerst)\n".$list($keep($persona['topics']), fn (array $topic): string => "{$topic['name']}: {$topic['what']} ({$topic['source']})"),
             "Sprechweise\n- Satzrhythmus: {$persona['style']['rhythm']}\n- Füllwörter, die er wirklich benutzt: ".implode(', ', array_map(fn (string $filler): string => "„{$filler}“", $persona['style']['fillers']))
-                ."\n- Humor: {$persona['style']['humor']}\n- Da regt er sich auf: {$persona['style']['worked_up']}",
-            "Running Gags\n".$list($persona['running_gags'], fn (array $gag): string => "{$gag['text']} ({$gag['source']})"),
-            "Typische Wendungen (wirklich so gesagt, mit Quelle; nur zum Weiterspinnen, nie wörtlich vorlesen)\n".$list($persona['phrases'], fn (array $phrase): string => "„{$phrase['wording']}“ ({$phrase['context']}; {$phrase['source']})"),
-            "Damit zieht ihn der andere auf\n".$list($persona['teased_by'], fn (array $tease): string => "{$tease['text']} ({$tease['source']})"),
-            "Grenzen\n".implode("\n", array_map(fn (string $rule): string => '- '.$rule, $rules)),
-        ]);
+                ."\n- Humor: {$humor}\n- Da regt er sich auf: {$persona['style']['worked_up']}",
+            $gags ? "Running Gags\n".$list($persona['running_gags'], fn (array $gag): string => "{$gag['text']} ({$gag['source']})") : null,
+            "Typische Wendungen (wirklich so gesagt, mit Quelle; nur zum Weiterspinnen, nie wörtlich vorlesen)\n".$list($keep($persona['phrases']), fn (array $phrase): string => "„{$phrase['wording']}“ ({$phrase['context']}; {$phrase['source']})"),
+            $gags ? "Damit zieht ihn der andere auf\n".$list($persona['teased_by'], fn (array $tease): string => "{$tease['text']} ({$tease['source']})") : null,
+            "Grenzen\n".implode("\n", array_map(fn (string $rule): string => '- '.$rule, $limits)),
+        ])));
     }
 
     /**

@@ -3,6 +3,7 @@
 use App\Support\Caster\Blocks\DayStock;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\CasterFetcher;
+use App\Support\Caster\DuetScripts;
 use App\Support\Caster\Pcm;
 use App\Support\Voice\StockCoherenceJudge;
 use App\Support\Voice\VoiceAgent;
@@ -179,6 +180,22 @@ it('writes a draft the judge finds weak once more with its hint, records why, an
 
     expect(DB::table('voice_rejections')->where('channel', StockScripts::JUDGE_CHANNEL)->pluck('reason')->all())
         ->toEqualCanonicalizing([StockScripts::INCOHERENT, 'stock_weak_payoff']);
+});
+
+it('writes the stock with its own model and without the personas\' running gags, the live items keep them', function () {
+    config(['esports.voice.model' => 'claude-haiku-5-5']);
+    VoiceAgent::fake(fn (): array => ['text' => stockCoherenceDraft(), 'canon_id' => null, 'mood' => 'fakten']);
+
+    expect(app(StockScripts::class)->write())->not->toBeNull();
+    // The gag blocks (their header, the radio craft rule asking for them) and the gags themselves are gone.
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->agent->model() === 'claude-sonnet-5-5'
+        && ! str_contains($prompt->agent->instructions(), "Running Gags\n") && ! str_contains($prompt->agent->instructions(), 'Running Gags in Variation')
+        && ! str_contains($prompt->agent->instructions(), 'Nachtzug') && str_contains($prompt->agent->instructions(), 'Persona: Markus Turm'));
+
+    $duets = app(DuetScripts::class);
+    expect($duets->systemPrompt())->toContain("Running Gags\n")->toContain('Running Gags in Variation')->toContain('Nachtzug')
+        ->and($duets->systemPrompt(gags: false))->not->toContain("Running Gags\n")->not->toContain('Running Gags in Variation')->not->toMatch('/\b(?:Nachtzug|Kabel|Neustart|Bierdeckel)\b/u')
+        ->and($duets->systemPrompt(gags: false))->toContain('Zweite Stimme: Sirius')->toContain('Grenzen');
 });
 
 it('drops a draft the judge finds weak twice, and one whose judgement it cannot read', function (array $first, array $second) {

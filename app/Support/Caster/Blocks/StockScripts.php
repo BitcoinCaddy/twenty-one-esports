@@ -314,7 +314,9 @@ final class StockScripts
     {
         $this->usage->recordAttempt(self::CHANNEL);
         $temperature = config('tv.commentary.scripts.temperature');
-        $response = (new VoiceAgent($this->duets->systemPrompt(), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000), cacheTtl: CasterVoice::staticCacheTtl()))
+        // Its own writer model (`stock.model`, Sonnet like prod) and the system prompt without the running gags (P21).
+        $model = config('tv.commentary.blocks.stock.model');
+        $response = (new VoiceAgent($this->duets->systemPrompt(gags: false), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000), cacheTtl: CasterVoice::staticCacheTtl(), modelOverride: is_string($model) && $model !== '' ? $model : null))
             ->prompt(self::prompt($format, $material, $rejected, $this->hint));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
@@ -621,8 +623,7 @@ final class StockScripts
                 ."- Die erste Zeile ist die Ansage: {$lead} nennt die Sendung beim Namen ({$show}) und das Thema in einem Satz, ohne „heute“ und ohne Gruß (etwa „Das ist {$show}, und es geht um …“)."
                 ."\n- Gleich danach die kalte Prämisse in einem Satz: die Streitfrage oder der verrückteste Fakt aus dem Material, und warum es sich lohnt dranzubleiben."
                 ."\n- Dann genau drei Runden zu EINEM Thema, jede Runde ein konkreter Fakt aus dem Material, an dem sich die beiden reiben: einer bringt den Fakt, der andere zieht ihn ins Absurde, der Erste kontert mit einem Seitenhieb, der an genau diesem Fakt hängt. Keine Aufzählung: nicht jeden Punkt des Materials abarbeiten, höchstens drei Fakten, kein zweites Thema, kein Erklärvortrag."
-                ."\n- In der dritten Runde greift einer den Einstieg wieder auf und dreht ihn weiter (der Rückgriff)."
-                ."\n- Die vorletzte Zeile ist die härteste Pointe der Sendung, kurz (höchstens zwölf Wörter), und sie beantwortet die Prämisse; danach nur noch die Abmoderation in einem Satz, und sie ist die allerletzte Zeile. Kein lauer Schluss, kein „und so weiter“, keine Zusammenfassung."
+                ."\n- Die vorletzte Zeile ist die härteste Pointe der Sendung, kurz (höchstens zwölf Wörter): sie greift genau das Bild oder die Streitfrage aus den ersten zwei Zeilen wieder auf, dreht sie einen Schritt weiter und beantwortet damit die Prämisse (der Rückgriff ist die Pointe, keine Wiederholung des Kernsatzes). Danach nur noch die Abmoderation in einem Satz, und sie ist die allerletzte Zeile. Kein lauer Schluss, kein „und so weiter“, keine Zusammenfassung."
                 ."\n- Ton: purer Realismus einer echten Radioshow, sarkastisch, zynisch und frech; es soll wehtun zuzuhören. Die beiden roasten sich gegenseitig und alles in Reichweite (Staat, Banken, Fiatgeld, Shitcoiner, den Chat, den eigenen Sender), aber nie wegen Herkunft, Geschlecht, Religion, Behinderung oder Aussehen und ohne erfundene Behauptungen über echte Personen."
                 ."\n- Das Ritual spielt ihr, ihr beschreibt es nicht: kein „im Sportschau-Ton“, kein „ich klopfe mit dem Zeigestock“, sondern ihr klingt so und tut es."
                 ."\n- Roast wie beim Liga-Pranger: ein konkretes Ziel, ein bestimmtes Detail aus dem Material, eine Steigerung, dann die Pointe. Jeder Seitenhieb hängt an einer konkreten Tatsache oder Behauptung aus dem Material."

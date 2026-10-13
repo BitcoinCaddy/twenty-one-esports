@@ -47,6 +47,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
      * @param  int|null  $timeoutOverride  seconds (null: `esports.voice.timeout_seconds`); a five-minute show takes longer to write than a post
      * @param  string|null  $context  a second cached system block behind the fixed part (null: none)
      * @param  string|null  $cacheTtl  the fixed part's cache TTL, "1h" or "5m" (null: the API's default, five minutes)
+     * @param  string|null  $modelOverride  the model (null: `esports.voice.model`); the day stock writes with its own (`stock.model`)
      */
     public function __construct(
         private readonly string $fixedPart = '',
@@ -56,6 +57,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
         private readonly ?int $timeoutOverride = null,
         private readonly ?string $context = null,
         private readonly ?string $cacheTtl = null,
+        private readonly ?string $modelOverride = null,
     ) {}
 
     /**
@@ -109,7 +111,7 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 
     public function model(): string
     {
-        return (string) config('esports.voice.model', 'claude-haiku-5-5');
+        return $this->modelOverride ?? (string) config('esports.voice.model', 'claude-haiku-5-5');
     }
 
     public function timeout(): int
