@@ -168,13 +168,15 @@ class ScriptQueue
         $podcast = PodcastReplay::active($now);
         // The voicing budget (VoiceBudget): a tier the workstation cannot voice in time is not written, highest tier first.
         $budget = app(VoiceBudget::class);
+        // Live only (LiveOnly): the news, one comment after it (Sport und Wetter), the shows and the reactions, nothing generic.
+        $liveOnly = LiveOnly::active($now);
         $written = $this->fillBulletin($now);
         $written += $budget->opens(VoiceBudget::NEWS, $now) ? $this->fillSportWeather($now) : 0;
-        $written += $quiet || $podcast || ! $budget->opens(VoiceBudget::NEWS, $now) ? 0 : $this->fillNewsTalk($now);
+        $written += $quiet || $podcast || $liveOnly || ! $budget->opens(VoiceBudget::NEWS, $now) ? 0 : $this->fillNewsTalk($now);
         // The Programmvorschau after the news block (P14), also at 08:5x for 09:03 while the quiet hours still run.
-        $written += $podcast || ! $budget->opens(VoiceBudget::RUBRIC, $now) ? 0 : $this->fillPreview($now);
-        $written += $podcast ? 0 : $this->fillRubric($now);
-        $written += $quiet || $podcast ? 0 : ($budget->opens(VoiceBudget::RUBRIC, $now) ? $this->fillTeaser($now) : 0) + $this->fillSegments($now);
+        $written += $podcast || $liveOnly || ! $budget->opens(VoiceBudget::RUBRIC, $now) ? 0 : $this->fillPreview($now);
+        $written += $podcast ? 0 : $this->fillRubric($now, $liveOnly);
+        $written += $quiet || $podcast || $liveOnly ? 0 : ($budget->opens(VoiceBudget::RUBRIC, $now) ? $this->fillTeaser($now) : 0) + $this->fillSegments($now);
         $written += $this->fillStock($now);
         $written += $this->fillPodcast($now);
 
@@ -187,7 +189,7 @@ class ScriptQueue
             $facts = $this->facts->forTopic($topic, $night);
             $this->supersedeTopic($topic, SceneFacts::hash($facts));
 
-            if (! $podcast && (! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
+            if (! $podcast && ! $liveOnly && (! $night || in_array($topic, SceneTopic::NIGHT, true)) && SceneFacts::hasData($topic, $facts) && ! $this->scenesSuppressed($topic, $quiet)) {
                 $factsByTopic[$topic] = $facts;
             }
         }
@@ -386,11 +388,12 @@ class ScriptQueue
      * only (a call that gave nothing is tried again on the next run within
      * that window). Queued in parts at `rubrics.priority` with its slot as
      * `airs_at`; SceneDirector starts it at most `late_seconds` after the slot.
-     * The quiet hours have no rubric slots (BroadcastClock).
+     * The quiet hours have no rubric slots (BroadcastClock). `$liveOnly`
+     * (LiveOnly): only a show, never the rotation's rubric.
      *
      * @return int rubrics written (0 or 1)
      */
-    public function fillRubric(CarbonImmutable $now): int
+    public function fillRubric(CarbonImmutable $now, bool $liveOnly = false): int
     {
         if (! self::aiEnabled() || ! Rubrics::enabled()) {
             return 0;
@@ -428,7 +431,7 @@ class ScriptQueue
 
         // Planned early for a long format's window, the rotation's rubric still waits for its own; neither is written beyond
         // the voicing budget of its tier (VoiceBudget: a show above the chat, a rubric below the news).
-        if ($id === null || (! Shows::isShow($id) && $ahead > 60 * $write) || ! app(VoiceBudget::class)->opens(VoiceBudget::tierOf(CasterScript::RUBRIC, $id), $now)) {
+        if ($id === null || (! Shows::isShow($id) && ($liveOnly || $ahead > 60 * $write)) || ! app(VoiceBudget::class)->opens(VoiceBudget::tierOf(CasterScript::RUBRIC, $id), $now)) {
             return 0;
         }
 

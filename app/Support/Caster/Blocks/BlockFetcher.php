@@ -58,6 +58,9 @@ final class BlockFetcher
         $max = max($min, (float) ($settings['seconds']['max'] ?? 360));
         $maxScripts = max(1, (int) ($settings['max_scripts'] ?? 40));
         $newsTalk = array_values(array_filter((array) ($settings['news_talk_topics'] ?? []), 'is_string'));
+        // Music first (user 2026-10-13: "nicht ständig welche hintereinander"): one programme item per block, with the rest
+        // of its own story and a bulletin's news talk; the stream puts a complete music track between two blocks.
+        $single = config('tv.commentary.music_first.enabled') === true && config('tv.commentary.music_first.one_item_per_block') === true;
 
         $batch = [$first];
         $deferred = null;
@@ -71,7 +74,7 @@ final class BlockFetcher
             $estimate = self::estimate($batch);
             $wantsNewsTalk = $anchored && ($first['kind'] ?? null) === CasterScript::BULLETIN && $newsTalkTries < count($newsTalk);
 
-            if (! $continues && ! $wantsNewsTalk && ($anchored || $estimate >= $min)) {
+            if (! $continues && ! $wantsNewsTalk && ($anchored || $single || $estimate >= $min)) {
                 break;
             }
 
@@ -115,7 +118,7 @@ final class BlockFetcher
             return CasterFetcher::STOPPED;
         }
 
-        if (! $anchored && $deferred === null && $exhausted && self::estimate($batch) < $min && $spoolSeconds >= (float) ($settings['starve_seconds'] ?? 150)) {
+        if (! $anchored && ! $single && $deferred === null && $exhausted && self::estimate($batch) < $min && $spoolSeconds >= (float) ($settings['starve_seconds'] ?? 150)) {
             $this->releaseAll($fetcher, $ids);
 
             return CasterFetcher::IDLE;

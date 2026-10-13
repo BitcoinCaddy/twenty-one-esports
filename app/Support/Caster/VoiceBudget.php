@@ -40,8 +40,8 @@ use Illuminate\Support\Facades\Cache;
  *    script of its tier and above that waits or is being voiced and what
  *    the tiers above will write until then,
  *  - no bulletin is at risk of missing its slot (then everything else waits),
- *  - and, while the budget is tight, at most `scene_cap.per_hour` slide
- *    scenes were written this hour.
+ *  - and, while the budget is tight (with `scene_cap.always` every hour), at
+ *    most `scene_cap.per_hour` slide scenes were written this hour.
  * A bulletin is always written. The workstation claims in the same order
  * (rankSql()), and once the fresh talk voiced in the last hour reached the
  * budget, the claim hands out only what the clock places and the replies, so
@@ -330,7 +330,8 @@ final class VoiceBudget
             return false;
         }
 
-        if ($tier === self::SCENE && $this->tight($now) && $this->scenesThisHour($now) >= (int) ($settings['scene_cap']['per_hour'] ?? 6)) {
+        if ($tier === self::SCENE && (($settings['scene_cap']['always'] ?? false) === true || $this->tight($now))
+            && $this->scenesThisHour($now) >= (int) ($settings['scene_cap']['per_hour'] ?? 6)) {
             return false;
         }
 

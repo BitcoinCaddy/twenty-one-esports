@@ -290,6 +290,11 @@ class ClipSpool
         $blocks = CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterClip::BLOCK)->where('expires_at', '>', $now)
             ->whereNotIn('caster_script_id', self::continuations())->orderBy('id')->get();
 
+        // Live only (LiveOnly): no stock or replay block while the workstation is online by day.
+        if (LiveOnly::active($now)) {
+            $blocks = $blocks->reject(fn (CasterClip $clip): bool => $clip->isStock() || $clip->isReplay());
+        }
+
         return $blocks->sortBy(fn (CasterClip $clip): int => $clip->isReplay() ? 2 : ($clip->isStock() ? 1 : 0), SORT_REGULAR, false)->first();
     }
 
