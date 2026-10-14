@@ -20,6 +20,11 @@ final class EncoderRun
     /** The commentary's voice pipe this run reads (plan "KI-Stimme der Liga", P6); null without commentary. */
     public ?VoiceFeed $voice = null;
 
+    /** The newest segment whose tracks were counted (segmentsWithoutAudio()). */
+    private ?string $countedSegment = null;
+
+    private int $withoutAudio = 0;
+
     public function __construct(
         public readonly string $mode,
         public readonly string $runId,
@@ -50,6 +55,39 @@ final class EncoderRun
         $modified = $this->hasSegment($hlsDir) ? @filemtime($playlist) : false;
 
         return $modified === false ? $this->startedAt : max($this->startedAt, (float) $modified);
+    }
+
+    /**
+     * How many segments in a row, up to the newest, carry fewer tracks than
+     * this run's init file declares (SegmentTracks): the audio is gone from
+     * them (the music input ended, or the voice pipe starved the mix), and
+     * no player can buffer them. Every segment the encoder playlist lists is
+     * counted once, in order; a segment or init that cannot be read counts
+     * as fine.
+     */
+    public function segmentsWithoutAudio(string $hlsDir): int
+    {
+        $dir = rtrim($hlsDir, '/').'/'.$this->mode;
+        $playlist = (string) @file_get_contents($dir.'/'.FfmpegCommands::ENCODER_PLAYLIST);
+        preg_match_all('/^'.preg_quote($this->runId, '/').'-seg-\S+$/m', $playlist, $matches);
+        $listed = $matches[0];
+        $counted = $this->countedSegment === null ? false : array_search($this->countedSegment, $listed, true);
+        $new = $counted === false ? $listed : array_slice($listed, $counted + 1);
+
+        if ($new === []) {
+            return $this->withoutAudio;
+        }
+
+        $declared = SegmentTracks::count($dir.'/'.$this->runId.'-init.mp4');
+
+        foreach ($new as $segment) {
+            $carried = SegmentTracks::count($dir.'/'.$segment);
+            $this->withoutAudio = $declared !== null && $carried !== null && $carried < $declared ? $this->withoutAudio + 1 : 0;
+        }
+
+        $this->countedSegment = end($new);
+
+        return $this->withoutAudio;
     }
 
     /**

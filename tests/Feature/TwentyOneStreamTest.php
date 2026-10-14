@@ -84,6 +84,16 @@ test('an encoder that stops writing segments is restarted by the watchdog', func
     expect(Artisan::output())->toMatch('/ffmpeg mode=loop wrote no segment for \d+ s, restarting it/');
 });
 
+test('an encoder whose segments lose the audio track its init declares is restarted by the audio watchdog', function () {
+    File::put(config('twentyone.stream.prepared'), 'fake');
+    fakeEncoder($this->dir);
+    setChildEnv('FAKE_ENCODER_TRACKS', '2:1');
+
+    Artisan::call('twentyone:stream', ['--no-publish' => true, '--stop-after' => 3]);
+
+    expect(Artisan::output())->toContain('ffmpeg mode=loop wrote 3 segments without the audio track, restarting it');
+});
+
 test('the 30311 names the game the scene shows, and the loop texts otherwise', function () {
     $game = ChessGame::factory()->create([
         'white_id' => User::factory()->create(['name' => 'Alice']),

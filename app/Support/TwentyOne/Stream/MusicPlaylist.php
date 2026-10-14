@@ -243,29 +243,40 @@ final class MusicPlaylist
      * encoder goes on where the music is). `$points` (MusicTimeline, P17)
      * trims a file's silent edges: it plays from `in` to `out` (null: to its end).
      *
+     * The entries are written `$passes` times over (the inpoint only once):
+     * ffmpeg's `-stream_loop -1` cannot loop a concat list that has an
+     * inpoint or outpoint (ffmpeg 6.1.1 on prod, measured 2026-10-14: the
+     * seek back to the start fails and the input ends after one pass). The
+     * encoder's music then ended after the list's 14 h, and with it the audio
+     * track of every segment, while the video went on for seven hours.
+     *
      * @param  list<string>  $files
      * @param  list<array{in: float, out: float|null}>  $points  by the index of `$files`
      */
-    public static function ffconcat(array $files, float $inpoint = 0.0, array $points = []): string
+    public static function ffconcat(array $files, float $inpoint = 0.0, array $points = [], int $passes = 1): string
     {
         $lines = ['ffconcat version 1.0'];
 
-        foreach ($files as $index => $file) {
+        foreach ($files as $file) {
             if (! self::isSafePath($file)) {
                 throw new InvalidArgumentException('A music path with a control character cannot go into an ffconcat list.');
             }
+        }
 
-            $lines[] = "file '".str_replace("'", "'\\''", $file)."'";
+        for ($pass = 0; $pass < max(1, $passes); $pass++) {
+            foreach ($files as $index => $file) {
+                $lines[] = "file '".str_replace("'", "'\\''", $file)."'";
 
-            $in = (float) ($points[$index]['in'] ?? 0.0) + ($index === 0 ? $inpoint : 0.0);
-            $out = $points[$index]['out'] ?? null;
+                $in = (float) ($points[$index]['in'] ?? 0.0) + ($pass === 0 && $index === 0 ? $inpoint : 0.0);
+                $out = $points[$index]['out'] ?? null;
 
-            if ($in > 0) {
-                $lines[] = 'inpoint '.sprintf('%.3F', $in);
-            }
+                if ($in > 0) {
+                    $lines[] = 'inpoint '.sprintf('%.3F', $in);
+                }
 
-            if ($out !== null && $out > $in) {
-                $lines[] = 'outpoint '.sprintf('%.3F', $out);
+                if ($out !== null && $out > $in) {
+                    $lines[] = 'outpoint '.sprintf('%.3F', $out);
+                }
             }
         }
 

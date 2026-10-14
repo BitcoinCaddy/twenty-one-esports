@@ -77,6 +77,13 @@ test('the ffconcat list quotes every path for the concat demuxer', function () {
         ->and(MusicPlaylist::title('/music/not-your-keys-not-your-coins-dnb-remix__v2.m4a'))->toBe('not-your-keys-not-your-coins-dnb-remix');
 });
 
+test('the list is written over again the given passes with the inpoint once only, as ffmpeg cannot loop a trimmed concat list', function () {
+    expect(MusicPlaylist::ffconcat(['/music/a__v1.m4a', '/music/b__v1.m4a'], 12.5, [['in' => 0.2, 'out' => 180.0], ['in' => 0.0, 'out' => null]], 2))
+        ->toBe("ffconcat version 1.0\nfile '/music/a__v1.m4a'\ninpoint 12.700\noutpoint 180.000\nfile '/music/b__v1.m4a'\n"
+            ."file '/music/a__v1.m4a'\ninpoint 0.200\noutpoint 180.000\nfile '/music/b__v1.m4a'\n")
+        ->and(MusicPlaylist::ffconcat(['/music/a__v1.m4a'], 0.0, [], 0))->toBe("ffconcat version 1.0\nfile '/music/a__v1.m4a'\n");
+});
+
 test('a music path with a control character never reaches the ffconcat list', function () {
     MusicPlaylist::ffconcat(["/music/a__v1.m4a\nfile '/etc/passwd'"]);
 })->throws(InvalidArgumentException::class);

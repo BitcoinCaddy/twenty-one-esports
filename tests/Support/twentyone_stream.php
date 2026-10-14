@@ -65,7 +65,7 @@ function twentyOneStreamDown(object $test): void
     is_link($viewerDir) ? unlink($viewerDir) : File::deleteDirectory($viewerDir);
     File::deleteDirectory($viewerDir.'-target');
 
-    foreach (['TWENTYONE_NOSTR_NSEC', 'TWENTYONE_TEST_API_TOKEN', 'FAKE_ENCODER_CAPTURE', 'FAKE_ENCODER_SEGMENTS', 'FAKE_ENCODER_DELAY', 'FAKE_ENCODER_EXIT_AFTER', 'FAKE_ENCODER_LOOP_EXIT_AFTER', 'FAKE_ENCODER_SCENE_DELAY', 'FAKE_RELAY_LOG', 'FAKE_RELAY_EXIT_AFTER'] as $name) {
+    foreach (['TWENTYONE_NOSTR_NSEC', 'TWENTYONE_TEST_API_TOKEN', 'FAKE_ENCODER_CAPTURE', 'FAKE_ENCODER_SEGMENTS', 'FAKE_ENCODER_DELAY', 'FAKE_ENCODER_EXIT_AFTER', 'FAKE_ENCODER_LOOP_EXIT_AFTER', 'FAKE_ENCODER_SCENE_DELAY', 'FAKE_ENCODER_TRACKS', 'FAKE_RELAY_LOG', 'FAKE_RELAY_EXIT_AFTER'] as $name) {
         putenv($name);
         unset($_SERVER[$name]);
     }

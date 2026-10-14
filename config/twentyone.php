@@ -206,7 +206,10 @@ return [
         /*
         | Music under the picture in both modes: `<title>__v<n>.m4a` files
         | (AAC-LC 44.1 kHz stereo). The supervisor writes a shuffled ffconcat
-        | list of about `list_hours`; ffmpeg loops it. Instrumentals, named the
+        | list of about `list_hours`, `list_passes` times over: ffmpeg's
+        | -stream_loop cannot loop a list with in/outpoints (MusicPlaylist::ffconcat()),
+        | and an encoder whose segments lose the audio track is restarted
+        | (TwentyOneStreamCommand, AUDIO_LOSS_SEGMENTS). Instrumentals, named the
         | same way in `instrumental_dir`, play `instrumentals_per_vocal` at a time
         | between two vocal tracks.
         */
@@ -221,6 +224,8 @@ return [
             'plebrap_dir' => env('TWENTYONE_STREAM_PLEBRAP_DIR') ?: storage_path('app/stream/music/plebrap'),
             'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
             'list_hours' => 12,
+            // How many times over the list is written (12 h x 6 = 3 days before an encoder would run out of music).
+            'list_passes' => 6,
             // Where the music is on the wall clock (MusicTimeline): a new encoder goes on from there.
             'timeline_file' => env('TWENTYONE_STREAM_MUSIC_TIMELINE_FILE') ?: storage_path('app/stream/music-timeline.json'),
         ],

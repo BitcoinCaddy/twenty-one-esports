@@ -13,6 +13,9 @@
  * Per mode (LOOP or SCENE, the scene is the run reading image2pipe):
  * FAKE_ENCODER_<MODE>_SEGMENTS, _DELAY (seconds before the first segment)
  * and _EXIT_AFTER (seconds, then exit 1 as a crash).
+ * FAKE_ENCODER_TRACKS, "<declared>:<carried>", writes an init declaring
+ * that many tracks (moov/mvex/trex) and segments carrying that many (moof/traf
+ * with one sample each), as ffmpeg does, instead of placeholder bytes.
  * Called as the YouTube relay (FLV output) it plays that instead, see below.
  */
 
@@ -65,12 +68,21 @@ $count = (int) $setting('SEGMENTS', '3');
 $exitAfter = (float) $setting('EXIT_AFTER', '0');
 usleep((int) (1_000_000 * (float) $setting('DELAY', '0')));
 
-file_put_contents($directory.'/'.$init, 'init');
+$box = fn (string $type, string $payload): string => pack('N', 8 + strlen($payload)).$type.$payload;
+$tracks = (string) $setting('TRACKS', '');
+[$declared, $carried] = $tracks === '' ? [null, null] : array_map('intval', explode(':', $tracks));
+$initBytes = $declared === null ? 'init' : $box('moov', $box('mvex', implode('', array_map(fn (int $id): string => $box('trex', pack('N6', 0, $id, 1, 0, 0, 0)), range(1, max(1, $declared))))));
+$segmentBytes = $carried === null ? 'segment' : $box('moof', $box('mfhd', pack('N2', 0, 1)).implode('', array_map(
+    fn (int $id): string => $box('traf', $box('tfhd', pack('N2', 0, $id)).$box('trun', pack('N2', 0, 1))),
+    $carried > 0 ? range(1, $carried) : [],
+))).$box('mdat', 'x');
+
+file_put_contents($directory.'/'.$init, $initBytes);
 $lines = ['#EXTM3U', '#EXT-X-VERSION:7', '#EXT-X-TARGETDURATION:6', '#EXT-X-MEDIA-SEQUENCE:0', '#EXT-X-MAP:URI="'.$init.'"'];
 
 for ($i = 0; $i < $count; $i++) {
     $segment = sprintf($segmentPattern, $i);
-    file_put_contents($directory.'/'.$segment, 'segment');
+    file_put_contents($directory.'/'.$segment, $segmentBytes);
     $lines[] = '#EXTINF:6.000000,';
     $lines[] = $segment;
 }

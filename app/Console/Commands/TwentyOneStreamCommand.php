@@ -111,6 +111,14 @@ class TwentyOneStreamCommand extends Command
     /** How many stderr lines of a failed ffmpeg run are logged. */
     private const STDERR_LINES = 10;
 
+    /**
+     * Consecutive segments without the audio track their init declares after which the encoder is restarted
+     * (EncoderRun::segmentsWithoutAudio()): 2026-10-14 the music list ended after 14 h (ffmpeg cannot loop a concat
+     * list with in/outpoints), the audio stopped, and every player showed "Signal lost" for seven hours while the
+     * playlist stayed fresh and the status said live.
+     */
+    private const AUDIO_LOSS_SEGMENTS = 3;
+
     /** A new encoder that has no segment after this long is given up (make before break). */
     private const SWITCH_TIMEOUT_SECONDS = 30;
 
@@ -631,11 +639,22 @@ class TwentyOneStreamCommand extends Command
             if ($this->active !== null) {
                 $this->active->collectStderr(self::STDERR_LINES);
                 $silentFor = $now - $this->active->lastOutputAt($hlsDir);
+                $withoutAudio = $this->active->segmentsWithoutAudio($hlsDir);
 
-                if (! $this->active->process->running() || $silentFor > $watchdogSeconds) {
+                if (! $this->active->process->running() || $silentFor > $watchdogSeconds || $withoutAudio >= self::AUDIO_LOSS_SEGMENTS) {
                     $ranSeconds = $now - $this->active->startedAt;
 
-                    if ($this->active->process->running()) {
+                    if ($this->active->process->running() && $withoutAudio >= self::AUDIO_LOSS_SEGMENTS) {
+                        // Audio watchdog: segments without the audio track the init declares (the music input ended,
+                        // or the voice pipe starved amix): players buffer nothing from them, so the run is replaced.
+                        $this->log(sprintf('ffmpeg mode=%s wrote %d segments without the audio track, restarting it', $this->active->mode, $withoutAudio));
+
+                        foreach ($this->active->stderr as $line) {
+                            $this->log('ffmpeg: '.$line);
+                        }
+
+                        $this->stopEncoder($this->active);
+                    } elseif ($this->active->process->running()) {
                         // FD2 watchdog: running, but no segment for three segment lengths.
                         $this->log(sprintf('ffmpeg mode=%s wrote no segment for %.0f s, restarting it', $this->active->mode, $silentFor));
                         $this->stopEncoder($this->active);
@@ -1116,7 +1135,7 @@ class TwentyOneStreamCommand extends Command
         );
         $path = rtrim((string) config('twentyone.stream.scene.work_dir'), '/').'/music.ffconcat';
         File::ensureDirectoryExists(dirname($path));
-        PlaylistWriter::writeAtomically($path, MusicPlaylist::ffconcat($music['files'], $music['inpoint'], $music['points']));
+        PlaylistWriter::writeAtomically($path, MusicPlaylist::ffconcat($music['files'], $music['inpoint'], $music['points'], max(1, (int) config('twentyone.stream.music.list_passes', 6))));
         $this->log(sprintf('music: %s %s at %.0f s', $music['restarted'] ? 'new timeline,' : 'continuing', basename($music['files'][0]), $music['inpoint']));
 
         return $path;
