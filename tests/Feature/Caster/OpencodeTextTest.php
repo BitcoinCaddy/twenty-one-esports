@@ -85,3 +85,10 @@ it('sends live chat reactions on their own lane on the workstation, everything e
     TextModel::switchTo('anthropic');
     expect(TextModel::asChat(fn (): string => $agent->provider()))->toBe('anthropic');
 });
+
+it('reads a JSON answer whose text carries raw line breaks, as GLM writes it', function () {
+    $raw = "{\"punkt\": \"Ben\", \"text\": \"Erster Satz.\nZweiter Satz mit \\\"Zitat\\\".\", \"mood\": \"hype\"}";
+
+    expect(json_decode((string) OpencodeGateway::jsonObject($raw), true))
+        ->toBe(['punkt' => 'Ben', 'text' => "Erster Satz.\nZweiter Satz mit \"Zitat\".", 'mood' => 'hype']);
+});

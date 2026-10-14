@@ -197,7 +197,10 @@ final class OpencodeGateway
                 } elseif ($char === '{') {
                     $depth++;
                 } elseif ($char === '}' && --$depth === 0) {
-                    $decoded = json_decode(substr($text, $start, $i - $start + 1), true);
+                    $candidate = substr($text, $start, $i - $start + 1);
+                    // GLM writes line breaks between sentences raw inside a JSON string (live 2026-10-14: a chat reply
+                    // lost as "no JSON object"); escaped, it decodes.
+                    $decoded = json_decode($candidate, true) ?? json_decode(self::escapeRawControls($candidate), true);
                     if (is_array($decoded) && ! array_is_list($decoded)) {
                         return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) ?: null;
                     }
@@ -208,6 +211,29 @@ final class OpencodeGateway
         }
 
         return null;
+    }
+
+    /** Raw line breaks and tabs inside the JSON strings of `$json` escaped; everything else as it is. */
+    public static function escapeRawControls(string $json): string
+    {
+        $out = '';
+        $inString = false;
+        for ($i = 0, $length = strlen($json); $i < $length; $i++) {
+            $char = $json[$i];
+            if ($inString && $char === '\\') {
+                $out .= $char.($json[++$i] ?? '');
+
+                continue;
+            }
+            if ($char === '"') {
+                $inString = ! $inString;
+            }
+            $out .= $inString ? match ($char) {
+                "\n" => '\\n', "\r" => '\\r', "\t" => '\\t', default => $char
+            } : $char;
+        }
+
+        return $out;
     }
 
     private function regie(): ?string
