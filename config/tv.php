@@ -434,6 +434,10 @@ return [
         // The stream (SceneDirector) plays a block whole, adds no stinger, joins the next block after `join_seconds`, and
         // lets a reaction cut in only at the next segment boundary, waiting at most `reaction_wait_seconds` (then at a
         // sentence end), and resumes the block from there. Below `starve_seconds` of ready audio a shorter block goes out.
+        // Names written the way the voices say them (ScriptQueue::sayAs()), whole words, any case: "written" => "spoken".
+        'say_as' => [
+            'Noerd' => 'Nörd',
+        ],
         // Live comments on a running organizer tournament (TournamentLive; user 2026-10-14, Blockli Cup #1): every
         // `every_minutes` a short duet from the live data and the players' Nostr bios, behind the "breaking" jingle.
         // `tournaments`: ids to comment on (empty: the running organizer tournament that started last).

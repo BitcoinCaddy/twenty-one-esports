@@ -48,3 +48,7 @@ it('writes a live comment from the field and the players\' Nostr bios, at most o
     CasterScript::query()->delete();
     expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(30)))->toBe(0);
 });
+
+it('writes Noerd the way the voices say it, Nörd, in every queued script', function () {
+    expect(ScriptQueue::sayAs('Noerd gegen noerd, Noerdlicht bleibt'))->toBe('Nörd gegen Nörd, Noerdlicht bleibt');
+});

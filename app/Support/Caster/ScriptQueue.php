@@ -305,6 +305,21 @@ class ScriptQueue
     }
 
     /**
+     * Names written the way the voices must say them (`say_as`, user 2026-10-14: "Noerd muss immer als Nörd umgeschrieben
+     * und damit als Nörd gelesen werden"): whole words, any case, in every script before it is queued.
+     */
+    public static function sayAs(string $text): string
+    {
+        foreach ((array) config('tv.commentary.say_as', []) as $written => $spoken) {
+            if (is_string($written) && is_string($spoken) && $written !== '') {
+                $text = (string) preg_replace('/(?<![\p{L}\p{N}])'.preg_quote($written, '/').'(?![\p{L}\p{N}])/iu', $spoken, $text);
+            }
+        }
+
+        return $text;
+    }
+
+    /**
      * The next stock script for the workstation (`?only=stock`): a queued
      * one (a later part of a talk only after the part before it), else one
      * written now. null when the writer gives nothing.
@@ -786,6 +801,7 @@ class ScriptQueue
             return null;
         }
 
+        $text = self::sayAs($text);
         $maxAge = $maxAgeMinutes ?? (int) config('tv.commentary.scripts.max_age_minutes', 10);
 
         // A reaction may wait `chat.max_hold_seconds` on air before it cuts in, after its voicing: it never expires before that.
