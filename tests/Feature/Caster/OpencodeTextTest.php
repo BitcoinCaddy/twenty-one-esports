@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\Caster\OpencodeGateway;
+use App\Support\Voice\TextModel;
 use App\Support\Voice\VoiceAgent;
 use Illuminate\Support\Facades\Cache;
 
@@ -70,4 +71,17 @@ it('switches the workstation model at runtime and back to the config', function 
     expect((new VoiceAgent('x'))->model())->toBe('zai-coding-plan/glm-5.3-flash');
 
     $this->artisan('caster:text', ['--model' => 'rm -rf'])->assertFailed();
+});
+
+it('sends live chat reactions on their own lane on the workstation, everything else on the shared one', function () {
+    TextModel::switchTo('opencode');
+    $agent = new VoiceAgent('x');
+
+    expect($agent->provider())->toBe('opencode')
+        ->and(TextModel::asChat(fn (): string => $agent->provider()))->toBe('opencode_chat')
+        ->and($agent->provider())->toBe('opencode')
+        ->and(config('ai.providers.opencode_chat.url'))->toBe('http://127.0.0.1:4099/v1');
+
+    TextModel::switchTo('anthropic');
+    expect(TextModel::asChat(fn (): string => $agent->provider()))->toBe('anthropic');
 });

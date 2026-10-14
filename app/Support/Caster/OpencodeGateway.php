@@ -228,7 +228,9 @@ final class OpencodeGateway
             mkdir($this->workDir, 0700, true);
         }
 
-        $process = new Process([$this->binary, 'run', '--standalone', '--format', 'json', '--model', $model], $this->workDir, [
+        // The workstation's long-running `opencode serve` (caster:text-gateway) when it runs; else a private one per call.
+        $server = (string) getenv('OPENCODE_GATEWAY_SERVER');
+        $process = new Process([$this->binary, 'run', ...($server !== '' ? ['--server', $server] : ['--standalone']), '--format', 'json', '--model', $model], $this->workDir, [
             'OPENCODE_CONFIG_DIR' => $this->configDir,
             'OPENCODE_DISABLE_CLAUDE_CODE' => '1',
             'OPENCODE_DISABLE_AUTOUPDATE' => '1',

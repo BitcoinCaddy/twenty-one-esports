@@ -4,6 +4,7 @@ namespace App\Support\Caster;
 
 use App\Models\CasterScript;
 use App\Models\YouTubeChatLine;
+use App\Support\Voice\TextModel;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -88,7 +89,7 @@ class YouTubeChatSummary
 
         $names = self::namedAuthors($lines);
         $question = $lines->reverse()->first(fn (YouTubeChatLine $line): bool => str_contains($line->message, '?') || ReactionLines::intent($line->message) === 'question')?->message;
-        $reply = $this->voice->youTubeSummary(self::digest($lines, $names), $question, self::duetDue());
+        $reply = TextModel::asChat(fn (): ?array => $this->voice->youTubeSummary(self::digest($lines, $names), $question, self::duetDue()));
 
         if ($reply === null) {
             $this->usage->recordRejection(self::SKIPS, ['voice_rejected']);

@@ -20,6 +20,9 @@ final class TextModel
 
     private const MODEL_KEY = 'voice:text_model';
 
+    /** Inside asChat(): the call is a live chat reaction. */
+    private static bool $chatLane = false;
+
     /** The provider in force: the switched one, else the configured default. */
     public static function active(): string
     {
@@ -56,10 +59,35 @@ final class TextModel
         return self::active() === 'opencode';
     }
 
-    /** The laravel/ai provider name for an agent's call. */
+    /**
+     * The laravel/ai provider name for an agent's call. A chat reaction on the workstation takes its own lane
+     * (`opencode_chat`: its own port and workers there), so it never waits behind the tournament comments, the stock
+     * and the talk show (live 2026-10-14: 53 s for a chat reply while four workers wrote other texts; user: "es kommen
+     * keine live reactions … bzw viel zu spät").
+     */
     public static function provider(): string
     {
-        return self::active();
+        return self::usesOpencode() && self::$chatLane ? 'opencode_chat' : self::active();
+    }
+
+    /**
+     * Runs `$work` as a live chat reaction: every agent call inside takes the chat lane.
+     *
+     * @template T
+     *
+     * @param  \Closure(): T  $work
+     * @return T
+     */
+    public static function asChat(\Closure $work): mixed
+    {
+        $was = self::$chatLane;
+        self::$chatLane = true;
+
+        try {
+            return $work();
+        } finally {
+            self::$chatLane = $was;
+        }
     }
 
     /** The agent's own model on Anthropic; on the workstation every call runs on the one opencode model. */

@@ -8,12 +8,15 @@ use Illuminate\Console\Command;
 use Symfony\Component\Process\Process;
 
 /**
- * The workstation's text writer for TextModel's "opencode" provider: serves App\Support\Caster\OpencodeGateway on
- * 127.0.0.1:`--port` (`php -S` with `--workers` workers) and holds a reverse SSH tunnel that puts that port on the
- * server's loopback (`--ssh`, default `esports.voice.opencode.gateway_ssh`; empty: no tunnel). Either child that exits
- * comes back after five seconds; SIGTERM stops both. Run by the systemd user unit `twentyone-text-gateway`.
+ * The workstation's text writer for TextModel's "opencode" provider: one long-running `opencode serve` on
+ * 127.0.0.1:`--opencode-port` (a password of its own per start), App\Support\Caster\OpencodeGateway served twice
+ * (`php -S`): on `--port` with `--workers` workers for every text, on `--chat-port` with `--chat-workers` for the live
+ * chat reactions alone (TextModel::asChat()), so they never wait behind the rest; and a reverse SSH tunnel that puts
+ * both ports on the server's loopback (`--ssh`, default `esports.voice.opencode.gateway_ssh`; empty: no tunnel). A
+ * child that exits comes back after five seconds; SIGTERM stops all. Run by the systemd user unit
+ * `twentyone-text-gateway`.
  */
-#[Signature('caster:text-gateway {--port=4097 : Local and server port} {--workers=4 : Parallel requests} {--ssh= : user@host for the reverse tunnel (default from config)}')]
+#[Signature('caster:text-gateway {--port=4097 : Port for every text} {--workers=6 : Parallel texts} {--chat-port=4099 : Port for the live chat reactions} {--chat-workers=3 : Parallel chat reactions} {--opencode-port=4098 : Local port of opencode serve} {--ssh= : user@host for the reverse tunnel (default from config)}')]
 #[Description('Serve the radio texts from the local opencode CLI and tunnel the endpoint to the server')]
 class CasterTextGatewayCommand extends Command
 {
@@ -29,18 +32,34 @@ class CasterTextGatewayCommand extends Command
             file_put_contents($regie, "// Regie for every radio text the workstation writes (opencode). Read on every request: a change\n// takes effect with the next text, no deploy, no restart. Lines starting with // are notes, not sent.\n");
         }
 
+        $chatPort = (int) $this->option('chat-port');
+        $opencodePort = (int) $this->option('opencode-port');
+        $password = bin2hex(random_bytes(24));
+        $workDir = (getenv('XDG_CACHE_HOME') ?: getenv('HOME').'/.cache').'/twentyone-opencode';
+        @mkdir($workDir, 0700, true);
+        $gateway = fn (int $listen, int $workers): Process => new Process([PHP_BINARY, '-S', "127.0.0.1:{$listen}", base_path('scripts/opencode/router.php')], base_path(), [
+            'PHP_CLI_SERVER_WORKERS' => (string) max(1, $workers),
+            'OPENCODE_GATEWAY_CONFIG_DIR' => base_path('scripts/opencode'),
+            'OPENCODE_GATEWAY_WORK_DIR' => $workDir,
+            'OPENCODE_GATEWAY_MODEL' => (string) config('esports.voice.opencode.model'),
+            'OPENCODE_GATEWAY_REGIE' => $regie,
+            'OPENCODE_GATEWAY_SERVER' => "http://127.0.0.1:{$opencodePort}",
+            'OPENCODE_SERVER_PASSWORD' => $password,
+        ], null, null);
+
         $children = [
-            'server' => fn (): Process => new Process([PHP_BINARY, '-S', "127.0.0.1:{$port}", base_path('scripts/opencode/router.php')], base_path(), [
-                'PHP_CLI_SERVER_WORKERS' => (string) max(1, (int) $this->option('workers')),
-                'OPENCODE_GATEWAY_CONFIG_DIR' => base_path('scripts/opencode'),
-                'OPENCODE_GATEWAY_WORK_DIR' => (getenv('XDG_CACHE_HOME') ?: getenv('HOME').'/.cache').'/twentyone-opencode',
-                'OPENCODE_GATEWAY_MODEL' => (string) config('esports.voice.opencode.model'),
-                'OPENCODE_GATEWAY_REGIE' => $regie,
+            'opencode' => fn (): Process => new Process(['opencode', 'serve', '--hostname', '127.0.0.1', '--port', (string) $opencodePort], $workDir, [
+                'OPENCODE_CONFIG_DIR' => base_path('scripts/opencode'),
+                'OPENCODE_DISABLE_CLAUDE_CODE' => '1',
+                'OPENCODE_DISABLE_AUTOUPDATE' => '1',
+                'OPENCODE_SERVER_PASSWORD' => $password,
             ], null, null),
+            'server' => fn (): Process => $gateway($port, (int) $this->option('workers')),
+            'chat' => fn (): Process => $gateway($chatPort, (int) $this->option('chat-workers')),
         ];
         if ($ssh !== '') {
             $children['tunnel'] = fn (): Process => new Process(['ssh', '-N', '-o', 'ExitOnForwardFailure=yes', '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=3',
-                '-o', 'BatchMode=yes', '-R', "127.0.0.1:{$port}:127.0.0.1:{$port}", $ssh], null, null, null, null);
+                '-o', 'BatchMode=yes', '-R', "127.0.0.1:{$port}:127.0.0.1:{$port}", '-R', "127.0.0.1:{$chatPort}:127.0.0.1:{$chatPort}", $ssh], null, null, null, null);
         }
 
         $this->trap([SIGTERM, SIGINT], function (): void {
@@ -51,7 +70,7 @@ class CasterTextGatewayCommand extends Command
         $running = [];
         /** @var array<string, float> $restartAt */
         $restartAt = array_fill_keys(array_keys($children), 0.0);
-        $this->info("Text gateway on 127.0.0.1:{$port}".($ssh === '' ? ' (no tunnel)' : " tunnelled to {$ssh}").', model '.config('esports.voice.opencode.model'));
+        $this->info("Text gateway on 127.0.0.1:{$port}, chat lane on {$chatPort}, opencode serve on {$opencodePort}".($ssh === '' ? ' (no tunnel)' : " tunnelled to {$ssh}").', model '.config('esports.voice.opencode.model'));
 
         while (! $this->stopping) {
             foreach ($children as $name => $make) {

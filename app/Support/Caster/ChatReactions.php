@@ -11,6 +11,7 @@ use App\Support\Nostr\SignedEvent;
 use App\Support\SeasonChain\LeagueKey;
 use App\Support\StreamBot\StreamCoordinates;
 use App\Support\StreamChat\StreamChat;
+use App\Support\Voice\TextModel;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
@@ -184,7 +185,7 @@ class ChatReactions
                 continue;
             }
 
-            if ($this->react($event, $now)) {
+            if (TextModel::asChat(fn (): bool => $this->react($event, $now))) {
                 $queued++;
             }
         }

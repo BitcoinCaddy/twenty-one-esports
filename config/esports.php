@@ -1900,6 +1900,8 @@ return [
         'provider' => env('ESPORTS_VOICE_PROVIDER', 'anthropic'),
         'opencode' => [
             'url' => env('ESPORTS_VOICE_OPENCODE_URL', 'http://127.0.0.1:4097/v1'),
+            // The live chat reactions' own lane (TextModel::asChat()): its own port and workers on the workstation.
+            'chat_url' => env('ESPORTS_VOICE_OPENCODE_CHAT_URL', 'http://127.0.0.1:4099/v1'),
             // As opencode names it ("provider/model"); `caster:text --model=` overrides it at runtime.
             'model' => env('ESPORTS_VOICE_OPENCODE_MODEL', 'zai-coding-plan/glm-5.3-flash'),
             'timeout_seconds' => (int) env('ESPORTS_VOICE_OPENCODE_TIMEOUT', 90),
