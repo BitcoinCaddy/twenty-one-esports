@@ -364,7 +364,13 @@ export function deskMessages(rumors, { me, members, desk, muted = [] }) {
     const tagged = rumors.filter((rumor) => {
         if (!isRumor(rumor)) return false;
         const recipients = rumor.tags.filter((t) => t[0] === 'p').map((t) => t[1]);
-        const forDesk = rumor.tags.some((t) => t[0] === 'desk' && t[1] === String(desk));
+        const deskTags = rumor.tags.filter((t) => t[0] === 'desk');
+        // A reply from another Nostr client (Amethyst, 0xchat …) is a plain NIP-17 group message without our `desk` tag
+        // (tournament 27, 2026-10-14: players' messages were readable in Amethyst and missing here). It belongs to the
+        // desk when its whole room (sender and recipients) is players and directors of this tournament, three or more.
+        const room = new Set([rumor.pubkey, ...recipients]);
+        const deskRoom = deskTags.length === 0 && room.size >= 3 && [...room].every((p) => memberSet.has(p));
+        const forDesk = deskTags.some((t) => t[1] === String(desk)) || deskRoom;
         const toMe = rumor.pubkey === me || recipients.includes(me);
 
         return forDesk && toMe && memberSet.has(rumor.pubkey) && recipients.length > 0;
