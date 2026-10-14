@@ -94,13 +94,12 @@ test('the board, the pawn/block switch and Confirm fit the first phone screen ab
         // One row: "Set a block" beside whose move it is; the board takes what the second row and the tab on it took.
         ->and($m['dock']['h'])->toBeLessThanOrEqual(58, 'Blockli\'s bar is one row')
         ->and($m['board']['right'] - $m['board']['left'])->toBeGreaterThanOrEqual($width === 390 ? $width - 32 : 300, 'the board keeps the width')
-        ->and($m['rotate']['bottom'])->toBeLessThanOrEqual($m['board']['bottom'], 'Rotate stands over the board')
-        ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($m['board']['bottom'], 'Confirm stands over the board')
+        // Nothing over the board (a player on an iPhone SE, 2026-10-14): Rotate, Confirm and Move the pawn take the bar's row.
+        ->and([$m['rotate']['top'] >= $m['dock']['top'], $m['confirm']['bottom'] <= $m['dock']['bottom'], $m['modeMove']['bottom'] <= $m['dock']['bottom']])->toBe([true, true, true], 'Rotate, Confirm and Move the pawn stand in Blockli\'s bar')
         ->and(max($m['board']['bottom'], $m['bottomCard']['bottom']))->toBeLessThanOrEqual($m['dock']['top'], 'board and player cards end above the bar')
         ->and($m['dock']['bottom'])->toBeLessThanOrEqual($m['sheet'], 'the bar ends above the chat sheet')
         ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($m['sheet'])
-        ->and($m['modeBlock']['h'])->toBeGreaterThanOrEqual(44)
-        ->and($m['confirm']['h'])->toBeGreaterThanOrEqual(44)
+        ->and(min($m['rotate']['h'], $m['confirm']['h'], $m['modeMove']['h']))->toBeGreaterThanOrEqual(44)
         // The board stays playable by finger: every field at least 28 px (plan, risks).
         ->and($m['field'])->toBeGreaterThanOrEqual(28)
         ->and($m['overflow'])->toBeLessThanOrEqual(0)
@@ -273,7 +272,7 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
     BrowserWait::until($page, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
     $before = $page->evaluate(BLOCKLI_FOLD);
     $page->locator('[data-test=mode-block]')->click();
-    // A mouse sets with its click and keeps the hint; an arrow key shows a block in the middle with Rotate and Confirm over the board.
+    // A mouse sets with its click and keeps the hint; an arrow key shows a block in the middle, with Rotate and Confirm under the switch.
     $page->locator('[data-test=mode-block]')->press('ArrowUp');
     BrowserWait::until($page, '() => !!Alpine.$data(document.querySelector("[data-test=board-game]")).preview', 5_000);
     $m = $page->evaluate(BLOCKLI_FOLD);
@@ -294,7 +293,7 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
         ->and($width >= 1400 ? $m['chatPanel']['top'] <= $m['board']['top'] : $m['chatPanel']['top'] > $m['bottomCard']['bottom'])->toBeTrue('chat beside the board from 1400, under it below')
         ->and($m['chatPanel']['h'])->toBeGreaterThanOrEqual(400, 'the chat keeps room for messages')
         ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($height, 'Confirm inside the first screen')
-        ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($m['board']['bottom'], 'Confirm over the board')
+        ->and($m['confirm']['left'])->toBeGreaterThanOrEqual($m['board']['right'], 'Confirm beside the board, not over it')
         ->and($m['modeBlock']['bottom'])->toBeLessThanOrEqual($height)
         // The switch to block mode does not move the board.
         ->and($m['board'])->toBe($before['board'])

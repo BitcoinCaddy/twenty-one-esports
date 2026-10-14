@@ -39,8 +39,9 @@ use Livewire\Component;
  * (resources/js/gameChat.js, partials/chat), tagged `board:<id>` so a board
  * game never shares a chat with the chess game of the same number. On a phone
  * the whole board and Blockli's bar ("Set a block") fit the first screen above
- * the chat sheet (P2, boardGame.js fitBoard); Rotate, Confirm and Move the
- * pawn stand in a pop-up over the board.
+ * the chat sheet (P2, boardGame.js fitBoard); the bar also holds the hint and,
+ * with a block shown, Rotate, Confirm and Move the pawn: nothing of it stands
+ * over the board.
  *
  * The route exists only while `esports.board_games.enabled` is on
  * (routes/board.php); a game whose own board game is switched off is a 404.
@@ -358,12 +359,11 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                     <span class="flex shrink-0 items-baseline gap-1.5"><span class="text-[11px] text-ink-3" x-text="topSide === 'w' ? t.white : t.black"></span><span role="timer" class="shrink-0 font-display text-lg font-bold whitespace-nowrap tabular-nums max-lg:leading-6" :class="state.clock.running === topSide ? 'text-btc-hi' : 'text-ink-2'" x-text="clock(topSide)" data-test="clock-top"></span></span>
                 </div>
                 {{-- Black sees the board from its own side. --}}
-                {{-- Blockli's pop-ups stand over the board, not under it (DerCaddy, 2026-10-09), inside the part of it in view (below
-                     the sticky header, above the bars fixed to a phone's bottom). In set-a-block mode the hint, at the top; with a block
-                     shown, Rotate, Confirm and Move the pawn (a mouse keeps the hint) in the middle of the board on the side the block
-                     is not on. Only the buttons take taps: a tap anywhere else, the hint and the warning included, still reaches the
-                     board. The warning comes one time before the repetition draw, for a few seconds after each such move, like a push
-                     message; beside the board it stays. fitBoard sizes this box (data-board-box), so the pop-ups keep to the board. --}}
+                {{-- Nothing of the block input stands over the board (a player on an iPhone SE, 2026-10-14: the hint and the buttons
+                     over a board of 200 px left no groove to tap): they live in Blockli's bar. Over the board only the warning one time
+                     before the repetition draw, for a few seconds after each such move, like a push message (DerCaddy, 2026-10-09),
+                     gone while a block is being set and never in the way of a tap; beside the board it stays. fitBoard sizes this box
+                     (data-board-box), so the warning keeps to the board. --}}
                 <div class="relative col-span-2 mx-auto w-full" data-board-box>
                     <svg x-ref="board" data-focus-board viewBox="0 0 {{ $config['layout']['width'] ?? 100 }} {{ $config['layout']['height'] ?? 100 }}"
                          x-on:click="pick($event)" x-on:keydown="pickKey($event)"
@@ -373,17 +373,6 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                          class="block w-full touch-manipulation rounded-[4px] bg-well select-none" data-test="board"></svg>
                     <template x-if="layout.input === 'blocks'">
                         <div>
-                            <div x-show="blockPopup" class="pointer-events-none absolute inset-x-2 z-10 flex items-center justify-center" :style="blockPopupStyle" data-test="block-popup">
-                                <p x-show="!blockButtons" class="m-0 w-full rounded-[4px] border border-line bg-card px-3 py-2 text-[13px] text-ink shadow-[0_16px_32px_rgba(10,10,11,.8)]" aria-hidden="true" x-text="blockHint"></p>
-                                <div x-show="blockButtons" class="grid w-full max-w-xs grid-cols-2 gap-2 rounded-[4px] border border-line bg-card p-2 shadow-[0_16px_32px_rgba(10,10,11,.8)]" data-block-card>
-                                    {{-- The keys' hint says where the block is; a red place says why Confirm is off. --}}
-                                    <p x-show="pointerType === 'keyboard' || (preview && !preview.move)" class="col-span-2 m-0 px-1 text-[13px]" :class="preview && !preview.move ? 'text-loss' : 'text-ink'" aria-hidden="true" x-text="blockHint"></p>
-                                    <x-button variant="quiet" class="pointer-events-auto disabled:cursor-default disabled:opacity-50" x-bind:disabled="!preview" x-on:click="rotateBlock()" data-test="rotate-block">{{ __('Rotate') }}</x-button>
-                                    <x-button class="pointer-events-auto disabled:cursor-default disabled:opacity-50" x-bind:disabled="!preview || !preview.move" x-on:click="setBlock()" data-test="set-block">{{ __('Confirm') }}</x-button>
-                                    {{-- Back to the pawn: only needed while a block is shown, so it stands here and not under the board. --}}
-                                    <x-button variant="secondary" class="pointer-events-auto col-span-2" x-on:click="setBlockMode(false)" data-test="mode-move">{{ __('Move the pawn') }}</x-button>
-                                </div>
-                            </div>
                             <p x-show="warningShown" x-transition.opacity.duration.300ms class="pointer-events-none absolute inset-x-2 z-10 m-0 rounded-[4px] border border-btc-ring bg-feature py-2 pr-3 pl-4 text-[13px] font-bold text-btc-hi shadow-[inset_3px_0_0_var(--color-btc),0_16px_32px_rgba(10,10,11,.8)]"
                                :style="popupAt(true)" role="alert" x-text="repetitionWarning" data-test="repetition-warning"></p>
                         </div>
@@ -449,20 +438,33 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 </template>
 
                 {{-- The block input (Blockli): a marked square moves the pawn; "Set a block" (or a tap in a groove) shows a block first, as
-                     in the Blockli prototype. It is a toggle: pressed again it goes back to the pawn, as Move the pawn in the pop-up does.
-                     Rotate and Confirm stand in the pop-up over the board. On a phone a bar of one row fixed above the chat sheet (P2):
-                     whose move it is and "Set a block", so the board keeps the height (DerCaddy, 2026-10-10: "wieder vergrößern"); on a
-                     desktop the head of this column, beside the board. --}}
+                     in the Blockli prototype, and is a toggle. Everything stays off the board (a player on an iPhone SE, 2026-10-14). On a
+                     phone a bar of one row fixed above the chat sheet (P2), which changes what it holds: whose move it is and "Set a
+                     block"; in set-a-block mode what to do; with a block shown Rotate, Confirm and Move the pawn. The row never grows, so
+                     the board keeps its height (DerCaddy, 2026-10-10). On a desktop the head of this column: the toggle, the hint under
+                     it, and the three buttons for a finger or the keys (a mouse sets with its click, R turns). --}}
                 <template x-if="layout.input === 'blocks' && color && state.status === 'active'">
                     <div @class(['flex flex-col gap-2 max-lg:fixed max-lg:inset-x-0 max-lg:z-20 max-lg:flex-row max-lg:items-center max-lg:gap-3 max-lg:border-t max-lg:border-line max-lg:bg-bar max-lg:px-4 max-lg:py-1.5 max-lg:shadow-[0_-16px_32px_rgba(10,10,11,.8)]', $chat ? 'max-lg:bottom-[72px]' : 'max-lg:bottom-0']) x-ref="dock" data-page-bar data-test="block-input">
-                        {{-- On a phone the bar says whose move it is: the status chip gives way to it. --}}
-                        <p class="m-0 line-clamp-2 min-w-0 grow text-xs text-ink-2 lg:hidden" x-text="statusLine" data-test="block-status"></p>
-                        <button type="button" class="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-[18px] text-[13px] disabled:cursor-default disabled:opacity-50 lg:w-full"
-                                :class="blockMode ? 'border border-btc bg-btc-press font-bold text-btc-hi' : 'btn-w border border-line bg-well text-ink'"
+                        {{-- The line: on a phone whose move it is (the status chip gives way to the bar), in set-a-block mode the hint;
+                             from lg the hint alone, under the toggle. Gone on a phone while the three buttons need the row. --}}
+                        <p class="m-0 line-clamp-2 min-w-0 grow text-xs lg:order-2 lg:text-[13px]"
+                           :class="[preview && !preview.move && settingBlock ? 'text-loss' : 'text-ink-2', blockButtons ? 'max-lg:hidden' : '', settingBlock ? '' : 'lg:hidden']"
+                           x-text="barLine" data-test="block-status"></p>
+                        <button type="button" class="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-[18px] text-[13px] disabled:cursor-default disabled:opacity-50 lg:order-1 lg:w-full"
+                                :class="[blockMode ? 'border border-btc bg-btc-press font-bold text-btc-hi' : 'btn-w border border-line bg-well text-ink', blockButtons ? 'max-lg:hidden' : '']"
                                 :aria-pressed="blockMode ? 'true' : 'false'" :disabled="!myTurn || !canSetBlocks" x-on:click="setBlockMode(!blockMode, $event)" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight R Enter Escape" data-test="mode-block">
                             {{ __('Set a block') }} <span class="tabular-nums" x-text="blocksLeft"></span>
                         </button>
-                        {{-- Always in the page, so a screen reader hears each new hint (the keys say where the block is); the eye has the pop-up over the board. --}}
+                        {{-- With a block shown: Rotate, Confirm and Move the pawn, side by side in the row; a label may wrap on a narrow phone. --}}
+                        <div class="min-w-0 grow grid-cols-3 gap-2 lg:order-3" :class="blockButtons ? 'grid' : 'hidden'" data-block-buttons>
+                            <button type="button" class="inline-flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-2 text-[13px] leading-tight text-ink btn-w hover:text-ink disabled:cursor-default disabled:opacity-50"
+                                    x-bind:disabled="!preview" x-on:click="rotateBlock()" data-test="rotate-block">{{ __('Rotate') }}</button>
+                            <button type="button" class="inline-flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-md bg-btc px-2 text-[13px] leading-tight font-bold text-on-btc btn-p hover:text-on-btc disabled:cursor-default disabled:opacity-50"
+                                    x-bind:disabled="!preview || !preview.move" x-on:click="setBlock()" data-test="set-block">{{ __('Confirm') }}</button>
+                            <button type="button" class="inline-flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-md border border-edge px-2 text-[13px] leading-tight text-ink btn-s hover:text-ink"
+                                    x-on:click="setBlockMode(false)" data-test="mode-move">{{ __('Move the pawn') }}</button>
+                        </div>
+                        {{-- Always in the page, so a screen reader hears each new hint (the keys say where the block is). --}}
                         <p class="sr-only" role="status" aria-live="polite" x-text="blockHint" data-test="block-hint"></p>
                     </div>
                 </template>
