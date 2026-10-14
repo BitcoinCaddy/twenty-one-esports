@@ -499,7 +499,7 @@ it('asks for questions, reactions and a roast that hurts but makes sense in the 
 
     expect($prompt)->toContain('moderiert durch Fragen', 'mindestens sieben von zehn', '„Ich halte fest“ höchstens zweimal', 'Sirius hat zu wenig gefragt')
         ->toContain('Reaktionen', '[dissatisfaction-hnn]', '[question-ah]', 'zwei bis fünf eigene Wörter')
-        ->toContain('Roasten, bis es wehtut, aber mit Sinn', 'Kein Kauderwelsch', 'liebevolle Schimpfwörter', 'nie Geschlecht, Aussehen, Alter, Herkunft')
+        ->toContain('Roasten, bis es wehtut, aber mit Sinn', 'Kein Kauderwelsch', 'derbe Schimpfwörter', 'nie Geschlecht, Aussehen, Alter, Herkunft')
         ->toContain('Der Gastgeber fragt', 'Anwalt der Gegenseite', 'Mal angenommen')
         ->not->toContain('Lanz');
 
