@@ -10,6 +10,7 @@ use App\Support\Caster\Programme\NewsTalk;
 use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\SportWeather;
+use App\Support\Caster\Programme\TournamentLive;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -105,7 +106,8 @@ final class VoiceBudget
         return match (true) {
             $kind === CasterScript::BULLETIN => self::BULLETIN,
             in_array($kind, [CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO], true), $kind === CasterScript::RUBRIC && Shows::isShow($topic) => self::SHOW,
-            in_array($kind, [CasterScript::CHAT, CasterScript::LIVE], true), $scene === ChatWishes::SCENE => self::CHAT,
+            // A live comment on a running tournament (TournamentLive) is live like a chat reaction.
+            in_array($kind, [CasterScript::CHAT, CasterScript::LIVE], true), $scene === ChatWishes::SCENE, $kind === CasterScript::RUBRIC && $topic === TournamentLive::TOPIC => self::CHAT,
             $kind === CasterScript::NEWS, $kind === CasterScript::RUBRIC && in_array($topic, [NewsTalk::TOPIC, SportWeather::TOPIC], true) => self::NEWS,
             in_array($kind, [CasterScript::RUBRIC, CasterScript::TEASER], true) => self::RUBRIC,
             in_array($kind, [CasterScript::HISTORY, CasterScript::FOLLOWED], true), $topic === WorldMemory::CALLBACK_TOPIC => self::SEGMENT,
@@ -126,7 +128,7 @@ final class VoiceBudget
         return [
             'case when kind = ? then 0'
             .' when kind in (?, ?) or (kind = ? and topic in ('.$marks($shows).')) then 1'
-            .' when kind in (?, ?) or scene = ? then 2'
+            .' when kind in (?, ?) or scene = ? or (kind = ? and topic = ?) then 2'
             .' when kind = ? or (kind = ? and topic in (?, ?)) then 3'
             .' when kind in (?, ?) then 4'
             .' when kind in (?, ?) or topic = ? then 5'
@@ -134,7 +136,7 @@ final class VoiceBudget
             [
                 CasterScript::BULLETIN,
                 CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO, CasterScript::RUBRIC, ...$shows,
-                CasterScript::CHAT, CasterScript::LIVE, ChatWishes::SCENE,
+                CasterScript::CHAT, CasterScript::LIVE, ChatWishes::SCENE, CasterScript::RUBRIC, TournamentLive::TOPIC,
                 CasterScript::NEWS, CasterScript::RUBRIC, NewsTalk::TOPIC, SportWeather::TOPIC,
                 CasterScript::RUBRIC, CasterScript::TEASER,
                 CasterScript::HISTORY, CasterScript::FOLLOWED, WorldMemory::CALLBACK_TOPIC,

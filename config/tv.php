@@ -440,7 +440,8 @@ return [
             'tournaments' => array_values(array_filter(array_map('intval', explode(',', (string) env('TV_COMMENTARY_TOURNAMENT_LIVE_IDS', ''))))),
             'every_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MINUTES', 8),
             'daily_cap' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_CAP', 80),
-            'max_age_minutes' => 20,
+            // The voicing budget admits a live tier only with room behind what waits (measured 2026-10-14: 20 min refused, 30 admitted).
+            'max_age_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MAX_AGE', 30),
             'model' => env('TV_COMMENTARY_TOURNAMENT_LIVE_MODEL'),
         ],
         'blocks' => [

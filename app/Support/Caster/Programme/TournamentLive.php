@@ -109,7 +109,7 @@ final class TournamentLive
         Cache::put(self::INTRODUCED.':'.$tournament->id, [...$introduced, ...$intro], 24 * 3600);
 
         return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
-            topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 20), speakers: $talk['speakers']) !== null ? 1 : 0;
+            topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
     }
 
     /**
@@ -131,7 +131,7 @@ final class TournamentLive
         $lines = [
             'Turnier: '.$tournament->title().' (Spiel '.$tournament->game.', Modus '.$tournament->mode.', Format '.$tournament->format->value
                 .(isset($options['groupStage']) ? ', Gruppenphase '.$options['groupStage'].', Gruppen zu '.($options['groupSize'] ?? '?').', die besten '.($options['advance'] ?? '?').' jeder Gruppe kommen weiter' : '').').',
-            'Gestartet: '.$tournament->starts_at->setTimezone('Europe/Berlin')->format('d.m. H:i').' Uhr Berliner Zeit. Jetzt: '.$now->setTimezone('Europe/Berlin')->format('H:i').' Uhr.',
+            'Turnierstart: '.$tournament->starts_at->setTimezone('Europe/Berlin')->format('d.m. H:i').' Uhr Berliner Zeit. Jetzt: '.$now->setTimezone('Europe/Berlin')->format('H:i').' Uhr.',
         ];
 
         if ($tournament->game === 'blockli') {
