@@ -107,7 +107,9 @@ final class VoiceBudget
             $kind === CasterScript::BULLETIN => self::BULLETIN,
             in_array($kind, [CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO], true), $kind === CasterScript::RUBRIC && Shows::isShow($topic) => self::SHOW,
             // A live comment on a running tournament (TournamentLive) is live like a chat reaction.
-            in_array($kind, [CasterScript::CHAT, CasterScript::LIVE], true), $scene === ChatWishes::SCENE, $kind === CasterScript::RUBRIC && $topic === TournamentLive::TOPIC => self::CHAT,
+            in_array($kind, [CasterScript::CHAT, CasterScript::LIVE], true), $scene === ChatWishes::SCENE => self::CHAT,
+            // A live tournament comment right after the chat reactions: a reply to a viewer goes first.
+            $kind === CasterScript::RUBRIC && $topic === TournamentLive::TOPIC => self::NEWS,
             $kind === CasterScript::NEWS, $kind === CasterScript::RUBRIC && in_array($topic, [NewsTalk::TOPIC, SportWeather::TOPIC], true) => self::NEWS,
             in_array($kind, [CasterScript::RUBRIC, CasterScript::TEASER], true) => self::RUBRIC,
             in_array($kind, [CasterScript::HISTORY, CasterScript::FOLLOWED], true), $topic === WorldMemory::CALLBACK_TOPIC => self::SEGMENT,
@@ -128,16 +130,16 @@ final class VoiceBudget
         return [
             'case when kind = ? then 0'
             .' when kind in (?, ?) or (kind = ? and topic in ('.$marks($shows).')) then 1'
-            .' when kind in (?, ?) or scene = ? or (kind = ? and topic = ?) then 2'
-            .' when kind = ? or (kind = ? and topic in (?, ?)) then 3'
+            .' when kind in (?, ?) or scene = ? then 2'
+            .' when kind = ? or (kind = ? and topic in (?, ?, ?)) then 3'
             .' when kind in (?, ?) then 4'
             .' when kind in (?, ?) or topic = ? then 5'
             .' else 6 end',
             [
                 CasterScript::BULLETIN,
                 CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO, CasterScript::RUBRIC, ...$shows,
-                CasterScript::CHAT, CasterScript::LIVE, ChatWishes::SCENE, CasterScript::RUBRIC, TournamentLive::TOPIC,
-                CasterScript::NEWS, CasterScript::RUBRIC, NewsTalk::TOPIC, SportWeather::TOPIC,
+                CasterScript::CHAT, CasterScript::LIVE, ChatWishes::SCENE,
+                CasterScript::NEWS, CasterScript::RUBRIC, NewsTalk::TOPIC, SportWeather::TOPIC, TournamentLive::TOPIC,
                 CasterScript::RUBRIC, CasterScript::TEASER,
                 CasterScript::HISTORY, CasterScript::FOLLOWED, WorldMemory::CALLBACK_TOPIC,
             ],
@@ -355,7 +357,11 @@ final class VoiceBudget
     {
         // A live tournament comment is admitted as it comes (user 2026-10-14: "generiere weiter!"): its own queue holds at most
         // two (TournamentLive::fill()), the hour's plan refused all 49 written between 19:01 and 19:40.
+        // The reactions to the live chat (Nostr and YouTube) too, as fast as the workstation voices (user 2026-10-14: "auf
+        // Nostr-Livestream-Chat und YouTube-Chat muss reagiert werden so schnell wie geht"): the hour's plan refused every
+        // reaction with its ten-minute deadline from 19:27 to 20:06.
         return $scene === StockScripts::SCENE || $kind === CasterScript::FILLER || ($kind === CasterScript::RUBRIC && $topic === TournamentLive::TOPIC)
+            || self::tierOf($kind, $topic, $scene) === self::CHAT
             || $this->opens(self::tierOf($kind, $topic, $scene), $now, $seconds, $deadline);
     }
 
