@@ -4,6 +4,7 @@ namespace App\Support\Caster;
 
 use App\Models\CasterNews;
 use App\Models\CasterScript;
+use App\Support\Caster\Programme\TournamentLive;
 use App\Support\Voice\VoiceCanon;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -201,6 +202,13 @@ class ChatWishes
     /** @return array{kind: string, text: string, facts_hash: string, source: string, topic: string|null}|null */
     private function gameSegment(string $message, CarbonImmutable $now): ?array
     {
+        // While the radio comments a live tournament itself (TournamentLive), a wish for "Turnier" is its job: the generic
+        // tournament facts named an old, finished cup instead of the one on air (user 2026-10-14: "Es werden aber alte
+        // Turniere kommentiert und nicht das was gerade LIVE ist").
+        if (preg_match('/turnier/u', mb_strtolower($message)) === 1 && TournamentLive::enabled() && TournamentLive::tournament() !== null) {
+            return null;
+        }
+
         $topics = preg_match('/turnier/u', mb_strtolower($message)) === 1
             ? [SceneTopic::LIVE_TOURNAMENT, SceneTopic::TOURNAMENTS, SceneTopic::LIVE_GAMES]
             : [SceneTopic::LIVE_GAMES, SceneTopic::LIVE_TOURNAMENT, SceneTopic::RESULTS, SceneTopic::LADDERS];
