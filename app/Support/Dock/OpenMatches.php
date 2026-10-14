@@ -247,7 +247,7 @@ final class OpenMatches
             state: $state,
             trailing: $trailing,
             line: $line,
-            sentence: self::text('Series :number against :name, :state', ['number' => $match->label(), 'name' => $match->sideName($other), 'state' => mb_strtolower($state)]),
+            sentence: self::text('Series :number against :name, :state', ['number' => $match->label(), 'name' => $match->sideName($other), 'state' => mb_lcfirst($state)]),
             action: $action,
             deadlineMs: $deadline,
             tick: $tick,
@@ -317,8 +317,8 @@ final class OpenMatches
             title: ChessModes::short($game->mode),
             state: $state,
             trailing: self::format($left, 'clock'),
-            line: __(':mode :number, :state', ['mode' => ChessModes::short($game->mode), 'number' => $game->number(), 'state' => mb_strtolower($state)]),
-            sentence: __(':mode :number against :name, :state, :left on your clock', ['mode' => ChessModes::short($game->mode), 'number' => $game->number(), 'name' => $name, 'state' => mb_strtolower($state), 'left' => self::format($left, 'clock')]),
+            line: __(':mode :number, :state', ['mode' => ChessModes::short($game->mode), 'number' => $game->number(), 'state' => mb_lcfirst($state)]),
+            sentence: __(':mode :number against :name, :state, :left on your clock', ['mode' => ChessModes::short($game->mode), 'number' => $game->number(), 'name' => $name, 'state' => mb_lcfirst($state), 'left' => self::format($left, 'clock')]),
             action: $mine ? self::text('Play') : null,
             deadlineMs: $endsAt ?? $nowMs + $myMs,
             tick: $endsAt === null ? null : ['endsAt' => $endsAt, 'format' => 'clock', 'total' => max(1, $game->initial_ms), 'redUnder' => self::BLITZ_RED_MS],
@@ -436,8 +436,8 @@ final class OpenMatches
                 title: $title,
                 state: $state,
                 trailing: self::format($left, 'clock'),
-                line: __(':game, :state', ['game' => $title, 'state' => mb_strtolower($state)]),
-                sentence: __(':game against :name, :state, :left on your clock', ['game' => $title, 'name' => $name, 'state' => mb_strtolower($state), 'left' => self::format($left, 'clock')]),
+                line: __(':game, :state', ['game' => $title, 'state' => mb_lcfirst($state)]),
+                sentence: __(':game against :name, :state, :left on your clock', ['game' => $title, 'name' => $name, 'state' => mb_lcfirst($state), 'left' => self::format($left, 'clock')]),
                 action: $mine ? self::text('Play') : null,
                 deadlineMs: $endsAt ?? $nowMs + $myMs,
                 tick: $endsAt === null ? null : ['endsAt' => $endsAt, 'format' => 'clock', 'total' => max(1, $game->initial_ms), 'redUnder' => self::BLITZ_RED_MS],
@@ -475,10 +475,10 @@ final class OpenMatches
             title: $title,
             state: $state,
             trailing: $left ?? __('move :n', ['n' => intdiv($game->ply, 2) + 1]),
-            line: __(':game, :state', ['game' => $title, 'state' => mb_strtolower($state)]),
+            line: __(':game, :state', ['game' => $title, 'state' => mb_lcfirst($state)]),
             sentence: $left === null
-                ? __(':game against :name, :state', ['game' => $title, 'name' => $name, 'state' => mb_strtolower($state)])
-                : __(':game against :name, :state, :left left', ['game' => $title, 'name' => $name, 'state' => mb_strtolower($state), 'left' => $left]),
+                ? __(':game against :name, :state', ['game' => $title, 'name' => $name, 'state' => mb_lcfirst($state)])
+                : __(':game against :name, :state, :left left', ['game' => $title, 'name' => $name, 'state' => mb_lcfirst($state), 'left' => $left]),
             action: $mine ? self::text('Play') : null,
             deadlineMs: $deadline,
             tick: $left === null ? null : ['endsAt' => $deadline, 'format' => 'hm', 'total' => max(1, $game->initial_ms), 'redUnder' => self::DAILY_RED_MS],
@@ -528,10 +528,10 @@ final class OpenMatches
                 title: $title,
                 state: $state,
                 trailing: $left ?? $name,
-                line: __(':game, :state', ['game' => $title, 'state' => mb_strtolower($state)]),
+                line: __(':game, :state', ['game' => $title, 'state' => mb_lcfirst($state)]),
                 sentence: $left === null
-                    ? __(':game, :state', ['game' => $title, 'state' => mb_strtolower($state)])
-                    : __(':game, :state, :left left', ['game' => $title, 'state' => mb_strtolower($state), 'left' => $left]),
+                    ? __(':game, :state', ['game' => $title, 'state' => mb_lcfirst($state)])
+                    : __(':game, :state, :left left', ['game' => $title, 'state' => mb_lcfirst($state), 'left' => $left]),
                 action: $mine ? self::text('Play') : null,
                 deadlineMs: $deadline,
                 tick: $left === null ? null : ['endsAt' => (int) $deadline, 'format' => 'hm', 'total' => (int) config('esports.hyper.correspondence_hours', 24) * 3_600_000, 'redUnder' => self::DAILY_RED_MS],
@@ -580,7 +580,7 @@ final class OpenMatches
             title: $title,
             state: $state,
             trailing: $waiting ? __('Open it') : $score,
-            line: __(':game, :state', ['game' => $title, 'state' => mb_strtolower($state)]),
+            line: __(':game, :state', ['game' => $title, 'state' => mb_lcfirst($state)]),
             sentence: $waiting
                 ? __(':game against :name starts once you both opened it', ['game' => $title, 'name' => $name])
                 : __(':game against :name, live, :score', ['game' => $title, 'name' => $name, 'score' => $score]),
@@ -1106,7 +1106,7 @@ final class OpenMatches
 
         return $this->seriesDockItem($match, $other, 'live', 'live', $onMe, $state,
             $endsAt === null ? '' : self::format($endsAt - $nowMs, 'clock'),
-            self::text('Casual :number, :state', ['number' => $match->label(), 'state' => mb_strtolower($state)]), self::text('View'),
+            self::text('Casual :number, :state', ['number' => $match->label(), 'state' => mb_lcfirst($state)]), self::text('View'),
             (int) ($match->start_at ?? $match->created_at ?? now())->getTimestampMs(),
             $endsAt === null ? null : ['endsAt' => $endsAt, 'format' => 'clock', 'total' => max(1, $minutes * 60_000), 'redUnder' => 60_000], $face);
     }
