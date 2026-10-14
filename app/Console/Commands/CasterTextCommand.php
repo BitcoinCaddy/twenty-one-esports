@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
  * every text to the workstation's opencode CLI, `caster:text anthropic` back to the server. Takes effect with the next
  * text: no deploy, no stream restart.
  */
-#[Signature('caster:text {provider? : anthropic or opencode}')]
+#[Signature('caster:text {provider? : anthropic or opencode} {--model= : The workstation\'s model, e.g. zai-coding-plan/glm-5.3-flash ("default": back to the config)}')]
 #[Description('Show or switch the text writer of the radio (anthropic or the workstation\'s opencode)')]
 class CasterTextCommand extends Command
 {
@@ -29,7 +29,17 @@ class CasterTextCommand extends Command
             TextModel::switchTo($provider);
         }
 
-        $this->line('Text writer: '.TextModel::active().(TextModel::usesOpencode() ? ' ('.config('esports.voice.opencode.model').')' : ''));
+        $model = $this->option('model');
+        if (is_string($model) && $model !== '') {
+            if ($model !== 'default' && preg_match('/^[a-z0-9._-]+\/[a-z0-9._:-]+$/i', $model) !== 1) {
+                $this->error('A model reads provider/model, e.g. zai-coding-plan/glm-5.3-flash');
+
+                return self::FAILURE;
+            }
+            TextModel::switchModel($model === 'default' ? null : $model);
+        }
+
+        $this->line('Text writer: '.TextModel::active().' (workstation model '.TextModel::opencodeModel().')');
 
         if (TextModel::usesOpencode()) {
             $health = rtrim((string) preg_replace('#/v1/?$#', '', (string) config('esports.voice.opencode.url')), '/').'/health';

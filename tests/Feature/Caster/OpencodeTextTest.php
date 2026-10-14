@@ -60,3 +60,14 @@ it('answers an error when opencode fails or gives no JSON, so the caller plays m
     'error event' => [json_encode(['type' => 'error', 'error' => ['message' => 'Model unavailable']])],
     'prose only' => [json_encode(['type' => 'text', 'part' => ['text' => 'Ich kann das nicht.']])],
 ]);
+
+it('switches the workstation model at runtime and back to the config', function () {
+    config(['esports.voice.opencode.model' => 'zai-coding-plan/glm-5.3-flash']);
+    $this->artisan('caster:text', ['provider' => 'opencode', '--model' => 'zai-coding-plan/glm-5.2'])->assertSuccessful();
+    expect((new VoiceAgent('x'))->model())->toBe('zai-coding-plan/glm-5.2');
+
+    $this->artisan('caster:text', ['--model' => 'default'])->assertSuccessful();
+    expect((new VoiceAgent('x'))->model())->toBe('zai-coding-plan/glm-5.3-flash');
+
+    $this->artisan('caster:text', ['--model' => 'rm -rf'])->assertFailed();
+});

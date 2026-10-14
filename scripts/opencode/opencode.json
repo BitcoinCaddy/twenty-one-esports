@@ -5,14 +5,33 @@
   "share": "disabled",
   "autoupdate": false,
   "instructions": [],
-  "permission": { "*": "deny" },
+  "permission": {
+    "*": "deny"
+  },
   "agent": {
     "radio": {
       "mode": "primary",
       "description": "Writes the radio's texts; no tools at all",
       "prompt": "Du bist ein reiner Textgenerator ohne Werkzeuge. Die Nachricht enthält deine Anweisungen, die Regie und die Aufgabe. Befolge sie genau und antworte nur mit dem verlangten Text oder JSON.",
-      "tools": { "*": false },
-      "permission": { "*": "deny" }
+      "tools": {
+        "*": false
+      },
+      "permission": {
+        "*": "deny"
+      }
+    }
+  },
+  "provider": {
+    "zai-coding-plan": {
+      "models": {
+        "glm-5.3-flash": {
+          "options": {
+            "thinking": {
+              "type": "disabled"
+            }
+          }
+        }
+      }
     }
   }
 }

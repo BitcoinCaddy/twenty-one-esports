@@ -12,7 +12,8 @@ use Symfony\Component\Process\Process;
  * under `php -S` (`caster:text-gateway`), outside the Laravel container, so no facades here.
  *
  * opencode runs with its own config dir (`scripts/opencode/opencode.json`: one agent without any tool, every permission
- * denied, no instructions), in an empty work dir outside the repo (opencode would read the AGENTS.md of the tree it
+ * denied, no instructions, the model's thinking off: with it glm-5.3-flash thought 77 s over a 41 kB radio prompt and
+ * the first quarter hour on air timed out at 240 s, without it 9 to 33 s), in an empty work dir outside the repo (opencode would read the AGENTS.md of the tree it
  * runs in) and with the Claude Code prompts off: chat text from strangers reaches the prompt, and it must not reach a
  * shell on the workstation.
  *
@@ -67,6 +68,11 @@ final class OpencodeGateway
         $schema = $request['response_format']['json_schema']['schema'] ?? null;
         $prompt = self::prompt($messages, is_array($schema) ? $schema : null, $this->regie());
         $started = microtime(true);
+        // A copy of each prompt for measuring (`OPENCODE_GATEWAY_DUMP`, a directory; off by default).
+        $dump = getenv('OPENCODE_GATEWAY_DUMP');
+        if (is_string($dump) && $dump !== '' && is_dir($dump)) {
+            file_put_contents($dump.'/'.date('His').'-'.bin2hex(random_bytes(2)).'.txt', $prompt);
+        }
 
         try {
             $text = self::textFromEvents(($this->runner ?? $this->runOpencode(...))($model, $prompt));
