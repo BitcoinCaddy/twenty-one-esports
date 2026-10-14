@@ -14,8 +14,22 @@ final class FormatCopy
     /**
      * @return array{short: string, how: string, good: string, pros: list<string>, cons: list<string>}
      */
-    public static function for(TournamentFormat $format): array
+    public static function for(TournamentFormat $format, ?string $groupStage = null): array
     {
+        // Groups played as a knockout bracket (DerCaddy, 2026-10-14: "oben steht jeder gegen jeden, unten nur ein Spiel sicher"):
+        // the copy says what the groups really play.
+        if ($format === TournamentFormat::TwoStage && in_array($groupStage, ['single-elimination', 'double-elimination'], true)) {
+            $copy = self::for($format);
+
+            return [
+                ...$copy,
+                'how' => $groupStage === 'single-elimination'
+                    ? 'First small groups that each play a knockout bracket, then the best of each group play a knockout bracket to the final.'
+                    : 'First small groups that each play a double-elimination bracket, then the best of each group play a knockout bracket to the final.',
+                'pros' => ['Fewer games than everyone against everyone in the groups.', 'Ends with a final everyone can watch.'],
+            ];
+        }
+
         $copy = match ($format) {
             TournamentFormat::Swiss => [
                 'short' => 'Pairs by score, nobody is out',

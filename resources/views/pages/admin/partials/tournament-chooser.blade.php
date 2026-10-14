@@ -120,14 +120,14 @@
     $chosen = $evaluation->row($format);
     $structure = $chosen->structure;
     $plan = $chosen->duration;
-    $copy = FormatCopy::for($format);
+    $copy = FormatCopy::for($format, $options->groupStage);
     $rounds = $evaluation->swissRounds;
     $odd = $n % 2 === 1;
 
     $guaranteed = match ($format) {
         TournamentFormat::Swiss => $odd ? __('Everyone plays :fewer or :rounds games. With an odd number, one player per round gets a free win (bye).', ['fewer' => $rounds - 1, 'rounds' => $rounds]) : __('Everyone plays :rounds games.', ['rounds' => $rounds]),
         TournamentFormat::RoundRobin => __('Everyone plays :games games.', ['games' => $structure?->guaranteed ?? 0]).($chosen->atOnce > 0 ? ' '.__('In daily chess all of them start at once: :count games running at the same time for each player.', ['count' => $chosen->atOnce]) : ''),
-        TournamentFormat::TwoStage => __('Everyone plays at least :games games in the groups. The top :advance of each group play on.', ['games' => $structure?->guaranteed ?? 0, 'advance' => $structure?->advance ?? 0]),
+        TournamentFormat::TwoStage => trans_choice('Everyone plays at least :games game in the groups. The top :advance of each group play on.|Everyone plays at least :games games in the groups. The top :advance of each group play on.', $structure?->guaranteed ?? 0, ['games' => $structure?->guaranteed ?? 0, 'advance' => $structure?->advance ?? 0]),
         TournamentFormat::SingleElimination => __('The weakest may play only 1 match. The winner plays :rounds.', ['rounds' => $structure?->max ?? 0]).(($structure?->byes ?? 0) > 0 ? ' '.__(':byes of :n skip round 1 (bye), because :n does not fill the bracket.', ['byes' => $structure?->byes, 'n' => $n]) : ''),
         TournamentFormat::FreeForAll => __('Everyone plays exactly 1 match: their lobby\'s game.'),
         default => ($structure?->guaranteed ?? 2) < 2

@@ -723,7 +723,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
         // A casual cup in sign-up is described and drawn in the format its sign-ups pick now (CasualCups::plannedFormat()).
         $planned = $landing->planned();
         $followNote = CasualCups::followNote($tournament);
-        $formatCopy = FormatCopy::for($planned->format);
+        $formatCopy = FormatCopy::for($planned->format, is_string($tournament->options['groupStage'] ?? null) ? $tournament->options['groupStage'] : null);
         $noShow = $score
             ? __('Nobody waits for anybody here: whoever sets no value inside the window gets no place.')
             : ($tournament->isDirectorMode()
@@ -870,7 +870,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
         @php($compactHero = $now && ! $championMoment)
         <section aria-labelledby="t-name" @class(['rv-band -mt-page-top lg:-mt-page-top-lg', 'lg:min-h-[300px]' => ! $compactHero]) data-test="tournament-hero" data-state="{{ $cta }}">
             {{-- With a step of their own to take ("What to do now"), a phone skips the art so the step stays in the first screen. --}}
-            <x-game-cover :game="$tournament->game" size="hero" loading="eager" class="{{ ($now && ! $championMoment) || (in_array($cta, ['open', 'entered'], true) && app(\App\Games\GameRegistry::class)->find($tournament->game) instanceof \App\Games\Contracts\PlayedOnOwnCopy) ? 'max-lg:hidden ' : '' }}mx-4 mt-4 rounded-[4px] lg:absolute lg:top-0 lg:right-0 lg:m-0 lg:aspect-video lg:h-[300px] lg:max-h-full lg:w-auto lg:rounded-none [&_img]:object-cover" data-test="game-cover" />
+            <x-game-cover :game="$tournament->game" size="hero" loading="eager" class="{{ ($now && ! $championMoment) || (in_array($cta, ['open', 'entered'], true) && app(\App\Games\GameRegistry::class)->find($tournament->game) instanceof \App\Games\Contracts\PlayedOnOwnCopy) ? 'max-lg:hidden ' : '' }}mx-4 mt-4 rounded-[4px] lg:absolute lg:top-0 lg:right-0 lg:m-0 lg:aspect-video lg:h-auto lg:w-[38%] lg:max-w-[533px] lg:rounded-none [&_img]:object-cover" data-test="game-cover" />
             <div class="absolute inset-y-0 right-0 hidden w-[37%] bg-[linear-gradient(90deg,#0A0A0B,rgba(10,10,11,.1)_45%)] lg:block" aria-hidden="true"></div>
 
             <div @class(['relative mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-4 pt-4 lg:pr-[40%] lg:pl-12', 'pb-6 lg:pt-8 lg:pb-10' => ! $compactHero, 'pb-4 lg:pt-5 lg:pb-5' => $compactHero])>

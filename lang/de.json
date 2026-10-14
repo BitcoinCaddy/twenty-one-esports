@@ -8613,5 +8613,9 @@
     "NIP: rev. 9.24 (draft): a Hyperbitcoinization match's spectator poll \"Who wins?\" and a spectator's vote": "Rev. 9.24 (Entwurf): die Zuschauer-Umfrage „Wer gewinnt?“ eines Hyperbitcoinization-Matches und die Stimme eines Zuschauers",
     "NIP: league key (the poll); a spectator (the vote)": "Liga-Schlüssel (die Umfrage); ein Zuschauer (die Stimme)",
     "NIP: rev. 9.24 (draft): a Hyperbitcoinization team chat, match hyper:<match id>": "Rev. 9.24 (Entwurf): ein Hyperbitcoinization-Teamchat, Match hyper:<match id>",
-    "NIP: a player of the team": "ein Spieler des Teams"
+    "NIP: a player of the team": "ein Spieler des Teams",
+    "First small groups that each play a knockout bracket, then the best of each group play a knockout bracket to the final.": "Erst kleine Gruppen, die jede im K.-o.-Modus spielen, dann spielen die Besten jeder Gruppe im K.-o.-Baum bis zum Finale.",
+    "First small groups that each play a double-elimination bracket, then the best of each group play a knockout bracket to the final.": "Erst kleine Gruppen, die jede im Doppel-K.-o. spielen, dann spielen die Besten jeder Gruppe im K.-o.-Baum bis zum Finale.",
+    "Fewer games than everyone against everyone in the groups.": "Weniger Spiele als jeder gegen jeden in der Gruppe.",
+    "Everyone plays at least :games game in the groups. The top :advance of each group play on.|Everyone plays at least :games games in the groups. The top :advance of each group play on.": "Alle spielen mindestens :games Spiel in der Gruppe. Die besten :advance jeder Gruppe spielen weiter.|Alle spielen mindestens :games Spiele in der Gruppe. Die besten :advance jeder Gruppe spielen weiter."
 }
