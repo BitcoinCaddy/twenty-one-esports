@@ -5,6 +5,7 @@ namespace App\Support\Caster;
 use App\Models\CasterClip;
 use App\Models\CasterScript;
 use App\Support\Caster\Programme\BroadcastClock;
+use App\Support\Caster\Programme\TournamentLive;
 use App\Support\TwentyOne\Stream\MusicTimeline;
 use App\Support\TwentyOne\Stream\RotationPlanner;
 use Carbon\CarbonImmutable;
@@ -582,6 +583,12 @@ final class SceneDirector
         $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds) : ($inRun ? $this->between('breath_seconds') : $this->musicGap($now)));
         $this->runPosition = $inRun ? $this->runPosition : 0;
 
+        // A live tournament comment (TournamentLive; user 2026-10-14: "alle 1 Minute, mit einer Minute Abstand") is
+        // followed by its own short music gap, not by a whole track.
+        if (TournamentLive::enabled() && self::isTournamentLive($clip)) {
+            $this->quietUntil = $now + max(0.0, (float) config('tv.commentary.tournament_live.gap_seconds', 60));
+        }
+
         // The music gap opens: a power intro may ride its first seconds (P11), the music ducks under it.
         if (! $quiet && ! $inRun && ! $cut && $this->held === []) {
             $this->powerIntro($clip, $now);
@@ -864,16 +871,19 @@ final class SceneDirector
      */
     private function resumeHeld(RotationPlanner $planner, float $now): bool
     {
-        foreach ($this->held as $key => $rest) {
+        $kept = [];
+
+        foreach ($this->held as $rest) {
             $within = $this->isPodcast($rest['clip']) ? (float) ($this->settings['podcast']['resume_within_seconds'] ?? 1800) : (float) ($this->settings['blocks']['resume_within_seconds'] ?? 600);
 
             if ($now - $rest['since'] > $within) {
-                unset($this->held[$key]);
                 $this->spool->played($rest['clip']);
+            } else {
+                $kept[] = $rest;
             }
         }
 
-        $this->held = array_values($this->held);
+        $this->held = $kept;
 
         if ($this->held === []) {
             return false;
@@ -1292,6 +1302,14 @@ final class SceneDirector
     private function musicFirst(): bool
     {
         return ($this->settings['music_first']['enabled'] ?? false) === true && $this->musicTracks !== null;
+    }
+
+    /** Whether `$clip` carries a live tournament comment (TournamentLive::TOPIC), on its own or in a block. */
+    private static function isTournamentLive(CasterClip $clip): bool
+    {
+        $ids = $clip->isBlock() ? array_values(array_filter((array) ($clip->block['scripts'] ?? []), 'is_int')) : [$clip->caster_script_id];
+
+        return $ids !== [] && CasterScript::query()->whereIn('id', $ids)->where('topic', TournamentLive::TOPIC)->exists();
     }
 
     /** Whether the music gap after the last clip is over (always, without music first). */

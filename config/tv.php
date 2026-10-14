@@ -442,6 +442,8 @@ return [
             'daily_cap' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_CAP', 80),
             // The voicing budget admits a live tier only with room behind what waits (measured 2026-10-14: 20 min refused, 30 admitted).
             'max_age_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MAX_AGE', 30),
+            // The music after a comment before the next voice item, instead of a whole track (music first).
+            'gap_seconds' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_GAP', 60),
             'model' => env('TV_COMMENTARY_TOURNAMENT_LIVE_MODEL'),
         ],
         'blocks' => [

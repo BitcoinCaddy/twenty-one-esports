@@ -42,7 +42,7 @@ final class TournamentLive
     private const INTRODUCED = 'caster:tournament_live:introduced';
 
     /** How many players one introduction comment presents (poker-style, from their Nostr bios). */
-    private const INTRO_PLAYERS = 3;
+    private const INTRO_PLAYERS = 2;
 
     public function __construct(private readonly DuetScripts $duets, private readonly VoiceUsage $usage) {}
 
@@ -73,11 +73,13 @@ final class TournamentLive
             return 0;
         }
 
-        $every = 60 * max(2, (int) config('tv.commentary.tournament_live.every_minutes', 8));
+        $every = 60 * max(1, (int) config('tv.commentary.tournament_live.every_minutes', 8));
         $last = Cache::get(self::LAST);
 
         if ((is_int($last) && $now->getTimestamp() - $last < $every)
-            || CasterScript::query()->where('topic', self::TOPIC)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->where('expires_at', '>', $now)->exists()
+            // One waits at most behind the one being voiced, so a comment a minute keeps coming without piling up.
+            || CasterScript::query()->where('topic', self::TOPIC)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->where('expires_at', '>', $now)
+                ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count() >= 2
             || $this->usage->attemptsToday(self::CHANNEL) >= (int) config('tv.commentary.tournament_live.daily_cap', 80)) {
             return 0;
         }
@@ -230,9 +232,12 @@ final class TournamentLive
     {
         return implode("\n", [
             $intro
-                ? 'Diesmal: stellt die markierten Spieler vor wie die Kommentatoren am Finaltisch eines Pokerturniers. Pro Spieler: Name, was seine Nostr-Bio über ihn verrät, und was man daraus spielerisch von ihm erwarten darf (Spielstil, Schwächen, Chancen), frech geroastet. Andere Spieler nur am Rand.'
+                ? 'Diesmal: stellt die markierten Spieler vor wie die Kommentatoren am Finaltisch eines Pokerturniers. Nur die markierten Spieler, keine anderen nennen. Pro Spieler: Name, was seine Nostr-Bio über ihn verrät, und was man daraus spielerisch von ihm erwarten darf (Spielstil, Schwächen, Chancen), frech geroastet.'
                 : 'Diesmal: was gerade im Turnier passiert. Neue Ergebnisse zuerst, sonst wer trödelt, wer an vielen Brettern am Zug ist, welche Partie schon weit ist.',
-            'Live-Kommentar im Radio zu einem laufenden Turnier: ein kurzer Einwurf von Markus und Sirius, etwa 45 bis 70 Sekunden, 4 bis 7 Wortwechsel, jede Zeile beginnt mit "Markus:" oder "Sirius:".',
+            (int) config('tv.commentary.tournament_live.every_minutes', 8) <= 2
+                // A comment every minute (user 2026-10-14: "ich will jede Minute einen"): short, so the voicing keeps up.
+                ? 'Live-Kommentar im Radio zu einem laufenden Turnier: ein ganz kurzer Einwurf von Markus und Sirius, 25 bis 40 Sekunden, 2 bis 4 Wortwechsel, jede Zeile beginnt mit "Markus:" oder "Sirius:".'
+                : 'Live-Kommentar im Radio zu einem laufenden Turnier: ein kurzer Einwurf von Markus und Sirius, etwa 45 bis 70 Sekunden, 4 bis 7 Wortwechsel, jede Zeile beginnt mit "Markus:" oder "Sirius:".',
             'Ton: wie ein Live-Ticker beim Sport, frech, sarkastisch, liebevoll roastend. Nehmt Spieler und Partien aufs Korn: wer trödelt, wer an vielen Brettern am Zug ist, wer laut seiner Nostr-Bio eigentlich ganz andere Hobbys hat, und wie gut (oder schlecht) seine Chancen stehen. Sprecht Spieler mit ihrem Namen an, als würden sie zuhören.',
             'Regeln: Nur Fakten aus dem Material unten verwenden, nichts erfinden (keine erfundenen Ergebnisse, Züge, Zahlen oder Zitate). Bio-Inhalte nur so verwenden, wie sie dastehen. Keine geschützten Merkmale, keine Beleidigung unter der Gürtellinie, kein Selbstetikett. Keine Uhrzeiten nennen außer der im Material.',
             'Rahmen: Der erste Satz macht klar, dass das ein Live-Einwurf aus dem Turnier ist (der Jingle davor ist "Breaking"). Ein roter Faden, eine Pointe, der letzte Satz gibt zurück an die Musik.',
