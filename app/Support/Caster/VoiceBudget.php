@@ -353,7 +353,10 @@ final class VoiceBudget
      */
     public function admits(string $kind, ?string $topic, ?string $scene, float $seconds, CarbonImmutable $deadline, CarbonImmutable $now): bool
     {
-        return $scene === StockScripts::SCENE || $kind === CasterScript::FILLER || $this->opens(self::tierOf($kind, $topic, $scene), $now, $seconds, $deadline);
+        // A live tournament comment is admitted as it comes (user 2026-10-14: "generiere weiter!"): its own queue holds at most
+        // two (TournamentLive::fill()), the hour's plan refused all 49 written between 19:01 and 19:40.
+        return $scene === StockScripts::SCENE || $kind === CasterScript::FILLER || ($kind === CasterScript::RUBRIC && $topic === TournamentLive::TOPIC)
+            || $this->opens(self::tierOf($kind, $topic, $scene), $now, $seconds, $deadline);
     }
 
     /**
