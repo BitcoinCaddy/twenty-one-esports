@@ -437,6 +437,7 @@ return [
         // Names written the way the voices say them (ScriptQueue::sayAs()), whole words, any case: "written" => "spoken".
         'say_as' => [
             'Noerd' => 'Nörd',
+            'TV' => 'T Fau',
         ],
         // Live comments on a running organizer tournament (TournamentLive; user 2026-10-14, Blockli Cup #1): every
         // `every_minutes` a short duet from the live data and the players' Nostr bios, behind the "breaking" jingle.
@@ -1277,6 +1278,9 @@ return [
             // sentence end of whatever is on air, never inside a bulletin's news, and the programme resumes from there
             // (SceneDirector). Its script never expires before this plus `reaction_voicing_minutes`.
             'max_hold_seconds' => (int) env('TV_COMMENTARY_CHAT_MAX_HOLD_SECONDS', 600),
+            // A reaction (and a live moment) plays as soon as no clip is on air, mid-track, unless a story or a podcast runs
+            // (SceneDirector::liveAnytime(); user 2026-10-14). false: it waits for the end of the gap's track (music first).
+            'live_anytime' => (bool) env('TV_COMMENTARY_LIVE_ANYTIME', true),
             'reaction_voicing_minutes' => 20,
             // The share of trusted chat replies that are a short duet: Markus answers, Sirius adds his take (user 2026-10-12).
             'duet_share' => (float) env('TV_COMMENTARY_CHAT_DUET_SHARE', 0.5),

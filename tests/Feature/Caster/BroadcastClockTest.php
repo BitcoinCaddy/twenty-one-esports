@@ -221,9 +221,9 @@ it('has every bulletin of three simulated hours in the spool at least sixty seco
     }
 
     $first = CasterScript::query()->where('kind', CasterScript::BULLETIN)->orderBy('id')->first();
-    expect($first->sentences()[0])->toBe('Es ist vierzehn Uhr, hier sind die Nachrichten auf TWENTY ONE TV.')
+    expect($first->sentences()[0])->toBe('Es ist vierzehn Uhr, hier sind die Nachrichten auf TWENTY ONE T Fau.')
         ->and(CasterScript::query()->where('kind', CasterScript::BULLETIN)->orderBy('id')->skip(1)->first()->sentences()[0])
-        ->toBe('Es ist vierzehn Uhr dreißig, hier sind die Kurznachrichten auf TWENTY ONE TV.');
+        ->toBe('Es ist vierzehn Uhr dreißig, hier sind die Kurznachrichten auf TWENTY ONE T Fau.');
 });
 
 it('writes the bulletin once per slot and only within its writing window, also in the quiet hours', function () {
@@ -245,7 +245,7 @@ it('writes the bulletin once per slot and only within its writing window, also i
     expect($bulletin->airs_at->setTimezone('Europe/Berlin')->format('H:i'))->toBe('04:00')
         ->and($bulletin->expires_at->getTimestamp() - $bulletin->airs_at->getTimestamp())->toBe(120)
         ->and($bulletin->priority)->toBe(75)
-        ->and($bulletin->sentences()[0])->toBe('Es ist vier Uhr, hier sind die Nachrichten auf TWENTY ONE TV.');
+        ->and($bulletin->sentences()[0])->toBe('Es ist vier Uhr, hier sind die Nachrichten auf TWENTY ONE T Fau.');
 });
 
 it('hands out the bulletin to the workstation also while the spool is full', function () {
@@ -253,7 +253,7 @@ it('hands out the bulletin to the workstation also while the spool is full', fun
     config(['tv.commentary.fetch.token' => $token, 'tv.commentary.spool.target_seconds' => 1]);
     $scene = casterScript();
     app(ClipSpool::class)->store($scene, casterOpus(), 5.0, [5.0], CarbonImmutable::now());
-    $bulletin = app(ScriptQueue::class)->enqueue(CasterScript::BULLETIN, ScenePhase::BREAK, 'Es ist vierzehn Uhr, hier sind die Nachrichten auf TWENTY ONE TV.', 'bulletin:1', 75, CarbonImmutable::now(),
+    $bulletin = app(ScriptQueue::class)->enqueue(CasterScript::BULLETIN, ScenePhase::BREAK, 'Es ist vierzehn Uhr, hier sind die Nachrichten auf TWENTY ONE T Fau.', 'bulletin:1', 75, CarbonImmutable::now(),
         airsAt: CarbonImmutable::now()->addMinutes(5), expiresAt: CarbonImmutable::now()->addMinutes(7));
 
     $this->withToken($token)->postJson('/api/caster/claim')->assertOk()

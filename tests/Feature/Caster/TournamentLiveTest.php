@@ -57,6 +57,7 @@ it('writes a live comment from the field and the players\' Nostr bios, at most o
 
 it('writes Noerd the way the voices say it, Nörd, in every queued script', function () {
     expect(ScriptQueue::sayAs('Noerd gegen noerd, Noerdlicht bleibt'))->toBe('Nörd gegen Nörd, Noerdlicht bleibt');
+    expect(ScriptQueue::sayAs('TWENTY ONE TV, im TV-Studio, TVöD bleibt'))->toBe('TWENTY ONE T Fau, im T Fau-Studio, TVöD bleibt');
 });
 
 it('tells a finished game once: later comments see it only in the standings', function () {

@@ -1126,7 +1126,7 @@ class ScriptQueue
         $seeded = 0;
 
         foreach ($texts as $text) {
-            if (! in_array($text, $known, true)) {
+            if (! in_array(self::sayAs($text), $known, true)) {
                 $this->enqueue(CasterScript::FILLER, ScenePhase::BREAK, $text, 'filler', 0, $now);
                 $seeded++;
             }

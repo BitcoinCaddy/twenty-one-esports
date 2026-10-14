@@ -85,7 +85,7 @@ function musicFirstDirector(array $tracks, bool $enabled = true): SceneDirector
         'runs' => ['enabled' => true, 'every_minutes' => ['min' => 1, 'max' => 1], 'clips' => ['min' => 3, 'max' => 3], 'breath_seconds' => ['min' => 1, 'max' => 1]],
         'blocks' => ['join_seconds' => ['min' => 0.4, 'max' => 0.4], 'reaction_wait_seconds' => 90, 'hold_seconds' => 30, 'resume_within_seconds' => 600],
         'music_breaks' => ['enabled' => false],
-        'music_first' => ['enabled' => $enabled, 'max_wait_seconds' => 540],
+        'music_first' => ['enabled' => $enabled, 'max_wait_seconds' => 540], 'live_anytime' => (bool) config('tv.commentary.chat.live_anytime', true),
     ], null, new BroadcastClock((array) config('tv.commentary.programme.slots'), 'Europe/Berlin', false), null,
         fn (float $from, float $to): array => array_values(array_filter($tracks, fn (array $track): bool => $track['end'] > $from && $track['start'] < $to)));
 }
@@ -165,7 +165,7 @@ function musicFirstHour(bool $enabled, array $chats): array
     return ['air' => $air, 'tracks' => array_map(fn (array $track): array => [...$track, 'start' => $track['start'] - $start, 'end' => $track['end'] - $start], $tracks), 'start' => $start];
 }
 
-it('puts one complete music track between two voice items over a simulated hour, voice at most 40 %, a reaction at the first gap end', function () {
+it('puts one complete music track between two voice items over a simulated hour, voice at most 40 %, a live reaction at once mid-track', function () {
     $chats = [300.0, 310.0, 1500.0, 2400.0];
     ['air' => $air, 'tracks' => $tracks] = musicFirstHour(true, $chats);
     $pieces = $air['pieces'];
@@ -189,6 +189,11 @@ it('puts one complete music track between two voice items over a simulated hour,
         $after = $pieces[$index]['start'];
         $whole = array_filter($tracks, fn (array $track): bool => $track['start'] >= $before - 1.0 && $track['end'] <= $after + 0.01);
 
+        // A live reaction does not wait for the track's end (user 2026-10-14: "Für Live Reactions gilt die Ausnahme, dass die
+        // immer kommen dürfen"): no whole track before it.
+        if ($isChat) {
+            continue;
+        }
         if ($whole === [] && $isChat && $waited >= 600.0) {
             $overdue++;
         } elseif ($whole === []) {
@@ -196,8 +201,7 @@ it('puts one complete music track between two voice items over a simulated hour,
         }
     }
 
-    // Each reaction aired at the first gap end after it came: at most the rest of the track under the clip on air and the
-    // one whole track after it (the longest is 260 s), never a third track.
+    // Each reaction aired as soon as the clip on air (if any) ended, mid-track.
     $chatStarts = array_values(array_map(fn (array $piece): float => $piece['start'], array_filter($pieces, fn (array $piece): bool => $piece['fill'] === 2)));
     $latencies = [];
     foreach ([300.0, 1500.0, 2400.0] as $arrival) {
@@ -214,7 +218,7 @@ it('puts one complete music track between two voice items over a simulated hour,
         ->and($share)->toBeLessThanOrEqual(0.40)
         ->and($share)->toBeGreaterThan(0.0)
         ->and($types['chat'])->toBe(4)
-        ->and(max($latencies))->toBeLessThanOrEqual(2 * 260.0 + 30.0 + 5.0);
+        ->and(max($latencies))->toBeLessThanOrEqual(60.0);
 });
 
 it('lets two voice items follow each other within seconds without music first (the control of the hour above)', function () {
@@ -288,4 +292,12 @@ it('flags a closing jab at the state or the banks only when the material is abou
         ->and(ScriptGuard::reflexJab($jab, 'Was sagt das Finanzamt zu Turnierpreisen?'))->toBeFalse()
         ->and(ScriptGuard::reflexJab("Die EZB senkt den Zins.\nDas ist ein ganzer Satz ohne Spitze am Ende.", 'egal'))->toBeFalse()
         ->and(ScriptGuard::reflexJab("Erster Satz.\nUnd am Ende wieder die Zentralbank, wie immer.", 'Wer gewinnt das Turnier?'))->toBeTrue();
+});
+
+it('holds a live reaction for the end of the track again with live_anytime off', function () {
+    config(['tv.commentary.chat.live_anytime' => false]);
+    ['air' => $air] = musicFirstHour(true, [300.0]);
+    $chat = collect($air['pieces'])->first(fn (array $piece): bool => $piece['fill'] === 2);
+
+    expect($chat)->not->toBeNull()->and($chat['start'] - 300.0)->toBeGreaterThan(5.0);
 });

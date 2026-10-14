@@ -237,7 +237,7 @@ final class SceneDirector
     private array $held = [];
 
     /**
-     * @param  array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}, music_first?: array{enabled?: bool, max_wait_seconds?: float|int}}  $settings
+     * @param  array{live_anytime?: bool, min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}, music_first?: array{enabled?: bool, max_wait_seconds?: float|int}}  $settings
      */
     public function __construct(
         private readonly ClipSpool $spool,
@@ -253,8 +253,8 @@ final class SceneDirector
 
     public static function fromConfig(ClipSpool $spool): self
     {
-        /** @var array{min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}, music_first?: array{enabled?: bool, max_wait_seconds?: float|int}} $settings */
-        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120), 'rubric_late_seconds' => (float) config('tv.commentary.programme.rubrics.late_seconds', 180), 'blocks' => (array) config('tv.commentary.blocks', []), 'reaction_max_hold_seconds' => (float) config('tv.commentary.chat.max_hold_seconds', 600),
+        /** @var array{live_anytime?: bool, min_scene_seconds?: float|int, silent_min_scene_seconds?: float|int, tail_seconds?: float|int, lead_in_seconds?: float|int, max_hold_seconds?: float|int, long_max_hold_seconds?: array<string, float|int>, gap_seconds?: array{min?: float|int, max?: float|int}, feed_lead_seconds?: float|int, runs?: array{enabled?: bool, every_minutes?: array{min?: float|int, max?: float|int}, clips?: array{min?: int, max?: int}, breath_seconds?: array{min?: float|int, max?: float|int}}, parts?: array{breath_seconds?: float|int, wait_seconds?: float|int}, stinger_seconds?: float|int, bulletin_late_seconds?: float|int, rubric_late_seconds?: float|int, blocks?: array<string, mixed>, reaction_max_hold_seconds?: float|int, podcast?: array{pause_window_seconds?: float|int, resume_within_seconds?: float|int}, music_breaks?: array{enabled?: bool, per_hour?: float|int, wait_seconds?: float|int}, music_first?: array{enabled?: bool, max_wait_seconds?: float|int}} $settings */
+        $settings = [...(array) config('tv.commentary.scenes', []), 'gap_seconds' => (array) config('tv.commentary.spool.gap_seconds', []), 'feed_lead_seconds' => (float) config('tv.commentary.mix.lead_seconds', 1.0), 'runs' => (array) config('tv.commentary.runs', []), 'parts' => (array) config('tv.commentary.parts', []), 'stinger_seconds' => (float) config('tv.commentary.programme.stinger_seconds', 0), 'bulletin_late_seconds' => (float) config('tv.commentary.programme.bulletin.late_seconds', 120), 'rubric_late_seconds' => (float) config('tv.commentary.programme.rubrics.late_seconds', 180), 'blocks' => (array) config('tv.commentary.blocks', []), 'reaction_max_hold_seconds' => (float) config('tv.commentary.chat.max_hold_seconds', 600), 'live_anytime' => (bool) config('tv.commentary.chat.live_anytime', true),
             'podcast' => ['pause_window_seconds' => (float) config('tv.commentary.podcast_replay.pause_window_seconds', 20), 'resume_within_seconds' => (float) config('tv.commentary.podcast_replay.resume_within_seconds', 1800)],
             'music_breaks' => (array) config('tv.commentary.music_breaks', []), 'music_first' => (array) config('tv.commentary.music_first', [])];
 
@@ -359,8 +359,9 @@ final class SceneDirector
             }
         }
 
-        // The music break's track is playing: only the music, until its last second (a due bulletin went first above).
-        if ($this->clip === null && $this->inMusicBreak($now)) {
+        // The music break's track is playing: only the music, until its last second (a due bulletin went first above), unless
+        // a live reaction waits (liveAnytime()).
+        if ($this->clip === null && $this->inMusicBreak($now) && ! ($this->liveAnytime($now) && $this->spool->nextLive(CarbonImmutable::createFromTimestamp($now)) !== null)) {
             return null;
         }
 
@@ -383,8 +384,9 @@ final class SceneDirector
 
         // A live moment or reaction plays at the next clip boundary: it cuts the gap short, also in the middle of
         // a quiet slot or a long silent one, and never waits for the next slot (user 2026-10-11: "as fast as possible").
-        // Music first: it waits for the end of the gap's track like everything else, then goes first (an overdue one not).
-        if ($this->clip === null && $planner->slotNumber() === $this->slotNumber && ($overdue || $this->gapOver($now))) {
+        // It does not wait for the end of the gap's track either (liveAnytime()); without that, music first: it waits for
+        // the track's end like everything else, then goes first (an overdue one not).
+        if ($this->clip === null && $planner->slotNumber() === $this->slotNumber && ($overdue || $this->gapOver($now) || $this->liveAnytime($now))) {
             $live = $this->spool->nextLive(CarbonImmutable::createFromTimestamp($now));
 
             if ($live !== null && $this->play($planner, $live, $now)) {
@@ -1315,6 +1317,18 @@ final class SceneDirector
         $ids = $clip->isBlock() ? array_values(array_filter((array) ($clip->block['scripts'] ?? []), 'is_int')) : [$clip->caster_script_id];
 
         return $ids !== [] && CasterScript::query()->whereIn('id', $ids)->where('topic', TournamentLive::TOPIC)->exists();
+    }
+
+    /**
+     * Whether a live reaction or live moment may come now, in the middle of a track or a music break, instead of waiting
+     * for the track's end (user 2026-10-14: "Für Live Reactions gilt die Ausnahme, dass die immer kommen dürfen, außer
+     * bei Programm, wie News, Wetter, Sport oder anderen vorgerenderten Shows"). A programme on air is never cut for it
+     * (it plays only when no clip is on air); between the parts of a story and during a podcast replay it waits too.
+     */
+    private function liveAnytime(float $now): bool
+    {
+        return ($this->settings['live_anytime'] ?? true) === true && $this->part === null
+            && $this->spool->podcast(CarbonImmutable::createFromTimestamp($now)) === null;
     }
 
     /** Whether the music gap after the last clip is over (always, without music first). */
