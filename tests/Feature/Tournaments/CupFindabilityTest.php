@@ -115,10 +115,12 @@ test('a live cup game turns the badge, the dock entry and the banner to "play no
         ->assertSee('data-test="cup-badge" data-state="live"', false)
         ->assertSee('data-test="dock-cup" data-state="live"', false);
 
-    foreach ([route('chess.lobby'), route('matches.index')] as $url) {
+    // The dock's sheet leads with it everywhere; it floats above the dock where the dock floats (not on a lobby, rule R3).
+    foreach ([route('chess.lobby') => false, route('matches.index') => true] as $url => $floats) {
         $this->actingAs($white)->get($url)->assertOk()
             ->assertSee('data-test="cup-badge" data-state="live"', false)
-            ->assertSee('data-test="dock-cup" data-state="live"', false)
+            ->assertSee('data-test="dock-cup-card" data-state="live"', false)
+            ->{$floats ? 'assertSee' : 'assertDontSee'}('data-test="dock-cup" data-state="live"', false)
             ->assertSee('data-test="cup-banner" data-state="live"', false)
             ->assertSee('Your cup game is live — play now')
             ->assertSee('You have a cup game live')

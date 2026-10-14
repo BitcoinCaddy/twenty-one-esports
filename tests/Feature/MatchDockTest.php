@@ -19,10 +19,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Tests\Support\NineMensMorrisOn;
 
 /*
- * The match dock (P5f): which items a player sees, in which order, and what
- * the dock says about them. OpenMatches is the definition; the component and
+ * The match dock (P5f, P7): which items a player sees, in which order, and what
+ * the dock says about them, floating on every page but a running game's. OpenMatches is the definition; the component and
  * the page render it.
  */
 
@@ -144,6 +145,33 @@ test('every open series is on the dock: live, soon, waiting on someone, or sched
         ->and(app(OpenMatches::class)->for($player)->firstWhere('key', 'series-'.$toAccept->number)->phase)->toBe('waiting');
 });
 
+test('the floating dock shows the counts, the tabs that fit and says how many hidden ones need the player', function () {
+    // Back on every page but a running game's (user, 2026-10-14, after DerCaddy missed it), as before P7 (MatchDock.dc.html).
+    $me = User::factory()->create();
+    foreach ([2, 4, 6, 8, 10] as $hours) {
+        dockDaily($me, mine: true, hoursLeft: $hours);
+    }
+    dockDaily($me, mine: false, hoursLeft: 3);
+
+    $html = Livewire::actingAs($me)->test('match-dock')
+        ->assertOk()
+        ->assertSeeHtml('data-test="match-dock"')
+        ->assertSeeHtml('data-test="dock-mobile-bar"')
+        ->assertSeeHtml('data-test="dock-spacer"')
+        ->assertSeeInOrder(['data-test="dock-handle-count"', '5', 'need you'], false)
+        // Three tabs from lg: 3 hidden, two of them on the player.
+        ->assertSeeInOrder(['+3 more', '2 need you'])
+        // Four from xl: 2 hidden, one on the player.
+        ->assertSeeInOrder(['+2 more', '1 needs you'])
+        ->call('$refresh')
+        ->assertOk()
+        ->html();
+
+    // One tab per open match, and the panels wait in their island until a tab opens.
+    expect(substr_count($html, 'data-test="dock-tab"'))->toBe(6)
+        ->and($html)->not->toContain('data-test="dock-panel"');
+});
+
 test('the dock groups every entry as one card, what is on the player first, and says how many need them', function () {
     // ActionDock.dc.html (P7 of plan "Refactor und Design-Revamp"): no floating tabs any more, one panel with groups.
     $me = User::factory()->create();
@@ -172,7 +200,10 @@ test('with nothing open there is no dock at all, and a guest gets none either', 
         ->assertOk()
         ->assertSee('data-test="match-dock-root"', false)
         ->assertDontSee('data-test="dock-sheet"', false)
-        ->assertDontSee('data-test="dock-card"', false);
+        ->assertDontSee('data-test="dock-card"', false)
+        ->assertDontSee('data-test="match-dock"', false)
+        ->assertDontSee('data-test="dock-mobile-bar"', false)
+        ->assertDontSee('data-test="dock-spacer"', false);
 
     auth()->logout();
     dockDaily($me, mine: true, hoursLeft: 5);
@@ -190,13 +221,54 @@ test('the game on screen has no tab, and on a running game the dock moves into t
         ->assertSee('data-dock-item="game-'.$other->id.'"', false)
         ->assertDontSee('data-dock-item="game-'.$onScreen->id.'"', false)
         ->assertSee('x-teleport="[data-dock-slot]"', false)
-        ->assertSee('data-dock-slot', false);
+        ->assertSee('data-dock-slot', false)
+        // Nothing floats on a running game (P7: its ways to play and its chat stay free).
+        ->assertDontSee('data-test="match-dock"', false)
+        ->assertDontSee('data-test="dock-mobile-bar"', false)
+        ->assertDontSee('data-test="dock-spacer"', false);
 
-    // Elsewhere both games have their entry; the header's "Aktionen" opens the dock, no title-row button.
+    // Elsewhere both games have their tab in the floating dock, and the header's "Aktionen" opens the sheet; no title-row button.
     $this->get(route('clans.index'))
         ->assertSee('data-dock-item="game-'.$onScreen->id.'"', false)
+        ->assertSee('data-test="match-dock"', false)
+        ->assertSee('data-test="dock-mobile-bar"', false)
+        ->assertSee('data-test="dock-spacer"', false)
+        ->assertSee('data-dock-tab="game-'.$onScreen->id.'"', false)
         ->assertSee('data-test="dock-sheet"', false)
         ->assertDontSee('x-teleport', false);
+});
+
+test('a running board game and a lobby keep nothing floating, home, tournaments and a profile float the dock', function () {
+    // PR #5: the floating bar covered a board game's chat send button at 1440 x 900; ac2b6fa8 took it off, and it stays off there.
+    NineMensMorrisOn::play();
+    $me = User::factory()->create();
+    dockDaily($me, mine: true, hoursLeft: 5);
+    $board = mempoolBoard('nine-mens-morris', ['white_id' => $me->id, 'mode' => 'correspondence', 'initial_ms' => 86_400_000, 'increment_ms' => 0, 'white_ms' => 86_400_000, 'black_ms' => 86_400_000]);
+
+    $this->actingAs($me)->get(route('board.show', $board))
+        ->assertOk()
+        ->assertSee('data-test="match-dock-root"', false)
+        ->assertSee('x-teleport="[data-dock-slot]"', false)
+        ->assertDontSee('data-test="match-dock"', false)
+        ->assertDontSee('data-test="dock-mobile-bar"', false)
+        ->assertDontSee('data-test="dock-spacer"', false);
+
+    // A lobby keeps its ways to play free too (rule R3): the game templates' pages float nothing.
+    foreach ([route('chess.lobby'), route('games.rocket-league')] as $url) {
+        $this->get($url)->assertOk()
+            ->assertSee('data-test="game-subnav"', false)
+            ->assertSee('data-test="match-dock-root"', false)
+            ->assertDontSee('data-test="match-dock"', false)
+            ->assertDontSee('data-test="dock-mobile-bar"', false)
+            ->assertDontSee('data-test="dock-spacer"', false);
+    }
+
+    foreach ([route('home'), route('tournaments.index'), route('players.show', $me->npub)] as $url) {
+        $this->get($url)->assertOk()
+            ->assertSee('data-test="match-dock"', false)
+            ->assertSee('data-test="dock-mobile-bar"', false)
+            ->assertSee('data-test="dock-spacer"', false);
+    }
 });
 
 test('the series on screen has no tab in its room', function () {

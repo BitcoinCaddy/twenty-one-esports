@@ -249,7 +249,7 @@ test('on a phone: the tab bar, the More sheet and the hub sheet; the match dock 
     // The same five places on every page (Header.dc.html "Handy"); the game's own pages are in the More sheet.
     expect(array_map(fn (string $tab): string => preg_replace('/\s*\d+$/', '', preg_replace('/ \d+ (\d+)$/', ' $1', $tab)), $m['tabs']))->toBe(['Game list', 'Tournaments', 'Mempool', 'Actions', 'You'])
         ->and(array_map(fn (string $tab): int => (int) substr(strrchr($tab, ' '), 1), $m['tabs']))->each->toBeGreaterThanOrEqual(44)
-        // The action dock is the tab bar's "Aktionen" since P7 (ActionDockPhone.dc.html): nothing floats above the bar.
+        // A lobby floats nothing above the bar (rule R3, its ways to play stay free): the tab bar's "Aktionen" opens the dock.
         ->and($m['dock'])->toBeNull()
         ->and($page->evaluate('() => !!document.querySelector("#more-sheet [data-test=more-game]")'))->toBeTrue();
     shellShot($page, 'shell-player-375-rocket-league');

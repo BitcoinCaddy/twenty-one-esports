@@ -1,5 +1,7 @@
 /**
- * The match dock (P5f) on the client: open and close, fold, the numbers that
+ * The match dock (P5f, P7) on the client: the floating bar's tabs, panels and
+ * "+N more", the sheet the header's "Aktionen" opens (one `open` state, so
+ * opening one closes the other), fold, the numbers that
  * run down, and live updates. The tabs and their order come from the server
  * (resources/views/components/⚡match-dock.blade.php); this module only asks
  * for a new render.
@@ -61,6 +63,8 @@ export default function matchDock(config) {
     let rowWidth = null;
     // The --dock-h this dock set for its tab on a page bar (reserveFloor), null while it set none.
     let reservedFloor = null;
+    // The element that opened what is open (a tab, "+N more", the phone's bar, "Aktionen"): the focus goes back to it.
+    let opener = null;
 
     return {
         open: null,
@@ -143,6 +147,7 @@ export default function matchDock(config) {
                 return;
             }
             this.open = what;
+            opener = el ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
             window.dispatchEvent(new CustomEvent('dock-toggle', { detail: true }));
 
             if (what.startsWith('item:')) {
@@ -164,10 +169,19 @@ export default function matchDock(config) {
             this.open = null;
             window.dispatchEvent(new CustomEvent('dock-toggle', { detail: false }));
             if (returnFocus) {
-                const selector = was === 'sheet' ? '[data-test=dock-slot-button], [data-test=nav-actions], [data-test=tab-actions], [data-test=dock-bar-tab], [data-test=dock-row-tab]' : was === 'slot' ? '[data-test=dock-slot-button]' : null;
-                const target = selector && [...document.querySelectorAll(selector)].find((el) => el.getClientRects().length > 0);
+                const selector = was.startsWith('item:')
+                    ? `[data-dock-tab="${was.slice(5)}"]`
+                    : was === 'more'
+                      ? '[data-test=dock-more-button]'
+                      : was === 'sheet'
+                        ? '[data-test=dock-slot-button], [data-test=nav-actions], [data-test=tab-actions], [data-test=dock-mobile-bar], [data-test=dock-bar-tab], [data-test=dock-row-tab]'
+                        : null;
+                // The opener first, if it is still on screen; else the first visible way in of what was open.
+                const shown = (el) => !!el && el.isConnected && el.getClientRects().length > 0;
+                const target = shown(opener) && (!selector || opener.matches(selector)) ? opener : selector && [...document.querySelectorAll(selector)].find(shown);
                 target?.focus();
             }
+            opener = null;
         },
 
         /**
@@ -179,6 +193,14 @@ export default function matchDock(config) {
             this.toggle('sheet');
 
             return true;
+        },
+
+        /**
+         * Whether what is open belongs to the floating bar (a tab's panel, "+N more"): a click outside the bar closes
+         * only that, never the sheet the header's "Aktionen" opened with the same click.
+         */
+        ownsOpen() {
+            return this.open === 'more' || !!this.open?.startsWith('item:');
         },
 
         /** The chat sheet opened or closed: the two sheets close each other (P5f), and the tab follows its bar. */
@@ -378,7 +400,7 @@ export default function matchDock(config) {
             const turned = [...this.$root.querySelectorAll('[data-dock-item][data-need="1"]')].filter((el) => !before.has(el.dataset.dockItem));
             if (turned.length === 0 || config.quiet) return;
             turned.forEach((item) => {
-                this.$root.querySelectorAll(`[data-test=dock-card][data-key="${item.dataset.dockItem}"]`).forEach((el) => {
+                this.$root.querySelectorAll(`[data-dock-tab="${item.dataset.dockItem}"], [data-test=dock-card][data-key="${item.dataset.dockItem}"]`).forEach((el) => {
                     el.classList.remove('dk-ping');
                     void el.offsetWidth;
                     el.classList.add('dk-ping');
