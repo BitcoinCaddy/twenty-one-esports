@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "zai-coding-plan/glm-5.3-flash",
+  "default_agent": "radio",
+  "share": "disabled",
+  "autoupdate": false,
+  "instructions": [],
+  "permission": { "*": "deny" },
+  "agent": {
+    "radio": {
+      "mode": "primary",
+      "description": "Writes the radio's texts; no tools at all",
+      "prompt": "Du bist ein reiner Textgenerator ohne Werkzeuge. Die Nachricht enthält deine Anweisungen, die Regie und die Aufgabe. Befolge sie genau und antworte nur mit dem verlangten Text oder JSON.",
+      "tools": { "*": false },
+      "permission": { "*": "deny" }
+    }
+  }
+}

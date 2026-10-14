@@ -106,17 +106,17 @@ final class VoiceAgent implements Agent, HasProviderOptions, HasStructuredOutput
 
     public function provider(): string
     {
-        return (string) config('esports.voice.provider', 'anthropic');
+        return TextModel::provider();
     }
 
     public function model(): string
     {
-        return $this->modelOverride ?? (string) config('esports.voice.model', 'claude-haiku-5-5');
+        return TextModel::model($this->modelOverride ?? (string) config('esports.voice.model', 'claude-haiku-5-5'));
     }
 
     public function timeout(): int
     {
-        return $this->timeoutOverride ?? (int) config('esports.voice.timeout_seconds', 15);
+        return TextModel::timeout($this->timeoutOverride ?? (int) config('esports.voice.timeout_seconds', 15));
     }
 
     public function maxTokens(): int

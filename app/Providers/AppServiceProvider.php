@@ -122,6 +122,9 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        // The workstation's opencode endpoint as a laravel/ai provider (App\Support\Voice\TextModel).
+        config(['ai.providers.opencode' => ['driver' => 'openai-compatible', 'url' => config('esports.voice.opencode.url'), 'key' => '']]);
+
         // One live game at a time across chess and the board games (plan "Mühle und Dame", P5).
         LiveGameGuard::register();
 

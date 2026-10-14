@@ -46,7 +46,8 @@ final class WebLookupAgent implements Agent, HasProviderOptions, HasTools
 
     public function provider(): string
     {
-        return (string) config('esports.voice.provider', 'anthropic');
+        // Its web search is an Anthropic server tool: the lookup stays there whichever writer TextModel has on.
+        return 'anthropic';
     }
 
     public function model(): string

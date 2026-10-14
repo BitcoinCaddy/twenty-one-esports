@@ -35,17 +35,17 @@ final class CanonLanguageAgent implements Agent, HasProviderOptions, HasStructur
 
     public function provider(): string
     {
-        return (string) config('esports.voice.provider', 'anthropic');
+        return TextModel::provider();
     }
 
     public function model(): string
     {
-        return (string) config('esports.voice.model', 'claude-haiku-5-5');
+        return TextModel::model((string) config('esports.voice.model', 'claude-haiku-5-5'));
     }
 
     public function timeout(): int
     {
-        return 120;
+        return TextModel::timeout(120);
     }
 
     public function maxTokens(): int

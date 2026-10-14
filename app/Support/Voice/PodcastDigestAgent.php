@@ -30,17 +30,17 @@ final class PodcastDigestAgent implements Agent, HasProviderOptions
 
     public function provider(): string
     {
-        return (string) config('esports.voice.provider', 'anthropic');
+        return TextModel::provider();
     }
 
     public function model(): string
     {
-        return (string) config('esports.voice.model', 'claude-haiku-5-5');
+        return TextModel::model((string) config('esports.voice.model', 'claude-haiku-5-5'));
     }
 
     public function timeout(): int
     {
-        return 180;
+        return TextModel::timeout(180);
     }
 
     public function maxTokens(): int

@@ -1894,7 +1894,19 @@ return [
     */
 
     'voice' => [
-        'provider' => 'anthropic',
+        // "anthropic" or "opencode" (App\Support\Voice\TextModel; `php artisan caster:text` switches at runtime). On
+        // "opencode" the workstation writes every text with the opencode CLI (`caster:text-gateway`, reverse-tunnelled to
+        // `opencode.url` on the server's loopback), all on `opencode.model`, with at least `opencode.timeout_seconds`.
+        'provider' => env('ESPORTS_VOICE_PROVIDER', 'anthropic'),
+        'opencode' => [
+            'url' => env('ESPORTS_VOICE_OPENCODE_URL', 'http://127.0.0.1:4097/v1'),
+            'model' => env('ESPORTS_VOICE_OPENCODE_MODEL', 'zai-coding-plan/glm-5.3-flash'),
+            'timeout_seconds' => (int) env('ESPORTS_VOICE_OPENCODE_TIMEOUT', 90),
+            // The workstation side (`caster:text-gateway`): the reverse tunnel's user@host and the Regie file, read on
+            // every request (rules for every text, changed without a deploy).
+            'gateway_ssh' => env('ESPORTS_VOICE_OPENCODE_SSH', ''),
+            'regie_file' => env('ESPORTS_VOICE_OPENCODE_REGIE', storage_path('app/opencode/regie.md')),
+        ],
         'model' => env('ESPORTS_VOICE_MODEL', 'claude-haiku-5-5'),
         'timeout_seconds' => (int) env('ESPORTS_VOICE_TIMEOUT', 15),
         'max_output_tokens' => 400,

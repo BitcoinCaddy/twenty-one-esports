@@ -81,18 +81,18 @@ final class StockCoherenceJudge implements Agent, HasProviderOptions, HasStructu
 
     public function provider(): string
     {
-        return (string) config('esports.voice.provider', 'anthropic');
+        return TextModel::provider();
     }
 
     public function model(): string
     {
-        return (string) config('tv.commentary.blocks.stock.judge.model', config('esports.voice.model', 'claude-haiku-5-5'));
+        return TextModel::model((string) config('tv.commentary.blocks.stock.judge.model', config('esports.voice.model', 'claude-haiku-5-5')));
     }
 
     public function timeout(): int
     {
         // A whole programme to read: more than a short post's fifteen seconds.
-        return max(30, (int) config('esports.voice.timeout_seconds', 15));
+        return TextModel::timeout(max(30, (int) config('esports.voice.timeout_seconds', 15)));
     }
 
     public function maxTokens(): int

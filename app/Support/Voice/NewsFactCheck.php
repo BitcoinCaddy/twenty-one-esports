@@ -37,17 +37,17 @@ final class NewsFactCheck implements Agent, HasProviderOptions, HasStructuredOut
 
     public function provider(): string
     {
-        return (string) config('esports.voice.provider', 'anthropic');
+        return TextModel::provider();
     }
 
     public function model(): string
     {
-        return (string) config('esports.voice.fact_check.model', config('esports.voice.model', 'claude-haiku-5-5'));
+        return TextModel::model((string) config('esports.voice.fact_check.model', config('esports.voice.model', 'claude-haiku-5-5')));
     }
 
     public function timeout(): int
     {
-        return (int) config('esports.voice.timeout_seconds', 15);
+        return TextModel::timeout((int) config('esports.voice.timeout_seconds', 15));
     }
 
     public function maxTokens(): int
