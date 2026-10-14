@@ -13,6 +13,7 @@ use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
+use App\Support\Nostr\RelayReader;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
@@ -126,6 +127,13 @@ final class TournamentLive
     {
         $participants = TournamentParticipant::query()->where('tournament_id', $tournament->id)->get();
         $users = User::query()->whereIn('id', $participants->pluck('user_id')->filter())->get()->keyBy('id');
+        $pubkeys = array_values(array_filter($users->pluck('pubkey')->all(), 'is_string'));
+        $bios = self::bios($tournament, $pubkeys);
+        $posts = self::posts($tournament, $pubkeys, $now);
+        // The bio from the relays (newest kind 0 over all of them), else the copy the player's browser handed in.
+        foreach ($users as $user) {
+            $user->about = $bios[$user->pubkey] ?? $user->about;
+        }
         $name = fn (?int $id): string => $id !== null && $users->has($id) ? $users[$id]->displayName() : 'unbekannt';
         $groupOf = $participants->filter(fn ($p) => $p->user_id !== null)->mapWithKeys(fn ($p) => [$p->user_id => $p->group]);
         $options = (array) $tournament->options;
@@ -146,7 +154,9 @@ final class TournamentLive
         foreach ($participants->sortBy('group') as $participant) {
             $user = $participant->user_id !== null ? $users->get($participant->user_id) : null;
             $about = $user?->about !== null ? trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) $user->about))) : '';
-            $lines[] = '- '.$participant->name.($participant->group !== null ? ' (Gruppe '.$participant->group.')' : '').($about !== '' ? ': „'.mb_substr($about, 0, 180).'“' : ': keine Bio');
+            $own = $user?->pubkey !== null ? ($posts[$user->pubkey] ?? []) : [];
+            $lines[] = '- '.$participant->name.($participant->group !== null ? ' (Gruppe '.$participant->group.')' : '').($about !== '' ? ': „'.mb_substr($about, 0, 180).'“' : ': keine Bio gefunden')
+                .($own !== [] ? '; letzter Nostr-Post: „'.$own[0].'“' : '');
         }
 
         if ($intro !== []) {
@@ -156,7 +166,9 @@ final class TournamentLive
             foreach ($participants->whereIn('id', $intro) as $participant) {
                 $user = $participant->user_id !== null ? $users->get($participant->user_id) : null;
                 $about = $user?->about !== null ? trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) $user->about))) : '';
-                $lines[] = '- '.$participant->name.($participant->group !== null ? ', Gruppe '.$participant->group : '').', Wertung '.(int) $participant->rating.', Nostr-Bio: '.($about !== '' ? '„'.mb_substr($about, 0, 400).'“' : 'leer (ein Mann ohne Eigenschaften)');
+                $own = $user?->pubkey !== null ? ($posts[$user->pubkey] ?? []) : [];
+                $lines[] = '- '.$participant->name.($participant->group !== null ? ', Gruppe '.$participant->group : '').', Wertung '.(int) $participant->rating.', Nostr-Bio: '.($about !== '' ? '„'.mb_substr($about, 0, 400).'“' : 'keine gefunden')
+                    .($own !== [] ? ', letzte Nostr-Posts: „'.implode('“ / „', $own).'“' : ', keine Posts der letzten 30 Tage gefunden');
             }
         }
 
@@ -198,6 +210,81 @@ final class TournamentLive
     }
 
     /**
+     * The players' Nostr bios read from the relays (user 2026-10-14: "kann eigentlich nicht sein, dass so viele Nostr
+     * Profile leer sind": the league only kept the bio a player's own browser handed in): the newest kind 0 of each
+     * pubkey over the knowledge relays, nos.lol, nostr.band and the league's relays, merged; kept six hours.
+     *
+     * @param  list<string>  $pubkeys
+     * @return array<string, string> bio by pubkey
+     */
+    public static function bios(Tournament $tournament, array $pubkeys): array
+    {
+        if ($pubkeys === []) {
+            return [];
+        }
+
+        return Cache::remember('caster:tournament_live:bios:'.$tournament->id.':'.sha1(implode(',', $pubkeys)), 6 * 3600, function () use ($pubkeys): array {
+            $bios = [];
+
+            foreach (app(RelayReader::class)->fetchCounted([['kinds' => [0], 'authors' => array_slice($pubkeys, 0, 200), 'limit' => 200]], self::relays(), [], 1, microtime(true) + 12)['events'] as $event) {
+                $meta = json_decode($event->content, true);
+                $about = is_array($meta) && is_string($meta['about'] ?? null) ? trim($meta['about']) : '';
+
+                if ($about !== '') {
+                    $bios[$event->pubkey] = $about;
+                }
+            }
+
+            return $bios;
+        });
+    }
+
+    /**
+     * Each player's newest own Nostr posts (user 2026-10-14: "auch immer die letzten Posts auf Nostr mit einbeziehen"):
+     * kind 1 of the last thirty days without replies, at most three per pubkey, newest first, merged over the relays;
+     * kept thirty minutes.
+     *
+     * @param  list<string>  $pubkeys
+     * @return array<string, list<string>> posts by pubkey
+     */
+    public static function posts(Tournament $tournament, array $pubkeys, CarbonImmutable $now): array
+    {
+        if ($pubkeys === []) {
+            return [];
+        }
+
+        return Cache::remember('caster:tournament_live:posts:'.$tournament->id.':'.sha1(implode(',', $pubkeys)), 1800, function () use ($pubkeys, $now): array {
+            $posts = [];
+            $events = app(RelayReader::class)->fetchCounted([['kinds' => [1], 'authors' => array_slice($pubkeys, 0, 200), 'since' => $now->subDays(30)->getTimestamp(), 'limit' => 400]], self::relays(), [], 6, microtime(true) + 15)['events'];
+
+            foreach ($events as $event) {
+                $reply = collect($event->tags)->contains(fn (array $tag): bool => ($tag[0] ?? null) === 'e');
+                $text = trim((string) preg_replace('/\s+/u', ' ', (string) preg_replace('~(https?://|nostr:)\S+~u', '', $event->content)));
+
+                if (! $reply && mb_strlen($text) >= 8 && count($posts[$event->pubkey] ?? []) < 3) {
+                    $posts[$event->pubkey][] = mb_substr($text, 0, 200);
+                }
+            }
+
+            return $posts;
+        });
+    }
+
+    /**
+     * The relays the players' profiles and posts are read from: the knowledge relays, the big public ones and the league's.
+     *
+     * @return list<string>
+     */
+    private static function relays(): array
+    {
+        return array_values(array_unique(array_filter([
+            ...(array) config('tv.commentary.chat.knowledge_relays', []),
+            ...(array) config('tv.commentary.tournament_live.relays', []),
+            ...(array) config('esports.relays', []),
+        ], 'is_string')));
+    }
+
+    /**
      * @param  list<string>  $said  the last comments, so the next one does not repeat them
      * @return array{text: string, speakers: list<string>}|null
      */
@@ -232,7 +319,7 @@ final class TournamentLive
     {
         return implode("\n", [
             $intro
-                ? 'Diesmal: stellt die markierten Spieler vor wie die Kommentatoren am Finaltisch eines Pokerturniers. Nur die markierten Spieler, keine anderen nennen. Pro Spieler: Name, was seine Nostr-Bio über ihn verrät, und was man daraus spielerisch von ihm erwarten darf (Spielstil, Schwächen, Chancen), frech geroastet.'
+                ? 'Diesmal: stellt die markierten Spieler vor wie die Kommentatoren am Finaltisch eines Pokerturniers. Nur die markierten Spieler, keine anderen nennen. Pro Spieler: Name, was seine Nostr-Bio und seine letzten Nostr-Posts über ihn verraten (zitiert oder sinngemäß, aber nichts dazudichten), und was man daraus spielerisch von ihm erwarten darf (Spielstil, Schwächen, Chancen), frech geroastet.'
                 : 'Diesmal: was gerade im Turnier passiert. Neue Ergebnisse zuerst, sonst wer trödelt, wer an vielen Brettern am Zug ist, welche Partie schon weit ist.',
             (int) config('tv.commentary.tournament_live.every_minutes', 8) <= 2
                 // A comment every minute (user 2026-10-14: "ich will jede Minute einen"): short, so the voicing keeps up.

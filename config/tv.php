@@ -444,6 +444,11 @@ return [
             'max_age_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MAX_AGE', 30),
             // The music after a comment before the next voice item, instead of a whole track (music first).
             'gap_seconds' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_GAP', 60),
+            // Where the players' bios and newest posts are read, besides the knowledge relays and `esports.relays` (merged,
+            // the newest kind 0 per pubkey); none in tests.
+            'relays' => array_values(array_filter(array_map('trim', explode(',', env('APP_ENV') === 'testing'
+                ? (string) env('TV_COMMENTARY_TOURNAMENT_LIVE_RELAYS', '')
+                : ((string) env('TV_COMMENTARY_TOURNAMENT_LIVE_RELAYS') ?: 'wss://nos.lol,wss://relay.nostr.band,wss://relay.primal.net,wss://purplepag.es,wss://relay.damus.io'))))),
             'model' => env('TV_COMMENTARY_TOURNAMENT_LIVE_MODEL'),
         ],
         'blocks' => [
