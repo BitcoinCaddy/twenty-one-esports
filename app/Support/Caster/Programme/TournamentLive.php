@@ -39,6 +39,11 @@ final class TournamentLive
 
     private const SAID = 'caster:tournament_live:said';
 
+    private const INTRODUCED = 'caster:tournament_live:introduced';
+
+    /** How many players one introduction comment presents (poker-style, from their Nostr bios). */
+    private const INTRO_PLAYERS = 3;
+
     public function __construct(private readonly DuetScripts $duets, private readonly VoiceUsage $usage) {}
 
     public static function enabled(): bool
@@ -77,12 +82,19 @@ final class TournamentLive
             return 0;
         }
 
+        $since = is_int($last) ? $last : null;
         Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);
-        $material = self::material($tournament, $now);
+        // First the field is introduced, three players a comment, like the table at a poker final (user 2026-10-14);
+        // then the comments follow what happens on the boards.
+        $introduced = array_values(array_filter((array) Cache::get(self::INTRODUCED.':'.$tournament->id, []), 'is_int'));
+        $intro = TournamentParticipant::query()->where('tournament_id', $tournament->id)->whereNotIn('id', $introduced)->orderBy('group')->orderBy('id')
+            ->limit(self::INTRO_PLAYERS)->pluck('id')->all();
+        $intro = array_values(array_map(intval(...), $intro));
+        $material = self::material($tournament, $now, $intro, $since);
         $said = array_values(array_filter((array) Cache::get(self::SAID.':'.$tournament->id, []), 'is_string'));
 
         try {
-            $talk = $this->draft($material, $said);
+            $talk = $this->draft($material, $said, $intro !== []);
         } catch (Throwable $exception) {
             Log::warning('Tournament live comment failed', ['exception' => $exception::class, 'message' => mb_substr($exception->getMessage(), 0, 300)]);
 
@@ -94,6 +106,7 @@ final class TournamentLive
         }
 
         Cache::put(self::SAID.':'.$tournament->id, array_slice([...$said, mb_substr(str_replace("\n", ' ', $talk['text']), 0, 400)], -4), 12 * 3600);
+        Cache::put(self::INTRODUCED.':'.$tournament->id, [...$introduced, ...$intro], 24 * 3600);
 
         return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
             topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 20), speakers: $talk['speakers']) !== null ? 1 : 0;
@@ -103,7 +116,11 @@ final class TournamentLive
      * The tournament as it stands, in plain German lines: the field with each player's Nostr bio, the boards on the go
      * and the finished games.
      */
-    public static function material(Tournament $tournament, CarbonImmutable $now): string
+    /**
+     * @param  list<int>  $intro  participants to introduce in this comment
+     * @param  int|null  $since  the last comment (Unix seconds): games finished after it are the news
+     */
+    public static function material(Tournament $tournament, CarbonImmutable $now, array $intro = [], ?int $since = null): string
     {
         $participants = TournamentParticipant::query()->where('tournament_id', $tournament->id)->get();
         $users = User::query()->whereIn('id', $participants->pluck('user_id')->filter())->get()->keyBy('id');
@@ -130,6 +147,17 @@ final class TournamentLive
             $lines[] = '- '.$participant->name.($participant->group !== null ? ' (Gruppe '.$participant->group.')' : '').($about !== '' ? ': „'.mb_substr($about, 0, 180).'“' : ': keine Bio');
         }
 
+        if ($intro !== []) {
+            $lines[] = '';
+            $lines[] = 'DIESE Spieler stellt ihr jetzt vor (wie am Finaltisch beim Poker):';
+
+            foreach ($participants->whereIn('id', $intro) as $participant) {
+                $user = $participant->user_id !== null ? $users->get($participant->user_id) : null;
+                $about = $user?->about !== null ? trim((string) preg_replace('/\s+/u', ' ', strip_tags((string) $user->about))) : '';
+                $lines[] = '- '.$participant->name.($participant->group !== null ? ', Gruppe '.$participant->group : '').', Wertung '.(int) $participant->rating.', Nostr-Bio: '.($about !== '' ? '„'.mb_substr($about, 0, 400).'“' : 'leer (ein Mann ohne Eigenschaften)');
+            }
+        }
+
         $games = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->get();
         $active = $games->where('status', BoardGameStatus::Active);
         $finished = $games->where('status', BoardGameStatus::Finished)->sortByDesc('ended_at');
@@ -153,6 +181,11 @@ final class TournamentLive
             $lines[] = '- Fertig: '.$name($game->white_id).' gegen '.$name($game->black_id).': '.($winner !== null ? 'gewonnen hat '.$winner : ($result === '1/2-1/2' ? 'Remis' : 'Ergebnis offen')).'.';
         }
 
+        if ($since !== null) {
+            $news = $finished->filter(fn (BoardGame $game): bool => $game->ended_at !== null && $game->ended_at->getTimestamp() > $since);
+            $lines[] = 'Neu seit dem letzten Einwurf: '.($news->isEmpty() ? 'keine Partie beendet.' : $news->count().' Partie(n) beendet, siehe oben.');
+        }
+
         $movers = $active->countBy(fn (BoardGame $game): int => (int) ($game->turn === 'w' ? $game->white_id : $game->black_id))->sortDesc()->take(3);
 
         foreach ($movers as $id => $count) {
@@ -166,12 +199,12 @@ final class TournamentLive
      * @param  list<string>  $said  the last comments, so the next one does not repeat them
      * @return array{text: string, speakers: list<string>}|null
      */
-    private function draft(string $material, array $said): ?array
+    private function draft(string $material, array $said, bool $intro = false): ?array
     {
         $this->usage->recordAttempt(self::CHANNEL);
         $model = config('tv.commentary.tournament_live.model');
         $response = (new VoiceAgent($this->duets->systemPrompt(gags: false), 0.9, 1500, cacheTtl: CasterVoice::staticCacheTtl(), modelOverride: is_string($model) && $model !== '' ? $model : null))
-            ->prompt(self::prompt($material, $said));
+            ->prompt(self::prompt($material, $said, $intro));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
         $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
@@ -193,9 +226,12 @@ final class TournamentLive
     /**
      * @param  list<string>  $said
      */
-    public static function prompt(string $material, array $said): string
+    public static function prompt(string $material, array $said, bool $intro = false): string
     {
         return implode("\n", [
+            $intro
+                ? 'Diesmal: stellt die markierten Spieler vor wie die Kommentatoren am Finaltisch eines Pokerturniers. Pro Spieler: Name, was seine Nostr-Bio über ihn verrät, und was man daraus spielerisch von ihm erwarten darf (Spielstil, Schwächen, Chancen), frech geroastet. Andere Spieler nur am Rand.'
+                : 'Diesmal: was gerade im Turnier passiert. Neue Ergebnisse zuerst, sonst wer trödelt, wer an vielen Brettern am Zug ist, welche Partie schon weit ist.',
             'Live-Kommentar im Radio zu einem laufenden Turnier: ein kurzer Einwurf von Markus und Sirius, etwa 45 bis 70 Sekunden, 4 bis 7 Wortwechsel, jede Zeile beginnt mit "Markus:" oder "Sirius:".',
             'Ton: wie ein Live-Ticker beim Sport, frech, sarkastisch, liebevoll roastend. Nehmt Spieler und Partien aufs Korn: wer trödelt, wer an vielen Brettern am Zug ist, wer laut seiner Nostr-Bio eigentlich ganz andere Hobbys hat, und wie gut (oder schlecht) seine Chancen stehen. Sprecht Spieler mit ihrem Namen an, als würden sie zuhören.',
             'Regeln: Nur Fakten aus dem Material unten verwenden, nichts erfinden (keine erfundenen Ergebnisse, Züge, Zahlen oder Zitate). Bio-Inhalte nur so verwenden, wie sie dastehen. Keine geschützten Merkmale, keine Beleidigung unter der Gürtellinie, kein Selbstetikett. Keine Uhrzeiten nennen außer der im Material.',
