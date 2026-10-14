@@ -79,7 +79,7 @@ final class TournamentLive
 
         Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);
         $material = self::material($tournament, $now);
-        $said = (array) Cache::get(self::SAID.':'.$tournament->id, []);
+        $said = array_values(array_filter((array) Cache::get(self::SAID.':'.$tournament->id, []), 'is_string'));
 
         try {
             $talk = $this->draft($material, $said);
@@ -114,7 +114,7 @@ final class TournamentLive
         $lines = [
             'Turnier: '.$tournament->title().' (Spiel '.$tournament->game.', Modus '.$tournament->mode.', Format '.$tournament->format->value
                 .(isset($options['groupStage']) ? ', Gruppenphase '.$options['groupStage'].', Gruppen zu '.($options['groupSize'] ?? '?').', die besten '.($options['advance'] ?? '?').' jeder Gruppe kommen weiter' : '').').',
-            'Gestartet: '.$tournament->starts_at?->setTimezone('Europe/Berlin')->format('d.m. H:i').' Uhr Berliner Zeit. Jetzt: '.$now->setTimezone('Europe/Berlin')->format('H:i').' Uhr.',
+            'Gestartet: '.$tournament->starts_at->setTimezone('Europe/Berlin')->format('d.m. H:i').' Uhr Berliner Zeit. Jetzt: '.$now->setTimezone('Europe/Berlin')->format('H:i').' Uhr.',
         ];
 
         if ($tournament->game === 'blockli') {
@@ -144,16 +144,16 @@ final class TournamentLive
         }
 
         foreach ($finished->take(6) as $game) {
-            $result = (string) ($game->result instanceof \BackedEnum ? $game->result->value : $game->result);
+            $result = (string) $game->result;
             $winner = match ($result) {
-                'white', '1-0', 'w' => $name($game->white_id),
-                'black', '0-1', 'b' => $name($game->black_id),
+                '1-0' => $name($game->white_id),
+                '0-1' => $name($game->black_id),
                 default => null,
             };
-            $lines[] = '- Fertig: '.$name($game->white_id).' gegen '.$name($game->black_id).': '.($winner !== null ? 'gewonnen hat '.$winner : 'Ergebnis '.$result).'.';
+            $lines[] = '- Fertig: '.$name($game->white_id).' gegen '.$name($game->black_id).': '.($winner !== null ? 'gewonnen hat '.$winner : ($result === '1/2-1/2' ? 'Remis' : 'Ergebnis offen')).'.';
         }
 
-        $movers = $active->groupBy(fn (BoardGame $game) => $game->turn === 'w' ? $game->white_id : $game->black_id)->map->count()->sortDesc()->take(3);
+        $movers = $active->countBy(fn (BoardGame $game): int => (int) ($game->turn === 'w' ? $game->white_id : $game->black_id))->sortDesc()->take(3);
 
         foreach ($movers as $id => $count) {
             $lines[] = 'Am meisten offene Züge: '.$name((int) $id).' ist an '.$count.' Brettern am Zug.';
