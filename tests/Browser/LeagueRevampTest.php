@@ -177,7 +177,7 @@ test('a league or account page stays quiet and inside the page for an admin from
     }
 })->with('league pages');
 
-test('the action dock opens from the header as a panel under it and from the tab bar as a sheet, nothing floats over the page', function () {
+test('the action dock opens from the header as a panel under it and from the tab bar as a sheet, beside the floating dock', function () {
     ['me' => $me] = leagueRevampWorld();
 
     foreach ([1440 => 'nav-actions', 390 => 'tab-actions'] as $width => $entry) {
@@ -198,7 +198,9 @@ test('the action dock opens from the header as a panel under it and from the tab
         }');
         fwrite(STDERR, "[dock {$width}] ".json_encode([$closed, $opened]).PHP_EOL);
 
-        expect($closed['floating'])->toBe([], "{$width}: nothing of the dock floats over the page while it is closed")
+        // The floating dock is back on every page but a running game's (user, 2026-10-14): the bar at the bottom right
+        // from 1024 px, the bar above the tab bar below; nothing else of the dock floats while it is closed.
+        expect($closed['floating'])->toBe([$width >= 1024 ? 'match-dock' : 'dock-mobile-bar'], "{$width}: only the floating dock's bar floats while it is closed")
             ->and($closed['open'])->toBeGreaterThan(0)
             ->and($opened['visible'])->toBeTrue()
             ->and($opened['cards'])->toBe($closed['open'])
