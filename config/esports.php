@@ -1928,12 +1928,12 @@ return [
             'avoid_recent' => 30,
         ],
         // Words that never go out (VoiceGuard). User 2026-10-14 allowed ordinary insults and profanity for
-        // the stream, so the insult words are gone; what stays: ableist and sexist slurs (protected traits),
-        // fact-claim words about real people ("scam", "betrüger"), fee words (players never pay), "Gesicht"/"face"
-        // (pseudonymous league), and the community gag "Maul" the user did not approve.
+        // the stream, including "fotze" and the community gag "Maul"; what stays: ableist slurs (protected
+        // traits), fact-claim words about real people ("scam", "betrüger"), fee words (players never pay)
+        // and "Gesicht"/"face" (pseudonymous league).
         'blocklist' => [
-            'spast', 'behindert', 'missgeburt', 'fotze',
-            'scam', 'betrüger', 'maul',
+            'spast', 'behindert', 'missgeburt',
+            'scam', 'betrüger',
             'gebühr', 'gebühren', 'startgeld', 'teilnahmegebühr', 'fee', 'fees', 'entry fee', 'gesicht', 'face',
         ],
         // Real people of the community and of the canon's clips (meme-research/characters.md): named only as
