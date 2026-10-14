@@ -363,9 +363,10 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                      over a board of 200 px left no groove to tap): they live in Blockli's bar. Over the board only the warning one time
                      before the repetition draw, for a few seconds after each such move, like a push message (DerCaddy, 2026-10-09),
                      gone while a block is being set and never in the way of a tap; beside the board it stays. fitBoard sizes this box
-                     (data-board-box), so the warning keeps to the board. --}}
+                     (data-board-box), so the warning keeps to the board. The live stream's tab steps aside while the board lies where it
+                     would stand (data-live-clear, resources/js/livePlayer.js): over the lower left corner it took the squares' clicks. --}}
                 <div class="relative col-span-2 mx-auto w-full" data-board-box>
-                    <svg x-ref="board" data-focus-board viewBox="0 0 {{ $config['layout']['width'] ?? 100 }} {{ $config['layout']['height'] ?? 100 }}"
+                    <svg x-ref="board" data-focus-board data-live-clear viewBox="0 0 {{ $config['layout']['width'] ?? 100 }} {{ $config['layout']['height'] ?? 100 }}"
                          x-on:click="pick($event)" x-on:keydown="pickKey($event)"
                          role="group" aria-label="{{ __('Game board') }}"
                          x-bind:class="color === 'b' ? 'rotate-180' : ''"

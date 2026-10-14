@@ -309,6 +309,45 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
     '1920x1080' => [1920, 1080],
 ]);
 
+/*
+| A laptop at 150 % (DerCaddy, 2026-10-14: "am PC ist das Spielbrett plötzlich super klein"), about 1250 x 555 CSS px:
+| for the actions and the lower card under it the board had fallen to its floor of 300 px. It now gives way only down
+| to 380 px; a window too short for that much below the header gets the board that fits there, whole when scrolled to.
+| Taller windows keep the first-screen fit above.
+*/
+
+test('on a short desktop window the board keeps a playable size and is whole when scrolled to', function (int $width, int $height, int $least) {
+    [$anna, $bert] = User::factory()->count(2)->create();
+    $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
+    $page = visit(BrowserLogin::url($anna))->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $page->setViewportSize($width, $height);
+    $page->goto(ComputeUrl::from(route('board.show', $game, false)));
+    BrowserWait::until($page, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+    $top = $page->evaluate(BLOCKLI_FOLD);
+    // Scrolled to the board as the page scrolls an anchor there: its top at the root's scroll-padding-top, below the sticky header.
+    $there = $page->evaluate(<<<'JS'
+        () => {
+            const board = document.querySelector('[data-test=board]');
+            scrollTo(0, board.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0));
+            const r = board.getBoundingClientRect();
+            return { top: Math.round(r.top), bottom: Math.round(r.bottom), header: Math.round(document.querySelector('body > header').getBoundingClientRect().bottom), height: innerHeight };
+        }
+        JS);
+    fwrite(STDERR, PHP_EOL."short desktop {$width}x{$height} ".json_encode(['board' => $top['board'], 'there' => $there, 'field' => $top['field']]).PHP_EOL);
+
+    expect($top['board']['right'] - $top['board']['left'])->toBeGreaterThanOrEqual($least, 'not the old floor of 300 px')
+        ->and($there['top'])->toBeGreaterThanOrEqual($there['header'], 'below the header')
+        ->and($there['bottom'])->toBeLessThanOrEqual($there['height'], 'whole in the window')
+        ->and($top['field'])->toBeGreaterThanOrEqual(38)
+        ->and($top['overflow'])->toBeLessThanOrEqual(0)
+        ->and($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+})->with([
+    'DerCaddy\'s laptop at 150 %' => [1250, 555, 350],
+    'a 1366 x 768 laptop' => [1366, 650, 380],
+]);
+
 test('on a desktop board page the match dock sits in the title row, not over the chat\'s input', function () {
     // PR #5 ("worth a look"): at 1440x900 the dock's floating bar (right-6 bottom-4) covered the right end of the chat
     // column, its send button included, once the player had another open match. Board pages now take the dock's

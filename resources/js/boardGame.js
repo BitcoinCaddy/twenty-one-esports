@@ -41,6 +41,12 @@ const HEARTBEAT_MS = 4000;
 /** How long the repetition warning stands over the board after a move (it stays beside the board). */
 const WARNING_MS = 6000;
 
+/**
+ * The smallest board a desktop gives up for what stands under it (the game's actions, the lower player card), in px:
+ * on a 9 x 9 board about 34 px a square. A window too short for it below the header gets what fits there (fitBoard).
+ */
+const DESKTOP_BOARD = 380;
+
 /** How often the position of a state has stood there (Blockli's repetition warning), counted once per state. */
 const REPEATS = new WeakMap();
 
@@ -279,7 +285,8 @@ registerAlpine(() => {
          * user's 1893x929, where Confirm sat at 1098 px). The edge to end above: on a phone the bars fixed to the bottom
          * (Blockli's bar, the chat sheet, the app's tab bar), on a desktop the window. Under the board count the parts
          * of its column that are not fixed (the lower player card; Blockli's bar heads the other column from lg). A phone narrows the board;
-         * a desktop narrows the board's grid column, so the cards and the bar go with it and the right column widens.
+         * a desktop narrows the board's grid column, so the cards and the bar go with it and the right column widens. On a desktop the
+         * board gives way only down to DESKTOP_BOARD; a window too short for that much below its header gets the board that fits there.
          */
         fitBoard() {
             const board = this.$refs.board;
@@ -319,9 +326,14 @@ registerAlpine(() => {
             }
             box.style.maxWidth = '';
             page.style.paddingBottom = '';
+            // The board gives way to the actions and the lower card only down to DESKTOP_BOARD: below that they follow under the
+            // first screen. A short window (a laptop at 150 %, about 1250 x 555: DerCaddy, 2026-10-14, the board had fallen to its
+            // floor of 300 px) gets the board that fits below the sticky header (the root's scroll-padding-top) with 16 px of air:
+            // scrolled to, it is whole there, the title row above it and the actions below.
+            const band = Math.round((innerHeight - (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) - 16) * (drawn.width / drawn.height));
             // From 87.5rem the players' chat is a third column (the page's grid classes).
             const third = this.$root.querySelector('[data-test=chat-panel]') && matchMedia('(width >= 87.5rem)').matches ? ' 380px' : '';
-            grid.style.gridTemplateColumns = 'minmax(0, ' + Math.min(560, Math.max(300, width)) + 'px)' + third + ' minmax(0, 1fr)';
+            grid.style.gridTemplateColumns = 'minmax(0, ' + Math.min(560, Math.max(300, width, Math.min(DESKTOP_BOARD, band))) + 'px)' + third + ' minmax(0, 1fr)';
         },
 
         /* ---- the board ------------------------------------------------------------------------------ */

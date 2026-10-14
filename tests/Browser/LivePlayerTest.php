@@ -2,6 +2,7 @@
 
 use App\Models\ChessGame;
 use App\Models\User;
+use App\Support\Board\BoardGameService;
 use App\Support\TwentyOne\LiveStatus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -10,6 +11,7 @@ use Pest\Browser\Execution;
 use Pest\Browser\Playwright\Client;
 use Pest\Browser\Playwright\Page;
 use Pest\Browser\Support\ComputeUrl;
+use Tests\Support\BlockliOn;
 use Tests\Support\BrowserWait;
 use Tests\Support\LiveStreamFixture;
 
@@ -610,3 +612,53 @@ test('autoplay refused with hls.js (Firefox, LibreWolf): the play button shows a
     BrowserWait::until($page, '() => { const v = document.querySelector("[data-test=live-stage-video]"); return !v.paused && v.currentTime > 0.5 && !document.querySelector("[data-test=live-stage-status]").checkVisibility(); }', 20_000);
     expect(liveErrors($page))->toBe([]);
 });
+
+test('the folded tab stands aside while a game board lies where it would stand, and comes back once the board scrolled away', function (int $width, int $height) {
+    // DerCaddy, 2026-10-14: on a laptop at 150 % the board reaches down to the window's bottom and the tab stood over its lower
+    // left corner, taking the squares' clicks; on a phone the tab stands above the bars, where a board fitted to the first screen ends.
+    BlockliOn::play();
+    [$anna, $bert] = User::factory()->count(2)->create();
+    $game = app(BoardGameService::class)->start('blockli', $anna, $bert);
+
+    $page = visit(route('testing.login', ['user' => $anna, 'to' => '/robots.txt']))->page();
+    $page->context()->addInitScript(LIVE_COLLECTOR);
+    $page->setViewportSize($width, $height);
+    liveGoto($page, route('board.show', $game, false));
+    BrowserWait::until($page, '() => !!Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+    Execution::instance()->wait(1.2);
+
+    $where = <<<'JS'
+        () => {
+            const box = (sel) => { const el = document.querySelector(sel); if (!el || !el.checkVisibility()) return null; const r = el.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) }; };
+            const board = box('[data-test=board]'), tab = box('[data-test=live-tab]'), mini = box('[data-test=live-mini]');
+            const meets = (a) => !!a && !!board && a.l < board.r && a.r > board.l && a.t < board.b && a.b > board.t;
+            return { board, tab, mini, tabOver: meets(tab) };
+        }
+        JS;
+
+    // At the top of the page the board lies where the tab would stand: the tab is aside.
+    $load = $page->evaluate($where);
+    // At the end of the page the board is away from the corner: the tab is back at once (it measures on scroll).
+    $page->evaluate('() => window.scrollTo(0, document.documentElement.scrollHeight)');
+    Execution::instance()->wait(0.4);
+    $end = $page->evaluate($where);
+    // Opened there and scrolled back to the board, the player stays where the viewer opened it; folded, it stands aside again.
+    $page->locator('[data-test=live-tab]')->click();
+    $page->evaluate('() => window.scrollTo(0, 0)');
+    Execution::instance()->wait(0.4);
+    $open = $page->evaluate($where);
+    $page->locator('[data-test=live-minimise]')->click();
+    Execution::instance()->wait(0.4);
+    $folded = $page->evaluate($where);
+    fwrite(STDERR, "\n[live board {$width}x{$height}] ".json_encode(compact('load', 'end', 'open', 'folded'))."\n");
+
+    expect($load['tab'])->toBeNull()
+        ->and($end['tab'])->not->toBeNull()
+        ->and($end['tabOver'])->toBeFalse()
+        ->and($open['mini'])->not->toBeNull()
+        ->and($folded['tab'])->toBeNull()
+        ->and(liveErrors($page))->toBe([]);
+})->with([
+    'DerCaddy\'s laptop at 150 %' => [1250, 555],
+    'a phone' => [375, 667],
+]);
