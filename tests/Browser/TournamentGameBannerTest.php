@@ -18,9 +18,10 @@ pest()->group('browser');
 | A tournament game says so at the top of its page, in the browser (user, 2026-10-03)
 |--------------------------------------------------------------------------
 |
-| A live knockout chess game: the tournament banner is the first thing on
-| the page, above the "Game" title, inside the viewport, with the
-| tournament page one tap away; under the board the first-move deadline
+| A live knockout chess game: on a desktop the tournament banner is the
+| first thing on the page, above the "Game" title, inside the viewport, with
+| the tournament page one tap away; on a phone it is one row under the game
+| (2026-10-14, the board comes first); under the board the first-move deadline
 | counts down as the cup rule ("Make your first move within 4:59 or you
 | lose this cup game"). At en 375 and 1440 and de 375.
 |
@@ -97,7 +98,7 @@ function bannerShot(Page $page, string $name): void
     File::move(base_path('tests/Browser/Screenshots/'.$name.'.png'), $dir.'/'.$name.'.png');
 }
 
-test('a live tournament chess game opens with the tournament banner above the game and the cup first-move countdown, at en 375 and 1440 and de 375', function () {
+test('a live tournament chess game shows the tournament banner above the game on a desktop and one row under it on a phone, with the cup first-move countdown, at en 375 and 1440 and de 375', function () {
     $measured = [];
     $page = null;
 
@@ -118,24 +119,27 @@ test('a live tournament chess game opens with the tournament banner above the ga
         $m = $page->evaluate(BANNER_MEASURE);
         bannerShot($page, "banner-{$locale}-{$width}");
 
-        expect($m['banner']['top'])->toBeLessThan($m['titleTop'])
+        // Below lg the banner goes under the game, one row (user 2026-10-14: "Das Turnier-Banner darf auf keinen Fall in
+        // mobile stören und muss am besten wo anders hin. Wichtig ist das Brett"); the desktop keeps it on top (2026-10-03).
+        $phone = $width < 1024;
+        expect($phone ? $m['banner']['top'] > $m['titleTop'] : $m['banner']['top'] < $m['titleTop'])->toBeTrue()
             ->and($m['banner']['top'])->toBeGreaterThanOrEqual(0)
             ->and($m['banner']['left'])->toBeGreaterThanOrEqual(0)
             ->and($m['banner']['right'])->toBeLessThanOrEqual($width)
             ->and($m['banner']['scrollWidth'])->toBeLessThanOrEqual($m['banner']['clientWidth'])
             ->and($m['link']['height'])->toBeGreaterThanOrEqual(44)
-            ->and($m['link']['bottom'])->toBeLessThanOrEqual($height)
+            ->and($phone || $m['link']['bottom'] <= $height)->toBeTrue()
             ->and($m['firstMoveFont'])->toBeGreaterThanOrEqual(16)
             ->and($m['overflow'])->toBeLessThanOrEqual(0)
             ->and($m['errors'])->toBe([]);
 
         if ($locale === 'en') {
             expect($m['text'])->toContain('Halving Blitz Cup')->and($m['text'])->toContain('Round 1')
-                ->and($m['text'])->toContain('Tournament game — counts for the tournament')
+                ->and($phone || str_contains($m['text'], 'Tournament game — counts for the tournament'))->toBeTrue()
                 ->and($m['text'])->toContain('Tournament page')
                 ->and($m['firstMove'])->toMatch('/^Make your first move within \d+:\d\d or you lose this cup game$/');
         } else {
-            expect($m['text'])->toContain('Runde 1')->and($m['text'])->toContain('Turnierpartie — zählt für das Turnier')->and($m['text'])->toContain('Turnierseite')
+            expect($m['text'])->toContain('Runde 1')->and($phone || str_contains($m['text'], 'Turnierpartie — zählt für das Turnier'))->toBeTrue()->and($m['text'])->toContain('Turnierseite')
                 ->and($m['firstMove'])->toMatch('/^Mach deinen ersten Zug innerhalb von \d+:\d\d, sonst verlierst du diese Cup-Partie$/u');
         }
 

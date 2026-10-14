@@ -1,4 +1,4 @@
-@props(['desk' => null, 'onPage' => false])
+@props(['desk' => null, 'onPage' => false, 'compact' => false])
 
 {{--
     The "Tournament desk" button with its unread badge (App\Support\Tournaments\TournamentDesk; user, 2026-10-03:
@@ -8,6 +8,7 @@
 
     `$desk`: TournamentDesk::for() for the viewer; nothing renders for null (no member, or the desk is closed).
     `$onPage`: the page shows the desk itself, so the button sends no chat config of its own (the desk counts).
+    `$compact`: on a phone the icon alone (the label for screen readers), the badge on its corner (a game's banner).
 --}}
 @if ($desk)
     <a href="{{ $desk['url'] }}" x-data="deskButton({ desk: {{ (int) $desk['desk'] }}, config: @js($onPage ? null : $desk) })" x-on:click="go($event)"
@@ -15,8 +16,8 @@
        {{ $attributes->class('btn-w relative inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-line bg-well px-4 text-[13px] font-bold whitespace-nowrap text-ink hover:text-ink') }}
        data-test="desk-button">
         <x-icon name="chat" :size="18" class="shrink-0 text-btc" />
-        <span>{{ __('Tournament desk') }}</span>
+        <span @class(['max-sm:sr-only' => $compact])>{{ __('Tournament desk') }}</span>
         <span x-show="unread > 0" x-cloak x-text="unread > 99 ? '99+' : unread" aria-hidden="true"
-              class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-btc px-1.5 text-[11px] leading-none font-bold text-on-btc" data-test="desk-unread"></span>
+              @class(['max-sm:absolute max-sm:-top-1.5 max-sm:-right-1.5' => $compact]) class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-btc px-1.5 text-[11px] leading-none font-bold text-on-btc" data-test="desk-unread"></span>
     </a>
 @endif

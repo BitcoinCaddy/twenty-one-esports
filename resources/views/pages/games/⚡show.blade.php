@@ -584,7 +584,7 @@ new #[Layout('layouts::app', ['section' => 'chess', 'realtime' => true, 'scripts
 @endphp
 
 <div class="flex grow flex-col">
-    {{-- A tournament game says so first, above everything else (user, 2026-10-03). --}}
+    {{-- A tournament game says so first, above everything else (user, 2026-10-03); below lg under the game (game-banner). --}}
     <x-tournaments.game-banner :banner="$tournamentGame ? TournamentGameEnd::banner($game) : null" class="mx-4 mb-4 lg:mx-12 lg:mb-5" />
     @if ($teamBoard)
         @include('pages.games.partials.team-board', ['game' => $game, 'url' => $teamUrl])
