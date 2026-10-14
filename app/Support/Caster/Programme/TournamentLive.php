@@ -42,6 +42,9 @@ final class TournamentLive
 
     private const INTRODUCED = 'caster:tournament_live:introduced';
 
+    /** The finished games a comment already told (their ids), so the next one does not tell them again. */
+    private const TOLD = 'caster:tournament_live:told';
+
     /** How many players one introduction comment presents (poker-style, from their Nostr bios). */
     private const INTRO_PLAYERS = 2;
 
@@ -93,7 +96,9 @@ final class TournamentLive
         $intro = TournamentParticipant::query()->where('tournament_id', $tournament->id)->whereNotIn('id', $introduced)->orderBy('group')->orderBy('id')
             ->limit(self::INTRO_PLAYERS)->pluck('id')->all();
         $intro = array_values(array_map(intval(...), $intro));
-        $material = self::material($tournament, $now, $intro, $since);
+        $told = array_values(array_filter((array) Cache::get(self::TOLD.':'.$tournament->id, []), 'is_int'));
+        $material = self::material($tournament, $now, $intro, $since, $told);
+        $finishedIds = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Finished)->pluck('id')->map(fn ($id): int => (int) $id)->all();
         $said = array_values(array_filter((array) Cache::get(self::SAID.':'.$tournament->id, []), 'is_string'));
 
         try {
@@ -110,6 +115,7 @@ final class TournamentLive
 
         Cache::put(self::SAID.':'.$tournament->id, array_slice([...$said, mb_substr(str_replace("\n", ' ', $talk['text']), 0, 400)], -4), 12 * 3600);
         Cache::put(self::INTRODUCED.':'.$tournament->id, [...$introduced, ...$intro], 24 * 3600);
+        Cache::put(self::TOLD.':'.$tournament->id, array_values(array_unique([...$told, ...$finishedIds])), 24 * 3600);
 
         return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
             topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
@@ -122,8 +128,9 @@ final class TournamentLive
     /**
      * @param  list<int>  $intro  participants to introduce in this comment
      * @param  int|null  $since  the last comment (Unix seconds): games finished after it are the news
+     * @param  list<int>  $told  finished games an earlier comment already told
      */
-    public static function material(Tournament $tournament, CarbonImmutable $now, array $intro = [], ?int $since = null): string
+    public static function material(Tournament $tournament, CarbonImmutable $now, array $intro = [], ?int $since = null, array $told = []): string
     {
         $participants = TournamentParticipant::query()->where('tournament_id', $tournament->id)->get();
         $users = User::query()->whereIn('id', $participants->pluck('user_id')->filter())->get()->keyBy('id');
@@ -185,7 +192,23 @@ final class TournamentLive
                 .': '.((int) $game->ply === 0 ? 'noch kein Zug' : (int) $game->ply.' Züge gespielt').', am Zug: '.$name($toMove).'.';
         }
 
-        foreach ($finished->take(6) as $game) {
+        $wins = [];
+
+        foreach ($finished as $game) {
+            $result = (string) $game->result;
+            $winnerId = $result === '1-0' ? $game->white_id : ($result === '0-1' ? $game->black_id : null);
+
+            if ($winnerId !== null) {
+                $wins[$winnerId] = ($wins[$winnerId] ?? 0) + 1;
+            }
+        }
+
+        arsort($wins);
+        $lines[] = 'Siege bisher: '.($wins === [] ? 'noch keine.' : implode(', ', array_map(fn ($id, $count): string => $name((int) $id).' '.$count, array_keys($wins), $wins)).'.');
+        $fresh = $finished->reject(fn (BoardGame $game): bool => in_array((int) $game->id, $told, true));
+        $lines[] = $fresh->isEmpty() ? 'NEUE Ergebnisse seit dem letzten Einwurf: keine. Erzählt keine alten Ergebnisse noch einmal.' : 'NEUE Ergebnisse seit dem letzten Einwurf (nur diese als Neuigkeit erzählen, ältere nicht wiederholen):';
+
+        foreach ($fresh->take(6) as $game) {
             $result = (string) $game->result;
             $winner = match ($result) {
                 '1-0' => $name($game->white_id),
@@ -193,11 +216,6 @@ final class TournamentLive
                 default => null,
             };
             $lines[] = '- Fertig: '.$name($game->white_id).' gegen '.$name($game->black_id).': '.($winner !== null ? 'gewonnen hat '.$winner : ($result === '1/2-1/2' ? 'Remis' : 'Ergebnis offen')).'.';
-        }
-
-        if ($since !== null) {
-            $news = $finished->filter(fn (BoardGame $game): bool => $game->ended_at !== null && $game->ended_at->getTimestamp() > $since);
-            $lines[] = 'Neu seit dem letzten Einwurf: '.($news->isEmpty() ? 'keine Partie beendet.' : $news->count().' Partie(n) beendet, siehe oben.');
         }
 
         $movers = $active->countBy(fn (BoardGame $game): int => (int) ($game->turn === 'w' ? $game->white_id : $game->black_id))->sortDesc()->take(3);

@@ -569,7 +569,12 @@ final class SceneDirector
 
         // A block that could not be joined seamlessly (a reaction or the news came between): the programme runs on
         // with the next block, without the music gap.
-        if ($clip->isBlock() && $this->blocksFlowOn($clip, $at, false) && $this->spool->nextBlock($at) !== null) {
+        // Never into or out of a live tournament comment: it keeps its minute of music on both sides (user 2026-10-14: "jetzt
+        // fehlt der 1-Minuten-Abstand, alle kommen auf einmal hintereinander").
+        $next = $clip->isBlock() ? $this->spool->nextBlock($at) : null;
+
+        if ($clip->isBlock() && $this->blocksFlowOn($clip, $at, false) && $next !== null
+            && ! (TournamentLive::enabled() && (self::isTournamentLive($clip) || self::isTournamentLive($next)))) {
             $this->quietUntil = $now;
             $this->runPosition = 0;
 
