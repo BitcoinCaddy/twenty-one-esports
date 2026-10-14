@@ -229,14 +229,15 @@ new class extends Component {
                         @island(name: 'panel', skip: true)
                             @php($nowMs = (int) now()->getTimestampMs())
                             @php($viewer = auth()->user())
-                            {{-- A panel names the other player's clan: loaded for every face at once (lazy loading is off). --}}
-                            @php((new \Illuminate\Database\Eloquent\Collection($this->items->pluck('face')->filter()->unique('id')->values()->all()))->loadMissing('clanMember.clan'))
                             @placeholder
                                 <div class="dk-panel dk-rise" x-show="open && open.startsWith('item:')" x-cloak role="status" data-test="dock-panel-loading">
                                     <div class="flex h-[52px] items-center border-b border-hairline px-4 text-[13px] text-ink-2">{{ __('Loading…') }}</div>
                                     <div class="flex flex-col gap-3 p-4"><span class="sk h-10 rounded-md"></span><span class="sk h-36 rounded-md"></span><span class="sk h-11 rounded-md"></span></div>
                                 </div>
                             @endplaceholder
+                            {{-- A panel names the other player's clan: loaded for every face at once (lazy loading is off), after the
+                                 placeholder so a page whose panels are skipped does not pay for it. --}}
+                            @php((new \Illuminate\Database\Eloquent\Collection($this->items->pluck('face')->filter()->unique('id')->values()->all()))->loadMissing('clanMember.clan'))
                             @foreach ($this->items as $item)
                                 <x-match-dock.panel :item="$item" :now-ms="$nowMs" :viewer="$viewer" />
                             @endforeach
