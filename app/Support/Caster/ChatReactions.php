@@ -2,6 +2,7 @@
 
 namespace App\Support\Caster;
 
+use App\Jobs\ReactToChatMessage;
 use App\Models\CasterScript;
 use App\Models\ChatterProfile;
 use App\Support\Caster\Blocks\AutoPilot;
@@ -185,7 +186,12 @@ class ChatReactions
                 continue;
             }
 
-            if (TextModel::asChat(fn (): bool => $this->react($event, $now))) {
+            // Written on the `caster-chat` queue (ReactToChatMessage): the reads go on meanwhile. Inline where no
+            // worker takes it (the sync queue in tests, `chat.background` off).
+            if (config('tv.commentary.chat.background', true) === true && config('queue.default') !== 'sync') {
+                ReactToChatMessage::dispatch($event->toArray());
+                $queued++;
+            } elseif ($this->reactTo($event, $now)) {
                 $queued++;
             }
         }
@@ -279,6 +285,12 @@ class ChatReactions
     public static function speakableName(?string $name): ?string
     {
         return is_string($name) && preg_match('/^[\p{L}\p{N}][\p{L}\p{N} .\'-]{1,29}$/u', $name) === 1 && substr_count($name, ' ') <= 2 ? $name : null;
+    }
+
+    /** Writes and queues the reaction to one trusted chat message on the chat lane (TextModel::asChat()). */
+    public function reactTo(SignedEvent $event, CarbonImmutable $now): bool
+    {
+        return TextModel::asChat(fn (): bool => $this->react($event, $now));
     }
 
     private function react(SignedEvent $event, CarbonImmutable $now): bool

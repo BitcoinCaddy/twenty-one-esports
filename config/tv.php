@@ -1331,8 +1331,11 @@ return [
             'wishes_per_hour' => (int) env('TV_COMMENTARY_WISHES_PER_HOUR', 6),
             'wishes_history_repeat_minutes' => (int) env('TV_COMMENTARY_HISTORY_REPEAT_MINUTES', 60),
             'wishes_max_age_minutes' => 30,
-            // `caster:chat` runs every minute and reads the chat and zaps this often within it (a reaction is written sooner).
-            'poll_seconds' => 15,
+            // `caster:chat` runs every minute and reads the chat and zaps this often within it (one read of the eight relays
+            // takes about 3.5 s, measured 2026-10-14). The reactions are written on the `caster-chat` queue
+            // (ReactToChatMessage), so the reads never wait for one; `background` false writes them inline.
+            'poll_seconds' => (int) env('TV_COMMENTARY_CHAT_POLL_SECONDS', 5),
+            'background' => (bool) env('TV_COMMENTARY_CHAT_BACKGROUND', true),
             // The latest EINUNDZWANZIG podcast episodes as data for every chat reply (App\Support\Caster\PodcastFeed):
             // fetched at most once per `podcast_minutes`, the last good copy kept when the feed fails.
             'podcast_feed' => env('TV_COMMENTARY_PODCAST_FEED', 'https://anchor.fm/s/d8d3c38/podcast/rss'),

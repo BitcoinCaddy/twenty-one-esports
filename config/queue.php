@@ -73,6 +73,18 @@ return [
             'after_commit' => false,
         ],
 
+        // The live chat reactions (App\Jobs\ReactToChatMessage): up to five minutes per reaction on the workstation's
+        // model, so their own retry_after (330 s) above Horizon's supervisor-chat timeout (300 s); on `redis` (90 s) a
+        // reaction still being written would run a second time.
+        'redis-chat' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'caster-chat',
+            'retry_after' => 330,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

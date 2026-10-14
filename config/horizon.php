@@ -229,6 +229,21 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+        // The live chat reactions (App\Jobs\ReactToChatMessage), three at once so a burst is written side by side and
+        // `caster:chat` keeps reading the chat meanwhile. One try; job/supervisor timeout 300 s < redis-chat retry_after 330 s.
+        'supervisor-chat' => [
+            'connection' => 'redis-chat',
+            'queue' => ['caster-chat'],
+            'balance' => false,
+            'minProcesses' => 3,
+            'maxProcesses' => 3,
+            'maxTime' => 3600,
+            'maxJobs' => 1000,
+            'memory' => 256,
+            'tries' => 1,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [

@@ -98,7 +98,8 @@ it('counts an emoji sequence once', function () {
 });
 
 it('rejects a blocklisted word', function () {
-    expect(voiceGuard()->check('Satoshi_Fan schlägt Hal 3:1, was für ein Depp.', voiceGuardFacts(), 280, null))->toContain(VoiceGuard::BLOCKLIST);
+    expect(voiceGuard()->check('Satoshi_Fan schlägt Hal 3:1, was für ein Arschloch.', voiceGuardFacts(), 280, null))->not->toContain(VoiceGuard::BLOCKLIST);
+    expect(voiceGuard()->check('Satoshi_Fan schlägt Hal 3:1, was für ein Spast.', voiceGuardFacts(), 280, null))->toContain(VoiceGuard::BLOCKLIST);
 });
 
 it('rejects a fee mention', function () {

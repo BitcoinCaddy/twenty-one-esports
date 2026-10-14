@@ -485,7 +485,7 @@ class ShowScripts
             Shows::FRIEDHOF => 'Eine Trauerfeier für einen toten Coin: Geburt, kurzes Leben, Ende, mit Pathos und schwarzem Humor, Seitenhieben auf Shitcoins, Gier und Fiatgeld, und am Ende, warum nur Bitcoin lebt. Die Quelle nennt ihr einmal beiläufig.',
             Shows::JAHRESTAG => 'Erzählt die Ereignisse des Tages aus dem Material als Zeitreise mit „heute vor soundso vielen Jahren“, was es damals bedeutet hat und was heute davon übrig ist. Die Quelle nennt ihr einmal beiläufig.',
             Shows::MEETUPS => 'Geht die Termine im Material durch, mit Wochentag, Uhrzeit, Meetup und Stadt, und ladet die Hörer ein, hinzugehen. Nennt nur Städte und Meetups aus dem Material.',
-            default => 'Erzählt die Partie aus dem Material als Wiederholung: wer gegen wen, wie es losging, wo es kippte, wie es endete. Spieler nur mit ihren Namen aus dem Material, sportlich verspottet, nie als Person beleidigt.',
+            default => 'Erzählt die Partie aus dem Material als Wiederholung: wer gegen wen, wie es losging, wo es kippte, wie es endete. Spieler nur mit ihren Namen aus dem Material, schonungslos verspottet, mit Schimpfwörtern und Witzen unter der Gürtellinie.',
         };
 
         $speakers = $third === null

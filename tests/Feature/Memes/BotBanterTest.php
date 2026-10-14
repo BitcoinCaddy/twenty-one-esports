@@ -58,7 +58,7 @@ it('refuses a line that names a person, carries a handle, link or number, or ins
     'an npub' => ['Grüße an nostr:npub1abc', BotBanter::REFUSE_HANDLE],
     'a link' => ['Schau mal https://example.com an.', BotBanter::REFUSE_HANDLE],
     'a number' => ['Du hast 3 Punkte. Mehr nicht.', BotBanter::REFUSE_NUMBER],
-    'an insult' => ['Spielst wie ein Noob.', BotBanter::REFUSE_BLOCKLIST],
+    'a slur' => ['Spielst wie ein Spast.', BotBanter::REFUSE_BLOCKLIST],
     'empty' => ['  ', BotBanter::REFUSE_EMPTY],
 ]);
 
