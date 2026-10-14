@@ -273,7 +273,7 @@ it('writes the voice into a named pipe ahead of the clock without blocking', fun
 });
 
 it('mixes the voice at TV levels and leaves the commands as they were without it', function () {
-    config(['tv.commentary.mix.music_gain_db' => -14.0]);
+    config(['tv.commentary.mix.music_gain_db' => -14.0, 'tv.commentary.mix.voice_gain_db' => 3.0]);
     $ffmpeg = new FfmpegCommands('ffmpeg');
 
     $plain = $ffmpeg->scene('/hls/scene', 'run', '/music.txt', 35);
@@ -285,6 +285,8 @@ it('mixes the voice at TV levels and leaves the commands as they were without it
         ->and($ffmpeg->hls('/promo.mp4', '/hls/loop', 'run', '/music.txt'))->toContain('-c')
         ->and($mixed)->toContain('/voice.pcm')->toContain('[aout]')->toContain('aac')
         ->and($filter)->toContain('volume=-14.0dB')
+        // The voice lifted over the bed (radio feeling, 2026-10-14), before the sidechain key splits off.
+        ->and($filter)->toContain('c1=0.70710678*c0,volume=3.0dB,')
         ->and($filter)->toContain('sidechaincompress')
         ->and($filter)->toContain('alimiter=limit=0.891')
         ->and($loop)->toContain('-c:v')->not->toContain('-c');

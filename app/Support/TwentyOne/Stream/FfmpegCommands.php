@@ -166,7 +166,8 @@ final class FfmpegCommands
         $stereo = 'aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=stereo';
         $filter = sprintf('[1:a]volume=%.1FdB,%s[bed];', (float) ($mix['music_gain_db'] ?? -14), $stereo)
             .'[2:a]aresample=44100,asplit=2[feed][duckfeed];'
-            .sprintf('[feed]pan=stereo|c0=0.70710678*c0|c1=0.70710678*c0,%s,asplit=2[voice][key];', $stereo)
+            // `voice_gain_db` lifts the voice over a loud music bed (user 2026-10-14: the music as loud as the voice, radio feeling).
+            .sprintf('[feed]pan=stereo|c0=0.70710678*c0|c1=0.70710678*c0,volume=%.1FdB,%s,asplit=2[voice][key];', (float) ($mix['voice_gain_db'] ?? 0), $stereo)
             .'[duckfeed]pan=mono|c0=c1,aformat=sample_fmts=fltp:sample_rates=44100:channel_layouts=mono[newsduck];'
             .sprintf('[bed][key]sidechaincompress=threshold=%.3F:ratio=%d:attack=%d:release=%d[ducked];',
                 (float) ($duck['threshold'] ?? 0.02), (int) ($duck['ratio'] ?? 12), (int) ($duck['attack_ms'] ?? 20), (int) ($duck['release_ms'] ?? 600))

@@ -300,6 +300,8 @@ return [
 
         'mix' => [
             'music_gain_db' => (float) env('TV_COMMENTARY_MUSIC_GAIN_DB', -14),
+            // The voice lifted in the mix, so it stays on top of a music bed near its own level (radio feeling); the limiter catches the peaks.
+            'voice_gain_db' => (float) env('TV_COMMENTARY_VOICE_GAIN_DB', 0),
             'duck' => ['threshold' => 0.02, 'ratio' => 12, 'attack_ms' => 20, 'release_ms' => 600],
             'limit' => 0.891,
             'audio_kbps' => 128,
