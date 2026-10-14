@@ -432,6 +432,17 @@ return [
         // The stream (SceneDirector) plays a block whole, adds no stinger, joins the next block after `join_seconds`, and
         // lets a reaction cut in only at the next segment boundary, waiting at most `reaction_wait_seconds` (then at a
         // sentence end), and resumes the block from there. Below `starve_seconds` of ready audio a shorter block goes out.
+        // Live comments on a running organizer tournament (TournamentLive; user 2026-10-14, Blockli Cup #1): every
+        // `every_minutes` a short duet from the live data and the players' Nostr bios, behind the "breaking" jingle.
+        // `tournaments`: ids to comment on (empty: the running organizer tournament that started last).
+        'tournament_live' => [
+            'enabled' => (bool) env('TV_COMMENTARY_TOURNAMENT_LIVE', false),
+            'tournaments' => array_values(array_filter(array_map('intval', explode(',', (string) env('TV_COMMENTARY_TOURNAMENT_LIVE_IDS', ''))))),
+            'every_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MINUTES', 8),
+            'daily_cap' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_CAP', 80),
+            'max_age_minutes' => 20,
+            'model' => env('TV_COMMENTARY_TOURNAMENT_LIVE_MODEL'),
+        ],
         'blocks' => [
             'enabled' => (bool) env('TV_COMMENTARY_BLOCKS', false),
             'seconds' => ['min' => (float) env('TV_COMMENTARY_HAEPPCHEN_SECONDS_MIN', 180), 'max' => (float) env('TV_COMMENTARY_HAEPPCHEN_SECONDS_MAX', 360)],

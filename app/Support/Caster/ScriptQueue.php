@@ -21,6 +21,7 @@ use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\Programme\ShowScripts;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\Programme\TalkShowScripts;
+use App\Support\Caster\Programme\TournamentLive;
 use App\Support\Voice\VoiceHygiene;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -177,6 +178,8 @@ class ScriptQueue
         $written += $podcast || $liveOnly || ! $budget->opens(VoiceBudget::RUBRIC, $now) ? 0 : $this->fillPreview($now);
         $written += $podcast ? 0 : $this->fillRubric($now, $liveOnly);
         $written += $quiet || $podcast || $liveOnly ? 0 : ($budget->opens(VoiceBudget::RUBRIC, $now) ? $this->fillTeaser($now) : 0) + $this->fillSegments($now);
+        // Live comments on a running organizer tournament (TournamentLive), also in the live-only mode: real data only.
+        $written += $podcast ? 0 : app(TournamentLive::class)->fill($this, $now);
         $written += $this->fillStock($now);
         $written += $this->fillPodcast($now);
 

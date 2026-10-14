@@ -5,6 +5,7 @@ namespace App\Support\Caster\Blocks;
 use App\Models\CasterScript;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\SportWeather;
+use App\Support\Caster\Programme\TournamentLive;
 use Carbon\CarbonImmutable;
 use Closure;
 
@@ -123,7 +124,12 @@ final class BlockComposer
         return match ($kind) {
             CasterScript::BULLETIN => ['news'],
             // The news talk after a bulletin (P5, topic nachrichten_talk) is talk; every other rubric has its opener.
-            'rubric' => $topic === 'nachrichten_talk' ? ['talk', 'sweeper'] : ['rubric-'.$topic, 'sweeper'],
+            'rubric' => match ($topic) {
+                'nachrichten_talk' => ['talk', 'sweeper'],
+                // A live comment on a running tournament (TournamentLive) cuts in behind the Anchor's "breaking".
+                TournamentLive::TOPIC => ['breaking', 'sweeper'],
+                default => ['rubric-'.$topic, 'sweeper'],
+            },
             'teaser' => ['coming-up', 'sweeper'],
             // The announcement and back-announce of a podcast replay (P12): the Anchor's podcast opener follows on the server.
             CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO => [],
