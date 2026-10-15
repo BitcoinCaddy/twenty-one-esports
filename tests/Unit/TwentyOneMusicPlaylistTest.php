@@ -209,6 +209,38 @@ test('PlebRap plays in runs of three to five, each followed by exactly one other
     }
 });
 
+test('the four sources take turns one track each, every file of the longest source once, and the list does not open on its closing title', function () {
+    $vocals = ['/music/vocal/alpha__v1.m4a', '/music/vocal/beta__v1.m4a'];
+    $instrumentals = ['/music/instrumental/01__v1.m4a', '/music/instrumental/02__v1.m4a', '/music/instrumental/03__v1.m4a'];
+    $plebrap = ['/music/plebrap/fomo__v1.m4a'];
+    $wavlake = ['/music/wavlake/speedo__v1.m4a', '/music/wavlake/sparks__v1.m4a'];
+
+    foreach ([1, 2, 3, 4, 7] as $seed) {
+        $list = MusicPlaylist::rotate([$vocals, $instrumentals, $plebrap, $wavlake], new Randomizer(new Mt19937($seed)));
+        $pattern = implode('', array_map(function (string $file): string {
+            return match (true) {
+                str_contains($file, '/vocal/') => 'V',
+                str_contains($file, '/instrumental/') => 'I',
+                str_contains($file, '/plebrap/') => 'P',
+                default => 'W',
+            };
+        }, $list));
+
+        expect($pattern)->toStartWith('VIPW')
+            ->and(substr_count($pattern, 'I'))->toBe(3)
+            ->and(count(array_unique(array_filter($list, fn (string $file): bool => str_contains($file, '/instrumental/')))))->toBe(3)
+            ->and(MusicPlaylist::title($list[0]))->not->toBe(MusicPlaylist::title($list[array_key_last($list)]));
+
+        foreach (array_slice($list, 1) as $index => $file) {
+            expect(MusicPlaylist::title($file))->not->toBe(MusicPlaylist::title($list[$index]));
+        }
+    }
+
+    expect(MusicPlaylist::rotate([[], $instrumentals, []], new Randomizer(new Mt19937(1))))
+        ->toHaveCount(3)
+        ->and(MusicPlaylist::rotate([]))->toBe([]);
+});
+
 test('a PlebRap name with spaces, apostrophes, umlauts and parentheses is quoted for the concat demuxer', function () {
     $file = "/srv/music/plebrap/20 - Orange Pill 'o' Sophie - Too Bit to Fail (Grüße)__v1.m4a";
 

@@ -270,8 +270,9 @@ final class SceneDirector
 
     /**
      * The stream music's tracks within a stretch of the wall clock, read from the timeline the stream writes
-     * (MusicTimeline::tracks()), each marked vocal when it lies in the vocal or the PlebRap folder (the instrumentals
-     * have their own), and priority when it is PlebRap (user 2026-10-13: "absoluten Vorrang").
+     * (MusicTimeline::tracks()). A sung track (vocal folder, PlebRap, or Wavlake) is `vocal`, so a music
+     * break can cover it whole and the voice does not talk over it. Instrumentals are the beds. `priority`
+     * stays PlebRap, so a break still prefers that folder when one is inside the wait.
      *
      * @return Closure(float, float): list<array{file: string, start: float, end: float, vocal: bool, priority: bool}>
      */
@@ -280,11 +281,16 @@ final class SceneDirector
         $path = (string) config('twentyone.stream.music.timeline_file');
         $vocals = rtrim((string) config('twentyone.stream.music.dir'), '/');
         $plebrap = rtrim((string) config('twentyone.stream.music.plebrap_dir'), '/');
+        $wavlake = rtrim((string) config('twentyone.stream.music.wavlake_dir'), '/');
 
-        return fn (float $from, float $to): array => array_map(function (array $track) use ($vocals, $plebrap): array {
-            $priority = $plebrap !== '' && dirname($track['file']) === $plebrap;
+        return fn (float $from, float $to): array => array_map(function (array $track) use ($vocals, $plebrap, $wavlake): array {
+            $dir = dirname($track['file']);
+            $priority = $plebrap !== '' && $dir === $plebrap;
+            $sung = $priority
+                || ($vocals !== '' && $dir === $vocals)
+                || ($wavlake !== '' && $dir === $wavlake);
 
-            return [...$track, 'vocal' => $priority || ($vocals !== '' && dirname($track['file']) === $vocals), 'priority' => $priority];
+            return [...$track, 'vocal' => $sung, 'priority' => $priority];
         }, $path === '' ? [] : MusicTimeline::tracks($path, $from, $to));
     }
 

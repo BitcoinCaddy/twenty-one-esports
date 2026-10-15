@@ -237,10 +237,17 @@ it('reads the tracks of the timeline file the stream writes, as they sound on th
         ['file' => "/music/plebrap/01 - Pleb - It's (Grüße)__v1.m4a", 'start' => 1350.0, 'end' => 1530.0],
     ]);
 
-    config(['twentyone.stream.music.timeline_file' => $path, 'twentyone.stream.music.dir' => '/music', 'twentyone.stream.music.plebrap_dir' => '/music/plebrap']);
+    config(['twentyone.stream.music.timeline_file' => $path, 'twentyone.stream.music.dir' => '/music', 'twentyone.stream.music.plebrap_dir' => '/music/plebrap', 'twentyone.stream.music.wavlake_dir' => '/music/wavlake']);
     $tracks = (SceneDirector::musicTracksFromConfig())(1150.0, 1400.0);
     expect(array_column($tracks, 'vocal'))->toBe([true, false, true])
         ->and(array_column($tracks, 'priority'))->toBe([false, false, true]);
+
+    file_put_contents($path, json_encode(['fingerprint' => 'x', 'anchor' => 1000.0, 'entries' => [
+        ['/music/wavlake/speedo__v1.m4a', 200.0, 0.0, null],
+    ], 'durations' => []]));
+    $wavlake = (SceneDirector::musicTracksFromConfig())(1000.0, 1100.0);
+    expect(array_column($wavlake, 'vocal'))->toBe([true])
+        ->and(array_column($wavlake, 'priority'))->toBe([false]);
 
     unlink($path);
 });

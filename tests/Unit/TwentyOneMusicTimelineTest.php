@@ -100,6 +100,35 @@ test('with PlebRap files the timeline plays them in runs of three to five with o
         ->and($timeline->from($this->vocals, $this->instrumentals, 3, 1020.0, 2, new Randomizer, $plebrap, [3, 5])['restarted'])->toBeFalse();
 });
 
+test('four sources take turns and a new source starts the timeline again', function () {
+    mkdir($this->dir.'/plebrap');
+    mkdir($this->dir.'/wavlake');
+    $plebrap = [];
+    $wavlake = [];
+
+    foreach (range(1, 3) as $number) {
+        touch($plebrap[] = "{$this->dir}/plebrap/pleb-{$number}__v1.m4a");
+        touch($wavlake[] = "{$this->dir}/wavlake/wave-{$number}__v1.m4a");
+    }
+
+    $timeline = ($this->timeline)();
+    $plain = $timeline->from($this->vocals, $this->instrumentals, 3, 1000.0, 1);
+    $music = $timeline->from([], [], 1, 1010.0, 1, new Randomizer(new Mt19937(4)), [], [3, 5], [$this->vocals, $this->instrumentals, $plebrap, $wavlake]);
+    $pattern = implode('', array_map(function (string $file): string {
+        return match (true) {
+            str_contains($file, '/plebrap/') => 'P',
+            str_contains($file, '/wavlake/') => 'W',
+            str_contains($file, '/instrumental/') => 'I',
+            default => 'V',
+        };
+    }, array_slice($music['files'], 0, 8)));
+
+    expect($plain['restarted'])->toBeTrue()
+        ->and($music['restarted'])->toBeTrue()
+        ->and($pattern)->toBe('VIPWVIPW')
+        ->and($timeline->from([], [], 1, 1020.0, 1, new Randomizer, [], [3, 5], [$this->vocals, $this->instrumentals, $plebrap, $wavlake])['restarted'])->toBeFalse();
+});
+
 test('added music, a corrupt file or a stream that was off for longer than the timeline start a new timeline', function () {
     $timeline = ($this->timeline)();
     $timeline->from($this->vocals, $this->instrumentals, 3, 1000.0, 1);

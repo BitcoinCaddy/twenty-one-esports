@@ -209,19 +209,19 @@ return [
         | list of about `list_hours`, `list_passes` times over: ffmpeg's
         | -stream_loop cannot loop a list with in/outpoints (MusicPlaylist::ffconcat()),
         | and an encoder whose segments lose the audio track is restarted
-        | (TwentyOneStreamCommand, AUDIO_LOSS_SEGMENTS). Instrumentals, named the
-        | same way in `instrumental_dir`, play `instrumentals_per_vocal` at a time
-        | between two vocal tracks.
+        | (TwentyOneStreamCommand, AUDIO_LOSS_SEGMENTS). The four sources take
+        | turns, one track each: vocals, instrumentals, PlebRap, Wavlake Top 40
+        | (MusicPlaylist::rotate()). An empty source is skipped.
         */
         'music' => [
             'dir' => env('TWENTYONE_STREAM_MUSIC_DIR') ?: storage_path('app/stream/music'),
             'instrumental_dir' => env('TWENTYONE_STREAM_INSTRUMENTAL_DIR') ?: storage_path('app/stream/music/instrumental'),
-            // How many instrumentals play between two vocal tracks.
+            // Kept for the older interleave path. The live rotation does not read it.
             'instrumentals_per_vocal' => (int) env('TWENTYONE_STREAM_INSTRUMENTALS_PER_VOCAL', 6),
-            // The priority music (user 2026-10-13: "Die Musik aus PlebRap hat absoluten Vorrang … PlebRap 3 bis 5 Lieder,
-            // dann nur einmal eins der anderen"): with files here, `priority_run` (min, max) of them in a row, then exactly
-            // one of the vocals and instrumentals above, again and again (MusicPlaylist::priorityRuns()). Empty: as before.
             'plebrap_dir' => env('TWENTYONE_STREAM_PLEBRAP_DIR') ?: storage_path('app/stream/music/plebrap'),
+            // Wavlake Top 40 (user 2026-10-15). A song already in another source is not copied here.
+            'wavlake_dir' => env('TWENTYONE_STREAM_WAVLAKE_DIR') ?: storage_path('app/stream/music/wavlake'),
+            // Unused by the live rotation. Left so an old env line does not error.
             'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
             'list_hours' => 12,
             // How many times over the list is written (12 h x 6 = 3 days before an encoder would run out of music).

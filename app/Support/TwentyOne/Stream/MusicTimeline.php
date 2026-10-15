@@ -68,17 +68,23 @@ final class MusicTimeline
      * With `$priority` files (PlebRap, user 2026-10-13) a set is MusicPlaylist::priorityRuns() instead: every priority
      * file once in runs of `$run` min to max, one of the vocals and instrumentals after each run.
      *
+     * With `$sources` (user 2026-10-15: vocal, instrumental, PlebRap, Wavlake, one each in turn) a set is
+     * MusicPlaylist::rotate() and the priority run is not used. Empty source lists are left out.
+     *
      * @param  list<string>  $vocals
      * @param  list<string>  $instrumentals
      * @param  list<string>  $priority
      * @param  array{0: int, 1: int}  $run
+     * @param  list<list<string>>  $sources
      * @return array{files: list<string>, inpoint: float, restarted: bool, points: list<array{in: float, out: float|null}>}
      */
-    public function from(array $vocals, array $instrumentals, int $perVocal, float $now, float $hours, Randomizer $random = new Randomizer, array $priority = [], array $run = [3, 5]): array
+    public function from(array $vocals, array $instrumentals, int $perVocal, float $now, float $hours, Randomizer $random = new Randomizer, array $priority = [], array $run = [3, 5], array $sources = []): array
     {
+        $sources = array_values(array_filter($sources, fn (array $files): bool => $files !== []));
         $state = $this->read();
-        $fingerprint = self::fingerprint($vocals, $instrumentals, $perVocal, $priority, $run);
-        $durations = $this->durations([...$priority, ...$vocals, ...$instrumentals], $state['durations'] ?? []);
+        $fingerprint = self::fingerprint($vocals, $instrumentals, $perVocal, $priority, $run, $sources);
+        $pool = $sources === [] ? [...$priority, ...$vocals, ...$instrumentals] : array_merge(...$sources);
+        $durations = $this->durations($pool, $state['durations'] ?? []);
         $restarted = ($state['fingerprint'] ?? null) !== $fingerprint || ($state['entries'] ?? []) === [];
 
         /** @var list<array{0: string, 1: float, 2: float, 3: float|null}> $entries */
@@ -100,7 +106,7 @@ final class MusicTimeline
         while ($end < $now + 3600 * $hours) {
             $last = $entries === [] ? null : MusicPlaylist::title($entries[count($entries) - 1][0]);
 
-            foreach ($this->set($vocals, $instrumentals, $perVocal, $last, $random, $priority, $run) as $file) {
+            foreach ($this->set($vocals, $instrumentals, $perVocal, $last, $random, $priority, $run, $sources) as $file) {
                 ['seconds' => $seconds, 'lead' => $lead, 'trimmed' => $trimmed] = $durations[$file];
                 $entries[] = [$file, $seconds, $lead, $trimmed ? round($lead + $seconds, 3) : null];
                 $end += $seconds;
@@ -170,18 +176,21 @@ final class MusicTimeline
      * @param  list<string>  $instrumentals
      * @param  list<string>  $priority
      * @param  array{0: int, 1: int}  $run
+     * @param  list<list<string>>  $sources
      * @return list<string>
      */
-    private function set(array $vocals, array $instrumentals, int $perVocal, ?string $last, Randomizer $random, array $priority = [], array $run = [3, 5]): array
+    private function set(array $vocals, array $instrumentals, int $perVocal, ?string $last, Randomizer $random, array $priority = [], array $run = [3, 5], array $sources = []): array
     {
         $set = [];
 
         for ($attempt = 0; $attempt < self::ATTEMPTS; $attempt++) {
-            $set = $priority !== []
-                ? MusicPlaylist::priorityRuns($priority, [...$vocals, ...$instrumentals], (int) $run[0], (int) $run[1], $random)
-                : MusicPlaylist::interleave(MusicPlaylist::order($vocals, 1, $random), $instrumentals, $random, $perVocal);
+            $set = $sources !== []
+                ? MusicPlaylist::rotate($sources, $random)
+                : ($priority !== []
+                    ? MusicPlaylist::priorityRuns($priority, [...$vocals, ...$instrumentals], (int) $run[0], (int) $run[1], $random)
+                    : MusicPlaylist::interleave(MusicPlaylist::order($vocals, 1, $random), $instrumentals, $random, $perVocal));
 
-            if ($last === null || MusicPlaylist::title($set[0]) !== $last) {
+            if ($set !== [] && ($last === null || MusicPlaylist::title($set[0]) !== $last)) {
                 return $set;
             }
         }
@@ -257,12 +266,23 @@ final class MusicTimeline
      * @param  list<string>  $instrumentals
      * @param  list<string>  $priority
      * @param  array{0: int, 1: int}  $run
+     * @param  list<list<string>>  $sources
      */
-    private static function fingerprint(array $vocals, array $instrumentals, int $perVocal, array $priority = [], array $run = [3, 5]): string
+    private static function fingerprint(array $vocals, array $instrumentals, int $perVocal, array $priority = [], array $run = [3, 5], array $sources = []): string
     {
         sort($vocals);
         sort($instrumentals);
         sort($priority);
+
+        if ($sources !== []) {
+            $named = $sources;
+
+            foreach ($named as &$files) {
+                sort($files);
+            }
+
+            return sha1(json_encode(['rotate', $named], JSON_THROW_ON_ERROR));
+        }
 
         // Without priority music the fingerprint stays what it was, so a deploy does not restart a running timeline.
         return sha1(json_encode($priority === [] ? [$vocals, $instrumentals, $perVocal] : [$vocals, $instrumentals, $perVocal, $priority, $run], JSON_THROW_ON_ERROR));

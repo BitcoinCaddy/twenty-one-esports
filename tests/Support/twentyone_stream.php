@@ -42,6 +42,8 @@ function twentyOneStreamUp(object $test): void
         'twentyone.stream.scene.work_dir' => $test->dir.'/work',
         'twentyone.stream.music.dir' => $test->dir.'/music',
         'twentyone.stream.music.instrumental_dir' => $test->dir.'/music/instrumental',
+        'twentyone.stream.music.plebrap_dir' => $test->dir.'/music/plebrap',
+        'twentyone.stream.music.wavlake_dir' => $test->dir.'/music/wavlake',
         // A socket directory of its own per test (parallel workers), short enough for sun_path (107 bytes);
         // no ACL, as there is no `forge` user here.
         'twentyone.stream.viewers.dir' => sys_get_temp_dir().'/tos-'.bin2hex(random_bytes(6)),

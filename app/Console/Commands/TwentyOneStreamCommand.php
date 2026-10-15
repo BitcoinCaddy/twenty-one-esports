@@ -1117,21 +1117,21 @@ class TwentyOneStreamCommand extends Command
     private function writeMusicList(): string
     {
         $ffprobe = (string) config('twentyone.stream.ffprobe');
-        $run = array_values((array) config('twentyone.stream.music.priority_run', [3, 5]));
         $timeline = new MusicTimeline(
             (string) config('twentyone.stream.music.timeline_file'),
             fn (string $file): ?array => $this->probeTrack($ffprobe, $file),
             self::ASSUMED_TRACK_SECONDS,
         );
         $music = $timeline->from(
-            $this->musicFiles(),
-            $this->musicFiles((string) config('twentyone.stream.music.instrumental_dir')),
-            max(1, (int) config('twentyone.stream.music.instrumentals_per_vocal', 3)),
+            [],
+            [],
+            1,
             microtime(true),
             (float) config('twentyone.stream.music.list_hours', 12),
             new Randomizer,
-            $this->musicFiles((string) config('twentyone.stream.music.plebrap_dir')),
-            [(int) ($run[0] ?? 3), (int) ($run[1] ?? 5)],
+            [],
+            [3, 5],
+            $this->musicSources(),
         );
         $path = rtrim((string) config('twentyone.stream.scene.work_dir'), '/').'/music.ffconcat';
         File::ensureDirectoryExists(dirname($path));
@@ -1245,9 +1245,24 @@ class TwentyOneStreamCommand extends Command
             return [];
         }
 
-        $files = File::glob(rtrim($dir, '/').'/*__v*.m4a');
+        $files = File::glob(rtrim($dir, '/').'/*__v*.m4a') ?: [];
 
         return array_values(array_filter($files, fn (string $file): bool => MusicPlaylist::isSafePath($file)));
+    }
+
+    /**
+     * The four music sources, in the order they take turns (user 2026-10-15). An empty folder is left out.
+     *
+     * @return list<list<string>>
+     */
+    private function musicSources(): array
+    {
+        return array_values(array_filter([
+            $this->musicFiles(),
+            $this->musicFiles((string) config('twentyone.stream.music.instrumental_dir')),
+            $this->musicFiles((string) config('twentyone.stream.music.plebrap_dir')),
+            $this->musicFiles((string) config('twentyone.stream.music.wavlake_dir')),
+        ], fn (array $files): bool => $files !== []));
     }
 
     /**
@@ -1277,9 +1292,13 @@ class TwentyOneStreamCommand extends Command
 
         // Both modes play the music; the scene mode can start at any second.
         try {
-            MusicPlaylist::order($this->musicFiles(), 1);
+            $sources = $this->musicSources();
+
+            if ($sources === [] || MusicPlaylist::rotate($sources) === []) {
+                throw new InvalidArgumentException('No music sources.');
+            }
         } catch (InvalidArgumentException) {
-            return 'No usable music in '.config('twentyone.stream.music.dir').' (`<title>__v<n>.m4a`, at least two titles, none with more than half the files).';
+            return 'No usable music in the vocal, instrumental, PlebRap or Wavlake folders (`<title>__v<n>.m4a`, and a single source needs at least two titles).';
         }
 
         $rsvg = (string) config('twentyone.stream.scene.rsvg_convert');

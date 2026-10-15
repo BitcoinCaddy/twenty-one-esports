@@ -181,6 +181,116 @@ final class MusicPlaylist
     }
 
     /**
+     * One track from each source in turn (user 2026-10-15: vocal, instrumental, PlebRap, Wavlake Top 40,
+     * then the same again). Empty sources are left out. Each source is a shuffled bag that refills when
+     * empty, so its files all come round before one of them repeats; a shorter source therefore repeats
+     * sooner, and the four sources share the slots equally. A slot no file fits (its title would sit
+     * next to the same title) stays empty rather than failing. One source alone is `order()`.
+     *
+     * The list wraps like `order()`: its last title differs from its first where a swap can do that.
+     *
+     * @param  list<list<string>>  $sources  in rotation order
+     * @return list<string>
+     */
+    public static function rotate(array $sources, Randomizer $random = new Randomizer): array
+    {
+        $sources = array_values(array_filter($sources, fn (array $files): bool => $files !== []));
+
+        if ($sources === []) {
+            return [];
+        }
+
+        if (count($sources) === 1) {
+            return self::order($sources[0], 1, $random);
+        }
+
+        $rounds = max(array_map('count', $sources));
+        $bags = array_map(fn (array $files): array => [], $sources);
+        $list = [];
+        $previous = null;
+
+        for ($round = 0; $round < $rounds; $round++) {
+            foreach ($sources as $index => $files) {
+                $pick = self::draw($bags[$index], $files, $previous, $random);
+
+                if ($pick === null) {
+                    continue;
+                }
+
+                $list[] = $pick;
+                $previous = self::title($pick);
+            }
+        }
+
+        return self::unwrap($list);
+    }
+
+    /**
+     * The next file of a source whose title is not `$avoid`. The bag refills from a fresh shuffle
+     * when it is empty, and once more when everything left would repeat the title; then the slot
+     * stays empty and the bag is left for the next round.
+     *
+     * @param  list<string>  $bag
+     * @param  list<string>  $files
+     */
+    private static function draw(array &$bag, array $files, ?string $avoid, Randomizer $random): ?string
+    {
+        for ($refill = 0; $refill < 2; $refill++) {
+            if ($bag === []) {
+                $bag = $random->shuffleArray($files);
+            }
+
+            foreach ($bag as $key => $file) {
+                if ($avoid === null || self::title($file) !== $avoid) {
+                    unset($bag[$key]);
+                    $bag = array_values($bag);
+
+                    return $file;
+                }
+            }
+
+            $bag = [];
+        }
+
+        return null;
+    }
+
+    /**
+     * Where the list would open with the title it closes on, swap the last file with an earlier
+     * one that fits both its new neighbours. Leaves the list when no swap does.
+     *
+     * @param  list<string>  $list
+     * @return list<string>
+     */
+    private static function unwrap(array $list): array
+    {
+        $last = count($list) - 1;
+
+        if ($last < 2 || self::title($list[0]) !== self::title($list[$last])) {
+            return $list;
+        }
+
+        $opening = self::title($list[0]);
+        $beforeEnd = self::title($list[$last - 1]);
+
+        for ($index = 1; $index < $last; $index++) {
+            $title = self::title($list[$index]);
+            $prev = self::title($list[$index - 1]);
+            $next = self::title($list[$index + 1]);
+
+            if ($title === $beforeEnd || $title === $opening || $opening === $prev || $opening === $next) {
+                continue;
+            }
+
+            [$list[$index], $list[$last]] = [$list[$last], $list[$index]];
+
+            return $list;
+        }
+
+        return $list;
+    }
+
+    /**
      * A pass over the priority music with the rest in between (user 2026-10-13: "PlebRap 3 bis 5 Lieder, dann nur
      * einmal eins der anderen, dann wieder PlebRap mit 3 bis 5 Liedern"): every priority file once in a random order
      * (none again before all played), cut into runs of `$min` to `$max`, each run followed by exactly one file of
