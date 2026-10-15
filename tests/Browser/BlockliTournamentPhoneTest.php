@@ -140,3 +140,86 @@ test('a tournament Blockli board is as large on a phone as a casual one, its ban
     'phone 360' => [360, 740],
     'iPhone SE in Safari' => [375, 553],
 ]);
+
+/** A running single-elimination Blockli cup of two, and its one active game. */
+function phoneCupGame(string $name): BoardGame
+{
+    $tournament = Tournament::factory()->create([
+        'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::SingleElimination, 'name' => $name,
+        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
+        'capacity' => 2, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running, 'slug' => 'blockli-panel-cup',
+    ]);
+    foreach (['Anna Panel', 'Bert Panel'] as $index => $player) {
+        $user = User::factory()->create();
+        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => $player, 'rating' => 1500 - $index, 'members' => [$user->id]]);
+    }
+    app(TournamentBrackets::class)->generate($tournament, str_repeat('ef', 32));
+    app(TournamentRunner::class)->sync($tournament);
+
+    return BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Active)->sole();
+}
+
+test('a tap on the banner line or the header chip opens the whole banner over the page, and a tap anywhere else folds it without touching the board', function (int $width, int $height) {
+    // DerCaddy, 2026-10-15: "Wäre es möglich, dass sich das Banner mit Klick darauf vergrößert? Und sobald man wieder woanders klickt, wird es wieder klein."
+    $game = phoneCupGame('Blockli Phone Cup with a rather long name that never fits one line');
+    $page = visit(BrowserLogin::url($game->white))->on()->mobile()->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $page->setViewportSize($width, $height);
+    $page->goto(ComputeUrl::from(route('board.show', $game, false)));
+    BrowserWait::until($page, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+    BrowserWait::until($page, '() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity)', 5_000);
+    $measure = <<<'JS'
+        () => {
+            const box = (sel) => { const el = document.querySelector(sel); if (!el || !el.checkVisibility()) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height) }; };
+            const name = document.querySelector('[data-test=banner-sheet-name]');
+            return {
+                board: box('[data-test=board]'), panel: box('[data-test=banner-sheet]'), shade: box('[data-test=banner-sheet-shade]'), header: box('.shell-header'),
+                name: name?.checkVisibility() ? name.textContent : null, nameWhole: !!name && name.scrollWidth <= name.clientWidth,
+                link: box('[data-test=banner-sheet-link]'), expanded: document.querySelector('[data-test=tournament-banner-row]').getAttribute('aria-expanded'),
+                focus: document.activeElement?.dataset.test ?? null, ply: Alpine.$data(document.querySelector('[data-test=board-game]')).state.ply,
+                overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            };
+        }
+        JS;
+    $closed = $page->evaluate($measure);
+    $page->locator('[data-test=tournament-banner-row]')->click();
+    BrowserWait::until($page, '() => !!document.querySelector("[data-test=banner-sheet]")?.checkVisibility()', 3_000);
+    $open = $page->evaluate($measure);
+    // A tap on the board below the panel: the shade takes it, the panel folds, no move is made and no block shown.
+    $page->locator('[data-test=banner-sheet-shade]')->click(['position' => ['x' => (int) (($open['board']['left'] + $open['board']['right']) / 2), 'y' => $open['board']['bottom'] - 40]]);
+    BrowserWait::until($page, '() => !document.querySelector("[data-test=banner-sheet]")?.checkVisibility()', 3_000);
+    $folded = $page->evaluate($measure);
+    $preview = $page->evaluate('() => Alpine.$data(document.querySelector("[data-test=board-game]")).preview');
+    // Scrolled on, the header's chip opens the same panel; Escape folds it and hands the focus back to the chip.
+    $page->evaluate('() => window.scrollTo(0, document.documentElement.scrollHeight)');
+    BrowserWait::until($page, '() => document.querySelector("[data-test=shell-tournament]")?.checkVisibility()', 5_000);
+    $page->locator('[data-test=shell-tournament]')->click();
+    BrowserWait::until($page, '() => !!document.querySelector("[data-test=banner-sheet]")?.checkVisibility()', 3_000);
+    $fromChip = $page->evaluate($measure);
+    $page->locator('[data-test=banner-sheet-close]')->press('Escape');
+    BrowserWait::until($page, '() => !document.querySelector("[data-test=banner-sheet]")?.checkVisibility()', 3_000);
+    $back = $page->evaluate('() => document.activeElement?.dataset.test ?? null');
+    fwrite(STDERR, PHP_EOL."banner panel {$width}x{$height} ".json_encode(compact('closed', 'open', 'folded', 'fromChip', 'back')).PHP_EOL);
+
+    expect($closed['panel'])->toBeNull()
+        ->and($open['panel'])->not->toBeNull()
+        ->and($open['name'])->toBe('Blockli Phone Cup with a rather long name that never fits one line')
+        ->and($open['nameWhole'])->toBeTrue('the whole name, wrapped, nothing cut')
+        ->and($open['panel']['top'])->toBeGreaterThanOrEqual($open['header']['bottom'], 'under the header')
+        ->and($open['panel']['bottom'])->toBeLessThanOrEqual($height)
+        ->and($open['link']['h'])->toBeGreaterThanOrEqual(44, 'the tournament page one tap away')
+        ->and($open['expanded'])->toBe('true')
+        ->and($open['focus'])->toBe('banner-sheet-close')
+        ->and($open['board'])->toBe($closed['board'], 'the board neither moves nor shrinks')
+        ->and($folded['panel'])->toBeNull()
+        ->and($folded['expanded'])->toBe('false')
+        ->and($folded['ply'])->toBe($closed['ply'], 'the folding tap made no move')
+        ->and($preview)->toBeNull('and showed no block')
+        ->and($fromChip['panel'])->not->toBeNull()
+        ->and($back)->toBe('shell-tournament')
+        ->and($open['overflow'])->toBeLessThanOrEqual(0)
+        ->and($page->evaluate('() => window.__errors'))->toBe([]);
+})->with([
+    'phone 390' => [390, 844],
+    'phone 320' => [320, 640],
+]);
