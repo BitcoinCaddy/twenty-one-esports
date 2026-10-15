@@ -2,6 +2,7 @@
 
 use App\Support\TwentyOne\Stream\MusicCredits;
 use App\Support\TwentyOne\Stream\NowPlaying;
+use App\Support\TwentyOne\Stream\RotationKit;
 use App\Support\TwentyOne\Stream\SceneRenderer;
 use App\Support\TwentyOne\Stream\StreamImages;
 use Illuminate\Support\Facades\File;
@@ -55,32 +56,73 @@ test('the card carries the artist, the cached avatar and the drawn code; a track
         ->and($playing->at(microtime(true)))->toBeNull();
 });
 
-test('the card stands top right under the viewer badge, moves where a slide holds something there, compact on the tournament TV, and wraps a long name', function () {
+test('every slide carries the column at x 1040 to 1280: the music with a card, the league without one, the viewer count below; the lower third ends before it', function () {
     $card = ['artist' => 'DJ Bitcoin', 'avatar' => null, 'qr' => (string) file_get_contents(MusicCredits::qrFile(MusicCredits::HOUSE_LUD16, 'lud16')), 'kind' => 'lud16'];
     $renderer = SceneRenderer::fromConfig();
-    $scene = ['voice_caption' => str_repeat('Markus hier, der Cup läuft. ', 6)];
-    // An empty slide of our own: the card and the lower third go in before its </svg>.
+    $scene = ['voice_caption' => str_repeat('Markus hier, der Cup läuft. ', 6), 'viewers' => 1234];
+    // An empty slide of our own: the lower third and the column go in before its </svg>.
     $dir = storage_path('framework/testing/now-playing-views');
     File::ensureDirectoryExists($dir);
     File::put($dir.'/blank.blade.php', '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"></svg>');
     View::addNamespace('np-test', $dir);
 
-    $svg = $renderer->svg([...$scene, 'now_playing' => $card], 'np-test::blank');
-    // Top right under the viewer badge: the lower third below keeps its whole width.
-    expect($svg)->toContain('data-unit="now-playing" data-box="816 112 400 96"')
+    $with = $renderer->svg([...$scene, 'now_playing' => $card], 'np-test::blank');
+    $without = $renderer->svg($scene, 'np-test::blank');
+
+    expect($with)->toContain('data-unit="now-playing-column" data-box="1040 0 1280 720"')
         ->toContain('JETZT LÄUFT')->toContain('DJ Bitcoin')->toContain('Zap den Artist')
-        ->toContain('width="1152" height="109"')
-        ->and($renderer->svg($scene, 'np-test::blank'))->not->toContain('now-playing')
-        ->and(SceneRenderer::nowPlayingAt('stream.rotation.p1-pong'))->toBe([416, 72, 'card'])
-        ->and(SceneRenderer::nowPlayingAt('stream.rotation.tv3-standings'))->toBe([1040, 112, 'compact'])
-        ->and(SceneRenderer::nowPlayingAt('stream.rotation.a2-gallery'))->toBe([816, 112, 'card']);
+        ->toContain('1,234')->toContain('watching')->toContain('einundzwanzig.space')
+        // Without a card the same column holds the league and the site's code, never an empty box.
+        ->and($without)->toContain('data-unit="now-playing-column" data-box="1040 0 1280 720"')
+        ->toContain('data-unit="now-playing-league"')->toContain('Scan und spiel mit')->toContain('1,234')
+        ->not->toContain('JETZT LÄUFT')
+        ->and(substr_count($without, 'width="208" height="208" fill="#FFFFFF"'))->toBe(1)
+        // No count, no viewer row.
+        ->and($renderer->svg([], 'np-test::blank'))->toContain('now-playing-column')->not->toContain('watching');
 
-    // Where the card stands at the lower third's height (d3, above the footers), the lower third ends beside it.
-    $dir = storage_path('framework/testing/now-playing-views');
-    File::put($dir.'/d3-invite.blade.php', '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"></svg>');
-    expect(SceneRenderer::nowPlayingAt('stream.rotation.d3-invite'))->toBe([816, 512, 'card']);
+    // The lower third runs from x 64 and ends at x 1016, 24 px before the column.
+    preg_match('/data-unit="voice-caption"><rect x="(\d+)" y="495" width="(\d+)"/', $with, $m);
+    expect((int) $m[1] + (int) $m[2])->toBe(1016)
+        // The column comes last, over whatever the slide drew.
+        ->and(strrpos($with, 'now-playing-column'))->toBeGreaterThan(strrpos($with, 'voice-caption'));
+});
 
-    // A long name wraps to two lines instead of running under the code.
-    $long = $renderer->svg(['now_playing' => [...$card, 'artist' => 'Under The Mulga Groove']], 'np-test::blank');
-    expect($long)->toContain('>Under The Mulga<')->toContain('>Groove<');
+test('the column is the artist\'s stage: a long name in two whole lines as its largest text, the title only when known', function () {
+    $card = ['artist' => 'DJ Bitcoin', 'title' => null, 'avatar' => null, 'qr' => (string) file_get_contents(MusicCredits::qrFile(MusicCredits::HOUSE_LUD16, 'lud16')), 'kind' => 'lud16'];
+    $renderer = SceneRenderer::fromConfig();
+
+    foreach (['Under The Mulga Groove', 'Yellow Velvet Milk Club', 'Bitcoin Jesus Rapper Collective', 'El Presidento Ben'] as $artist) {
+        $svg = $renderer->svg(['stats' => [], 'viewers' => 1234, 'now_playing' => [...$card, 'artist' => $artist, 'title' => 'Proof of Work']], 'stream.rotation.a4-join');
+        preg_match_all('/data-unit="now-playing-artist-\d" data-box="[^"]+" x="([\d.]+)" y="[\d.]+" font-family="([^"]+)" font-weight="800" font-size="([\d.]+)" fill="#FFFFFF" text-anchor="middle">([^<]+)</', $svg, $m, PREG_SET_ORDER);
+
+        expect(count($m))->toBeGreaterThanOrEqual(1, $artist)->toBeLessThanOrEqual(2)
+            ->and(implode(' ', array_map(fn (array $line): string => $line[4], $m)))->toBe($artist)
+            ->and($svg)->toContain('>Proof of Work<');
+        foreach ($m as $line) {
+            // Centred on x 1162, within the 200 px of text, and larger than every other text of the column (11 to 15 px).
+            expect(RotationKit::width($line[4], $line[2], (float) $line[3]) * 1.04)->toBeLessThanOrEqual(200.0, $line[4])
+                ->and((float) $line[1])->toBe(1162.0)
+                ->and((float) $line[3])->toBeGreaterThan(15.0);
+        }
+    }
+
+    // A credit without a title (the house artist): no title line, never a placeholder.
+    expect($renderer->svg(['stats' => [], 'now_playing' => $card], 'stream.rotation.a4-join'))->not->toContain('now-playing-title')
+        // No cached picture: the artist's initials in the ring.
+        ->toContain('data-unit="now-playing-initials"')->toContain('>DB<');
+});
+
+test('the column is opaque on a real slide: nothing of the slide shows in x 1040 to 1280', function () {
+    $png = SceneRenderer::fromConfig()->png(['stats' => [], 'viewers' => 7], 'stream.rotation.a4-join');
+    $image = imagecreatefromstring($png);
+
+    // Above y 112 only the calm ground (the players' LIVE badge sits there): every pixel right of the orange edge is #121215.
+    $other = 0;
+    for ($x = 1046; $x < 1280; $x += 3) {
+        for ($y = 0; $y < 112; $y += 3) {
+            $other += imagecolorat($image, $x, $y) === 0x121215 ? 0 : 1;
+        }
+    }
+    expect($other)->toBe(0)
+        ->and(imagecolorat($image, 1041, 400))->toBe(0xF7931A);
 });

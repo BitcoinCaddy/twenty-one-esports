@@ -3,7 +3,7 @@
 namespace App\Support\TwentyOne\Stream;
 
 /**
- * The card of the music on air for the slides (SceneRenderer, partials/now-playing): which file the music timeline
+ * The card of the music on air for the slides (SceneRenderer, partials/now-playing-column): which file the music timeline
  * plays at a moment (MusicTimeline::tracks(), the file the daemon writes as it shuffles), its credit (MusicCredits),
  * the artist's avatar as the image builder cached it (StreamImages::musicAvatar()) and the code drawn for the target.
  * Null while nothing credited plays (the league's own songs, the instrumentals, a gap): the slide stays as it is.
@@ -11,7 +11,7 @@ namespace App\Support\TwentyOne\Stream;
  */
 final class NowPlaying
 {
-    /** @var array<string, array{artist: string, avatar: string|null, qr: string, kind: string}|null> */
+    /** @var array<string, array{artist: string, title: string|null, avatar: string|null, qr: string, kind: string}|null> */
     private array $cards = [];
 
     public function __construct(private StreamImages $images, private string $timelineFile) {}
@@ -24,7 +24,7 @@ final class NowPlaying
     /**
      * The card at `$now` (unix seconds), null without a credited track.
      *
-     * @return array{artist: string, avatar: string|null, qr: string, kind: string}|null
+     * @return array{artist: string, title: string|null, avatar: string|null, qr: string, kind: string}|null
      */
     public function at(float $now): ?array
     {
@@ -34,7 +34,7 @@ final class NowPlaying
     }
 
     /**
-     * @return array{artist: string, avatar: string|null, qr: string, kind: string}|null
+     * @return array{artist: string, title: string|null, avatar: string|null, qr: string, kind: string}|null
      */
     public function card(string $file): ?array
     {
@@ -48,6 +48,7 @@ final class NowPlaying
 
         return $this->cards[$file] = $credit === null || $qr === '' ? null : [
             'artist' => $credit['artist'],
+            'title' => $credit['title'],
             'avatar' => $this->images->musicAvatar($credit['picture']),
             'qr' => $qr,
             'kind' => $credit['kind'],

@@ -1081,7 +1081,7 @@ class TwentyOneStreamCommand extends Command
      * The card of the music on air (NowPlaying), off while a podcast replay airs over the fully ducked music, and never
      * a reason for the stream to stop: a failure only leaves the card off.
      *
-     * @return array{artist: string, avatar: string|null, qr: string, kind: string}|null
+     * @return array{artist: string, title: string|null, avatar: string|null, qr: string, kind: string}|null
      */
     private function nowPlaying(NowPlaying $nowPlaying, float $now): ?array
     {
