@@ -118,3 +118,28 @@ test('a running tournament without a match live or a pot leaves those slides out
 
     expect($log)->toBe(['0 tv1 @5', '45 tv3 @5']);
 });
+
+test('mixed mode: a running tournament still takes the stream at once, then its holds and the normal rotation take turns', function () {
+    $planner = new RotationPlanner(45, 60, 20, 12, 3, 3, 30, 15, runningSeconds: 90, runningExclusive: false);
+    $game = [['id' => 7, 'blitz' => true]];
+    $live = [['id' => 5, 'phase' => 'running', 'fomo' => false]];
+
+    expect($planner->at(0, $game)['kind'])->toBe(RotationPlanner::MATCH)
+        ->and($planner->at(10, $game, [], BoardScene::OFF, $live))->toMatchArray(['scene' => 'tv1', 'tournamentId' => 5]);
+
+    $shown = [];
+    for ($t = 10.25; $t < 10 + 4 * 90; $t += 0.25) {
+        $slot = $planner->at($t, $game, [], BoardScene::OFF, $live);
+        $label = $slot['kind'] === RotationPlanner::TOURNAMENT ? $slot['scene'].'@'.$slot['tournamentId'] : $slot['kind'];
+        if (end($shown) !== $label) {
+            $shown[] = $label;
+        }
+    }
+
+    $holds = array_keys(array_filter($shown, fn (string $label): bool => $label === 'tv1@5'));
+
+    // The hold, then the normal round (match first, no slide of the running tournament in it), then the hold again.
+    expect(array_slice($shown, 0, 5))->toBe(['tv1@5', 'tv2@5', 'tv3@5', 'tv4@5', RotationPlanner::MATCH])
+        ->and($holds)->toHaveCount(2)
+        ->and(array_filter(array_slice($shown, 4, $holds[1] - 4), fn (string $label): bool => str_ends_with($label, '@5')))->toBe([]);
+});

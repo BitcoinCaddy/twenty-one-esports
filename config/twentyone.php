@@ -275,6 +275,8 @@ return [
             'tournament_seconds' => 15,
             // While a tournament runs it takes the stream (RotationPlanner): this long per running tournament, then the next one.
             'running_tournament_seconds' => (int) env('TWENTYONE_STREAM_RUNNING_TOURNAMENT_SECONDS', 90),
+            // true: a running tournament holds the stream alone until it ends (2026-10-03); false: its rounds and the normal rotation take turns (2026-10-15).
+            'running_tournament_exclusive' => (bool) env('TWENTYONE_STREAM_RUNNING_TOURNAMENT_EXCLUSIVE', false),
             // A tournament just decided: its champion slide (tx6) holds the stream alone this long, once (RotationPlanner, 2026-10-03).
             'champion_moment_seconds' => (int) env('TWENTYONE_STREAM_CHAMPION_MOMENT_SECONDS', 120),
             // A running Hyperbitcoinization match (h1, HyperScene): its slide stands this long, and while the match is tense

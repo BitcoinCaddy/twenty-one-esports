@@ -55,7 +55,12 @@ use App\Games\TrackmaniaNationsForever;
  * the tournament TV shows them (RUNNING_PARTS in the TV look, tv1..tv4: bracket,
  * up now, standings, pot; a part without data is left out, the rest share the hold).
  * Several running tournaments take turns, never the same twice in a row, and nothing else
- * shows until the last one ends: no match, no teaser, no loop.
+ * shows until the last one ends: no match, no teaser, no loop. That is the exclusive mode
+ * (`runningExclusive`, TWENTYONE_STREAM_RUNNING_TOURNAMENT_EXCLUSIVE); off (user 2026-10-15:
+ * "Die normalen Slides im Live Stream dürfen wieder durchgelooped werden, zusammen mit den Live
+ * Turnieren"), a running tournament's round and a normal round take turns: a tournament that
+ * just started still takes the stream at once, then every other round is the normal rotation,
+ * without the running tournaments' own slides.
  *
  * A tournament just decided takes the stream for its champion (user,
  * 2026-10-03): the first poll that reports a finished tournament with its
@@ -282,6 +287,9 @@ final class RotationPlanner
     /** Running-tournament rounds so far. */
     private int $runningRounds = 0;
 
+    /** @var array<int, true> the running tournaments that have had a round (in mixed mode only a new one cuts in) */
+    private array $runningShown = [];
+
     /** Rounds that carried a look (every round with games, every tournament round without). */
     private int $lookRounds = 0;
 
@@ -371,6 +379,7 @@ final class RotationPlanner
         private int $programmeEvery = 1,
         private float $programmeSeconds = 20,
         private float $spotlightSeconds = 15,
+        private bool $runningExclusive = true,
     ) {}
 
     public static function fromConfig(float $loopSeconds): self
@@ -394,6 +403,7 @@ final class RotationPlanner
             (int) config('twentyone.stream.rotation.programme_every_rounds', 1),
             (float) config('twentyone.stream.rotation.programme_seconds', 20),
             (float) config('twentyone.stream.rotation.programme_spotlight_seconds', 15),
+            (bool) config('twentyone.stream.rotation.running_tournament_exclusive', false),
         );
     }
 
@@ -509,7 +519,20 @@ final class RotationPlanner
     /** Whether a champion moment or a running tournament waits to take the stream from the slot on show. */
     public function urgentPending(): bool
     {
-        return ($this->moments !== [] && ! $this->roundMoment) || ($this->running !== [] && ! $this->roundRunning && ! $this->roundMoment);
+        return ($this->moments !== [] && ! $this->roundMoment) || $this->runningCutsIn();
+    }
+
+    /**
+     * Whether a running tournament ends the round on show: any while one runs in exclusive mode, in mixed mode
+     * only one that has not had a round yet (the others wait for the end of the normal round).
+     */
+    private function runningCutsIn(): bool
+    {
+        if ($this->running === [] || $this->roundRunning || $this->roundMoment) {
+            return false;
+        }
+
+        return $this->runningExclusive || array_diff($this->running, array_keys($this->runningShown)) !== [];
     }
 
     /**
@@ -544,7 +567,7 @@ final class RotationPlanner
         }
 
         // A running tournament takes the stream at once, after a champion moment.
-        if ($this->running !== [] && ! $this->roundRunning && ! $this->roundMoment) {
+        if ($this->runningCutsIn()) {
             return true;
         }
 
@@ -581,7 +604,7 @@ final class RotationPlanner
         }
 
         // A running tournament ends any other round.
-        if ($this->running !== [] && ! $this->roundRunning) {
+        if ($this->runningCutsIn()) {
             $this->queue = [];
         }
 
@@ -601,7 +624,7 @@ final class RotationPlanner
         // A show starting within two minutes: its spotlight next, once per show (not while a tournament runs or a champion moment waits).
         $soon = $this->programme['soon'];
         $soonScene = $this->programme['soonScene'] ?? ProgrammeSlides::SPOTLIGHT;
-        if ($soon !== null && $soon !== $this->lastSoon && $this->moments === [] && $this->running === [] && ! $this->roundMoment
+        if ($soon !== null && $soon !== $this->lastSoon && $this->moments === [] && ($this->running === [] || ! $this->runningExclusive) && ! $this->roundRunning && ! $this->roundMoment
             && in_array($soonScene, $this->programme['scenes'], true)) {
             $this->lastSoon = $soon;
             array_unshift($this->queue, ['kind' => self::PROGRAMME, 'scene' => $soonScene]);
@@ -646,7 +669,8 @@ final class RotationPlanner
         }
 
         $this->roundMoment = false;
-        $this->roundRunning = $this->running !== [];
+        // Mixed mode: a normal round after every running tournament's round, then the next one's.
+        $this->roundRunning = $this->running !== [] && ($this->runningExclusive || ! $this->roundRunning || array_diff($this->running, array_keys($this->runningShown)) !== []);
 
         if ($this->roundRunning) {
             $this->roundWithGames = false;
@@ -654,6 +678,9 @@ final class RotationPlanner
 
             return;
         }
+
+        // The running tournaments have their own rounds: the normal one leaves their slides out.
+        $tournaments = array_values(array_diff($tournaments, array_map(fn (int $id): string => 'running:'.$id, $this->running)));
 
         if ($games === []) {
             $this->roundWithGames = false;
@@ -690,9 +717,9 @@ final class RotationPlanner
      * viel öfter kommen"): one programme slide after every `programme_every_slots` slides, the slides in turn; 0 falls
      * back to one per `programmeEvery`-th round at its end.
      *
-     * @param  list<array<string, mixed>>  $round
-     * @param  list<array<string, mixed>>  $tail  the round's closing teasers
-     * @return list<array<string, mixed>>
+     * @param  list<array{kind: string, look?: string, gameId?: int, tournamentId?: int, part?: int, scene?: string, key?: string, seconds?: float}>  $round
+     * @param  list<array{kind: string, look?: string, gameId?: int, tournamentId?: int, part?: int, scene?: string, key?: string, seconds?: float}>  $tail  the round's closing teasers
+     * @return list<array{kind: string, look?: string, gameId?: int, tournamentId?: int, part?: int, scene?: string, key?: string, seconds?: float}>
      */
     private function withProgramme(array $round, array $tail = []): array
     {
@@ -753,12 +780,14 @@ final class RotationPlanner
         $at = $this->lastRunning === null ? false : array_search($this->lastRunning, $this->running, true);
         $id = $this->running[$at === false ? 0 : ($at + 1) % count($this->running)];
         $this->lastRunning = $id;
+        $this->runningShown += array_fill_keys($this->running, true);
         $parts = $this->runningParts[$id] ?? self::RUNNING_PARTS;
         $seconds = max(1.0, $this->runningSeconds) / count($parts);
         $queue = array_map(fn (int $part): array => ['kind' => self::TOURNAMENT, 'look' => self::RUNNING_LOOK, 'tournamentId' => $id, 'part' => $part, 'key' => 'running:'.$id, 'seconds' => $seconds], $parts);
 
-        // Only the running tournaments' slides while one runs, nothing in between (user, 2026-10-03:
-        // "bei laufenden Turnieren auch nur noch die Live-Turnier-Folien … erst wenn das Turnier fertig ist, wieder alle anderen").
+        // Exclusive mode: only the running tournaments' slides while one runs, nothing in between (user, 2026-10-03:
+        // "bei laufenden Turnieren auch nur noch die Live-Turnier-Folien … erst wenn das Turnier fertig ist, wieder alle anderen");
+        // mixed mode (2026-10-15): plan() puts a normal round after this one.
         $this->runningRounds++;
 
         return $queue;
