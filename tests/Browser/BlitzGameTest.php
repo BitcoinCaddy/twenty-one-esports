@@ -2,6 +2,8 @@
 
 use App\Enums\ChessEndReason;
 use App\Enums\ChessGameStatus;
+use App\Enums\TournamentFormat;
+use App\Enums\TournamentResultsMode;
 use App\Models\ChessGame;
 use App\Models\User;
 use App\Support\Chess\ChessGameService;
@@ -710,3 +712,61 @@ test('a guest watching a live game has the history bar in the first viewport at 
         ->and($sizes['player 1440']['board'][1])->toBe(576)
         ->and($sizes['player 375']['board'][1])->toBe(375);
 });
+
+test('a tournament chess game on a phone shows its tournament in the header while its banner under the game is out of view, never both at once', function (int $width, int $height) {
+    // 2026-10-15: "eine kleine Anzeige immer oben, ob es sich um ein Turnier-Match handelt"; on a phone the chess banner stands under the game.
+    $tournament = runningChess(TournamentFormat::SingleElimination, 2, TournamentResultsMode::Players);
+    $tournament->forceFill(['name' => 'Chess Phone Cup with a rather long name'])->save();
+    $game = ChessGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->with('white')->orderBy('id')->firstOrFail();
+
+    $page = visit(BrowserLogin::url($game->white))->on()->mobile()->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $page->setViewportSize($width, $height);
+    $page->goto(ComputeUrl::from(route('games.show', $game, false)));
+    BrowserWait::until($page, '() => window.Alpine && !!document.querySelector("[data-test=tournament-banner]")', 10_000);
+
+    $measure = <<<'JS'
+        () => {
+            const box = (el) => { if (!el || !el.checkVisibility()) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height) }; };
+            const row = document.querySelector('.shell-header > div:not(.shell-edge)');
+            const banner = box(document.querySelector('[data-test=tournament-banner]'));
+            return {
+                chip: box(document.querySelector('[data-test=shell-tournament] > span')), link: box(document.querySelector('[data-test=shell-tournament]')),
+                row: box(row), rowFits: row.scrollWidth <= row.clientWidth, search: box(document.querySelector('.shell-header [aria-controls=mobile-search]')),
+                bannerInView: !!banner && banner.bottom > row.getBoundingClientRect().bottom && banner.top < innerHeight,
+                name: document.querySelector('[data-test=shell-tournament-name]')?.textContent ?? null,
+                overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            };
+        }
+        JS;
+    $state = function (string $scroll) use ($page, $measure): array {
+        $page->evaluate($scroll);
+        // The header's observer answers within a frame or two: the chip shows exactly while the banner is out of view.
+        BrowserWait::until($page, '() => { const m = ('.$measure.')(); return (m.chip !== null) === !m.bannerInView; }', 5_000);
+
+        return $page->evaluate($measure);
+    };
+    $top = $state('() => window.scrollTo(0, 0)');
+    $atBanner = $state('() => document.querySelector("[data-test=tournament-banner]").scrollIntoView({ block: "center" })');
+    $back = $state('() => window.scrollTo(0, 0)');
+    fwrite(STDERR, PHP_EOL."chess chip {$width}x{$height} ".json_encode(compact('top', 'atBanner', 'back')).PHP_EOL);
+
+    expect($atBanner['bannerInView'])->toBeTrue('the banner under the game can be scrolled to')
+        ->and($atBanner['chip'])->toBeNull('no chip while the banner is in view')
+        ->and($top['bannerInView'])->toBeFalse('at the top the banner is under the game, out of view')
+        ->and($top['chip'])->not->toBeNull('so the header carries the chip at the top')
+        ->and($back)->toEqual($top)
+        ->and($top['link']['h'])->toBeGreaterThanOrEqual(44)
+        ->and($top['chip']['h'])->toBeLessThanOrEqual(30)
+        ->and($top['chip']['top'])->toBeGreaterThanOrEqual($top['row']['top'])
+        ->and($top['chip']['bottom'])->toBeLessThanOrEqual($top['row']['bottom'])
+        ->and($top['link']['right'])->toBeLessThanOrEqual($top['search']['left'])
+        ->and($top['rowFits'])->toBeTrue()
+        ->and($top['name'])->toBe('Chess Phone Cup with a rather long name')
+        ->and($top['overflow'])->toBeLessThanOrEqual(0)
+        ->and($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+})->with([
+    'phone 320' => [320, 640],
+    'phone 390' => [390, 844],
+]);
