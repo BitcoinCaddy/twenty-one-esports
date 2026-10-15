@@ -76,7 +76,10 @@ test('a fresh round shows its started games green and the others waiting; no fir
         ->and(collect($overview['groups'][0]['players'])->pluck('name')->all())->toBe(['Anna', 'Bert', 'Cleo'])
         ->and($active)->not->toBeEmpty()
         ->and($overview['counts']['green'])->toBe($active->count())
-        ->and($overview['attention'])->toBe([]);
+        // Every game under way is on the clock, soonest first; each cell shows its time left and who is to move.
+        ->and($overview['clock'])->toHaveCount($active->count())
+        ->and(collect($overview['groups'][0]['cells'])->flatten(1)->whereNotNull('left')->count())->toBe(2 * $active->count())
+        ->and(collect($overview['groups'][0]['cells'])->flatten(1)->where('toMove', true)->count())->toBe($active->count());
 
     $late = matrixCells($tournament, $now->addHours(7));
     $red = collect($late)->filter(fn (array $cell): bool => $cell['state'] === TournamentMatrix::RED);
@@ -85,7 +88,7 @@ test('a fresh round shows its started games green and the others waiting; no fir
         ->and($red->first()['reason'])->toMatch('/^No first move for 7 h: (Anna|Bert|Cleo) to move$/');
 });
 
-test('a won first leg reads 1 and 0 from each side, yellow with the second game under way; the decided pairing is done with its result', function () {
+test('a won first leg reads 1–0 and 0–1 from each side while the second game runs on its clock; the decided pairing is done with its result', function () {
     $tournament = matrixTournament();
     $game = BoardGame::query()->where('status', BoardGameStatus::Active)->orderBy('id')->firstOrFail();
     $match = TournamentMatch::query()->with('slots.participant')->findOrFail($game->tournament_match_id);
@@ -94,30 +97,32 @@ test('a won first leg reads 1 and 0 from each side, yellow with the second game 
     app(BoardGameService::class)->resign($game, $loser);
 
     $cells = matrixCells($tournament, CarbonImmutable::now());
-    expect($cells["{$a}-{$b}"])->toMatchArray(['state' => TournamentMatrix::YELLOW, 'score' => '1', 'reason' => 'Game 2 under way'])
-        ->and($cells["{$b}-{$a}"])->toMatchArray(['state' => TournamentMatrix::YELLOW, 'score' => '0']);
+    expect($cells["{$a}-{$b}"])->toMatchArray(['state' => TournamentMatrix::GREEN, 'score' => '1–0'])
+        ->and($cells["{$b}-{$a}"])->toMatchArray(['state' => TournamentMatrix::GREEN, 'score' => '0–1'])
+        ->and($cells["{$a}-{$b}"]['left'])->not->toBeNull()
+        ->and($cells["{$a}-{$b}"]['toMove'] xor $cells["{$b}-{$a}"]['toMove'])->toBeTrue();
 
     app(BoardGameService::class)->resign(BoardGame::query()->where('tournament_match_id', $match->id)->where('status', BoardGameStatus::Active)->sole(), $loser);
     $cells = matrixCells($tournament, CarbonImmutable::now());
-    expect($cells["{$a}-{$b}"])->toMatchArray(['state' => TournamentMatrix::DONE, 'score' => '2', 'reason' => null])
-        ->and($cells["{$b}-{$a}"]['score'])->toBe('0');
+    expect($cells["{$a}-{$b}"])->toMatchArray(['state' => TournamentMatrix::DONE, 'score' => '2–0', 'left' => null, 'toMove' => false])
+        ->and($cells["{$b}-{$a}"]['score'])->toBe('0–2');
 });
 
-test('a move deadline under six hours turns red, a move pending for over twelve hours yellow, a held result red', function () {
+test('the move deadline sets the light and the time shown: under twelve hours yellow, under six red; a held result red', function () {
     $tournament = matrixTournament();
     $game = BoardGame::query()->where('status', BoardGameStatus::Active)->orderBy('id')->firstOrFail();
     $now = CarbonImmutable::now();
     // A first move made: the game is under way.
-    $game->forceFill(['ply' => 3, 'turn_started_ms' => $now->subHours(13)->getTimestampMs(), 'deadline_ms' => $now->addHours(11)->getTimestampMs()])->save();
+    $game->forceFill(['ply' => 3, 'turn_started_ms' => $now->subHours(13)->getTimestampMs(), 'deadline_ms' => $now->addHours(11)->addMinutes(5)->getTimestampMs()])->save();
     $key = strtoupper(TournamentMatch::query()->findOrFail($game->tournament_match_id)->key);
     $cell = fn () => collect(matrixCells($tournament, $now))->firstWhere('key', $key);
 
-    expect($cell())->toMatchArray(['state' => TournamentMatrix::YELLOW])
-        ->and($cell()['reason'])->toMatch('/on the move for 13 h$/');
+    expect($cell())->toMatchArray(['state' => TournamentMatrix::YELLOW, 'left' => '11h']);
 
-    $game->forceFill(['deadline_ms' => $now->addHours(5)->getTimestampMs()])->save();
-    expect($cell()['state'])->toBe(TournamentMatrix::RED)
-        ->and($cell()['reason'])->toMatch('/^Move deadline in 5 h: (Anna|Bert|Cleo) to move$/');
+    $game->forceFill(['deadline_ms' => $now->addHours(5)->addMinutes(7)->getTimestampMs()])->save();
+    expect($cell())->toMatchArray(['state' => TournamentMatrix::RED, 'left' => '5h07'])
+        ->and(TournamentMatrix::left(47 * 60_000))->toBe('47m')
+        ->and(TournamentMatrix::left(-5))->toBe('0m');
 
     TournamentMatch::query()->findOrFail($game->tournament_match_id)->forceFill(['held' => ['was' => [], 'reason' => 'correction', 'at' => now()->toIso8601String(), 'user_id' => null, 'name' => 'Admin']])->save();
     expect($cell())->toMatchArray(['state' => TournamentMatrix::RED, 'reason' => 'Result on hold: decide it on the control']);

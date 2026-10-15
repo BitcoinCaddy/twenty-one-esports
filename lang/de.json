@@ -8640,5 +8640,11 @@
     "no first move: forfeit": "kein erster Zug: kampflos",
     "Disqualified by the league: :count matches lost by not showing up.": "Von der Liga disqualifiziert: :count Paarungen durch Nichtantreten verloren.",
     "In a board game only White can miss the first move: the game starts once more with the same colours, and a second miss loses the pairing for White.": "Im Brettspiel kann nur Weiß den ersten Zug verpassen: Die Partie startet einmal neu mit denselben Farben, beim zweiten Verpassen verliert Weiß die Paarung.",
-    "An entry that loses :count matches of a tournament by not showing up is disqualified by the league; its open matches go to the opponents.": "Wer in einem Turnier :count Paarungen durch Nichtantreten verliert, wird von der Liga disqualifiziert; seine offenen Paarungen gehen an die Gegner."
+    "An entry that loses :count matches of a tournament by not showing up is disqualified by the league; its open matches go to the opponents.": "Wer in einem Turnier :count Paarungen durch Nichtantreten verliert, wird von der Liga disqualifiziert; seine offenen Paarungen gehen an die Gegner.",
+    "Deadlines, soonest first": "Fristen, die nächste zuerst",
+    "deadline in :left": "Frist in :left",
+    "standing :score": "Stand :score",
+    "Critical": "Kritisch",
+    "Due soon": "Bald fällig",
+    "5h12 = time to the move deadline": "5h12 = Zeit bis zur Zugfrist"
 }

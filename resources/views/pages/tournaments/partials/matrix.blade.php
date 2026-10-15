@@ -1,8 +1,9 @@
 {{--
-    The live page's overview (user 2026-10-15: "Eine Matrix aller Spiele … mit Ampel-System, wo was steht und wo
-    nachhak-Bedarf besteht"): how many pairings stand at each light, what needs following up (red first, with the
-    reason and a link), and per group a cross table, a cell per pairing with the row's score and its light.
-    Colour is never the only signal: every cell carries a shape (! red, · yellow, ✓ done) and its reason as its label.
+    The live page's overview (user 2026-10-15: "Eine Matrix aller Spiele … mit Ampel-System"; then "jetzt sehen die
+    Admins nicht mehr die ablaufenden Timeouts … ALLES IST zu textlich"): the counts per light, the deadlines as tiles
+    (the one that runs out first first: the time left big, who is to move), and per group a cross table whose cells
+    show the time left to the move deadline, a dot where the row's player is to move, and the games so far small.
+    Colour is never the only signal: the time, the dot and the cell's label carry it too.
     Only the table scrolls sideways on a phone, never the page (R3).
 
     $matrix: TournamentMatrix::overview()
@@ -15,13 +16,17 @@
         'done' => 'bg-raised text-ink',
         'waiting' => 'bg-well text-ink-3',
     ];
-    $mark = ['red' => '!', 'yellow' => '·', 'green' => '', 'done' => '✓', 'waiting' => ''];
     $legend = [
-        'red' => __('Follow up'),
-        'yellow' => __('Keep an eye on it'),
-        'green' => __('Under way'),
+        'red' => __('Critical'),
+        'yellow' => __('Due soon'),
+        'green' => __('On track'),
         'done' => __('Decided'),
     ];
+    $flags = ['restart' => 'retry', 'nofirst' => 'clock', 'held' => 'warn', 'disputed' => 'flag', 'overdue' => 'flag', 'reported' => 'check', 'nogame' => 'clock'];
+    // Every red and yellow pairing; with fewer than four, the next deadlines on track fill up to four (a page where
+    // everything is on track does not repeat the tables as tiles).
+    $urgent = array_values(array_filter($matrix['clock'], fn (array $tile): bool => in_array($tile['state'], ['red', 'yellow'], true)));
+    $tiles = count($urgent) >= 4 ? $urgent : array_slice([...$urgent, ...array_values(array_filter($matrix['clock'], fn (array $tile): bool => ! in_array($tile['state'], ['red', 'yellow'], true)))], 0, 4);
 @endphp
 <section aria-labelledby="live-matrix-h" class="flex flex-col gap-4" data-test="live-matrix">
     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -35,22 +40,24 @@
         </ul>
     </div>
 
-    @if ($matrix['attention'] !== [])
-        {{-- What needs following up, red first: the pairing, the reason, the way to the game. --}}
-        <ol class="m-0 flex list-none flex-col gap-1.5 rounded-lg bg-card p-3 text-[13px] lg:p-4" data-test="matrix-attention">
-            @foreach ($matrix['attention'] as $row)
-                <li class="grid grid-cols-[1.75rem_minmax(0,1fr)] items-start gap-x-2" data-test="matrix-attention-row" data-state="{{ $row['state'] }}">
-                    <span class="inline-flex size-6 items-center justify-center rounded-xs text-xs font-bold {{ $tone[$row['state']] }}" aria-hidden="true">{{ $mark[$row['state']] }}</span>
-                    <span class="flex min-w-0 flex-wrap items-baseline gap-x-2 leading-snug">
-                        <span class="sr-only">{{ $legend[$row['state']] }}:</span>
-                        @if ($row['href'])
-                            <a href="{{ $row['href'] }}" class="font-bold text-ink [overflow-wrap:anywhere] hover:text-btc-hi">{{ $row['names'] }}</a>
-                        @else
-                            <b class="text-ink [overflow-wrap:anywhere]">{{ $row['names'] }}</b>
-                        @endif
-                        <span class="text-ink-3">{{ $row['group'] ? $row['group'].' · ' : '' }}{{ $row['key'] }}</span>
-                        <span class="text-ink-2">{{ $row['reason'] }}</span>
-                    </span>
+    @if ($tiles !== [])
+        {{-- The deadlines, the one that runs out first first: the time left big, who is to move, against whom. --}}
+        {{-- A phone gets one row to swipe (the list must not push the tables down), wider screens a grid. --}}
+        <ol class="relative m-0 flex list-none gap-2 overflow-x-auto overscroll-x-contain p-0 pb-1 sm:grid sm:grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] sm:overflow-visible sm:pb-0" aria-label="{{ __('Deadlines, soonest first') }}" data-test="matrix-clock">
+            @foreach ($tiles as $tile)
+                @php($label = ($tile['mover'] ? __(':name to move', ['name' => $tile['mover']]).', ' : '').$tile['names'].($tile['left'] ? ', '.__('deadline in :left', ['left' => $tile['left']]) : '').($tile['reason'] && ! $tile['mover'] ? '. '.$tile['reason'] : ''))
+                <li class="w-34 shrink-0 sm:w-auto sm:min-w-0">
+                    <a @if ($tile['href']) href="{{ $tile['href'] }}" @endif class="flex h-full min-w-0 flex-col gap-0.5 rounded-sm px-3 py-2 {{ $tone[$tile['state']] }} {{ $tile['href'] ? 'hover:brightness-125' : '' }}"
+                       aria-label="{{ $label }}" title="{{ $label }}" data-test="matrix-tile" data-state="{{ $tile['state'] }}">
+                        <span class="flex items-center justify-between gap-2">
+                            <span class="font-display text-xl leading-none font-bold tabular-nums" data-test="matrix-tile-left">{{ $tile['left'] ?? '—' }}</span>
+                            @if ($tile['flag'] && isset($flags[$tile['flag']]))
+                                <x-icon :name="$flags[$tile['flag']]" :size="14" class="shrink-0" />
+                            @endif
+                        </span>
+                        <span class="truncate text-[13px] font-bold text-ink">{{ $tile['mover'] ?? $tile['names'] }}</span>
+                        <span class="truncate text-[11px] text-ink-3">{{ $tile['against'] ? __('vs :name', ['name' => $tile['against']]) : $tile['key'] }}</span>
+                    </a>
                 </li>
             @endforeach
         </ol>
@@ -69,7 +76,7 @@
                             <tr>
                                 <th scope="col" class="text-left font-normal text-ink-3"><span class="sr-only">{{ __('Player') }}</span></th>
                                 @foreach ($group['players'] as $index => $player)
-                                    <th scope="col" class="w-11 min-w-11 text-center font-normal text-ink-3 tabular-nums" title="{{ $player['name'] }}"><span aria-hidden="true">{{ $index + 1 }}</span><span class="sr-only">{{ $player['name'] }}</span></th>
+                                    <th scope="col" class="w-14 min-w-14 text-center font-normal text-ink-3 tabular-nums" title="{{ $player['name'] }}"><span aria-hidden="true">{{ $index + 1 }}</span><span class="sr-only">{{ $player['name'] }}</span></th>
                                 @endforeach
                             </tr>
                         </thead>
@@ -83,17 +90,22 @@
                                         @php($cell = $row['id'] === $column['id'] ? null : ($group['cells'][$row['id']][$column['id']] ?? null))
                                         <td class="p-0">
                                             @if ($row['id'] === $column['id'])
-                                                <span class="block h-11 rounded-xs bg-ground" aria-hidden="true"></span>
+                                                <span class="block h-12 rounded-xs bg-ground" aria-hidden="true"></span>
                                             @elseif ($cell === null)
-                                                <span class="flex h-11 items-center justify-center rounded-xs bg-well text-ink-3" aria-label="{{ __('No pairing') }}">–</span>
+                                                <span class="flex h-12 items-center justify-center rounded-xs bg-well text-ink-3" aria-label="{{ __('No pairing') }}">–</span>
                                             @else
-                                                @php($label = $row['name'].' – '.$column['name'].': '.$cell['score'].', '.($legend[$cell['state']] ?? __('Waiting')).($cell['reason'] ? '. '.$cell['reason'] : ''))
+                                                @php($main = $cell['state'] === 'done' ? $cell['score'] : ($cell['left'] ?? '–'))
+                                                @php($label = $row['name'].' – '.$column['name'].': '.($cell['state'] === 'done' ? $cell['score'] : ($cell['left'] ? __('deadline in :left', ['left' => $cell['left']]) : ($legend[$cell['state']] ?? __('Waiting')))).($cell['toMove'] ? ', '.__(':name to move', ['name' => $row['name']]) : '').($cell['state'] !== 'done' && $cell['score'] !== '' ? ', '.__('standing :score', ['score' => $cell['score']]) : ''))
                                                 <a @if ($cell['href']) href="{{ $cell['href'] }}" @endif
-                                                   class="relative flex h-11 min-w-11 items-center justify-center rounded-xs font-display text-[13px] font-bold tabular-nums {{ $tone[$cell['state']] }} {{ $cell['href'] ? 'hover:brightness-125' : '' }}"
-                                                   aria-label="{{ $label }}" title="{{ $label }}" data-test="matrix-cell" data-state="{{ $cell['state'] }}" data-key="{{ $cell['key'] }}">
-                                                    {{ $cell['score'] }}
-                                                    @if ($mark[$cell['state']] !== '')
-                                                        <span class="absolute top-0.5 right-1 text-[10px] leading-none" aria-hidden="true">{{ $mark[$cell['state']] }}</span>
+                                                   class="relative flex h-12 min-w-14 items-center justify-center rounded-xs font-display text-[13px] font-bold tabular-nums {{ $tone[$cell['state']] }} {{ $cell['href'] ? 'hover:brightness-125' : '' }}"
+                                                   aria-label="{{ $label }}" title="{{ $label }}" data-test="matrix-cell" data-state="{{ $cell['state'] }}" data-key="{{ $cell['key'] }}" @if ($cell['toMove']) data-to-move @endif>
+                                                    {{ $main }}
+                                                    @if ($cell['toMove'])
+                                                        {{-- The row's player is to move. --}}
+                                                        <span class="absolute top-1 left-1 size-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                                                    @endif
+                                                    @if ($cell['state'] !== 'done' && $cell['score'] !== '')
+                                                        <span class="absolute right-1 bottom-0.5 font-mono text-[10px] leading-none font-normal opacity-80" aria-hidden="true">{{ $cell['score'] }}</span>
                                                     @endif
                                                 </a>
                                             @endif
@@ -107,4 +119,8 @@
             </section>
         @endforeach
     </div>
+    <p class="m-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-3" data-test="matrix-legend">
+        <span class="inline-flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-ink-2" aria-hidden="true"></span>{{ __('to move') }}</span>
+        <span>{{ __('5h12 = time to the move deadline') }}</span>
+    </p>
 </section>

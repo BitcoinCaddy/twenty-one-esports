@@ -26,8 +26,11 @@ use Illuminate\Support\Facades\Route;
  * - RED, the direction should step in: a result held, a reported or disputed series, one with the admins; a board
  *   or chess game without a first move after RED_FIRST_MOVE_HOURS, a game restarted for a missing first move that
  *   still has none, a move deadline less than RED_DEADLINE_HOURS away.
- * - YELLOW, keep an eye on it: someone on the move for more than YELLOW_ON_MOVE_HOURS, the second game of a two-leg
- *   pairing under way, a ready match without a game yet.
+ * - YELLOW, keep an eye on it: a move deadline less than YELLOW_DEADLINE_HOURS away, a ready match without a game yet.
+ *
+ * Every cell under way shows the time left to its move deadline (user 2026-10-15: "jetzt sehen die Admins nicht mehr
+ * die ablaufenden Timeouts … ALLES IST zu textlich") and whether the row's player is to move; `clock` lists the
+ * pairings by the deadline that comes first, for the tiles above the tables.
  * - GREEN: under way and moving. DONE: decided. WAITING: its sides are not known yet, or it was not needed.
  *
  * Reads every game of the tournament in one query per kind, never one per match.
@@ -50,8 +53,8 @@ final class TournamentMatrix
     /** The move deadline is less than this away: red. */
     public const RED_DEADLINE_HOURS = 6;
 
-    /** On the move this long: yellow. */
-    public const YELLOW_ON_MOVE_HOURS = 12;
+    /** The move deadline is less than this away: yellow. */
+    public const YELLOW_DEADLINE_HOURS = 12;
 
     /** @var Collection<int, TournamentParticipant> */
     private Collection $participants;
@@ -71,7 +74,7 @@ final class TournamentMatrix
      * One entry per round robin group or Swiss stage: its players (in seed order) and the cells by row and column
      * participant, plus how many pairings stand at each light.
      *
-     * @return array{groups: list<array{title: string|null, players: list<array{id: int, name: string}>, cells: array<int, array<int, array{state: string, score: string, reason: string|null, href: string|null, key: string}>>}>, counts: array<string, int>, attention: list<array{state: string, group: string|null, names: string, reason: string, href: string|null, key: string}>}
+     * @return array{groups: list<array{title: string|null, players: list<array{id: int, name: string}>, cells: array<int, array<int, array{state: string, score: string, left: string|null, toMove: bool, flag: string|null, reason: string|null, href: string|null, key: string}>>}>, counts: array<string, int>, clock: list<array{state: string, left: string|null, mover: string|null, against: string|null, names: string, group: string|null, flag: string|null, reason: string|null, href: string|null, key: string}>}
      */
     public function overview(?CarbonImmutable $now = null): array
     {
@@ -79,7 +82,7 @@ final class TournamentMatrix
         $stages = TournamentStage::query()->where('tournament_id', $this->tournament->id)
             ->whereIn('format', [TournamentFormat::RoundRobin, TournamentFormat::Swiss])->orderBy('number')->get();
         $counts = array_fill_keys([self::RED, self::YELLOW, self::GREEN, self::DONE], 0);
-        $empty = ['groups' => [], 'counts' => $counts, 'attention' => []];
+        $empty = ['groups' => [], 'counts' => $counts, 'clock' => []];
 
         if ($stages->isEmpty()) {
             return $empty;
@@ -92,7 +95,7 @@ final class TournamentMatrix
         $this->boardGames = BoardGame::query()->whereIn('tournament_match_id', $ids)->orderBy('id')->get()->groupBy('tournament_match_id')->all();
         $this->chessGames = ChessGame::query()->whereIn('tournament_match_id', $ids)->orderBy('id')->get()->groupBy('tournament_match_id')->all();
         $groups = [];
-        $attention = [];
+        $clock = [];
 
         foreach ($stages as $stage) {
             $own = $matches->filter(fn (TournamentMatch $match): bool => $match->round->tournament_stage_id === $stage->id);
@@ -111,18 +114,23 @@ final class TournamentMatrix
                         continue;
                     }
 
-                    [$state, $reason] = $this->light($match, $now);
+                    $light = $this->light($match, $now);
+                    $state = $light['state'];
                     [$scoreA, $scoreB] = $this->scores($match);
-                    $href = $this->href($match);
-                    $cells[$a][$b] = ['state' => $state, 'score' => $scoreA, 'reason' => $reason, 'href' => $href, 'key' => strtoupper($match->key)];
-                    $cells[$b][$a] = ['state' => $state, 'score' => $scoreB, 'reason' => $reason, 'href' => $href, 'key' => strtoupper($match->key)];
+                    $score = fn (string $own, string $other): string => $own === '–' ? '' : $own.'–'.$other;
+                    $left = $light['deadline'] === null ? null : self::left($light['deadline'] - $now->getTimestampMs());
+                    $base = ['state' => $state, 'left' => $left, 'flag' => $light['flag'], 'reason' => $light['reason'], 'href' => $this->href($match), 'key' => strtoupper($match->key)];
+                    $cells[$a][$b] = [...$base, 'score' => $score($scoreA, $scoreB), 'toMove' => $light['mover'] === $a];
+                    $cells[$b][$a] = [...$base, 'score' => $score($scoreB, $scoreA), 'toMove' => $light['mover'] === $b];
 
                     if (isset($counts[$state])) {
                         $counts[$state]++;
                     }
 
-                    if (in_array($state, [self::RED, self::YELLOW], true) && $reason !== null) {
-                        $attention[] = ['state' => $state, 'group' => $title, 'names' => $this->name($a).' – '.$this->name($b), 'reason' => $reason, 'href' => $href, 'key' => strtoupper($match->key)];
+                    if ($light['deadline'] !== null || $state === self::RED) {
+                        $mover = $light['mover'];
+                        $clock[] = [...$base, 'at' => $light['deadline'] ?? 0, 'mover' => $mover === null ? null : $this->name($mover),
+                            'against' => $mover === null ? null : $this->name($mover === $a ? $b : $a), 'names' => $this->name($a).' – '.$this->name($b), 'group' => $title];
                     }
                 }
 
@@ -130,10 +138,15 @@ final class TournamentMatrix
             }
         }
 
-        // Red first, then yellow; within a light in bracket order.
-        usort($attention, fn (array $x, array $y): int => ($x['state'] === self::RED ? 0 : 1) <=> ($y['state'] === self::RED ? 0 : 1));
+        // The deadline that comes first first; a red pairing without a deadline (held, disputed) before all.
+        usort($clock, fn (array $x, array $y): int => $x['at'] <=> $y['at']);
+        $clock = array_map(function (array $entry): array {
+            unset($entry['at']);
 
-        return ['groups' => $groups, 'counts' => $counts, 'attention' => $attention];
+            return $entry;
+        }, $clock);
+
+        return ['groups' => $groups, 'counts' => $counts, 'clock' => $clock];
     }
 
     /**
@@ -157,32 +170,34 @@ final class TournamentMatrix
     }
 
     /**
-     * The light of one pairing and why, for the direction.
+     * The light of one pairing and why, the move deadline under way (unix ms) and the entry to move.
      *
-     * @return array{0: string, 1: string|null}
+     * @return array{state: string, reason: string|null, deadline: int|null, mover: int|null, flag: string|null}
      */
     private function light(TournamentMatch $match, CarbonImmutable $now): array
     {
+        $light = fn (string $state, ?string $reason = null, ?int $deadline = null, ?int $mover = null, ?string $flag = null): array => ['state' => $state, 'reason' => $reason, 'deadline' => $deadline, 'mover' => $mover, 'flag' => $flag];
+
         if ($match->held !== null) {
-            return [self::RED, (string) __('Result on hold: decide it on the control')];
+            return $light(self::RED, (string) __('Result on hold: decide it on the control'), flag: 'held');
         }
 
         if ($match->result !== null || $match->status === 'done') {
-            return [self::DONE, null];
+            return $light(self::DONE);
         }
 
         if ($match->status !== 'ready') {
-            return [self::WAITING, null];
+            return $light(self::WAITING);
         }
 
         $series = $match->seriesMatch;
 
         if ($series !== null) {
             return match (true) {
-                $series->overdue_at !== null => [self::RED, (string) __('No result by the deadline: with the admins')],
-                $series->status === SeriesStatus::Disputed => [self::RED, (string) __('Result disputed')],
-                $series->status === SeriesStatus::Reported => [self::YELLOW, (string) __('Result reported, waiting for the confirmation')],
-                default => [self::GREEN, null],
+                $series->overdue_at !== null => $light(self::RED, (string) __('No result by the deadline: with the admins'), flag: 'overdue'),
+                $series->status === SeriesStatus::Disputed => $light(self::RED, (string) __('Result disputed'), flag: 'disputed'),
+                $series->status === SeriesStatus::Reported => $light(self::YELLOW, (string) __('Result reported, waiting for the confirmation'), flag: 'reported'),
+                default => $light(self::GREEN),
             };
         }
 
@@ -192,50 +207,60 @@ final class TournamentMatrix
             ?? $chess->first(fn (ChessGame $game): bool => $game->status === ChessGameStatus::Active);
 
         if ($active === null) {
-            return [self::YELLOW, (string) __('No game started yet')];
+            return $light(self::YELLOW, (string) __('No game started yet'), flag: 'nogame');
         }
 
         $nowMs = $now->getTimestampMs();
         $whiteToMove = $active instanceof BoardGame ? $active->turn === 'w' : $active->ply % 2 === 0;
-        $mover = $this->moverName($match, (int) ($whiteToMove ? $active->white_id : $active->black_id));
+        $mover = $this->moverId($match, (int) ($whiteToMove ? $active->white_id : $active->black_id));
+        $deadline = $active->deadline_ms === null ? null : (int) $active->deadline_ms;
+        $left = $deadline === null ? null : $deadline - $nowMs;
         $restarted = $board->contains(fn (BoardGame $game): bool => $game->status === BoardGameStatus::Aborted);
-        $since = (int) floor(max(0, $nowMs - (int) $active->turn_started_ms) / 3_600_000);
+        $name = $mover === null ? '?' : $this->name($mover);
 
         if ($active->ply === 0 && $restarted) {
-            return [self::RED, (string) __('Restarted for a missing first move, still none: :name to move', ['name' => $mover])];
+            return $light(self::RED, (string) __('Restarted for a missing first move, still none: :name to move', ['name' => $name]), $deadline, $mover, 'restart');
         }
 
         if ($active->ply === 0 && $now->diffInHours($active->created_at, true) >= self::RED_FIRST_MOVE_HOURS) {
-            return [self::RED, (string) __('No first move for :hours h: :name to move', ['hours' => (int) floor($now->diffInHours($active->created_at, true)), 'name' => $mover])];
+            return $light(self::RED, (string) __('No first move for :hours h: :name to move', ['hours' => (int) floor($now->diffInHours($active->created_at, true)), 'name' => $name]), $deadline, $mover, 'nofirst');
         }
 
-        if ($active->deadline_ms !== null && $active->deadline_ms - $nowMs < self::RED_DEADLINE_HOURS * 3_600_000) {
-            return [self::RED, (string) __('Move deadline in :hours h: :name to move', ['hours' => max(0, (int) floor(($active->deadline_ms - $nowMs) / 3_600_000)), 'name' => $mover])];
+        if ($left !== null && $left < self::RED_DEADLINE_HOURS * 3_600_000) {
+            return $light(self::RED, (string) __(':name to move', ['name' => $name]), $deadline, $mover);
         }
 
-        if ($since >= self::YELLOW_ON_MOVE_HOURS) {
-            return [self::YELLOW, (string) __(':name on the move for :hours h', ['name' => $mover, 'hours' => $since])];
+        if ($left !== null && $left < self::YELLOW_DEADLINE_HOURS * 3_600_000) {
+            return $light(self::YELLOW, (string) __(':name to move', ['name' => $name]), $deadline, $mover);
         }
 
-        if ($board->contains(fn (BoardGame $game): bool => $game->status === BoardGameStatus::Finished)) {
-            return [self::YELLOW, (string) __('Game :n under way', ['n' => (int) ($active->tournament_game ?? 2)])];
-        }
-
-        return [self::GREEN, null];
+        return $light(self::GREEN, (string) __(':name to move', ['name' => $name]), $deadline, $mover);
     }
 
-    /** The name of the entry a user plays for in this match. */
-    private function moverName(TournamentMatch $match, int $userId): string
+    /** The entry a user plays for in this match. */
+    private function moverId(TournamentMatch $match, int $userId): ?int
     {
         foreach ($match->slots as $slot) {
             $participant = $this->participants->get((int) $slot->tournament_participant_id);
 
             if ($participant !== null && in_array($userId, $participant->memberIds(), true)) {
-                return (string) $participant->name;
+                return $participant->id;
             }
         }
 
-        return '?';
+        return null;
+    }
+
+    /** The time left to a deadline, short: "48m" under an hour, "5h12" under ten, else "14h"; "0m" once passed. */
+    public static function left(int $ms): string
+    {
+        $minutes = intdiv(max(0, $ms), 60_000);
+
+        return match (true) {
+            $minutes < 60 => $minutes.'m',
+            $minutes < 600 => intdiv($minutes, 60).'h'.str_pad((string) ($minutes % 60), 2, '0', STR_PAD_LEFT),
+            default => intdiv($minutes, 60).'h',
+        };
     }
 
     /**
