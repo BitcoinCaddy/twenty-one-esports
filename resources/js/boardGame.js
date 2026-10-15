@@ -30,6 +30,7 @@
  * window, with the lower player card under the board.
  */
 
+import { setFocus } from './focusMode.js';
 import { gameChat } from './gameChat.js';
 import { registerAlpine } from './registerAlpine.js';
 
@@ -319,6 +320,10 @@ registerAlpine(() => {
             const room = edge - (drawn.top + scrollY) - under - (phone ? 8 : 16);
             const width = Math.round(room * (drawn.width / drawn.height));
             if (phone) {
+                // Too short a phone for the board's floor of 200 px (an iPhone SE in Safari, 553 px high: the board reached 40 px
+                // under Blockli's bar until the first tap): the tab bar slides away at once, as focus mode does on that tap, and
+                // the board fits again in the room it gives up (focus-mode calls this anew). Only on a focus page, once.
+                if (width < 200 && tabbar > 0 && document.documentElement.dataset.focus === 'shown') setFocus(true);
                 grid.style.gridTemplateColumns = '';
                 box.style.maxWidth = Math.max(200, width) + 'px';
                 page.style.paddingBottom = (shown(sheet) ? 72 : 0) + (shown(dock) ? dock.offsetHeight : 0) + 24 + 'px';
