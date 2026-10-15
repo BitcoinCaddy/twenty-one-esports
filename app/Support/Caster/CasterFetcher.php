@@ -378,7 +378,7 @@ class CasterFetcher
                     'X-Caster-Duration' => sprintf('%.3F', Pcm::seconds($voiced['pcm'], $voiced['rate'])),
                     'X-Caster-Sentence-Ends' => implode(',', array_map(fn (float $end): string => sprintf('%.3F', $end), $voiced['ends'])),
                 ])
-                ->withBody(self::keepLocal($opus, 'clip'), 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($opus, 'clip', timeless: false), 'audio/ogg')
                 ->post($settings['server'].'/api/caster/scripts/'.$id.'/clip');
         } catch (ConnectionException) {
             $this->note("script {$id}: upload failed, server unreachable, released");
@@ -591,15 +591,18 @@ class CasterFetcher
      * retried on connection errors and 5xx; its history entry deleted right after.
      */
     /**
-     * A copy of every uploaded clip or block in `voicestudio.keep_local_dir` for listening (user 2026-10-13: "die lass
-     * ausnahmsweise für eine Abnahme auch lokal hier auf dem Rechner liegen"); off when the directory is empty. Returns the
-     * audio unchanged, so it wraps an upload body.
+     * A copy of an uploaded block in `voicestudio.keep_local_dir` (user 2026-10-13: "die lass ausnahmsweise für
+     * eine Abnahme auch lokal hier auf dem Rechner liegen"; user 2026-10-15: only the timeless programmes —
+     * "Turnier-Breakings brauche ich da nicht, nur die zeitlosen"): clips are never kept (everything a clip
+     * carries is perishable - a breaking, a chat reply, a day's scene), and a block is kept only when none of
+     * its topics is time-critical (a live tournament, the news talk, sport and weather). Off when the
+     * directory is empty. Returns the audio unchanged, so it wraps an upload body.
      */
-    public static function keepLocal(string $opus, string $label): string
+    public static function keepLocal(string $opus, string $label, bool $timeless = true): string
     {
         $dir = (string) config('tv.commentary.voicestudio.keep_local_dir', '');
 
-        if ($dir !== '' && $opus !== '') {
+        if ($dir !== '' && $opus !== '' && $timeless) {
             try {
                 if (! is_dir($dir)) {
                     mkdir($dir, 0775, true);
@@ -611,6 +614,15 @@ class CasterFetcher
         }
 
         return $opus;
+    }
+
+    /** Whether a block's topics are all timeless (user 2026-10-15): nothing that carries a clock. */
+    public static function timelessTopics(array $topics): bool
+    {
+        $perishable = [Programme\TournamentLive::TOPIC, Programme\NewsTalk::TOPIC, Programme\SportWeather::TOPIC];
+
+        return collect($topics)->filter(fn ($topic): bool => is_string($topic) && $topic !== '')
+            ->every(fn (string $topic): bool => ! in_array($topic, $perishable, true));
     }
 
     public function generate(string $text, string $profileId, float $speed, ?string $language = null, ?float $duration = null): ?string

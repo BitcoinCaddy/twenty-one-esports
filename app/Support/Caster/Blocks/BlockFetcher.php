@@ -202,7 +202,7 @@ final class BlockFetcher
                     'X-Caster-Boundaries' => $times($block['boundaries']),
                     'X-Caster-Protected' => sprintf('%.3F', $block['protected']),
                 ])
-                ->withBody(CasterFetcher::keepLocal($opus, 'block'), 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($opus, 'block', CasterFetcher::timelessTopics((array) ($block['topics'] ?? []))), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/blocks');
         } catch (ConnectionException) {
             $fetcher->note('block '.implode(',', $ids).': upload failed, server unreachable, released');
