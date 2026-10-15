@@ -317,27 +317,31 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
     // 48 px card and 16 px air = 411; the card ended at 955 with 560 px). From ~970 px of height it is 560 again;
     // players and logged-in spectators keep 560 px (their card ends at 886).
     $boardColumn = auth()->guest() ? 'lg:grid-cols-[minmax(0,min(560px,calc(100dvh-411px)))_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)]';
+    $banner = $boardGame->tournament_match_id !== null ? TournamentGameEnd::banner($boardGame) : null;
 @endphp
 
 <div class="flex grow flex-col px-4 pb-8 lg:px-12 lg:pb-10" data-test="board-page" data-focus-page>
-    {{-- A tournament game says so first, above everything else (user, 2026-10-03); below lg under the game (game-banner). --}}
-    <x-tournaments.game-banner :banner="$boardGame->tournament_match_id !== null ? TournamentGameEnd::banner($boardGame) : null" class="mx-auto mb-4 w-full max-w-[1000px] lg:mb-5" />
+    {{-- A tournament game says so first, above everything else (user, 2026-10-03). Below lg it is one line in the title row
+         instead (game-banner-row, DerCaddy 2026-10-15): above the game, and the board keeps the size of a casual game's. --}}
+    <x-tournaments.game-banner :banner="$banner" class="mx-auto mb-4 w-full max-w-[1000px] max-lg:hidden lg:mb-5" />
 
     <div wire:ignore x-data="boardGame(@js($config))" x-on:keydown.window="browseKey($event)" @class(["mx-auto flex w-full max-w-[1000px] flex-col gap-2 lg:gap-5", "min-[87.5rem]:max-w-[1360px]" => $chat]) data-test="board-game" data-mode="{{ $boardGame->mode }}">
 
         {{-- Title row --}}
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {{-- On a phone the credit stands beside the name: the board gets the height (P2). --}}
-            <div class="flex min-w-0 items-baseline gap-2 lg:block">
+        <div @class(['flex flex-wrap items-center gap-x-4 gap-y-2', 'max-lg:gap-x-2' => $banner])>
+            {{-- On a phone the credit stands beside the name: the board gets the height (P2). A tournament game shows its
+                 banner there instead; the name stays for screen readers. --}}
+            <div @class(['flex min-w-0 items-baseline gap-2 lg:block', 'max-lg:sr-only' => $banner])>
                 <h1 class="m-0 font-display text-[22px] font-bold lg:text-[28px]">{{ GameNames::game($boardGame->game) }}</h1>
                 <x-game-credit :game="$boardGame->game" />
             </div>
             {{-- The lobby of this board game (P5): the next opponent, the ladder. --}}
-            <a href="{{ route('board.lobby', $boardGame->game) }}" class="text-[13px] text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink hover:decoration-btc" data-test="board-lobby-link">{{ __('Lobby') }}</a>
+            <a href="{{ route('board.lobby', $boardGame->game) }}" @class(['text-[13px] text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink hover:decoration-btc', 'max-lg:hidden' => $banner]) data-test="board-lobby-link">{{ __('Lobby') }}</a>
+            <x-tournaments.game-banner-row :banner="$banner" />
             {{-- No separate "Correspondence games" link: board games are correspondence only, the lobby is that page (2026-10-08; it pushed the board below the fold at 1440). --}}
             {{-- The match dock's button from lg, as on daily chess: the chat owns the bottom right here (its floating bar covered the send button, PR #5). --}}
             <div data-dock-slot class="max-lg:hidden"></div>
-            <span class="grow"></span>
+            <span @class(['grow', 'max-lg:hidden' => $banner])></span>
             <span role="status" class="flex h-[34px] items-center gap-2 rounded-md px-2.5 text-[13px] lg:px-3"
                   :class="connection === 'connected' ? 'bg-[#122016] text-win' : 'bg-[#241D10] text-btc-hi'">
                 <span class="size-2 rounded-full" :class="connection === 'connected' ? 'bg-win' : 'bg-btc-hi'"></span>
