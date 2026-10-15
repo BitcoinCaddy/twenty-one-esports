@@ -22,12 +22,14 @@
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
-    // Column geometry: the orange edge at x 1040 (4 px); the stack centred on the rest (x 1044..1280), text within 200 px.
+    // Column geometry: the orange edge at x 1040 (4 px); the stack centred on x 1044..1248, which keeps every text and
+    // the code inside the frame's 32 px safe margin (right <= 1248, baselines <= 700, as TwentyOneProgrammeSlidesTest
+    // measures every slide): text within 192 px, the code at most 196 px.
     $colX = K::CONTENT_WIDTH;
-    $cx = ($colX + 4 + 1280) / 2;
-    $textW = 200;
-    $qrMax = 208;
-    $qrFloor = 632;
+    $cx = ($colX + 4 + 1248) / 2;
+    $textW = 192;
+    $qrMax = 196;
+    $qrFloor = 628;
     $avatarD = 136;
     $avatarY = 148;
     $acy = $avatarY + $avatarD / 2;
@@ -66,7 +68,11 @@
         $actionW = K::width($npAction, K::MONO, 15) + ($bolt ? 18 : 0);
         $actionX = $cx - $actionW / 2;
         $y = $actionY + 6;
-        $initials = mb_strtoupper(implode('', array_map(fn (string $w): string => mb_substr($w, 0, 1), array_slice(preg_split('/\s+/u', K::clean((string) $np['artist'])) ?: [], 0, 2))));
+        // The first letters of the first two words (no closure: a view closure leaks on every render, TwentyOneSceneTest).
+        $initials = '';
+        foreach (array_slice(preg_split('/\s+/u', K::clean((string) $np['artist'])) ?: [], 0, 2) as $word) {
+            $initials .= mb_strtoupper(mb_substr($word, 0, 1));
+        }
     }
     // The code takes what is left down to $qrFloor, centred in that band.
     $qrTop = $np === null ? 356 : $y + 14;
@@ -74,8 +80,8 @@
     $qrY = round($qrTop + ($qrFloor - $qrTop - $qrSize) / 2);
     $qrX = round($cx - $qrSize / 2);
     // The viewer row, centred: viewerBadge() sets it right-aligned, so it moves by half its width.
-    $vb = K::viewerBadge($viewers ?? null, 1256, 676, K::DISPLAY, 14, 12);
-    $vbShift = $vb === null ? 0 : round($cx - ($vb['x0'] + 1256) / 2, 1);
+    $vb = K::viewerBadge($viewers ?? null, 1248, 670, K::DISPLAY, 14, 12);
+    $vbShift = $vb === null ? 0 : round($cx - ($vb['x0'] + 1248) / 2, 1);
 @endphp
 <g data-unit="now-playing-column" data-box="{{ $colX }} 0 1280 720">
 <rect x="{{ $colX }}" y="0" width="{{ 1280 - $colX }}" height="720" fill="#121215"/>
@@ -113,7 +119,8 @@
     @include('stream.rotation.partials.qr', ['x' => $qrX, 'y' => $qrY, 'size' => $qrSize, 'qr' => $siteQr ?? ''])
 </g>
 @endif
-<rect x="{{ $cx - $textW / 2 }}" y="648" width="{{ $textW }}" height="1" fill="#2A2A30"/>
+<rect x="{{ $cx - $textW / 2 }}" y="644" width="{{ $textW }}" height="1" fill="#2A2A30"/>
 @if ($vb)<g transform="translate({{ $vbShift }} 0)">@include('stream.rotation.partials.viewers', ['vb' => $vb, 'eyeInk' => '#F7931A', 'countInk' => '#FFFFFF', 'wordInk' => '#ADADB0'])</g>@endif
-<text data-unit="now-playing-url" x="{{ $cx }}" y="{{ $vb ? 702 : 690 }}" font-family="JetBrains Mono" font-weight="700" font-size="11" fill="#8B8B90" text-anchor="middle">esports.einundzwanzig.space</text>
+<text data-unit="now-playing-url" x="{{ $cx }}" y="{{ $vb ? 694 : 680 }}"
+ font-family="JetBrains Mono" font-weight="700" font-size="11" fill="#8B8B90" text-anchor="middle">esports.einundzwanzig.space</text>
 </g>

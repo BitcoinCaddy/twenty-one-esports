@@ -76,7 +76,7 @@ test('every slide carries the column at x 1040 to 1280: the music with a card, t
         ->and($without)->toContain('data-unit="now-playing-column" data-box="1040 0 1280 720"')
         ->toContain('data-unit="now-playing-league"')->toContain('Scan und spiel mit')->toContain('1,234')
         ->not->toContain('JETZT LÄUFT')
-        ->and(substr_count($without, 'width="208" height="208" fill="#FFFFFF"'))->toBe(1)
+        ->and(substr_count($without, 'width="196" height="196" fill="#FFFFFF"'))->toBe(1)
         // No count, no viewer row.
         ->and($renderer->svg([], 'np-test::blank'))->toContain('now-playing-column')->not->toContain('watching');
 
@@ -99,9 +99,9 @@ test('the column is the artist\'s stage: a long name in two whole lines as its l
             ->and(implode(' ', array_map(fn (array $line): string => $line[4], $m)))->toBe($artist)
             ->and($svg)->toContain('>Proof of Work<');
         foreach ($m as $line) {
-            // Centred on x 1162, within the 200 px of text, and larger than every other text of the column (11 to 15 px).
-            expect(RotationKit::width($line[4], $line[2], (float) $line[3]) * 1.04)->toBeLessThanOrEqual(200.0, $line[4])
-                ->and((float) $line[1])->toBe(1162.0)
+            // Centred on x 1146, within the 192 px of text, and larger than every other text of the column (11 to 15 px).
+            expect(RotationKit::width($line[4], $line[2], (float) $line[3]) * 1.04)->toBeLessThanOrEqual(192.0, $line[4])
+                ->and((float) $line[1])->toBe(1146.0)
                 ->and((float) $line[3])->toBeGreaterThan(15.0);
         }
     }
