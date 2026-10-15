@@ -18,6 +18,7 @@ use App\Enums\TournamentStatus;
 use App\Games\Checkers;
 use App\Games\NineMensMorris;
 use App\Jobs\CheckBoardClock;
+use App\Jobs\NotifyBoardMove;
 use App\Jobs\PublishNostrEvent;
 use App\Jobs\SendNostrDm;
 use App\Jobs\SendWebPush;
@@ -199,6 +200,36 @@ test('a move within the deadline is played, gives the opponent a full day, puts 
     $service->move($live, $anna, 'c3-d4', 1);
 
     expect(Bus::dispatched(SendNostrDm::class))->toHaveCount(0);
+});
+
+test('a correspondence move can be taken back for 21 seconds, and its opponent is told of it only once it stands', function () {
+    // DerCaddy and the players, 2026-10-15 (BoardGameService::takeBack()): a misclick, 21 seconds, no accept step.
+    [$anna, $bert] = [correspondencePlayer(), correspondencePlayer()];
+    $game = correspondenceGame($anna, $bert);
+    $service = app(BoardGameService::class);
+    $dayStarted = (int) now()->getTimestampMs();
+
+    $this->travel(2)->hours();
+    $game = $service->move($game, $anna, 'd2', 1);
+    $move = $game->moves()->sole();
+    // "Your move" waits until the move can no longer be taken back.
+    Queue::assertPushed(NotifyBoardMove::class, fn (NotifyBoardMove $job) => $job->gameId === $game->id && $job->moveId === $move->id
+        && $job->delay instanceof DateTimeInterface && $job->delay->getTimestamp() === now()->addSeconds(22)->getTimestamp());
+    expect($service->snapshot($game)['takeBackUntil'])->toBe((int) now()->getTimestampMs() + 21_000);
+
+    $this->travel(10)->seconds();
+    $game = $service->takeBack($game, $anna)->refresh();
+
+    expect($game->only(['ply', 'turn', 'white_ms']))->toBe(['ply' => 0, 'turn' => 'w', 'white_ms' => CORRESPONDENCE_DAY_MS])
+        // Anna's day runs on from where it stood: the deadline she had before the move.
+        ->and($game->deadline_ms)->toBe($dayStarted + CORRESPONDENCE_DAY_MS)
+        ->and(NotifyBoardMove::stands($game, $move->id))->toBeFalse('the notice for the move taken back stays silent');
+
+    $game = $service->move($game, $anna, 'd2', 1);
+    expect(NotifyBoardMove::stands($game, $game->moves()->sole()->id))->toBeTrue('a move that stands is told');
+
+    $this->travel(21)->seconds();
+    expect(correspondenceRefusal(fn () => $service->takeBack($game, $anna)))->toBe('take_back_closed');
 });
 
 test('a missed deadline loses on time through the delayed job, and aborts before both first moves', function () {

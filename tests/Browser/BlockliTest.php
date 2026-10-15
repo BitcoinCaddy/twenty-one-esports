@@ -709,3 +709,64 @@ test('an organizer switches a running Blockli tournament to rapid in the editor;
             ->and($show->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     }
 });
+
+test('right after a move its player can take it back for 21 seconds: the button counts down in the toggle\'s place, the opponent is told, the board is as before', function (int $width, int $height, bool $touch) {
+    // DerCaddy and the players, 2026-10-15: a misclick, 21 seconds, no accept step (BoardGameService::takeBack()).
+    expect(config('broadcasting.default'))->toBe('reverb', 'Run this through `composer test:browser`, which starts Reverb.');
+
+    [$anna, $bert] = User::factory()->count(2)->create();
+    // From the start position: the move taken back is the first, so the board goes back to it.
+    $game = app(BoardGameService::class)->start('blockli', $anna, $bert);
+    $path = route('board.show', $game, false);
+    $white = blockliPage($anna, $path, $width, $height, $touch);
+    $black = blockliPage($bert, $path, $width, $height, $touch);
+
+    foreach ([$white, $black] as $page) {
+        BrowserWait::until($page, BLOCKLI_READY, 10_000);
+    }
+
+    $start = $white->evaluate('() => Alpine.$data(document.querySelector("[data-test=board-game]")).state.pieces');
+    blockliTap($white, $touch, 'e2');
+    blockliPly([$white, $black], 1);
+    BrowserWait::until($white, '() => !!document.querySelector("[data-test=take-back]")?.checkVisibility()', 5_000);
+    $offered = $white->evaluate(<<<'JS'
+        () => {
+            const button = document.querySelector('[data-test=take-back]');
+            const r = button.getBoundingClientRect();
+            const g = Alpine.$data(document.querySelector('[data-test=board-game]'));
+            return { left: g.takeBackLeft, h: Math.round(r.height), inBar: !!button.closest('[data-test=block-input]'), toggle: document.querySelector('[data-test=mode-block]').checkVisibility(), label: button.getAttribute('aria-label') };
+        }
+        JS);
+    $blackOffered = $black->evaluate('() => !!document.querySelector("[data-test=take-back]")?.checkVisibility()');
+
+    $touch ? $white->locator('[data-test=take-back]')->tap() : $white->locator('[data-test=take-back]')->click();
+    blockliPly([$white, $black], 0);
+    blockliCanMove($white);
+    $after = $white->evaluate('() => ({ pieces: Alpine.$data(document.querySelector("[data-test=board-game]")).state.pieces, button: !!document.querySelector("[data-test=take-back]")?.checkVisibility(), toggle: document.querySelector("[data-test=mode-block]").checkVisibility(), notice: Alpine.$data(document.querySelector("[data-test=board-game]")).noticeShown })');
+    BrowserWait::until($black, '() => Alpine.$data(document.querySelector("[data-test=board-game]")).noticeShown', 5_000);
+    $told = $black->evaluate('() => ({ notice: Alpine.$data(document.querySelector("[data-test=board-game]")).notice, shown: [...document.querySelectorAll("[data-test=board-notice], [data-test=block-status]")].filter((el) => el.checkVisibility()).map((el) => el.innerText) })');
+    fwrite(STDERR, PHP_EOL."take back {$width}: ".json_encode(compact('offered', 'blackOffered', 'after', 'told')).PHP_EOL);
+
+    expect($offered['left'])->toBeGreaterThanOrEqual(18)->toBeLessThanOrEqual(21)
+        ->and($offered['h'])->toBeGreaterThanOrEqual(44)
+        ->and($offered['inBar'])->toBeTrue('in Blockli\'s bar')
+        ->and($offered['toggle'])->toBeFalse('in the place of "Set a block", off anyway while the opponent is to move')
+        ->and($offered['label'])->toContain('s')
+        ->and($blackOffered)->toBeFalse('only the player who moved can take it back')
+        ->and($after['pieces'])->toBe($start)
+        ->and($after['button'])->toBeFalse()
+        ->and($after['toggle'])->toBeTrue()
+        ->and($after['notice'])->toBeFalse('the player who took it back needs no notice')
+        ->and($game->refresh()->ply)->toBe(0)
+        ->and($game->moves()->count())->toBe(0)
+        ->and($told['notice'])->not->toBe('')
+        ->and($told['shown'])->toContain($told['notice']);
+
+    foreach ([$white, $black] as $page) {
+        expect($page->evaluate('() => window.__errors'))->toBe([])
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    }
+})->with([
+    'phone, touch' => [390, 844, true],
+    'desktop, mouse' => [1440, 900, false],
+]);
