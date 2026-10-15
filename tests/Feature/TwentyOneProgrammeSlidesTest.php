@@ -309,7 +309,8 @@ test('every programme slide renders at 1280 x 720 with every text inside the fra
 
         foreach ($texts as $t) {
             expect($t['left'])->toBeGreaterThanOrEqual(32, $scene.' '.$t['text'])
-                ->and($t['right'])->toBeLessThanOrEqual(1248, $scene.' '.$t['text'])
+                // The slide keeps the 32 px safe margin; the now-playing column (x 1040 on) keeps 16 px to the frame.
+                ->and($t['right'])->toBeLessThanOrEqual($t['left'] >= 1040 ? 1264 : 1248, $scene.' '.$t['text'])
                 ->and($t['y'])->toBeLessThanOrEqual(700, $scene.' '.$t['text']);
 
             if ($t['y'] < 112) {

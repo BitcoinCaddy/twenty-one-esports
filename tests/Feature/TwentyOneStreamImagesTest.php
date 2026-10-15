@@ -212,6 +212,19 @@ test('a picture larger than 4096 px a side is refused before it is decoded', fun
         ->and(getimagesizefromstring($builder->avatarJpeg(streamPicture(4096, 1)))[0])->toBe(128);
 });
 
+test('a music artist\'s full-size photo is taken up to 6000 px a side and 16 MB, a player\'s still stops at 4096 px and 8 MB', function () {
+    $builder = app(StreamImageBuilder::class);
+    $big = str_pad(streamPicture(), 10 * 1024 * 1024, "\0");
+    Http::fake(['https://cdn.example/*' => fn () => pictureResponse($big)]);
+
+    expect(getimagesizefromstring($builder->avatarJpeg(streamPicture(5472, 1), 6000))[0])->toBe(128)
+        ->and(fn () => $builder->avatarJpeg(streamPicture(6001, 1), 6000))->toThrow(StreamImageFailed::class, 'image is 6001x1')
+        ->and(fn () => app(ImageFetcher::class)->fetch('https://cdn.example/big.png'))->toThrow(StreamImageFailed::class, 'larger than')
+        ->and(strlen(app(ImageFetcher::class)->fetch('https://cdn.example/big.png', 16 * 1024 * 1024)))->toBe(10 * 1024 * 1024)
+        ->and(config('twentyone.stream.images.music_max_side'))->toBe(6000)
+        ->and(config('twentyone.stream.images.music_max_bytes'))->toBe(16 * 1024 * 1024);
+});
+
 test('a broken picture keeps the old file, logs one line without the query and waits before the next try', function () {
     $user = User::factory()->create(['picture' => 'https://cdn.example/me.png?token=secret']);
     $path = StreamImages::avatarFile($user->id, $user->picture);

@@ -362,6 +362,9 @@ return [
             'fetch_seconds' => 5,
             'max_bytes' => 8 * 1024 * 1024,
             'max_side' => 4096,
+            // The music artists' pictures (StreamImageBuilder::refreshMusicAvatars()): full-size photos are common there.
+            'music_max_bytes' => 16 * 1024 * 1024,
+            'music_max_side' => 6000,
             'memory_entries' => 500,
             'memory_seconds' => 600,
         ],

@@ -201,7 +201,12 @@ class StreamImageBuilder
             }
 
             try {
-                $jpeg = $this->avatarJpeg($this->fetcher->fetch($picture));
+                // Artists' pictures are a short, curated list and often full-size photos (user 2026-10-16: "die echten
+                // Nostr Profil Avatare fehlen"; 3648x5472, 4500x3001 and 13.8 MB failed the players' limits).
+                $jpeg = $this->avatarJpeg(
+                    $this->fetcher->fetch($picture, (int) config('twentyone.stream.images.music_max_bytes', 16 * 1024 * 1024)),
+                    (int) config('twentyone.stream.images.music_max_side', 6000),
+                );
                 File::ensureDirectoryExists(dirname($path));
                 PlaylistWriter::writeAtomically($path, $jpeg);
                 touch($path, $now);
@@ -381,9 +386,9 @@ class StreamImageBuilder
      *
      * @throws StreamImageFailed
      */
-    public function avatarJpeg(string $bytes): string
+    public function avatarJpeg(string $bytes, ?int $maxSide = null): string
     {
-        $image = $this->decode($bytes);
+        $image = $this->decode($bytes, $maxSide);
         $side = min(imagesx($image), imagesy($image));
         $avatar = imagecreatetruecolor(self::AVATAR_SIDE, self::AVATAR_SIDE);
         imagefill($avatar, 0, 0, (int) imagecolorallocate($avatar, 0x14, 0x14, 0x14));
@@ -474,14 +479,14 @@ class StreamImageBuilder
     }
 
     /**
-     * Decode after the header check: both sides at most `max_side`.
+     * Decode after the header check: both sides at most `$maxSide` (default `max_side`).
      *
      * @throws StreamImageFailed
      */
-    private function decode(string $bytes): GdImage
+    private function decode(string $bytes, ?int $maxSide = null): GdImage
     {
         $size = @getimagesizefromstring($bytes);
-        $max = (int) config('twentyone.stream.images.max_side', 4096);
+        $max = $maxSide ?? (int) config('twentyone.stream.images.max_side', 4096);
 
         if ($size === false || $size[0] < 1 || $size[1] < 1) {
             throw new StreamImageFailed('not a readable image');

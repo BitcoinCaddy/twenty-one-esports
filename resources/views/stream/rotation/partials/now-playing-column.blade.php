@@ -22,12 +22,13 @@
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
-    // Column geometry: the orange edge at x 1040 (4 px); the stack centred on x 1044..1248, which keeps every text and
-    // the code inside the frame's 32 px safe margin (right <= 1248, baselines <= 700, as TwentyOneProgrammeSlidesTest
-    // measures every slide): text within 200 px (1146 ± 100; "JustAnotherNode", one word, needs 194 px at 16), the
-    // code at most 196 px.
+    // Column geometry: the orange edge at x 1040 (4 px); the stack centred on what is left, x 1044..1280 (user
+    // 2026-10-16: "Insgesamt ist die Artist Slide rechts nicht mittig vom Inhalt her"), so x 1162. The column keeps a
+    // 16 px margin to the frame (TwentyOneProgrammeSlidesTest: right <= 1264 here, 1248 on the slide; baselines
+    // <= 700): text within 200 px (1162 ± 100; "JustAnotherNode", one word, needs 194 px at 16), the code at most
+    // 196 px.
     $colX = K::CONTENT_WIDTH;
-    $cx = ($colX + 4 + 1248) / 2;
+    $cx = ($colX + 4 + 1280) / 2;
     $textW = 200;
     $qrMax = 196;
     $qrFloor = 628;

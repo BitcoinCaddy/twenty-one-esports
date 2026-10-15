@@ -47,13 +47,13 @@ class ImageFetcher
     public function __construct(private Factory $http, private HostResolver $resolver) {}
 
     /**
-     * The picture's bytes.
+     * The picture's bytes, at most `$maxBytes` (default `max_bytes`).
      *
      * @throws StreamImageFailed
      */
-    public function fetch(string $url): string
+    public function fetch(string $url, ?int $maxBytes = null): string
     {
-        $maxBytes = max(1, (int) config('twentyone.stream.images.max_bytes', 8 * 1024 * 1024));
+        $maxBytes = max(1, $maxBytes ?? (int) config('twentyone.stream.images.max_bytes', 8 * 1024 * 1024));
         $seconds = max(1, (int) config('twentyone.stream.images.fetch_seconds', 5));
         $deadline = microtime(true) + $seconds;
 

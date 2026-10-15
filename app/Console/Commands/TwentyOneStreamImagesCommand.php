@@ -18,9 +18,9 @@ class TwentyOneStreamImagesCommand extends Command
      */
     public function handle(StreamImageBuilder $builder): int
     {
-        // GD holds a decoded picture of up to 4096x4096 (64 MB) at once.
-        if ($this->bytes((string) ini_get('memory_limit')) < 256 * 1024 * 1024) {
-            ini_set('memory_limit', '256M');
+        // GD holds a decoded picture of up to 4096x4096 (64 MB) at once, an artist's up to 6000x6000 (144 MB).
+        if ($this->bytes((string) ini_get('memory_limit')) < 384 * 1024 * 1024) {
+            ini_set('memory_limit', '384M');
         }
 
         $backdrops = $builder->buildBackdrops();

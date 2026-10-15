@@ -102,9 +102,9 @@ test('the column is the artist\'s stage: a long name in two whole lines as its l
             ->and(implode(' ', array_map(fn (array $line): string => $line[4], $m)))->toBe($artist)
             ->and($svg)->toContain('>Proof of Work<');
         foreach ($m as $line) {
-            // Centred on x 1146, within the 200 px of text, and larger than every other text of the column (11 to 15 px).
+            // Centred on x 1162 (the middle of x 1044..1280), within the 200 px of text, and larger than every other text of the column (11 to 15 px).
             expect(RotationKit::width($line[4], $line[2], (float) $line[3]) * 1.04)->toBeLessThanOrEqual(200.0, $line[4])
-                ->and((float) $line[1])->toBe(1146.0)
+                ->and((float) $line[1])->toBe(1162.0)
                 ->and((float) $line[3])->toBeGreaterThan(15.0);
         }
     }
