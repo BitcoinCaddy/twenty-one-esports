@@ -60,6 +60,10 @@ it('writes a live comment from the field and the players\' Nostr bios, at most o
 it('writes Noerd the way the voices say it, Nörd, in every queued script', function () {
     expect(ScriptQueue::sayAs('Noerd gegen noerd, Noerdlicht bleibt'))->toBe('Nörd gegen Nörd, Noerdlicht bleibt');
     expect(ScriptQueue::sayAs('TWENTY ONE TV, im TV-Studio, TVöD bleibt'))->toBe('TWENTY ONE T Fau, im T Fau-Studio, TVöD bleibt');
+    // Clock times: the voice reads the colon as "Uhr", so the written one goes (live 2026-10-15: "22 Uhr 37 Uhr").
+    expect(ScriptQueue::sayAs('Es ist 22:37 Uhr Berliner Zeit.'))->toBe('Es ist 22 Uhr 37 Berliner Zeit.');
+    expect(ScriptQueue::sayAs('Start um 14:05, Ende 9:59.'))->toBe('Start um 14 Uhr 5, Ende 9 Uhr 59.');
+    expect(ScriptQueue::sayAs('Um 8 Uhr, um 8:30 Uhr und um 18:45.'))->toBe('Um 8 Uhr, um 8 Uhr 30 und um 18 Uhr 45.');
 });
 
 it('tells a finished game once: later comments see it only in the standings', function () {

@@ -310,6 +310,12 @@ class ScriptQueue
      */
     public static function sayAs(string $text): string
     {
+        // Clock times: the voice reads a colon as "Uhr", so "22:37 Uhr" came out as "22 Uhr 37 Uhr" (live
+        // 2026-10-15). Normalise to one spoken "Uhr" whatever the model wrote: "22:37 Uhr" and "22:37" both
+        // become "22 Uhr 37", bare minutes keep their place ("14:05" -> "14 Uhr 5").
+        $text = (string) preg_replace_callback('/(?<![\p{L}\p{N}])([01]?\d|2[0-3]):([0-5]\d)(\s*[uU]hr)?(?![\p{L}\p{N}])/u',
+            fn (array $m): string => $m[1].' Uhr '.(ltrim($m[2], '0') ?: '0'), $text);
+
         foreach ((array) config('tv.commentary.say_as', []) as $written => $spoken) {
             if (is_string($written) && is_string($spoken) && $written !== '') {
                 $text = (string) preg_replace('/(?<![\p{L}\p{N}])'.preg_quote($written, '/').'(?![\p{L}\p{N}])/iu', $spoken, $text);
