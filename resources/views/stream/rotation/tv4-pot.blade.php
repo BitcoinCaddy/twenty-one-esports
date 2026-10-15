@@ -17,9 +17,9 @@
     $faces = array_values(array_filter(array_slice((array) ($standing['faces'] ?? []), 0, 8), is_array(...)));
     $count = is_int($standing['count'] ?? null) ? $standing['count'] : count($faces);
     // The TV's grid: 5 parts the sum, 6 parts the places, 4u between.
-    $leftW = round((1204 - 51) * 5 / 11);
-    $rx = 38 + $leftW + 51;
-    $rw = 1242 - $rx;
+    $leftW = round((Tv::X1 - Tv::X0 - 51) * 5 / 11);
+    $rx = Tv::X0 + $leftW + 51;
+    $rw = Tv::X1 - $rx;
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
 @include('stream.rotation.partials.defs')
@@ -63,6 +63,6 @@
 @endforeach
 @endif
 @else
-<text data-unit="empty" x="640" y="410" font-family="Unbounded" font-weight="700" font-size="31" fill="{{ Tv::INK }}" text-anchor="middle">This tournament plays without a pot.</text>
+<text data-unit="empty" x="{{ Tv::CX }}" y="410" font-family="Unbounded" font-weight="700" font-size="31" fill="{{ Tv::INK }}" text-anchor="middle">This tournament plays without a pot.</text>
 @endif
 </svg>

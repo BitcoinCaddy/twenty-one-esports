@@ -13,7 +13,9 @@
     $t = is_array($tournament ?? null) ? $tournament : [];
     $duels = \App\Support\TwentyOne\Stream\TvSlides::duels((array) ($t['live'] ?? []));
     $solo = count($duels) === 1;
-    $faceD = $solo ? 192 : 115;
+    // The faces stand at the band's edges, "vs" on its centre line (Tv::CX); a name that would lose letters on one
+    // line steps down in size, then takes a second line.
+    $faceD = $solo ? 160 : 104;
     $roundH = 26;
     $duelH = $roundH + 22 + $faceD;
     $gap = 66;
@@ -27,8 +29,8 @@
 @include('stream.rotation.partials.tv-frame', ['t' => $t, 'part' => 2])
 
 @if ($coverUri)
-<clipPath id="tv2-cover"><rect x="236" y="{{ Tv::Y0 }}" width="808" height="{{ Tv::Y1 - Tv::Y0 }}" rx="8"/></clipPath>
-<image x="236" y="{{ Tv::Y0 }}" width="808" height="{{ Tv::Y1 - Tv::Y0 }}" preserveAspectRatio="xMidYMid slice" clip-path="url(#tv2-cover)" opacity="0.1" xlink:href="{{ $coverUri }}"/>
+<clipPath id="tv2-cover"><rect x="{{ Tv::CX - 404 }}" y="{{ Tv::Y0 }}" width="808" height="{{ Tv::Y1 - Tv::Y0 }}" rx="8"/></clipPath>
+<image x="{{ Tv::CX - 404 }}" y="{{ Tv::Y0 }}" width="808" height="{{ Tv::Y1 - Tv::Y0 }}" preserveAspectRatio="xMidYMid slice" clip-path="url(#tv2-cover)" opacity="0.1" xlink:href="{{ $coverUri }}"/>
 @endif
 
 @foreach ($duels as $di => $duel)
@@ -37,7 +39,7 @@
     $round = K::fit((string) ($duel['round'] ?? ''), K::DISPLAY, 19, 400);
     $chipW = 82;
     $roundW = K::width($round, K::DISPLAY, 19) * 1.04;
-    $rx0 = round(640 - ($chipW + 13 + $roundW) / 2, 1);
+    $rx0 = round(Tv::CX - ($chipW + 13 + $roundW) / 2, 1);
     $faceY = $y + $roundH + 22;
     $cy = $faceY + $faceD / 2;
 @endphp
@@ -45,27 +47,34 @@
 @foreach (array_values($duel['sides']) as $si => $side)
 @php
     $right = $si === 1;
-    $fx = $right ? 1204 - $faceD : 76;
-    $room = 640 - 40 - 38 - ($faceD + 19) - 38;
-    $nameSize = $nameMax;
+    $seed = is_int($side['seed'] ?? null) ? 'Seed '.$side['seed'] : '';
+    // The orange ring stands 5 px outside the face (its 3 px stroke 1.5 more): the faces sit 7 px inside the band.
+    $fx = $right ? Tv::X1 - 7 - $faceD : Tv::X0 + 7;
+    // From the face to 36 px before the centre line, where "vs" stands.
+    $room = Tv::CX - Tv::X0 - 7 - $faceD - 19 - 36;
     $clean = K::clean((string) ($side['name'] ?? ''));
-    $font = $clean === '' ? K::DISPLAY : K::nameFont($clean);
-    while ($nameSize > 19 && K::width($clean, $font, $nameSize) * 1.04 > $room) {
-        $nameSize -= 1;
+    $clean = $clean === '' ? 'Player' : $clean;
+    $nameLines = K::headline($clean, range($nameMax, 22, -2), $room, 1);
+    if (implode(' ', $nameLines['lines']) !== $clean) {
+        $nameLines = K::headline($clean, range(min($nameMax, 30), 19, -1), $room, 2);
     }
-    $nm = K::name($side['name'] ?? '', 'Player', $nameSize, $room);
+    $nameSize = $nameLines['size'];
+    $namePitch = round($nameSize * 1.15, 1);
+    $nameTop = (count($nameLines['lines']) - 1) * $namePitch;
+    $nameY = round($cy - $nameTop / 2 + ($seed !== '' ? -4 - $nameTop / 2 : $nameSize * 0.36), 1);
     $tx = $right ? $fx - 19 : $fx + $faceD + 19;
     $anchor = $right ? 'end' : 'start';
-    $seed = is_int($side['seed'] ?? null) ? 'Seed '.$side['seed'] : '';
 @endphp
 <rect x="{{ $fx - 5 }}" y="{{ $faceY - 5 }}" width="{{ $faceD + 10 }}" height="{{ $faceD + 10 }}" rx="{{ round(($faceD + 10) * 0.18, 1) }}" fill="none" stroke="{{ Tv::BTC }}" stroke-width="3"/>
 @include('stream.rotation.partials.face', ['face' => K::face($side), 'x' => $fx, 'y' => $faceY, 'd' => $faceD, 'id' => 'tv2-'.$di.'-'.$si, 'fShape' => 'square', 'fGround' => Tv::RAISED, 'fGlyph' => '#4A4A52', 'fUnit' => 'duel-face-'.$di.'-'.$si])
-<text data-unit="duel-name-{{ $di }}-{{ $si }}" x="{{ $tx }}" y="{{ round($cy - ($seed !== '' ? 4 : -$nameSize * 0.36), 1) }}" font-family="{{ $nm['font'] }}" font-weight="800" font-size="{{ $nameSize }}" fill="{{ Tv::INK }}" text-anchor="{{ $anchor }}">{{ $nm['text'] }}</text>
+@foreach ($nameLines['lines'] as $li => $nl)
+<text data-unit="duel-name-{{ $di }}-{{ $si }}{{ $li > 0 ? '-'.($li + 1) : '' }}" x="{{ $tx }}" y="{{ round($nameY + $li * $namePitch, 1) }}" font-family="{{ $nameLines['font'] }}" font-weight="800" font-size="{{ $nameSize }}" fill="{{ Tv::INK }}" text-anchor="{{ $anchor }}">{{ $nl }}</text>
+@endforeach
 @if ($seed !== '')<text data-unit="duel-seed-{{ $di }}-{{ $si }}" x="{{ $tx }}" y="{{ round($cy + 28, 1) }}" font-family="JetBrains Mono" font-size="19" fill="{{ Tv::INK2 }}" text-anchor="{{ $anchor }}">{{ $seed }}</text>@endif
 @endforeach
-<text data-unit="duel-vs-{{ $di }}" x="640" y="{{ round($cy + 11, 1) }}" font-family="Unbounded" font-weight="800" font-size="31" fill="{{ Tv::BTC }}" text-anchor="middle">vs</text>
+<text data-unit="duel-vs-{{ $di }}" x="{{ Tv::CX }}" y="{{ round($cy + 11, 1) }}" font-family="Unbounded" font-weight="800" font-size="31" fill="{{ Tv::BTC }}" text-anchor="middle">vs</text>
 @endforeach
 @if ($duels === [])
-<text data-unit="empty" x="640" y="410" font-family="Unbounded" font-weight="700" font-size="31" fill="{{ Tv::INK }}" text-anchor="middle">No match is being played right now.</text>
+<text data-unit="empty" x="{{ Tv::CX }}" y="410" font-family="Unbounded" font-weight="700" font-size="31" fill="{{ Tv::INK }}" text-anchor="middle">No match is being played right now.</text>
 @endif
 </svg>

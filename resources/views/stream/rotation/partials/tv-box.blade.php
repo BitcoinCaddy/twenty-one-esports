@@ -19,9 +19,11 @@
     $padY = round($fs * 0.35, 1);
     $pitch = round($fs * 1.25 + $fs * 0.2, 1);
     $faceD = round($fs * 1.15, 1);
+    $sw = $live ? 1.6 : 1;
 @endphp
 <g data-unit="box-{{ $id }}" @if ($state === 'void' || $state === 'bye') opacity="0.45" @endif>
-<rect x="{{ $bx['x'] }}" y="{{ $bx['y'] }}" width="{{ $bx['w'] }}" height="{{ $bx['h'] }}" rx="5" fill="{{ $live ? Tv::LIVE_PANEL : Tv::PANEL }}" stroke="{{ $live ? Tv::BTC : Tv::LINE }}" stroke-width="{{ $live ? 1.6 : 1 }}"/>
+{{-- The outline inside the box (inset by half its width), so a box laid out to Tv::X1 ends there. --}}
+<rect x="{{ $bx['x'] + $sw / 2 }}" y="{{ $bx['y'] + $sw / 2 }}" width="{{ $bx['w'] - $sw }}" height="{{ $bx['h'] - $sw }}" rx="5" fill="{{ $live ? Tv::LIVE_PANEL : Tv::PANEL }}" stroke="{{ $live ? Tv::BTC : Tv::LINE }}" stroke-width="{{ $sw }}"/>
 @foreach (array_slice($sides, 0, 2) as $si => $side)
 @php
     $cy = $bx['y'] + $padY + $si * $pitch + $fs * 0.625;
