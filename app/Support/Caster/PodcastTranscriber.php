@@ -66,13 +66,11 @@ class PodcastTranscriber
             return self::QUIET;
         }
 
-        $episode = $this->newestEpisode();
+        $episodes = $this->newestEpisodes();
 
-        if ($episode === null) {
+        if ($episodes === []) {
             return self::NO_EPISODE;
         }
-
-        $this->episode = $episode['title'];
 
         try {
             $status = $this->server()->post($this->serverUrl().'/api/caster/podcast-transcript/status');
@@ -84,9 +82,14 @@ class PodcastTranscriber
             return self::OFFLINE;
         }
 
-        if ($status->json('guid') === $episode['guid']) {
+        // The first of the feeds' newest episodes the server does not have yet: all podcasts come round.
+        $episode = collect($episodes)->first(fn (array $e): bool => $status->json('guid') !== $e['guid']);
+
+        if ($episode === null) {
             return self::DONE;
         }
+
+        $this->episode = ($episode['podcast'] !== '' ? $episode['podcast'].': ' : '').$episode['title'];
 
         $started = microtime(true);
         [$text, $failure] = $this->transcribe($episode['url']);
@@ -103,6 +106,7 @@ class PodcastTranscriber
             $upload = $this->server()->withBody((string) json_encode([
                 'guid' => $episode['guid'],
                 'title' => $episode['title'],
+                'podcast' => $episode['podcast'],
                 'episode_number' => $episode['episode_number'],
                 'published_at' => $episode['published_at'],
                 'transcript' => $text,
@@ -136,31 +140,46 @@ class PodcastTranscriber
     }
 
     /**
-     * @return array{guid: string, title: string, published_at: int, url: string, episode_number: int|null}|null
+     * The newest episode of every transcript feed (user 2026-10-16: "echte Transkripte aus allen Podcasts von
+     * EINUNDZWANZIG oder Re:set Blocktrainer oder Münzweg"), each with its podcast's name; the caller asks the
+     * server per episode and transcribes the first one it does not have.
+     *
+     * @return list<array{guid: string, title: string, published_at: int, url: string, episode_number: int|null, podcast: string}>
      */
-    private function newestEpisode(): ?array
+    private function newestEpisodes(): array
     {
-        $url = config('tv.commentary.chat.podcast_feed');
+        $episodes = [];
 
-        if (! is_string($url) || ! str_starts_with($url, 'https://')) {
-            return null;
+        foreach ((array) config('tv.commentary.chat.transcript_feeds', []) as $url) {
+            if (! is_string($url) || ! str_starts_with($url, 'https://')) {
+                continue;
+            }
+
+            try {
+                $response = Http::withUserAgent('TwentyOneTV/1.0 (+https://esports.einundzwanzig.space)')->connectTimeout(5)->timeout(60)->get($url);
+            } catch (Throwable) {
+                continue;
+            }
+
+            $body = $response->body();
+
+            if (! $response->successful() || strlen($body) > (int) config('tv.commentary.chat.podcast_max_bytes', 12 * 1024 * 1024)) {
+                continue;
+            }
+
+            $episode = PodcastFeed::newestAudio($body);
+
+            if ($episode === null || $episode['published_at'] <= 0) {
+                continue;
+            }
+
+            $podcast = preg_match('/<title>(.*?)<\/title>/s', $body, $m) === 1
+                ? trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8')) : basename(parse_url($url, PHP_URL_HOST) ?? '');
+            $episode['podcast'] = mb_substr($podcast !== '' ? $podcast : 'Podcast', 0, 80);
+            $episodes[] = $episode;
         }
 
-        try {
-            $response = Http::withUserAgent('TwentyOneTV/1.0 (+https://esports.einundzwanzig.space)')->connectTimeout(5)->timeout(60)->get($url);
-        } catch (Throwable) {
-            return null;
-        }
-
-        $body = $response->body();
-
-        if (! $response->successful() || strlen($body) > (int) config('tv.commentary.chat.podcast_max_bytes', 12 * 1024 * 1024)) {
-            return null;
-        }
-
-        $episode = PodcastFeed::newestAudio($body);
-
-        return $episode === null || $episode['published_at'] <= 0 ? null : $episode;
+        return $episodes;
     }
 
     /**

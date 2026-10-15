@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['guid', 'episode_number', 'title', 'published_at', 'transcript', 'digest'])]
+#[Fillable(['guid', 'episode_number', 'title', 'podcast', 'published_at', 'transcript', 'digest'])]
 class CasterPodcastTranscript extends Model
 {
     /**

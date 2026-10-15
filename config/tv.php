@@ -1350,6 +1350,14 @@ return [
             // The latest EINUNDZWANZIG podcast episodes as data for every chat reply (App\Support\Caster\PodcastFeed):
             // fetched at most once per `podcast_minutes`, the last good copy kept when the feed fails.
             'podcast_feed' => env('TV_COMMENTARY_PODCAST_FEED', 'https://anchor.fm/s/d8d3c38/podcast/rss'),
+            // The podcasts whose episodes are transcribed for the timeless programmes (user 2026-10-16: "echte
+            // Transkripte aus allen Podcasts von EINUNDZWANZIG oder Re:set Blocktrainer oder Münzweg"): Re:set
+            // airs inside the Blocktrainer feed (GM.MarkusTurm and DerPhiL's series), so three feeds cover all four.
+            'transcript_feeds' => array_values(array_filter(array_map('trim', explode(',', (string) env('TV_COMMENTARY_TRANSCRIPT_FEEDS',
+                'https://anchor.fm/s/d8d3c38/podcast/rss,https://serve.podhome.fm/rss/9b654631-a45c-58e4-a237-2e8aa65262b8,https://serve.podhome.fm/rss/537e4d76-e51c-5a01-a88d-83450d7cf7e8'))))),
+            // Real tutorial articles for the timeless tutorial programme (user 2026-10-16: "echte Tutorial-Artikel
+            // aus discover.einundzwanzig.space/feed.xml - keine erfundenen Dinge mehr").
+            'discover_feed' => (string) env('TV_COMMENTARY_DISCOVER_FEED', 'https://discover.einundzwanzig.space/feed.xml'),
             'podcast_episodes' => 3,
             'podcast_chars' => 600,
             'podcast_minutes' => 60,

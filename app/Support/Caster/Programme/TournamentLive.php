@@ -177,7 +177,9 @@ final class TournamentLive
         $lines = [
             'Turnier: '.$tournament->title().' (Spiel '.$tournament->game.', Modus '.$tournament->mode.', Format '.$tournament->format->value
                 .(isset($options['groupStage']) ? ', Gruppenphase '.$options['groupStage'].', Gruppen zu '.($options['groupSize'] ?? '?').', die besten '.($options['advance'] ?? '?').' jeder Gruppe kommen weiter' : '').').',
-            'Turnierstart: '.$tournament->starts_at->setTimezone('Europe/Berlin')->format('d.m. H:i').' Uhr Berliner Zeit. Jetzt: '.$now->setTimezone('Europe/Berlin')->format('H:i').' Uhr.',
+            // No clock times in the material (user 2026-10-16: the breakings air too late for them - "liest du
+            // lieber erst gar keine Uhrzeiten vor"): the day is all the model learns, never the hour.
+            'Turnierstart: '.$tournament->starts_at->setTimezone('Europe/Berlin')->format('d.m.Y').' (keine Uhrzeit nennen, niemals).',
         ];
 
         if ($tournament->game === 'blockli') {
@@ -367,7 +369,7 @@ final class TournamentLive
         return implode("\n", [
             $intro
                 ? 'Diesmal: stellt die markierten Spieler vor wie die Kommentatoren am Finaltisch eines Pokerturniers. Nur die markierten Spieler, keine anderen nennen. Pro Spieler: Name, was seine Nostr-Bio und seine letzten Nostr-Posts über ihn verraten (zitiert oder sinngemäß, aber nichts dazudichten), und was man daraus spielerisch von ihm erwarten darf (Spielstil, Schwächen, Chancen), frech geroastet.'
-                : 'Diesmal: was gerade im Turnier passiert. Neue Ergebnisse zuerst, sonst wer trödelt, wer an vielen Brettern am Zug ist, welche Partie schon weit ist.',
+                : 'Diesmal: was gerade im Turnier passiert. Neue Ergebnisse zuerst, sonst wer trödelt, wer an vielen Brettern am Zug ist, welche Partie schon weit ist. Nenne keine Uhrzeiten und keine Tageszeiten wie "gerade eben" oder "vor einer Stunde": der Einwurf läuft erst spät, jede genannte Zeit wäre falsch, wenn er on air geht.',
             (int) config('tv.commentary.tournament_live.every_minutes', 8) <= 2
                 // A comment every minute (user 2026-10-14: "ich will jede Minute einen"): short, so the voicing keeps up.
                 ? 'Live-Kommentar im Radio zu einem laufenden Turnier: ein ganz kurzer Einwurf von Markus und Sirius, 25 bis 40 Sekunden, 2 bis 4 Wortwechsel, jede Zeile beginnt mit "Markus:" oder "Sirius:".'

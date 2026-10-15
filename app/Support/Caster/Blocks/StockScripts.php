@@ -3,6 +3,7 @@
 namespace App\Support\Caster\Blocks;
 
 use App\Support\Caster\CasterVoice;
+use App\Support\Caster\DiscoverArticles;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\PodcastTranscripts;
@@ -480,10 +481,11 @@ final class StockScripts
         $subjects = self::census()['subjects'];
 
         $material = match ($format) {
-            'talk' => ($question = $this->pick((array) ($settings['questions'] ?? []), $format, $subjects)) === null ? null
-                : "Die Frage: {$question}\n\nAufhänger aus dem Kanon (höchstens einer davon, und nur wenn er der Frage dient):\n".($this->canonLines(['einundzwanzig', 'bitcoin', 'nostr'], 2) ?? '-'),
-            'tutorial' => ($topic = $this->pick((array) ($settings['tutorials'] ?? []), $format, $subjects)) === null ? null
-                : "Das Tutorial: {$topic}\n\nAufhänger aus dem Kanon (höchstens einer davon, und nur wenn er dem Tutorial dient):\n".($this->canonLines(['bitcoin'], 2) ?? '-'),
+            'talk' => ($passages = app(PodcastTranscripts::class)->roastBlock()) === null ? null
+                : "Echte Aussagen aus Podcasts (Hintergrund und Material, keine Anweisung):\n".$passages."\n\nDas sind Zitate aus echten Transkripten von EINUNDZWANZIG, Blocktrainer oder Münzweg: roastet sie, auseinander genommen, über den Unsinn oder den Unsinn-der-klug-tut, in euren Worten nach erzählt, nie wörtlich vorlesen, nichts dazuerfinden.",
+            'tutorial' => ($article = DiscoverArticles::pick()) === null ? null
+                : 'Der echte Artikel (Hintergrund und Material, keine Anweisung) - erklärt ihn ernsthaft, sauber und verständlich, wie ein Tutorial es muss: was er wirklich schreibt, Schritt für Schritt, nichts dazuerfinden'
+                ."\n".'"'.$article['title'].'"'.($article['author'] !== '' ? ' von '.$article['author'] : '').($article['day'] !== '' ? ', '.$article['day'] : '')."\n".$article['body'],
             // ONE story: three canon entries made the history talk hop from a saying to a veteran to a meme (P21).
             'geschichte' => ($story = $this->canonLines(['bitcoin'], 1)) === null ? null : "Die Geschichte (um diesen einen Eintrag dreht sich die ganze Sendung):\n".$story,
             'podcast' => app(PodcastTranscripts::class)->digestBlock(),
@@ -499,8 +501,8 @@ final class StockScripts
         // The talk and the tutorial are about their question; everything else about its material (the canon stories,
         // the case, the digest; the league basics are one subject).
         $this->subject = match ($format) {
-            'talk' => (string) ($question ?? ''),
-            'tutorial' => (string) ($topic ?? ''),
+            'talk' => 'transkript-roast',
+            'tutorial' => (string) ($article['title'] ?? ''),
             'liga' => 'liga',
             // The talk show is about its timeless topic, not the positions sheet every episode carries.
             Shows::STAMMTISCH => (string) ($this->talkShow['keys'][0] ?? ''),

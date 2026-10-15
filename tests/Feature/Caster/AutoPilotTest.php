@@ -2,6 +2,7 @@
 
 use App\Console\Commands\CasterFetchCommand;
 use App\Models\CasterClip;
+use App\Models\CasterPodcastTranscript;
 use App\Models\CasterScript;
 use App\Support\Caster\AtomicFile;
 use App\Support\Caster\Blocks\AutoPilot;
@@ -23,6 +24,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -667,11 +669,13 @@ it('spreads the stock writer over the formats and subjects the library holds lea
     foreach (array_slice($questions, 0, -1) as $index => $question) {
         autopilotBlock('t'.$index, ['format' => $index === 0 ? 'talk' : 'liga', 'subjects' => [$hash('talk', $question)]]);
     }
+    // The talk lives on the real transcripts now (user 2026-10-16): one transcribed episode for the roast.
+    CasterPodcastTranscript::query()->create(['guid' => 'probe-1', 'title' => '#99 Probe aus dem Studio', 'podcast' => 'Einundzwanzig', 'episode_number' => 99, 'published_at' => Carbon::now()->getTimestamp(), 'transcript' => implode(' ', array_fill(0, 40, 'Wir haben heute ueber die Liga gesprochen und dabei Kekse gegessen, was niemand brauchte.')), 'digest' => null]);
     // The liga count is now far higher: talk is the format with the fewest blocks.
     [$format, $material] = app(StockScripts::class)->material();
 
     expect($format)->toBe('talk')
-        ->and($material)->toContain(end($questions));
+        ->and($material)->toContain('Probe aus dem Studio');
 });
 
 it('simulates 72 hours with the workstation off: 60 h of unique stock and 7 podcast episodes keep the air going', function () {

@@ -121,13 +121,18 @@ it('writes an evergreen talk without the line that names the hour, and turns dow
 
 it('rotates the formats, a tutorial with its rules and no advice, a format without material skipped', function () {
     config(['tv.commentary.blocks.stock.formats' => ['tutorial', 'podcast']]);
+    // The tutorial lives on the real discover feed (user 2026-10-16): one article, its page fetched.
+    Http::fake([
+        'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title><item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
+        'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud.</p></article></body></html>'),
+    ]);
     $stock = app(StockScripts::class);
 
     [$format, $material] = $stock->material();
 
     // No podcast digest in the database: the tutorial is the only format with material.
     expect($format)->toBe('tutorial')
-        ->and($material)->toStartWith('Das Tutorial: ')
+        ->and($material)->toStartWith('Der echte Artikel')
         ->and(StockScripts::prompt('tutorial', $material))->toContain('Keine Anlage-, Rechts- oder Steuerberatung')->toContain('ZEITLOS')
         ->and(StockScripts::jinglesFor('stock:tutorial'))->toBe(['stock-tutorial', 'talk', 'station'])
         ->and(StockScripts::jinglesFor('stock:geschichte'))->toBe(['stock-geschichte', 'rubric-geschichte', 'talk', 'station'])
@@ -356,8 +361,16 @@ it('logs the airtime mix per hour: fresh, stock, replay and music', function () 
 });
 
 it('writes stock talks ahead only in the stock window and while the workstation reports room', function () {
-    config(['tv.commentary.blocks.stock.formats' => ['tutorial']]);
-    VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(), 'canon_id' => null, 'mood' => 'fakten']);
+    config(['tv.commentary.blocks.stock.formats' => ['tutorial'], 'tv.commentary.blocks.stock.judge.enabled' => false]);
+    // The tutorial programme lives on the real discover feed now (user 2026-10-16): one real article, its page too.
+    Http::fake([
+        'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title>'
+            .'<item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
+        'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud: Wer seine Worter fotografiert, schenkt sie dem nachsten Datenleck. Metall ubersteht sogar einen Wohnungsbrand, Papier nicht. Ein Bierdeckel ist ubrigens keine Aufbewahrung.</p></article></body></html>'),
+    ]);
+    // The answer retells the article's facts in its own words - taking a sentence from the material is what the
+    // judge refuses - with the opener/back-announce frame the writer requires (dayStockAnswer's shape, P21).
+    VoiceAgent::fake(fn (): array => ['text' => "Markus: Wer seine zwolf Worter abfotografiert und in irgendeine Cloud schiebt, hat sie praktisch schon verschenkt, nur ohne Geschenkpapier.\nSirius: Meine Worter lagen frueher auf einem Bierdeckel, und der Deckel ist beim Aufraumen verloren gegangen.\nMarkus: Genau deshalb gehoren die Worter auf Papier oder besser noch auf Metall und an einen Ort ohne Internet.\nSirius: Metall klingt nach Baumarkt und Hammer, aber ein Wohnungsbrand bekommt dem Papier gar nicht gut.\nMarkus: Und niemand fragt dich je nach diesen Wortern, weder der Support noch eine Bank und auch kein freundlicher Fremder.\nSirius: Der freundliche Fremde wollte sie neulich zur Sicherheit uberprufen und war dann plotzlich weg.\nMarkus: Der war so freundlich wie eine Zentralbank, die dir verspricht, dass dein Geld nachstes Jahr noch genauso viel wert ist.\nSirius: Dann schreibe ich die Worter auf Metall, und damit war das das Bitcoin-Tutorial, zuruck ins Programm.", 'canon_id' => null, 'mood' => 'fakten']);
     $queue = app(ScriptQueue::class);
     $stockTalks = fn (): int => CasterScript::query()->where('scene', StockScripts::SCENE)->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count();
 

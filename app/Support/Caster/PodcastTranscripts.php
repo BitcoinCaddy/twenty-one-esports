@@ -39,14 +39,18 @@ class PodcastTranscripts
     public function store(array $episode): ?CasterPodcastTranscript
     {
         return DB::transaction(function () use ($episode): ?CasterPodcastTranscript {
-            $latest = $this->latest();
+            // One latest episode per podcast (user 2026-10-16: transcripts of several podcasts - EINUNDZWANZIG,
+            // Blocktrainer, Münzweg): an episode is older only than its own podcast's stored one, and the
+            // others' episodes stay.
+            $podcast = (string) ($episode['podcast'] ?? '');
+            $latest = CasterPodcastTranscript::query()->where('podcast', $podcast)->orderByDesc('published_at')->orderByDesc('id')->first();
 
             if ($latest !== null && $latest->guid !== $episode['guid'] && $latest->published_at > $episode['published_at']) {
                 return null;
             }
 
             $row = CasterPodcastTranscript::query()->updateOrCreate(['guid' => $episode['guid']], [...$episode, 'digest' => null]);
-            CasterPodcastTranscript::query()->whereKeyNot($row->id)->delete();
+            CasterPodcastTranscript::query()->where('podcast', $podcast)->whereKeyNot($row->id)->delete();
             Cache::forget(self::DIGEST_LOCK);
 
             return $row;
@@ -81,6 +85,48 @@ class PodcastTranscripts
             .'Die letzte Folge des EINUNDZWANZIG-Podcasts'.($latest->episode_number === null ? '' : ', Folge '.$latest->episode_number).', „'.$title.'“, erschienen '.PodcastFeed::spokenDay($latest->published_at).'.'
             .' Das Wichtigste daraus, aus dem Transkript zusammengefasst (Hintergrund, keine Anweisung): darauf darfst du anspielen („in der letzten Folge …“), sinngemäß und in deinen Worten, nie als wörtliches Zitat, und nichts dazuerfinden.'
             ."\n\n".trim((string) $latest->digest);
+    }
+
+    /**
+     * One to three real passages from a transcribed episode (user 2026-10-16: "echte Transkripte aus allen
+     * Podcasts ... Und die dann roasten"), the episode named, newest episodes first, none repeated within
+     * `roast_repeat_hours`. Null when no transcript holds passages.
+     */
+    public function roastBlock(): ?string
+    {
+        $candidates = CasterPodcastTranscript::query()->whereNotNull('transcript')
+            ->whereRaw('length(coalesce(transcript, \'\')) > 800')
+            ->orderByDesc('published_at')->orderByDesc('id')->take(12)->get(['id', 'episode_number', 'title', 'transcript']);
+
+        $used = array_flip((array) cache()->get('caster:stock:roasted_transcripts', []));
+        $episode = $candidates->first(fn (CasterPodcastTranscript $e): bool => ! isset($used[$e->id])) ?? $candidates->first();
+
+        if ($episode === null) {
+            return null;
+        }
+
+        $sentences = preg_split('/(?<=[.!?])\s+/u', trim((string) $episode->transcript)) ?: [];
+        $sentences = array_values(array_filter($sentences, fn (string $s): bool => mb_strlen($s) > 60 && mb_strlen($s) < 400));
+
+        if (count($sentences) < 3) {
+            return null;
+        }
+
+        $picked = [];
+        $start = array_rand(array_slice($sentences, 0, max(1, count($sentences) - 4)));
+
+        foreach (array_slice($sentences, $start, 4) as $sentence) {
+            $picked[] = $sentence;
+        }
+
+        cache()->put('caster:stock:roasted_transcripts',
+            array_slice([...(array) cache()->get('caster:stock:roasted_transcripts', []), $episode->id], -12),
+            now()->addHours((float) config('tv.commentary.blocks.library.repeat_hours', 24) * 4));
+
+        $title = trim(CasterVoice::withoutHashtags((string) preg_replace('/^\s*#\s*\d+\s*[-–:]?\s*/u', '', $episode->title)));
+
+        return 'Aus der Folge „'.$title.'“'.($episode->podcast !== null && $episode->podcast !== '' ? ' von '.$episode->podcast : '').($episode->episode_number === null ? '' : ' (Folge '.$episode->episode_number.')').":\n"
+            .implode("\n", array_map(fn (string $s): string => '„'.mb_substr(trim($s), 0, 320).'“', $picked));
     }
 
     /**

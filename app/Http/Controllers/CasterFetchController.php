@@ -490,17 +490,19 @@ final class CasterFetchController
         $data = json_decode((string) $request->getContent(), true);
         $guid = is_array($data) ? ($data['guid'] ?? null) : null;
         $title = is_array($data) ? ($data['title'] ?? null) : null;
+        $podcast = is_array($data) ? ($data['podcast'] ?? null) : null;
         $number = is_array($data) ? ($data['episode_number'] ?? null) : null;
         $published = is_array($data) ? ($data['published_at'] ?? null) : null;
         $transcript = is_array($data) ? ($data['transcript'] ?? null) : null;
 
         if (! is_string($guid) || trim($guid) === '' || strlen($guid) > 255 || ! is_string($title) || trim($title) === '' || mb_strlen($title) > 255
+            || ($podcast !== null && (! is_string($podcast) || mb_strlen($podcast) > 80))
             || ($number !== null && (! is_int($number) || $number < 0)) || ! is_int($published) || $published <= 0
             || ! is_string($transcript) || trim($transcript) === '' || ! mb_check_encoding($transcript, 'UTF-8')) {
             return response()->json(['error' => 'invalid'], 422);
         }
 
-        $row = $transcripts->store(['guid' => $guid, 'title' => trim($title), 'episode_number' => $number, 'published_at' => $published, 'transcript' => trim($transcript)]);
+        $row = $transcripts->store(['guid' => $guid, 'title' => trim($title), 'podcast' => is_string($podcast) ? trim($podcast) : '', 'episode_number' => $number, 'published_at' => $published, 'transcript' => trim($transcript)]);
 
         return $row === null
             ? response()->json(['error' => 'older_than_stored'], 409)
