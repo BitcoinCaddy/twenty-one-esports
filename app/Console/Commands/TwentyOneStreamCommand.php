@@ -1069,15 +1069,6 @@ class TwentyOneStreamCommand extends Command
     }
 
     /**
-     * Render and send one frame: the rotation scene, else the old
-     * single/gallery scene while games are on show, else the last good frame
-     * again, so the picture holds instead of the encoder starving; only the
-     * first failure of a series is logged.
-     *
-     * @param  array{view: view-string, data: array<string, mixed>, fallback: array<string, mixed>|null, label: string, announce: bool}  $frame
-     * @return bool whether this frame rendered
-     */
-    /**
      * The card of the music on air (NowPlaying), off while a podcast replay airs over the fully ducked music, and never
      * a reason for the stream to stop: a failure only leaves the card off.
      *
@@ -1105,6 +1096,15 @@ class TwentyOneStreamCommand extends Command
 
     private bool $podcastOnAir = false;
 
+    /**
+     * Render and send one frame: the rotation scene, else the old
+     * single/gallery scene while games are on show, else the last good frame
+     * again, so the picture holds instead of the encoder starving; only the
+     * first failure of a series is logged.
+     *
+     * @param  array{view: view-string, data: array<string, mixed>, fallback: array<string, mixed>|null, label: string, announce: bool}  $frame
+     * @return bool whether this frame rendered
+     */
     private function sendSceneFrame(EncoderRun $run, SceneRenderer $renderer, array $frame, float $now, bool $logFailure): bool
     {
         try {

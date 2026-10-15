@@ -26,7 +26,9 @@
     $pv = is_array($t['preview'] ?? null) ? $t['preview'] : null;
     $p = K::previewBoxes($pv, 40, 172, 448, 384, 2, 16, 30, 40);
     $faces = K::previewFaces($pv, $clanSeats);
-    $sub = K::fit(K::previewHeading($p), K::MONO, 16, 272);
+    // The heading steps down to 14 px before it is cut ("Lobbies if sign-up closed now" needs 278 px at 16).
+    $subSize = K::width(K::previewHeading($p), K::MONO, 16) <= 272 ? 16 : 14;
+    $sub = K::fit(K::previewHeading($p), K::MONO, $subSize, 272);
     $subY = $titleY + (count($title['lines']) - 1) * $titleStep + 30;
     $foot = K::fit(K::previewFoot($p), K::MONO, 18, 448);
     $roster = K::rosterFaces($t);
@@ -68,7 +70,7 @@
 @foreach ($title['lines'] as $i => $line)
 <text data-unit="title-{{ $i }}" data-box="215 {{ $titleY + $i * $titleStep - $title['size'] }} 489 {{ $titleY + $i * $titleStep + $title['size'] * 0.25 }}" x="216" y="{{ $titleY + $i * $titleStep }}" font-family="{{ $title['font'] }}" font-weight="800" font-size="{{ $title['size'] }}" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
-<text data-unit="sub" data-box="215 {{ $subY - 18 }} 489 {{ $subY + 5 }}" x="216" y="{{ $subY }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#F7931A">{{ $sub }}</text>
+<text data-unit="sub" data-box="215 {{ $subY - 18 }} 489 {{ $subY + 5 }}" x="216" y="{{ $subY }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $subSize }}" fill="#F7931A">{{ $sub }}</text>
 @if ($p['boxes'] === [])
 <text data-unit="no-preview" x="40" y="210" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">{{ ($t['lobby'] ?? null) !== null ? 'The lobbies take shape as players sign up.' : 'The bracket takes shape as players sign up.' }}</text>
 @else

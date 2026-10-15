@@ -228,7 +228,10 @@ it('appends the lower third to a rotation scene only when a caption is set', fun
     $plain = $renderer->svg([], 'castertest::plain');
     $captioned = $renderer->svg(['voice_caption' => 'Hey. Hier ist die Liga.'], 'castertest::plain');
 
-    expect($plain)->toBe($svg)
+    // Without a caption the slide stays as it is; only the now-playing column is appended before </svg>.
+    expect($plain)->toStartWith(substr($svg, 0, -6))
+        ->and($plain)->toContain('data-unit="now-playing-column"')
+        ->and($plain)->not->toContain('data-unit="voice-caption"')
         ->and($captioned)->toContain('data-unit="voice-caption"')
         ->and($captioned)->toContain('Hey. Hier ist die Liga.')
         ->and($captioned)->not->toContain('KI')

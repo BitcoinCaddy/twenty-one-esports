@@ -123,7 +123,9 @@ test('the result slide shows the winner\'s pose, both players and figures, the s
         ->not->toContain('Satoshis Very Long Display Name For The Stream', '→', '−');
 
     // Every text left of x 1016 (the stream's now-playing column owns x 1040 on), and the middle column (x 336..680) clear of the right one.
-    preg_match_all('#<text[^>]*\sx="([\d.]+)"[^>]*\sy="([\d.]+)"[^>]*font-family="(Unbounded|JetBrains Mono)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>#', $svg, $texts, PREG_SET_ORDER);
+    // The column itself (appended last by SceneRenderer) is measured in TwentyOneNowPlayingTest.
+    $slide = strstr($svg, '<g data-unit="now-playing-column"', true) ?: $svg;
+    preg_match_all('#<text[^>]*\sx="([\d.]+)"[^>]*\sy="([\d.]+)"[^>]*font-family="(Unbounded|JetBrains Mono)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>#', $slide, $texts, PREG_SET_ORDER);
     expect(count($texts))->toBeGreaterThan(10);
 
     foreach ($texts as [$tag, $x, $y, $font, $size, $text]) {

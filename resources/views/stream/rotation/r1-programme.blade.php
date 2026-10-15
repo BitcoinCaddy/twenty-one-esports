@@ -21,9 +21,9 @@
 @php
     $p = is_array($programme ?? null) ? $programme : ['onAir' => null, 'upcoming' => [], 'loop' => [], 'stock' => [], 'newsLine' => null, 'night' => false, 'now' => time()];
     $now = (int) $p['now'];
-    // The clock left (centre 176, 340), the programme right of it (x 376..1016): the stream's now-playing column owns
+    // The clock left (centre 200, 340; its labels clear the 32 px safe margin), the programme right of it (x 376..1016): the stream's now-playing column owns
     // x 1040 on.
-    $dial = PS::dial($p, 176, 340, 112);
+    $dial = PS::dial($p, 200, 340, 112);
     $air = $p['onAir'];
     $airFamily = $air['family'] ?? PS::MUSIC;
     $airRight = $air === null ? '' : PS::remaining((int) ($air['left'] ?? 0));
@@ -50,8 +50,8 @@
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.86])
 @include('stream.rotation.partials.r-chrome', ['section' => $p['night'] ? 'Die Nachtschleife' : 'Das Programm'])
 {{-- The hour clock. --}}
-<g data-unit="dial" data-box="24 136 328 544">
-<circle cx="176" cy="340" r="112" fill="none" stroke="#26262C" stroke-width="28"/>
+<g data-unit="dial" data-box="48 136 352 544">
+<circle cx="200" cy="340" r="112" fill="none" stroke="#26262C" stroke-width="28"/>
 @if ($dial['played'] !== null)<path data-unit="dial-played" d="{{ $dial['played'] }}" fill="none" stroke="#141417" stroke-width="28"/>@endif
 @foreach ($dial['arcs'] as $arc)
 <path data-unit="dial-arc" d="{{ $arc['d'] }}" fill="none" stroke="{{ $arc['colour'] }}" stroke-width="28" stroke-opacity="{{ $arc['past'] ? '0.32' : '1' }}"/>
@@ -61,8 +61,8 @@
 <text x="{{ $tick['lx'] }}" y="{{ $tick['ly'] }}" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#8B8B90">{{ $tick['label'] }}</text>
 @endforeach
 <line data-unit="dial-hand" x1="{{ $dial['hand']['x1'] }}" y1="{{ $dial['hand']['y1'] }}" x2="{{ $dial['hand']['x2'] }}" y2="{{ $dial['hand']['y2'] }}" stroke="#FFFFFF" stroke-width="5"/>
-<text data-unit="dial-time" x="176" y="352" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="44" fill="#FFFFFF">{{ PS::time($now) }}</text>
-<text x="176" y="384" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0">Sendeuhr</text>
+<text data-unit="dial-time" x="200" y="352" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="44" fill="#FFFFFF">{{ PS::time($now) }}</text>
+<text x="200" y="384" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0">Sendeuhr</text>
 </g>
 {{-- On air now. --}}
 <g data-unit="on-air" data-box="376 104 1016 216">
