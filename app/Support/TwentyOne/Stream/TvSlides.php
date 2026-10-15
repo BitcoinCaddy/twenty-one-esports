@@ -10,11 +10,12 @@ use Throwable;
  * the tournament TV (pages::tournaments.tv, resources/css/tv.css) redrawn as
  * SVG at 1280x720, where its stage unit is 12.8 px. Header (cover, name, the
  * meta line, the QR code and its caption), the footer (the latest results,
- * the viewer badge, the scene tabs), and the bracket and grid boxes; the
+ * the scene tabs; the viewer count stands in the column), and the boxes; the
  * views draw what this places.
  *
- * The client's LIVE badge owns the top right corner (x >= 1040, y < 112), so
- * the TV's QR block ends at x 1024 here.
+ * The stream frame keeps x 1040..1280 for its now-playing column (plan
+ * "Stream: feste Jetzt-läuft-Spalte"), so the TV is laid out on x 0..1040 and
+ * nothing it draws passes X1 (x 1016, a 24 px gutter before the column).
  */
 final class TvSlides
 {
@@ -44,7 +45,13 @@ final class TvSlides
     /** The content band between header and footer. */
     public const X0 = 38;
 
-    public const X1 = 1242;
+    public const X1 = 1016;
+
+    /** The content band's centre line (between X0 and X1). */
+    public const CX = 527;
+
+    /** The QR code's white tile in the header: its size, right-aligned to X1. */
+    public const QR = 128;
 
     public const Y0 = 173;
 
@@ -260,6 +267,43 @@ final class TvSlides
         $fs = 24.0 * $k;
 
         return round(2 * $fs * 1.25 + $fs * 0.2 + $fs * 0.7, 1);
+    }
+
+    /**
+     * Whether the whole bracket fits the content band from `$top` without its boxes overlapping: the size factor
+     * tree() would need stays at its floor (0.3) or above. A 64-player single elimination (32 rows) does not; its
+     * slide shows the board (the section in play) instead.
+     *
+     * @param  array<string, mixed>  $tree  TournamentLiveSlides `tv.tree`
+     */
+    public static function treeFits(array $tree, float $top): bool
+    {
+        $stacked = 0;
+        $rows = 0;
+        $first = true;
+
+        foreach ((array) ($tree['sections'] ?? []) as $section) {
+            $counts = [];
+            $final = true;
+            foreach ((array) ($section['columns'] ?? []) as $column) {
+                if (is_array($column) && ($column['boxes'] ?? []) !== []) {
+                    $counts[] = count($column['boxes']);
+                    foreach ($column['boxes'] as $box) {
+                        $final = $final && in_array($box['bracket'] ?? null, ['grand-final', 'reset'], true);
+                    }
+                }
+            }
+            if ($counts === [] || ($final && ! $first)) {
+                continue;
+            }
+            $first = false;
+            $stacked++;
+            $rows += max($counts);
+        }
+
+        $unit = (self::Y1 - $top - $stacked * 44.0 - max(0, $stacked - 1) * 10.0) / max(1, $rows);
+
+        return min(self::boxHeight(1.0), $unit * 0.88) / self::boxHeight(1.0) >= 0.3;
     }
 
     /**

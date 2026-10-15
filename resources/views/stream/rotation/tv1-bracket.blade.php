@@ -17,7 +17,7 @@
     $board = is_array($t['board'] ?? null) ? $t['board'] : null;
     $tvData = is_array($t['tv'] ?? null) ? $t['tv'] : [];
     $rounds = array_values(array_filter((array) ($tvData['rounds'] ?? []), is_array(...)));
-    $stage = is_string($tvData['stage'] ?? null) ? K::fit($tvData['stage'], K::DISPLAY, 19, 1204) : '';
+    $stage = is_string($tvData['stage'] ?? null) ? K::fit($tvData['stage'], K::DISPLAY, 19, Tv::X1 - Tv::X0) : '';
     $top = Tv::Y0 + ($stage !== '' ? 34 : 0);
     $kind = $board['kind'] ?? null;
 @endphp
@@ -27,7 +27,7 @@
 
 @if ($stage !== '')<text data-unit="stage" x="38" y="{{ Tv::Y0 + 19 }}" font-family="Unbounded" font-weight="700" font-size="19" fill="{{ Tv::INK }}">{{ $stage }}</text>@endif
 
-@if (is_array($tvData['tree'] ?? null))
+@if (is_array($tvData['tree'] ?? null) && ($kind !== 'bracket' || Tv::treeFits($tvData['tree'], $top)))
 @php $tr = Tv::tree($tvData['tree'], $top); @endphp
 @foreach ($tr['lines'] as $line)
 <path d="{{ $line['d'] }}" fill="none" stroke="{{ $line['lit'] ? Tv::BTC : Tv::LINE }}" stroke-width="1.6"/>
@@ -43,7 +43,7 @@
 @endforeach
 @elseif ($kind === 'bracket')
 @php $br = Tv::bracket($board, $top + 22); @endphp
-<text data-unit="section" x="38" y="{{ $top + 14 }}" font-family="JetBrains Mono" font-size="16" fill="{{ Tv::INK2 }}">{{ K::fit($board['title'] ?? '', K::MONO, 16, 1204) }}</text>
+<text data-unit="section" x="38" y="{{ $top + 14 }}" font-family="JetBrains Mono" font-size="16" fill="{{ Tv::INK2 }}">{{ K::fit($board['title'] ?? '', K::MONO, 16, Tv::X1 - Tv::X0) }}</text>
 @foreach ($br['lines'] as $line)
 <path d="{{ $line['d'] }}" fill="none" stroke="{{ $line['lit'] ? Tv::BTC : Tv::LINE }}" stroke-width="1.6"/>
 @endforeach
@@ -60,37 +60,53 @@
     $partCols = $split ? 2 : 1;
     $partRows = (int) ceil(count($shown) / $partCols);
     $partGap = 26;
-    $partW = (1204 - ($partCols - 1) * $partGap) / $partCols;
+    $partW = (Tv::X1 - Tv::X0 - ($partCols - 1) * $partGap) / $partCols;
     $partH = (Tv::Y1 - $top - ($partRows - 1) * 19) / $partRows;
+    // The part's head: its title with the round after it on one line, the boxes 36 px under its top.
+    $headH = 36;
 @endphp
 @foreach ($shown as $pi => $round)
 @php
-    $px = 38 + ($pi % $partCols) * ($partW + $partGap);
+    $px = Tv::X0 + ($pi % $partCols) * ($partW + $partGap);
     $py = $top + intdiv($pi, $partCols) * ($partH + 19);
     $boxes = array_values(array_filter((array) ($round['boxes'] ?? []), is_array(...)));
     $byes = array_values(array_filter((array) ($round['byes'] ?? []), is_string(...)));
-    $rows = max(1, (int) ceil(count($boxes) / 2));
-    $k = Tv::k($rows);
+    // One box a row while every pairing fits that way at 0.7 of the full size or more (a name keeps its letters),
+    // else two a row as the TV sets them; the size comes down until the rows fit the part.
+    $room = $partH - $headH;
+    $perRow = 2;
+    foreach ([1, 2] as $perRow) {
+        $rows = max(1, (int) ceil(count($boxes) / $perRow));
+        $k = Tv::k($rows);
+        while ($k > 0.5 && $rows * Tv::boxHeight($k) + ($rows - 1) * 12.8 * $k > $room) {
+            $k = round($k - 0.02, 2);
+        }
+        if ($perRow === 2 || $k >= 0.7) {
+            break;
+        }
+    }
     $bh = Tv::boxHeight($k);
     $gapY = 12.8 * $k;
-    $fit = (int) max(1, floor(($partH - 64 + $gapY) / ($bh + $gapY)));
-    $boxes = array_slice($boxes, 0, $fit * 2);
-    $bw = ($partW - 26) / 2;
+    $fit = (int) max(1, floor(($room + $gapY) / ($bh + $gapY)));
+    $boxes = array_slice($boxes, 0, $fit * $perRow);
+    $bw = ($partW - ($perRow - 1) * 26) / $perRow;
+    $partTitle = K::fit($round['title'] ?? '', K::DISPLAY, 19, $partW - 120);
+    $roundX = $px + K::width($partTitle, K::DISPLAY, 19) * 1.04 + 16;
 @endphp
-<text data-unit="part-{{ $pi }}" x="{{ round($px, 1) }}" y="{{ $py + 19 }}" font-family="Unbounded" font-weight="700" font-size="19" fill="{{ Tv::INK }}">{{ K::fit($round['title'] ?? '', K::DISPLAY, 19, $partW) }}</text>
-<text data-unit="round-{{ $pi }}" x="{{ round($px, 1) }}" y="{{ $py + 46 }}" font-family="JetBrains Mono" font-size="16" fill="{{ Tv::INK2 }}">Round {{ (int) ($round['round'] ?? 1) }}</text>
+<text data-unit="part-{{ $pi }}" x="{{ round($px, 1) }}" y="{{ $py + 19 }}" font-family="Unbounded" font-weight="700" font-size="19" fill="{{ Tv::INK }}">{{ $partTitle }}</text>
+<text data-unit="round-{{ $pi }}" x="{{ round($roundX, 1) }}" y="{{ $py + 19 }}" font-family="JetBrains Mono" font-size="16" fill="{{ Tv::INK2 }}">Round {{ (int) ($round['round'] ?? 1) }}</text>
 @foreach ($boxes as $bi => $box)
-@include('stream.rotation.partials.tv-box', ['bx' => ['x' => round($px + ($bi % 2) * ($bw + 26), 1), 'y' => round($py + 64 + intdiv($bi, 2) * ($bh + $gapY), 1), 'w' => round($bw, 1), 'h' => $bh], 'box' => $box, 'k' => $k, 'id' => 'p'.$pi.'b'.$bi])
+@include('stream.rotation.partials.tv-box', ['bx' => ['x' => round($px + ($bi % $perRow) * ($bw + 26), 1), 'y' => round($py + $headH + intdiv($bi, $perRow) * ($bh + $gapY), 1), 'w' => round($bw, 1), 'h' => $bh], 'box' => $box, 'k' => $k, 'id' => 'p'.$pi.'b'.$bi])
 @endforeach
 @foreach (array_slice($byes, 0, 1) as $bye)
-@php $byeY = $py + 64 + (int) ceil(count($boxes) / 2) * ($bh + $gapY) + 16; @endphp
+@php $byeY = $py + $headH + (int) ceil(count($boxes) / $perRow) * ($bh + $gapY) + 16; @endphp
 @if ($byeY < Tv::Y1)<text data-unit="bye-{{ $pi }}" x="{{ round($px, 1) }}" y="{{ round($byeY, 1) }}" font-family="JetBrains Mono" font-size="16" fill="{{ Tv::INK2 }}">{{ K::fit(K::clean($bye).' has a bye this round.', K::MONO, 16, $partW) }}</text>@endif
 @endforeach
 @endforeach
 @elseif ($board !== null)
-@include('stream.rotation.partials.t-board', ['board' => $board, 'bx' => 38, 'by' => $top, 'bw' => 1204, 'bh' => Tv::Y1 - $top, 'groupCols' => 2, 'clanSeats' => is_int($t['teamSize'] ?? null) && $t['teamSize'] > 1,
+@include('stream.rotation.partials.t-board', ['board' => $board, 'bx' => Tv::X0, 'by' => $top, 'bw' => Tv::X1 - Tv::X0, 'bh' => Tv::Y1 - $top, 'groupCols' => 2, 'clanSeats' => is_int($t['teamSize'] ?? null) && $t['teamSize'] > 1,
     'panel' => Tv::PANEL, 'rule' => Tv::LINE, 'accent' => Tv::BTC, 'nameFill' => Tv::INK, 'muted' => Tv::INK3, 'chipInk' => Tv::ON_BTC, 'bShape' => 'round', 'bId' => 'tv1'])
 @else
-<text data-unit="empty" x="640" y="410" font-family="Unbounded" font-weight="700" font-size="31" fill="{{ Tv::INK }}" text-anchor="middle">The bracket appears here once it is drawn.</text>
+<text data-unit="empty" x="{{ Tv::CX }}" y="410" font-family="Unbounded" font-weight="700" font-size="31" fill="{{ Tv::INK }}" text-anchor="middle">The bracket appears here once it is drawn.</text>
 @endif
 </svg>

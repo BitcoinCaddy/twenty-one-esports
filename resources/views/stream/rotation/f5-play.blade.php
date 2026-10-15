@@ -19,15 +19,17 @@
     $leader = is_array($b['leader'] ?? null) ? $b['leader'] : null;
     $best = $leader ? K::clean(K::text($leader, 'time')) : '';
     // One line beside the mark, a size down before anything is cut; never a time split.
-    $head = K::headline('Mine '.max(1, (int) ($b['goal'] ?? 40)).' blocks. '.($best !== '' ? 'Beat '.$best : 'Set the first time.'), [44, 36], 984, 1, K::DISPLAY);
-    $week = K::fit('Blockfill '.(preg_replace('/^Blockfill\s*/', '', K::text($b ?? [], 'title')) ?: 'this week'), K::MONO, 22, 560);
+    $head = K::headline('Mine '.max(1, (int) ($b['goal'] ?? 40)).' blocks. '.($best !== '' ? 'Beat '.$best : 'Set the first time.'), [44, 36, 30], 760, 1, K::DISPLAY);
+    $week = K::fit('Blockfill '.(preg_replace('/^Blockfill\s*/', '', K::text($b ?? [], 'title')) ?: 'this week'), K::MONO, 22, 440);
     $url = K::text($b ?? [], 'url', 'esports.einundzwanzig.space/blockfill');
     $steps = [
-        K::fit('Open '.$url, K::MONO, 22, 756),
+        K::fit('Open '.$url, K::MONO, 22, 580),
         'Log in with Google or Nostr',
         'Your best time this week counts',
     ];
     $cd = K::text($b ?? [], 'countdown');
+    // Right of the QR code (x 392..1016): the note on keyboards in up to two whole lines.
+    $keyboard = K::wrap('Ranked runs need a keyboard. On a phone you can practise.', K::MONO, 20, 620, 2);
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
 @include('stream.rotation.partials.defs')
@@ -37,24 +39,26 @@
 
 @if ($b)
 @include('stream.rotation.partials.game-mark', ['gmCover' => $cover ?? null, 'gmX' => 40, 'gmY' => 104, 'gmW' => 192, 'gmEdge' => '#F7931A'])
-<text data-unit="week" data-box="255 112 817 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
+<text data-unit="week" data-box="255 112 697 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
 @foreach ($head['lines'] as $li => $hl)
-<text data-unit="headline-{{ $li }}" data-box="254 {{ 188 - $head['size'] }} 1241 {{ 188 + round($head['size'] * 0.3) }}" x="256" y="188" font-family="{{ $head['font'] }}" font-weight="800" font-size="{{ $head['size'] }}" fill="#FFFFFF">{{ $hl }}</text>
+<text data-unit="headline-{{ $li }}" data-box="254 {{ 188 - $head['size'] }} 1017 {{ 188 + round($head['size'] * 0.3) }}" x="256" y="188" font-family="{{ $head['font'] }}" font-weight="800" font-size="{{ $head['size'] }}" fill="#FFFFFF">{{ $hl }}</text>
 @endforeach
-@include('stream.rotation.partials.qr', ['qr' => $siteQrSvg ?? '', 'x' => 40, 'y' => 236, 'size' => 360])
+@include('stream.rotation.partials.qr', ['qr' => $siteQrSvg ?? '', 'x' => 40, 'y' => 236, 'size' => 320])
 @foreach ($steps as $i => $step)
 @php($sy = 236 + $i * 58)
-<rect x="440" y="{{ $sy }}" width="800" height="1" fill="#2A2A30"/>
-<text x="440" y="{{ $sy + 38 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ $i + 1 }}</text>
-<text data-unit="step-{{ $i }}" data-box="483 {{ $sy + 18 }} 1241 {{ $sy + 44 }}" x="484" y="{{ $sy + 38 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ $step }}</text>
+<rect x="392" y="{{ $sy }}" width="624" height="1" fill="#2A2A30"/>
+<text x="392" y="{{ $sy + 38 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ $i + 1 }}</text>
+<text data-unit="step-{{ $i }}" data-box="435 {{ $sy + 18 }} 1017 {{ $sy + 44 }}" x="436" y="{{ $sy + 38 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ $step }}</text>
 @endforeach
-<rect x="440" y="410" width="800" height="1" fill="#2A2A30"/>
-<text data-unit="keyboard" data-box="439 436 1241 460" x="440" y="454" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">Ranked runs need a keyboard. On a phone you can practise.</text>
+<rect x="392" y="410" width="624" height="1" fill="#2A2A30"/>
+@foreach ($keyboard as $ki => $kl)
+<text data-unit="keyboard{{ $ki > 0 ? '-'.($ki + 1) : '' }}" data-box="391 {{ 436 + $ki * 28 }} 1017 {{ 460 + $ki * 28 }}" x="392" y="{{ 454 + $ki * 28 }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ $kl }}</text>
+@endforeach
 @if ($cd !== '')
-<text data-unit="countdown" data-box="439 482 1241 510" x="440" y="504" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">The week closes in <tspan fill="#F7931A">{{ $cd }}</tspan></text>
+<text data-unit="countdown" data-box="391 {{ 482 + (count($keyboard) - 1) * 28 }} 1017 {{ 510 + (count($keyboard) - 1) * 28 }}" x="392" y="{{ 504 + (count($keyboard) - 1) * 28 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">The week closes in <tspan fill="#F7931A">{{ $cd }}</tspan></text>
 @endif
 @else
-<text data-unit="title" data-box="38 150 1241 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
-<text data-unit="claim" data-box="39 240 1241 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
+<text data-unit="title" data-box="38 150 1017 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
+<text data-unit="claim" data-box="39 240 1017 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
 @endif
 </svg>

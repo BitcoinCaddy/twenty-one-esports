@@ -17,8 +17,14 @@
         $numSize = $wins >= 100 ? 200 : 280;
         $numW = K::width((string) $wins, K::DISPLAY, $numSize) * 1.04;
         $hx = (int) min(560, 64 + $numW + 40);
-        $name = K::name($hero['name'], 'Player', 44, 1240 - $hx);
-        $games = K::fit(K::listing($hero['games'] ?? [], 3) === '' ? '' : 'in '.K::listing($hero['games'] ?? [], 3), K::MONO, 22, 1240 - $hx);
+        // Right of the number up to x 1016: a long name steps down a size before it loses letters.
+        foreach ([44, 38, 32] as $nameSize) {
+            $name = K::name($hero['name'], 'Player', $nameSize, 1016 - $hx);
+            if ($name['text'] === K::clean($hero['name'])) {
+                break;
+            }
+        }
+        $games = K::fit(K::listing($hero['games'] ?? [], 3) === '' ? '' : 'in '.K::listing($hero['games'] ?? [], 3), K::MONO, 22, 1016 - $hx);
     }
     $more = [];
     foreach (array_slice($streaks, 1, 2) as $i => $s) {
@@ -35,9 +41,9 @@
 @if ($hero)
 <text data-unit="streak-wins" data-box="36 186 {{ $hx - 16 }} 456" x="40" y="440" font-family="Unbounded" font-weight="800" font-size="{{ $numSize }}" fill="#17120A">{{ $wins }}</text>
 @include('stream.rotation.partials.face', ['face' => K::prideFace($hero), 'x' => $hx, 'y' => 170, 'd' => 150, 'id' => 'streak', 'fUnit' => 'streak-face', 'fRing' => '#17120A', 'fGround' => '#17120A', 'fCrown' => '#17120A'])
-<text data-unit="streak-name" data-box="{{ $hx - 1 }} 344 1240 394" x="{{ $hx }}" y="384" font-family="{{ $name['font'] }}" font-weight="800" font-size="44" fill="#17120A">{{ $name['text'] }}</text>
-<text data-unit="streak-row" data-box="{{ $hx - 1 }} 404 1240 434" x="{{ $hx }}" y="428" font-family="Unbounded" font-weight="800" font-size="28" fill="#17120A">wins in a row</text>
-@if ($games !== '')<text data-unit="streak-games" data-box="{{ $hx - 1 }} 446 1240 474" x="{{ $hx }}" y="468" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A">{{ $games }}</text>@endif
+<text data-unit="streak-name" data-box="{{ $hx - 1 }} 344 1016 394" x="{{ $hx }}" y="384" font-family="{{ $name['font'] }}" font-weight="800" font-size="{{ $nameSize }}" fill="#17120A">{{ $name['text'] }}</text>
+<text data-unit="streak-row" data-box="{{ $hx - 1 }} 404 1016 434" x="{{ $hx }}" y="428" font-family="Unbounded" font-weight="800" font-size="28" fill="#17120A">wins in a row</text>
+@if ($games !== '')<text data-unit="streak-games" data-box="{{ $hx - 1 }} 446 1016 474" x="{{ $hx }}" y="468" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A">{{ $games }}</text>@endif
 @foreach ($more as $mi => $m)
 <rect x="{{ $m['x'] }}" y="520" width="416" height="96" fill="#17120A"/>
 @include('stream.rotation.partials.face', ['face' => $m['face'], 'x' => $m['x'] + 16, 'y' => 536, 'd' => 64, 'id' => 'streak-more-'.$mi, 'fUnit' => 'streak-more-face-'.$mi, 'fRing' => '#F7931A'])
@@ -49,7 +55,6 @@
 <text x="40" y="300" font-family="Unbounded" font-weight="800" font-size="60" fill="#17120A">No streak running.</text>
 <text x="40" y="370" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#17120A">Win three games in a row and this screen is yours.</text>
 @endif
-<text x="1240" y="672" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A" text-anchor="end">esports.einundzwanzig.space</text>
-@php($vb = K::viewerBadge($viewers ?? null, 1024, 92, K::DISPLAY, 24, 18))
-@if ($vb)@include('stream.rotation.partials.viewers', ['vb' => $vb, 'eyeInk' => '#17120A', 'countInk' => '#17120A', 'wordInk' => '#17120A'])@endif
+<text x="1016" y="672" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A" text-anchor="end">esports.einundzwanzig.space</text>
+{{-- The viewer count stands in the stream's now-playing column, not here. --}}
 </svg>

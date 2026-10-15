@@ -55,6 +55,17 @@ final class TmnfSlides
     /** The places the race shows. */
     public const LANES = 5;
 
+    /**
+     * The race's lanes on the slide (g2): from the slowest shown (x 400) to the author time's line (x 880), a time
+     * under it at most 96 px past the line, so a marker (48 px) ends by x 1000, clear of the stream's now-playing
+     * column (x 1040 on).
+     */
+    public const LANE_FROM = 400;
+
+    public const LANE_LINE = 880;
+
+    public const LANE_PAST = 96;
+
     /** A #1 younger than this is "New #1 on the board". */
     public const NEW_MINUTES = 60;
 
@@ -269,7 +280,7 @@ final class TmnfSlides
                 'time' => $metric->format((int) $row['ms']),
                 'versus' => $author > 0 ? self::gapToAuthor((int) $row['ms'], $author) : '',
                 'under' => $author > 0 && (int) $row['ms'] < $author,
-                'x' => $author > 0 ? self::laneX((int) $row['ms'], $author, $span, 400, 1088, 96) : 400.0,
+                'x' => $author > 0 ? self::laneX((int) $row['ms'], $author, $span, self::LANE_FROM, self::LANE_LINE, self::LANE_PAST) : (float) self::LANE_FROM,
                 'avatar' => $this->avatar($row['ref'] ?? null),
             ];
         }

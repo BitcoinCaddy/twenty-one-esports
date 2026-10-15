@@ -18,12 +18,19 @@
 @php
     $b = is_array($blockfill ?? null) ? $blockfill : null;
     // Always "Blockfill …", whatever the week's own title says.
-    $title = K::fit('Blockfill '.(preg_replace('/^Blockfill\s*/', '', K::text($b ?? [], 'title')) ?: 'this week'), K::MONO, 22, 560);
+    $title = K::fit('Blockfill '.(preg_replace('/^Blockfill\s*/', '', K::text($b ?? [], 'title')) ?: 'this week'), K::MONO, 22, 440);
     $players = is_int($b['players'] ?? null) ? $b['players'] : 0;
     $count = $players === 1 ? '1 player on the board' : $players.' players on the board';
-    $closes = K::fit('Closes '.K::text($b ?? [], 'closes', 'Monday 00:00 Berlin'), K::MONO, 18, 400);
+    $closes = K::fit('Closes '.K::text($b ?? [], 'closes', 'Monday 00:00 Berlin'), K::MONO, 18, 300);
     $cd = K::countdownParts($b['countdown'] ?? null);
-    $cells = $cd === null ? null : K::digitCells(($cd['days'] > 0 ? $cd['days'].'d ' : '').$cd['hms'], 1240, 44, true);
+    // The countdown right-aligned to x 1016; the headline takes the largest size that ends 24 px before it.
+    $cells = $cd === null ? null : K::digitCells(($cd['days'] > 0 ? $cd['days'].'d ' : '').$cd['hms'], 1016, 32, true);
+    $titleRoom = ($cells === null ? 1016 : $cells['x0']) - 24 - 256;
+    foreach ([44, 40, 36, 32, 28] as $titleSize) {
+        if (K::width('The week\'s fastest', K::DISPLAY, $titleSize) * 1.04 <= $titleRoom) {
+            break;
+        }
+    }
     $rows = [];
     foreach (array_slice(is_array($b['board'] ?? null) ? $b['board'] : [], 0, 10) as $i => $row) {
         // A name with nothing printable left still holds its place, as "Player".
@@ -31,13 +38,21 @@
             continue;
         }
         $n = count($rows);
-        $x0 = $n < 5 ? 40 : 660;
+        // Two columns of 472 px over x 40..1016: places 1-5 left, 6-10 right.
+        $x0 = $n < 5 ? 40 : 544;
         $top = 236 + ($n % 5) * 76;
         $place = is_int($row['place'] ?? null) ? $row['place'] : $n + 1;
+        // A long name steps down a size before it loses letters (x+124 to 16 px before the time).
+        foreach ([24, 21, 18] as $rowSize) {
+            $rowName = K::name(K::text($row, 'name'), 'Player', $rowSize, 202);
+            if ($rowName['text'] === K::clean(K::text($row, 'name'))) {
+                break;
+            }
+        }
         $rows[] = ['x' => $x0, 'top' => $top, 'place' => $place, 'face' => K::prideFace($row),
-            'name' => K::name(K::text($row, 'name'), 'Player', 24, 296),
-            'time' => K::fit(K::text($row, 'time'), K::MONO, 24, 150),
-            'gap' => K::fit(K::text($row, 'gap'), K::MONO, 18, 150)];
+            'name' => $rowName, 'nameSize' => $rowSize,
+            'time' => K::fit(K::text($row, 'time'), K::MONO, 24, 130),
+            'gap' => K::fit(K::text($row, 'gap'), K::MONO, 18, 130)];
     }
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
@@ -48,32 +63,32 @@
 
 @if ($b)
 @include('stream.rotation.partials.game-mark', ['gmCover' => $cover ?? null, 'gmX' => 40, 'gmY' => 104, 'gmW' => 192, 'gmEdge' => '#F7931A'])
-<text data-unit="week" data-box="255 112 817 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $title }}</text>
-<text data-unit="title" data-box="254 146 830 198" x="256" y="188" font-family="Unbounded" font-weight="800" font-size="44" fill="#FFFFFF">The week's fastest</text>
-<text data-unit="count" data-box="255 200 817 222" x="256" y="218" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">{{ $count }}</text>
-<text data-unit="closes" data-box="839 116 1241 138" x="1240" y="132" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7" text-anchor="end">{{ $closes }}</text>
+<text data-unit="week" data-box="255 112 697 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $title }}</text>
+<text data-unit="title" data-box="254 146 {{ 256 + $titleRoom }} 198" x="256" y="188" font-family="Unbounded" font-weight="800" font-size="{{ $titleSize }}" fill="#FFFFFF">The week's fastest</text>
+<text data-unit="count" data-box="255 200 697 222" x="256" y="218" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">{{ $count }}</text>
+<text data-unit="closes" data-box="715 116 1017 138" x="1016" y="132" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7" text-anchor="end">{{ $closes }}</text>
 @if ($cells)@include('stream.rotation.partials.clock', ['c' => $cells, 'y' => 188, 'fill' => '#F7931A'])@endif
 
 @foreach ($rows as $r)
 @php($lead = $r['place'] === 1)
 <text data-unit="place-{{ $r['place'] }}" data-box="{{ $r['x'] - 1 }} {{ $r['top'] + 16 }} {{ $r['x'] + 40 }} {{ $r['top'] + 50 }}" x="{{ $r['x'] }}" y="{{ $r['top'] + 46 }}" font-family="Unbounded" font-weight="800" font-size="28" fill="#F7931A">{{ $r['place'] }}</text>
 @include('stream.rotation.partials.face', ['face' => $r['face'], 'x' => $r['x'] + 56, 'y' => $r['top'] + 8, 'd' => 52, 'id' => 'bf2-'.$r['place'], 'fUnit' => 'place-face-'.$r['place'], 'fRing' => $lead ? '#F7931A' : null])
-<text data-unit="place-name-{{ $r['place'] }}" data-box="{{ $r['x'] + 123 }} {{ $r['top'] + 18 }} {{ $r['x'] + 422 }} {{ $r['top'] + 48 }}" x="{{ $r['x'] + 124 }}" y="{{ $r['top'] + 44 }}" font-family="{{ $r['name']['font'] }}" font-weight="800" font-size="24" fill="#FFFFFF">{{ $r['name']['text'] }}</text>
-<text data-unit="place-time-{{ $r['place'] }}" data-box="{{ $r['x'] + 429 }} {{ $r['top'] + 14 }} {{ $r['x'] + 581 }} {{ $r['top'] + 38 }}" x="{{ $r['x'] + 580 }}" y="{{ $r['top'] + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF" text-anchor="end">{{ $r['time'] }}</text>
-<text data-unit="place-gap-{{ $r['place'] }}" data-box="{{ $r['x'] + 429 }} {{ $r['top'] + 42 }} {{ $r['x'] + 581 }} {{ $r['top'] + 62 }}" x="{{ $r['x'] + 580 }}" y="{{ $r['top'] + 58 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="{{ $lead ? '#F7931A' : '#A1A1A7' }}" text-anchor="end">{{ $lead ? 'time to beat' : $r['gap'] }}</text>
-<rect x="{{ $r['x'] }}" y="{{ $r['top'] + 72 }}" width="580" height="1" fill="#2A2A30"/>
+<text data-unit="place-name-{{ $r['place'] }}" data-box="{{ $r['x'] + 123 }} {{ $r['top'] + 18 }} {{ $r['x'] + 326 }} {{ $r['top'] + 48 }}" x="{{ $r['x'] + 124 }}" y="{{ $r['top'] + 44 }}" font-family="{{ $r['name']['font'] }}" font-weight="800" font-size="{{ $r['nameSize'] }}" fill="#FFFFFF">{{ $r['name']['text'] }}</text>
+<text data-unit="place-time-{{ $r['place'] }}" data-box="{{ $r['x'] + 341 }} {{ $r['top'] + 14 }} {{ $r['x'] + 473 }} {{ $r['top'] + 38 }}" x="{{ $r['x'] + 472 }}" y="{{ $r['top'] + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF" text-anchor="end">{{ $r['time'] }}</text>
+<text data-unit="place-gap-{{ $r['place'] }}" data-box="{{ $r['x'] + 341 }} {{ $r['top'] + 42 }} {{ $r['x'] + 473 }} {{ $r['top'] + 62 }}" x="{{ $r['x'] + 472 }}" y="{{ $r['top'] + 58 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="{{ $lead ? '#F7931A' : '#A1A1A7' }}" text-anchor="end">{{ $lead ? 'time to beat' : $r['gap'] }}</text>
+<rect x="{{ $r['x'] }}" y="{{ $r['top'] + 72 }}" width="472" height="1" fill="#2A2A30"/>
 @endforeach
 {{-- The places nobody holds yet: open seats in their rows. --}}
 @for ($i = count($rows); $i < 10; $i++)
-@php($ox = $i < 5 ? 40 : 660)
+@php($ox = $i < 5 ? 40 : 544)
 @php($oy = 236 + ($i % 5) * 76)
 <text x="{{ $ox }}" y="{{ $oy + 46 }}" font-family="Unbounded" font-weight="800" font-size="28" fill="#3A3A42">{{ $i + 1 }}</text>
 @include('stream.rotation.partials.face', ['face' => null, 'x' => $ox + 56, 'y' => $oy + 8, 'd' => 52, 'id' => 'bf2-open-'.$i, 'fOpen' => 'open', 'fOpenInk' => '#63636A'])
 <text x="{{ $ox + 124 }}" y="{{ $oy + 42 }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#7A7A82">open</text>
-<rect x="{{ $ox }}" y="{{ $oy + 72 }}" width="580" height="1" fill="#2A2A30"/>
+<rect x="{{ $ox }}" y="{{ $oy + 72 }}" width="472" height="1" fill="#2A2A30"/>
 @endfor
 @else
-<text data-unit="title" data-box="38 150 1241 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
-<text data-unit="claim" data-box="39 240 1241 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
+<text data-unit="title" data-box="38 150 1017 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
+<text data-unit="claim" data-box="39 240 1017 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
 @endif
 </svg>

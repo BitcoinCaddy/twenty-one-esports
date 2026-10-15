@@ -13,14 +13,30 @@
     $climbers = array_slice(array_values(array_filter($pride['climbers'] ?? [], 'is_array')), 0, 3);
     $cards = [];
     foreach ($climbers as $i => $c) {
-        $x = 40 + $i * 408;
+        // Three cards of 314 px, 17 apart, over x 40..1016.
+        $x = 40 + $i * 331;
+        // A long name steps down a size before it loses letters.
+        foreach ([32, 28, 24] as $nameSize) {
+            $name = K::name($c['name'] ?? '', 'Player', $nameSize, 282);
+            if ($name['text'] === K::clean($c['name'] ?? '')) {
+                break;
+            }
+        }
+        // Two games by name, more as a count: a list is never cut off; it steps down a size first.
+        $from = implode(' in ', array_filter([K::plural((int) ($c['games'] ?? 0), 'result', 'results'),
+            count(array_unique(array_filter(is_array($c['from'] ?? null) ? $c['from'] : [], 'is_string'))) > 2 ? count(array_unique(array_filter($c['from'], 'is_string'))).' games' : K::listing($c['from'] ?? [], 2)]));
+        $fromSize = 15;
+        foreach ([18, 16, 15] as $fromSize) {
+            if (K::width($from, K::MONO, $fromSize) <= 298) {
+                break;
+            }
+        }
         $cards[] = [
             'x' => $x, 'rank' => $i + 1, 'avatar' => $c['avatar'] ?? null,
-            'name' => K::name($c['name'] ?? '', 'Player', 32, 336),
+            'name' => $name, 'nameSize' => $nameSize,
             'gain' => '+'.(int) ($c['gain'] ?? 0).' Elo',
-            // Two games by name, more as a count: a list is never cut off.
-            'games' => K::fit(implode(' in ', array_filter([K::plural((int) ($c['games'] ?? 0), 'result', 'results'),
-                count(array_unique(array_filter(is_array($c['from'] ?? null) ? $c['from'] : [], 'is_string'))) > 2 ? count(array_unique(array_filter($c['from'], 'is_string'))).' games' : K::listing($c['from'] ?? [], 2)])), K::MONO, 18, 354),
+            'games' => K::fit($from, K::MONO, $fromSize, 298),
+            'fromSize' => $fromSize,
         ];
     }
 @endphp
@@ -33,13 +49,13 @@
 @if ($cards !== [])
 <text x="40" y="206" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Most Elo won in the last 7 days, every game counts.</text>
 @foreach ($cards as $c)
-<rect x="{{ $c['x'] }}" y="240" width="384" height="384" fill="#121215" fill-opacity="0.94"/>
-@if ($c['rank'] === 1)<rect x="{{ $c['x'] }}" y="240" width="384" height="6" fill="#F7931A"/>@endif
-@include('stream.rotation.partials.face', ['face' => ['uri' => $c['avatar'], 'tag' => null], 'x' => $c['x'] + 112, 'y' => 290, 'd' => 160, 'id' => 'climber-'.$c['rank'], 'fUnit' => 'climber-face-'.$c['rank'],
+<rect x="{{ $c['x'] }}" y="240" width="314" height="384" fill="#121215" fill-opacity="0.94"/>
+@if ($c['rank'] === 1)<rect x="{{ $c['x'] }}" y="240" width="314" height="6" fill="#F7931A"/>@endif
+@include('stream.rotation.partials.face', ['face' => ['uri' => $c['avatar'], 'tag' => null], 'x' => $c['x'] + 77, 'y' => 290, 'd' => 160, 'id' => 'climber-'.$c['rank'], 'fUnit' => 'climber-face-'.$c['rank'],
     'fRing' => '#F7931A', 'fRank' => $c['rank'], 'fRankFill' => $c['rank'] === 1 ? '#F7931A' : '#ADADB0', 'fRankInk' => '#17120A', 'fRankRim' => '#121215', 'fCrown' => $c['rank'] === 1 ? '#F7931A' : null])
-<text data-unit="climber-name-{{ $c['rank'] }}" data-box="{{ $c['x'] + 23 }} 486 {{ $c['x'] + 362 }} 526" x="{{ $c['x'] + 192 }}" y="516" font-family="{{ $c['name']['font'] }}" font-weight="800" font-size="32" fill="#FFFFFF" text-anchor="middle">{{ $c['name']['text'] }}</text>
-<text data-unit="climber-gain-{{ $c['rank'] }}" x="{{ $c['x'] + 192 }}" y="570" font-family="Unbounded" font-weight="800" font-size="36" fill="#F7931A" text-anchor="middle">{{ $c['gain'] }}</text>
-@if ($c['games'])<text data-unit="climber-from-{{ $c['rank'] }}" data-box="{{ $c['x'] + 15 }} 588 {{ $c['x'] + 370 }} 610" x="{{ $c['x'] + 192 }}" y="604" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0" text-anchor="middle">{{ $c['games'] }}</text>@endif
+<text data-unit="climber-name-{{ $c['rank'] }}" data-box="{{ $c['x'] + 15 }} 486 {{ $c['x'] + 299 }} 526" x="{{ $c['x'] + 157 }}" y="516" font-family="{{ $c['name']['font'] }}" font-weight="800" font-size="{{ $c['nameSize'] }}" fill="#FFFFFF" text-anchor="middle">{{ $c['name']['text'] }}</text>
+<text data-unit="climber-gain-{{ $c['rank'] }}" x="{{ $c['x'] + 157 }}" y="570" font-family="Unbounded" font-weight="800" font-size="36" fill="#F7931A" text-anchor="middle">{{ $c['gain'] }}</text>
+@if ($c['games'])<text data-unit="climber-from-{{ $c['rank'] }}" data-box="{{ $c['x'] + 7 }} 588 {{ $c['x'] + 307 }} 610" x="{{ $c['x'] + 157 }}" y="604" font-family="JetBrains Mono" font-weight="700" font-size="{{ $c['fromSize'] }}" fill="#ADADB0" text-anchor="middle">{{ $c['games'] }}</text>@endif
 @endforeach
 @else
 <text x="40" y="300" font-family="JetBrains Mono" font-weight="700" font-size="28" fill="#FFFFFF">Nobody has climbed this week yet.</text>
