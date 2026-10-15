@@ -506,6 +506,7 @@ final class RulesPage
                 __('You lose when you have no piece or no move left.'),
                 __('A draw by agreement, by the same position with the same side to move for the third time, or after :moves moves of each side with only kings moving and nothing captured.', ['moves' => intdiv(CheckersRules::QUIET_PLY_LIMIT, 2)]),
                 __('Squares are named as in chess, a1 in White\'s bottom left corner. A step reads c3-d4, a capture c3xe5xc7.'),
+                ...self::takeBack(),
                 self::correspondence(),
                 __('Every game ends: men only step forward and every capture takes pieces off, so the quiet moves above run out.'),
             ],
@@ -541,6 +542,7 @@ final class RulesPage
                 __('The pawn steps one square up, down, left or right, never through a block. Facing the other pawn, it jumps straight over it; with a block or the edge behind that pawn, it steps beside it instead.'),
                 __('A block is two squares long and lies in the groove between squares. It may not overlap or cross another block, and it may not cut either pawn off from its goal.'),
                 __('Tap a marked square to move. For a block tap a groove, or Set a block: it shows where it lands. Tap it again or press Confirm; Rotate turns it.'),
+                ...self::takeBack(),
                 // 21 times, not three: a pawn cannot pass, so moving to and fro to wait is play (DerCaddy, 2026-10-09).
                 __('A draw by agreement, when the same position with the same side to move has stood there :times times (the board warns one time before), or after :moves moves of each side without a new block. These draw rules are the league\'s, the published rules have none.', ['times' => BlockliRules::REPETITIONS, 'moves' => intdiv(BlockliRules::QUIET_PLY_LIMIT, 2)]),
                 // The race standing (BlockliRules::standing()), with the decimal mark of the page's language.
@@ -580,6 +582,7 @@ final class RulesPage
                 __('A side left with two men loses, and so does a side that cannot move.'),
                 __('The same position a third time is a draw, and so are :moves moves each without a mill.', ['moves' => intdiv(NineMensMorrisRules::QUIET_PLY_LIMIT, 2)]),
                 __('To move, click your man and then the point. After a mill, click the man you remove.'),
+                ...self::takeBack(),
                 self::correspondence(),
                 __('Every game ends: once all men are placed, every mill takes a man off, and the moves without a mill above run out.'),
             ],
@@ -589,6 +592,18 @@ final class RulesPage
     /**
      * The correspondence line of a board game (plan "Mühle und Dame", P8).
      */
+    /**
+     * Taking a move back (BoardGameService::takeBack(); DerCaddy and the players, 2026-10-15), while the window is on.
+     *
+     * @return list<string>
+     */
+    private static function takeBack(): array
+    {
+        $seconds = (int) config('esports.board_games.take_back_seconds', 0);
+
+        return $seconds > 0 ? [__('Take back: for :seconds seconds after your move, until your opponent answers it, Take back undoes it, without asking. The time since your move counts as yours, your opponent\'s clock loses nothing.', ['seconds' => $seconds])] : [];
+    }
+
     private static function correspondence(): string
     {
         return __('Correspondence: each move has :hours h, and a reminder comes before the deadline. A missed deadline loses the game, or aborts it before both first moves. A challenge stays open for :open h.', [

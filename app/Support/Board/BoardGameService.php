@@ -10,6 +10,7 @@ use App\Events\BoardGameUpdated;
 use App\Games\BoardGame as BoardGameDefinition;
 use App\Games\GameRegistry;
 use App\Jobs\CheckBoardClock;
+use App\Jobs\NotifyBoardMove;
 use App\Models\BoardGame;
 use App\Models\BoardInvite;
 use App\Models\BoardMove;
@@ -294,6 +295,86 @@ final class BoardGameService
         });
     }
 
+    /* ---------- Take back ----------------------------------------------------------------------------------- */
+
+    /**
+     * The player who just moved takes the move back (a misclick; DerCaddy and the players, 2026-10-15: "21 Sekunden
+     * nach dem Move kann man zurücknehmen, wenn der Gegner noch nicht gespielt hat", no accept step): within
+     * `esports.board_games.take_back_seconds` of the move and only while the opponent has not answered it. The game
+     * is as it was before the move: the position, the turn, the move gone from the record. So are the clocks: the
+     * mover's clock and the start of their turn come back, so the time since the move counts as their thinking time
+     * and the opponent's clock loses nothing; in correspondence the mover's day runs on from where it stood. A draw
+     * offer the move let lapse stays lapsed. The window never outlasts the mover's own time (takeBackUntil()), so a
+     * take-back never flags. A move that ended the game cannot be taken back: the game is over.
+     *
+     * @throws BoardRuleViolation `take_back_closed` without an own last move to take back, or once its time is up
+     */
+    public function takeBack(BoardGame $game, User $user): BoardGame
+    {
+        return $this->change($game, function (BoardGame $game, int $now) use ($user): void {
+            $color = $this->playerColor($game, $user);
+            $last = $game->ply > 0 ? $game->moves()->where('ply', $game->ply)->first() : null;
+            $until = $last === null ? null : $this->takeBackUntil($game, $last);
+
+            // Only the side that made the last move, whose opponent is to move now, and only in time.
+            if ($last === null || $until === null || $game->turn === $color || $now >= $until) {
+                throw new BoardRuleViolation('take_back_closed');
+            }
+
+            $rules = $this->definition($game->game)->rules();
+            $before = $game->ply > 1 ? (string) $game->moves()->where('ply', $game->ply - 1)->value('position') : $rules->serialize($rules->start());
+            $started = $game->turn_started_ms - $last->spent_ms;
+            $clockKey = $color === 'w' ? 'white_ms' : 'black_ms';
+            // The move took its thinking time off and added the increment only once both first moves were made (move()).
+            $clock = ! $game->isCorrespondence() && $game->ply > 2 ? $last->clock_ms + $last->spent_ms - $game->increment_ms : $game->{$clockKey};
+
+            $last->delete();
+            $game->forceFill([
+                $clockKey => $clock,
+                'position' => $before,
+                'turn' => $rules->turn($rules->deserialize($before)),
+                'ply' => $game->ply - 1,
+                'turn_started_ms' => $started,
+            ]);
+
+            $game->deadline_ms = match (true) {
+                $game->isCorrespondence() => $started + $game->initial_ms,
+                $game->clocksRunning() => $started + $clock,
+                default => $started + $this->firstMoveMs($game),
+            };
+        });
+    }
+
+    /**
+     * Until when (server ms) the side that made the last move may take it back, or null: not before a move, not after
+     * the game, not with `take_back_seconds` at 0. The window ends that long after the move, or earlier where the
+     * mover's own time would have run out by then on the clock as a take-back puts it back.
+     */
+    public function takeBackUntil(BoardGame $game, ?BoardMove $last = null): ?int
+    {
+        $window = (int) config('esports.board_games.take_back_seconds', 0) * 1000;
+
+        if ($window <= 0 || ! $game->isActive() || $game->ply === 0) {
+            return null;
+        }
+
+        $last ??= $game->moves()->where('ply', $game->ply)->first();
+
+        if ($last === null) {
+            return null;
+        }
+
+        // The opponent's turn started with the move; the mover's had started its thinking time before it.
+        $moved = $game->turn_started_ms;
+        $timeUp = match (true) {
+            $game->isCorrespondence() => $moved - $last->spent_ms + $game->initial_ms,
+            $game->ply > 2 => $moved + $last->clock_ms - $game->increment_ms,
+            default => $moved - $last->spent_ms + $this->firstMoveMs($game),
+        };
+
+        return min($moved + $window, $timeUp);
+    }
+
     /* ---------- Resign, draw, abort ------------------------------------------------------------------------- */
 
     /**
@@ -506,6 +587,8 @@ final class BoardGameService
             'deadline' => $game->isActive() ? $game->deadline_ms : null,
             'firstMoveDeadline' => $game->isActive() && ! $game->clocksRunning() && ! $game->isCorrespondence() ? $game->deadline_ms : null,
             'drawOffer' => $game->draw_offer,
+            // Until when the side that just moved may take the move back (server ms), null when it may not.
+            'takeBackUntil' => $last === null ? null : $this->takeBackUntil($game, $last),
             'pieces' => $rules === null ? [] : $rules->view($position)['pieces'],
             // Who would be ahead in a race (Blockli): steps to the goal and blocks left a side (DerCaddy, 2026-10-09).
             'standing' => $rules instanceof RaceStanding ? $rules->standing($position) : null,
@@ -694,8 +777,8 @@ final class BoardGameService
 
     /**
      * Correspondence games notify (P8, as daily chess): the player to move
-     * after a move, both players when the game ends. A live game's players
-     * are at the board.
+     * after a move, once it can no longer be taken back (NotifyBoardMove),
+     * both players when the game ends. A live game's players are at the board.
      */
     private function notify(BoardGame $game, bool $moved): void
     {
@@ -706,7 +789,11 @@ final class BoardGameService
         if (! $game->isActive()) {
             $this->notifications->gameOver($game);
         } elseif ($moved) {
-            $this->notifications->yourMove($game);
+            // Once the take-back window has closed, so a move taken back again never reaches the opponent's phone.
+            $wait = (int) config('esports.board_games.take_back_seconds', 0);
+            $wait > 0
+                ? NotifyBoardMove::dispatch($game->id, (int) $game->moves()->where('ply', $game->ply)->value('id'))->delay(now()->addSeconds($wait + 1))
+                : $this->notifications->yourMove($game);
         }
     }
 

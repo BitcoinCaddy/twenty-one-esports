@@ -255,7 +255,11 @@ return [
     | classes come with P3 (nine men's morris) and P4 (checkers); an entry
     | without a class stays off. first_move_seconds (P2): before both sides
     | made their first move no clock runs; the side to move has this long for
-    | it or the game is aborted (as `chess.first_move_seconds`). queue (P5):
+    | it or the game is aborted (as `chess.first_move_seconds`).
+    | take_back_seconds: a player may take their move back for this long, as
+    | long as the opponent has not answered it, without asking (a misclick;
+    | DerCaddy and the players, 2026-10-15: 21 seconds, no accept step); 0
+    | switches it off. queue (P5):
     | the casual queue of each board game, paired by the casual rating of
     | that game within a range that widens while a player waits (as
     | `chess.queue.range`). invite_seconds (P5): how long an invite to a
@@ -277,6 +281,7 @@ return [
     'board_games' => [
         'enabled' => (bool) env('ESPORTS_BOARD_GAMES', false),
         'first_move_seconds' => 30,
+        'take_back_seconds' => 21,
         'queue' => [
             'range' => ['initial' => 150, 'step' => 150, 'every_seconds' => 30, 'max' => 600],
         ],

@@ -6,7 +6,7 @@
  * 1024 px. It hides when the player taps the board (`data-focus-board`) or scrolls down; it shows again on a scroll
  * up, a swipe up from the bottom edge, or a tap on the bottom edge (a 24 px strip, `data-test=focus-edge`, while the
  * bar is away). Every change dispatches `focus-mode`, so a board that fits the first screen (boardGame.js fitBoard) takes
- * the height the bar gave up. The root class `is-focus` slides the bar and the page's own bottom bars down
+ * the height the bar gave up; so does its start, for a board that fitted itself before it. The root class `is-focus` slides the bar and the page's own bottom bars down
  * (revamp-league.css); the body keeps its room, so nothing on the page moves. Reduced motion: no slide, the bar is shown or hidden at once (revamp-league.css).
  * One listener set on window, released on every wire:navigate swap; a page without the mark never hides the bar.
  */
@@ -55,6 +55,9 @@ function start() {
     let lastY = window.scrollY;
     let touch = null;
     root().dataset.focus = 'shown';
+    // Ready: a board that fitted itself before this ran (Alpine starts first) fits again, and on a phone too short for it
+    // slides the bar away at once (boardGame.js fitBoard).
+    window.dispatchEvent(new CustomEvent('focus-mode', { detail: { hidden: false } }));
 
     window.addEventListener('scroll', () => {
         const y = window.scrollY;

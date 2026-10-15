@@ -30,6 +30,7 @@
  * window, with the lower player card under the board.
  */
 
+import { setFocus } from './focusMode.js';
 import { gameChat } from './gameChat.js';
 import { registerAlpine } from './registerAlpine.js';
 
@@ -183,6 +184,9 @@ registerAlpine(() => {
         band: { top: 8, bottom: 8 },
         onScroll: null,
         warningUntil: 0,
+        // A line for the other side's take-back (":name took the move back"), shown until noticeUntil.
+        notice: '',
+        noticeUntil: 0,
         pointerType: 'touch',
         lastTap: null,
         pending: false,
@@ -316,6 +320,10 @@ registerAlpine(() => {
             const room = edge - (drawn.top + scrollY) - under - (phone ? 8 : 16);
             const width = Math.round(room * (drawn.width / drawn.height));
             if (phone) {
+                // Too short a phone for the board's floor of 200 px (an iPhone SE in Safari, 553 px high: the board reached 40 px
+                // under Blockli's bar until the first tap): the tab bar slides away at once, as focus mode does on that tap, and
+                // the board fits again in the room it gives up (focus-mode calls this anew). Only on a focus page, once.
+                if (width < 200 && tabbar > 0 && document.documentElement.dataset.focus === 'shown') setFocus(true);
                 grid.style.gridTemplateColumns = '';
                 box.style.maxWidth = Math.max(200, width) + 'px';
                 page.style.paddingBottom = (shown(sheet) ? 72 : 0) + (shown(dock) ? dock.offsetHeight : 0) + 24 + 'px';
@@ -608,9 +616,9 @@ registerAlpine(() => {
             return this.settingBlock && this.preview !== null && this.pointerType !== 'mouse';
         },
 
-        /** The bar's line: whose move it is, and in set-a-block mode what to do (the hint, red where no block fits). */
+        /** The bar's line: whose move it is, and in set-a-block mode what to do (the hint, red where no block fits); a take-back for a moment. */
         get barLine() {
-            return this.settingBlock ? this.blockHint : this.statusLine;
+            return this.settingBlock ? this.blockHint : this.noticeShown ? this.notice : this.statusLine;
         },
 
         /**
@@ -897,6 +905,41 @@ registerAlpine(() => {
             return nearest;
         },
 
+        /* ---- take back (BoardGameService::takeBack()) ------------------------------------------------- */
+
+        /**
+         * Whole seconds left to take the own last move back, 0 when it cannot be: the server names the moment
+         * (`takeBackUntil`, take_back_seconds after the move, earlier where the mover's own time ends) for the side that
+         * just moved, so a player sees it right after their move, until the opponent answers or the time is up
+         * (DerCaddy and the players, 2026-10-15: a misclick, 21 seconds, no accept step).
+         */
+        get takeBackLeft() {
+            const until = this.state.takeBackUntil;
+            if (!until || this.color === null || this.state.status !== 'active' || this.state.turn === this.color) return 0;
+
+            return Math.max(0, Math.ceil((until - this.serverNow()) / 1000));
+        },
+
+        get canTakeBack() {
+            return this.takeBackLeft > 0 && !this.pending && this.viewIndex === null;
+        },
+
+        get noticeShown() {
+            return this.notice !== '' && this.now < this.noticeUntil;
+        },
+
+        async takeBack() {
+            if (!this.canTakeBack) return;
+            [this.blockMode, this.preview] = [false, null];
+            this.pending = true;
+            try {
+                await this.call('takeBack');
+            } finally {
+                this.pending = false;
+                this.render();
+            }
+        },
+
         /* ---- clocks and status ---------------------------------------------------------------------- */
 
         tick() {
@@ -1003,10 +1046,13 @@ registerAlpine(() => {
             if (!state || state.version < this.state.version) return;
             const changed = state.version !== this.state.version;
             const moved = state.ply !== this.state.ply;
+            // One ply less in a running game: the side that had just moved took it back. Its opponent (and a spectator) is told.
+            const takenBack = state.status === 'active' && state.ply === this.state.ply - 1 && state.turn !== this.color;
             this.state = { ...state, moves: state.moves ?? this.state.moves };
             this.receivedAt = performance.now();
             this.lastSyncAt = this.receivedAt;
             this.now = this.receivedAt;
+            if (takenBack) [this.notice, this.noticeUntil] = [this.t.takeBack.notice.replace(':name', this.t.names[state.turn]), this.now + WARNING_MS];
             if (changed) this.clicks = [];
             // The block input: a block shown is checked against the new legal moves; off the move none is shown.
             if (changed && this.layout.input === 'blocks') {

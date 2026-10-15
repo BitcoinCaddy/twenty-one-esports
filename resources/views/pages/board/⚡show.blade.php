@@ -105,6 +105,12 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
     }
 
     #[Json]
+    public function takeBack(): array
+    {
+        return $this->act(fn (BoardGameService $games, User $user) => $games->takeBack($this->boardGame, $user));
+    }
+
+    #[Json]
     public function offerDraw(): array
     {
         return $this->act(fn (BoardGameService $games, User $user) => $games->offerDraw($this->boardGame, $user));
@@ -274,6 +280,8 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 // A tournament game's first-move deadline, in the player's words (user, 2026-10-03).
                 'cupFirstMove' => $this->boardGame->tournament_match_id === null ? null : ['mine' => __('Make your first move within :time or you lose this cup game'), 'theirs' => __(':side must move within :time or loses this cup game')],
                 'drawOffer' => __(':name offers a draw', ['name' => $this->name($this->boardGame->colorOf(auth()->user()) === 'w' ? 'b' : 'w')]),
+                // A move taken back within take_back_seconds (BoardGameService::takeBack(); DerCaddy, 2026-10-15).
+                'takeBack' => ['button' => __('Take back'), 'left' => __('Take back your move, :seconds s left'), 'notice' => __(':name took the move back.')],
                 'status' => ['live' => __('Live · move :move · :side to move'), 'daily' => __('Correspondence · move :move · :side to move'), 'over' => __('Game over'), 'aborted' => __('Aborted')],
                 'deadline' => __(':side moves by :time, or loses on time.'),
                 // The turn card of the harmonised match view (MatchBoards.dc.html, P5): who is to move, "your move" for the player.
@@ -289,7 +297,7 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 'errors' => ['illegal_move' => __('That move is not legal here.'), 'not_your_turn' => __('It is not your turn.'),
                     'out_of_sync' => __('The board was behind. It shows the latest position now.'), 'game_over' => __('The game is already over.'),
                     'not_a_player' => __('Only the two players can do that.'), 'too_late_to_abort' => __('Both sides have moved, the game can no longer be aborted.'),
-                    'tournament_game' => __('A tournament game cannot be aborted.'),
+                    'tournament_game' => __('A tournament game cannot be aborted.'), 'take_back_closed' => __('The move can no longer be taken back.'),
                     'default' => __('That did not work. The board shows the server\'s state.')],
                 // The block input (Blockli).
                 'blocks' => ['tap' => __('Tap a groove: the block shows where it lands.'), 'point' => __('Point at a groove: the block follows.'),
@@ -402,6 +410,12 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 <template x-if="color && state.status === 'active'">
                     <div class="col-span-2 flex flex-wrap items-center justify-end gap-2" data-fit-skip data-test="board-actions">
                         <span class="mr-auto text-[13px] text-ink-2 max-lg:hidden" x-text="state.moves.length ? (Math.ceil(state.moves.length / 2) + (state.moves.length % 2 ? '. ' : '… ') + state.moves[state.moves.length - 1].notation) : ''"></span>
+                        {{-- Take the own move back, as in Blockli's bar (which has the button there): nine men's morris, checkers. --}}
+                        <template x-if="layout.input !== 'blocks' && canTakeBack">
+                            <x-button variant="quiet" x-on:click="takeBack()" x-bind:aria-label="t.takeBack.left.replace(':seconds', takeBackLeft)" data-test="take-back">
+                                {{ __('Take back') }} <span class="min-w-[2ch] tabular-nums" x-text="takeBackLeft"></span>
+                            </x-button>
+                        </template>
                         {{-- A tournament game cannot be aborted: a missed first move is the league's to decide (P5). --}}
                         @if ($boardGame->tournament_match_id === null)
                             <template x-if="state.ply < 2">
@@ -458,8 +472,15 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                            x-text="barLine" data-test="block-status"></p>
                         <button type="button" class="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md px-[18px] text-[13px] disabled:cursor-default disabled:opacity-50 lg:order-1 lg:w-full"
                                 :class="[blockMode ? 'border border-btc bg-btc-press font-bold text-btc-hi' : 'btn-w border border-line bg-well text-ink', blockButtons ? 'max-lg:hidden' : '']"
-                                :aria-pressed="blockMode ? 'true' : 'false'" :disabled="!myTurn || !canSetBlocks" x-on:click="setBlockMode(!blockMode, $event)" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight R Enter Escape" data-test="mode-block">
+                                :aria-pressed="blockMode ? 'true' : 'false'" :disabled="!myTurn || !canSetBlocks" x-on:click="setBlockMode(!blockMode, $event)" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight R Enter Escape"
+                                x-show="!canTakeBack" data-test="mode-block">
                             {{ __('Set a block') }} <span class="tabular-nums" x-text="blocksLeft"></span>
+                        </button>
+                        {{-- Right after the player's own move, until the opponent answers: take it back, with the seconds left (BoardGameService::takeBack();
+                             DerCaddy and the players, 2026-10-15: a misclick, 21 seconds, no accept step). In the toggle's place, which is off then anyway. --}}
+                        <button type="button" class="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md border border-btc bg-btc-press px-[18px] text-[13px] font-bold whitespace-nowrap text-btc-hi lg:order-1 lg:w-full"
+                                x-show="canTakeBack" x-cloak x-on:click="takeBack()" :aria-label="t.takeBack.left.replace(':seconds', takeBackLeft)" data-test="take-back">
+                            {{ __('Take back') }} <span class="min-w-[2ch] tabular-nums" x-text="takeBackLeft"></span>
                         </button>
                         {{-- With a block shown: Rotate, Confirm and Move the pawn, side by side in the row, each as wide as its label and never
                              wrapping it (R11; "Figur bewegen" wrapped at 320 to 390 px in German): 12 px under 360 px. --}}
@@ -501,6 +522,8 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                 @if ($standingDecides)
                     <p class="m-0 rounded-[4px] border border-line bg-card px-3 py-2 text-[13px] text-ink" data-test="decider-standing">{{ __('This game decides the pairing. If it is drawn, the race standing of the final position decides; a level standing is replayed.') }}</p>
                 @endif
+                {{-- The other side took its move back (on a phone Blockli's bar says it too). --}}
+                <p role="status" class="m-0 text-[13px] font-bold text-ink" x-show="noticeShown" x-text="notice" data-test="board-notice"></p>
                 <p role="alert" class="m-0 text-[13px] text-loss" x-show="error" x-text="error" data-test="board-error"></p>
 
                 <template x-if="state.status !== 'active'">

@@ -56,7 +56,9 @@ test('a live tournament chess game opens with the banner above the game, the cup
         ->assertSee('data-test="tournament-chip"', false)
         ->assertDontSee('data-test="rating"', false)
         // On a phone the shell header carries it too, always at the top (2026-10-15).
-        ->assertSeeInOrder(['data-test="shell-tournament"', $tournament->name, 'Round 1', 'data-test="tournament-banner"'], false);
+        ->assertSeeInOrder(['data-test="shell-tournament"', $tournament->name, 'Round 1', 'data-test="tournament-banner"'], false)
+        // A tap on the chip opens the whole banner over the page, the tournament page in it (DerCaddy, 2026-10-15).
+        ->assertSeeInOrder(['aria-haspopup="dialog" aria-controls="tournament-banner-sheet"', 'data-test="shell-tournament"', 'data-test="tournament-banner"', 'id="tournament-banner-sheet"', $tournament->name, 'Round 1', 'Tournament game — counts for the tournament', 'data-test="banner-sheet-link"'], false);
 
     // A spectator sees the banner too.
     $this->actingAs(User::factory()->create())->get(route('games.show', $game))->assertOk()

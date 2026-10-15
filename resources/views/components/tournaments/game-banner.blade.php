@@ -12,7 +12,8 @@
     anders hin"): the board fits the first screen, and above it the banner took 222 px of it (board 203 px wide at
     390x844). On a phone it is one row: the trophy, the stake and the button labels give way, the buttons keep 44 px
     and their names for screen readers. Wherever it stands, the shell header carries a chip of it on a phone while no
-    banner of the page is in view (people, 2026-10-15: a small mark always at the top that this is a tournament match).
+    banner of the page is in view (people, 2026-10-15: a small mark always at the top that this is a tournament match). A tap on
+    the chip, or on a board game's line, opens the whole banner over the page (game-banner-panel; DerCaddy, 2026-10-15).
 --}}
 @if ($banner)
     {{-- The shell header shows the tournament as a chip on a phone, always at the top (components/shell/header). --}}
@@ -37,4 +38,6 @@
         @endif
         <x-button :href="$banner['url']" icon="trophy" class="shrink-0 max-sm:w-11 max-sm:px-0" :title="__('Tournament page')" data-test="tournament-banner-link"><span class="max-sm:sr-only">{{ __('Tournament page') }}</span></x-button>
     </section>
+    {{-- On a phone the one-line forms of this banner (the header's chip, a board game's title row) open it whole over the page. --}}
+    <x-tournaments.game-banner-panel :banner="$banner" />
 @endif
