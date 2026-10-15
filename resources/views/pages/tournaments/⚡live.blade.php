@@ -28,7 +28,8 @@ use Livewire\Component;
  * then the bracket to look at. Each card lists its deadlines in time order with a "now" line between the passed
  * and the coming ones.
  */
-new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 'scripts' => ['resources/js/tournamentDesk.js']])] class extends Component {
+new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 'scripts' => ['resources/js/tournamentDesk.js']])] class extends Component
+{
     public Tournament $tournament;
 
     public function mount(Tournament $tournament): void
@@ -50,7 +51,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
     public function controlled(): void
     {
         $this->tournament->refresh();
-        unset($this->stages, $this->round);
+        unset($this->stages, $this->round, $this->matrix);
     }
 
     #[Computed]
@@ -90,6 +91,20 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
             ->whereIn('status', [SeriesStatus::Accepted, SeriesStatus::Reported, SeriesStatus::Disputed])
             ->with('latestReport')->orderBy('number')->get()
             ->reject(fn (SeriesMatch $series): bool => $series->isCasualPairing())->values()->all();
+    }
+
+    /**
+     * The cross table of every group with its traffic lights (TournamentMatrix, user 2026-10-15): where the
+     * tournament stands and where the direction should follow up, at a glance instead of a long list.
+     *
+     * @return array<string, mixed>
+     */
+    #[Computed]
+    public function matrix(): array
+    {
+        return in_array($this->tournament->status, [TournamentStatus::Running, TournamentStatus::Finished], true)
+            ? (new \App\Support\Tournaments\TournamentMatrix($this->tournament))->overview()
+            : ['groups' => [], 'counts' => [], 'attention' => []];
     }
 
     #[Computed]
@@ -249,6 +264,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
         <a href="{{ route('tournaments.show', $tournament) }}" class="rv-b2" data-test="live-public"><x-icon name="trophy" :size="16" />{{ __('Tournament page') }}</a>
         <a href="{{ route('tournaments.tv', $tournament) }}" target="_blank" class="rv-b2" data-test="live-tv"><x-icon name="expand" :size="16" />{{ __('TV view') }}</a>
     </nav>
+
+    @if ($this->matrix['groups'] !== [])
+        @include('pages.tournaments.partials.matrix', ['matrix' => $this->matrix])
+    @endif
 
     @if ($this->openSeries !== [])
         <section aria-labelledby="live-overview-h" class="flex flex-col gap-6" data-test="live-overview">

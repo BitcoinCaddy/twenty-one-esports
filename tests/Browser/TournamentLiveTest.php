@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\BoardGameStatus;
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
 use App\Models\Admin;
+use App\Models\BoardGame;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Models\TournamentParticipant;
@@ -18,6 +20,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Pest\Browser\Playwright\Page;
 use Pest\Browser\Support\ComputeUrl;
+use Tests\Support\BlockliOn;
 use Tests\Support\BrowserConsole;
 use Tests\Support\BrowserLogin;
 use Tests\Support\BrowserWait;
@@ -349,3 +352,49 @@ function liveStates2(Tournament $tournament): array
 
     return [$series->refresh()];
 }
+
+test('the matrix shows every pairing of a group with its light, the follow-up list and the counts, at 390 to 1920 as an admin in German', function () {
+    // User 2026-10-15: "Eine Matrix aller Spiele … mit Ampel-System, wo was steht und wo nachhak-Bedarf besteht".
+    BlockliOn::play();
+    $admin = User::factory()->create(['locale' => 'de']);
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+    $tournament = Tournament::factory()->create([
+        'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::RoundRobin, 'name' => 'Blockli Matrix Cup',
+        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
+        'capacity' => 5, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running, 'slug' => 'blockli-matrix-cup',
+    ]);
+    foreach (['Anna', 'Bert der Allerlängste Name Im Ganzen Cup', 'Cleo', 'DerCaddy', 'Eva'] as $index => $name) {
+        $user = User::factory()->create();
+        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => $name, 'rating' => 1500 - $index, 'seed' => $index + 1, 'members' => [$user->id]]);
+    }
+    app(TournamentBrackets::class)->generate($tournament, str_repeat('ab', 32));
+    app(TournamentRunner::class)->sync($tournament);
+    // One game without a first move for seven hours: red.
+    BoardGame::query()->where('status', BoardGameStatus::Active)->orderBy('id')->firstOrFail()->forceFill(['created_at' => now()->subHours(7)])->save();
+    $url = ComputeUrl::from(route('tournaments.live', $tournament, false));
+    $probe = '() => { const m = document.querySelector("[data-test=live-matrix]"); m.scrollIntoView(); const cells = [...m.querySelectorAll("[data-test=matrix-cell]")]; const scroll = m.querySelector("[data-test=matrix-scroll]"); const rows = [...m.querySelectorAll("[data-test=matrix-attention-row]")]; const words = [...m.querySelectorAll("th, li, a, span")].filter((e) => e.children.length === 0 && !e.classList.contains("sr-only") && e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== "ellipsis").map((e) => e.innerText.slice(0, 30)); return { cells: cells.length, red: cells.filter((c) => c.dataset.state === "red").length, minH: Math.min(...cells.map((c) => Math.round(c.getBoundingClientRect().height))), minW: Math.min(...cells.map((c) => Math.round(c.getBoundingClientRect().width))), counts: [...m.querySelectorAll("[data-test=matrix-count]")].map((c) => c.innerText.trim().replace(/\\s+/g, " ")), attention: rows.map((r) => r.innerText.trim().replace(/\\s+/g, " ")), squeezed: [...m.querySelectorAll("[data-test=matrix-attention-row] span, [data-test=matrix-count]")].filter((e) => { const r = e.getBoundingClientRect(); return r.width < 240 && r.height > 60 && e.innerText.trim().split(/\\s+/).length > 6; }).length, scroll: scroll.scrollWidth - scroll.clientWidth, tableW: Math.round(scroll.querySelector("table").getBoundingClientRect().width), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, spill: words, wide: [...document.querySelectorAll("body *")].filter((e) => { const r = e.getBoundingClientRect(); if (r.right <= innerWidth + 1 || r.width === 0) return false; for (let p = e.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === "auto" || o === "scroll" || o === "hidden" || o === "clip") return false; } return true; }).slice(0, 6).map((e) => (e.dataset.test || e.tagName) + ":" + Math.round(e.getBoundingClientRect().right) + ":" + (e.className.baseVal ?? e.className).slice(0, 60)), top: Math.round(m.getBoundingClientRect().top + scrollY), without: (() => { m.style.display = "none"; const o = document.documentElement.scrollWidth - document.documentElement.clientWidth; m.style.display = ""; return o; })(), widest: (() => { let best = null; for (const e of document.querySelectorAll("body *")) { const r = e.getBoundingClientRect(); if (r.width && (!best || r.right > best[1])) best = [(e.dataset.test || e.tagName) + "." + String(e.className.baseVal ?? e.className).slice(0, 50), Math.round(r.right)]; } return best; })() }; }';
+
+    $webpage = visit(BrowserLogin::url($admin));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+
+    foreach ([[390, 844], [1024, 768], [1440, 900], [1920, 1080]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto($url);
+        BrowserWait::until($page, '() => !!document.querySelector("[data-test=live-matrix]")', 10_000);
+        $m = $page->evaluate($probe);
+        fwrite(STDERR, PHP_EOL."[matrix {$width}] ".json_encode($m, JSON_UNESCAPED_UNICODE).PHP_EOL);
+
+        expect($m['cells'])->toBe(20)
+            ->and($m['red'])->toBe(2)
+            ->and($m['minH'])->toBeGreaterThanOrEqual(44)
+            ->and($m['minW'])->toBeGreaterThanOrEqual(44)
+            ->and($m['counts'][0])->toBe('1 Nachhaken')
+            ->and($m['attention'][0])->toContain('Seit 7 h kein erster Zug')
+            ->and($m['squeezed'])->toBe(0, "{$width}: squeezed follow-up row")
+            ->and($m['spill'])->toBe([], "{$width}: spilled words")
+            ->and($m['overflow'])->toBeLessThanOrEqual(0, "{$width}: page scrolls sideways")
+            ->and($page->evaluate('() => window.__errors'))->toBe([], "{$width}: console")
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "{$width}: responses");
+    }
+});

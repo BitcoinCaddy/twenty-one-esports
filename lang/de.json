@@ -8621,5 +8621,20 @@
     "Watch :match": ":match zuschauen",
     "Standing :score · game :n under way": "Stand :score · Partie :n läuft",
     "Level :score · game :n under way": "Gleichstand :score · Partie :n läuft",
-    ":name leads :score · game :n under way": ":name führt :score · Partie :n läuft"
+    ":name leads :score · game :n under way": ":name führt :score · Partie :n läuft",
+    "All pairings at a glance": "Alle Paarungen auf einen Blick",
+    "Follow up": "Nachhaken",
+    "Keep an eye on it": "Im Blick behalten",
+    "Under way": "Läuft",
+    "No pairing": "Keine Paarung",
+    "Result on hold: decide it on the control": "Ergebnis zurückgehalten: in der Steuerung entscheiden",
+    "No result by the deadline: with the admins": "Kein Ergebnis bis zur Frist: bei den Admins",
+    "Result disputed": "Ergebnis strittig",
+    "Result reported, waiting for the confirmation": "Ergebnis gemeldet, wartet auf Bestätigung",
+    "No game started yet": "Noch keine Partie gestartet",
+    "Restarted for a missing first move, still none: :name to move": "Neu gestartet wegen fehlendem ersten Zug, wieder keiner: :name ist am Zug",
+    "No first move for :hours h: :name to move": "Seit :hours h kein erster Zug: :name ist am Zug",
+    "Move deadline in :hours h: :name to move": "Zugfrist endet in :hours h: :name ist am Zug",
+    ":name on the move for :hours h": ":name seit :hours h am Zug",
+    "Game :n under way": "Partie :n läuft"
 }
