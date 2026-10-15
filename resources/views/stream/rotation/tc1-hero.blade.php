@@ -19,9 +19,10 @@
     $countdown = is_string($t['countdown'] ?? null) ? $t['countdown'] : '';
     $spots = K::spots($t);
     $cover = K::coverUri($t['cover'] ?? null);
-    $title = K::headline(K::text($t, 'name', 'Tournament'), [36, 30], 736, 2, K::MONO);
+    // The title and facts x 504..1016, the countdown x 40..560, the sign-up x 600..1016 (the now-playing column covers x 1040..1280).
+    $title = K::headline(K::text($t, 'name', 'Tournament'), [32, 26], 512, 2, K::MONO);
     $titleStep = round($title['size'] * 1.2);
-    // First baseline: ascenders (0.8 em) start at y 116, below the LIVE corner (y < 112 for x > 1040).
+    // First baseline: ascenders (0.8 em) start at y 116, as before the column.
     $titleY = 116 + round($title['size'] * 0.8);
     $rowY = $titleY + (count($title['lines']) - 1) * $titleStep + 44;
     $game = K::text($t, 'game').(K::text($t, 'mode') === '' ? '' : ', '.K::text($t, 'mode'));
@@ -31,15 +32,15 @@
         ['format', K::text($t, 'format').($where === 'Online' ? '' : ', '.$where)],
         ['starts', K::text($t, 'startsAt')],
     ];
-    $desc = K::wrap($t['description'] ?? '', K::MONO, 18, 720, 2);
+    $desc = K::wrap($t['description'] ?? '', K::MONO, 18, 520, 2);
     $cd = K::countdownParts($countdown);
-    $cdText = $cd ? ($cd['days'] > 0 ? $cd['days'].'d ' : '').$cd['hms'] : K::fit($countdown, K::MONO, 80, 720);
-    $cdSize = K::monoSize($cdText, 80, 720);
+    $cdText = $cd ? ($cd['days'] > 0 ? $cd['days'].'d ' : '').$cd['hms'] : K::fit($countdown, K::MONO, 76, 520);
+    $cdSize = K::monoSize($cdText, 76, 520);
     $note = $cd && $cd['days'] === 0 ? K::countdownNote($cd, $spots['full']) : null;
-    $seats = K::seats($t, 780, 436, 460, 34, $spots['places'] <= 16 ? 8 : 16, 32, 4);
-    $bar = $seats ? [] : K::spotCells($spots['taken'], $spots['places'], 780, 460, 4);
+    $seats = K::seats($t, 600, 436, 416, 34, $spots['places'] <= 16 ? 8 : 16, 32, 4);
+    $bar = $seats ? [] : K::spotCells($spots['taken'], $spots['places'], 600, 416, 4);
     $url = K::tournamentUrl($t);
-    $urlSize = K::monoSize($url, 20, 428);
+    $urlSize = K::monoSize($url, 20, 384);
     $gameLines = K::wrap(K::text($t, 'game', 'Tournament'), K::MONO, 28, 400, 2);
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
@@ -60,24 +61,24 @@
 @endif
 </g>
 @foreach ($title['lines'] as $i => $line)
-<text data-unit="title-{{ $i }}" data-box="503 {{ $titleY - $title['size'] + $i * $titleStep }} 1241 {{ $titleY + $i * $titleStep + 10 }}" x="504" y="{{ $titleY + $i * $titleStep }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $title['size'] }}" fill="#FFFFFF">{{ $line }}</text>
+<text data-unit="title-{{ $i }}" data-box="503 {{ $titleY - $title['size'] + $i * $titleStep }} 1017 {{ $titleY + $i * $titleStep + 10 }}" x="504" y="{{ $titleY + $i * $titleStep }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $title['size'] }}" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
 @foreach ($facts as $i => [$key, $value])
 @php($fy = $rowY + $i * 34)
-<rect x="504" y="{{ $fy - 24 }}" width="736" height="1" fill="#2A2A30"/>
+<rect x="504" y="{{ $fy - 24 }}" width="512" height="1" fill="#2A2A30"/>
 <text data-unit="fact-key-{{ $i }}" x="504" y="{{ $fy }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7">{{ $key }}</text>
-<text data-unit="fact-{{ $i }}" data-box="599 {{ $fy - 20 }} 1241 {{ $fy + 6 }}" x="600" y="{{ $fy }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FFFFFF">{{ K::fit($value === '' ? '-' : $value, K::MONO, 20, 640) }}</text>
+<text data-unit="fact-{{ $i }}" data-box="587 {{ $fy - 20 }} 1017 {{ $fy + 6 }}" x="588" y="{{ $fy }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">{{ K::fit($value === '' ? '-' : $value, K::MONO, 18, 428) }}</text>
 @endforeach
 
 @foreach ($desc as $i => $line)
-<text data-unit="desc-{{ $i }}" data-box="39 {{ 364 + $i * 26 }} 761 {{ 386 + $i * 26 }}" x="40" y="{{ 380 + $i * 26 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0">{{ $line }}</text>
+<text data-unit="desc-{{ $i }}" data-box="39 {{ 364 + $i * 26 }} 561 {{ 386 + $i * 26 }}" x="40" y="{{ 380 + $i * 26 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0">{{ $line }}</text>
 @endforeach
 
-@if ($countdown !== '')<text data-unit="cd-label" x="40" y="464" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">{{ K::fit(K::text($t, 'countdownLabel', 'Sign-up closes in'), K::MONO, 18, 720) }}</text>@endif
-<text data-unit="countdown" data-countdown="{{ $countdown }}" data-box="39 470 761 556" x="40" y="548" font-family="JetBrains Mono" font-weight="700" font-size="{{ $cdSize }}" fill="#F7931A">{{ $cdText }}</text>
+@if ($countdown !== '')<text data-unit="cd-label" x="40" y="464" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">{{ K::fit(K::text($t, 'countdownLabel', 'Sign-up closes in'), K::MONO, 18, 520) }}</text>@endif
+<text data-unit="countdown" data-countdown="{{ $countdown }}" data-box="39 470 561 556" x="40" y="548" font-family="JetBrains Mono" font-weight="700" font-size="{{ $cdSize }}" fill="#F7931A">{{ $cdText }}</text>
 @if ($note)<text data-unit="cd-note" x="40" y="590" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">{{ $note }}</text>@endif
 
-<text data-unit="spots-left" x="780" y="422" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#F7931A">{{ $spots['leftText'] }}</text>
+<text data-unit="spots-left" x="600" y="422" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#F7931A">{{ $spots['leftText'] }}</text>
 @if ($seats)
 @foreach ($seats['seats'] as $si => $seat)
 @include('stream.rotation.partials.face', ['face' => $seat['face'], 'x' => $seat['x'], 'y' => $seat['y'], 'd' => $seats['d'], 'id' => 'seat-'.$si, 'fUnit' => 'seat-'.$si,
@@ -90,7 +91,8 @@
 @endforeach
 </g>
 @endif
-<rect x="780" y="522" width="460" height="80" fill="#F7931A"/>
-<text data-unit="cta" data-box="795 528 1225 564" x="796" y="556" font-family="JetBrains Mono" font-weight="700" font-size="30" fill="#17120A">{{ $spots['full'] ? 'Watch it live' : 'Sign up' }}</text>
-<text data-unit="url" data-box="795 570 1225 596" x="796" y="588" font-family="JetBrains Mono" font-weight="700" font-size="{{ $urlSize }}" fill="#17120A">{{ $url }}</text>
+<rect x="600" y="522" width="416" height="80" fill="#F7931A"/>
+<text data-unit="cta" data-box="615 528 1001 564" x="616" y="556" font-family="JetBrains Mono" font-weight="700" font-size="30" fill="#17120A">{{ $spots['full'] ? 'Watch it live' : 'Sign up' }}</text>
+<text data-unit="url" data-box="615 570 1001 596" x="616"
+ y="588" font-family="JetBrains Mono" font-weight="700" font-size="{{ $urlSize }}" fill="#17120A">{{ $url }}</text>
 </svg>

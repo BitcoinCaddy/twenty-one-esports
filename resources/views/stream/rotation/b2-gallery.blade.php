@@ -1,7 +1,7 @@
 {{--
     B2 · Broadcast desk · gallery. Channel frame over the scene's backdrop, the games as cards (board left, the two
     players stacked right, each name with the player's face, the side to move in orange). Up to 4 games in a 2x2
-    grid, 5-6 in 3x2; empty slots become one "This board is free" card with two empty seats (2 games: a wide one
+    grid (at most four, the rest counted); empty slots become one "This board is free" card with two empty seats (2 games: a wide one
     across the second row).
 
     Data contract:
@@ -12,16 +12,17 @@
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
-    $list = array_slice(array_values($games ?? []), 0, 6);
+    // Two columns of cards over the 976 px of content (the now-playing column covers x 1040..1280): at most four
+    // games; the rest are counted in the bug note.
+    $list = array_slice(array_values($games ?? []), 0, 4);
     $total = count($games ?? []) + max(0, (int) ($more ?? 0));
     $n = count($list);
-    $cols = $n <= 4 ? 2 : 3;
-    $cw = (1200 - ($cols - 1) * 24) / $cols;
+    $cols = 2;
+    $cw = (976 - ($cols - 1) * 24) / $cols;
     $ch = 264;
-    $wide = $cols === 3;
-    $bs = $wide ? 160 : 224;
-    $nameSize = $wide ? 16 : 18;
-    $fd = $wide ? 30 : 36;
+    $bs = 184;
+    $nameSize = 16;
+    $fd = 30;
     $cards = [];
     foreach ($list as $i => $g) {
         $x = 40 + ($i % $cols) * ($cw + 24);
@@ -53,7 +54,8 @@
     if ($n < $cols * 2) {
         $fx = 40 + ($n % $cols) * ($cw + 24);
         $fy = 96 + intdiv($n, $cols) * ($ch + 16);
-        $fw = $n === 2 ? 1200 : $cw;
+        $fw = $n === 2 ? 976 : $cw;
+
         $free = ['x' => $fx, 'y' => $fy, 'w' => $fw, 'big' => $fw > 700];
     }
 @endphp

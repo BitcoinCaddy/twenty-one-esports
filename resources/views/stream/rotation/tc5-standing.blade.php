@@ -14,19 +14,20 @@
     $clanSeats = is_int($t['teamSize'] ?? null) && $t['teamSize'] > 1;
     $pride = K::prideFaces($t, 16);
     $big = count($pride['faces']) <= 8;
-    $d = $big ? 88 : 60;
+    // The field x 40..592, the results x 640..1016 (the now-playing column covers x 1040..1280).
+    $d = $big ? 80 : 52;
     $cols = $big ? 4 : 8;
-    $cell = $big ? 180 : 90;
-    $title = K::fit(K::text($t, 'name', 'Tournament'), K::MONO, 20, 720);
-    $headline = K::fit($pride['headline'] === '' ? 'The field' : $pride['headline'], K::MONO, 34, 720);
-    $sub = K::fit($pride['sub'], K::MONO, 18, 720);
+    $cell = $big ? 138 : 69;
+    $title = K::fit(K::text($t, 'name', 'Tournament'), K::MONO, 20, 552);
+    $headline = K::fit($pride['headline'] === '' ? 'The field' : $pride['headline'], K::MONO, 34, 552);
+    $sub = K::fit($pride['sub'], K::MONO, 18, 552);
     $upset = is_array($t['upset'] ?? null) ? $t['upset'] : null;
     $upsetFaces = $upset ? K::entryFaces([$upset['winner'] ?? null, $upset['loser'] ?? null], 2, $clanSeats) : [];
     $upsetLine = $upset ? K::upsetLine($upset) : '';
-    $upsetResult = $upset ? K::resultLine($upset, K::MONO, 16, 400) : '';
+    $upsetResult = $upset ? K::resultLine($upset, K::MONO, 16, 376) : '';
     $results = [];
     foreach (array_slice(is_array($t['results'] ?? null) ? $t['results'] : [], 0, $upset ? 5 : 9) as $r) {
-        $line = K::resultLine($r, K::MONO, 16, 380);
+        $line = K::resultLine($r, K::MONO, 16, 356);
         if ($line !== '') {
             $results[] = $line;
         }
@@ -40,9 +41,9 @@
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? ($t['backdrop'] ?? null), 'bdDim' => 0.78])
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => $finished ? 'podium' : 'still standing'])
 
-<text data-unit="title" data-box="39 {{ 108 - 20 }} 761 {{ 108 + 6 }}" x="40" y="108" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ $title }}</text>
-<text data-unit="headline" data-box="39 {{ 154 - 34 }} 761 {{ 154 + 9 }}" x="40" y="154" font-family="JetBrains Mono" font-weight="700" font-size="34" fill="#FFFFFF">{{ $headline }}</text>
-@if ($sub !== '')<text data-unit="sub" data-box="39 168 761 192" x="40" y="186" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $sub }}</text>@endif
+<text data-unit="title" data-box="39 {{ 108 - 20 }} 593 {{ 108 + 6 }}" x="40" y="108" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ $title }}</text>
+<text data-unit="headline" data-box="39 {{ 154 - 34 }} 593 {{ 154 + 9 }}" x="40" y="154" font-family="JetBrains Mono" font-weight="700" font-size="34" fill="#FFFFFF">{{ $headline }}</text>
+@if ($sub !== '')<text data-unit="sub" data-box="39 168 593 192" x="40" y="186" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $sub }}</text>@endif
 @foreach ($pride['faces'] as $i => $f)
 @php($fx = 40 + ($i % $cols) * $cell)
 @php($fy = 216 + intdiv($i, $cols) * ($big ? 160 : 80))
@@ -53,21 +54,21 @@
 @if ($f['note'] !== '')<text data-unit="p-note-{{ $i }}" data-box="{{ $fx - 1 }} {{ $fy + $d + 32 }} {{ $fx + $cell - 15 }} {{ $fy + $d + 52 }}" x="{{ $fx }}" y="{{ $fy + $d + 48 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">{{ K::fit($f['note'], K::MONO, 14, $cell - 16) }}</text>@endif
 @endif
 @endforeach
-@if ($pride['faces'] === [])<text data-unit="no-faces" x="40" y="250" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FFFFFF">The field takes shape with the first results.</text>@endif
+@if ($pride['faces'] === [])<text data-unit="no-faces" x="40" y="250" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">The field takes shape with the first results.</text>@endif
 @if ($pride['more'] > 0)<text data-unit="more" x="40" y="{{ $big ? 590 : 400 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">+{{ $pride['more'] }} more still in it</text>@endif
 
-<rect x="800" y="88" width="1" height="520" fill="#2A2A30"/>
+<rect x="616" y="88" width="1" height="520" fill="#2A2A30"/>
 @if ($upsetLine !== '')
-<text data-unit="upset-label" x="832" y="118" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7">biggest upset</text>
-@if (isset($upsetFaces[0]))@include('stream.rotation.partials.face', ['face' => $upsetFaces[0]['face'], 'x' => 832, 'y' => 134, 'd' => 64, 'id' => 'tc5-uw', 'fUnit' => 'upset-winner', 'fShape' => 'square', 'fRing' => '#F7931A'])@endif
-@if (isset($upsetFaces[1]))@include('stream.rotation.partials.face', ['face' => $upsetFaces[1]['face'], 'x' => 908, 'y' => 158, 'd' => 40, 'id' => 'tc5-ul', 'fUnit' => 'upset-loser', 'fShape' => 'square'])@endif
-<text data-unit="upset" data-box="831 {{ 234 - 22 }} 1241 {{ 234 + 6 }}" x="832" y="234" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ K::fit($upsetLine, K::MONO, 22, 408) }}</text>
-@if ($upsetResult !== '')<text data-unit="upset-result" data-box="831 244 1241 268" x="832" y="262" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">{{ $upsetResult }}</text>@endif
+<text data-unit="upset-label" x="640" y="118" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7">biggest upset</text>
+@if (isset($upsetFaces[0]))@include('stream.rotation.partials.face', ['face' => $upsetFaces[0]['face'], 'x' => 640, 'y' => 134, 'd' => 64, 'id' => 'tc5-uw', 'fUnit' => 'upset-winner', 'fShape' => 'square', 'fRing' => '#F7931A'])@endif
+@if (isset($upsetFaces[1]))@include('stream.rotation.partials.face', ['face' => $upsetFaces[1]['face'], 'x' => 716, 'y' => 158, 'd' => 40, 'id' => 'tc5-ul', 'fUnit' => 'upset-loser', 'fShape' => 'square'])@endif
+<text data-unit="upset" data-box="639 {{ 234 - 22 }} 1017 {{ 234 + 6 }}" x="640" y="234" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ K::fit($upsetLine, K::MONO, 22, 376) }}</text>
+@if ($upsetResult !== '')<text data-unit="upset-result" data-box="639 244 1017 268" x="640" y="262" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">{{ $upsetResult }}</text>@endif
 @endif
-<text data-unit="results-label" x="832" y="{{ $resultsY }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7">latest results</text>
+<text data-unit="results-label" x="640" y="{{ $resultsY }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7">latest results</text>
 @foreach ($results as $i => $line)
-<text data-unit="result-mark-{{ $i }}" x="832" y="{{ $resultsY + 34 + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#F7931A">&gt;</text>
-<text data-unit="result-{{ $i }}" data-box="851 {{ $resultsY + 16 + $i * 32 }} 1241 {{ $resultsY + 40 + $i * 32 }}" x="852" y="{{ $resultsY + 34 + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">{{ $line }}</text>
+<text data-unit="result-mark-{{ $i }}" x="640" y="{{ $resultsY + 34 + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#F7931A">&gt;</text>
+<text data-unit="result-{{ $i }}" data-box="659 {{ $resultsY + 16 + $i * 32 }} 1017 {{ $resultsY + 40 + $i * 32 }}" x="660" y="{{ $resultsY + 34 + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
-@if ($results === [])<text data-unit="no-results" x="832" y="{{ $resultsY + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">First results land here.</text>@endif
+@if ($results === [])<text data-unit="no-results" x="640" y="{{ $resultsY + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">First results land here.</text>@endif
 </svg>

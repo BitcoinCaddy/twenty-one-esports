@@ -17,14 +17,16 @@
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
-    $days = K::cupDays(K::cups($upcoming ?? [], 12), 3, 4);
+    // Three days over the 976 px of content (the now-playing column covers x 1040..1280); a cup's cover 88 x 50, so
+    // "EA Sports FC 26" and "EU · 3 / 16 signed up" keep their whole width (209 px).
+    $days = K::cupDays(K::cups($upcoming ?? [], 12), 3, 3, 40, 976);
     $columns = [];
     $shown = 0;
     foreach ($days as $d => $day) {
         $rows = [];
         foreach ($day['cups'] as $r => $cup) {
             $y = 300 + $r * 100;
-            $tx = $day['x'] + 144;
+            $tx = $day['x'] + 100;
             $tw = $day['x'] + $day['w'] - $tx;
             $regions = [];
             foreach (array_slice($cup['regions'], 0, 2) as $g => $row) {
@@ -35,7 +37,7 @@
                 'y' => $y, 'tx' => $tx, 'tw' => $tw, 'i' => $shown++,
                 'cover' => $cup['cover'],
                 'time' => $cup['time'],
-                'game' => K::fit($cup['game'], K::DISPLAY, 20, $tw),
+                'game' => K::fit($cup['game'], K::DISPLAY, 17, $tw),
                 'regions' => $regions,
             ];
         }
@@ -54,24 +56,25 @@
 <text x="40" y="158" font-family="Unbounded" font-weight="800" font-size="48" fill="#FFFFFF">Casual cups</text>
 {{-- The cups' days and the regions' clocks: every cup starts at its game's slot on its region's clock (user, 2026-09-30). --}}
 @foreach (array_slice(K::cupSlots(), 0, 2) as $si => $slot)
-<text data-unit="cup-slot-{{ $si }}" data-box="700 {{ 114 + $si * 30 }} 1241 {{ 138 + $si * 30 }}" x="1240" y="{{ 132 + $si * 30 }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#F7931A" text-anchor="end">{{ K::fit($slot, K::MONO, 20, 520) }}</text>
+<text data-unit="cup-slot-{{ $si }}" data-box="576 {{ 114 + $si * 30 }} 1017 {{ 138 + $si * 30 }}" x="1016" y="{{ 132 + $si * 30 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A" text-anchor="end">{{ K::fit($slot, K::MONO, 18, 440) }}</text>
 @endforeach
 @if ($columns !== [])
-<text data-unit="pitch" data-box="39 182 1240 210" x="40" y="204" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">{{ K::fit($pitch, K::MONO, 22, 1200) }}</text>
+<text data-unit="pitch" data-box="39 182 1016 210" x="40" y="204" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ K::fit($pitch, K::MONO, 20, 976) }}</text>
 @foreach ($columns as $d => $col)
 <text data-unit="cup-day-{{ $d }}" data-box="{{ $col['x'] - 1 }} 240 {{ $col['x'] + $col['w'] + 1 }} 272" x="{{ $col['x'] }}" y="266" font-family="Unbounded" font-weight="800" font-size="26" fill="#FFFFFF">{{ $col['label'] }}</text>
 <rect x="{{ $col['x'] }}" y="280" width="{{ $col['w'] }}" height="3" fill="#F7931A"/>
 @foreach ($col['rows'] as $row)
 @if ($row['cover'])
-<svg x="{{ $col['x'] }}" y="{{ $row['y'] }}" width="128" height="72" viewBox="0 0 288 162"><image x="0" y="0" width="288" height="162" preserveAspectRatio="xMidYMid slice" xlink:href="{{ $row['cover'] }}"/></svg>
+<svg x="{{ $col['x'] }}" y="{{ $row['y'] }}" width="88" height="50" viewBox="0 0 288 162"><image x="0" y="0" width="288" height="162" preserveAspectRatio="xMidYMid slice" xlink:href="{{ $row['cover'] }}"/></svg>
 @else
-<rect x="{{ $col['x'] }}" y="{{ $row['y'] }}" width="128" height="72" fill="#1C1C21"/>
+<rect x="{{ $col['x'] }}" y="{{ $row['y'] }}" width="88" height="50" fill="#1C1C21"/>
 @endif
 @if ($row['time'] !== '')
-<rect x="{{ $col['x'] }}" y="{{ $row['y'] + 50 }}" width="62" height="22" fill="#F7931A"/>
-<text data-unit="cup-time-{{ $row['i'] }}" data-box="{{ $col['x'] }} {{ $row['y'] + 50 }} {{ $col['x'] + 62 }} {{ $row['y'] + 72 }}" x="{{ $col['x'] + 31 }}" y="{{ $row['y'] + 67 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#17120A" text-anchor="middle">{{ $row['time'] }}</text>
+<rect x="{{ $col['x'] }}" y="{{ $row['y'] + 28 }}" width="62" height="22" fill="#F7931A"/>
+<text data-unit="cup-time-{{ $row['i'] }}" data-box="{{ $col['x'] }} {{ $row['y'] + 28 }} {{ $col['x'] + 62 }} {{ $row['y'] + 50 }}" x="{{ $col['x'] + 31 }}" y="{{ $row['y'] + 45 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#17120A" text-anchor="middle">{{ $row['time'] }}</text>
 @endif
-<text data-unit="cup-game-{{ $row['i'] }}" data-box="{{ $row['tx'] - 1 }} {{ $row['y'] }} {{ $row['tx'] + $row['tw'] + 1 }} {{ $row['y'] + 26 }}" x="{{ $row['tx'] }}" y="{{ $row['y'] + 20 }}" font-family="Unbounded" font-weight="800" font-size="20" fill="#FFFFFF">{{ $row['game'] }}</text>
+<text data-unit="cup-game-{{ $row['i'] }}" data-box="{{ $row['tx'] - 1 }} {{ $row['y'] }} {{ $row['tx'] + $row['tw'] + 1 }} {{ $row['y'] + 26 }}" x="{{ $row['tx'] }}" y="{{ $row['y'] + 20 }}" font-family="Unbounded" font-weight="800" font-size="17" fill="#FFFFFF">{{ $row['game'] }}</text>
+
 @foreach ($row['regions'] as $g => $region)
 <text data-unit="cup-taken-{{ $row['i'] }}-{{ $g }}" data-box="{{ $row['tx'] - 1 }} {{ $region['y'] - 14 }} {{ $row['tx'] + $row['tw'] + 1 }} {{ $region['y'] + 5 }}" x="{{ $row['tx'] }}" y="{{ $region['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#F7931A">{{ $region['text'] }}</text>
 @endforeach
@@ -82,6 +85,7 @@
 @endforeach
 @else
 <text x="40" y="290" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#FFFFFF">No cup is open right now.</text>
-<text x="40" y="334" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Tournaments and cups: esports.einundzwanzig.space/tournaments</text>
+<text x="40" y="334" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">Tournaments and cups: esports.einundzwanzig.space/tournaments</text>
+
 @endif
 </svg>

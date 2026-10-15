@@ -18,32 +18,34 @@
     $spots = K::spots($t);
     $cover = K::coverUri($t['cover'] ?? null);
     $clanSeats = is_int($t['teamSize'] ?? null) && $t['teamSize'] > 1;
-    $title = K::name(K::text($t, 'name'), 'Tournament', 28, 584);
+    // The preview x 40..632 in two columns, who plays x 656..1016, the lower third x 40..1016 (the now-playing column
+    // covers x 1040..1280).
+    $title = K::name(K::text($t, 'name'), 'Tournament', 26, 408);
     $pv = is_array($t['preview'] ?? null) ? $t['preview'] : null;
-    $p = K::previewBoxes($pv, 40, 212, 776, 312, 4, 16, 30, 40, 26, 10);
+    $p = K::previewBoxes($pv, 40, 212, 592, 312, 2, 16, 30, 40, 26, 10);
     $faces = K::previewFaces($pv, $clanSeats);
-    $sub = K::fit(K::previewHeading($p), K::MONO, 18, 584);
+    $sub = K::fit(K::previewHeading($p), K::MONO, 16, 408);
     $game = K::wrap(K::text($t, 'game', 'Tournament'), K::MONO, 14, 156, 2);
     $roster = K::rosterFaces($t);
-    $foot = K::fit(K::previewFoot($p), K::MONO, 16, 776);
+    $foot = K::fit(K::previewFoot($p), K::MONO, 16, 592);
     $rows = [];
     foreach (K::whoPlays($t, 9) as $i => $r) {
         $rows[] = $r + ['y' => 200 + $i * 40, 'face' => $r['kind'] === 'player' ? ($roster[$i] ?? null) : null,
-            'label' => $r['kind'] === 'player' ? K::name($r['name'], 'Player', 20, $r['rating'] === null ? 268 : 178, false) : null];
+            'label' => $r['kind'] === 'player' ? K::name($r['name'], 'Player', 18, $r['rating'] === null ? 244 : 160, false) : null];
     }
     $cd = K::countdownParts($t['countdown'] ?? null);
-    $cells = $cd ? K::digitCells($cd['hms'], 1216, 28, true) : null;
+    $cells = $cd ? K::digitCells($cd['hms'], 992, 28, true) : null;
     $days = $cd && $cd['days'] > 0 ? $cd['days'].'d' : null;
     $starts = K::text($t, 'startsAt');
     $cta = $spots['full'] ? 'Watch it live' : 'Sign up';
     $ctaW = K::width($cta, K::DISPLAY, 30) * 1.04;
     $cdLabel = K::fit(K::text($t, 'countdownLabel', 'Sign-up closes in'), K::MONO, 16, 200);
-    $startsText = $starts === '' ? '' : K::fit('Starts '.$starts, K::MONO, 20, 316);
+    $startsText = $starts === '' ? '' : K::fit('Starts '.$starts, K::MONO, 20, 280);
     // Where the right-hand part of the lower third begins; the address gets the room up to 24 px before it.
     $rightX = match (true) {
-        $spots['full'] => 1216 - K::width($startsText, K::MONO, 20),
+        $spots['full'] => 992 - K::width($startsText, K::MONO, 20),
         $cells !== null => $cells['x0'] - ($days ? K::width($days, K::DISPLAY, 28) * 1.04 + 26 : 16) - K::width($cdLabel, K::MONO, 16),
-        default => 1216,
+        default => 992,
     };
     $url = K::tournamentUrl($t);
     $urlSize = K::monoSize($url, 20, $rightX - 24 - (64 + $ctaW + 24));
@@ -66,42 +68,43 @@
 @endforeach
 @endif
 </g>
-<text data-unit="title" data-box="223 106 817 144" x="224" y="136" font-family="{{ $title['font'] }}" font-weight="800" font-size="28" fill="#FFFFFF">{{ $title['text'] }}</text>
-<text data-unit="sub" x="224" y="170" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $sub }}</text>
+<text data-unit="title" data-box="223 106 633 144" x="224" y="136" font-family="{{ $title['font'] }}" font-weight="800" font-size="26" fill="#FFFFFF">{{ $title['text'] }}</text>
+<text data-unit="sub" x="224" y="170" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#F7931A">{{ $sub }}</text>
 @if ($p['boxes'] === [])
-<text data-unit="no-preview" x="40" y="250" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FFFFFF">{{ ($t['lobby'] ?? null) !== null ? 'The lobbies take shape as players sign up.' : 'The bracket takes shape as players sign up.' }}</text>
+<text data-unit="no-preview" x="40" y="250" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">{{ ($t['lobby'] ?? null) !== null ? 'The lobbies take shape as players sign up.' : 'The bracket takes shape as players sign up.' }}</text>
 @else
 @include('stream.rotation.partials.t-preview', ['p' => $p, 'faces' => $faces, 'panel' => '#121215', 'rule' => '#2A2A30', 'titleFill' => '#F7931A', 'nameFill' => '#FFFFFF', 'openFill' => '#8B8B90', 'ring' => '#F7931A', 'pvId' => 'g'])
 @endif
-@if ($foot !== '')<text data-unit="foot" data-box="39 526 817 548" x="40" y="542" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#ADADB0">{{ $foot }}</text>@endif
+@if ($foot !== '')<text data-unit="foot" data-box="39 526 633 548" x="40" y="542" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#ADADB0">{{ $foot }}</text>@endif
 <text data-unit="preview-1" x="40" y="566" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#FFFFFF">A preview, not the draw.</text>
 
-<rect x="848" y="112" width="392" height="456" fill="#121215" fill-opacity="0.92"/>
-<text data-unit="who" x="872" y="156" font-family="Unbounded" font-weight="800" font-size="28" fill="#FFFFFF">Who plays</text>
+<rect x="656" y="112" width="360" height="456" fill="#121215" fill-opacity="0.92"/>
+<text data-unit="who" x="680" y="156" font-family="Unbounded" font-weight="800" font-size="28" fill="#FFFFFF">Who plays</text>
 @foreach ($rows as $i => $r)
-@if ($r['kind'] === 'invite')<rect x="865" y="{{ $r['y'] - 27 }}" width="358" height="38" fill="none" stroke="#F7931A" stroke-width="2"/>@endif
-@if ($r['seed'] !== null)<text data-unit="seed-{{ $i }}" x="900" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="{{ $r['kind'] === 'open' ? '#8B8B90' : '#F7931A' }}" text-anchor="end">{{ $r['seed'] }}</text>@endif
+@if ($r['kind'] === 'invite')<rect x="673" y="{{ $r['y'] - 27 }}" width="326" height="38" fill="none" stroke="#F7931A" stroke-width="2"/>@endif
+@if ($r['seed'] !== null)<text data-unit="seed-{{ $i }}" x="708" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="{{ $r['kind'] === 'open' ? '#8B8B90' : '#F7931A' }}" text-anchor="end">{{ $r['seed'] }}</text>@endif
 @if ($r['kind'] !== 'more')
-@include('stream.rotation.partials.face', ['face' => $r['face'], 'x' => 910, 'y' => $r['y'] - 23, 'd' => 30, 'id' => 'who-'.$i, 'fUnit' => 'who-face-'.$i,
+@include('stream.rotation.partials.face', ['face' => $r['face'], 'x' => 718, 'y' => $r['y'] - 23, 'd' => 30, 'id' => 'who-'.$i, 'fUnit' => 'who-face-'.$i,
     'fOpen' => $r['kind'] === 'player' ? null : ($r['kind'] === 'invite' ? 'invite' : 'open'), 'fOpenInk' => $r['kind'] === 'invite' ? '#F7931A' : '#6B6B72', 'fRing' => '#F7931A'])
 @endif
 @if ($r['kind'] === 'player')
-<text data-unit="player-{{ $i }}" data-box="947 {{ $r['y'] - 22 }} {{ $r['rating'] === null ? 1217 : 1127 }} {{ $r['y'] + 6 }}" x="948" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FFFFFF">{{ $r['label']['text'] }}</text>
-@if ($r['rating'] !== null)<text data-unit="elo-{{ $i }}" x="1216" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#ADADB0" text-anchor="end">{{ $r['rating'] }} Elo</text>@endif
+<text data-unit="player-{{ $i }}" data-box="755 {{ $r['y'] - 22 }} {{ $r['rating'] === null ? 1001 : 917 }} {{ $r['y'] + 6 }}" x="756" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">{{ $r['label']['text'] }}</text>
+@if ($r['rating'] !== null)<text data-unit="elo-{{ $i }}" x="1000" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#ADADB0" text-anchor="end">{{ $r['rating'] }} Elo</text>@endif
 @elseif ($r['kind'] === 'invite')
-<text data-unit="invite" x="948" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $r['more'] > 0 ? 18 : 20 }}" fill="#F7931A">Your spot?</text>
-@if ($r['more'] > 0)<text data-unit="invite-more" x="1214" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="12" fill="#ADADB0" text-anchor="end">{{ K::moreOpen($r['more']) }}</text>@endif
+<text data-unit="invite" x="756" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $r['more'] > 0 ? 18 : 20 }}" fill="#F7931A">Your spot?</text>
+@if ($r['more'] > 0)<text data-unit="invite-more" x="998" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="12" fill="#ADADB0" text-anchor="end">{{ K::moreOpen($r['more']) }}</text>@endif
 @elseif ($r['kind'] === 'more')
-<text data-unit="more" x="948" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#8B8B90">{{ K::moreOpen($r['more']) }}</text>
+<text data-unit="more" x="756" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#8B8B90">{{ K::moreOpen($r['more']) }}</text>
 @endif
 @endforeach
 
-<rect x="40" y="584" width="1200" height="64" fill="#F7931A"/>
+<rect x="40" y="584" width="976" height="64" fill="#F7931A"/>
 <text data-unit="cta" x="64" y="628" font-family="Unbounded" font-weight="800" font-size="30" fill="#17120A">{{ $cta }}</text>
 <text data-unit="url" data-box="{{ 64 + $ctaW + 23 }} 606 {{ $rightX - 23 }} 634" x="{{ 64 + $ctaW + 24 }}" y="626" font-family="JetBrains Mono" font-weight="700" font-size="{{ $urlSize }}" fill="#17120A">{{ $url }}</text>
 <g data-countdown="{{ $countdown }}">
 @if ($spots['full'])
-@if ($starts !== '')<text data-unit="starts" data-box="900 594 1217 640" x="1216" y="626" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A" text-anchor="end">{{ $startsText }}</text>@endif
+@if ($starts !== '')<text data-unit="starts" data-box="676 594 993 640" x="992"
+ y="626" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A" text-anchor="end">{{ $startsText }}</text>@endif
 @elseif ($cells)
 <text data-unit="cd-label" x="{{ $rightX }}" y="626" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#17120A">{{ $cdLabel }}</text>
 @include('stream.rotation.partials.clock', ['c' => $cells, 'y' => 628, 'fill' => '#17120A'])

@@ -22,47 +22,56 @@
     $drawings = [];
     $blocks = [];
     $labels = [];
+    $split = 576;
+    $cardX = $split + 24;
+    $cardW = K::CONTENT_RIGHT - $cardX;
     if ($live) {
-        $drawings[] = BS::drawing($live['view'], $live['last'] ?? [], 48, 88, 544);
-        $y = 176;
+        // As a1: the board on the dark left (x 0..576), the fighter cards on the orange right, text within x 600..1016
+        // (the now-playing column covers x 1040..1280); the name across the card on top, face and clock below.
+        $drawings[] = BS::drawing($live['view'], $live['last'] ?? [], 48, 120, 480);
+        $y = 160;
         foreach ([['black', 'b', 'Black player'], ['white', 'w', 'White player']] as [$side, $colour, $fallback]) {
             $p = $live[$side] ?? [];
             $active = (bool) ($p['toMove'] ?? false);
-            $h = $active ? 224 : 150;
-            $d = $active ? 152 : 110;
-            $pad = $active ? 36 : 20;
-            $nx = 704 + $d + 24;
-            $sizes = $active ? [34, 28, 24, 20] : [30, 26, 22, 20];
+            $h = $active ? 212 : 168;
+            $d = $active ? 120 : 84;
+            $pad = $active ? 24 : 12;
+            $nx = $cardX + $pad;
+            $nameMax = K::CONTENT_RIGHT - $pad - $nx;
+            $sizes = $active ? [32, 28, 24, 20, 18] : [28, 24, 20, 18];
             $size = end($sizes);
             $clean = K::clean($p['name'] ?? '');
             foreach ($sizes as $try) {
-                if ($clean !== '' && K::width($clean, K::nameFont($clean), $try) * 1.04 <= 1208 - $nx) {
+                if ($clean !== '' && K::width($clean, K::nameFont($clean), $try) * 1.04 <= $nameMax) {
                     $size = $try;
                     break;
                 }
             }
+            $faceY = $y + $pad + 44;
+            $cx = $nx + $d + 24;
             $blocks[] = [
-                'y' => $y, 'h' => $h, 'd' => $d, 'faceY' => $y + $pad, 'active' => $active, 'low' => (int) ($p['clockMs'] ?? 0) < 10000,
-                'colour' => $colour, 'avatar' => $p['avatar'] ?? null, 'nx' => $nx,
-                'name' => K::name($p['name'] ?? '', $fallback, $size, 1208 - $nx), 'nameSize' => $size, 'nameY' => round($y + $pad + 10 + $size * 0.8, 1),
-                'clock' => K::clock((int) ($p['clockMs'] ?? 0), $nx, $active ? 64 : 44, 1208 - $nx),
+                'y' => $y, 'h' => $h, 'd' => $d, 'faceY' => $faceY, 'active' => $active, 'low' => (int) ($p['clockMs'] ?? 0) < 10000,
+                'colour' => $colour, 'avatar' => $p['avatar'] ?? null, 'nx' => $nx, 'cx' => $cx,
+                'name' => K::name($p['name'] ?? '', $fallback, $size, $nameMax), 'nameSize' => $size, 'nameY' => round($y + $pad + $size * 0.8, 1),
+                'clock' => K::clock((int) ($p['clockMs'] ?? 0), $cx, $active ? 64 : 44, K::CONTENT_RIGHT - $pad - $cx),
                 // Correspondence: no clock for the side that waits, its day starts with its turn.
                 'noClock' => ! empty($live['daily']) && ! $active,
-                'clockY' => $y + $pad + $d - 2,
+                'clockY' => round($faceY + $d / 2 + ($active ? 24 : 17), 1),
             ];
             $y += $h + 16;
         }
     } else {
         $shown = array_slice(is_array($boards ?? null) ? $boards : [], 0, 2);
-        $boardSize = count($shown) > 1 ? 260 : 400;
+        // The text x 40..520, the boards x 560..1016 (the now-playing column covers x 1040..1280).
+        $boardSize = count($shown) > 1 ? 208 : 400;
         foreach ($shown as $i => $entry) {
-            $bx = count($shown) > 1 ? 700 + $i * 280 : 780;
+            $bx = count($shown) > 1 ? 568 + $i * 232 : 600;
             $drawings[] = BS::drawing($entry['view'], [], $bx, 150, $boardSize);
             $labels[] = ['x' => $bx, 'w' => $boardSize, 'y' => 150 + $boardSize + 44, 'text' => K::fit($entry['name'] ?? '', K::MONO, 20, $boardSize)];
         }
         $names = [];
         foreach ($shown as $entry) {
-            $names[] = K::fit($entry['name'] ?? '', K::DISPLAY, 40, 600);
+            $names[] = K::fit($entry['name'] ?? '', K::DISPLAY, 36, 480);
         }
         $rule = 258 + 52 * max(0, count($names) - 1) + 38;
         // COPY-CHECK: the board games are correspondence only since 2026-10-07 (App\Games\NineMensMorris, Checkers,
@@ -80,7 +89,7 @@
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => $live ? 0.7 : 0.78])
 @if ($live)
-<rect x="640" y="0" width="640" height="720" fill="#F7931A"/>
+<rect x="{{ $split }}" y="0" width="{{ K::CONTENT_WIDTH - $split }}" height="720" fill="#F7931A"/>
 @endif
 @foreach ($drawings as $i => $dr)
 <g data-unit="board-{{ $i }}">
@@ -103,34 +112,34 @@
 </g>
 @endforeach
 @if ($live)
-<text data-unit="mode" data-box="679 124 1232 156" x="680" y="148" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A">{{ K::fit(K::clean($live['mode'] ?? ''), K::MONO, 22, 552) }}</text>
+<text data-unit="mode" data-box="{{ $cardX - 1 }} 112 {{ K::CONTENT_RIGHT }} 144" x="{{ $cardX }}" y="136" font-family="JetBrains Mono" font-weight="700" font-size="{{ K::monoSize(K::clean($live['mode'] ?? ''), 22, $cardW) }}" fill="#17120A">{{ K::fit(K::clean($live['mode'] ?? ''), K::MONO, K::monoSize(K::clean($live['mode'] ?? ''), 22, $cardW), $cardW) }}</text>
+
 @foreach ($blocks as $i => $blk)
-@if ($blk['active'])<rect x="680" y="{{ $blk['y'] }}" width="552" height="{{ $blk['h'] }}" fill="#17120A"/>@endif
-@include('stream.rotation.partials.face', ['face' => ['uri' => $blk['avatar'], 'tag' => null], 'x' => 704, 'y' => $blk['faceY'], 'd' => $blk['d'], 'id' => 'p'.$i,
+@if ($blk['active'])<rect x="{{ $cardX }}" y="{{ $blk['y'] }}" width="{{ $cardW }}" height="{{ $blk['h'] }}" fill="#17120A"/>@endif
+@include('stream.rotation.partials.face', ['face' => ['uri' => $blk['avatar'], 'tag' => null], 'x' => $blk['nx'], 'y' => $blk['faceY'], 'd' => $blk['d'], 'id' => 'p'.$i,
     'fUnit' => 'face-'.$i, 'fRing' => $blk['active'] ? '#F7931A' : '#17120A'])
-<circle data-unit="side-{{ $i }}" cx="{{ 704 + $blk['d'] - 12 }}" cy="{{ $blk['faceY'] + $blk['d'] - 12 }}" r="{{ $blk['active'] ? 20 : 16 }}" fill="{{ BS::PIECE_FILL[$blk['colour']] }}" stroke="#17120A" stroke-width="3"/>
-<text data-unit="name-{{ $i }}" data-box="{{ $blk['nx'] - 1 }} {{ $blk['y'] }} 1209 {{ $blk['clockY'] - $blk['clock']['size'] * 0.75 - 4 }}" x="{{ $blk['nx'] }}" y="{{ $blk['nameY'] }}" font-family="{{ $blk['name']['font'] }}" font-weight="800" font-size="{{ $blk['nameSize'] }}" fill="{{ $blk['active'] ? '#FFFFFF' : '#17120A' }}">{{ $blk['name']['text'] }}</text>
+<circle data-unit="side-{{ $i }}" cx="{{ $blk['nx'] + $blk['d'] - 12 }}" cy="{{ $blk['faceY'] + $blk['d'] - 12 }}" r="{{ $blk['active'] ? 18 : 14 }}" fill="{{ BS::PIECE_FILL[$blk['colour']] }}" stroke="#17120A" stroke-width="3"/>
+<text data-unit="name-{{ $i }}" data-box="{{ $blk['nx'] - 1 }} {{ $blk['y'] }} {{ K::CONTENT_RIGHT }} {{ $blk['faceY'] - 4 }}" x="{{ $blk['nx'] }}" y="{{ $blk['nameY'] }}" font-family="{{ $blk['name']['font'] }}" font-weight="800" font-size="{{ $blk['nameSize'] }}" fill="{{ $blk['active'] ? '#FFFFFF' : '#17120A' }}">{{ $blk['name']['text'] }}</text>
 @if ($blk['noClock'])
-<text data-unit="clock" x="{{ $blk['nx'] }}" y="{{ $blk['clockY'] }}" font-family="JetBrains Mono" font-weight="700" font-size="28" fill="#17120A">1 move a day</text>
+<text data-unit="clock" x="{{ $blk['cx'] }}" y="{{ $blk['clockY'] }}" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#17120A">1 move a day</text>
 @else
 @include('stream.rotation.partials.clock', ['c' => $blk['clock'], 'y' => $blk['clockY'], 'fill' => $blk['active'] ? ($blk['low'] ? '#F87171' : '#F7931A') : '#17120A'])
 @endif
 @endforeach
-<use href="#mark-dark" xlink:href="#mark-dark" x="680" y="624" width="48" height="48"/>
-<text x="744" y="657" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#17120A">esports.einundzwanzig.space</text>
-@php($vb = K::viewerBadge($viewers ?? null, 1024, 64, K::DISPLAY, 24, 18))
-@if ($vb)@include('stream.rotation.partials.viewers', ['vb' => $vb, 'eyeInk' => '#17120A', 'countInk' => '#17120A', 'wordInk' => '#17120A'])@endif
+<use href="#mark-dark" xlink:href="#mark-dark" x="{{ $cardX }}" y="632" width="40" height="40"/>
+<text x="{{ $cardX + 56 }}" y="659" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A">esports.einundzwanzig.space</text>
 @else
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'board games'])
-<text data-unit="claim" data-box="39 166 640 222" x="40" y="206" font-family="Unbounded" font-weight="800" font-size="40" fill="#FFFFFF">Board games</text>
+<text data-unit="claim" data-box="39 166 520 222" x="40" y="206" font-family="Unbounded" font-weight="800" font-size="40" fill="#FFFFFF">Board games</text>
 @foreach ($names as $i => $name)
-<text data-unit="game-{{ $i }}" data-box="39 {{ 218 + $i * 52 }} 640 {{ 272 + $i * 52 }}" x="40" y="{{ 258 + $i * 52 }}" font-family="Unbounded" font-weight="800" font-size="40" fill="#F7931A">{{ $name }}</text>
+<text data-unit="game-{{ $i }}" data-box="39 {{ 218 + $i * 52 }} 520 {{ 272 + $i * 52 }}" x="40" y="{{ 258 + $i * 52 }}" font-family="Unbounded" font-weight="800" font-size="36" fill="#F7931A">{{ $name }}</text>
 @endforeach
-<rect x="40" y="{{ $rule }}" width="600" height="1" fill="#2A2A30"/>
+<rect x="40" y="{{ $rule }}" width="480" height="1" fill="#2A2A30"/>
 @foreach ($facts as $i => [$label, $fact])
-<text x="40" y="{{ $rule + 44 + $i * 62 }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#F7931A">{{ $label }}</text>
-<text data-unit="fact-{{ $i }}" data-box="149 {{ $rule + 22 + $i * 62 }} 640 {{ $rule + 50 + $i * 62 }}" x="150" y="{{ $rule + 44 + $i * 62 }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FFFFFF">{{ K::fit($fact, K::MONO, 20, 490) }}</text>
-<rect x="40" y="{{ $rule + 66 + $i * 62 }}" width="600" height="1" fill="#2A2A30"/>
+<text x="40" y="{{ $rule + 44 + $i * 62 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $label }}</text>
+<text data-unit="fact-{{ $i }}" data-box="153 {{ $rule + 22 + $i * 62 }} 520 {{ $rule + 50 + $i * 62 }}" x="154" y="{{ $rule + 44 + $i * 62 }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ K::monoSize($fact, 18, 366) }}" fill="#FFFFFF">{{ K::fit($fact, K::MONO, K::monoSize($fact, 18, 366), 366) }}</text>
+<rect x="40" y="{{ $rule + 66 + $i * 62 }}" width="480" height="1" fill="#2A2A30"/>
+
 @endforeach
 @foreach ($labels as $i => $lb)
 <text data-unit="board-name-{{ $i }}" data-box="{{ $lb['x'] - 1 }} {{ $lb['y'] - 22 }} {{ $lb['x'] + $lb['w'] + 1 }} {{ $lb['y'] + 6 }}" x="{{ $lb['x'] }}" y="{{ $lb['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#FFFFFF">{{ $lb['text'] }}</text>

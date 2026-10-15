@@ -188,7 +188,7 @@ test('a teaser whose numbers change mid-slide is rendered again with the new dat
     Artisan::call('twentyone:stream', ['--no-publish' => true, '--stop-after' => 17.5]);
     $output = Artisan::output();
     // The ladder teaser's frames, in the order they were sent.
-    $ladders = array_values(array_filter(explode('<!--end-->', (string) @file_get_contents($this->dir.'/renders')), fn (string $svg): bool => str_contains($svg, 'data-unit="sub-640"')));
+    $ladders = array_values(array_filter(explode('<!--end-->', (string) @file_get_contents($this->dir.'/renders')), fn (string $svg): bool => str_contains($svg, 'data-unit="sub-520"')));
 
     expect($output)->toContain('rotation: a3 teaser, rendered in')
         ->and($added)->toBeTrue()

@@ -32,30 +32,30 @@
 @include('stream.rotation.partials.defs')
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.2])
-<rect width="1280" height="720" fill="#F7931A" fill-opacity="{{ K::backdropUri($backdrop ?? null) ? 0.94 : 1 }}"/>
+<rect width="{{ K::CONTENT_WIDTH }}" height="720" fill="#F7931A" fill-opacity="{{ K::backdropUri($backdrop ?? null) ? 0.94 : 1 }}"/>
 <use href="#mark-dark" xlink:href="#mark-dark" x="40" y="48" width="64" height="64"/>
 <text x="124" y="92" font-family="Unbounded" font-weight="800" font-size="32" fill="#17120A">Bring a friend</text>
 <text x="40" y="226" font-family="Unbounded" font-weight="800" font-size="60" fill="#17120A">Send a link.</text>
 <text x="40" y="300" font-family="Unbounded" font-weight="800" font-size="60" fill="#17120A">Play together.</text>
 @foreach ($cols as $i => [$title, $lines])
-@php($cx = 40 + $i * 300)
-<rect x="{{ $cx }}" y="352" width="48" height="6" fill="#17120A"/>
-<text x="{{ $cx }}" y="402" font-family="Unbounded" font-weight="800" font-size="28" fill="#17120A">{{ $title }}</text>
-@foreach ($lines as $li => $line)<text data-unit="col-{{ $i }}-{{ $li }}" data-box="{{ $cx - 1 }} {{ 424 + $li * 28 }} {{ $cx + 284 }} {{ 448 + $li * 28 }}" x="{{ $cx }}" y="{{ 442 + $li * 28 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#17120A">{{ $line }}</text>@endforeach
+{{-- Three columns of 256 px under the headline, the code top right, all within x 40..1016 (the now-playing column covers x 1040..1280). --}}
+@php($cx = 40 + $i * 272)
+<rect x="{{ $cx }}" y="372" width="48" height="6" fill="#17120A"/>
+<text x="{{ $cx }}" y="418" font-family="Unbounded" font-weight="800" font-size="26" fill="#17120A">{{ $title }}</text>
+@foreach ($lines as $li => $line)<text data-unit="col-{{ $i }}-{{ $li }}" data-box="{{ $cx - 1 }} {{ 438 + $li * 26 }} {{ $cx + 256 }} {{ 460 + $li * 26 }}" x="{{ $cx }}" y="{{ 454 + $li * 26 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#17120A">{{ $line }}</text>@endforeach
 @endforeach
 @if ($hasQr)
-<rect x="944" y="144" width="296" height="296" fill="#17120A"/>
-@include('stream.rotation.partials.qr', ['qr' => $siteQrSvg, 'modules' => $siteQrModules ?? null, 'x' => 952, 'y' => 152, 'size' => 280])
+<rect x="792" y="128" width="224" height="224" fill="#17120A"/>
+@include('stream.rotation.partials.qr', ['qr' => $siteQrSvg, 'modules' => $siteQrModules ?? null, 'x' => 800, 'y' => 136, 'size' => 208])
 @endif
 @if ($top)
-<rect x="40" y="520" width="880" height="104" fill="#17120A"/>
+<rect x="40" y="520" width="976" height="104" fill="#17120A"/>
 @include('stream.rotation.partials.face', ['face' => K::prideFace($top), 'x' => 60, 'y' => 536, 'd' => 72, 'id' => 'inviter', 'fUnit' => 'inviter-face', 'fRing' => '#F7931A', 'fCrown' => '#F7931A'])
-<text data-unit="inviter-name" data-box="151 540 900 580" x="152" y="570" font-family="{{ $topName['font'] }}" font-weight="800" font-size="30" fill="#FFFFFF">{{ $topName['text'] }}</text>
-<text data-unit="inviter-line" data-box="151 586 900 612" x="152" y="606" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#F7931A">{{ $topLine }}</text>
+<text data-unit="inviter-name" data-box="151 540 996 580" x="152" y="570" font-family="{{ $topName['font'] }}" font-weight="800" font-size="30" fill="#FFFFFF">{{ $topName['text'] }}</text>
+<text data-unit="inviter-line" data-box="151 586 996 612" x="152" y="606" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#F7931A">{{ $topLine }}</text>
 @else
-<text data-unit="where" data-box="39 560 1000 588" x="40" y="580" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A">"Invite a friend by link": top of /chess and every game page.</text>
+<text data-unit="where" data-box="39 560 1016 588" x="40" y="580" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A">"Invite a friend by link": top of /chess and every game page.</text>
 @endif
-<text x="1240" y="672" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A" text-anchor="end">esports.einundzwanzig.space</text>
-@php($vb = K::viewerBadge($viewers ?? null, 1024, 92, K::DISPLAY, 24, 18))
-@if ($vb)@include('stream.rotation.partials.viewers', ['vb' => $vb, 'eyeInk' => '#17120A', 'countInk' => '#17120A', 'wordInk' => '#17120A'])@endif
+<text x="{{ K::CONTENT_RIGHT }}" y="672" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A" text-anchor="end">esports.einundzwanzig.space</text>
+
 </svg>

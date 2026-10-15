@@ -25,12 +25,14 @@
 <text x="40" y="166" font-family="Unbounded" font-weight="800" font-size="44" fill="#FFFFFF">Pick your board</text>
 <text x="40" y="202" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">In your chess settings.</text>
 @foreach ($themes as $i => [$key, $name, $member])
-@php($x = 44 + $i * 308)
-@include('stream.rotation.partials.board', ['b' => K::board($fen, ['from' => 'd8', 'to' => 'd4'], $x, 248, 32, $key), 'frame' => 4, 'frameFill' => $member ? '#F7931A' : '#3A2C14'])
-<text x="{{ $x - 4 }}" y="548" font-family="Unbounded" font-weight="800" font-size="22" fill="{{ $member ? '#F7931A' : '#FFFFFF' }}">{{ $name }}</text>
+{{-- Four boards of 224 px over the 976 px of content (the now-playing column covers x 1040..1280). --}}
+@php($x = 44 + $i * 244)
+@include('stream.rotation.partials.board', ['b' => K::board($fen, ['from' => 'd8', 'to' => 'd4'], $x, 264, 28, $key), 'frame' => 4, 'frameFill' => $member ? '#F7931A' : '#3A2C14'])
+<text x="{{ $x - 4 }}" y="532" font-family="Unbounded" font-weight="800" font-size="22" fill="{{ $member ? '#F7931A' : '#FFFFFF' }}">{{ $name }}</text>
 @if ($member)
-<rect x="{{ $x + 159 }}" y="529" width="78" height="24" rx="2" fill="none" stroke="#F7931A" stroke-width="2"/>
-<text x="{{ $x + 198 }}" y="546" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#F7931A" text-anchor="middle">Members</text>
+<rect x="{{ $x + 150 }}" y="513" width="78" height="24" rx="2" fill="none" stroke="#F7931A" stroke-width="2"/>
+<text x="{{ $x + 189 }}" y="530"
+ font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#F7931A" text-anchor="middle">Members</text>
 @endif
 @endforeach
 </svg>
