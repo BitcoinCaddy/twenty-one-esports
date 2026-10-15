@@ -8636,5 +8636,9 @@
     "No first move for :hours h: :name to move": "Seit :hours h kein erster Zug: :name ist am Zug",
     "Move deadline in :hours h: :name to move": "Zugfrist endet in :hours h: :name ist am Zug",
     ":name on the move for :hours h": ":name seit :hours h am Zug",
-    "Game :n under way": "Partie :n läuft"
+    "Game :n under way": "Partie :n läuft",
+    "no first move: forfeit": "kein erster Zug: kampflos",
+    "Disqualified by the league: :count matches lost by not showing up.": "Von der Liga disqualifiziert: :count Paarungen durch Nichtantreten verloren.",
+    "In a board game only White can miss the first move: the game starts once more with the same colours, and a second miss loses the pairing for White.": "Im Brettspiel kann nur Weiß den ersten Zug verpassen: Die Partie startet einmal neu mit denselben Farben, beim zweiten Verpassen verliert Weiß die Paarung.",
+    "An entry that loses :count matches of a tournament by not showing up is disqualified by the league; its open matches go to the opponents.": "Wer in einem Turnier :count Paarungen durch Nichtantreten verliert, wird von der Liga disqualifiziert; seine offenen Paarungen gehen an die Gegner."
 }

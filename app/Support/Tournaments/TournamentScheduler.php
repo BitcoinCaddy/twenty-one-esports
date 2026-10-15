@@ -63,7 +63,7 @@ final class TournamentScheduler
     public function __construct(private TournamentDraws $draws, private SeriesService $series, private CasualCups $cups, private TournamentReminders $reminders, private LobbyResults $lobbies, private LobbySwitch $lobbySwitch, private HyperCups $hyperCups) {}
 
     /**
-     * @return array{cups: array{opened: int, grown: int, extended: int, evenings: int, cancelled: int, rounds: int, decided: int}, hyper_cups: int, closed: int, drawn: int, noshows: int, forfeited: int, overdue: int, confirmed: int, reminded: int, night: int, lobbies: array{overdue: int, closed: int, pruned: int}, healed?: int}
+     * @return array{cups: array{opened: int, grown: int, extended: int, evenings: int, cancelled: int, rounds: int, decided: int}, hyper_cups: int, closed: int, drawn: int, noshows: int, forfeited: int, overdue: int, confirmed: int, reminded: int, night: int, lobbies: array{overdue: int, closed: int, pruned: int}, disqualified: int, healed?: int}
      */
     public function tick(): array
     {
@@ -86,6 +86,8 @@ final class TournamentScheduler
         $done['night'] = app(NightPauseNotices::class)->tick();
         // Lobbies (P10, security audit F3): overdue ones are told, a day later closed without a result.
         $done['lobbies'] = $this->lobbies->tick();
+        // Repeated no-shows (user 2026-10-15): the league disqualifies, so the tournament goes on.
+        $done['disqualified'] = app(NoShowDisqualifier::class)->tick();
 
         // A lobby tournament's calendar event the switch could not republish (audit F4), every 15 minutes at most.
         if (Cache::add('lobby-switch:heal', true, now()->addMinutes(15))) {

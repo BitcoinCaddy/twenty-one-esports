@@ -37,6 +37,7 @@ use App\Support\Settings\LeagueSettings;
 use App\Support\Stacker\BlockfillRules;
 use App\Support\Tournaments\CasualCups;
 use App\Support\Tournaments\Lobbies;
+use App\Support\Tournaments\NoShowDisqualifier;
 use App\Support\Tournaments\TournamentDeadlines;
 use Illuminate\Support\Facades\Route;
 
@@ -809,6 +810,8 @@ final class RulesPage
                 __('Sign up on the tournament page before sign-up closes. Rules and prizes are fixed from then on.'),
                 __('Mixed teams and seeds are drawn from the hash of a Bitcoin block mined after sign-up closed, once it has :count confirmations. Anyone can check the draw.', ['count' => (int) config('esports.bitcoin.confirmations')]),
                 __('A side that misses its first move or does not show up loses the match by forfeit. Both missing: the higher seed advances in a knockout, both lose in Swiss and round robin.'),
+                __('In a board game only White can miss the first move: the game starts once more with the same colours, and a second miss loses the pairing for White.'),
+                ...(NoShowDisqualifier::threshold() > 0 ? [__('An entry that loses :count matches of a tournament by not showing up is disqualified by the league; its open matches go to the opponents.', ['count' => NoShowDisqualifier::threshold()])] : []),
                 __('A drawn knockout chess game is replayed with the colours swapped, at most :count times; then the higher seed advances.', ['count' => (int) $t['drawn_replays']]),
                 __('A Blockli pairing plays two games with the colours swapped; at 1:1 a third game decides. If that one is drawn too, the tournament page says what follows: the race standing of its final position, or replays as for chess.'),
                 __('A report or a no-show claim the other side does not answer in time is decided by the league.'),

@@ -731,7 +731,10 @@ final class TournamentRunner
 
     /**
      * White missed the first move of a tournament board game: it is started
-     * again `first_move_restarts` times, then the double no-show rule decides.
+     * again `first_move_restarts` times, then White loses the pairing by
+     * forfeit (user 2026-10-15). Black cannot move before White, so the miss
+     * is White's alone; until then the double no-show rule punished an
+     * opponent who was there.
      */
     public function boardGameAborted(int $boardGameId): void
     {
@@ -743,7 +746,10 @@ final class TournamentRunner
         }
 
         if (self::abortedBoardGames($match) > self::firstMoveRestarts()) {
-            $this->store($match, $this->doubleNoShow($match));
+            $whiteSlot = in_array((int) $game->white_id, $match->slots->firstWhere('slot', 0)?->participant?->memberIds() ?? [], true) ? 0 : 1;
+            $winner = 1 - $whiteSlot;
+            $this->store($match, ['winner' => $winner, 'games_won' => $winner === 0 ? [1.0, 0.0] : [0.0, 1.0], 'points' => [], 'forfeit' => true,
+                'decided' => 'noshow', 'noshow' => [$whiteSlot], 'label' => __('no first move: forfeit'), 'by' => 'league']);
         }
 
         $this->sync($match->tournament);
@@ -1156,7 +1162,7 @@ final class TournamentRunner
             return $this->seedDecision($match, 'noshow');
         }
 
-        return ['winner' => null, 'double_loss' => true, 'games_won' => [0.0, 0.0], 'points' => [], 'forfeit' => true, 'decided' => 'noshow', 'label' => __('double no-show'), 'by' => 'league'];
+        return ['winner' => null, 'double_loss' => true, 'games_won' => [0.0, 0.0], 'points' => [], 'forfeit' => true, 'decided' => 'noshow', 'noshow' => [0, 1], 'label' => __('double no-show'), 'by' => 'league'];
     }
 
     /**

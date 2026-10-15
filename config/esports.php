@@ -642,6 +642,8 @@ return [
     | not move and Black never opened the board), the game restarts this many
     | times; after that the match is decided by the double no-show rule
     | (Swiss/round robin: a loss for both; knockout: the higher seed advances).
+    | A board game's White who misses it again loses the pairing by forfeit:
+    | Black cannot move first, so the miss is White's alone (2026-10-15).
     |
     | drawn_replays: a drawn knockout chess game is replayed with the colours
     | swapped at most this many times; after that the higher seed advances.
@@ -684,6 +686,9 @@ return [
     'tournaments' => [
         'first_move_seconds' => ['blitz' => 600, 'rapid' => 600, 'correspondence' => 86400],
         'first_move_restarts' => 1,
+        // Players mode: an entry that lost this many matches of one tournament by not showing up is disqualified by the
+        // league, its open matches go to the opponents (NoShowDisqualifier, user 2026-10-15); 0 = off.
+        'auto_disqualify_noshows' => (int) env('ESPORTS_TOURNAMENT_AUTO_DISQUALIFY_NOSHOWS', 2),
         'drawn_replays' => 2,
         'unanswered_report_hours' => 2,
         'report_hours' => 2,

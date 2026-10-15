@@ -750,6 +750,39 @@ final class TournamentControl
     }
 
     /**
+     * The league disqualifies an entry on its own (NoShowDisqualifier, user 2026-10-15: repeated no-shows): as an
+     * organizer's disqualification, without an actor, logged as the league's. False when it is out already or the
+     * tournament no longer runs.
+     */
+    public function disqualifyByLeague(Tournament $tournament, int $participantId, string $reason): bool
+    {
+        $done = DB::transaction(function () use ($tournament, $participantId, $reason): ?TournamentParticipant {
+            $locked = Tournament::query()->lockForUpdate()->findOrFail($tournament->id);
+            $participant = TournamentParticipant::query()->where('tournament_id', $locked->id)->lockForUpdate()->find($participantId);
+
+            if ($locked->status !== TournamentStatus::Running || $participant === null || $participant->isDisqualified()) {
+                return null;
+            }
+
+            $participant->forceFill(['disqualified_at' => now(), 'disqualified_by_id' => null, 'disqualification_reason' => $reason])->save();
+            $forfeited = $this->forfeitUnderWay($locked, $participant);
+            $this->moderation->logByLeague($locked, 'disqualified', (string) $participant->name, $reason,
+                $forfeited === [] ? null : ['forfeited' => [null, $forfeited]]);
+
+            return $participant;
+        });
+
+        if ($done === null) {
+            return false;
+        }
+
+        $this->runner->sync($tournament->refresh(), 'disqualified');
+        $this->tell($tournament, $done->memberIds(), NotificationKind::TournamentEntryRemoved, 'You were disqualified from :tournament', $reason, null);
+
+        return true;
+    }
+
+    /**
      * The disqualified entry's series or game under way is forfeited now
      * (a report or a dispute included), unrated.
      *
@@ -1108,7 +1141,7 @@ final class TournamentControl
      *
      * @param  list<int>  $userIds
      */
-    private function tell(Tournament $tournament, array $userIds, NotificationKind $kind, string $title, string $body, User $sender): void
+    private function tell(Tournament $tournament, array $userIds, NotificationKind $kind, string $title, string $body, ?User $sender): void
     {
         foreach (User::query()->whereKey($userIds)->get() as $player) {
             $locale = $player->locale ?? (string) config('app.locale');

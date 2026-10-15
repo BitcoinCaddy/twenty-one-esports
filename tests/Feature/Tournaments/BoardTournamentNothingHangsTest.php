@@ -13,6 +13,7 @@ use App\Models\RatingChange;
 use App\Models\SeasonAttestation;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
+use App\Models\TournamentModerationEntry;
 use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Board\BoardGameService;
@@ -22,6 +23,7 @@ use App\Support\Series\Ladders;
 use App\Support\Tournaments\Engine\Standings;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
+use App\Support\Tournaments\NoShowDisqualifier;
 use App\Support\Tournaments\TournamentBrackets;
 use App\Support\Tournaments\TournamentMatchMaker;
 use App\Support\Tournaments\TournamentRunner;
@@ -127,7 +129,8 @@ test('knockout board game: once the drawn replays are used up the higher seed ad
 
 /* ---------- Both sides missing ------------------------------------------------------------------------------ */
 
-test('both sides missing: the board game restarts once with the same colours, then the double no-show rule decides', function (TournamentFormat $format, Closure $check) {
+test('White misses the first move: the board game restarts once with the same colours, then White loses the pairing by forfeit', function (TournamentFormat $format, Closure $check) {
+    // User 2026-10-15: Black cannot move before White, so the miss is White's alone; the double no-show rule punished an opponent who was there.
     $tournament = hangsBoardTournament(Checkers::SLUG, $format);
     $first = hangsBoardGame($tournament);
 
@@ -152,17 +155,21 @@ test('both sides missing: the board game restarts once with the same colours, th
         ->and(RatingChange::query()->count())->toBe(0)
         ->and($tournament->refresh()->status)->toBe(TournamentStatus::Finished);
 
-    $check($tournament, $match);
-})->with([
-    'round robin: a loss for both, no points' => [TournamentFormat::RoundRobin, function (Tournament $tournament, TournamentMatch $match) {
-        $table = Standings::table($tournament->participants()->orderBy('seed')->pluck('id')->all(), app(TournamentRunner::class)->games($tournament));
+    $whiteSlot = in_array((int) $first->white_id, $match->slots[0]->participant->memberIds(), true) ? 0 : 1;
+    expect($match->result)->toMatchArray(['winner' => 1 - $whiteSlot, 'forfeit' => true, 'decided' => 'noshow', 'noshow' => [$whiteSlot], 'by' => 'league'])
+        ->and($match->result)->not->toHaveKey('double_loss');
 
-        expect($match->result['double_loss'])->toBeTrue()
-            ->and(array_map(fn ($row) => [$row->points, $row->losses], $table))->toBe([[0.0, 1], [0.0, 1]]);
+    $check($tournament, $match, $whiteSlot);
+})->with([
+    'round robin: Black wins, White loses' => [TournamentFormat::RoundRobin, function (Tournament $tournament, TournamentMatch $match, int $whiteSlot) {
+        $table = Standings::table($tournament->participants()->orderBy('seed')->pluck('id')->all(), app(TournamentRunner::class)->games($tournament));
+        $points = collect($table)->mapWithKeys(fn ($row) => [$row->entrant => [$row->points, $row->losses]])->all();
+
+        expect($points[$match->slots[1 - $whiteSlot]->tournament_participant_id])->toBe([1.0, 0])
+            ->and($points[$match->slots[$whiteSlot]->tournament_participant_id])->toBe([0.0, 1]);
     }],
-    'knockout: the higher seed advances' => [TournamentFormat::SingleElimination, function (Tournament $tournament, TournamentMatch $match) {
-        expect($match->slots[$match->result['winner']]->participant->seed)->toBe(1)
-            ->and($match->result['decided'])->toBe('noshow');
+    'knockout: Black advances' => [TournamentFormat::SingleElimination, function (Tournament $tournament, TournamentMatch $match, int $whiteSlot) {
+        expect($match->result['winner'])->toBe(1 - $whiteSlot);
     }],
 ]);
 
@@ -200,4 +207,56 @@ test('a Black who misses the first move after White\'s loses by forfeit, unrated
         ->and(collect($tags)->where(0, 'block')->all())->toBe([])
         ->and($tournament->refresh()->status)->toBe(TournamentStatus::Finished)
         ->and($season->refresh()->attestations()->count())->toBe(1);
+});
+
+/* ---------- Repeated no-shows ------------------------------------------------------------------------------- */
+
+test('an entry that lost two matches by not showing up is disqualified by the league: its open games go to the opponents, the log names the league', function () {
+    // User 2026-10-15: "haben wir ein Auto-Disqualify, damit das Turnier dann auch mal weitergehen kann?"
+    $tournament = hangsBoardTournament(Checkers::SLUG, TournamentFormat::RoundRobin, 4);
+    $absent = $tournament->participants()->orderBy('id')->firstOrFail();
+    $mine = TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', '!=', 'bye')
+        ->whereHas('slots', fn ($slot) => $slot->where('tournament_participant_id', $absent->id))->with('slots')->orderBy('id')->get();
+    $lose = function (TournamentMatch $match) use ($absent): void {
+        $slot = $match->slots->firstWhere('tournament_participant_id', $absent->id)->slot;
+        app(TournamentRunner::class)->store($match->refresh(), ['winner' => 1 - $slot, 'games_won' => $slot === 0 ? [0.0, 1.0] : [1.0, 0.0], 'points' => [],
+            'forfeit' => true, 'decided' => 'noshow', 'noshow' => [$slot], 'label' => 'no first move: forfeit', 'by' => 'league']);
+    };
+
+    expect($mine)->toHaveCount(3);
+
+    // One no-show: still in.
+    $lose($mine[0]);
+    expect(app(NoShowDisqualifier::class)->tick())->toBe(0)
+        ->and($absent->refresh()->isDisqualified())->toBeFalse();
+
+    // The second: out, and the third match goes to the opponent.
+    $lose($mine[1]);
+    expect(NoShowDisqualifier::counts($tournament))->toMatchArray([$absent->id => 2])
+        ->and(app(NoShowDisqualifier::class)->tick())->toBe(1)
+        ->and($absent->refresh()->isDisqualified())->toBeTrue()
+        ->and($absent->disqualified_by_id)->toBeNull()
+        ->and($absent->disqualification_reason)->toBe('Disqualified by the league: 2 matches lost by not showing up.');
+
+    $third = $mine[2]->refresh();
+    $slot = $third->slots->firstWhere('tournament_participant_id', $absent->id)->slot;
+    expect($third->result['winner'])->toBe(1 - $slot)
+        ->and($third->result['decided'])->toBe('disqualified')
+        ->and(TournamentModerationEntry::query()->where('tournament_id', $tournament->id)->where('action', 'disqualified')->sole()->only(['user_id', 'user_name', 'subject']))
+        ->toBe(['user_id' => null, 'user_name' => 'League', 'subject' => $absent->name])
+        // Once out, never again; the disqualification's own forfeit does not count.
+        ->and(app(NoShowDisqualifier::class)->tick())->toBe(0)
+        ->and(NoShowDisqualifier::counts($tournament->refresh())[$absent->id])->toBe(2);
+});
+
+test('the no-show count reads the stored results: a named no-show, a double no-show, a lost forfeit; never a disqualification or withdrawal, and 0 switches it off', function () {
+    expect(NoShowDisqualifier::noShowSlots(['forfeit' => true, 'winner' => 1, 'decided' => 'noshow', 'noshow' => [0]]))->toBe([0])
+        ->and(NoShowDisqualifier::noShowSlots(['forfeit' => true, 'winner' => null, 'double_loss' => true, 'decided' => 'noshow']))->toBe([0, 1])
+        ->and(NoShowDisqualifier::noShowSlots(['forfeit' => true, 'winner' => 0]))->toBe([1])
+        ->and(NoShowDisqualifier::noShowSlots(['forfeit' => true, 'winner' => 0, 'decided' => 'disqualified']))->toBe([])
+        ->and(NoShowDisqualifier::noShowSlots(['forfeit' => true, 'winner' => 1, 'decided' => 'withdrawn']))->toBe([])
+        ->and(NoShowDisqualifier::noShowSlots(['forfeit' => false, 'winner' => 0]))->toBe([]);
+
+    config(['esports.tournaments.auto_disqualify_noshows' => 0]);
+    expect(app(NoShowDisqualifier::class)->tick())->toBe(0);
 });

@@ -316,6 +316,25 @@ final class TournamentModeration
     }
 
     /**
+     * A decision of the league itself about an entry (no actor), as the auto-disqualification after repeated no-shows.
+     *
+     * @param  array<string, array{0: mixed, 1: mixed}>|null  $details
+     */
+    public function logByLeague(Tournament $tournament, string $action, string $subject, string $reason, ?array $details = null): void
+    {
+        TournamentModerationEntry::query()->create([
+            'tournament_id' => $tournament->id,
+            'user_id' => null,
+            'user_name' => 'League',
+            'action' => $action,
+            'subject' => mb_substr($subject, 0, 80),
+            'reason' => $reason,
+            'details' => $details,
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
      * A line of the league itself (no actor). A solo entry is named "Deleted
      * player", as its games are: the log does not keep the name of an account
      * that asked to be deleted.
