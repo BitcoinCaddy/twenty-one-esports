@@ -6,12 +6,14 @@ namespace App\Support\TwentyOne\Stream;
  * The card of the music on air for the slides (SceneRenderer, partials/now-playing): which file the music timeline
  * plays at a moment (MusicTimeline::tracks(), the file the daemon writes as it shuffles), its credit (MusicCredits),
  * the artist's avatar as the image builder cached it (StreamImages::musicAvatar()) and the code drawn for the target.
- * Null while nothing credited plays (the league's own songs, the instrumentals, a gap): the slide stays as it is.
- * The card of a file is built once and kept; a code that was never drawn means no card, never a broken box.
+ * Null while nothing credited plays (a gap, a track without a credit): the slide stays as it is. The card of a file
+ * is built once and kept, its avatar asked anew each time (the image builder fetches it within ten minutes of a new
+ * credit; a card kept without it would never show it, user 2026-10-15: "man sieht den Avatar … nicht"); a code that
+ * was never drawn means no card, never a broken box.
  */
 final class NowPlaying
 {
-    /** @var array<string, array{artist: string, avatar: string|null, qr: string, kind: string}|null> */
+    /** @var array<string, array{artist: string, picture: string|null, qr: string, kind: string}|null> */
     private array $cards = [];
 
     public function __construct(private StreamImages $images, private string $timelineFile) {}
@@ -38,19 +40,15 @@ final class NowPlaying
      */
     public function card(string $file): ?array
     {
-        if (array_key_exists($file, $this->cards)) {
-            return $this->cards[$file];
+        if (! array_key_exists($file, $this->cards)) {
+            $credit = MusicCredits::forFile($file);
+            $qrFile = $credit === null ? null : MusicCredits::qrFile($credit['target'], $credit['kind']);
+            $qr = $qrFile !== null && is_file($qrFile) ? (string) file_get_contents($qrFile) : '';
+            $this->cards[$file] = $credit === null || $qr === '' ? null : ['artist' => $credit['artist'], 'picture' => $credit['picture'], 'qr' => $qr, 'kind' => $credit['kind']];
         }
 
-        $credit = MusicCredits::forFile($file);
-        $qrFile = $credit === null ? null : MusicCredits::qrFile($credit['target'], $credit['kind']);
-        $qr = $qrFile !== null && is_file($qrFile) ? (string) file_get_contents($qrFile) : '';
+        $card = $this->cards[$file];
 
-        return $this->cards[$file] = $credit === null || $qr === '' ? null : [
-            'artist' => $credit['artist'],
-            'avatar' => $this->images->musicAvatar($credit['picture']),
-            'qr' => $qr,
-            'kind' => $credit['kind'],
-        ];
+        return $card === null ? null : ['artist' => $card['artist'], 'avatar' => $this->images->musicAvatar($card['picture']), 'qr' => $card['qr'], 'kind' => $card['kind']];
     }
 }

@@ -44,11 +44,13 @@ test('a Wavlake track credits its artist with the lightning address, a PlebRap t
 
 test('the card carries the artist, the cached avatar and the drawn code; a track without a credit or without a code has none', function () {
     $images = Mockery::mock(StreamImages::class);
-    $images->shouldReceive('musicAvatar')->andReturn('data:image/jpeg;base64,AAAA');
+    // The first ask comes before the builder fetched the picture, the next after: the kept card shows it then.
+    $images->shouldReceive('musicAvatar')->andReturn(null, 'data:image/jpeg;base64,AAAA');
     $playing = new NowPlaying($images, '/nonexistent');
 
-    $card = $playing->card('instrumental/07 - Something__v1.m4a');
-    expect($card)->toMatchArray(['artist' => 'DJ Bitcoin', 'kind' => 'lud16', 'avatar' => 'data:image/jpeg;base64,AAAA'])
+    expect($playing->card('wavlake/Debasement - Contra__v1.m4a')['avatar'])->toBeNull();
+    $card = $playing->card('wavlake/Debasement - Contra__v1.m4a');
+    expect($card)->toMatchArray(['artist' => 'Contra', 'kind' => 'lud16', 'avatar' => 'data:image/jpeg;base64,AAAA'])
         ->and($card['qr'])->toContain('<svg')
         ->and($playing->card('plebrap/unknown file__v1.m4a'))->toBeNull()
         // No timeline yet: nothing plays, no card.
