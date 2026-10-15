@@ -278,8 +278,19 @@ it('speaks a pattern reaction instead when the segment breaks a house rule, afte
     VoiceAgent::assertPromptedTimes(1);
 })->with([
     'a link' => ["Mehr dazu findet ihr unter https://example.com in aller Ausführlichkeit.\nDer Staat findet immer irgendetwas zum Abkassieren, und diesmal ist es euer Kuchen.", VoiceGuard::URL],
-    'fragments' => ["Typisch.\nNa klar.\nWieder mal.", ScriptGuard::SENTENCE_SHORT],
 ]);
+
+it('voices the fragment take as it comes: no style verdict refuses it any more (user 2026-10-15)', function () {
+    casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
+    VoiceAgent::fake([casterNewsDraft("Typisch.\nNa klar.\nWieder mal.")]);
+
+    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
+
+    $script = CasterScript::query()->sole();
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->text)->toBe("Typisch.\nNa klar.\nWieder mal.");
+    VoiceAgent::assertPromptedTimes(1);
+});
 
 it('lets the comment name anyone and claim what it likes: free mode, no fact check', function (string $comment) {
     config(['esports.voice.persons' => ['Saylor', 'Jilch']]);

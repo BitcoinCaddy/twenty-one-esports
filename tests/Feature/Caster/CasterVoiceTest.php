@@ -142,18 +142,18 @@ it('voices a draft the old rules turned down, without a fact check: free mode (u
     VoiceAgent::assertPromptedTimes(1);
 });
 
-it('still turns a draft down for what breaks the stream or a sentence too short to speak, and keeps nothing else as a reason', function () {
-    expect(CasterVoice::free([VoiceGuard::NAME, VoiceGuard::NUMBER, VoiceGuard::UNSUPPORTED_CLAIM, ScriptGuard::STOCK_PHRASE, ScriptGuard::OPENING_REPEAT, ScriptGuard::SENTENCE_COUNT, ScriptGuard::COMMAS, VoiceGuard::CANON_WITHOUT_ID]))->toBe([])
-        ->and(CasterVoice::free([VoiceGuard::HASHTAG, ScriptGuard::SENTENCE_SHORT, VoiceGuard::NAME]))->toBe([VoiceGuard::HASHTAG, ScriptGuard::SENTENCE_SHORT]);
+it('still turns a draft down for what breaks the stream, and a short sentence no longer refuses it (user 2026-10-15)', function () {
+    expect(CasterVoice::free([VoiceGuard::NAME, VoiceGuard::NUMBER, VoiceGuard::UNSUPPORTED_CLAIM, ScriptGuard::STOCK_PHRASE, ScriptGuard::OPENING_REPEAT, ScriptGuard::SENTENCE_COUNT, ScriptGuard::COMMAS, VoiceGuard::CANON_WITHOUT_ID, ScriptGuard::STAGE_DIRECTION, ScriptGuard::SENTENCE_LONG, ScriptGuard::SENTENCE_SHORT]))->toBe([])
+        ->and(CasterVoice::free([VoiceGuard::HASHTAG, ScriptGuard::SENTENCE_SHORT, VoiceGuard::NAME]))->toBe([VoiceGuard::HASHTAG]);
 
+    // "Es gibt keine Gründe!!!": what the model wrote goes on air, short sentences included — no repair round for them.
     VoiceAgent::fake([
-        ['text' => "Hey!\nLäuft.\nJetzt aber.", 'canon_id' => null, 'mood' => 'hype'],
         ['text' => "Hey!\nLäuft.\nJetzt aber.", 'canon_id' => null, 'mood' => 'hype'],
     ]);
 
-    expect(casterVoiceWrite())->toBeNull()
-        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->where('reason', ScriptGuard::SENTENCE_SHORT)->value('count'))->toBe(2);
-    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Ein Satz war zu kurz'));
+    expect(casterVoiceWrite()['text'] ?? null)->toBe("Hey!\nLäuft.\nJetzt aber.")
+        ->and((int) DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->where('reason', ScriptGuard::SENTENCE_SHORT)->value('count'))->toBe(0);
+    VoiceAgent::assertPromptedTimes(1);
 });
 
 it('drops a fragment from a draft as a repair while enough long sentences stay', function () {

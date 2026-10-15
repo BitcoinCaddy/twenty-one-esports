@@ -145,11 +145,13 @@ it('asks the league voice first, up to ai_calls_per_fill scripts, and fills only
     VoiceAgent::assertPromptedTimes(2);
 });
 
-it('falls back to a pattern script for the topic when the league voice gives nothing', function () {
+it('falls back to a pattern script for the topic when the league voice gives nothing usable', function () {
     config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 6]);
+    // A broken draft (a link the voice would read out), not a short sentence: style no longer refuses a text
+    // (user 2026-10-15), so "nothing usable" means what breaks the stream.
     VoiceAgent::fake([
-        ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'],
-        ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Hey, schaut mal auf https://example.com vorbei.\nLäuft bei uns.", 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => "Hey, schaut mal auf https://example.com vorbei.\nLäuft bei uns.", 'canon_id' => null, 'mood' => 'hype'],
     ]);
 
     casterQueue()->fill(CarbonImmutable::now());
@@ -287,19 +289,33 @@ it('seeds every filler once and never expires it', function () {
         ->and($queue->expire($now->addDays(30)))->toBe(0);
 });
 
-it('rejects scripts that break the stream or carry a sentence the voice cannot speak well', function (string $text, string $reason) {
+it('still rejects what breaks the stream, and voices a stage direction, fragments or a long sentence as they come (user 2026-10-15)', function (string $text, string $reason) {
     config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.patterns.per_run' => 0, 'tv.commentary.scripts.max_words_per_sentence' => 32]);
     VoiceAgent::fake([['text' => $text, 'canon_id' => null, 'mood' => 'fakten']]);
 
-    expect(casterQueue()->fill(CarbonImmutable::now()))->toBe(0)
-        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->pluck('reason')->all())->toContain($reason);
+    casterQueue()->fill(CarbonImmutable::now());
+
+    // The reason is counted and the draft never became a script of its own.
+    expect(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->pluck('reason')->all())->toContain($reason)
+        ->and(CasterScript::query()->where('source', CasterScript::SOURCE_AI)->where('text', 'like', '%'.mb_substr($text, 0, 20).'%')->exists())->toBeFalse();
 })->with([
-    'unknown marker' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\n[applause] Die Liga hat einundzwanzig Spieler, und es werden immer mehr.\nSchaut doch einfach mal selbst in der Lobby vorbei.", ScriptGuard::MARKER_UNKNOWN],
-    'stage direction' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler, und es werden immer mehr.\nKlar, da geht noch eine ganze Menge mehr bei uns (lacht).", ScriptGuard::STAGE_DIRECTION],
-    'fragments' => ["Hey!\nLäuft.\nJetzt aber.", ScriptGuard::SENTENCE_SHORT],
-    // Two lines, the minimum: the over-long one cannot be dropped as a repair.
-    'long sentence' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn und Kollegen und Verwandten zusammen im Park und im Garten und auf dem Balkon und manchmal sogar bis tief in die Nacht hinein.", ScriptGuard::SENTENCE_LONG],
+    'unknown marker' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\n[applause] Die Liga hat einundzwanzig Spieler, und es werden immer mehr.\nSchreibt mir in den Chat, wer heute Abend noch eine Partie spielen möchte.", ScriptGuard::MARKER_UNKNOWN],
     'hashtag in a link' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nSchaut auf https://example.com vorbei, denn da gibt es noch viel mehr zu sehen.\nSchaut doch einfach mal selbst in der Lobby vorbei.", 'url'],
+]);
+
+it('voices a stage direction, fragments or a long sentence as they come: no style verdict refuses a text', function (string $text) {
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.patterns.per_run' => 0, 'tv.commentary.scripts.max_words_per_sentence' => 32]);
+    VoiceAgent::fake([['text' => $text, 'canon_id' => null, 'mood' => 'fakten']]);
+
+    casterQueue()->fill(CarbonImmutable::now());
+
+    expect(CasterScript::query()->where('source', CasterScript::SOURCE_AI)->where('text', 'like', '%'.mb_substr($text, 0, 20).'%')->exists())->toBeTrue()
+        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::CHANNEL)->count())->toBe(0);
+})->with([
+    'stage direction' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler, und es werden immer mehr.\nKlar, da geht noch eine ganze Menge mehr bei uns (lacht)."],
+    'fragments' => ["Hey!\nLäuft.\nJetzt aber."],
+    // Two lines, the minimum: the over-long one cannot be dropped as a repair.
+    'long sentence' => ["Hey, hier ist TWENTY ONE TV, und ich freu mich, dass ihr da seid.\nDie Liga hat einundzwanzig Spieler und alle spielen jeden Tag sehr gerne mit ihren Freunden und Nachbarn und Kollegen und Verwandten zusammen im Park und im Garten und auf dem Balkon und manchmal sogar bis tief in die Nacht hinein."],
 ]);
 
 it('lets the whitelisted markers through and counts no marker as a word', function () {

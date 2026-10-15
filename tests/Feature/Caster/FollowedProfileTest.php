@@ -270,8 +270,20 @@ it('falls back to a quote and a pattern reaction when the take breaks a house ru
     VoiceAgent::assertPromptedTimes(1);
 })->with([
     'a link (guard)' => ["Da hat einer seine Villa am Hang für die Hälfte verscherbelt.\nSchaut euch das unter https://example.com selbst einmal ganz genau an.\nPech gehabt, kann ich da nur sagen, und weiter geht es.", VoiceGuard::URL],
-    'fragments' => ["Tja.\nPech gehabt.\nSo ist das.", ScriptGuard::SENTENCE_SHORT],
 ]);
+
+it('voices the fragment take as it comes: no style verdict refuses it any more (user 2026-10-15)', function () {
+    $this->reader->events = [followedNote($this->author, 'Dieses Schmuckstück wurde für sehr viel Geld in den Hang betoniert und ist heute für die Hälfte zu haben, typisch Kesselstadt', 30)];
+    app(FollowedNotes::class)->fetch(CarbonImmutable::now());
+    VoiceAgent::fake([followedDraft("Tja.\nPech gehabt.\nSo ist das.")]);
+
+    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
+
+    $script = CasterScript::query()->sole();
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->text)->toContain("Tja.\nPech gehabt.\nSo ist das.");
+    VoiceAgent::assertPromptedTimes(1);
+});
 
 it('voices a take with an invented detail: no fact check any more (free mode)', function () {
     $this->reader->events = [followedNote($this->author, 'Ich hab jetzt auch ein paar Sats in den Preispool gelegt.', 30)];

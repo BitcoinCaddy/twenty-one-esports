@@ -95,7 +95,11 @@ final class CasterVoice
     public const FREE_RULES = [
         VoiceGuard::EMPTY, VoiceGuard::HASHTAG, VoiceGuard::URL, VoiceGuard::ADDRESS, VoiceGuard::BLOCKLIST, VoiceGuard::EMOJI, VoiceGuard::SELF_LABEL,
         VoiceHygiene::PLACEHOLDER, VoiceHygiene::MARKDOWN, VoiceHygiene::META, VoiceHygiene::WRONG_LANGUAGE, VoiceHygiene::BROKEN_UNICODE,
-        ScriptGuard::MARKER_UNKNOWN, ScriptGuard::STAGE_DIRECTION, ScriptGuard::SENTENCE_LONG, ScriptGuard::SENTENCE_SHORT,
+        ScriptGuard::MARKER_UNKNOWN,
+        // No style verdicts refuse a text any more (user 2026-10-15: "Verwurfs-Gründe? Es gibt keine Gründe!!!"):
+        // a sentence that is long or short, a stage direction, an emoji of a mood — what the model wrote goes on
+        // air. Only what breaks the medium stays: the blocklist, emptiness, what the voice would read out
+        // literally (a link, a hashtag, markup, a placeholder) and what it cannot decode.
     ];
 
     /**
