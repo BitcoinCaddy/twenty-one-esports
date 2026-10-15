@@ -512,13 +512,16 @@ test('a drawn decider settled by the race standing says so with its margin in th
         $page->setViewportSize($width, $height);
         $page->goto(ComputeUrl::from(route('tournaments.show', $tournament, false).'?lang=de'));
         BrowserWait::until($page, '() => !!document.querySelector("[data-test=match-decision]")', 10_000);
-        $m = $page->evaluate('() => { const el = document.querySelector("[data-test=match-decision]"); el.scrollIntoView(); const r = el.getBoundingClientRect(); const box = el.closest("[data-test=match-box]").getBoundingClientRect(); return { text: el.innerText.trim(), visible: el.checkVisibility(), inside: r.left >= box.left && r.right <= box.right + 0.5, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }');
+        $m = $page->evaluate('() => { const el = document.querySelector("[data-test=match-decision]"); el.scrollIntoView(); const r = el.getBoundingClientRect(); const box = el.closest("[data-test=match-box]").getBoundingClientRect(); const w = el.closest("[data-test=match-box]").querySelector("[data-test=match-box-watch]"), wr = w?.getBoundingClientRect(); return { text: el.innerText.trim(), visible: el.checkVisibility(), inside: r.left >= box.left && r.right <= box.right + 0.5, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, watch: w ? { href: new URL(w.href).pathname, label: w.getAttribute("aria-label"), visible: w.checkVisibility(), inside: wr.left >= box.left && wr.right <= box.right + 0.5, h: Math.round(wr.height), hit: Math.round(parseFloat(getComputedStyle(w, "::after").height)) } : null }; }');
         fwrite(STDERR, PHP_EOL."[standing label {$width}] ".json_encode($m).PHP_EOL);
 
         expect($m['text'])->toBe('1–1, Entscheidungspartie remis: Rennstand, 1 Schritt vorn')
             ->and($m['visible'])->toBeTrue()
             ->and($m['inside'])->toBeTrue()
             ->and($m['overflow'])->toBeLessThanOrEqual(0)
+            // DerCaddy 2026-10-15: a board game's match has no number, so its key opens the board for anyone watching.
+            ->and($m['watch'])->toMatchArray(['href' => route('board.show', $decider, false), 'label' => 'M1-1 zuschauen', 'visible' => true, 'inside' => true])
+            ->and($m['watch']['hit'])->toBeGreaterThanOrEqual(44)
             ->and($page->evaluate('() => window.__errors'))->toBe([])
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     }

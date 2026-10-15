@@ -357,6 +357,15 @@ test('a tournament of a board game starts a board game for each ready match, and
         ->and($tournament->refresh()->status)->toBe(TournamentStatus::Finished);
 });
 
+test('a board game cup\'s bracket links each running board for spectators, guests included (DerCaddy 2026-10-15)', function () {
+    $tournament = runningBoardTournament(Checkers::SLUG, 2);
+    $game = BoardGame::query()->sole();
+
+    Livewire::test('pages::tournaments.show', ['tournament' => $tournament])
+        ->assertSeeHtml('data-test="match-box-watch"')
+        ->assertSee(route('board.show', $game), false);
+});
+
 test('a drawn board game in a knockout is replayed with the colours swapped', function () {
     $tournament = runningBoardTournament(NineMensMorris::SLUG, 2);
     $service = app(BoardGameService::class);

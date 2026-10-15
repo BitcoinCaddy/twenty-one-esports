@@ -23,6 +23,9 @@
         <span>
             @if ($box['number'])
                 <a href="{{ $box['href'] }}" class="font-bold text-ink-2 hover:text-ink">#{{ $box['number'] }}</a>
+            @elseif ($box['href'])
+                {{-- A board game's match has no number: its key opens the board, so anyone can watch it (DerCaddy 2026-10-15); the hit area reaches 44 px without moving the line. --}}
+                <a href="{{ $box['href'] }}" class="relative inline-flex items-center gap-1 font-bold text-ink-2 after:absolute after:-inset-x-2 after:-inset-y-3.5 hover:text-ink" aria-label="{{ __('Watch :match', ['match' => strtoupper($box['key'])]) }}" data-test="match-box-watch"><x-icon name="eye" :size="12" />{{ strtoupper($box['key']) }}</a>
             @else
                 {{ strtoupper($box['key']) }}
             @endif
