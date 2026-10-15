@@ -248,21 +248,22 @@ it('counts the searches a lookup ran and takes only the answer after the search'
 | Rolling chat memory
 */
 
-it('remembers what trusted chatters wrote and the start of the reply, never an untrusted chatter', function () {
+it('remembers what every chatter wrote and the start of the reply, trusted or not (user 2026-10-15)', function () {
     $ada = chatContextTrusted('Ada');
     $stranger = new TestSigner;
     $reply = 'Ada, '.implode(' ', array_fill(0, 40, 'Wort')).'.';
-    VoiceAgent::fake([['text' => $reply, 'canon_id' => null, 'mood' => 'call']]);
+    VoiceAgent::fake([['text' => 'Fremder, dein Zwiebelcoin interessiert hier niemanden.', 'canon_id' => null, 'mood' => 'call'], ['text' => $reply, 'canon_id' => null, 'mood' => 'call']]);
     $this->reader->events = [chatContextMessage($stranger, 'kauft meinen zwiebelcoin'), chatContextMessage($ada, 'gm aus Wien, schöner Stream heute https://spam.test')];
 
     app(ChatReactions::class)->poll(CarbonImmutable::now());
 
-    $line = ChatterLine::query()->sole();
-    expect($line->pubkey)->toBe($ada->pubkey)
-        ->and($line->name)->toBe('Ada')
-        ->and($line->message)->toBe('gm aus Wien, schöner Stream heute')
-        ->and($line->reply)->toBe('Ada, '.implode(' ', array_fill(0, 24, 'Wort')).' …')
-        ->and(ChatterLine::query()->where('message', 'like', '%zwiebelcoin%')->exists())->toBeFalse();
+    $lines = ChatterLine::query()->get();
+    $adaLine = $lines->firstWhere('pubkey', $ada->pubkey);
+    expect($lines)->toHaveCount(2)
+        ->and($adaLine->name)->toBe('Ada')
+        ->and($adaLine->message)->toBe('gm aus Wien, schöner Stream heute')
+        ->and($adaLine->reply)->toBe('Ada, '.implode(' ', array_fill(0, 24, 'Wort')).' …')
+        ->and($lines->contains(fn ($line) => str_contains((string) $line->message, 'zwiebelcoin')))->toBeTrue();
 });
 
 it('remembers a message held back by the cooldown, without a reply', function () {

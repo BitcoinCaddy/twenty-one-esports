@@ -41,19 +41,14 @@ class ChatterCache
 
     public function __construct(private RelayReader $reader) {}
 
+    /**
+     * Whether a chatter gets a reaction (user 2026-10-15: "wir wollen auf so gut wie alle Chat Messages reagieren,
+     * hauptsache die GPU kann es"): everyone but the muted. The web of trust and the season's rank no longer hold a
+     * chat back — the spool's caps keep the workstation from lagging behind, nothing else rationates.
+     */
     public function isReactable(string $pubkey): bool
     {
-        if (SiteModeration::isHidden($pubkey)) {
-            return false;
-        }
-
-        if (WotLevel::query()->whereKey($pubkey)->where('level', '<=', 2)->exists()) {
-            return true;
-        }
-
-        $rank = TrustRank::query()->where('pubkey', $pubkey)->value('rank');
-
-        return is_int($rank) && $rank >= $this->trustMinimum();
+        return ! SiteModeration::isHidden($pubkey);
     }
 
     /**
