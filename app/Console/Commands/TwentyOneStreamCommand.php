@@ -1247,7 +1247,13 @@ class TwentyOneStreamCommand extends Command
 
         $files = File::glob(rtrim($dir, '/').'/*__v*.m4a') ?: [];
 
-        return array_values(array_filter($files, fn (string $file): bool => MusicPlaylist::isSafePath($file)));
+        // Artists banned for good from their source (user 2026-10-15: ICT - DJ Lexo brought a 62-minute meditation
+        // drone and other overlong material into the 24/7 bed): a banned name in the file name keeps the track out,
+        // whatever a future import downloads again.
+        $banned = array_values(array_filter(array_map('trim', explode(',', (string) config('twentyone.stream.music.banned_artists', '')))));
+
+        return array_values(array_filter($files, fn (string $file): bool => MusicPlaylist::isSafePath($file)
+            && collect($banned)->every(fn (string $name): bool => ! str_contains(strtolower(basename($file)), strtolower($name)))));
     }
 
     /**

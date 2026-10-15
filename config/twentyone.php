@@ -221,6 +221,9 @@ return [
             'plebrap_dir' => env('TWENTYONE_STREAM_PLEBRAP_DIR') ?: storage_path('app/stream/music/plebrap'),
             // Wavlake Top 40 (user 2026-10-15). A song already in another source is not copied here.
             'wavlake_dir' => env('TWENTYONE_STREAM_WAVLAKE_DIR') ?: storage_path('app/stream/music/wavlake'),
+            // Artists banned for good, whatever a future import brings back (user 2026-10-15: ICT - DJ Lexo):
+            // comma-separated names, matched against the file name.
+            'banned_artists' => env('TWENTYONE_STREAM_MUSIC_BANNED_ARTISTS', 'ICT - DJ Lexo'),
             // Unused by the live rotation. Left so an old env line does not error.
             'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
             'list_hours' => 12,
