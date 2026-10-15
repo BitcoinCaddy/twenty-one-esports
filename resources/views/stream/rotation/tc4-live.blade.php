@@ -16,12 +16,13 @@
     $played = is_array($t['progress'] ?? null) && is_int($t['progress']['played'] ?? null) ? $t['progress']['played'] : null;
     $total = is_array($t['progress'] ?? null) && is_int($t['progress']['total'] ?? null) ? $t['progress']['total'] : null;
     $progress = $played !== null && $total !== null ? $played.'/'.$total.' decided' : '';
-    $title = K::fit(K::text($t, 'name', 'Tournament'), K::MONO, 26, 1200 - K::width($progress, K::MONO, 18) - 32);
+    // The board x 40..1016 (the now-playing column covers x 1040..1280).
+    $title = K::fit(K::text($t, 'name', 'Tournament'), K::MONO, 26, 976 - K::width($progress, K::MONO, 18) - 32);
     $firsts = K::sharedFirst($t);
     // A finished lobby tournament (P10): the line names its place 1 across all lobbies, as many names as fit whole, the rest counted (P8).
     $firstLabel = K::text($t, 'status', 'Live now').': '.(count($firsts) > 1 ? 'shared 1st place: ' : '1st place: ');
-    $line = $firsts !== [] ? $firstLabel.(K::namesInLines($firsts, K::MONO, 18, 1200 - K::width($firstLabel, K::MONO, 18), 1)[0] ?? '')
-        : K::fit(K::text($t, 'status', 'Live now').': '.($finished ? match ($kind) { 'bracket' => 'final bracket', 'lobbies' => 'final places', default => 'final standings' } : K::text($t, 'now', K::text($t, 'format'))), K::MONO, 18, 1200);
+    $line = $firsts !== [] ? $firstLabel.(K::namesInLines($firsts, K::MONO, 18, 976 - K::width($firstLabel, K::MONO, 18), 1)[0] ?? '')
+        : K::fit(K::text($t, 'status', 'Live now').': '.($finished ? match ($kind) { 'bracket' => 'final bracket', 'lobbies' => 'final places', default => 'final standings' } : K::text($t, 'now', K::text($t, 'format'))), K::MONO, 18, 976);
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
 @include('stream.rotation.partials.defs')
@@ -29,11 +30,11 @@
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? ($t['backdrop'] ?? null), 'bdDim' => 0.78])
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => $kind === 'lobbies' ? ($finished ? 'final places' : 'live lobbies') : ($finished ? 'final bracket' : 'live bracket')])
 
-<text data-unit="title" data-box="39 {{ 110 - 26 }} {{ 1240 - K::width($progress, K::MONO, 18) - 31 }} {{ 110 + 8 }}" x="40" y="110" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#FFFFFF">{{ $title }}</text>
-@if ($progress !== '')<text data-unit="progress" x="1240" y="108" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0" text-anchor="end">{{ $progress }}</text>@endif
-<text data-unit="line" data-box="39 122 1241 148" x="40" y="140" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $line }}</text>
-<rect x="40" y="156" width="1200" height="1" fill="#2A2A30"/>
+<text data-unit="title" data-box="39 {{ 110 - 26 }} {{ 1016 - K::width($progress, K::MONO, 18) - 31 }} {{ 110 + 8 }}" x="40" y="110" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#FFFFFF">{{ $title }}</text>
+@if ($progress !== '')<text data-unit="progress" x="1016" y="108" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0" text-anchor="end">{{ $progress }}</text>@endif
+<text data-unit="line" data-box="39 122 1017 148" x="40" y="140" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $line }}</text>
+<rect x="40" y="156" width="976" height="1" fill="#2A2A30"/>
 
-@include('stream.rotation.partials.t-board', ['board' => $t['board'] ?? null, 'bx' => 40, 'by' => 168, 'bw' => 1200, 'bh' => 446, 'groupCols' => 4, 'clanSeats' => $clanSeats,
+@include('stream.rotation.partials.t-board', ['board' => $t['board'] ?? null, 'bx' => 40, 'by' => 168, 'bw' => 972, 'bh' => 446, 'groupCols' => 4, 'clanSeats' => $clanSeats,
     'panel' => '#16161A', 'rule' => '#2A2A30', 'accent' => '#F7931A', 'nameFill' => '#FFFFFF', 'muted' => '#A1A1A7', 'chipInk' => '#17120A', 'bShape' => 'square', 'bId' => 'tc4'])
 </svg>

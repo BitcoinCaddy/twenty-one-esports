@@ -20,17 +20,18 @@
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'zaps'])
 <g transform="translate(40 144) scale(3)" fill="none" stroke="#F7931A" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></g>
 <text x="132" y="200" font-family="JetBrains Mono" font-weight="700" font-size="56" fill="#FFFFFF">Zap this stream</text>
-<rect x="40" y="250" width="{{ $hasQr ? 880 : 1200 }}" height="1" fill="#2A2A30"/>
+<rect x="40" y="250" width="{{ $hasQr ? 680 : 976 }}" height="1" fill="#2A2A30"/>
 <text x="40" y="292" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">how</text>
-<text x="320" y="292" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#F7931A">{{ $hasQr ? 'scan the code, or tap the bolt' : 'tap the bolt in your Nostr client' }}</text>
-<rect x="40" y="312" width="{{ $hasQr ? 880 : 1200 }}" height="1" fill="#2A2A30"/>
+<text x="160" y="292" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#F7931A">{{ $hasQr ? 'scan the code, or tap the bolt' : 'tap the bolt in your Nostr client' }}</text>
+<rect x="40" y="312" width="{{ $hasQr ? 680 : 976 }}" height="1" fill="#2A2A30"/>
 <text x="40" y="350" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">with</text>
-<text x="320" y="350" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">{{ $hasQr ? 'a Lightning wallet or a Nostr client' : 'a Nostr client with zaps' }}</text>
-<rect x="40" y="370" width="{{ $hasQr ? 880 : 1200 }}" height="1" fill="#2A2A30"/>
+<text x="160" y="350" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">{{ $hasQr ? 'a Lightning wallet or a Nostr client' : 'a Nostr client with zaps' }}</text>
+<rect x="40" y="370" width="{{ $hasQr ? 680 : 976 }}" height="1" fill="#2A2A30"/>
 <text x="40" y="408" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7">to</text>
-<text x="320" y="408" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#F7931A" data-zap-pool="1">the league pool, for prizes</text>
-<rect x="40" y="428" width="{{ $hasQr ? 880 : 1200 }}" height="1" fill="#2A2A30"/>
+<text x="160" y="408" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#F7931A" data-zap-pool="1">the league pool, for prizes</text>
+<rect x="40" y="428" width="{{ $hasQr ? 680 : 976 }}" height="1" fill="#2A2A30"/>
 @if ($hasQr)
-@include('stream.rotation.partials.qr', ['qr' => $qrSvg, 'modules' => $qrModules ?? null, 'x' => 960, 'y' => 250, 'size' => 280])
+@include('stream.rotation.partials.qr', ['qr' => $qrSvg, 'modules' => $qrModules ?? null, 'x' => 776, 'y' => 250, 'size' => 240])
+
 @endif
 </svg>

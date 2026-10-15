@@ -11,7 +11,8 @@
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
     $hasQr = trim((string) ($siteQrSvg ?? '')) !== '';
-    $tx = $hasQr ? 504 : 40;
+    // The code 340 px, the text from x 412 to 1016 (the now-playing column covers x 1040..1280).
+    $tx = $hasQr ? 412 : 40;
     $players = K::count($stats ?? [], 'players');
     $today = K::count($stats ?? [], 'gamesToday');
     $facts = array_filter([
@@ -31,17 +32,18 @@
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.76])
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'scan to play'])
 @if ($hasQr)
-@include('stream.rotation.partials.qr', ['qr' => $siteQrSvg, 'modules' => $siteQrModules ?? null, 'x' => 40, 'y' => 148, 'size' => 400])
+@include('stream.rotation.partials.qr', ['qr' => $siteQrSvg, 'modules' => $siteQrModules ?? null, 'x' => 40, 'y' => 160, 'size' => 340])
 @endif
 <text x="{{ $tx }}" y="236" font-family="JetBrains Mono" font-weight="700" font-size="38" fill="#FFFFFF">The next game starts</text>
 <text x="{{ $tx }}" y="284" font-family="JetBrains Mono" font-weight="700" font-size="38" fill="#FFFFFF">when you do.</text>
-<rect x="{{ $tx }}" y="312" width="{{ 1240 - $tx }}" height="1" fill="#2A2A30"/>
+<rect x="{{ $tx }}" y="312" width="{{ K::CONTENT_RIGHT - $tx }}" height="1" fill="#2A2A30"/>
 {{-- COPY-CHECK: step 2 per copy-check.md (c): the login page offers Google and Nostr. --}}
 {{-- COPY-CHECK: step 3 "Find opponent" is the lobby's blitz button (⚡lobby.blade.php:434/:520); daily = challenge (copy-check.md b). --}}
 @foreach ($steps as $i => $step)
 <text x="{{ $tx }}" y="{{ 350 + $i * 58 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ $i + 1 }}</text>
-<text data-unit="step-{{ $i }}" data-box="{{ $tx + 63 }} {{ 328 + $i * 58 }} 1240 {{ 356 + $i * 58 }}" x="{{ $tx + 64 }}" y="{{ 350 + $i * 58 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ $step }}</text>
-<rect x="{{ $tx }}" y="{{ 370 + $i * 58 }}" width="{{ 1240 - $tx }}" height="1" fill="#2A2A30"/>
+<text data-unit="step-{{ $i }}" data-box="{{ $tx + 39 }} {{ 328 + $i * 58 }} {{ K::CONTENT_RIGHT }} {{ 356 + $i * 58 }}" x="{{ $tx + 40 }}" y="{{ 350 + $i * 58 }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ K::monoSize($step, 22, K::CONTENT_RIGHT - $tx - 40) }}" fill="#FFFFFF">{{ $step }}</text>
+<rect x="{{ $tx }}" y="{{ 370 + $i * 58 }}" width="{{ K::CONTENT_RIGHT - $tx }}" height="1" fill="#2A2A30"/>
 @endforeach
-@if ($factLine)<text data-unit="facts" data-box="{{ $tx - 1 }} 550 1240 576" x="{{ $tx }}" y="570" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ $factLine }}</text>@endif
+@if ($factLine)<text data-unit="facts" data-box="{{ $tx - 1 }} 550 {{ K::CONTENT_RIGHT }} 576" x="{{ $tx }}" y="570" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ K::fit($factLine, K::MONO, 20, K::CONTENT_RIGHT - $tx) }}</text>@endif
+
 </svg>

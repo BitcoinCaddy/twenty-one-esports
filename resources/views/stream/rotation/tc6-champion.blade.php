@@ -13,17 +13,20 @@
     $t = is_array($tournament ?? null) ? $tournament : [];
     $clanSeats = is_int($t['teamSize'] ?? null) && $t['teamSize'] > 1;
     $champ = K::entryFaces(is_array($t['champion'] ?? null) ? [$t['champion']] : [], 1, $clanSeats)[0] ?? null;
-    $name = K::headline($champ ? ($champ['name'] === '' ? 'Champion' : $champ['name']) : 'The results are in', [44, 36, 30], 840, 2, K::MONO);
+    // The champion's face x 40..300, the text x 328..1016, without a champion x 40..1016 (the now-playing column covers
+    // x 1040..1280).
+    $textW = $champ ? 688 : 976;
+    $name = K::headline($champ ? ($champ['name'] === '' ? 'Champion' : $champ['name']) : 'The results are in', [40, 34, 28], $textW, 2, K::MONO);
     $nameStep = round($name['size'] * 1.15);
     $afterName = 170 + (count($name['lines']) - 1) * $nameStep;
-    $of = K::fit(($champ ? 'champion of ' : 'finished: ').K::text($t, 'name', 'Tournament'), K::MONO, 18, 840);
+    $of = K::fit(($champ ? 'champion of ' : 'finished: ').K::text($t, 'name', 'Tournament'), K::MONO, 18, $textW);
     $pot = is_int($t['pot'] ?? null) && $t['pot'] > 0 ? K::sats($t['pot']).' sats in the pot' : '';
     $path = [];
     foreach (array_slice(is_array($t['path'] ?? null) ? $t['path'] : [], -5) as $step) {
         if (is_array($step) && is_string($step['opponent'] ?? null)) {
             $verb = ($step['draw'] ?? false) ? 'drew with ' : (($step['won'] ?? false) ? 'beat ' : 'lost to ');
             $score = is_string($step['label'] ?? null) ? ' '.str_replace('–', '-', K::clean($step['label'])) : '';
-            $path[] = K::fit(mb_strtolower(is_string($step['round'] ?? null) ? $step['round'] : '').': '.$verb.K::clean($step['opponent']).$score, K::MONO, 18, 820);
+            $path[] = K::fit(mb_strtolower(is_string($step['round'] ?? null) ? $step['round'] : '').': '.$verb.K::clean($step['opponent']).$score, K::MONO, 18, $textW - 22);
         }
     }
     $pathY = $afterName + ($pot !== '' ? 104 : 72);
@@ -45,25 +48,25 @@
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => $champ ? 'champion' : 'finished'])
 
 @if ($champ)
-@include('stream.rotation.partials.face', ['face' => $champ['face'], 'x' => 40, 'y' => 176, 'd' => 300, 'id' => 'tc6-champ', 'fUnit' => 'champ-face', 'fShape' => 'square', 'fRing' => '#F7931A', 'fCrown' => '#F7931A'])
+@include('stream.rotation.partials.face', ['face' => $champ['face'], 'x' => 40, 'y' => 176, 'd' => 260, 'id' => 'tc6-champ', 'fUnit' => 'champ-face', 'fShape' => 'square', 'fRing' => '#F7931A', 'fCrown' => '#F7931A'])
 @endif
 @foreach ($name['lines'] as $i => $line)
-<text data-unit="name-{{ $i }}" data-box="{{ $champ ? 367 : 39 }} {{ 170 + $i * $nameStep - $name['size'] }} 1241 {{ 170 + $i * $nameStep + 10 }}" x="{{ $champ ? 368 : 40 }}" y="{{ 170 + $i * $nameStep }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $name['size'] }}" fill="#FFFFFF">{{ $line }}</text>
+<text data-unit="name-{{ $i }}" data-box="{{ $champ ? 327 : 39 }} {{ 170 + $i * $nameStep - $name['size'] }} 1017 {{ 170 + $i * $nameStep + 10 }}" x="{{ $champ ? 328 : 40 }}" y="{{ 170 + $i * $nameStep }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $name['size'] }}" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
-<text data-unit="of" data-box="{{ $champ ? 367 : 39 }} {{ $afterName + 22 }} 1241 {{ $afterName + 46 }}" x="{{ $champ ? 368 : 40 }}" y="{{ $afterName + 40 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $of }}</text>
-@if ($pot !== '')<text data-unit="pot" data-box="{{ $champ ? 367 : 39 }} {{ $afterName + 54 }} 1241 {{ $afterName + 80 }}" x="{{ $champ ? 368 : 40 }}" y="{{ $afterName + 74 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ K::fit($pot, K::MONO, 22, 840) }}</text>@endif
+<text data-unit="of" data-box="{{ $champ ? 327 : 39 }} {{ $afterName + 22 }} 1017 {{ $afterName + 46 }}" x="{{ $champ ? 328 : 40 }}" y="{{ $afterName + 40 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">{{ $of }}</text>
+@if ($pot !== '')<text data-unit="pot" data-box="{{ $champ ? 327 : 39 }} {{ $afterName + 54 }} 1017 {{ $afterName + 80 }}" x="{{ $champ ? 328 : 40 }}" y="{{ $afterName + 74 }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ K::fit($pot, K::MONO, 22, $textW) }}</text>@endif
 @foreach ($path as $i => $line)
-<text data-unit="path-mark-{{ $i }}" x="{{ $champ ? 368 : 40 }}" y="{{ $pathY + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">&gt;</text>
-<text data-unit="path-{{ $i }}" data-box="{{ $champ ? 389 : 61 }} {{ $pathY + $i * 32 - 18 }} 1241 {{ $pathY + $i * 32 + 6 }}" x="{{ $champ ? 390 : 62 }}" y="{{ $pathY + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">{{ $line }}</text>
+<text data-unit="path-mark-{{ $i }}" x="{{ $champ ? 328 : 40 }}" y="{{ $pathY + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#F7931A">&gt;</text>
+<text data-unit="path-{{ $i }}" data-box="{{ $champ ? 349 : 61 }} {{ $pathY + $i * 32 - 18 }} 1017 {{ $pathY + $i * 32 + 6 }}" x="{{ $champ ? 350 : 62 }}" y="{{ $pathY + $i * 32 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
 @if ($rest !== [])
-<rect x="40" y="560" width="1200" height="48" fill="#F7931A"/>
+<rect x="40" y="560" width="976" height="48" fill="#F7931A"/>
 <text data-unit="podium-label" x="56" y="592" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A">podium</text>
 @foreach ($rest as $i => $f)
-@php($px = 168 + $i * 356)
+@php($px = 152 + $i * 280)
 @include('stream.rotation.partials.face', ['face' => $f['face'], 'x' => $px, 'y' => 568, 'd' => 32, 'id' => 'tc6-p'.$i, 'fUnit' => 'podium-face-'.$i, 'fShape' => 'square', 'fGround' => '#17120A', 'fGlyph' => '#6B4A1A'])
-<text data-unit="podium-{{ $i }}" data-box="{{ $px + 41 }} 572 {{ $px + 341 }} 600" x="{{ $px + 42 }}" y="592" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A">{{ K::fit(($f['place'] === null ? '' : K::ordinal($f['place']).' ').($f['name'] === '' ? 'Player' : $f['name']), K::MONO, 20, 298) }}</text>
+<text data-unit="podium-{{ $i }}" data-box="{{ $px + 41 }} 572 {{ $px + 263 }} 600" x="{{ $px + 42 }}" y="592" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A">{{ K::fit(($f['place'] === null ? '' : K::ordinal($f['place']).' ').($f['name'] === '' ? 'Player' : $f['name']), K::MONO, 20, 220) }}</text>
 @endforeach
-@if ($podiumMore > 0)<text data-unit="podium-more" x="880" y="592" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A">+{{ $podiumMore }} more</text>@endif
+@if ($podiumMore > 0)<text data-unit="podium-more" x="712" y="592" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A">+{{ $podiumMore }} more</text>@endif
 @endif
 </svg>

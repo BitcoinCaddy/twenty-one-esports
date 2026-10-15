@@ -1,24 +1,26 @@
 {{--
-    A2 · Arena · gallery. The live games as one line-up of boards on the dark floor (2 to 6 in a row), names and
+    A2 · Arena · gallery. The live games as one line-up of boards on the dark floor (2 to 4 in a row), names and
     clocks under each board, each name with the player's face, the side to move in orange (red below 10 s). The
-    scene's backdrop full-bleed behind; orange call-to-action band at the bottom. Top right stays empty for the
-    client's LIVE badge.
+    scene's backdrop full-bleed behind; orange call-to-action band at the bottom. The now-playing column covers
+    x 1040..1280 (SceneRenderer::svg()).
 
     Data contract:
-      $games     list<Game> (2..6 shown; more are cut and counted), Game as in a1-match (with avatar per player)
+      $games     list<Game> (2..4 shown; more are cut and counted), Game as in a1-match (with avatar per player)
       $more      int, optional: live games not in $games
       $backdrop  ?string, optional: as in a1-match
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
-    $list = array_slice(array_values($games ?? []), 0, 6);
+    // At most four boards across the 976 px of content (the now-playing column covers x 1040..1280); more are counted.
+    $list = array_slice(array_values($games ?? []), 0, 4);
     $total = count($games ?? []) + max(0, (int) ($more ?? 0));
     $n = max(1, count($list));
     $gap = $n >= 4 ? 32 : 48;
-    $cw = floor((1200 - ($n - 1) * $gap) / $n);
+    // 964 px: the boards' 6 px rim stays inside x 40..1016.
+    $cw = floor((964 - ($n - 1) * $gap) / $n);
     $stacked = $cw < 340;
-    $nameSize = match (true) { $n <= 2 => 22, $n === 3 => 20, $n === 4 => 18, default => 16 };
-    $clockMax = $stacked ? ($n >= 5 ? 22 : 26) : $nameSize;
+    $nameSize = match (true) { $n <= 2 => 22, $n === 3 => 20, default => 18 };
+    $clockMax = $stacked ? 26 : $nameSize;
     $labelSize = $cw >= 300 ? 16 : 14;
     $fd = round($nameSize * ($stacked ? 1.5 : 1.9));
     $rowH = $stacked ? $fd + 6 + $clockMax * 1.1 : $fd + 4;
@@ -26,7 +28,7 @@
     $bs = floor(min($cw, 496 - $textH - 16) / 8) * 8;
     $blockH = $bs + 16 + $textH;
     $top = 104 + (496 - $blockH) / 2;
-    $x0 = 40 + (1200 - ($n * $cw + ($n - 1) * $gap)) / 2;
+    $x0 = 46 + (964 - ($n * $cw + ($n - 1) * $gap)) / 2;
     $cards = [];
     foreach ($list as $i => $g) {
         $x = $x0 + $i * ($cw + $gap);
@@ -64,7 +66,7 @@
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null])
 <text x="40" y="72" font-family="Unbounded" font-weight="800" font-size="36" fill="#FFFFFF">Live now</text>
-<text data-unit="count" data-box="266 50 1000 80" x="267" y="72" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ $count }}</text>
+<text data-unit="count" data-box="266 50 1016 80" x="267" y="72" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#F7931A">{{ $count }}</text>
 
 @foreach ($cards as $ci => $card)
 @include('stream.rotation.partials.board', ['b' => $card['b'], 'frame' => 6])
@@ -77,9 +79,8 @@
 @endforeach
 @endforeach
 
-<rect x="0" y="616" width="1280" height="104" fill="#F7931A"/>
-<text x="40" y="678" font-family="Unbounded" font-weight="800" font-size="28" fill="#17120A">The next game starts when you do.</text>
-<text x="1240" y="676" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#17120A" text-anchor="end">esports.einundzwanzig.space</text>
-@php($vb = K::viewerBadge($viewers ?? null, 1024, 72, K::DISPLAY, 24, 18))
-@if ($vb)@include('stream.rotation.partials.viewers', ['vb' => $vb, 'eyeInk' => '#F7931A', 'countInk' => '#FFFFFF', 'wordInk' => '#ADADB0'])@endif
+<rect x="0" y="616" width="{{ K::CONTENT_WIDTH }}" height="104" fill="#F7931A"/>
+<text x="40" y="676" font-family="Unbounded" font-weight="800" font-size="24" fill="#17120A">The next game starts when you do.</text>
+<text x="{{ K::CONTENT_RIGHT }}" y="675" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#17120A" text-anchor="end">esports.einundzwanzig.space</text>
+
 </svg>

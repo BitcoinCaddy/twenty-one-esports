@@ -15,23 +15,24 @@
     $page = $pages === [] ? [] : $pages[intdiv(now()->getTimestamp(), 300) % count($pages)];
     $tables = [];
     foreach ($page as $ti => $board) {
-        $x = 40 + ($ti % 2) * 620;
+        // Two tables of 468 px side by side over the 976 px of content (the now-playing column covers x 1040..1280).
+        $x = 40 + ($ti % 2) * 508;
         $y = 100 + intdiv($ti, 2) * 256;
         $rows = [];
         foreach (array_slice($board['rows'], 0, 3) as $i => $r) {
             $rec = K::record($r) ?? '';
             $rows[] = [
                 'y' => $y + 104 + $i * 48, 'lead' => $i === 0,
-                'name' => K::fit($r['name'], K::MONO, 20, 200),
+                'name' => K::fit($r['name'], K::MONO, 18, 156),
                 'face' => ['uri' => $r['avatar'], 'tag' => $r['tag'] === null ? null : K::clanTag($r['tag'], $r['name']), 'fit' => $r['tag'] === null ? 'slice' : 'meet'],
                 'elo' => (string) $r['elo'], 'games' => $r['games'] === null ? '' : (string) $r['games'],
-                'rec' => $rec, 'recSize' => mb_strlen($rec) <= 10 ? 20 : 14,
+                'rec' => $rec, 'recSize' => mb_strlen($rec) * 12 <= 108 ? 20 : 14,
             ];
         }
         $pool = $board['rated'] ? 'season' : 'casual';
-        $tables[] = ['x' => $x, 'y' => $y, 'i' => $ti, 'title' => K::fit($board['title'], K::MONO, 24, 560 - K::width($pool, K::MONO, 16)), 'pool' => $pool, 'rows' => $rows];
+        $tables[] = ['x' => $x, 'y' => $y, 'i' => $ti, 'title' => K::fit($board['title'], K::MONO, 24, 448 - K::width($pool, K::MONO, 16)), 'pool' => $pool, 'rows' => $rows];
     }
-    // Column offsets inside a 580 px table: # 0, face 30, player 74, Elo 290, games 368, W/D/L 450.
+    // Column offsets inside a 468 px table: # 0, face 26, player 64, Elo 228, games 294, W/D/L 360.
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
 @include('stream.rotation.partials.defs')
@@ -40,27 +41,28 @@
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'every ladder'])
 @forelse ($tables as $t)
 @php($x = $t['x'])
-<text data-unit="title-{{ $t['i'] }}" data-box="{{ $x - 1 }} {{ $t['y'] + 12 }} {{ $x + 560 }} {{ $t['y'] + 40 }}" x="{{ $x }}" y="{{ $t['y'] + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">{{ $t['title'] }}</text>
-<text x="{{ $x + 580 }}" y="{{ $t['y'] + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7" text-anchor="end">{{ $t['pool'] }}</text>
+<text data-unit="title-{{ $t['i'] }}" data-box="{{ $x - 1 }} {{ $t['y'] + 12 }} {{ $x + 448 }} {{ $t['y'] + 40 }}" x="{{ $x }}" y="{{ $t['y'] + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">{{ $t['title'] }}</text>
+<text x="{{ $x + 468 }}" y="{{ $t['y'] + 34 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7" text-anchor="end">{{ $t['pool'] }}</text>
 <text x="{{ $x }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">#</text>
-<text x="{{ $x + 74 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">player</text>
-<text x="{{ $x + 290 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">Elo</text>
-<text x="{{ $x + 368 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">games</text>
-<text x="{{ $x + 450 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">W/D/L</text>
-<rect x="{{ $x }}" y="{{ $t['y'] + 72 }}" width="580" height="1" fill="#2A2A30"/>
+<text x="{{ $x + 64 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">player</text>
+<text x="{{ $x + 228 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">Elo</text>
+<text x="{{ $x + 294 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">games</text>
+<text x="{{ $x + 360 }}" y="{{ $t['y'] + 64 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">W/D/L</text>
+<rect x="{{ $x }}" y="{{ $t['y'] + 72 }}" width="468" height="1" fill="#2A2A30"/>
 @foreach ($t['rows'] as $ri => $r)
 @php($ink = $r['lead'] ? '#F7931A' : '#FFFFFF')
 <text x="{{ $x }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="{{ $ink }}">{{ $ri + 1 }}</text>
-@include('stream.rotation.partials.face', ['face' => $r['face'], 'x' => $x + 30, 'y' => $r['y'] - 24, 'd' => 32, 'id' => $t['i'].'-'.$ri,
+@include('stream.rotation.partials.face', ['face' => $r['face'], 'x' => $x + 24, 'y' => $r['y'] - 24, 'd' => 32, 'id' => $t['i'].'-'.$ri,
     'fUnit' => 'face-'.$t['i'].'-'.$ri, 'fShape' => 'square', 'fGround' => '#17120A', 'fRing' => $r['lead'] ? '#F7931A' : '#6B6B72', 'fCrown' => $r['lead'] ? '#F7931A' : null])
-<text data-unit="name-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 73 }} {{ $r['y'] - 20 }} {{ $x + 282 }} {{ $r['y'] + 6 }}" x="{{ $x + 74 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="{{ $ink }}">{{ $r['name'] }}</text>
-<text data-unit="elo-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 289 }} {{ $r['y'] - 20 }} {{ $x + 360 }} {{ $r['y'] + 6 }}" x="{{ $x + 290 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="{{ $ink }}">{{ $r['elo'] }}</text>
-@if ($r['games'] !== '')<text data-unit="games-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 367 }} {{ $r['y'] - 20 }} {{ $x + 442 }} {{ $r['y'] + 6 }}" x="{{ $x + 368 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ strlen($r['games']) > 5 ? 14 : 20 }}" fill="{{ $ink }}">{{ $r['games'] }}</text>@endif
-@if ($r['rec'] !== '')<text data-unit="rec-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 449 }} {{ $r['y'] - 20 }} {{ $x + 580 }} {{ $r['y'] + 6 }}" x="{{ $x + 450 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $r['recSize'] }}" fill="{{ $ink }}">{{ $r['rec'] }}</text>@endif
-<rect x="{{ $x }}" y="{{ $r['y'] + 16 }}" width="580" height="1" fill="#2A2A30"/>
+<text data-unit="name-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 63 }} {{ $r['y'] - 20 }} {{ $x + 220 }} {{ $r['y'] + 6 }}" x="{{ $x + 64 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="{{ $ink }}">{{ $r['name'] }}</text>
+<text data-unit="elo-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 227 }} {{ $r['y'] - 20 }} {{ $x + 288 }} {{ $r['y'] + 6 }}" x="{{ $x + 228 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="{{ $ink }}">{{ $r['elo'] }}</text>
+@if ($r['games'] !== '')<text data-unit="games-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 293 }} {{ $r['y'] - 20 }} {{ $x + 354 }} {{ $r['y'] + 6 }}" x="{{ $x + 294 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ strlen($r['games']) > 4 ? 14 : 20 }}" fill="{{ $ink }}">{{ $r['games'] }}</text>@endif
+@if ($r['rec'] !== '')<text data-unit="rec-{{ $t['i'] }}-{{ $ri }}" data-box="{{ $x + 359 }} {{ $r['y'] - 20 }} {{ $x + 468 }} {{ $r['y'] + 6 }}" x="{{ $x + 360 }}" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $r['recSize'] }}" fill="{{ $ink }}">{{ $r['rec'] }}</text>@endif
+<rect x="{{ $x }}" y="{{ $r['y'] + 16 }}" width="468" height="1" fill="#2A2A30"/>
 @endforeach
 @empty
 <text x="40" y="220" font-family="Unbounded" font-weight="800" font-size="40" fill="#FFFFFF">Every game has a ladder.</text>
-<text x="40" y="276" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#ADADB0">No results yet. Play the first game and lead one.</text>
+<text x="40" y="276" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">No results yet. Play the first game and lead one.</text>
+
 @endforelse
 </svg>

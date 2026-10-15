@@ -318,7 +318,8 @@ final class RotationKit
 
     /**
      * Direction B's ticker: the counts that are known, as text, then the site URL. Mono 20 (12 px a character),
-     * 56 px between items (24 + an 8 px square + 24); counts are dropped from the end until everything fits 1200 px.
+     * 56 px between items (24 + an 8 px square + 24); counts are dropped from the end until everything fits 976 px
+     * (x 40 to CONTENT_RIGHT, before the now-playing column).
      *
      * @param  array<string, mixed>  $stats
      * @return list<string>
@@ -338,7 +339,7 @@ final class RotationKit
             foreach ($items as $item) {
                 $width += mb_strlen($item) * 12 + 56;
             }
-            if ($width <= 1200) {
+            if ($width <= self::CONTENT_RIGHT - 40) {
                 break;
             }
             array_pop($items);
