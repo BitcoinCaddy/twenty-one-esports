@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\ChessGame;
 use App\Support\Caster\ClipSpool;
+use App\Support\Caster\PodcastReplay;
 use App\Support\Caster\SceneDirector;
 use App\Support\Caster\VoiceFeed;
 use App\Support\StreamChat\StreamChat;
@@ -20,6 +21,7 @@ use App\Support\TwentyOne\Stream\HyperScene;
 use App\Support\TwentyOne\Stream\ModeMachine;
 use App\Support\TwentyOne\Stream\MusicPlaylist;
 use App\Support\TwentyOne\Stream\MusicTimeline;
+use App\Support\TwentyOne\Stream\NowPlaying;
 use App\Support\TwentyOne\Stream\PlaylistWriter;
 use App\Support\TwentyOne\Stream\PongScene;
 use App\Support\TwentyOne\Stream\ProgrammeSlides;
@@ -299,6 +301,8 @@ class TwentyOneStreamCommand extends Command
     private function supervise(EventBuilder $builder, SceneSource $source, StreamStats $counts, TournamentSlides $slides, PublicPlaylist $public, string $hlsDir, string $prepared): void
     {
         $renderer = SceneRenderer::fromConfig();
+        // The music on air on every slide: its artist, avatar and the code to tip them (user 2026-10-15).
+        $nowPlaying = NowPlaying::fromConfig();
         $boardScene = app(BoardScene::class);
         $hyperScene = app(HyperScene::class);
         $pongScene = app(PongScene::class);
@@ -539,6 +543,10 @@ class TwentyOneStreamCommand extends Command
 
                     if ($frame !== null && $this->director !== null) {
                         $frame['data']['voice_caption'] = $caption;
+                    }
+
+                    if ($frame !== null) {
+                        $frame['data']['now_playing'] = $this->nowPlaying($nowPlaying, $now);
                     }
                 }
 
@@ -1069,6 +1077,34 @@ class TwentyOneStreamCommand extends Command
      * @param  array{view: view-string, data: array<string, mixed>, fallback: array<string, mixed>|null, label: string, announce: bool}  $frame
      * @return bool whether this frame rendered
      */
+    /**
+     * The card of the music on air (NowPlaying), off while a podcast replay airs over the fully ducked music, and never
+     * a reason for the stream to stop: a failure only leaves the card off.
+     *
+     * @return array{artist: string, avatar: string|null, qr: string, kind: string}|null
+     */
+    private function nowPlaying(NowPlaying $nowPlaying, float $now): ?array
+    {
+        try {
+            // One query every PODCAST_CHECK_SECONDS, not one a frame.
+            if ($now - $this->podcastCheckedAt >= self::PODCAST_CHECK_SECONDS) {
+                $this->podcastCheckedAt = $now;
+                $this->podcastOnAir = PodcastReplay::active(CarbonImmutable::createFromTimestamp((int) $now));
+            }
+
+            return $this->podcastOnAir ? null : $nowPlaying->at($now);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /** How often the now-playing card asks whether a podcast replay is on air. */
+    private const PODCAST_CHECK_SECONDS = 10;
+
+    private float $podcastCheckedAt = 0.0;
+
+    private bool $podcastOnAir = false;
+
     private function sendSceneFrame(EncoderRun $run, SceneRenderer $renderer, array $frame, float $now, bool $logFailure): bool
     {
         try {

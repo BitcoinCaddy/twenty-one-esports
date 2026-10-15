@@ -26,6 +26,7 @@ class TwentyOneStreamImagesCommand extends Command
         $backdrops = $builder->buildBackdrops();
         $logos = $builder->refreshLogos();
         $avatars = $builder->refreshAvatars();
+        $music = $builder->refreshMusicAvatars();
 
         $this->info(sprintf(
             'Backdrops: %d built, %d fresh, %d failed. Clan logos: %d built, %d fresh, %d failed, %d old file(s) removed. Avatars: %d fetched, %d fresh, %d waiting after a failure, %d failed, %d without a picture, %d old file(s) removed.',
@@ -33,6 +34,8 @@ class TwentyOneStreamImagesCommand extends Command
             $logos['built'], $logos['fresh'], $logos['failed'], $logos['removed'],
             $avatars['fetched'], $avatars['fresh'], $avatars['waiting'], $avatars['failed'], $avatars['none'], $avatars['removed'],
         ));
+
+        $this->info(sprintf('Music artist avatars: %d fetched, %d fresh, %d waiting after a failure, %d failed.', $music['fetched'], $music['fresh'], $music['waiting'], $music['failed']));
 
         foreach ($builder->avatarFailures() as $host => $failure) {
             $this->warn(sprintf('Avatars failing from %s: %d player(s), last: %s', $host, $failure['players'], $failure['reason']));

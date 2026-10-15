@@ -66,18 +66,49 @@ final class SceneRenderer
     {
         $svg = view($view, $scene)->render();
         $caption = $scene['voice_caption'] ?? null;
+        $np = $scene['now_playing'] ?? null;
+        $np = is_array($np) && is_string($np['artist'] ?? null) && is_string($np['qr'] ?? null) ? $np : null;
 
         // The commentary as a lower third while its voice is off (plan "KI-Stimme der Liga", P6): on top of the scene.
         if (is_string($caption) && trim($caption) !== '' && ($end = strrpos($svg, '</svg>')) !== false) {
-            $lines = array_slice(explode("\n", wordwrap(trim(preg_replace('/\s+/u', ' ', $caption) ?? ''), self::CAPTION_CHARS, "\n", true)), 0, 2);
-            $svg = substr($svg, 0, $end).view('stream.rotation.partials.voice-caption', ['lines' => $lines])->render().substr($svg, $end);
+            // Beside the now-playing card in its usual place (x 816 on) the lower third ends at x 800 and takes fewer characters a line.
+            $beside = $np !== null && self::nowPlayingAt($view) === [816, 512];
+            $chars = $beside ? self::CAPTION_CHARS_BESIDE_CARD : self::CAPTION_CHARS;
+            $lines = array_slice(explode("\n", wordwrap(trim(preg_replace('/\s+/u', ' ', $caption) ?? ''), $chars, "\n", true)), 0, 2);
+            $svg = substr($svg, 0, $end).view('stream.rotation.partials.voice-caption', ['lines' => $lines, 'width' => $beside ? 736 : 1152])->render().substr($svg, $end);
+        }
+
+        // The music on air, on every slide (NowPlaying, user 2026-10-15): the artist, their avatar and the code to tip them.
+        if ($np !== null && ($end = strrpos($svg, '</svg>')) !== false) {
+            $svg = substr($svg, 0, $end).view('stream.rotation.partials.now-playing', ['np' => $np, 'at' => self::nowPlayingAt($view)])->render().substr($svg, $end);
         }
 
         return $svg;
     }
 
+    /**
+     * Where the now-playing card sits on a slide: at the right above the footers (x 816, y 512), which rendering every
+     * look and measuring the pixels under the card found free (2026-10-15), except where a slide holds something
+     * there: the rank bars (e7, beside them on the left), the league's zap code (c5) and TMNF's lines (g2 to g4): bottom
+     * left, under the commentary's lower third; Pong's call to play (p1): top middle.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function nowPlayingAt(string $view): array
+    {
+        return match ($view) {
+            'stream.rotation.e7-rank-up' => [40, 368],
+            'stream.rotation.c5-zap', 'stream.rotation.g2-tmnf-race', 'stream.rotation.g3-tmnf-join', 'stream.rotation.g4-tmnf-leader' => [40, 608],
+            'stream.rotation.p1-pong' => [416, 72],
+            default => [816, 512],
+        };
+    }
+
     /** Characters per line of the commentary lower third (Unbounded 800 at 24 px, about 14.6 px a character, on 1128 px; wordwrap counts bytes, so umlauts only shorten a line). */
     public const CAPTION_CHARS = 70;
+
+    /** The same beside the now-playing card: 712 px of text instead of 1128. */
+    public const CAPTION_CHARS_BESIDE_CARD = 44;
 
     /**
      * @param  array<string, mixed>  $scene

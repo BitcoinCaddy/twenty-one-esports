@@ -77,6 +77,12 @@ class StreamImages
         return self::dir().'/backdrops/'.$slug.'.jpg';
     }
 
+    /** A music artist's cached avatar (StreamImageBuilder::refreshMusicAvatars()): a new picture is a new file. */
+    public static function musicAvatarFile(string $picture): string
+    {
+        return self::dir().'/music-avatars/'.sha1($picture).'.jpg';
+    }
+
     /** A game cover at the size of d2's tile (StreamImageBuilder::coverTileJpeg). */
     public static function coverTileFile(string $slug): string
     {
@@ -130,6 +136,18 @@ class StreamImages
                 return null;
             }
         });
+    }
+
+    /** A music artist's cached avatar as a JPEG data URI (NowPlaying), null before the builder fetched it. */
+    public function musicAvatar(?string $picture): ?string
+    {
+        if ($picture === null) {
+            return null;
+        }
+
+        $path = self::musicAvatarFile($picture);
+
+        return $this->remember('file:'.$path, fn (): ?string => self::fileUri($path, 'image/jpeg'));
     }
 
     public function forUser(?User $user): ?string

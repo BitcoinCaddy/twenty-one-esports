@@ -1,0 +1,289 @@
+{
+ "_readme": "PlebRap tracks of the stream (storage/app/stream/music/plebrap) with their artists in credit order, parsed from the file names (2026-10-15). The first artist is the one the now-playing card names (NowPlaying); artist identities and zap targets live in artists.json.",
+ "tracks": [
+  {
+   "file": "plebrap/01 - Feuer über Fiat - Too Bit to Fail, Hanspanzer__v1.m4a",
+   "title": "Feuer über Fiat",
+   "artists": [
+    "Too Bit to Fail",
+    "Hanspanzer"
+   ]
+  },
+  {
+   "file": "plebrap/02 - Stack Sats - JustAnotherNode__v1.m4a",
+   "title": "Stack Sats",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/03 - FOMO - Too Bit to Fail, Hanspanzer__v1.m4a",
+   "title": "FOMO",
+   "artists": [
+    "Too Bit to Fail",
+    "Hanspanzer"
+   ]
+  },
+  {
+   "file": "plebrap/04 - Dezentral - JustAnotherNode__v1.m4a",
+   "title": "Dezentral",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/05 - One Bit Wonder - Too Bit to Fail, Hanspanzer__v1.m4a",
+   "title": "One Bit Wonder",
+   "artists": [
+    "Too Bit to Fail",
+    "Hanspanzer"
+   ]
+  },
+  {
+   "file": "plebrap/06 - Was ist Bitcoin eigentlich - JustAnotherNode__v1.m4a",
+   "title": "Was ist Bitcoin eigentlich",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/07 - Bank gegen Node - Too Bit to Fail, JustAnotherNode, Hanspanzer__v1.m4a",
+   "title": "Bank gegen Node",
+   "artists": [
+    "Too Bit to Fail",
+    "JustAnotherNode",
+    "Hanspanzer"
+   ]
+  },
+  {
+   "file": "plebrap/08 - Bitcoin braucht dich nicht! - SatStacker, Mo__v1.m4a",
+   "title": "Bitcoin braucht dich nicht!",
+   "artists": [
+    "SatStacker",
+    "Mo"
+   ]
+  },
+  {
+   "file": "plebrap/09 - Papa Hodlt - Hanni, JustAnotherNode, Too Bit to Fail, Mo__v1.m4a",
+   "title": "Papa Hodlt",
+   "artists": [
+    "Hanni",
+    "JustAnotherNode",
+    "Too Bit to Fail",
+    "Mo"
+   ]
+  },
+  {
+   "file": "plebrap/10 - Money Printer Go - Too Bit to Fail__v1.m4a",
+   "title": "Money Printer Go",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/11 - Was ist Geld für dich - JustAnotherNode__v1.m4a",
+   "title": "Was ist Geld für dich",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/12 - Plebs together strong - Too Bit to Fail, JustAnotherNode, Mo__v1.m4a",
+   "title": "Plebs together strong",
+   "artists": [
+    "Too Bit to Fail",
+    "JustAnotherNode",
+    "Mo"
+   ]
+  },
+  {
+   "file": "plebrap/13 - Is Ok - JustAnotherNode, Kid__v1.m4a",
+   "title": "Is Ok",
+   "artists": [
+    "JustAnotherNode",
+    "Kid"
+   ]
+  },
+  {
+   "file": "plebrap/14 - Moinsen - Too Bit to Fail, JustAnotherNode__v1.m4a",
+   "title": "Moinsen",
+   "artists": [
+    "Too Bit to Fail",
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/15 - Sound Money - JustAnotherNode__v1.m4a",
+   "title": "Sound Money",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/16 - Inflation - JustAnotherNode__v1.m4a",
+   "title": "Inflation",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/17 - Münzweg - Too Bit to Fail, JustAnotherNode, Dr. Block__v1.m4a",
+   "title": "Münzweg",
+   "artists": [
+    "Too Bit to Fail",
+    "JustAnotherNode",
+    "Dr. Block"
+   ]
+  },
+  {
+   "file": "plebrap/18 - Proof of Word - Too Bit to Fail__v1.m4a",
+   "title": "Proof of Word",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/19 - Cancel Bank Direct Control - Too Bit to Fail feat. JustAnotherNode__v1.m4a",
+   "title": "Cancel Bank Direct Control",
+   "artists": [
+    "Too Bit to Fail",
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/20 - Orange Pill 'o' Sophie - Too Bit to Fail__v1.m4a",
+   "title": "Orange Pill 'o' Sophie",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/21 - BitSkit (i dont`t give a FUD) - Too Bit to Fail__v1.m4a",
+   "title": "BitSkit (i dont`t give a FUD)",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/22 - Bubble Trouble - Too Bit to Fail__v1.m4a",
+   "title": "Bubble Trouble",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/23 - Das Geldsystem ist krank - Too Bit to Fail (beat by Meidi_BTC Beatz)__v1.m4a",
+   "title": "Das Geldsystem ist krank",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/24 - Diamond Hands - Too Bit to Fail__v1.m4a",
+   "title": "Diamond Hands",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/25 - Hit the Road FED - Too Bit to Fail feat. Fr. Le Blanc__v1.m4a",
+   "title": "Hit the Road FED",
+   "artists": [
+    "Too Bit to Fail",
+    "Fr. Le Blanc"
+   ]
+  },
+  {
+   "file": "plebrap/26 - Nutzen Sats - JustAnotherNode__v1.m4a",
+   "title": "Nutzen Sats",
+   "artists": [
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/27 - Too Bit To Fail - Money Fest (Beat by BTC Beatz)__v1.m4a",
+   "title": "Money Fest (Beat by BTC Beatz)",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/28 - Too Bit To Fail - Mouse Click Money__v1.m4a",
+   "title": "Mouse Click Money",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/29 - Too Bit To Fail - Modern Märchen Token__v1.m4a",
+   "title": "Modern Märchen Token",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/30 - Too Bit To Fail - SHA 'o' lin__v1.m4a",
+   "title": "SHA 'o' lin",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/31 - Too Bit To Fail feat. JustAnotherNode - Collective Behavior Data Coin__v1.m4a",
+   "title": "Collective Behavior Data Coin",
+   "artists": [
+    "Too Bit to Fail",
+    "JustAnotherNode"
+   ]
+  },
+  {
+   "file": "plebrap/32 - Too Bit To Fail - Was Bitcoin nicht bringt__v1.m4a",
+   "title": "Was Bitcoin nicht bringt",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/33 - Too Bit To Fail - B-Ware__v1.m4a",
+   "title": "B-Ware",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/34 - Too Bit To Fail - Bar-rierefrei__v1.m4a",
+   "title": "Bar-rierefrei",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/35 - Too Bit To Fail - Don't Trust, Verify__v1.m4a",
+   "title": "Don't Trust, Verify",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/36 - Too Bit To Fail - Miss Stackchelorette__v1.m4a",
+   "title": "Miss Stackchelorette",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/37 - Too Bit To Fail - Moon Ätherisierung__v1.m4a",
+   "title": "Moon Ätherisierung",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  },
+  {
+   "file": "plebrap/38 - Too Bit To Fail - Signale__v1.m4a",
+   "title": "Signale",
+   "artists": [
+    "Too Bit to Fail"
+   ]
+  }
+ ]
+}

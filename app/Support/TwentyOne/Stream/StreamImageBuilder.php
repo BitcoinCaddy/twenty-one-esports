@@ -174,6 +174,58 @@ class StreamImageBuilder
     }
 
     /**
+     * The avatars of the music artists the slides credit (MusicCredits, NowPlaying): each kind-0 picture fetched and
+     * cut as a player's is, kept `refresh_seconds`, retried after `retry_seconds`; the counts per outcome.
+     *
+     * @return array{fetched: int, fresh: int, waiting: int, failed: int}
+     */
+    public function refreshMusicAvatars(): array
+    {
+        $counts = ['fetched' => 0, 'fresh' => 0, 'waiting' => 0, 'failed' => 0];
+        $now = now()->getTimestamp();
+
+        foreach (array_unique(array_filter(array_column([...MusicCredits::all(), MusicCredits::house()], 'picture'))) as $picture) {
+            $path = StreamImages::musicAvatarFile($picture);
+            $marker = substr($path, 0, -4).'.failed';
+
+            if (is_file($path) && $now - (int) filemtime($path) < (int) config('twentyone.stream.images.refresh_seconds', 86400)) {
+                $counts['fresh']++;
+
+                continue;
+            }
+
+            if (is_file($marker) && $now - (int) filemtime($marker) < (int) config('twentyone.stream.images.retry_seconds', 3600)) {
+                $counts['waiting']++;
+
+                continue;
+            }
+
+            try {
+                $jpeg = $this->avatarJpeg($this->fetcher->fetch($picture));
+                File::ensureDirectoryExists(dirname($path));
+                PlaylistWriter::writeAtomically($path, $jpeg);
+                touch($path, $now);
+                File::delete($marker);
+                $counts['fetched']++;
+            } catch (Throwable $e) {
+                Log::warning('stream music avatar not refreshed from '.ImageFetcher::loggable($picture).': '.$e->getMessage());
+
+                try {
+                    File::ensureDirectoryExists(dirname($marker));
+                    File::put($marker, ImageFetcher::loggable($picture)."\n".$e->getMessage());
+                    touch($marker, $now);
+                } catch (Throwable) {
+                    // Without the marker the next run simply tries again.
+                }
+
+                $counts['failed']++;
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
      * Copy every clan's redrawn logo small; the counts per outcome.
      *
      * @return array{built: int, fresh: int, failed: int, removed: int}
