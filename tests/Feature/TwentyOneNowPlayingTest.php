@@ -18,7 +18,8 @@ test('every credited track and the house artist have their QR code drawn, so no 
     MusicCredits::flush();
     $credits = [...MusicCredits::all(), MusicCredits::house()];
 
-    expect(count($credits))->toBeGreaterThan(80);
+    // Every Wavlake and PlebRap track (116 + 38) and the house artist.
+    expect(count($credits))->toBe(155);
 
     foreach ($credits as $credit) {
         expect(in_array($credit['kind'], MusicCredits::KINDS, true))->toBeTrue($credit['artist'])
@@ -54,7 +55,7 @@ test('the card carries the artist, the cached avatar and the drawn code; a track
         ->and($playing->at(microtime(true)))->toBeNull();
 });
 
-test('the card stands over every slide at the right above the footers, beside the shortened lower third, and moves where a slide holds something there', function () {
+test('the card stands top right under the viewer badge, moves where a slide holds something there, compact on the tournament TV, and wraps a long name', function () {
     $card = ['artist' => 'DJ Bitcoin', 'avatar' => null, 'qr' => (string) file_get_contents(MusicCredits::qrFile(MusicCredits::HOUSE_LUD16, 'lud16')), 'kind' => 'lud16'];
     $renderer = SceneRenderer::fromConfig();
     $scene = ['voice_caption' => str_repeat('Markus hier, der Cup läuft. ', 6)];
@@ -65,12 +66,21 @@ test('the card stands over every slide at the right above the footers, beside th
     View::addNamespace('np-test', $dir);
 
     $svg = $renderer->svg([...$scene, 'now_playing' => $card], 'np-test::blank');
-    expect($svg)->toContain('data-unit="now-playing" data-box="816 512 400 96"')
+    // Top right under the viewer badge: the lower third below keeps its whole width.
+    expect($svg)->toContain('data-unit="now-playing" data-box="816 112 400 96"')
         ->toContain('JETZT LÄUFT')->toContain('DJ Bitcoin')->toContain('Zap den Artist')
-        ->toContain('width="736" height="109"');
+        ->toContain('width="1152" height="109"')
+        ->and($renderer->svg($scene, 'np-test::blank'))->not->toContain('now-playing')
+        ->and(SceneRenderer::nowPlayingAt('stream.rotation.p1-pong'))->toBe([416, 72, 'card'])
+        ->and(SceneRenderer::nowPlayingAt('stream.rotation.tv3-standings'))->toBe([1040, 112, 'compact'])
+        ->and(SceneRenderer::nowPlayingAt('stream.rotation.a2-gallery'))->toBe([816, 112, 'card']);
 
-    // Without a card the lower third keeps its whole width; a moved card leaves it whole too.
-    expect($renderer->svg($scene, 'np-test::blank'))->toContain('width="1152" height="109"')->not->toContain('now-playing')
-        ->and(SceneRenderer::nowPlayingAt('stream.rotation.p1-pong'))->toBe([416, 72])
-        ->and(SceneRenderer::nowPlayingAt('stream.rotation.a2-gallery'))->toBe([816, 512]);
+    // Where the card stands at the lower third's height (d3, above the footers), the lower third ends beside it.
+    $dir = storage_path('framework/testing/now-playing-views');
+    File::put($dir.'/d3-invite.blade.php', '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"></svg>');
+    expect(SceneRenderer::nowPlayingAt('stream.rotation.d3-invite'))->toBe([816, 512, 'card']);
+
+    // A long name wraps to two lines instead of running under the code.
+    $long = $renderer->svg(['now_playing' => [...$card, 'artist' => 'Under The Mulga Groove']], 'np-test::blank');
+    expect($long)->toContain('>Under The Mulga<')->toContain('>Groove<');
 });

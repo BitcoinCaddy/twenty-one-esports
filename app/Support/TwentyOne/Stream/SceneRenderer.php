@@ -71,8 +71,9 @@ final class SceneRenderer
 
         // The commentary as a lower third while its voice is off (plan "KI-Stimme der Liga", P6): on top of the scene.
         if (is_string($caption) && trim($caption) !== '' && ($end = strrpos($svg, '</svg>')) !== false) {
-            // Beside the now-playing card in its usual place (x 816 on) the lower third ends at x 800 and takes fewer characters a line.
-            $beside = $np !== null && self::nowPlayingAt($view) === [816, 512];
+            // Beside a now-playing card at its height on the right (x 816 on) the lower third ends at x 800 and takes fewer characters a line.
+            [$npX, $npY] = self::nowPlayingAt($view);
+            $beside = $np !== null && $npX >= 816 && $npY < 604 && $npY + 96 > 495;
             $chars = $beside ? self::CAPTION_CHARS_BESIDE_CARD : self::CAPTION_CHARS;
             $lines = array_slice(explode("\n", wordwrap(trim(preg_replace('/\s+/u', ' ', $caption) ?? ''), $chars, "\n", true)), 0, 2);
             $svg = substr($svg, 0, $end).view('stream.rotation.partials.voice-caption', ['lines' => $lines, 'width' => $beside ? 736 : 1152])->render().substr($svg, $end);
@@ -87,20 +88,24 @@ final class SceneRenderer
     }
 
     /**
-     * Where the now-playing card sits on a slide: at the right above the footers (x 816, y 512), which rendering every
-     * look and measuring the pixels under the card found free (2026-10-15), except where a slide holds something
-     * there: the rank bars (e7, beside them on the left), the league's zap code (c5) and TMNF's lines (g2 to g4): bottom
-     * left, under the commentary's lower third; Pong's call to play (p1): top middle.
+     * Where the now-playing card sits on a slide, and in which form: at the top right under the viewer badge (816,
+     * 112; user 2026-10-15: "Ist auf den meisten Slides nicht eher oben rechts mehr Platz?"), out of the corner the
+     * players keep for their LIVE badge (x >= 1040, y < 112). Rendering every look and measuring the pixels under the
+     * card (2026-10-15) found it free on 32 of 42 slides; the others get a spot measured free there: the invitation,
+     * the cups and the spotlight (d2, d3, d6) at the right above the footers, TMNF's lines (g2 to g4) bottom left,
+     * Pong's call to play (p1) top middle. The tournament TV (tv1 to tv4, a dense page) gets the compact form under
+     * its header's right corner.
      *
-     * @return array{0: int, 1: int}
+     * @return array{0: int, 1: int, 2: 'card'|'compact'}
      */
     public static function nowPlayingAt(string $view): array
     {
         return match ($view) {
-            'stream.rotation.e7-rank-up' => [40, 368],
-            'stream.rotation.c5-zap', 'stream.rotation.g2-tmnf-race', 'stream.rotation.g3-tmnf-join', 'stream.rotation.g4-tmnf-leader' => [40, 608],
-            'stream.rotation.p1-pong' => [416, 72],
-            default => [816, 512],
+            'stream.rotation.d2-cups', 'stream.rotation.d3-invite', 'stream.rotation.d6-spotlight' => [816, 512, 'card'],
+            'stream.rotation.g2-tmnf-race', 'stream.rotation.g3-tmnf-join', 'stream.rotation.g4-tmnf-leader' => [40, 608, 'card'],
+            'stream.rotation.p1-pong' => [416, 72, 'card'],
+            'stream.rotation.tv1-bracket', 'stream.rotation.tv2-up-now', 'stream.rotation.tv3-standings', 'stream.rotation.tv4-pot' => [1040, 112, 'compact'],
+            default => [816, 112, 'card'],
         };
     }
 
