@@ -44,7 +44,9 @@ it('writes a live comment from the field and the players\' Nostr bios, at most o
     $now = CarbonImmutable::now();
 
     expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now))->toBe(1)
-        ->and(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(9)))->toBe(0);
+        // Inside the interval nothing else is written, whatever the model would say (the standby duet of the
+        // failed draft comes only when the interval is over again, user 2026-10-15: one every five minutes, by force).
+        ->and(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(3)))->toBe(0);
 
     $script = CasterScript::query()->where('topic', TournamentLive::TOPIC)->sole();
     expect($script->kind)->toBe(CasterScript::RUBRIC)->and($script->speakers)->toContain('markus', 'sirius');

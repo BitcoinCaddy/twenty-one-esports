@@ -10,6 +10,7 @@ use App\Models\Tournament;
 use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Caster\CasterVoice;
+use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptQueue;
@@ -89,7 +90,6 @@ final class TournamentLive
         }
 
         $since = is_int($last) ? $last : null;
-        Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);
         // First the field is introduced, three players a comment, like the table at a poker final (user 2026-10-14);
         // then the comments follow what happens on the boards.
         $introduced = array_values(array_filter((array) Cache::get(self::INTRODUCED.':'.$tournament->id, []), 'is_int'));
@@ -106,20 +106,35 @@ final class TournamentLive
         } catch (Throwable $exception) {
             Log::warning('Tournament live comment failed', ['exception' => $exception::class, 'message' => mb_substr($exception->getMessage(), 0, 300)]);
 
-            return 0;
+            $talk = null;
         }
 
         if ($talk === null) {
-            return 0;
+            // A comment every five minutes no matter what (user 2026-10-15: "Zwang! auch wenn nichts passiert
+            // ist!"): when the model gives nothing usable, the standby duet carries the slot, and the next try
+            // comes in a minute, not after the whole interval.
+            $talk = ['text' => self::STANDBY[array_rand(self::STANDBY)], 'speakers' => [DuetDirector::MARKUS, DuetDirector::SIRIUS]];
+            Cache::put(self::LAST, $now->getTimestamp() - $every + 60, 6 * 3600);
+
+            return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':standby:'.$now->getTimestamp()), 74, $now,
+                topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
         }
 
         Cache::put(self::SAID.':'.$tournament->id, array_slice([...$said, mb_substr(str_replace("\n", ' ', $talk['text']), 0, 400)], -4), 12 * 3600);
         Cache::put(self::INTRODUCED.':'.$tournament->id, [...$introduced, ...$intro], 24 * 3600);
         Cache::put(self::TOLD.':'.$tournament->id, array_values(array_unique([...$told, ...$finishedIds])), 24 * 3600);
+        Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);
 
         return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
             topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
     }
+
+    /** The standby duet when the model gives nothing usable: a comment comes anyway (user 2026-10-15). */
+    private const STANDBY = [
+        "Markus: Zwischenstand beim Turnier: die Bretter laufen, entschieden hat sich nichts, und genau so gefällt mir das.\nSirius: Geduld ist auch eine Disziplin, Markus, auch wenn sie dir so liegt wie ein Rucksack voll Blei.",
+        "Markus: Keine neuen Ergebnisse, aber die Uhren laufen weiter, und irgendwer trödelt garantiert schon wieder.\nSirius: Das Trödeln ist taktisch, Markus, das nennt man Druck aufbauen, ohne selbst welchen zu haben.",
+        "Markus: Weiter nichts Neues vom Turnierbrett, die Fans halten die Luft an, ich halte ein Bier bereit.\nSirius: Deine medizinische Versorgung ist beeindruckend, Markus, aber erzähl das lieber dem, der als Nächstes am Zug ist.",
+    ];
 
     /**
      * The tournament as it stands, in plain German lines: the field with each player's Nostr bio, the boards on the go
