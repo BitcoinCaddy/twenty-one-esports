@@ -24,6 +24,7 @@ use App\Support\Rating\Ratings;
 use App\Support\SeasonChain\Opponents;
 use App\Support\SeasonChain\Seasons;
 use App\Support\Series\Ladders;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -515,23 +516,36 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/ga
     }
 
     /**
-     * The live games of this board game, newest first: three boards, as in
-     * the chess lobby.
+     * The games of this board game to watch now, three boards as in the chess
+     * lobby: the live ones first, then the running cup games, which play one
+     * move a day (DerCaddy 2026-10-15: a cup's games were nowhere to watch);
+     * newest first within each.
      *
      * @return Collection<int, BoardGame>
      */
     #[Computed]
     public function liveGames(): Collection
     {
-        return BoardGame::query()->live()->where('game', $this->slug)->where('status', BoardGameStatus::Active)
-            ->with(['white', 'black'])->latest('id')->limit(3)->get();
+        return $this->watchable()->with(['white', 'black'])
+            ->orderByRaw('case when mode = ? then 1 else 0 end', [BoardGame::CORRESPONDENCE])->latest('id')->limit(3)->get();
     }
 
-    /** Every running live game of this board game, not only the three boards shown. */
+    /** Every game of this board game to watch now, not only the three boards shown. */
     #[Computed]
     public function liveCount(): int
     {
-        return BoardGame::query()->live()->where('game', $this->slug)->where('status', BoardGameStatus::Active)->count();
+        return $this->watchable()->count();
+    }
+
+    /**
+     * Running games of this board game that are live or a cup's: a casual correspondence game stays the two players' own.
+     *
+     * @return Builder<BoardGame>
+     */
+    private function watchable(): Builder
+    {
+        return BoardGame::query()->where('game', $this->slug)->where('status', BoardGameStatus::Active)
+            ->where(fn (Builder $query) => $query->where('mode', '!=', BoardGame::CORRESPONDENCE)->orWhereNotNull('tournament_match_id'));
     }
 
     /**

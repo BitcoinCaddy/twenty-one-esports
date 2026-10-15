@@ -428,6 +428,18 @@ test('as an admin in German the board page, the lobby and the /play card squeeze
     $admin = User::factory()->withPubkey(str_repeat('ad', 32))->create();
     Admin::query()->create(['pubkey' => $admin->pubkey]);
     $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $admin, User::factory()->create()), 'e7 e3 10 10 w - 0');
+    // A running cup game, so the lobby's "Live now" shows its cup row (DerCaddy 2026-10-15).
+    $cup = Tournament::factory()->create([
+        'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::SingleElimination, 'name' => 'Blockli Watch Cup',
+        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
+        'capacity' => 2, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running, 'slug' => 'blockli-watch-cup',
+    ]);
+    foreach (['Clara Langername-Spielerin', 'Dirk Cup'] as $index => $name) {
+        $user = User::factory()->create(['name' => $name]);
+        TournamentParticipant::query()->create(['tournament_id' => $cup->id, 'user_id' => $user->id, 'name' => $name, 'rating' => 1500 - $index, 'members' => [$user->id]]);
+    }
+    app(TournamentBrackets::class)->generate($cup, str_repeat('cd', 32));
+    app(TournamentRunner::class)->sync($cup);
     $rows = [];
 
     foreach ([[390, 844], [1024, 768], [1280, 800], [1440, 900], [1600, 900], [1920, 1080]] as [$width, $height]) {
@@ -454,6 +466,10 @@ test('as an admin in German the board page, the lobby and the /play card squeeze
 
                 if ($name === 'play') {
                     $page->evaluate('() => document.querySelector("[data-test=play-game-blockli]").scrollIntoView({ block: "center" })');
+                }
+
+                if ($name === 'lobby') {
+                    expect($page->evaluate('() => [...document.querySelectorAll("[data-test=live-game-cup]")].filter((el) => el.checkVisibility()).length'))->toBe(1, "lobby {$lang} {$width}: cup row");
                 }
 
                 $m = $page->evaluate(BLOCKLI_MEASURE);

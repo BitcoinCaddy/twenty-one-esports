@@ -152,6 +152,20 @@ test('the lobby has a tile per live mode and queues in the one asked for; two ra
         ->assertSeeHtml('data-mode="rapid"');
 });
 
+test('"Live now" in the lobby lists the live games first, then the running cup games marked as such; a casual correspondence game stays out (DerCaddy 2026-10-15)', function () {
+    $cup = liveGameOf(blockliLiveTournament('correspondence'));
+    $casual = app(BoardGameService::class)->start(Blockli::SLUG, ...User::factory()->count(2)->create()->all(), mode: 'correspondence');
+    $blitz = app(BoardGameService::class)->start(Blockli::SLUG, ...User::factory()->count(2)->create()->all(), mode: 'blitz');
+
+    $lobby = Livewire::test('pages::board.lobby', ['board' => Blockli::SLUG]);
+
+    expect($lobby->instance()->liveGames->pluck('id')->all())->toBe([$blitz->id, $cup->id])
+        ->and($lobby->instance()->liveCount)->toBe(2)
+        ->and($casual->tournament_match_id)->toBeNull();
+    $lobby->assertSee(route('board.show', $cup), false)->assertDontSee(route('board.show', $casual), false)
+        ->assertSeeHtml('data-test="live-game-cup"');
+});
+
 test('a tournament switches its time control in a draft, in sign-up and with the draw pending; once players are in, each is told once', function (TournamentStatus $status, int $told) {
     $admin = blockliLiveAdmin();
     $tournament = Tournament::factory()->create(['status' => $status, 'game' => 'blockli', 'mode' => 'correspondence', 'starts_at' => now()->addDays(3),

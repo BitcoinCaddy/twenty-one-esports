@@ -1,7 +1,7 @@
 {{--
     "Live now" in a board game's lobby, as in the chess lobby
     (pages/chess/partials/lobby-live): the running blitz boards of this board
-    game with both players' ratings, then who is online (presence channel
+    game, then its running cup games, with both players' ratings, then who is online (presence channel
     `online`, components/lobby/online-now) with "Looking to play" for this
     board game and an invite for each player who looks for it.
 --}}
@@ -34,7 +34,8 @@
                             </span>
                             <span class="flex flex-col items-end gap-1 text-xs text-ink-2">
                                 <span class="inline-flex items-center gap-1.5 text-ink"><x-icon name="eye" :size="14" />{{ __('Watch') }}</span>
-                                <span>{{ __('move :n', ['n' => intdiv($live->ply, 2) + 1]) }}</span>
+                                {{-- A cup's game plays one move a day: the row says so beside its move. --}}
+                                <span>@if ($live->tournament_match_id !== null)<span class="text-btc" data-test="live-game-cup">{{ __('Cup game') }}</span> · @endif{{ __('move :n', ['n' => intdiv($live->ply, 2) + 1]) }}</span>
                             </span>
                         </a>
                     </li>
