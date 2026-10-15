@@ -126,10 +126,20 @@ final class TournamentLive
         Cache::put(self::SAID.':'.$tournament->id, array_slice([...$said, mb_substr(str_replace("\n", ' ', $talk['text']), 0, 400)], -4), 12 * 3600);
         Cache::put(self::INTRODUCED.':'.$tournament->id, [...$introduced, ...$intro], 24 * 3600);
         Cache::put(self::TOLD.':'.$tournament->id, array_values(array_unique([...$told, ...$finishedIds])), 24 * 3600);
+
+        $queued = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
+            topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']);
+
+        if ($queued === null) {
+            // The duet passed the guard but the queue's coherence emptied it (everything in it was said before):
+            // the standby duet carries the interval anyway - a comment comes every interval, by force (user 2026-10-15).
+            $queued = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, self::STANDBY[array_rand(self::STANDBY)], sha1('tlive:'.$tournament->id.':standby:'.$now->getTimestamp()), 74, $now,
+                topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: [DuetDirector::MARKUS, DuetDirector::SIRIUS]);
+        }
+
         Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);
 
-        return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
-            topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
+        return $queued !== null ? 1 : 0;
     }
 
     /** The standby duet when the model gives nothing usable: a comment comes anyway (user 2026-10-15). No speaker
