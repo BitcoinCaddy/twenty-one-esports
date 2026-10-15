@@ -4,9 +4,10 @@
   "lud16": "theben@getalby.com",
   "qr_target": "theben@getalby.com",
   "qr_kind": "lud16",
-  "picture": null,
-  "evidence": "House artist of the uncredited instrumentals and own songs, set by the user 2026-10-15.",
-  "confidence": "high"
+  "picture": "https://image.nostr.build/c5688fac86c6cbfba83c31f94588e40c894b93beec38370e8c031e9df26c25f1.jpg",
+  "evidence": "House artist of the uncredited instrumentals and own songs, set by the user 2026-10-15. Picture from the kind-0 of the key getalby.com/.well-known/nostr.json names for theben (purplepag.es, 2026-10-15).",
+  "confidence": "high",
+  "pubkey": "0adf67475ccc5ca456fd3022e46f5d526eb0af6284bf85494c0dd7847f3e5033"
  },
  "Arthur Yoria": {
   "npub": "npub1tsswp93g2v7ukcmfy935j4c67kctu76vjdzu0w9yqrdcygc9j3xq9v2eef",
