@@ -19,7 +19,10 @@ use Symfony\Component\Process\Process;
  *
  * The Regie file is read on every request and goes into every prompt ahead of the task: tone and style rules change on
  * the workstation at once, without a deploy and without a stream restart (user 2026-10-14: "dann können wir auch Sachen
- * ändern, ohne ständig zu deployen … und unterbrechen den Stream nicht ständig").
+ * ändern, ohne ständig zu deployen … und unterbrechen den Stream nicht ständig"). A second file beside it, named after
+ * the model (regieFileFor()), holds the part only that model gets, so the tuning of one model never reaches another:
+ * both are sent, the model's part after the common one, and it wins their conflicts (user 2026-10-15: "pro Modell,
+ * sonst kommen sich die Tunings pro Modell in die Quere").
  */
 final class OpencodeGateway
 {
@@ -64,9 +67,9 @@ final class OpencodeGateway
             return [400, self::error('invalid_request', 'No messages.')];
         }
 
-        $model = is_string($request['model'] ?? null) && preg_match(self::MODEL_PATTERN, $request['model']) === 1 ? $request['model'] : $this->defaultModel;
+        $model = is_string($request['model'] ?? null) && preg_match(self::MODEL_PATTERN, (string) $request['model']) === 1 ? (string) $request['model'] : $this->defaultModel;
         $schema = $request['response_format']['json_schema']['schema'] ?? null;
-        $prompt = self::prompt($messages, is_array($schema) ? $schema : null, $this->regie());
+        $prompt = self::prompt($messages, is_array($schema) ? $schema : null, $this->regie($model));
         $started = microtime(true);
         // A copy of each prompt for measuring (`OPENCODE_GATEWAY_DUMP`, a directory; off by default).
         $dump = getenv('OPENCODE_GATEWAY_DUMP');
@@ -236,16 +239,31 @@ final class OpencodeGateway
         return $out;
     }
 
-    private function regie(): ?string
+    private function regie(?string $model): ?string
     {
-        if ($this->regieFile === null || ! is_readable($this->regieFile)) {
-            return null;
+        $parts = [];
+        foreach ([$this->regieFile, $model !== null && $this->regieFile !== null ? self::regieFileFor($this->regieFile, $model) : null] as $file) {
+            if ($file === null || ! is_readable($file)) {
+                continue;
+            }
+
+            // Lines starting with "//" are notes for whoever edits the file, not for the model.
+            $lines = array_filter(preg_split('/\R/', (string) file_get_contents($file)) ?: [], fn (string $line): bool => ! str_starts_with(ltrim($line), '//'));
+            $rule = trim(implode("\n", $lines));
+            if ($rule !== '') {
+                $parts[] = $file === $this->regieFile ? $rule : "# Nur für dieses Modell (überschreibt bei Widerspruch die Regeln darüber)\n\n".$rule;
+            }
         }
 
-        // Lines starting with "//" are notes for whoever edits the file, not for the model.
-        $lines = array_filter(preg_split('/\R/', (string) file_get_contents($this->regieFile)) ?: [], fn (string $line): bool => ! str_starts_with(ltrim($line), '//'));
+        return $parts === [] ? null : implode("\n\n", $parts);
+    }
 
-        return trim(implode("\n", $lines)) ?: null;
+    /** The file beside the common Regie that carries the part only `$model` reads, whatever names the model. */
+    public static function regieFileFor(string $regieFile, string $model): string
+    {
+        $safe = strtolower((string) preg_replace('/[^a-z0-9._-]+/i', '-', $model));
+
+        return preg_replace('/\.md$/i', '', $regieFile).'.'.($safe !== '' ? $safe : 'model').'.md';
     }
 
     private function runOpencode(string $model, string $prompt): string

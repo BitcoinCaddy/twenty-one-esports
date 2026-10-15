@@ -92,3 +92,46 @@ it('reads a JSON answer whose text carries raw line breaks, as GLM writes it', f
     expect(json_decode((string) OpencodeGateway::jsonObject($raw), true))
         ->toBe(['punkt' => 'Ben', 'text' => "Erster Satz.\nZweiter Satz mit \"Zitat\".", 'mood' => 'hype']);
 });
+
+it('names the model-specific regie file after the model, whatever names the model', function () {
+    expect(OpencodeGateway::regieFileFor('/srv/regie.md', 'zai-coding-plan/glm-5.3-flash'))->toBe('/srv/regie.zai-coding-plan-glm-5.3-flash.md')
+        ->and(OpencodeGateway::regieFileFor('/srv/regie', 'anthropic/claude sonnet:5.5'))->toBe('/srv/regie.anthropic-claude-sonnet-5.5.md');
+});
+
+it('sends the model-specific regie after the common one, winning their conflicts', function () {
+    $dir = sys_get_temp_dir().'/regie-'.bin2hex(random_bytes(4));
+    mkdir($dir);
+    $common = $dir.'/regie.md';
+    $model = $dir.'/regie.zai-coding-plan-glm-5.3-flash.md';
+    file_put_contents($common, "// editor note\nImmer frech bleiben.");
+    file_put_contents($model, "// another editor note\nWeniger Sätze als sonst.");
+    $seen = [];
+    $gateway = new OpencodeGateway('/cfg', '/work', 'zai-coding-plan/glm-5.3-flash', $common, runner: function (string $m, string $prompt) use (&$seen): string {
+        $seen = $prompt;
+
+        return json_encode(['type' => 'text', 'part' => ['text' => 'Hallo.']]);
+    });
+
+    [$status] = $gateway->handle(['model' => 'zai-coding-plan/glm-5.3-flash', 'messages' => [['role' => 'user', 'content' => 'Ein Satz.']]]);
+
+    expect($status)->toBe(200)
+        ->and($seen)->toContain('Immer frech bleiben.')
+        ->and($seen)->toContain('# Nur für dieses Modell (überschreibt bei Widerspruch die Regeln darüber)')
+        ->and($seen)->toContain('Weniger Sätze als sonst.')
+        ->and($seen)->not->toContain('editor note')
+        ->and(strpos($seen, 'Immer frech bleiben.'))->toBeLessThan(strpos($seen, 'Weniger Sätze als sonst.'));
+
+    // Another model gets the common rules only, never the flash tuning.
+    $seen = '';
+    $gateway->handle(['model' => 'zai-coding-plan/glm-5.2', 'messages' => [['role' => 'user', 'content' => 'Ein Satz.']]]);
+    expect($seen)->toContain('Immer frech bleiben.')->and($seen)->not->toContain('Weniger Sätze als sonst.');
+
+    // With no model file at all, the common one stands alone.
+    unlink($model);
+    $seen = '';
+    $gateway->handle(['model' => 'zai-coding-plan/glm-5.3-flash', 'messages' => [['role' => 'user', 'content' => 'Ein Satz.']]]);
+    expect($seen)->toContain('Immer frech bleiben.')->and($seen)->not->toContain('Nur für dieses Modell');
+
+    unlink($common);
+    rmdir($dir);
+});

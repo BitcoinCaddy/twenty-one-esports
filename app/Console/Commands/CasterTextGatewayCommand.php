@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\OpencodeGateway;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -29,7 +30,11 @@ class CasterTextGatewayCommand extends Command
         $regie = (string) config('esports.voice.opencode.regie_file');
         if ($regie !== '' && ! is_file($regie)) {
             @mkdir(dirname($regie), 0755, true);
-            file_put_contents($regie, "// Regie for every radio text the workstation writes (opencode). Read on every request: a change\n// takes effect with the next text, no deploy, no restart. Lines starting with // are notes, not sent.\n");
+            file_put_contents($regie, "// Regie for every radio text the workstation writes (opencode), every model. Read on every request: a change\n// takes effect with the next text, no deploy, no restart. Lines starting with // are notes, not sent.\n");
+        }
+        $modelRegie = $regie !== '' ? OpencodeGateway::regieFileFor($regie, (string) config('esports.voice.opencode.model')) : '';
+        if ($modelRegie !== '' && ! is_file($modelRegie)) {
+            file_put_contents($modelRegie, '// Regie only for '.config('esports.voice.opencode.model')."; it is sent after the common file and wins their\n// conflicts, so one model's tuning never reaches another. Lines starting with // are notes, not sent.\n");
         }
 
         $chatPort = (int) $this->option('chat-port');
