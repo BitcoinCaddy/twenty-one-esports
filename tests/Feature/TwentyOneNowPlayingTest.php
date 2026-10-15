@@ -51,7 +51,8 @@ test('the card carries the artist, the cached avatar and the drawn code; a track
 
     expect($playing->card('wavlake/Debasement - Contra__v1.m4a')['avatar'])->toBeNull();
     $card = $playing->card('wavlake/Debasement - Contra__v1.m4a');
-    expect($card)->toMatchArray(['artist' => 'Contra', 'kind' => 'lud16', 'avatar' => 'data:image/jpeg;base64,AAAA'])
+    expect($card)->toMatchArray(['artist' => 'Contra', 'title' => MusicCredits::forFile('wavlake/Debasement - Contra__v1.m4a')['title'], 'kind' => 'lud16', 'avatar' => 'data:image/jpeg;base64,AAAA'])
+        ->and($card['title'])->toBeString()->not->toBe('')
         ->and($card['qr'])->toContain('<svg')
         ->and($playing->card('plebrap/unknown file__v1.m4a'))->toBeNull()
         // No timeline yet: nothing plays, no card.
@@ -101,11 +102,19 @@ test('the column is the artist\'s stage: a long name in two whole lines as its l
             ->and(implode(' ', array_map(fn (array $line): string => $line[4], $m)))->toBe($artist)
             ->and($svg)->toContain('>Proof of Work<');
         foreach ($m as $line) {
-            // Centred on x 1146, within the 192 px of text, and larger than every other text of the column (11 to 15 px).
-            expect(RotationKit::width($line[4], $line[2], (float) $line[3]) * 1.04)->toBeLessThanOrEqual(192.0, $line[4])
+            // Centred on x 1146, within the 200 px of text, and larger than every other text of the column (11 to 15 px).
+            expect(RotationKit::width($line[4], $line[2], (float) $line[3]) * 1.04)->toBeLessThanOrEqual(200.0, $line[4])
                 ->and((float) $line[1])->toBe(1146.0)
                 ->and((float) $line[3])->toBeGreaterThan(15.0);
         }
+    }
+
+    // Every real credited artist (and the house artist) stands whole in the column, never cut.
+    foreach (collect(MusicCredits::all())->pluck('artist')->push(MusicCredits::HOUSE_ARTIST)->unique() as $artist) {
+        $svg = $renderer->svg(['stats' => [], 'now_playing' => [...$card, 'artist' => $artist]], 'stream.rotation.a4-join');
+        preg_match_all('/data-unit="now-playing-artist-\d"[^>]*>([^<]+)</', $svg, $m);
+
+        expect(html_entity_decode(implode(' ', $m[1])))->toBe(RotationKit::clean($artist), $artist);
     }
 
     // A credit without a title (the house artist): no title line, never a placeholder.

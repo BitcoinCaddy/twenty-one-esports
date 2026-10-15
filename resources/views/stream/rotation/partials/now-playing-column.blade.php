@@ -24,10 +24,11 @@
 @php
     // Column geometry: the orange edge at x 1040 (4 px); the stack centred on x 1044..1248, which keeps every text and
     // the code inside the frame's 32 px safe margin (right <= 1248, baselines <= 700, as TwentyOneProgrammeSlidesTest
-    // measures every slide): text within 192 px, the code at most 196 px.
+    // measures every slide): text within 200 px (1146 ± 100; "JustAnotherNode", one word, needs 194 px at 16), the
+    // code at most 196 px.
     $colX = K::CONTENT_WIDTH;
     $cx = ($colX + 4 + 1248) / 2;
-    $textW = 192;
+    $textW = 200;
     $qrMax = 196;
     $qrFloor = 628;
     $avatarD = 136;

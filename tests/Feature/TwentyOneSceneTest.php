@@ -28,6 +28,8 @@ test('the scene shows the oldest live game with escaped, shortened public names'
     $svg = SceneRenderer::fromConfig()->svg($scene);
 
     expect($game->id)->toBe($older->id)
+        // The game scene keeps its own full-width layout: the now-playing column goes on rotation slides only.
+        ->and($svg)->not->toContain('now-playing-column')
         ->and($scene['mode'])->toBe('LIVE · CHESS BLITZ 5+3 · CASUAL')
         ->and($scene['result'])->toBeNull()
         ->and($svg)->not->toContain('<script>')
