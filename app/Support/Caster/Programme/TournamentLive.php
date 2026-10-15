@@ -81,11 +81,14 @@ final class TournamentLive
         $every = 60 * max(1, (int) config('tv.commentary.tournament_live.every_minutes', 8));
         $last = Cache::get(self::LAST);
 
+        // No daily cap any more (user 2026-10-15: "Tages-Cap? Was ein Blödsinn, weg damit bei opencode!"): the
+        // texts cost nothing to write, the interval gate is the only clock, and a cap silently muted the stream
+        // for the rest of the day once the morning's minute-tactic had spent it.
         if ((is_int($last) && $now->getTimestamp() - $last < $every)
             // One waits at most behind the one being voiced, so a comment a minute keeps coming without piling up.
             || CasterScript::query()->where('topic', self::TOPIC)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->where('expires_at', '>', $now)
                 ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count() >= 2
-            || $this->usage->attemptsToday(self::CHANNEL) >= (int) config('tv.commentary.tournament_live.daily_cap', 80)) {
+        ) {
             return 0;
         }
 
