@@ -786,6 +786,44 @@ final class TournamentRunner
     }
 
     /**
+     * The standing of an undecided two-leg pairing after its first finished leg (DerCaddy 2026-10-15: a won first
+     * leg showed nowhere, so players took their result for lost): the points per slot over the finished legs as
+     * twoLegsFinished() counts them, its label, and the number of the game on now; null for a decided match, any
+     * other game, or before the first leg ended.
+     *
+     * @return array{points: array{0: float, 1: float}, label: string, game: int}|null
+     */
+    public static function legsSoFar(TournamentMatch $match, string $slug): ?array
+    {
+        if ($match->result !== null || ! self::playsTwoLegs($slug)) {
+            return null;
+        }
+
+        $games = self::finishedBoardGames($match);
+
+        if ($games->isEmpty()) {
+            return null;
+        }
+
+        $points = [0.0, 0.0];
+        // The views load matches without their participants (lazy loading is off): one query for them here.
+        $members = $match->loadMissing('slots.participant')->slots->firstWhere('slot', 0)?->participant?->memberIds() ?? [];
+
+        foreach ($games->take(2) as $leg) {
+            $whiteSlot = in_array((int) $leg->white_id, $members, true) ? 0 : 1;
+            [$white, $black] = match ($leg->result) {
+                '1-0' => [1.0, 0.0],
+                '0-1' => [0.0, 1.0],
+                default => [0.5, 0.5],
+            };
+            $points[$whiteSlot] += $white;
+            $points[1 - $whiteSlot] += $black;
+        }
+
+        return ['points' => $points, 'label' => self::points($points[0]).'–'.self::points($points[1]), 'game' => $games->count() + 1];
+    }
+
+    /**
      * A game of a two-leg pairing ended (plan "Blockli", P4). After both legs
      * the points decide (a win 1, a draw ½ each); level points are a draw
      * where the format allows one, else a blitz game with drawn colours

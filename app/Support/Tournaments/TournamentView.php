@@ -195,6 +195,8 @@ final class TournamentView
         $winner = $result['winner'] ?? null;
         // One game per match (chess, the board games of plan "Mühle und Dame", P5, Proof of Pong, plan "Proof of Pong", P4): 1, ½, 0.
         $chess = $this->tournament->profile()->isChess() || $this->tournament->profile()->isBoard() || $this->tournament->profile()->isPong();
+        // A two-leg pairing under way (Blockli): the legs so far stand in the box until the match is decided.
+        $legs = $result === null && $match->status === 'ready' ? TournamentRunner::legsSoFar($match, (string) $this->tournament->game) : null;
         $sides = [];
 
         foreach ($match->slots as $slot) {
@@ -207,6 +209,10 @@ final class TournamentView
             if ($result !== null && $match->bracket !== 'bye') {
                 $won = $result['games_won'][$index] ?? null;
                 $score = $chess ? (($result['double_loss'] ?? false) ? '0' : ($winner === null ? '½' : ($winner === $index ? '1' : '0'))) : ($won === null ? null : self::number((float) $won));
+            }
+
+            if ($legs !== null) {
+                $score = self::number($legs['points'][$index] ?? 0.0);
             }
 
             // A heat or a lobby (P10) shows each side's place; a shared place 1 is won by all who hold it.
@@ -251,6 +257,7 @@ final class TournamentView
             'decision' => ($result['decided'] ?? null) === 'standing' && isset($result['standing']['margin'])
                 ? TournamentRunner::standingLabel((string) ($result['standing']['legs'] ?? ''), (float) $result['standing']['margin']) : null,
             'if_needed' => $match->if_needed,
+            'legs' => $legs,
         ];
     }
 

@@ -112,13 +112,40 @@ final class TournamentGameEnd
         return [
             'tournament' => $tournament->title(),
             'round' => (string) __('Round :number', ['number' => $match->round->number]),
-            'step' => $pair->count() > 1 && $index !== false ? (string) __('Game :n of :total', ['n' => $index + 1, 'total' => $pair->count()]) : null,
+            'step' => $pair->count() > 1 && $index !== false ? (string) __('Game :n of :total', ['n' => $index + 1, 'total' => $pair->count()])
+                : self::legsStep($match, (string) $tournament->game),
             'stake' => $cup ? (string) __('Cup game — counts for the tournament') : (string) __('Tournament game — counts for the tournament'),
             'url' => route('tournaments.show', $tournament),
             'cup' => $cup,
             // The tournament desk's button (TournamentDesk::for(), per viewer, in the banner component).
             'tournamentId' => $tournament->id,
         ];
+    }
+
+    /**
+     * The banner's step of a two-leg pairing under way (Blockli): who leads after the finished legs, from the
+     * leader's side, or that it is level, and the game on now; null before the first leg ended.
+     */
+    private static function legsStep(TournamentMatch $match, string $slug): ?string
+    {
+        $legs = TournamentRunner::legsSoFar($match, $slug);
+
+        if ($legs === null) {
+            return null;
+        }
+
+        [$a, $b] = $legs['points'];
+
+        if ($a === $b) {
+            return (string) __('Level :score · game :n under way', ['score' => $legs['label'], 'n' => $legs['game']]);
+        }
+
+        $leader = $a > $b ? 0 : 1;
+        $parts = explode('–', $legs['label']);
+        $score = $leader === 0 ? $legs['label'] : ($parts[1] ?? '').'–'.$parts[0];
+        $name = (string) ($match->slots->firstWhere('slot', $leader)?->participant->name ?? '?');
+
+        return (string) __(':name leads :score · game :n under way', ['name' => $name, 'score' => $score, 'n' => $legs['game']]);
     }
 
     private static function matchOf(ChessGame|BoardGame|SeriesMatch $played): ?TournamentMatch

@@ -15,8 +15,10 @@ use App\Support\Tournaments\CasualCups;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
 use App\Support\Tournaments\TournamentBrackets;
+use App\Support\Tournaments\TournamentGameEnd;
 use App\Support\Tournaments\TournamentMatchMaker;
 use App\Support\Tournaments\TournamentRunner;
+use App\Support\Tournaments\TournamentView;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Lottery;
 use Tests\Support\BlockliOn;
@@ -196,4 +198,26 @@ test('the Blockli lobby queues blitz and rapid (user, 2026-10-11), and an invite
 
     expect($game->game)->toBe('blockli')
         ->and($game->mode)->toBe('correspondence');
+});
+
+test('after the first leg the bracket box and the game banner show the standing and the game under way, until the match is decided', function () {
+    $tournament = blockliTournament();
+    $box = fn (): array => (new TournamentView($tournament->refresh()))->box(blockliMatch($tournament));
+
+    // Before any leg ended: nothing to show.
+    expect($box()['legs'])->toBeNull()
+        ->and(TournamentGameEnd::banner(blockliLive($tournament))['step'])->toBeNull();
+
+    // The higher seed won the first leg: 1–0, game 2 under way, in the box and on the second game's banner (DerCaddy 2026-10-15).
+    blockliLose($tournament, 1);
+    expect($box()['legs'])->toMatchArray(['label' => '1–0', 'game' => 2])
+        ->and(array_column($box()['sides'], 'score'))->toBe(['1', '0'])
+        ->and(array_column($box()['sides'], 'won'))->toBe([false, false])
+        ->and(TournamentGameEnd::banner(blockliLive($tournament))['step'])->toBe('Player 1 leads 1–0 · game 2 under way');
+
+    // Decided: the stored result again (a board game's box scores the pairing 1 and 0), the winner raised.
+    blockliLose($tournament, 1);
+    expect($box()['legs'])->toBeNull()
+        ->and(array_column($box()['sides'], 'won'))->toBe([true, false])
+        ->and($box()['label'])->toBe('2–0');
 });

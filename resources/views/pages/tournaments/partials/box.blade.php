@@ -63,6 +63,10 @@
             @endif
         </span>
     @endforeach
+    @if ($box['legs'] ?? null)
+        {{-- A two-leg pairing under way: the standing after the finished legs and the game on now (DerCaddy 2026-10-15: a won first leg showed nowhere). --}}
+        <span class="border-t border-hairline px-3 py-1.5 text-[11px] leading-snug text-ink-2" data-test="match-legs">{{ __('Standing :score · game :n under way', ['score' => $box['legs']['label'], 'n' => $box['legs']['game']]) }}</span>
+    @endif
     @if ($box['decision'] ?? null)
         {{-- A drawn decider settled by the race standing (Blockli), with the margin: the score alone would read ½–½. --}}
         <span class="border-t border-hairline px-3 py-1.5 text-[11px] leading-snug text-ink-2" data-test="match-decision">{{ $box['decision'] }}</span>

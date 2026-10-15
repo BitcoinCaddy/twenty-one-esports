@@ -8618,5 +8618,8 @@
     "First small groups that each play a double-elimination bracket, then the best of each group play a knockout bracket to the final.": "Erst kleine Gruppen, die jede im Doppel-K.-o. spielen, dann spielen die Besten jeder Gruppe im K.-o.-Baum bis zum Finale.",
     "Fewer games than everyone against everyone in the groups.": "Weniger Spiele als jeder gegen jeden in der Gruppe.",
     "Everyone plays at least :games game in the groups. The top :advance of each group play on.|Everyone plays at least :games games in the groups. The top :advance of each group play on.": "Alle spielen mindestens :games Spiel in der Gruppe. Die besten :advance jeder Gruppe spielen weiter.|Alle spielen mindestens :games Spiele in der Gruppe. Die besten :advance jeder Gruppe spielen weiter.",
-    "Watch :match": ":match zuschauen"
+    "Watch :match": ":match zuschauen",
+    "Standing :score · game :n under way": "Stand :score · Partie :n läuft",
+    "Level :score · game :n under way": "Gleichstand :score · Partie :n läuft",
+    ":name leads :score · game :n under way": ":name führt :score · Partie :n läuft"
 }
