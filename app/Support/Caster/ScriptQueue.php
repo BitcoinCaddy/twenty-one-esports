@@ -180,6 +180,11 @@ class ScriptQueue
         $written += $quiet || $podcast || $liveOnly ? 0 : ($budget->opens(VoiceBudget::RUBRIC, $now) ? $this->fillTeaser($now) : 0) + $this->fillSegments($now);
         // Live comments on a running organizer tournament (TournamentLive), also in the live-only mode: real data only.
         $written += $podcast ? 0 : app(TournamentLive::class)->fill($this, $now);
+        // The stock is written here, in the scheduler (CLI, no web timeout), not in the claim (live 2026-10-16:
+        // the claim wrote its stock text synchronously over the tunnel to the workstation's opencode gateway,
+        // 40-70 s, and nginx killed every such claim with a 502 - the GPU stayed idle all night). fillStock's own
+        // gates (window, report, library target) decide; the claim only hands out what is queued.
+        $written += $this->fillStock($now);
         $written += $this->fillStock($now);
         $written += $this->fillPodcast($now);
 
@@ -332,12 +337,9 @@ class ScriptQueue
      */
     public function claimStock(CarbonImmutable $now): ?CasterScript
     {
-        $script = $this->claim($now, stock: true);
-
-        if ($script !== null || $this->writeStock($now) === null) {
-            return $script;
-        }
-
+        // Writing on demand is gone from the claim (live 2026-10-16: the synchronous stock text over the tunnel
+        // took 40-70 s and the web server killed the request with a 502). The scheduler's fill() writes the stock
+        // (ScriptQueue::fill calls fillStock); the claim only hands out what is queued.
         return $this->claim($now, stock: true);
     }
 
