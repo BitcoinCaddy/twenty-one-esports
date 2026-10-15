@@ -855,7 +855,9 @@ if (app(GameRegistry::class)->find(TrackmaniaNationsForever::SLUG) !== null) {
  * `caster:fetch` is not scheduled here: it runs on the workstation that voices.
  */
 Schedule::command('caster:script')->everyMinute()->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
-Schedule::command('caster:chat')->everyMinute()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
+// Every ten seconds (user 2026-10-15: reactions must reach the air at once): a chat line is seen within seconds, not
+// up to a minute, and the workstation voices it while it is fresh.
+Schedule::command('caster:chat')->everyTenSeconds()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
 Schedule::command('caster:chat', ['--wot'])->dailyAt('05:11')->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
 Schedule::command('caster:news')->everyFifteenMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.news.enabled') === true);
 Schedule::command('caster:followed')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.followed.enabled') === true);
