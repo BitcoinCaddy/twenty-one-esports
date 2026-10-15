@@ -129,11 +129,12 @@ final class TournamentLive
             topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
     }
 
-    /** The standby duet when the model gives nothing usable: a comment comes anyway (user 2026-10-15). */
+    /** The standby duet when the model gives nothing usable: a comment comes anyway (user 2026-10-15). No speaker
+     * prefixes in the text — the `speakers` array carries who says which line, and the voice reads the text. */
     private const STANDBY = [
-        "Markus: Zwischenstand beim Turnier: die Bretter laufen, entschieden hat sich nichts, und genau so gefällt mir das.\nSirius: Geduld ist auch eine Disziplin, Markus, auch wenn sie dir so liegt wie ein Rucksack voll Blei.",
-        "Markus: Keine neuen Ergebnisse, aber die Uhren laufen weiter, und irgendwer trödelt garantiert schon wieder.\nSirius: Das Trödeln ist taktisch, Markus, das nennt man Druck aufbauen, ohne selbst welchen zu haben.",
-        "Markus: Weiter nichts Neues vom Turnierbrett, die Fans halten die Luft an, ich halte ein Bier bereit.\nSirius: Deine medizinische Versorgung ist beeindruckend, Markus, aber erzähl das lieber dem, der als Nächstes am Zug ist.",
+        "Zwischenstand beim Turnier: die Bretter laufen, entschieden hat sich nichts, und genau so gefällt mir das.\nGeduld ist auch eine Disziplin, auch wenn sie dir so liegt wie ein Rucksack voll Blei.",
+        "Keine neuen Ergebnisse, aber die Uhren laufen weiter, und irgendwer trödelt garantiert schon wieder.\nDas Trödeln ist taktisch, das nennt man Druck aufbauen, ohne selbst welchen zu haben.",
+        "Weiter nichts Neues vom Turnierbrett, die Fans halten die Luft an, ich halte ein Bier bereit.\nDeine medizinische Versorgung ist beeindruckend, aber erzähl das lieber dem, der als Nächstes am Zug ist.",
     ];
 
     /**
