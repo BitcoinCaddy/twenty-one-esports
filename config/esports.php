@@ -1935,6 +1935,9 @@ return [
         // and "Gesicht"/"face" (pseudonymous league).
         'blocklist' => [
             'spast', 'behindert', 'missgeburt',
+            // The model reaches for this insult on its own in the roast register (live 2026-10-15: script 3697 came
+            // with it although no prompt names it); the guard refuses it and the model regenerates (user 2026-10-15).
+            'wichser', 'wichserin', 'wichsern', 'wichsen',
             'scam', 'betrüger',
             'gebühr', 'gebühren', 'startgeld', 'teilnahmegebühr', 'fee', 'fees', 'entry fee', 'gesicht', 'face',
         ],
