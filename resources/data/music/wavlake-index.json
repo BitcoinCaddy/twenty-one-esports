@@ -1,0 +1,1190 @@
+{
+ "_readme": "Canonical index of Wavlake tracks in the stream rotation. file paths are relative to storage/app/stream/music/ on the server. zap_route wavlake-keysend: the artist has no npub on Wavlake; zaps route through Wavlake's node (customKey 16180339) - the QR target is the track page, where every Nostr wallet pays the artist. Append new imports here; the slides build from this file.",
+ "generated_at": "2026-10-15T20:23:16+00:00",
+ "artists": [
+  "Ainsley Costello",
+  "Arthur Yoria",
+  "Black Vulcanite",
+  "Cal Volpe",
+  "Contra",
+  "Cristo Currensi",
+  "Fundamentals",
+  "Greensands",
+  "Joe Martin",
+  "My Friend Jimi",
+  "NumberGoExp",
+  "Patrick Manian",
+  "Riot in Progress",
+  "Social Hijack",
+  "Sorout Beats",
+  "Under The Mulga Groove",
+  "Vertigo Kidd",
+  "Yellow Velvet Milk Club",
+  "Zazawowow",
+  "ikki_imittio",
+  "sabu",
+  "shy kids"
+ ],
+ "tracks": [
+  {
+   "file": "wavlake/Can't Say I'm Not Trying - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Can't Say I'm Not Trying",
+   "track_id": "94c8cc23-60ad-41a2-96be-85e3d571ac81",
+   "qr_target": "https://wavlake.com/track/94c8cc23-60ad-41a2-96be-85e3d571ac81",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Change Your Mind - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Change Your Mind",
+   "track_id": "62767045-5cc0-4280-a552-145a56e6964a",
+   "qr_target": "https://wavlake.com/track/62767045-5cc0-4280-a552-145a56e6964a",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Cherry On Top - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Cherry On Top",
+   "track_id": "729ff127-1fcc-4086-8e67-4386e87ac585",
+   "qr_target": "https://wavlake.com/track/729ff127-1fcc-4086-8e67-4386e87ac585",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Cherry On Top (90's Revival Remix) with Stereon - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Cherry On Top (90's Revival Remix) with Stereon",
+   "track_id": "0fe51d40-ee63-43da-a609-593d358ac064",
+   "qr_target": "https://wavlake.com/track/0fe51d40-ee63-43da-a609-593d358ac064",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Daydreamer - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Daydreamer",
+   "track_id": "92627677-4f5b-4420-85cd-e76b5f9aa7fb",
+   "qr_target": "https://wavlake.com/track/92627677-4f5b-4420-85cd-e76b5f9aa7fb",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/EXLESS - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "EXLESS",
+   "track_id": "27d4da8d-4fa4-478c-a65c-fae4147fe054",
+   "qr_target": "https://wavlake.com/track/27d4da8d-4fa4-478c-a65c-fae4147fe054",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/People Pleaser - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "People Pleaser",
+   "track_id": "93c0ef53-acac-4c5a-8dc3-3cad85432dd3",
+   "qr_target": "https://wavlake.com/track/93c0ef53-acac-4c5a-8dc3-3cad85432dd3",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Rescued - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Rescued",
+   "track_id": "604d03b2-35ba-45d9-a00e-4c0ca409e670",
+   "qr_target": "https://wavlake.com/track/604d03b2-35ba-45d9-a00e-4c0ca409e670",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/THEREGOESMY! - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "THEREGOESMY!",
+   "track_id": "598f2d62-1d8f-4937-8dcb-a3803443279b",
+   "qr_target": "https://wavlake.com/track/598f2d62-1d8f-4937-8dcb-a3803443279b",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Two Ships - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Two Ships",
+   "track_id": "04cead49-6aab-46ca-af7e-01c51c3bddbf",
+   "qr_target": "https://wavlake.com/track/04cead49-6aab-46ca-af7e-01c51c3bddbf",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Two Ships JSTR REMIX - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "Two Ships JSTR REMIX",
+   "track_id": "e638bf06-1d06-4115-b646-09cd2a64c3e4",
+   "qr_target": "https://wavlake.com/track/e638bf06-1d06-4115-b646-09cd2a64c3e4",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/You Problem - Ainsley Costello__v1.m4a",
+   "source": "wavlake",
+   "artist": "Ainsley Costello",
+   "title": "You Problem",
+   "track_id": "29e8e18b-cdc7-4664-84e7-9cf06228a8f6",
+   "qr_target": "https://wavlake.com/track/29e8e18b-cdc7-4664-84e7-9cf06228a8f6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Wealthy Man - Arthur Yoria__v1.m4a",
+   "source": "wavlake",
+   "artist": "Arthur Yoria",
+   "title": "Wealthy Man",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Good Times ft Quido - Black Vulcanite__v1.m4a",
+   "source": "wavlake",
+   "artist": "Black Vulcanite",
+   "title": "Good Times ft Quido",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Keep On Movin' - Cal Volpe__v1.m4a",
+   "source": "wavlake",
+   "artist": "Cal Volpe",
+   "title": "Keep On Movin'",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Renaissance Man - Cal Volpe__v1.m4a",
+   "source": "wavlake",
+   "artist": "Cal Volpe",
+   "title": "Renaissance Man",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Debasement - Contra__v1.m4a",
+   "source": "wavlake",
+   "artist": "Contra",
+   "title": "Debasement",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/MEMOBOT - Cristo Currensi__v1.m4a",
+   "source": "wavlake",
+   "artist": "Cristo Currensi",
+   "title": "MEMOBOT",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Speedo Vigilante - Fundamentals__v1.m4a",
+   "source": "wavlake",
+   "artist": "Fundamentals",
+   "title": "Speedo Vigilante",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Patience - Greensands__v1.m4a",
+   "source": "wavlake",
+   "artist": "Greensands",
+   "title": "Patience",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Garbage Ex-Employed - ikki_imittio__v1.m4a",
+   "source": "wavlake",
+   "artist": "ikki_imittio",
+   "title": "Garbage Ex-Employed",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Alone In Valentine - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Alone In Valentine",
+   "track_id": "360db16d-8c5d-41f9-9b8a-b6d4f96f9b7a",
+   "qr_target": "https://wavlake.com/track/360db16d-8c5d-41f9-9b8a-b6d4f96f9b7a",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Alone In Valentine - single - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Alone In Valentine - single",
+   "track_id": "f7d436f2-d163-4fa8-b5d8-7706929be4aa",
+   "qr_target": "https://wavlake.com/track/f7d436f2-d163-4fa8-b5d8-7706929be4aa",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Amelia - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Amelia",
+   "track_id": "5e866f89-f124-48c2-a985-b03107cd9ba9",
+   "qr_target": "https://wavlake.com/track/5e866f89-f124-48c2-a985-b03107cd9ba9",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Amelia (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Amelia (set 2)",
+   "track_id": "051e2725-daf3-407a-9875-e0698416def6",
+   "qr_target": "https://wavlake.com/track/051e2725-daf3-407a-9875-e0698416def6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Another Sad Song - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Another Sad Song",
+   "track_id": "1278ecc0-b541-4b2a-8773-4ac14f29f801",
+   "qr_target": "https://wavlake.com/track/1278ecc0-b541-4b2a-8773-4ac14f29f801",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Backseat Driver - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Backseat Driver",
+   "track_id": "01c0c75f-2f53-4e9c-ba17-a65207c3f406",
+   "qr_target": "https://wavlake.com/track/01c0c75f-2f53-4e9c-ba17-a65207c3f406",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Backseat Driver - single - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Backseat Driver - single",
+   "track_id": "4d3443ba-4ec9-41a7-bf0a-78dc35896aa4",
+   "qr_target": "https://wavlake.com/track/4d3443ba-4ec9-41a7-bf0a-78dc35896aa4",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Born To Die Young - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Born To Die Young",
+   "track_id": "d2e8e9cc-6f5d-44e6-8144-b7500545fb2d",
+   "qr_target": "https://wavlake.com/track/d2e8e9cc-6f5d-44e6-8144-b7500545fb2d",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Brown Paper Bag - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Brown Paper Bag",
+   "track_id": "47a029d0-1700-41fb-ab38-b5280089e3fb",
+   "qr_target": "https://wavlake.com/track/47a029d0-1700-41fb-ab38-b5280089e3fb",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Can't Promise You The World - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Can't Promise You The World",
+   "track_id": "c4a170ed-71da-4863-9189-8818409789f3",
+   "qr_target": "https://wavlake.com/track/c4a170ed-71da-4863-9189-8818409789f3",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Checkmate - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Checkmate",
+   "track_id": "ace88a9c-bc7b-4663-959f-de61fdd0b869",
+   "qr_target": "https://wavlake.com/track/ace88a9c-bc7b-4663-959f-de61fdd0b869",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Coal Town - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Coal Town",
+   "track_id": "b7454718-a5c4-4479-a988-237095c1f4a9",
+   "qr_target": "https://wavlake.com/track/b7454718-a5c4-4479-a988-237095c1f4a9",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Crocodile Tears - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Crocodile Tears",
+   "track_id": "13817895-bda8-4f5a-8a1a-8f7a5fd2185c",
+   "qr_target": "https://wavlake.com/track/13817895-bda8-4f5a-8a1a-8f7a5fd2185c",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Daddy Gene - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Daddy Gene",
+   "track_id": "5882508a-bbcb-48d8-93d1-a8a0f5a3c702",
+   "qr_target": "https://wavlake.com/track/5882508a-bbcb-48d8-93d1-a8a0f5a3c702",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Daddy Gene (set 1 ) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Daddy Gene (set 1 )",
+   "track_id": "a7548aea-0363-44ba-9450-12c4534e491b",
+   "qr_target": "https://wavlake.com/track/a7548aea-0363-44ba-9450-12c4534e491b",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Denver - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Denver",
+   "track_id": "1c43b75f-b003-4482-9f37-a606792b4f3c",
+   "qr_target": "https://wavlake.com/track/1c43b75f-b003-4482-9f37-a606792b4f3c",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Denver (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Denver (set 1)",
+   "track_id": "e461a1bb-d8b6-4aad-ba9d-7ba3bc81ed73",
+   "qr_target": "https://wavlake.com/track/e461a1bb-d8b6-4aad-ba9d-7ba3bc81ed73",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Doesn't Rain In LA - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Doesn't Rain In LA",
+   "track_id": "bc59cdf1-022d-4896-9add-94a1b84a79de",
+   "qr_target": "https://wavlake.com/track/bc59cdf1-022d-4896-9add-94a1b84a79de",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Doesn't Rain In LA (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Doesn't Rain In LA (set 1)",
+   "track_id": "bd4f7999-9369-4338-a4f9-d43ec3e2a49a",
+   "qr_target": "https://wavlake.com/track/bd4f7999-9369-4338-a4f9-d43ec3e2a49a",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Empty Passenger Seat - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Empty Passenger Seat",
+   "track_id": "c8ec175f-dd5d-4a01-8e3a-e85c1591698f",
+   "qr_target": "https://wavlake.com/track/c8ec175f-dd5d-4a01-8e3a-e85c1591698f",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Empty Passenger Seat - Joe Martin__v1.m4a",
+   "source": "wavlake",
+   "artist": "Joe Martin",
+   "title": "Empty Passenger Seat",
+   "track_id": "c8ec175f-dd5d-4a01-8e3a-e85c1591698f",
+   "qr_target": "https://wavlake.com/track/c8ec175f-dd5d-4a01-8e3a-e85c1591698f",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Empty Passenger Seat (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Empty Passenger Seat (set 2)",
+   "track_id": "b6264837-e31a-4b16-955b-1fba077abc9f",
+   "qr_target": "https://wavlake.com/track/b6264837-e31a-4b16-955b-1fba077abc9f",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Fell For A Promise (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Fell For A Promise (set 2)",
+   "track_id": "3e82cea2-c2b4-4f05-b9bb-c0c5e365c1e6",
+   "qr_target": "https://wavlake.com/track/3e82cea2-c2b4-4f05-b9bb-c0c5e365c1e6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Fell For A Promise feat. Harriet - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Fell For A Promise feat. Harriet",
+   "track_id": "7e0c8084-f972-4d29-84b6-577bb5ed2bde",
+   "qr_target": "https://wavlake.com/track/7e0c8084-f972-4d29-84b6-577bb5ed2bde",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Forgotten Country Song - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Forgotten Country Song",
+   "track_id": "a438595c-db68-4e6b-925f-c524b759b2f1",
+   "qr_target": "https://wavlake.com/track/a438595c-db68-4e6b-925f-c524b759b2f1",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Forgotten Country Song (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Forgotten Country Song (set 2)",
+   "track_id": "42272a51-f199-44f2-938f-a92e3e940062",
+   "qr_target": "https://wavlake.com/track/42272a51-f199-44f2-938f-a92e3e940062",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Full Time Dreamer - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Full Time Dreamer",
+   "track_id": "57304017-2d67-483f-9df4-a87a225f3082",
+   "qr_target": "https://wavlake.com/track/57304017-2d67-483f-9df4-a87a225f3082",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Full Time Dreamer (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Full Time Dreamer (set 2)",
+   "track_id": "3228d8c2-491c-48d0-8b08-2300e73c184f",
+   "qr_target": "https://wavlake.com/track/3228d8c2-491c-48d0-8b08-2300e73c184f",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Hand Me Down Heart - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Hand Me Down Heart",
+   "track_id": "81c98053-ce9b-4824-b689-fe0934fe7b00",
+   "qr_target": "https://wavlake.com/track/81c98053-ce9b-4824-b689-fe0934fe7b00",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Heartbreak Cult - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Heartbreak Cult",
+   "track_id": "f6b10ca6-8119-4b55-82f2-ec2b60e63fce",
+   "qr_target": "https://wavlake.com/track/f6b10ca6-8119-4b55-82f2-ec2b60e63fce",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Heartbreak Cult (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Heartbreak Cult (set 1)",
+   "track_id": "ac54fc6e-6eea-426e-bbca-fa08ecf37251",
+   "qr_target": "https://wavlake.com/track/ac54fc6e-6eea-426e-bbca-fa08ecf37251",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Hero - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Hero",
+   "track_id": "2495d025-5f72-4819-a1b5-96d20de01097",
+   "qr_target": "https://wavlake.com/track/2495d025-5f72-4819-a1b5-96d20de01097",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "High Gravity - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "High Gravity",
+   "track_id": "3928208d-2bf1-4255-aa0d-6ab287e913ac",
+   "qr_target": "https://wavlake.com/track/3928208d-2bf1-4255-aa0d-6ab287e913ac",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "High Gravity (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "High Gravity (set 2)",
+   "track_id": "6365cceb-f4cc-4080-b7f0-3c6943056477",
+   "qr_target": "https://wavlake.com/track/6365cceb-f4cc-4080-b7f0-3c6943056477",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Kaila Don't Go - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Kaila Don't Go",
+   "track_id": "df118be8-e1f3-46cb-8cfb-362376577a6c",
+   "qr_target": "https://wavlake.com/track/df118be8-e1f3-46cb-8cfb-362376577a6c",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Kaila Don't Go (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Kaila Don't Go (set 2)",
+   "track_id": "12d9b131-1c20-4314-bdde-a1c17b09cbd6",
+   "qr_target": "https://wavlake.com/track/12d9b131-1c20-4314-bdde-a1c17b09cbd6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Killing Me Slowly - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Killing Me Slowly",
+   "track_id": "d808c27e-27c5-4a3a-8df1-f2b9d65ee421",
+   "qr_target": "https://wavlake.com/track/d808c27e-27c5-4a3a-8df1-f2b9d65ee421",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Killing Me Slowly (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Killing Me Slowly (set 1)",
+   "track_id": "74e60ca2-ca3e-4268-b433-86c963b8c2a1",
+   "qr_target": "https://wavlake.com/track/74e60ca2-ca3e-4268-b433-86c963b8c2a1",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Letters Of Regret - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Letters Of Regret",
+   "track_id": "15f7dd3e-4b10-494e-841e-4348ceab4d95",
+   "qr_target": "https://wavlake.com/track/15f7dd3e-4b10-494e-841e-4348ceab4d95",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Letters Of Regret (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Letters Of Regret (set 1)",
+   "track_id": "a8248ef5-3fcd-428b-b338-f5fc0ec0b2dd",
+   "qr_target": "https://wavlake.com/track/a8248ef5-3fcd-428b-b338-f5fc0ec0b2dd",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Love Strong - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Love Strong",
+   "track_id": "4c5616d9-5eb1-40ec-89d8-29865735c4ff",
+   "qr_target": "https://wavlake.com/track/4c5616d9-5eb1-40ec-89d8-29865735c4ff",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Love Strong (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Love Strong (set 1)",
+   "track_id": "a6976fc8-b181-4c6d-bbc5-f50f0e65542c",
+   "qr_target": "https://wavlake.com/track/a6976fc8-b181-4c6d-bbc5-f50f0e65542c",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Man You Need - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Man You Need",
+   "track_id": "5d5df0da-7bed-4d35-9bec-99093c6713a4",
+   "qr_target": "https://wavlake.com/track/5d5df0da-7bed-4d35-9bec-99093c6713a4",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Money For The Needy - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Money For The Needy",
+   "track_id": "3fc1434a-5a6c-4ad5-a23a-abbb9a1ff2f5",
+   "qr_target": "https://wavlake.com/track/3fc1434a-5a6c-4ad5-a23a-abbb9a1ff2f5",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Money For The Needy (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Money For The Needy (set 2)",
+   "track_id": "04196f5e-8fdf-4fa6-9fc3-c3e1df8223de",
+   "qr_target": "https://wavlake.com/track/04196f5e-8fdf-4fa6-9fc3-c3e1df8223de",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "More Than Just Your Loving - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "More Than Just Your Loving",
+   "track_id": "ee291605-b4cb-41d3-a343-44c7f897c8f2",
+   "qr_target": "https://wavlake.com/track/ee291605-b4cb-41d3-a343-44c7f897c8f2",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "More Than Just Your Loving (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "More Than Just Your Loving (set 2)",
+   "track_id": "2f5755c8-64d6-4e51-8ace-6795455f7e50",
+   "qr_target": "https://wavlake.com/track/2f5755c8-64d6-4e51-8ace-6795455f7e50",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Silent Vow - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Silent Vow",
+   "track_id": "31dbe3e4-0376-4bb4-bde9-627ad71eaf06",
+   "qr_target": "https://wavlake.com/track/31dbe3e4-0376-4bb4-bde9-627ad71eaf06",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Silent Vow (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Silent Vow (set 1)",
+   "track_id": "11627fe3-6af0-4d76-b607-b68be05bd4eb",
+   "qr_target": "https://wavlake.com/track/11627fe3-6af0-4d76-b607-b68be05bd4eb",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Silhouettes and Sunsets - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Silhouettes and Sunsets",
+   "track_id": "dc465c38-4bc2-4780-8257-fa5cbc43b7b4",
+   "qr_target": "https://wavlake.com/track/dc465c38-4bc2-4780-8257-fa5cbc43b7b4",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Smokin' and Cryin' feat. Katy Hurt - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Smokin' and Cryin' feat. Katy Hurt",
+   "track_id": "b07bb6c2-00be-4a4d-96d5-79477d754d21",
+   "qr_target": "https://wavlake.com/track/b07bb6c2-00be-4a4d-96d5-79477d754d21",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Strangers To Lovers - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Strangers To Lovers",
+   "track_id": "5e0a6934-fe29-463b-aaf5-8ea5defe5a48",
+   "qr_target": "https://wavlake.com/track/5e0a6934-fe29-463b-aaf5-8ea5defe5a48",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Strangers To Lovers - single - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Strangers To Lovers - single",
+   "track_id": "65968416-3b5e-4279-a038-533314af7490",
+   "qr_target": "https://wavlake.com/track/65968416-3b5e-4279-a038-533314af7490",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Take Me Home Tonight - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Take Me Home Tonight",
+   "track_id": "24bc2346-0b40-4816-9434-400684844707",
+   "qr_target": "https://wavlake.com/track/24bc2346-0b40-4816-9434-400684844707",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Take Me Home Tonight (set 2) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Take Me Home Tonight (set 2)",
+   "track_id": "7bb1c17b-f92f-4197-9956-9fdef3000bf6",
+   "qr_target": "https://wavlake.com/track/7bb1c17b-f92f-4197-9956-9fdef3000bf6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "The Jetsons - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "The Jetsons",
+   "track_id": "076e6d0d-81e1-42d1-a0af-4a98ebb2e494",
+   "qr_target": "https://wavlake.com/track/076e6d0d-81e1-42d1-a0af-4a98ebb2e494",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Want You To Stay - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Want You To Stay",
+   "track_id": "50d2520f-96f5-4ce3-b291-c3eff8823588",
+   "qr_target": "https://wavlake.com/track/50d2520f-96f5-4ce3-b291-c3eff8823588",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Way I Need You - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Way I Need You",
+   "track_id": "7e7b0937-e472-4c46-b532-15cb5bb0b579",
+   "qr_target": "https://wavlake.com/track/7e7b0937-e472-4c46-b532-15cb5bb0b579",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "When The Time Is Right - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "When The Time Is Right",
+   "track_id": "c438596a-ef5d-42f2-8d8a-baf308a6674d",
+   "qr_target": "https://wavlake.com/track/c438596a-ef5d-42f2-8d8a-baf308a6674d",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "When The Time Is Right (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "When The Time Is Right (set 1)",
+   "track_id": "c07aca31-9b49-4f82-a321-013186418eb2",
+   "qr_target": "https://wavlake.com/track/c07aca31-9b49-4f82-a321-013186418eb2",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Who You Really Are - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Who You Really Are",
+   "track_id": "0d4b8a6a-2b11-40c1-ac18-a20e08f76a71",
+   "qr_target": "https://wavlake.com/track/0d4b8a6a-2b11-40c1-ac18-a20e08f76a71",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Who You Really Are (set 1) - Joe Martin__v1.m4a",
+   "source": "music",
+   "artist": "Joe Martin",
+   "title": "Who You Really Are (set 1)",
+   "track_id": "52cca69c-fb83-4d58-b7e0-e5cd8f57ad12",
+   "qr_target": "https://wavlake.com/track/52cca69c-fb83-4d58-b7e0-e5cd8f57ad12",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Bullet Train - My Friend Jimi__v1.m4a",
+   "source": "wavlake",
+   "artist": "My Friend Jimi",
+   "title": "Bullet Train",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Fix the Money - NumberGoExp__v1.m4a",
+   "source": "wavlake",
+   "artist": "NumberGoExp",
+   "title": "Fix the Money",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Mask Off - NumberGoExp__v1.m4a",
+   "source": "wavlake",
+   "artist": "NumberGoExp",
+   "title": "Mask Off",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Never Attained Anything - Patrick Manian__v1.m4a",
+   "source": "wavlake",
+   "artist": "Patrick Manian",
+   "title": "Never Attained Anything",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Rightly So - Patrick Manian__v1.m4a",
+   "source": "wavlake",
+   "artist": "Patrick Manian",
+   "title": "Rightly So",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Marrow Road - Riot in Progress__v1.m4a",
+   "source": "wavlake",
+   "artist": "Riot in Progress",
+   "title": "Marrow Road",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Nevertheless - Riot in Progress__v1.m4a",
+   "source": "wavlake",
+   "artist": "Riot in Progress",
+   "title": "Nevertheless",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Piano keys, watch out for these - sabu__v1.m4a",
+   "source": "wavlake",
+   "artist": "sabu",
+   "title": "Piano keys, watch out for these",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/bye bye birdie - shy kids__v1.m4a",
+   "source": "wavlake",
+   "artist": "shy kids",
+   "title": "bye bye birdie",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Chasing Dreams - Social Hijack__v1.m4a",
+   "source": "wavlake",
+   "artist": "Social Hijack",
+   "title": "Chasing Dreams",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/The Rhythm of Your Breath - Sorout Beats__v1.m4a",
+   "source": "wavlake",
+   "artist": "Sorout Beats",
+   "title": "The Rhythm of Your Breath",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "A Little More Here - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "A Little More Here",
+   "track_id": "f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c",
+   "qr_target": "https://wavlake.com/track/f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Almost Elsewhere - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Almost Elsewhere",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Interoception - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Interoception",
+   "track_id": "0eef8584-2d47-46d6-904c-7e50dcd788f2",
+   "qr_target": "https://wavlake.com/track/0eef8584-2d47-46d6-904c-7e50dcd788f2",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Leave The Porch Light Low - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Leave The Porch Light Low",
+   "track_id": "27a9ff24-12d5-4931-b81c-e907ef601790",
+   "qr_target": "https://wavlake.com/track/27a9ff24-12d5-4931-b81c-e907ef601790",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "wavlake/Leave The Porch Light Low - Under The Mulga Groove__v1.m4a",
+   "source": "wavlake",
+   "artist": "Under The Mulga Groove",
+   "title": "Leave The Porch Light Low",
+   "track_id": "27a9ff24-12d5-4931-b81c-e907ef601790",
+   "qr_target": "https://wavlake.com/track/27a9ff24-12d5-4931-b81c-e907ef601790",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Living Death - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Living Death",
+   "track_id": "28b6e197-87df-4886-86b5-804dddf847b6",
+   "qr_target": "https://wavlake.com/track/28b6e197-87df-4886-86b5-804dddf847b6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "MiddleMan - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "MiddleMan",
+   "track_id": "0f41655e-ad31-4ca7-9b70-7a7c699719e5",
+   "qr_target": "https://wavlake.com/track/0f41655e-ad31-4ca7-9b70-7a7c699719e5",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Single Note - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Single Note",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Six Good Weeks Instrumental - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Six Good Weeks Instrumental",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Sleeper Current - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Sleeper Current",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Sticky Carpet Cosmos - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Sticky Carpet Cosmos",
+   "track_id": "9c780643-378e-4a85-9d89-5c97d99d71c6",
+   "qr_target": "https://wavlake.com/track/9c780643-378e-4a85-9d89-5c97d99d71c6",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Tguitar - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Tguitar",
+   "track_id": "c5ea0863-f82f-4644-9a48-8c682751db02",
+   "qr_target": "https://wavlake.com/track/c5ea0863-f82f-4644-9a48-8c682751db02",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "The Chair Beside Me - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "The Chair Beside Me",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Three In Motion - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Three In Motion",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Warm Machine - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Warm Machine",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Watermark - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Watermark",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "When I Die - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "When I Die",
+   "track_id": "7323732c-ae61-4ed4-95e3-502f7b665f5b",
+   "qr_target": "https://wavlake.com/track/7323732c-ae61-4ed4-95e3-502f7b665f5b",
+   "npub": "",
+   "zap_route": "wavlake-keysend"
+  },
+  {
+   "file": "Who Comes Home - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Who Comes Home",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "Who Comes Home Instrumental - Under The Mulga Groove__v1.m4a",
+   "source": "music",
+   "artist": "Under The Mulga Groove",
+   "title": "Who Comes Home Instrumental",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Pirate Radio - Vertigo Kidd__v1.m4a",
+   "source": "wavlake",
+   "artist": "Vertigo Kidd",
+   "title": "Pirate Radio",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/Put 'Em In A Cage - Yellow Velvet Milk Club__v1.m4a",
+   "source": "wavlake",
+   "artist": "Yellow Velvet Milk Club",
+   "title": "Put 'Em In A Cage",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  },
+  {
+   "file": "wavlake/GOD IS DECENTRALIZED - Zazawowow__v1.m4a",
+   "source": "wavlake",
+   "artist": "Zazawowow",
+   "title": "GOD IS DECENTRALIZED",
+   "track_id": null,
+   "qr_target": null,
+   "npub": null,
+   "zap_route": "unknown"
+  }
+ ]
+}
