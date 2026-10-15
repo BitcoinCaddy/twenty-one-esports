@@ -247,7 +247,7 @@ it('joins the next block within a second of the one on air, without changing a s
         ->and(CasterClip::query()->count())->toBe(0);
 });
 
-it('lets a reaction in at the next segment boundary only, then resumes the block from there without losing a sample', function () {
+it('never lets a reaction into a block, not even at a segment boundary: it follows the block (user 2026-10-15)', function () {
     programmeBlockDecodes();
     programmeBlockClip(40.0, 1, [12.0, 26.0]);
     $start = (float) CarbonImmutable::now()->getTimestamp();
@@ -256,15 +256,16 @@ it('lets a reaction in at the next segment boundary only, then resumes the block
     $chat = collect($runs)->firstWhere('value', 5);
     $blockStart = collect($runs)->firstWhere('value', 1)['from'];
 
-    // The block starts about 1 s in; its boundary at 12 s is where the reaction may come, not earlier.
+    // The block starts about 1 s in; its boundary at 12 s no longer lets the reaction in: the block runs whole
+    // and the reaction follows right at its end, in one piece.
     expect(programmeBlockSecondsOf($runs, 1))->toBe(40.0)
         ->and(programmeBlockSecondsOf($runs, 5))->toBe(3.0)
-        ->and($chat['from'] - $blockStart)->toBeGreaterThanOrEqual(12.0)
-        ->and($chat['from'] - $blockStart)->toBeLessThan(15.0)
-        ->and(collect($runs)->where('value', 1)->count())->toBe(2);
+        ->and($chat['from'] - $blockStart)->toBeGreaterThanOrEqual(40.0)
+        ->and($chat['from'] - $blockStart)->toBeLessThan(45.0)
+        ->and(collect($runs)->where('value', 1)->count())->toBe(1);
 });
 
-it('waits at most reaction_wait_seconds and then cuts at a sentence end when no boundary comes', function () {
+it('runs the block to its end when no boundary comes: no cut at a sentence end any more, however short the wait (user 2026-10-15)', function () {
     programmeBlockDecodes();
     programmeBlockClip(60.0, 1, [50.0]);
     $start = (float) CarbonImmutable::now()->getTimestamp();
@@ -272,15 +273,16 @@ it('waits at most reaction_wait_seconds and then cuts at a sentence end when no 
     $runs = programmeBlockAir(programmeBlockDirector(reactionWait: 10), $start, 90, [4 => fn () => programmeBlockPlainClip(CasterScript::CHAT, 3.0, 5)]);
     $chat = collect($runs)->firstWhere('value', 5);
     $blockStart = collect($runs)->firstWhere('value', 1)['from'];
-    $cut = $chat['from'] - $blockStart;
 
+    // reaction_wait_seconds no longer forces a sentence-end cut: with ten seconds of wait the block still
+    // plays its 60 s whole and the reaction follows.
     expect(programmeBlockSecondsOf($runs, 1))->toBe(60.0)
-        ->and($cut)->toBeLessThan(16.0)
-        ->and($cut)->toBeGreaterThan(4.0)
-        ->and(fmod(round(collect($runs)->firstWhere('value', 1)['seconds'], 1), 2.0))->toBe(0.0);
+        ->and($chat['from'] - $blockStart)->toBeGreaterThanOrEqual(60.0)
+        ->and($chat['from'] - $blockStart)->toBeLessThan(66.0)
+        ->and(collect($runs)->where('value', 1)->count())->toBe(1);
 });
 
-it('never cuts into the protected opening of a block (the news), and lets the reaction in right after it', function () {
+it('protects the whole block now, not only its opening news: the reaction follows the block (user 2026-10-15)', function () {
     programmeBlockDecodes();
     programmeBlockClip(40.0, 1, [6.0, 18.0], protected: 18.0);
     $start = (float) CarbonImmutable::now()->getTimestamp();
@@ -288,8 +290,9 @@ it('never cuts into the protected opening of a block (the news), and lets the re
     $runs = programmeBlockAir(programmeBlockDirector(), $start, 60, [2 => fn () => programmeBlockPlainClip(CasterScript::CHAT, 3.0, 5)]);
     $blockStart = collect($runs)->firstWhere('value', 1)['from'];
 
-    expect(collect($runs)->firstWhere('value', 1)['seconds'])->toBe(18.0)
-        ->and(collect($runs)->firstWhere('value', 5)['from'] - $blockStart)->toBeGreaterThanOrEqual(18.0)
+    expect(collect($runs)->firstWhere('value', 1)['seconds'])->toBe(40.0)
+        ->and(collect($runs)->firstWhere('value', 5)['from'] - $blockStart)->toBeGreaterThanOrEqual(40.0)
+        ->and(collect($runs)->where('value', 1)->count())->toBe(1)
         ->and(programmeBlockSecondsOf($runs, 1))->toBe(40.0);
 });
 
@@ -332,7 +335,7 @@ it('puts the music into news mode under a rendered news block, and not under a t
         ->and($mid($talk))->toBe(0);
 });
 
-it('lets a due programme teaser in at the block\'s next segment boundary, then resumes the block', function () {
+it('lets a due programme teaser wait for the block\'s end too, then it airs (user 2026-10-15)', function () {
     programmeBlockDecodes();
     programmeBlockClip(40.0, 1, [12.0, 26.0]);
     $start = (float) CarbonImmutable::now()->getTimestamp();
@@ -341,8 +344,8 @@ it('lets a due programme teaser in at the block\'s next segment boundary, then r
     $teaser = collect($runs)->firstWhere('value', 6);
     $blockStart = collect($runs)->firstWhere('value', 1)['from'];
 
-    expect($teaser['from'] - $blockStart)->toBeGreaterThanOrEqual(12.0)
-        ->and($teaser['from'] - $blockStart)->toBeLessThan(15.0)
+    expect($teaser['from'] - $blockStart)->toBeGreaterThanOrEqual(40.0)
+        ->and($teaser['from'] - $blockStart)->toBeLessThan(45.0)
         ->and(programmeBlockSecondsOf($runs, 6))->toBe(4.0)
         ->and(programmeBlockSecondsOf($runs, 1))->toBe(40.0);
 });

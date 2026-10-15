@@ -876,7 +876,7 @@ class ScriptQueue
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
 
-        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAge, $parts, $group, $speakers, $airsAt, $expiresAt): CasterScript {
+        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $parts, $group, $speakers, $airsAt, $expiresAt): CasterScript {
             $first = null;
             $offset = 0;
 
@@ -896,8 +896,10 @@ class ScriptQueue
                     'facts_hash' => $factsHash,
                     'status' => CasterScript::QUEUED,
                     'estimated_seconds' => self::estimateSeconds($part),
-                    // Fillers carry no facts: they never go stale.
-                    'expires_at' => $expiresAt?->utc() ?? ($kind === CasterScript::FILLER ? $now->addYears(10) : $now->addMinutes($maxAge)),
+                    // Nothing expires unused any more (user 2026-10-15: "verfallen soll nichts mehr, wir liefern
+                    // das aus, was generiert wurde"): only a slot deadline (`$expiresAt`, a bulletin's) still ends
+                    // a script early; the spool's caps keep the buffer bounded instead.
+                    'expires_at' => $expiresAt?->utc() ?? $now->addYears(10),
                     'airs_at' => $airsAt?->utc(),
                     'part_group' => $group,
                     'part_index' => $group === null ? null : $index + 1,

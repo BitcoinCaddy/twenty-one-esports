@@ -123,7 +123,8 @@ it('writes the pattern episode when the voice gives nothing: three to five facts
         ->and(array_diff(casterWholeSentences($script), casterHistoryKnownLines()))->toBe([])
         ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
         ->and(count($spokenFacts))->toBeGreaterThanOrEqual(6)
-        ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(120)))->toBeTrue();
+        // Nothing expires unused any more (user 2026-10-15): the segment keeps a far-future expiry.
+        ->and($script->expires_at->getTimestamp())->toBeGreaterThan(CarbonImmutable::now()->addYears(9)->getTimestamp());
 });
 
 it('queues no pattern episode while the pattern fallback is off (the default): the music plays', function () {
@@ -187,7 +188,7 @@ it('takes a clip of up to long_clip_seconds of its kind, any other kind only up 
         ->and(fn () => casterHistoryClip(CasterScript::HISTORY, 281.0))->toThrow(InvalidClip::class);
 });
 
-it('plays a segment after the live clips, on calm slots only, and never two within segment_spacing_minutes', function () {
+it('plays a segment in any slot after the live clips, and never two within segment_spacing_minutes (user 2026-10-15)', function () {
     $now = CarbonImmutable::now();
     $spool = app(ClipSpool::class);
     $scene = casterHistoryClip(CasterScript::SCENE, 40.0);
@@ -198,10 +199,10 @@ it('plays a segment after the live clips, on calm slots only, and never two with
     expect($spool->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($live->id);
     $spool->played($live);
 
-    // Segments stay on calm slots; a busy slot without a clip of its own takes the scene clip instead of music.
-    expect($spool->next(ScenePhase::LIVE_MATCH, $now)['clip']?->id)->toBe($scene->id)
-        ->and($spool->next(ScenePhase::AFTER_RESULT, $now)['clip']?->id)->toBe($scene->id)
-        ->and($spool->next(ScenePhase::BREAK, $now))->toMatchArray(['source' => 'segment'])
+    // A long segment no longer waits for a calm slot (user 2026-10-15: "was generiert wurde, geht auf Sendung"):
+    // the history segment plays over a busy match slot as over the night, before any scene clip.
+    expect($spool->next(ScenePhase::LIVE_MATCH, $now))->toMatchArray(['source' => 'segment'])
+        ->and($spool->next(ScenePhase::LIVE_MATCH, $now)['clip']?->id)->toBe($history->id)
         ->and($spool->next(ScenePhase::NIGHT, $now)['clip']?->id)->toBe($history->id);
 
     $spool->playing($history);

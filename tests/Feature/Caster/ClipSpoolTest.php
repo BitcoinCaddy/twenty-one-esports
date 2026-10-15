@@ -147,18 +147,26 @@ it('lets the calm phases stand in for each other', function () {
     expect(casterSpool()->next(ScenePhase::PRE_SHOW, $now)['clip']?->id)->toBe($break->id);
 });
 
-it('plays fillers in turn while less than half a minute of commentary is ready', function () {
+it('plays a filler only when no scene clip waits, however short, and then in turn (user 2026-10-15)', function () {
     $now = CarbonImmutable::now();
-    casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 20, [], $now);
+    $scene = casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 20, [], $now);
     $first = casterSpool()->store(casterScript(CasterScript::FILLER), casterOpus(), 2, [], $now);
     $second = casterSpool()->store(casterScript(CasterScript::FILLER), casterOpus(), 2, [], $now);
     DB::table('caster_clips')->where('id', $second->id)->update(['updated_at' => $now->addSecond()]);
 
+    // A ready scene clip beats a filler at any ready length (user 2026-10-15: filler is a fallback only): the
+    // 20 s of commentary play first.
     $decision = casterSpool()->next(ScenePhase::BREAK, $now);
-    expect($decision['source'])->toBe('filler')->and($decision['clip']?->id)->toBe($first->id);
+    expect($decision['source'])->toBe('scene')->and($decision['clip']?->id)->toBe($scene->id);
 
     $this->travel(5)->seconds();
-    casterSpool()->played($decision['clip']);
+    casterSpool()->played($scene);
+
+    // Only with the spool empty of scene clips the fillers take over — in turn (updated_at moves on every play).
+    $fallback = casterSpool()->next(ScenePhase::BREAK, $now);
+    expect($fallback['source'])->toBe('filler')->and($fallback['clip']?->id)->toBe($first->id);
+
+    casterSpool()->played($fallback['clip']);
 
     expect(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($second->id);
 });

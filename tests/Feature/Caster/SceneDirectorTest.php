@@ -92,8 +92,7 @@ function casterGapDirector(float $gap): SceneDirector
     ]);
 }
 
-it('leaves a gap of music between two clips, the next scene change starting with the next clip', function () {
-    casterSpooledClip(10.0);
+it('leaves a gap of music between two clips when the spool is empty, the next scene change starting with the next clip', function () {
     casterSpooledClip(10.0);
     $planner = casterPlanner();
     $director = casterGapDirector(25.0);
@@ -104,6 +103,12 @@ it('leaves a gap of music between two clips, the next scene change starting with
     $last = null;
 
     for ($t = $start; $t <= $start + 60; $t += 0.25) {
+        // The second clip arrives during the music gap (user 2026-10-15: with supply waiting at a clip's end
+        // there is no gap): the gap still holds, the clip waits for its end like the stream's music does.
+        if (abs($t - $start - 15.0) < 0.01) {
+            casterSpooledClip(10.0);
+        }
+
         $director->tick($planner, $planner->at($t, []), $t);
 
         if ($director->clip()?->id !== $playing) {
@@ -118,7 +123,8 @@ it('leaves a gap of music between two clips, the next scene change starting with
         }
     }
 
-    // Clip one is spoken 0.5 to 10.5 s; 25 s of music follow, so clip two starts at 35.5 s, with a new scene.
+    // Clip one is spoken 0.5 to 10.5 s; the spool was empty at its end, so the 25 s of music follow and clip two,
+    // uploaded meanwhile, starts at 35.5 s, with a new scene.
     expect($starts)->toHaveCount(2)
         ->and($starts[0])->toBe(0.0)
         ->and($starts[1])->toBeGreaterThanOrEqual(35.4)->toBeLessThan(36.0)
@@ -377,19 +383,33 @@ it('holds the slot through a long scene clip, beyond max_hold_seconds up to long
     expect($changes[1] ?? null)->toBeGreaterThanOrEqual(112.0)->toBeLessThan(113.0);
 });
 
-/**
- * The start times (seconds after the first tick) of every clip the director plays within `$seconds`.
- *
- * @return list<float>
- */
-function casterClipStarts(SceneDirector $director, float $seconds): array
+function casterRunDirector(int $clips): SceneDirector
 {
+    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
+        'min_scene_seconds' => 5, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
+        'gap_seconds' => ['min' => 25.0, 'max' => 25.0],
+        'runs' => ['enabled' => true, 'every_minutes' => ['min' => 1.0, 'max' => 1.0], 'clips' => ['min' => $clips, 'max' => $clips], 'breath_seconds' => ['min' => 1.0, 'max' => 1.0]],
+    ]);
+}
+
+it('plays clips back to back with only a breath between them while supply lasts, and the music gap returns when the spool runs empty', function () {
+    foreach (range(1, 6) as $ignored) {
+        casterSpooledClip(10.0);
+    }
+
     $planner = casterPlanner();
+    $director = casterRunDirector(3);
     $start = (float) CarbonImmutable::now()->getTimestamp();
     $starts = [];
     $playing = null;
 
-    for ($t = $start; $t <= $start + $seconds; $t += 0.25) {
+    for ($t = $start; $t <= $start + 160; $t += 0.25) {
+        // The seventh clip arrives once the spool has run empty and the gap has opened (user 2026-10-15: the
+        // gap opens only without supply): it waits the gap's 25 s out.
+        if (abs($t - $start - 80.0) < 0.01) {
+            casterSpooledClip(10.0);
+        }
+
         $director->tick($planner, $planner->at($t, []), $t);
 
         if ($director->clip()?->id !== $playing) {
@@ -400,32 +420,14 @@ function casterClipStarts(SceneDirector $director, float $seconds): array
         }
     }
 
-    return $starts;
-}
-
-function casterRunDirector(int $clips): SceneDirector
-{
-    return new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), [
-        'min_scene_seconds' => 5, 'silent_min_scene_seconds' => 15, 'tail_seconds' => 1.5, 'lead_in_seconds' => 0.5, 'max_hold_seconds' => 100,
-        'gap_seconds' => ['min' => 25.0, 'max' => 25.0],
-        'runs' => ['enabled' => true, 'every_minutes' => ['min' => 1.0, 'max' => 1.0], 'clips' => ['min' => $clips, 'max' => $clips], 'breath_seconds' => ['min' => 1.0, 'max' => 1.0]],
-    ]);
-}
-
-it('plays a run of clips back to back with only a breath between them, then the music gap returns', function () {
-    foreach (range(1, 6) as $ignored) {
-        casterSpooledClip(10.0);
-    }
-
-    $starts = casterClipStarts(casterRunDirector(3), 160);
     $pauses = array_map(fn (float $next, float $previous): float => round($next - $previous - 10.0, 2), array_slice($starts, 1), array_slice($starts, 0, -1));
 
-    // Clip one draws the first run a minute ahead; clip two follows the 25 s gap; clip three (about 71 s, past
-    // the minute) opens a run of three: three, four and five only a breath apart; then the 25 s gap again.
-    expect($starts)->toHaveCount(6)
-        ->and(array_slice($pauses, 0, 2))->each->toBeGreaterThanOrEqual(25.0)
-        ->and(array_slice($pauses, 2, 2))->each->toBeLessThan(4.0)
-        ->and($pauses[4])->toBeGreaterThanOrEqual(25.0);
+    // Clips one to six follow each other only a breath apart, a run or not (user 2026-10-15: with a clip waiting
+    // the next one follows after the breath, never a track of music); after clip six the spool is empty, the 25 s
+    // gap returns, and clip seven waits it out.
+    expect($starts)->toHaveCount(7)
+        ->and(array_slice($pauses, 0, 5))->each->toBeLessThan(4.0)
+        ->and($pauses[5])->toBeGreaterThanOrEqual(25.0);
 });
 
 it('counts no reaction as a run clip, and ends a run at a slot without a clip', function () {

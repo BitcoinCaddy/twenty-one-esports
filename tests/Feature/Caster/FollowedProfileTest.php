@@ -247,7 +247,8 @@ it('writes the segment: intro with the display name, then the league voice\'s re
         ->and($script->source)->toBe(CasterScript::SOURCE_AI)
         ->and($script->priority)->toBe(0)
         ->and($script->facts_hash)->toBe('followed:'.$note->id)
-        ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(30)))->toBeTrue()
+        // Nothing expires unused any more (user 2026-10-15): the segment keeps a far-future expiry.
+        ->and($script->expires_at->getTimestamp())->toBeGreaterThan(CarbonImmutable::now()->addYears(9)->getTimestamp())
         ->and($note->reacted_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "<<<post\nDieses Halloween verkleide ich mich als Deutscher\npost>>>") && str_contains($prompt->prompt, 'SKIP'));

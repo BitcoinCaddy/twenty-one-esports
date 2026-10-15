@@ -128,7 +128,9 @@ it('queues a long segment, scene or wished segment as parts with one group, one 
         ->and(array_map(fn (CasterScript $part): int => (int) $part->part_index, $parts))->toBe([1, 2, 3])
         ->and(array_unique(array_map(fn (CasterScript $part): string => $part->kind.$part->phase.$part->facts_hash.$part->priority.$part->source.$part->expires_at->toIso8601String(), $parts)))->toHaveCount(1)
         ->and($parts[0]->sentences()[0])->toBe('[laughter] Intro.')
-        ->and($parts[0]->expires_at->getTimestamp())->toBe($now->addMinutes(120)->getTimestamp())
+        // Nothing expires unused any more (user 2026-10-15): the group shares one far-future expiry instead of
+        // the max age that was passed.
+        ->and($parts[0]->expires_at->getTimestamp())->toBeGreaterThan($now->addYears(9)->getTimestamp())
         // Each part is estimated on its own text, so the airtime of the group is the airtime of the script.
         ->and($parts[0]->estimated_seconds)->toBe(ScriptQueue::estimateSeconds($parts[0]->text));
 
@@ -202,7 +204,7 @@ it('never refuses a later part of a long scene for the airtime cap, which still 
         ->and(fn () => casterPartClip($other->refresh(), 10.0))->toThrow(SpoolFull::class);
 });
 
-it('plays the parts back to back with only a breath, ignoring segment spacing, before any other scene; then the gap returns', function () {
+it('plays the parts back to back with only a breath, ignoring segment spacing, before any other scene — no gap while a clip waits (user 2026-10-15)', function () {
     $now = CarbonImmutable::now();
     $first = app(ScriptQueue::class)->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, casterPartText(12), 'history:x', 0, $now);
     $parts = casterPartsOf($first);
@@ -214,11 +216,11 @@ it('plays the parts back to back with only a breath, ignoring segment spacing, b
     $starts = casterPartStarts(casterPartDirector(), 90);
     $pauses = array_map(fn (array $next, array $previous): float => round($next['start'] - $previous['start'] - 10.0, 2), array_slice($starts, 1), array_slice($starts, 0, -1));
 
-    // Part one opens the segment (calm slot); parts two and three follow after the 0.5 s lead-in, although part one set
-    // the segment spacing of five minutes; the scene only after the 25 s music gap.
+    // Part one opens the segment; parts two and three follow after the 0.5 s lead-in, although part one set
+    // the segment spacing of five minutes; the scene follows right after the last part (user 2026-10-15: no
+    // music gap while a clip waits — the gap itself stays proven with an empty spool in SceneDirectorTest).
     expect(array_column($starts, 'script'))->toBe([...array_map(fn (CasterScript $part): int => $part->id, $parts), $scene->id])
-        ->and(array_slice($pauses, 0, 2))->each->toBeLessThanOrEqual(1.0)
-        ->and($pauses[2])->toBeGreaterThanOrEqual(25.0)
+        ->and($pauses)->each->toBeLessThanOrEqual(1.0)
         ->and(Cache::get(ClipSpool::SEGMENT_PLAYED))->toBeInt()
         ->and(CasterClip::query()->count())->toBe(0);
 });
@@ -242,9 +244,9 @@ it('plays a wish: the reply, then every part of the wished segment back to back,
     $starts = casterPartStarts(casterPartDirector(), 100);
     $pauses = array_map(fn (array $next, array $previous): float => round($next['start'] - $previous['start'] - 10.0, 2), array_slice($starts, 1), array_slice($starts, 0, -1));
 
+    // The scene follows the last part right away (user 2026-10-15: with a clip waiting there is no music gap).
     expect(array_column($starts, 'script'))->toBe($claimed)
-        ->and(array_slice($pauses, 0, 3))->each->toBeLessThanOrEqual(1.0)
-        ->and($pauses[3])->toBeGreaterThanOrEqual(25.0);
+        ->and($pauses)->each->toBeLessThanOrEqual(1.0);
 });
 
 it('lets a reaction cut in between two parts, and the next part follows it after a breath', function () {
@@ -269,7 +271,7 @@ it('lets a reaction cut in between two parts, and the next part follows it after
         ->and($starts[2]['start'] - $starts[1]['start'] - 10.0)->toBeLessThanOrEqual(1.0);
 });
 
-it('ends the group when a later part expired: the rest never plays, and the scenes return after the gap', function () {
+it('ends the group when a later part expired: the rest never plays, and the scene follows at once (user 2026-10-15)', function () {
     $now = CarbonImmutable::now();
     $first = app(ScriptQueue::class)->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, casterPartText(12), 'history:x', 0, $now);
     [, $second, $third] = casterPartsOf($first);
@@ -282,7 +284,8 @@ it('ends the group when a later part expired: the rest never plays, and the scen
     $starts = casterPartStarts(casterPartDirector(), 60);
 
     expect(array_column($starts, 'script'))->toBe([$first->id, $scene->id])
-        ->and($starts[1]['start'] - $starts[0]['start'] - 10.0)->toBeGreaterThanOrEqual(25.0)
+        // The waiting scene follows the ended group after a breath, not after a music gap (user 2026-10-15).
+        ->and($starts[1]['start'] - $starts[0]['start'] - 10.0)->toBeLessThanOrEqual(1.5)
         // Part three's clip left the spool with its group, it never waits for a story that is over.
         ->and(CasterClip::query()->where('caster_script_id', $third->id)->exists())->toBeFalse()
         ->and($third->refresh()->status)->toBe(CasterScript::EXPIRED);
@@ -305,11 +308,11 @@ it('waits wait_seconds for a part still being voiced, then ends the group and th
         ->and($second->refresh()->status)->toBe(CasterScript::EXPIRED);
 });
 
-it('expires the parts together: one part expired takes the unvoiced rest of its group along', function () {
+it('expires the parts together: one part expired takes the unvoiced rest of its group along, a shared deadline the whole group', function () {
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
-    $first = $queue->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, casterPartText(12), 'history:x', 0, $now, maxAgeMinutes: 30);
-    $other = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, casterPartText(12), 'news:1', 0, $now->addMinute(), maxAgeMinutes: 30);
+    $first = $queue->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, casterPartText(12), 'history:x', 0, $now);
+    $other = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, casterPartText(12), 'news:1', 0, $now->addMinute(), expiresAt: $now->addMinutes(30));
     [, $second, $third] = casterPartsOf($first);
 
     // Part two expired (superseded, or a claim that ran out): the unvoiced parts one and three go with it.
@@ -319,7 +322,8 @@ it('expires the parts together: one part expired takes the unvoiced rest of its 
         ->and($third->refresh()->status)->toBe(CasterScript::EXPIRED)
         ->and(collect(casterPartsOf($other))->pluck('status')->unique()->all())->toBe([CasterScript::QUEUED]);
 
-    // Same expiry: the whole other group goes at once when its time is up, none of it lingers.
+    // No max age any more (user 2026-10-15), but the explicit deadline of the group still takes it as a whole:
+    // none of it lingers past its slot.
     expect($queue->expire($now->addMinutes(32)))->toBe(3)
         ->and(collect(casterPartsOf($other))->pluck('status')->unique()->all())->toBe([CasterScript::EXPIRED]);
 });

@@ -216,16 +216,17 @@ it('hands out live moments before scene scripts, then the oldest first', functio
         ->and($queue->claim($now))->toBeNull();
 });
 
-it('expires a script after its max age unused (ten minutes here)', function () {
-    config(['tv.commentary.scripts.max_age_minutes' => 10]);
+it('expires nothing unused any more: every script keeps its ten-year expiry (user 2026-10-15)', function () {
     $now = CarbonImmutable::now();
     $queue = casterQueue();
     $script = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Alt.', 'h', 0, $now);
 
-    expect($queue->expire($now->addMinutes(9)))->toBe(0)
-        ->and($queue->expire($now->addMinutes(10)))->toBe(1)
-        ->and($script->fresh()->status)->toBe(CasterScript::EXPIRED)
-        ->and($queue->claim($now->addMinutes(10)))->toBeNull();
+    // User 2026-10-15: "verfallen soll nichts mehr, wir liefern das aus, was generiert wurde" — no minute-based
+    // expiry from the queue any more: the script stays claimable however long it waits.
+    expect($script->expires_at->getTimestamp() - $now->getTimestamp())->toBeGreaterThan(9 * 365 * 86400)
+        ->and($queue->expire($now->addMinutes(10)))->toBe(0)
+        ->and($script->fresh()->status)->toBe(CasterScript::QUEUED)
+        ->and($queue->claim($now->addMinutes(10))?->id)->toBe($script->id);
 });
 
 it('expires scene scripts written for facts that changed, while superseding is on', function () {

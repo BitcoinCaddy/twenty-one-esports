@@ -177,7 +177,10 @@ return [
         // the GPU hour to the stock. The throughput (estimated seconds voiced per wall second) is measured from the uploads
         // of the last `measure_minutes` (claim to upload, overlaps counted once), `default_rtf` until enough was voiced.
         'budget' => [
-            'enabled' => (bool) env('TV_COMMENTARY_BUDGET', true),
+            // Off for good (user 2026-10-15: "Stundenbudgets gibt es nicht mehr"): the texts come from the local
+            // opencode CLI and cost nothing to write, so nothing is throttled by the workstation's voicing speed any
+            // more; the spool's own caps (`max_seconds`, `max_bytes`) keep the buffer bounded instead.
+            'enabled' => (bool) env('TV_COMMENTARY_BUDGET', false),
             'stock_share' => (float) env('TV_COMMENTARY_BUDGET_STOCK_SHARE', 0.3),
             // The budget's hour: what was written and voiced in it.
             'window_minutes' => 60,
@@ -431,9 +434,9 @@ return [
         // block: the Anchor's jingles (`jingles`, storage/app/jingles, caster:jingles), the speech with short agreeing
         // blips of the other speaker under it (`blips`), crossfades, one loudness pass. A live moment or chat reaction is
         // still voiced alone; a script the clock places (`airs_at`: bulletin, rubric) leads a block of its own.
-        // The stream (SceneDirector) plays a block whole, adds no stinger, joins the next block after `join_seconds`, and
-        // lets a reaction cut in only at the next segment boundary, waiting at most `reaction_wait_seconds` (then at a
-        // sentence end), and resumes the block from there. Below `starve_seconds` of ready audio a shorter block goes out.
+        // The stream (SceneDirector) plays a block whole, adds no stinger, joins the next block after `join_seconds`,
+        // and never lets a reaction cut into it (user 2026-10-15: a rendered programme runs undisturbed; the reaction
+        // follows the block's end). Below `starve_seconds` of ready audio a shorter block goes out.
         // Names written the way the voices say them (ScriptQueue::sayAs()), whole words, any case: "written" => "spoken".
         'say_as' => [
             'Noerd' => 'Nörd',
@@ -474,6 +477,7 @@ return [
             'max_clip_seconds' => 2100,
             'max_clip_bytes' => 16 * 1024 * 1024,
             'join_seconds' => ['min' => 0.35, 'max' => 0.7],
+            // Unused since 2026-10-15 (reactions no longer cut into a block, SceneDirector); kept for env compatibility.
             'reaction_wait_seconds' => (float) env('TV_COMMENTARY_REACTION_WAIT_SECONDS', 90),
             // A block holds the slide only this long; the slides rotate under a block of several minutes.
             'hold_seconds' => 30,
@@ -1277,7 +1281,10 @@ return [
             // 2026-10-12: "Maximal 10 Minuten, dann dürfen wieder Reactions reinkommen"): then it cuts in at the next
             // sentence end of whatever is on air, never inside a bulletin's news, and the programme resumes from there
             // (SceneDirector). Its script never expires before this plus `reaction_voicing_minutes`.
-            'max_hold_seconds' => (int) env('TV_COMMENTARY_CHAT_MAX_HOLD_SECONDS', 600),
+            // Zero (user 2026-10-15: reactions go on air at once): every waiting reaction counts as overdue and
+            // cuts into what is on air at its next sentence end, except the news, the weather and sport talk and
+            // a rendered programme (SceneDirector::protectedFromReactions()).
+            'max_hold_seconds' => (int) env('TV_COMMENTARY_CHAT_MAX_HOLD_SECONDS', 0),
             // A reaction (and a live moment) plays as soon as no clip is on air, mid-track, unless a story or a podcast runs
             // (SceneDirector::liveAnytime(); user 2026-10-14). false: it waits for the end of the gap's track (music first).
             'live_anytime' => (bool) env('TV_COMMENTARY_LIVE_ANYTIME', true),

@@ -40,7 +40,7 @@
     </source>
     <php>
         <!-- The parallel workers outgrew the CLI default of 128M (also on b80beef0, 2026-10-09). -->
-        <ini name="memory_limit" value="512M"/>
+        <ini name="memory_limit" value="2G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="TV_VOICESTUDIO_KEEP_LOCAL_DIR" value="" force="true"/>
         <!-- The tests pin the voice model: a prod-like .env with ESPORTS_VOICE_MODEL=claude-sonnet-5-5 turned LeagueVoiceTest red (P21, 2026-10-13). -->

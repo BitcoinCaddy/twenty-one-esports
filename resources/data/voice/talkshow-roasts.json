@@ -63,8 +63,8 @@
     ]
   },
   "insults": {
-    "markus": ["Sie Gelddruck-Wichserin", "Sie Schuldenbremsen-Vollpfostenin", "Sie Haushaltsloch-Arschloch", "Sie MMT-Trottelpädagogin", "Sie Notenpresse-Hurensohn", "Sie Haushaltszauberin ohne Haushalt"],
-    "sirius": ["Sie Zinseszins-Wichser", "Sie Halving-Hellseher-Vollpfosten", "Sie Kursverlauf-Arschloch", "Sie Druckerpatronen-Trottel", "Sie Seed-Phrase-Hurensohn", "Sie Zentralbank-Fan ohne Taschenrechner"],
-    "genossin": ["Sie Sats-Wichser", "Sie Hardcap-Vollpfosten", "Sie Laser-Augen-Arschloch", "Sie Baggersee-Hurensohn", "Sie Wallet-Trottel mit Bausparvertrag", "Sie Tech-Bro ohne Festplatte"]
+    "markus": ["Sie Gelddruck-Statistin", "Sie Schuldenbremsen-Vollpfostenin", "Sie Haushaltsloch-Arschloch", "Sie MMT-Trottelpädagogin", "Sie Notenpresse-Fan ohne Taschenrechner", "Sie Haushaltszauberin ohne Haushalt", "Sie Zinseszins-Flasche", "Sie Keynes-Karikatur", "Sie Schuldenuhr-Schwachkopf", "Sie Negativzins-Niete", "Sie Papiergeld-Papnase", "Sie Bankenrettungs-Blödmann", "Sie Euro-Krisen-Kek", "Sie Haushaltsloch-Heldin", "Sie Staatsschulden-Standleiterin", "Sie Fiat-Pfeife", "Sie Bagholder-Ausbilderin", "Sie Druckerpatronen-Denkfehler"],
+    "sirius": ["Sie Zinseszins-Karikatur", "Sie Halving-Hellseher-Vollpfosten", "Sie Kursverlauf-Arschloch", "Sie Druckerpatronen-Trottel", "Sie Seed-Phrase-Sicherheitsrisiko", "Sie Zentralbank-Fan ohne Taschenrechner", "Sie Blockzeit-Fetischist", "Sie Custodial-Kasper", "Sie Chart-Technik-Clown", "Sie Kopfschüttel-Komiker", "Sie Hyperinflations-Hobbyhistoriker", "Sie Soundmoney-Simulant", "Sie Lightning-Koch", "Sie UTXO-Horter ohne Plan", "Sie Fees-Erklärer auf Nachfrage", "Sie Kursverlust-Kollege", "Sie Whitepaper-Wichtigtuer", "Sie Hardfork-Held von gestern"],
+    "genossin": ["Sie Sats-Baurat", "Sie Hardcap-Vollpfosten", "Sie Laser-Augen-Arschloch", "Sie Baggersee-Pionier", "Sie Wallet-Trottel mit Bausparvertrag", "Sie Tech-Bro ohne Festplatte", "Sie To-the-Moon-Traumtänzer", "Sie Number-go-up-Naturforscher", "Sie Tulpenzwiebel-Optimist", "Sie Volatilitäts-Versicherungsmakler", "Sie Selbstverwahrungs-Schwindler", "Sie Node-Betreiber auf Papier", "Sie Pleb-Anführer ohne Ligaplatz", "Sie Hodl-Psychologe", "Sie Zahlen-Fitnessstudio", "Sie Podcast-Kaufmann", "Sie Vereinsmeisterschafts-Anarchist", "Sie Bitcoin-Standard-Buchhalter"]
   }
 }

@@ -30,12 +30,12 @@ use Illuminate\Support\Str;
  *
  * next() is the fallback chain of the stream (plan: "Fällt der Spool unter
  * 60 s, nimmt der Sender vorproduzierte Füller … ist der Rechner aus,
- * Text-Bauchbinde"): a live clip first, then a clip of the slot's phase while
- * at least `filler_below_seconds` are ready (the clip about the slide's
- * topic first, SceneTopic), else a filler, else nothing; with the
- * workstation offline and no clip, the next queued script of the phase as a
- * text lower third. A long segment (news, history) comes right after the
- * live clips, on a calm slot only (never over a live match or a result),
+ * Text-Bauchbinde"): a live clip first, then a clip of the slot's phase (the
+ * clip about the slide's topic first, SceneTopic; a ready scene clip at any
+ * length, user 2026-10-15: "immer direkt live, wenn hochgeladen"), else a
+ * filler, else nothing; with the workstation offline and no clip, the next
+ * queued script of the phase as a text lower third. A long segment (news,
+ * history) comes right after the live clips, in any slot (user 2026-10-15),
  * and never within `segment_spacing_minutes` of the last one.
  *
  * A later part of a long script (ScriptQueue::parts()) is never picked by
@@ -426,52 +426,64 @@ class ClipSpool
             return ['clip' => $block, 'caption' => null, 'source' => 'block'];
         }
 
-        $segment = in_array($phase, ScenePhase::CALM, true) ? $this->nextSegment($now) : null;
+        // A long segment no longer waits for a calm slot (user 2026-10-15: what was generated goes on air), only
+        // for its spacing.
+        $segment = $this->nextSegment($now);
         if ($segment !== null) {
             return ['clip' => $segment, 'caption' => null, 'source' => 'segment'];
         }
 
-        if ($this->readySeconds() >= (float) config('tv.commentary.spool.filler_below_seconds', 60)) {
-            $phases = in_array($phase, ScenePhase::CALM, true) ? [$phase, ...array_diff(ScenePhase::CALM, [$phase])] : [$phase];
+        $phases = in_array($phase, ScenePhase::CALM, true) ? [$phase, ...array_diff(ScenePhase::CALM, [$phase])] : [$phase];
 
-            // The clip about the slide on air first, within the phases it may stand in for.
-            if ($topic !== null) {
-                $clip = (clone $ready)->where('kind', CasterScript::SCENE)->whereIn('phase', $phases)
-                    ->whereIn('caster_script_id', CasterScript::query()->where('topic', $topic)->select('id'))->orderBy('id')->first();
+        // The clip about the slide on air first, within the phases it may stand in for.
+        if ($topic !== null) {
+            $clip = (clone $ready)->where('kind', CasterScript::SCENE)->whereIn('phase', $phases)
+                ->whereIn('caster_script_id', CasterScript::query()->where('topic', $topic)->select('id'))->orderBy('id')->first();
 
-                if ($clip !== null) {
-                    return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
-                }
-            }
-
-            foreach ($phases as $candidate) {
-                $clip = (clone $ready)->where('kind', CasterScript::SCENE)->where('phase', $candidate)->orderBy('id')->first();
-
-                if ($clip !== null) {
-                    return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
-                }
-            }
-
-            // Nothing for this phase: any ready commentary beats silence (user 2026-10-11: "große Lücken immer" — clips
-            // of another phase waited while the stream played only music). No scene is held back for its slide any more
-            // (user 2026-10-12: "Das mit den Slide-Fakten ist nicht stimmig"): a scene is no slide commentary, and a
-            // comment on a running game names its match in its first sentence (CasterVoice::ANCHOR_RULE).
-            $clip = (clone $ready)->where('kind', CasterScript::SCENE)->orderBy('id')->first();
             if ($clip !== null) {
                 return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
             }
-        } else {
-            // The filler played longest ago (updated_at moves on every play).
-            // No filler while the pattern fallback is off (user 2026-10-12: "KEINE SICH WIEDERHOLENDEN FÜLLSÄTZE MEHR"): music instead.
-            $filler = PatternScripts::enabled() ? CasterClip::query()->where('kind', CasterScript::FILLER)->where('status', CasterClip::READY)->orderBy('updated_at')->orderBy('id')->first() : null;
+        }
 
-            if ($filler !== null) {
-                return ['clip' => $filler, 'caption' => null, 'source' => 'filler'];
+        foreach ($phases as $candidate) {
+            $clip = (clone $ready)->where('kind', CasterScript::SCENE)->where('phase', $candidate)->orderBy('id')->first();
+
+            if ($clip !== null) {
+                return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
             }
+        }
+
+        // Nothing for this phase: any ready commentary beats silence (user 2026-10-11: "große Lücken immer" — clips
+        // of another phase waited while the stream played only music). No scene is held back for its slide any more
+        // (user 2026-10-12: "Das mit den Slide-Fakten ist nicht stimmig"): a scene is no slide commentary, and a
+        // comment on a running game names its match in its first sentence (CasterVoice::ANCHOR_RULE).
+        $clip = (clone $ready)->where('kind', CasterScript::SCENE)->orderBy('id')->first();
+        if ($clip !== null) {
+            return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
+        }
+
+        // No scene clip waiting, whatever its length (user 2026-10-15): the filler played longest ago (updated_at
+        // moves on every play). No filler while the pattern fallback is off (user 2026-10-12: "KEINE SICH
+        // WIEDERHOLENDEN FÜLLSÄTZE MEHR"): music instead.
+        $filler = PatternScripts::enabled() ? CasterClip::query()->where('kind', CasterScript::FILLER)->where('status', CasterClip::READY)->orderBy('updated_at')->orderBy('id')->first() : null;
+
+        if ($filler !== null) {
+            return ['clip' => $filler, 'caption' => null, 'source' => 'filler'];
         }
 
         // No text lower third, ever (user 2026-10-11: "diese Banner wollten wir nicht"): the spoken commentary is never shown as text.
         return ['clip' => null, 'caption' => null, 'source' => 'none'];
+    }
+
+    /**
+     * Whether any clip that is not a podcast chunk waits in the spool: the music gap after a clip opens only
+     * without supply, with a clip waiting the next one follows after a short breath (user 2026-10-15: "immer
+     * direkt live, wenn hochgeladen").
+     */
+    public function hasFresh(CarbonImmutable $now): bool
+    {
+        return CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
+            ->where('kind', '!=', CasterScript::PODCAST)->exists();
     }
 
     /**

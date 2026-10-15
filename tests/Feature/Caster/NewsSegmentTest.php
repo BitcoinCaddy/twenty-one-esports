@@ -177,7 +177,8 @@ it('writes a news segment in the model\'s own words: its lead-in, the headline w
         ->and($script->source)->toBe(CasterScript::SOURCE_AI)
         ->and($script->topic)->toBe(CasterNews::GERMANY)
         ->and($script->priority)->toBe(0)
-        ->and($script->expires_at->equalTo(CarbonImmutable::now()->addMinutes(30)))->toBeTrue()
+        // Nothing expires unused any more (user 2026-10-15): the segment keeps a far-future expiry.
+        ->and($script->expires_at->getTimestamp())->toBeGreaterThan(CarbonImmutable::now()->addYears(9)->getTimestamp())
         ->and($news->fresh()->used_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Quelle: tagesschau\nSchlagzeile: Bundesregierung plant neue Zuckersteuer") && str_contains($prompt->prompt, 'SKIP')

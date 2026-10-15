@@ -17,15 +17,17 @@ use Illuminate\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
-| TWENTY ONE TV: a reaction waits at most max_hold_seconds
+| TWENTY ONE TV: reactions go on air at once, the programme runs undisturbed
 |--------------------------------------------------------------------------
 |
-| User 2026-10-12: "Die Reactions werden zu lange unterdrückt. Maximal 10
-| Minuten, dann dürfen wieder Reactions reinkommen." A chat reaction that
-| has been ready for `tv.commentary.chat.max_hold_seconds` cuts in at the
-| next sentence end of whatever is on air (a talk, a rubric, a block, the
-| parts of a story), never inside a bulletin's news, and the programme it
-| interrupted resumes from that sentence afterwards.
+| User 2026-10-15: "Live Reactions auf Nostr Chat und YT sollen sofort air
+| gehen, außer es laufen gerade News, Wetter oder Sport oder ein
+| vorgerendertes Programm." Every reaction counts as overdue at once
+| (`tv.commentary.chat.max_hold_seconds` is 0 now): it cuts into what is on
+| air at the next sentence end — except the news on air, a weather and
+| sport talk (a rubric), a news segment and every rendered block, which it
+| never cuts; it follows them, and what a cut interrupted resumes from
+| that sentence afterwards.
 |
 */
 
@@ -146,7 +148,7 @@ function reactionHoldOrder(array $runs): array
     return array_values(array_map(fn (array $run): int => $run['value'], array_filter($runs, fn (array $run): bool => $run['value'] !== 0)));
 }
 
-it('lets a reaction in after max_hold_seconds in the worst case: bulletin, a six-part news talk and a rubric in a row', function () {
+it('holds a reaction past max_hold_seconds behind the protected news and news talk, without losing a second of them (user 2026-10-15)', function () {
     reactionHoldDecodes();
     $slot = CarbonImmutable::parse('2026-10-12 14:00', 'Europe/Berlin');
     $this->travelTo($slot->subSeconds(2));
@@ -160,14 +162,14 @@ it('lets a reaction in after max_hold_seconds in the worst case: bulletin, a six
     $latency = collect($runs)->firstWhere('value', 5)['from'] - 7.0;
     $cutPart = collect([11, 12, 13, 14, 15, 16])->first(fn (int $fill): bool => collect($runs)->where('value', $fill)->count() === 2);
 
-    // Before the cap the reaction waited for all of it: 874 s in this simulation.
-    expect($latency)->toBeGreaterThanOrEqual(600.0)->toBeLessThanOrEqual(610.0)
-        ->and($cutPart)->not->toBeNull()
-        // Cut at a sentence end (every 5 s), and the part resumes from there: not a second of the programme is lost.
-        ->and(fmod(collect($runs)->firstWhere('value', $cutPart)['seconds'], 5.0))->toBe(0.0)
+    // The bulletin and the news talk are protected (user 2026-10-15): no part is cut any more, the reaction
+    // airs between part five and part six (631 s in this simulation, past max_hold_seconds), and the programme
+    // plays every second of itself.
+    expect($latency)->toBeGreaterThanOrEqual(625.0)->toBeLessThanOrEqual(645.0)
+        ->and($cutPart)->toBeNull()
         ->and(collect([7, 11, 12, 13, 14, 15, 16])->map(fn (int $fill): float => reactionHoldSecondsOf($runs, $fill))->all())->toBe([180.0, 90.0, 90.0, 90.0, 90.0, 90.0, 90.0])
         ->and(reactionHoldSecondsOf($runs, 21) + reactionHoldSecondsOf($runs, 22))->toBe(140.0)
-        ->and(array_slice(reactionHoldOrder($runs), 0, 9))->toBe([7, 11, 12, 13, 14, $cutPart, 5, $cutPart, 16]);
+        ->and(array_slice(reactionHoldOrder($runs), 0, 9))->toBe([7, 11, 12, 13, 14, 15, 5, 16, 21]);
 });
 
 it('never cuts into a bulletin\'s news for an overdue reaction: it follows the bulletin', function () {
@@ -184,7 +186,7 @@ it('never cuts into a bulletin\'s news for an overdue reaction: it follows the b
         ->and(collect($runs)->firstWhere('value', 7)['seconds'])->toBe(180.0);
 });
 
-it('cuts a news block for an overdue reaction only after its protected news, and the talk resumes', function () {
+it('never cuts into a rendered block for an overdue reaction: it follows the block (user 2026-10-15)', function () {
     reactionHoldDecodes();
     $slot = CarbonImmutable::parse('2026-10-12 14:00', 'Europe/Berlin');
     $this->travelTo($slot->subSeconds(2));
@@ -195,12 +197,11 @@ it('cuts a news block for an overdue reaction only after its protected news, and
         5 => fn () => reactionHoldClip(reactionHoldScript(CasterScript::CHAT), 10.0, 5),
     ]);
 
-    expect(reactionHoldOrder($runs))->toBe([7, 5, 7])
-        ->and(collect($runs)->firstWhere('value', 7)['seconds'])->toBeGreaterThanOrEqual(120.0)->toBeLessThanOrEqual(130.0)
-        ->and(reactionHoldSecondsOf($runs, 7))->toBe(240.0);
+    expect(reactionHoldOrder($runs))->toBe([7, 5])
+        ->and(collect($runs)->firstWhere('value', 7)['seconds'])->toBe(240.0);
 });
 
-it('cuts a talk block with no boundary in sight at the next sentence end once the reaction is overdue', function () {
+it('never cuts a block of scenes for an overdue reaction either: it follows the block (user 2026-10-15)', function () {
     reactionHoldDecodes();
     $this->travelTo(CarbonImmutable::parse('2026-10-12 15:10', 'Europe/Berlin'));
     app(ClipSpool::class)->storeBlock([reactionHoldScript(CasterScript::SCENE), reactionHoldScript(CasterScript::SCENE)], reactionHoldOpus(200.0, 1), 200.0, range(5.0, 200.0, 5.0), [], 0.0, CarbonImmutable::now());
@@ -210,13 +211,14 @@ it('cuts a talk block with no boundary in sight at the next sentence end once th
     ]);
     $chat = collect($runs)->firstWhere('value', 5);
 
-    // Without the cap the block waited reaction_wait_seconds (90) for a boundary.
-    expect($chat['from'] - 2.0)->toBeGreaterThanOrEqual(20.0)->toBeLessThanOrEqual(27.0)
-        ->and(reactionHoldOrder($runs))->toBe([1, 5, 1])
+    // The reaction is overdue at 22 s (max hold 20), but no sentence-end cut and no boundary search any more:
+    // the block runs its 200 s whole and the reaction follows right at its end.
+    expect($chat['from'] - 2.0)->toBeGreaterThanOrEqual(198.0)->toBeLessThanOrEqual(210.0)
+        ->and(reactionHoldOrder($runs))->toBe([1, 5])
         ->and(reactionHoldSecondsOf($runs, 1))->toBe(200.0);
 });
 
-it('resumes what an overdue reaction cut before the block a bulletin cut earlier: the last cut first', function () {
+it('lets an overdue reaction wait behind a protected rubric, then the block cut for the bulletin resumes after it (user 2026-10-15)', function () {
     reactionHoldDecodes();
     $slot = CarbonImmutable::parse('2026-10-12 14:00', 'Europe/Berlin');
     $this->travelTo($slot->subSeconds(20));
@@ -228,7 +230,9 @@ it('resumes what an overdue reaction cut before the block a bulletin cut earlier
         56 => fn () => reactionHoldClip(reactionHoldScript(CasterScript::CHAT), 5.0, 5),
     ]);
 
-    expect(reactionHoldOrder($runs))->toBe([1, 7, 11, 5, 11, 1])
+    // The reaction may not cut the rubric any more: it airs after it, and only then does the block the bulletin
+    // cut come back. Not a second of the block or the rubric is lost.
+    expect(reactionHoldOrder($runs))->toBe([1, 7, 11, 5, 1])
         ->and(reactionHoldSecondsOf($runs, 1))->toBe(120.0)
         ->and(reactionHoldSecondsOf($runs, 11))->toBe(60.0);
 });
@@ -276,19 +280,23 @@ it('keeps a reaction that is not overdue out of a single clip, as before', funct
     expect(reactionHoldOrder($runs))->toBe([11, 5]);
 });
 
-it('never lets a chat reply, a wish or a zap thank-you expire before max_hold_seconds plus their voicing', function () {
-    config(['tv.commentary.scripts.max_age_minutes' => 5, 'tv.commentary.chat.wishes_max_age_minutes' => 5, 'tv.commentary.patterns.enabled' => true]);
+it('expires nothing unused any more: every script keeps a ten-year expiry, only an explicit deadline still applies (user 2026-10-15)', function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-12 15:10', 'Europe/Berlin'));
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
 
     $chat = $queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, 'Danke für die Frage im Chat, Alice.', 'h1', 50, $now);
-    $wish = $queue->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, 'Der Bauernkrieg begann im Jahr fünfzehnhundertvierundzwanzig.', 'h2', 50, $now, scene: ChatWishes::SCENE, maxAgeMinutes: 5);
+    $wish = $queue->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, 'Der Bauernkrieg begann im Jahr fünfzehnhundertvierundzwanzig.', 'h2', 50, $now, scene: ChatWishes::SCENE);
     $zap = $queue->enqueue(CasterScript::LIVE, ScenePhase::BREAK, 'Danke für den Zap, Bob, das wärmt.', 'h3', 100, $now, topic: ChatReactions::ZAP_TOPIC);
     $scene = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Gerade läuft eine ruhige Runde im Turnier.', 'h4', 0, $now);
+    $deadline = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, 'Nachrichten.', 'h5', 0, $now, expiresAt: $now->addMinutes(20));
 
-    expect($chat->expires_at->getTimestamp() - $now->getTimestamp())->toBe(1800)
-        ->and($wish->expires_at->getTimestamp() - $now->getTimestamp())->toBe(1800)
-        ->and($zap->expires_at->getTimestamp() - $now->getTimestamp())->toBe(1800)
-        ->and($scene->expires_at->getTimestamp() - $now->getTimestamp())->toBe(300);
+    // User 2026-10-15: "verfallen soll nichts mehr, wir liefern das aus, was generiert wurde" — a chat reply, a
+    // wish and a zap thank-you no longer count down (their max_hold_seconds is 0 anyway); only a slot deadline
+    // (a bulletin's) still ends a script early.
+    expect($chat->expires_at->getTimestamp() - $now->getTimestamp())->toBeGreaterThan(9 * 365 * 86400)
+        ->and($wish->expires_at->getTimestamp() - $now->getTimestamp())->toBeGreaterThan(9 * 365 * 86400)
+        ->and($zap->expires_at->getTimestamp() - $now->getTimestamp())->toBeGreaterThan(9 * 365 * 86400)
+        ->and($scene->expires_at->getTimestamp() - $now->getTimestamp())->toBeGreaterThan(9 * 365 * 86400)
+        ->and($deadline->expires_at->getTimestamp())->toBe($now->addMinutes(20)->getTimestamp());
 });

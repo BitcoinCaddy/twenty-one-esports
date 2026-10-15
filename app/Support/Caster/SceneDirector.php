@@ -434,10 +434,10 @@ final class SceneDirector
             }
         }
 
-        // An overdue reaction cuts into what is on air at its next sentence end, never into a bulletin's news (a news
-        // block's talk after its news it may); what it cut resumes from there afterwards.
-        if ($overdue && $this->clip !== null && ! $this->spool->isLive($this->clip)
-            && ($this->bulletinSlot === null || ($this->clip->isBlock() && $now >= $this->protectedUntil))) {
+        // An overdue reaction cuts into what is on air at its next sentence end, never into the news, the weather
+        // and sport talk, a news segment or a rendered programme (user 2026-10-15: reactions go on air at once,
+        // the programme runs on); what it cut resumes from there afterwards.
+        if ($overdue && $this->clip !== null && ! $this->spool->isLive($this->clip) && ! $this->protectedFromReactions($this->clip)) {
             $planned = $this->timeline->isCut() ? (float) $this->timeline->endsAt() : null;
             $at = $this->timeline->nextSentenceEnd($this->earliestCut($now, resumable: true));
 
@@ -454,17 +454,8 @@ final class SceneDirector
             }
         }
 
-        // A reaction or a due programme teaser while a block is on air: it waits for the block's next segment boundary
-        // (P6), never cuts a sentence. Music first: it waits for the block's end and the track after it (an overdue one
-        // still cuts in above).
-        if (! $this->musicFirst() && $this->clip !== null && $this->clip->isBlock() && ! $this->isPodcast($this->clip) && $this->held === [] && ! $this->timeline->isCut()
-            && ($this->spool->nextLive(CarbonImmutable::createFromTimestamp($now)) !== null || $this->spool->teaser(CarbonImmutable::createFromTimestamp($now)) !== null)) {
-            $at = $this->reactionCut($now);
-
-            if ($at !== null) {
-                $this->cut($at, $now);
-            }
-        }
+        // A reaction no longer cuts into a block on air, not even at a segment boundary (user 2026-10-15: a rendered
+        // programme runs undisturbed); it follows at the block's end. A due programme teaser waits with it.
 
         // A takeover waits for the end of the sentence on air, never longer; it never cuts into a bulletin (a news
         // block's talk after its news it may).
@@ -591,9 +582,13 @@ final class SceneDirector
 
         // Inside a run only a breath; after its last clip the music gap returns. In quiet hours one clip every
         // `quiet_hours.every_minutes`, counted from the start of the clip that just ended, and no runs.
+        // The music gap opens only when the spool is empty (user 2026-10-15: "immer direkt live, wenn hochgeladen"):
+        // with a clip waiting, the next one follows after a short breath, so the voice runs on while there is supply —
+        // except with music first, where the track still has precedence.
         $quiet = QuietHours::active($at);
         $inRun = ! $quiet && $this->runPosition > 0 && $this->runLeft > 0;
-        $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds) : ($inRun ? $this->between('breath_seconds') : $this->musicGap($now)));
+        $this->quietUntil = $now + ($quiet ? max($this->gap(), QuietHours::everySeconds() - (float) $clip->duration_seconds)
+            : ($inRun || (! $this->musicFirst() && $this->spool->hasFresh($at)) ? $this->between('breath_seconds') : $this->musicGap($now)));
         $this->runPosition = $inRun ? $this->runPosition : 0;
 
         // A live tournament comment (TournamentLive; user 2026-10-14: "alle 1 Minute, mit einer Minute Abstand") is
@@ -836,32 +831,17 @@ final class SceneDirector
     }
 
     /**
-     * Where a block on air makes way for a waiting reaction: its next segment
-     * boundary within `blocks.reaction_wait_seconds`, else the last sentence
-     * end within that wait, else its next sentence end; never inside its
-     * protected opening, never closer than the feed lead. Null when the block
-     * ends before that anyway (the reaction follows it).
+     * Whether the clip on air keeps a waiting reaction off (user 2026-10-15: reactions go on air at once, except
+     * while the news, the weather and sport talk or a rendered programme runs): the news of a bulletin, a rubric
+     * (the news talk, Sport und Wetter, a live tournament's commentary), a news segment, a teaser, a bulletin and
+     * every rendered block (a show, a talk, a podcast replay, stock). A scene, a segment of history or followed
+     * profiles, a filler and another reaction may be cut at the end of their sentence on air.
      */
-    private function reactionCut(float $now): ?float
+    private function protectedFromReactions(CasterClip $clip): bool
     {
-        $earliest = $this->earliestCut($now);
-        $latest = $now + (float) ($this->settings['blocks']['reaction_wait_seconds'] ?? 90);
-        $end = (float) $this->timeline->endsAt();
-        $within = fn (array $times): array => array_values(array_filter($times, fn (float $time): bool => $time >= $earliest && $time <= $latest));
-
-        $at = $within($this->airBoundaries)[0] ?? null;
-
-        if ($at === null) {
-            $ends = $within($this->airEnds);
-            $at = $ends === [] ? null : end($ends);
-        }
-
-        if ($at === null) {
-            $later = array_values(array_filter($this->airEnds, fn (float $time): bool => $time >= $earliest));
-            $at = $later[0] ?? null;
-        }
-
-        return $at === null || $at >= $end - 1.0 ? null : $at;
+        return $this->bulletinSlot !== null
+            || $clip->isBlock()
+            || in_array($clip->kind, [CasterScript::BULLETIN, CasterScript::NEWS, CasterScript::RUBRIC, CasterScript::TEASER, ...CasterScript::PROGRAMME], true);
     }
 
     /** The cut block stopped: it waits off air (held) while the reaction, takeover or news plays. */
@@ -962,9 +942,8 @@ final class SceneDirector
 
         // A programme teaser never comes between two blocks of one story (the talk show's next ten minutes, P20): it
         // waits for the story's end.
-        if ($podcast ? ($this->dueBulletin($now) !== null || $this->awaitingBulletin($now)
-            || $this->spool->overdueLive($at, (float) ($this->settings['reaction_max_hold_seconds'] ?? 600)) !== null)
-            : (! $this->blocksFlowOn($this->clip, $at, $continues) || $this->dueBulletin($now) !== null || $this->spool->nextLive($at) !== null || (! $continues && $this->spool->teaser($at) !== null))) {
+        if ($podcast ? ($this->dueBulletin($now) !== null || $this->awaitingBulletin($now))
+            : (! $this->blocksFlowOn($this->clip, $at, $continues) || $this->dueBulletin($now) !== null || (! $continues && $this->spool->teaser($at) !== null))) {
             return;
         }
 
