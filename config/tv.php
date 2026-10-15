@@ -310,7 +310,11 @@ return [
             'audio_kbps' => 128,
             'sample_rate' => 24000,
             // The voice is written into the encoder this far ahead of real time, so a slow tick of the daemon never starves it.
-            'lead_seconds' => 1.0,
+            // The voice feed runs this far ahead of the wall clock so a slow daemon tick never starves the mix.
+            // 2.5 s (2026-10-15): with the voice running non-stop, a tick that decodes a clip or joins a long
+            // block took longer than 1 s, the fifo ran dry and aresample stretched the gap — a siren-like tone
+            // wandering up and down on air. Half a second of that costs more than the extra clip-start latency.
+            'lead_seconds' => 2.5,
             // News mode (user 2026-10-12: "so viel ducken im News-Modus, dass man die BG-Music nicht mehr hört"): under a
             // bulletin, stinger and bed included, the music fades to this level within the fade down and comes back with
             // the fade up after it, on the voice feed's own timeline (CommentaryTimeline::musicDuck()). 0 switches it off.
