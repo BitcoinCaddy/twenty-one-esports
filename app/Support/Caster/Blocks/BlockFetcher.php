@@ -202,7 +202,7 @@ final class BlockFetcher
                     'X-Caster-Boundaries' => $times($block['boundaries']),
                     'X-Caster-Protected' => sprintf('%.3F', $block['protected']),
                 ])
-                ->withBody(CasterFetcher::keepLocal($opus, 'block', CasterFetcher::timelessTopics((array) ($block['topics'] ?? []))), 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($opus, 'block-'.CasterFetcher::programmeLabel((array) ($block['topics'] ?? [])), CasterFetcher::timelessTopics((array) ($block['topics'] ?? []))), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/blocks');
         } catch (ConnectionException) {
             $fetcher->note('block '.implode(',', $ids).': upload failed, server unreachable, released');
@@ -388,6 +388,7 @@ final class BlockFetcher
 
         $meta = $entry['meta'];
         $times = fn (mixed $values): string => implode(',', array_map(fn ($value): string => sprintf('%.3F', (float) $value), array_values(array_filter((array) $values, 'is_numeric'))));
+        $label = 'stock-'.CasterFetcher::programmeLabel((array) ($meta['topics'] ?? []));
 
         try {
             $upload = $fetcher->server()
@@ -396,7 +397,7 @@ final class BlockFetcher
                     'X-Caster-Sentence-Ends' => $times($meta['ends'] ?? []),
                     'X-Caster-Boundaries' => $times($meta['boundaries'] ?? []),
                 ])
-                ->withBody(CasterFetcher::keepLocal($entry['opus'], 'stock'), 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($entry['opus'], $label), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/stock/blocks');
         } catch (ConnectionException) {
             return CasterFetcher::OFFLINE;
@@ -548,7 +549,7 @@ final class BlockFetcher
                         'episode' => StockLibrary::episodeOf($scripts),
                     ], JSON_UNESCAPED_UNICODE)),
                 ])
-                ->withBody(CasterFetcher::keepLocal($entry['opus'], 'stock'), 'audio/ogg')
+                ->withBody(CasterFetcher::keepLocal($entry['opus'], 'library-'.($format === null ? 'talk' : explode(':', substr($format, strlen(StockScripts::TOPIC_PREFIX)))[0])), 'audio/ogg')
                 ->post($fetcher->settings()['server'].'/api/caster/stock/library/'.$hash);
         } catch (ConnectionException) {
             return CasterFetcher::OFFLINE;

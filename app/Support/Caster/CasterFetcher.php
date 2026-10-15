@@ -625,6 +625,26 @@ class CasterFetcher
             ->every(fn (string $topic): bool => ! in_array($topic, $perishable, true));
     }
 
+    /**
+     * The programme name of a block's topics for its file name (user 2026-10-16: "im Dateinamen mit ihrem
+     * Programmnamen benennen, dann weiß ich was drinnen steckt"): a stock topic names its format
+     * ("stock:talk:..." -> "talk"), anything else stays "talk" - the file always says what is inside.
+     */
+    public static function programmeLabel(array $topics): string
+    {
+        foreach ($topics as $topic) {
+            if (is_string($topic) && str_starts_with($topic, Blocks\StockScripts::TOPIC_PREFIX)) {
+                $format = explode(':', substr($topic, strlen(Blocks\StockScripts::TOPIC_PREFIX)))[0];
+
+                if ($format !== '') {
+                    return $format;
+                }
+            }
+        }
+
+        return 'talk';
+    }
+
     public function generate(string $text, string $profileId, float $speed, ?string $language = null, ?float $duration = null): ?string
     {
         $settings = $this->settings();
