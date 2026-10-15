@@ -313,7 +313,8 @@ test('nothing of the block input stands over the board: the hint and, with a blo
     // A block on the 8th rank, right under the board's top edge, where the hint used to stand. On a phone the tap on the
     // board also starts focus mode (focusMode.js): the tab bar and the page's bars slide down, then the board refits.
     if ($touch) {
-        $white->evaluate('() => { window.__focusSettled = false; addEventListener("focus-mode", () => { window.__focusSettled = true; }, { once: true }); }');
+        // On an iPhone SE focus mode is on from the start (boardGame.js fitBoard, PR #9: the board is too short for its floor otherwise).
+        $white->evaluate('() => { window.__focusSettled = document.documentElement.dataset.focus === "hidden"; addEventListener("focus-mode", () => { window.__focusSettled = true; }, { once: true }); }');
     }
     $touch ? blockliTap($white, true, 'c8/d9', -30) : blockliHover($white, 'c8/d9', -30);
     if ($touch) {

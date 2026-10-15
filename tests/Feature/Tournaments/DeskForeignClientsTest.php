@@ -12,5 +12,5 @@ test('a desk message from another Nostr client shows when its room is the desk',
     $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/deskForeignClients.test.mjs']);
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 1')->toContain('ℹ fail 0');
+        ->and($run->output())->toContain('ℹ fail 0')->not->toContain('ℹ pass 0');
 });

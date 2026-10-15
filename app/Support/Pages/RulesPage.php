@@ -590,9 +590,6 @@ final class RulesPage
     }
 
     /**
-     * The correspondence line of a board game (plan "Mühle und Dame", P8).
-     */
-    /**
      * Taking a move back (BoardGameService::takeBack(); DerCaddy and the players, 2026-10-15), while the window is on.
      *
      * @return list<string>
@@ -604,6 +601,9 @@ final class RulesPage
         return $seconds > 0 ? [__('Take back: for :seconds seconds after your move, until your opponent answers it, Take back undoes it, without asking. The time since your move counts as yours, your opponent\'s clock loses nothing.', ['seconds' => $seconds])] : [];
     }
 
+    /**
+     * The correspondence line of a board game (plan "Mühle und Dame", P8).
+     */
     private static function correspondence(): string
     {
         return __('Correspondence: each move has :hours h, and a reminder comes before the deadline. A missed deadline loses the game, or aborts it before both first moves. A challenge stays open for :open h.', [

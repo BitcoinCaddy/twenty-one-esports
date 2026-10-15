@@ -8,11 +8,13 @@
     the round and the game of a duel or the standing of the legs, what is at stake, the desk and the tournament page.
     Over the page, not in it, so the board keeps its size; a tap anywhere else (the shade catches it, so it never reaches
     the board as a move), the close button or Escape folds it again, and the focus goes back to the line or chip.
-    `tournament-banner-state` tells the openers, for their aria-expanded. Rendered once per page by game-banner.
+    `tournament-banner-state` tells the openers, for their aria-expanded. Rendered once per page by game-banner. The focus
+    goes back to the opener, or to the other one when it stepped aside meanwhile (the header's chip gives way once the
+    line is in view again, on a page too short to scroll it away).
 --}}
 @if ($banner)
     @php($desk = isset($banner['tournamentId']) && ($deskTournament = \App\Models\Tournament::query()->find($banner['tournamentId'])) !== null ? \App\Support\Tournaments\TournamentDesk::for($deskTournament, auth()->user()) : null)
-    <div x-data="{ open: false, opener: null, close(back = true) { this.open = false; if (back) this.opener?.focus(); } }" class="lg:hidden"
+    <div x-data="{ open: false, opener: null, close(back = true) { this.open = false; if (! back) return; const to = this.opener?.checkVisibility() ? this.opener : [...document.querySelectorAll('[aria-controls=tournament-banner-sheet]')].find((el) => el.checkVisibility()); to?.focus({ preventScroll: true }); } }" class="lg:hidden"
          x-on:tournament-banner.window="open = ! open; opener = $event.detail?.opener ?? null; open && $nextTick(() => $refs.close.focus({ preventScroll: true }))"
          x-on:keydown.escape.window="open && close()"
          x-effect="window.dispatchEvent(new CustomEvent('tournament-banner-state', { detail: open }))" data-test="banner-sheet-root">

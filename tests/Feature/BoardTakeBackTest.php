@@ -17,8 +17,12 @@ use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
 use Tests\Support\FixtureBoardGame;
 
-// Clocks are compared to the millisecond: time only moves when a test travels.
-beforeEach(fn () => $this->freezeTime());
+// Clocks are compared to the millisecond: time only moves when a test travels. The fixture game is registered before
+// any test resolves the service, which keeps the registry it was built with.
+beforeEach(function () {
+    $this->freezeTime();
+    FixtureBoardGame::play();
+});
 
 function takeBackGame(): BoardGame
 {

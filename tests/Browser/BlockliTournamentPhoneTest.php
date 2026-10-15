@@ -185,12 +185,17 @@ test('a tap on the banner line or the header chip opens the whole banner over th
     $page->locator('[data-test=tournament-banner-row]')->click();
     BrowserWait::until($page, '() => !!document.querySelector("[data-test=banner-sheet]")?.checkVisibility()', 3_000);
     $open = $page->evaluate($measure);
-    // A tap on the board below the panel: the shade takes it, the panel folds, no move is made and no block shown.
-    $page->locator('[data-test=banner-sheet-shade]')->click(['position' => ['x' => (int) (($open['board']['left'] + $open['board']['right']) / 2), 'y' => $open['board']['bottom'] - 40]]);
+    // A tap on the board below the panel: the shade takes it, the panel folds, no move is made and no block shown. The
+    // point lies under the panel and on screen: on the board where the panel leaves it free, else just below it (at 320x640
+    // the open panel covers the whole board).
+    $tapY = max($open['panel']['bottom'] + 16, min($open['board']['bottom'] - 40, $height - 20));
+    fwrite(STDERR, PHP_EOL."banner tap {$width}x{$height} y={$tapY} panel={$open['panel']['bottom']} board={$open['board']['top']}-{$open['board']['bottom']}".PHP_EOL);
+    $page->locator('[data-test=banner-sheet-shade]')->click(['position' => ['x' => (int) (($open['board']['left'] + $open['board']['right']) / 2), 'y' => $tapY]]);
     BrowserWait::until($page, '() => !document.querySelector("[data-test=banner-sheet]")?.checkVisibility()', 3_000);
     $folded = $page->evaluate($measure);
     $preview = $page->evaluate('() => Alpine.$data(document.querySelector("[data-test=board-game]")).preview');
-    // Scrolled on, the header's chip opens the same panel; Escape folds it and hands the focus back to the chip.
+    // Scrolled on, the header's chip opens the same panel; Escape folds it and hands the focus back to an opener in view
+    // (the chip, or the line once a short page brings it back and the chip steps aside).
     $page->evaluate('() => window.scrollTo(0, document.documentElement.scrollHeight)');
     BrowserWait::until($page, '() => document.querySelector("[data-test=shell-tournament]")?.checkVisibility()', 5_000);
     $page->locator('[data-test=shell-tournament]')->click();
@@ -216,7 +221,7 @@ test('a tap on the banner line or the header chip opens the whole banner over th
         ->and($folded['ply'])->toBe($closed['ply'], 'the folding tap made no move')
         ->and($preview)->toBeNull('and showed no block')
         ->and($fromChip['panel'])->not->toBeNull()
-        ->and($back)->toBe('shell-tournament')
+        ->and($back)->toBeIn(['shell-tournament', 'tournament-banner-row'])
         ->and($open['overflow'])->toBeLessThanOrEqual(0)
         ->and($page->evaluate('() => window.__errors'))->toBe([]);
 })->with([
