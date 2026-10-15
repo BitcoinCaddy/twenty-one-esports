@@ -129,8 +129,13 @@ test('two players play Blockli to a win with every way to set a block: groove ta
 
     // Each player sees the board from its own side: a1 bottom left for White, top right for Black.
     $corner = '() => { const b = document.querySelector("[data-test=board]").getBoundingClientRect(); const a = document.querySelector("[data-test=board] [data-point=a1]").getBoundingClientRect(); return [a.left + a.width / 2 < b.left + b.width / 2 ? "left" : "right", a.top + a.height / 2 > b.top + b.height / 2 ? "bottom" : "top"]; }';
+    // The square names stand on the edge as on a chessboard (Markus, 2026-10-11): files along each player's bottom row from
+    // the left, ranks up the left column; on Black's turned board they read upright, i and 9 at its bottom left.
+    $names = '() => { const b = document.querySelector("[data-test=board]").getBoundingClientRect(); const at = (t) => { const r = document.querySelector(`[data-test=board] [data-coordinate="${t}"]`).getBoundingClientRect(); return [r.left + r.width / 2 < b.left + b.width / 2 ? "left" : "right", r.top + r.height / 2 > b.top + b.height / 2 ? "bottom" : "top"]; }; return { count: document.querySelectorAll("[data-test=board] [data-coordinate]").length, a: at("a"), i: at("i"), one: at("1"), nine: at("9") }; }';
     expect($white->evaluate($corner))->toBe(['left', 'bottom'])
         ->and($black->evaluate($corner))->toBe(['right', 'top'])
+        ->and($white->evaluate($names))->toBe(['count' => 18, 'a' => ['left', 'bottom'], 'i' => ['right', 'bottom'], 'one' => ['left', 'bottom'], 'nine' => ['left', 'top']])
+        ->and($black->evaluate($names))->toBe(['count' => 18, 'a' => ['right', 'bottom'], 'i' => ['left', 'bottom'], 'one' => ['left', 'top'], 'nine' => ['left', 'bottom']])
         ->and($white->evaluate('() => document.querySelector("[data-test=mode-block]").innerText.replace(/\s+/g, " ").trim()'))->toBe('Set a block 10');
 
     // Ply 1, White: a tap in the groove left of the crossing a1/b2 shows a horizontal block there; a second tap sets it.
@@ -238,7 +243,7 @@ test('two players play Blockli to a win with every way to set a block: groove ta
     'desktop 1440 (mouse)' => [1440, 900, false],
 ]);
 
-test('while a block is shown, Rotate, Confirm and Move the pawn stand in the pop-up, every button is at least 44 px high and Confirm is the only filled one; a mouse sets it by its click, without them', function (int $width, int $height, bool $touch) {
+test('while a block is shown, Rotate, Confirm and Move the pawn stand in Blockli\'s bar, every button is at least 44 px high and Confirm is the only filled one; a mouse sets it by its click, without them', function (int $width, int $height, bool $touch) {
     [$anna, $bert] = User::factory()->count(2)->create();
     $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
     $white = blockliPage($anna, route('board.show', $game, false), $width, $height, $touch);
@@ -247,11 +252,11 @@ test('while a block is shown, Rotate, Confirm and Move the pawn stand in the pop
     $touch ? $white->locator('[data-test=mode-block]')->tap() : $white->locator('[data-test=mode-block]')->click();
     $touch ? blockliTap($white, true, 'c4/d5', -30) : blockliHover($white, 'c4/d5', -30);
     // Filled = the orange primary ground (bg-btc); the pressed toggle keeps a dark tint (bg-btc-press).
-    // Rotate, Confirm and Move the pawn stand in the pop-up over the board (DerCaddy, 2026-10-09), so they come first;
-    // under the board only "Set a block" is left.
-    $buttons = $white->evaluate('() => [...document.querySelectorAll("[data-test=block-popup] button, [data-test=block-input] button")].filter((b) => b.checkVisibility()).map((b) => ({ test: b.dataset.test, h: Math.round(b.getBoundingClientRect().height), filled: b.classList.contains("bg-btc") }))');
+    // Nothing stands over the board (a player on an iPhone SE, 2026-10-14): on a phone Rotate, Confirm and Move the pawn
+    // take the bar's row and "Set a block" gives way to them; a mouse keeps the toggle alone.
+    $buttons = $white->evaluate('() => [...document.querySelectorAll("[data-test=block-input] button")].filter((b) => b.checkVisibility()).map((b) => ({ test: b.dataset.test, h: Math.round(b.getBoundingClientRect().height), filled: b.classList.contains("bg-btc") }))');
 
-    expect(collect($buttons)->pluck('test')->all())->toBe($touch ? ['rotate-block', 'set-block', 'mode-move', 'mode-block'] : ['mode-block'])
+    expect(collect($buttons)->pluck('test')->all())->toBe($touch ? ['rotate-block', 'set-block', 'mode-move'] : ['mode-block'])
         ->and(collect($buttons)->every(fn (array $b): bool => $b['h'] >= 44))->toBeTrue()
         ->and(collect($buttons)->where('filled', true)->pluck('test')->all())->toBe($touch ? ['set-block'] : [])
         ->and($white->evaluate('() => window.__errors'))->toBe([]);
@@ -260,13 +265,13 @@ test('while a block is shown, Rotate, Confirm and Move the pawn stand in the pop
     'desktop 1440 (mouse)' => [1440, 900, false],
 ]);
 
-/**
- * The vertical extent [top, bottom] of the board, of its part in view (below the sticky header, above the tab bar: the
- * root's scroll padding; above the bars fixed over the board on a phone: Blockli's bar, the chat sheet, the dock), the
- * block pop-up (the stretch it stands in), its card (the buttons' box, or the hint), its buttons and the block shown,
- * rounded; null where there is none.
- */
-const BLOCKLI_POPUP_BOXES = <<<'JS'
+/** Whatever stands over the board, apart from the drawing itself: test name or tag and height of every visible element in its box. */
+const BLOCKLI_OVER_BOARD = <<<'JS'
+    () => [...document.querySelectorAll('[data-board-box] *')].filter((el) => !el.closest('svg') && el.checkVisibility() && el.getBoundingClientRect().height > 0).map((el) => (el.dataset.test ?? el.tagName.toLowerCase()) + ' ' + Math.round(el.getBoundingClientRect().height))
+    JS;
+
+/** Blockli's bar and what it holds, as [top, bottom]; `line` is the text of its line while it shows; null for what is hidden. */
+const BLOCKLI_BAR = <<<'JS'
     () => {
         const box = (selector) => {
             const el = document.querySelector(selector);
@@ -274,62 +279,60 @@ const BLOCKLI_POPUP_BOXES = <<<'JS'
             const r = el.getBoundingClientRect();
             return [Math.round(r.top), Math.round(r.bottom)];
         };
-        const root = getComputedStyle(document.documentElement);
-        const board = document.querySelector('[data-test=board]').getBoundingClientRect();
-        let floor = innerHeight - (parseFloat(root.scrollPaddingBottom) || 0);
-        document.querySelectorAll('[data-page-bar], [data-live-floor]').forEach((el) => {
-            if (!el.checkVisibility() || getComputedStyle(el).position !== 'fixed') return;
-            const r = el.getBoundingClientRect();
-            if (r.height > 0 && r.left < board.right && r.right > board.left && r.top > board.top) floor = Math.min(floor, r.top);
-        });
-        const view = [Math.round(Math.max(board.top, parseFloat(root.scrollPaddingTop) || 0)), Math.round(Math.min(board.bottom, floor))];
-        const card = box('[data-test=block-popup] > div') ?? box('[data-test=block-popup] > p');
-        return { board: box('[data-test=board]'), view, popup: box('[data-test=block-popup]'), card, buttons: box('[data-test=set-block]'), block: box('[data-test=board] [data-preview]') };
+        const line = document.querySelector('[data-test=block-status]');
+        return { bar: box('[data-test=block-input]'), line: line.checkVisibility() ? line.innerText : null, toggle: box('[data-test=mode-block]'), rotate: box('[data-test=rotate-block]'), confirm: box('[data-test=set-block]'), move: box('[data-test=mode-move]') };
     }
     JS;
 
-test('the block pop-up stands over the board, never over the block: a finger gets Rotate, Confirm and Move the pawn in the middle of the board on the other side of the block, a mouse the hint at the edge', function (int $width, int $height, bool $touch) {
+test('nothing of the block input stands over the board: the hint and, with a block shown, Rotate, Confirm and Move the pawn stand in Blockli\'s bar, on an iPhone SE too', function (int $width, int $height, bool $touch) {
+    // A player on an iPhone SE (3rd generation), 2026-10-14: the hint over the board covered it so that no block could be
+    // set there. On its 200 px board the hint took the top rows and the buttons' card half of the rest.
     [$anna, $bert] = User::factory()->count(2)->create();
     $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
     $white = blockliPage($anna, route('board.show', $game, false), $width, $height, $touch);
     BrowserWait::until($white, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+    $before = $white->evaluate(BLOCKLI_BAR);
 
-    // "Set a block" (on a phone in the bar fixed above the chat sheet, from lg at the head of the side column): at the top
-    // of the page, the hint alone stands at the top of the part of the board in view.
+    // "Set a block": the hint stands in the bar's line (on a phone in place of whose move it is, from lg under the toggle).
     $touch ? $white->locator('[data-test=mode-block]')->tap() : $white->locator('[data-test=mode-block]')->click();
-    $white->evaluate('() => window.scrollTo(0, 0)');
-    BrowserWait::until($white, '() => { const b = ('.BLOCKLI_POPUP_BOXES.')(); return b.popup !== null && Math.abs(b.popup[0] - b.view[0] - 8) <= 1; }', 5_000);
-    expect($white->evaluate(BLOCKLI_POPUP_BOXES)['buttons'])->toBeNull();
+    expect($white->evaluate(BLOCKLI_OVER_BOARD))->toBe([])
+        ->and($white->evaluate(BLOCKLI_BAR)['line'])->toBe($touch ? 'Tap a groove: the block shows where it lands.' : 'Point at a groove: the block follows.');
 
-    // A block on the 7th rank: the pop-up below it, a finger's buttons in the middle between the block and the bottom of the
-    // board in view (DerCaddy, 2026-10-09), a mouse's hint at that bottom.
-    $touch ? blockliTap($white, true, 'c7/d8', -30) : blockliHover($white, 'c7/d8', -30);
-    $boxes = $white->evaluate(BLOCKLI_POPUP_BOXES);
-    expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c7/d8', 'h', true])
-        ->and($boxes['buttons'] !== null)->toBe($touch)
-        ->and($boxes['card'][0])->toBeGreaterThan($boxes['block'][1])
-        ->and($boxes['card'][1])->toBeLessThanOrEqual($boxes['view'][1])
-        ->and($touch
-            ? abs(($boxes['card'][0] + $boxes['card'][1]) / 2 - ($boxes['block'][1] + 12 + $boxes['view'][1] - 8) / 2)
-            : abs($boxes['view'][1] - 8 - $boxes['card'][1]))->toBeLessThanOrEqual(3);
+    // A block on the 8th rank, right under the board's top edge, where the hint used to stand. On a phone the tap on the
+    // board also starts focus mode (focusMode.js): the tab bar and the page's bars slide down, then the board refits.
+    if ($touch) {
+        $white->evaluate('() => { window.__focusSettled = false; addEventListener("focus-mode", () => { window.__focusSettled = true; }, { once: true }); }');
+    }
+    $touch ? blockliTap($white, true, 'c8/d9', -30) : blockliHover($white, 'c8/d9', -30);
+    if ($touch) {
+        BrowserWait::until($white, '() => window.__focusSettled && document.getAnimations().every((a) => a.playState !== "running")', 5_000);
+    }
+    $shown = $white->evaluate(BLOCKLI_BAR);
 
-    // A block on the 2nd rank, reached below the pop-up: it moves above the block.
-    $touch ? blockliTap($white, true, 'c1/d2', -30) : blockliHover($white, 'c1/d2', -30);
-    $boxes = $white->evaluate(BLOCKLI_POPUP_BOXES);
-    expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c1/d2', 'h', true])
-        ->and($boxes['card'][1])->toBeLessThan($boxes['block'][0])
-        ->and($boxes['card'][0])->toBeGreaterThanOrEqual($boxes['view'][0])
-        ->and($touch
-            ? abs(($boxes['card'][0] + $boxes['card'][1]) / 2 - ($boxes['view'][0] + 8 + $boxes['block'][0] - 12) / 2)
-            : abs($boxes['card'][0] - $boxes['view'][0] - 8))->toBeLessThanOrEqual(3);
+    expect($white->evaluate(BLOCKLI_PREVIEW))->toBe(['c8/d9', 'h', true])
+        ->and($white->evaluate(BLOCKLI_OVER_BOARD))->toBe([]);
 
-    // Confirm in the pop-up sets the block; a mouse clicks it.
-    $touch ? $white->locator('[data-test=set-block]')->tap() : blockliTap($white, false, 'c1/d2', -30);
+    if ($touch) {
+        // The three buttons take the bar's row, which does not grow; the line and the toggle give way to them.
+        expect([$shown['line'], $shown['toggle']])->toBe([null, null])
+            ->and($shown['rotate'][0])->toBeGreaterThanOrEqual($shown['bar'][0])
+            ->and(max($shown['rotate'][1], $shown['confirm'][1], $shown['move'][1]))->toBeLessThanOrEqual($shown['bar'][1])
+            ->and($shown['bar'][1] - $shown['bar'][0])->toBe($before['bar'][1] - $before['bar'][0], 'the bar keeps its height')
+            ->and($shown['bar'][1])->toBeLessThanOrEqual($height);
+    } else {
+        expect([$shown['rotate'], $shown['line']])->toBe([null, 'Click to set the block.']);
+    }
+
+    // Confirm in the bar sets the block; a mouse clicks it.
+    $touch ? $white->locator('[data-test=set-block]')->tap() : blockliTap($white, false, 'c8/d9', -30);
     BrowserWait::until($white, '() => Alpine.$data(document.querySelector("[data-test=board-game]")).state.ply === 1', 5_000);
 
-    expect($game->refresh()->moves()->pluck('notation')->all())->toBe(['c1h'])
+    expect($game->refresh()->moves()->pluck('notation')->all())->toBe(['c8h'])
+        // Back to whose move it is.
+        ->and($white->evaluate(BLOCKLI_BAR)['line'])->toBe($touch ? $white->evaluate('() => Alpine.$data(document.querySelector("[data-test=board-game]")).statusLine') : null)
         ->and($white->evaluate('() => window.__errors'))->toBe([]);
 })->with([
+    'iPhone SE in Safari (touch)' => [375, 553, true],
     'phone 390 (touch)' => [390, 844, true],
     'desktop 1440 (mouse)' => [1440, 900, false],
 ]);

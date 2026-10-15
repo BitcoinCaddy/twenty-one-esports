@@ -41,6 +41,12 @@ const HEARTBEAT_MS = 4000;
 /** How long the repetition warning stands over the board after a move (it stays beside the board). */
 const WARNING_MS = 6000;
 
+/**
+ * The smallest board a desktop gives up for what stands under it (the game's actions, the lower player card), in px:
+ * on a 9 x 9 board about 34 px a square. A window too short for it below the header gets what fits there (fitBoard).
+ */
+const DESKTOP_BOARD = 380;
+
 /** How often the position of a state has stood there (Blockli's repetition warning), counted once per state. */
 const REPEATS = new WeakMap();
 
@@ -170,13 +176,10 @@ registerAlpine(() => {
         receivedAt: performance.now(),
         now: performance.now(),
         clicks: [],
-        // The block input (Blockli): set-a-block mode, the block shown before it is set, the last pointer, whether the
-        // pop-up stands above or below the block, the stretch of the board it stands in the middle of ([top, bottom] in
-        // px from the board's top), and how far from its top and bottom edge the part of the board in view begins.
+        // The block input (Blockli): set-a-block mode, the block shown before it is set, the last pointer, and how far from
+        // the board's top and bottom edge the part of it in view begins (where the repetition warning stands).
         blockMode: false,
         preview: null,
-        popupTop: true,
-        popupRegion: null,
         band: { top: 8, bottom: 8 },
         onScroll: null,
         warningUntil: 0,
@@ -228,17 +231,16 @@ registerAlpine(() => {
                 board.addEventListener('pointerup', (event) => (this.lastTap = { clientX: event.clientX, clientY: event.clientY, at: performance.now() }));
                 board.addEventListener('pointermove', (event) => this.hoverBlock(event));
                 // A finger leaves the board after every tap: only a mouse leaving takes the block shown away. Not while the keys
-                // steer: the pop-up's buttons may appear under a resting mouse, and the browser reports that as the mouse leaving.
+                // steer: a mouse resting near the board must not take away the block the keys moved.
                 board.addEventListener('pointerleave', (event) => event.pointerType === 'mouse' && this.pointerType !== 'keyboard' && this.hoverBlock(null));
-                // The pop-ups over the board follow the part of it in view, once a frame at most.
+                // The repetition warning over the board follows the part of it in view, once a frame at most.
                 let queued = false;
                 this.onScroll = () => {
                     if (queued) return;
                     queued = true;
                     requestAnimationFrame(() => {
                         queued = false;
-                        if (this.preview) this.placePopup();
-                        else this.measureBand();
+                        this.measureBand();
                     });
                 };
                 window.addEventListener('scroll', this.onScroll, { passive: true });
@@ -283,12 +285,13 @@ registerAlpine(() => {
          * user's 1893x929, where Confirm sat at 1098 px). The edge to end above: on a phone the bars fixed to the bottom
          * (Blockli's bar, the chat sheet, the app's tab bar), on a desktop the window. Under the board count the parts
          * of its column that are not fixed (the lower player card; Blockli's bar heads the other column from lg). A phone narrows the board;
-         * a desktop narrows the board's grid column, so the cards and the bar go with it and the right column widens.
+         * a desktop narrows the board's grid column, so the cards and the bar go with it and the right column widens. On a desktop the
+         * board gives way only down to DESKTOP_BOARD; a window too short for that much below its header gets the board that fits there.
          */
         fitBoard() {
             const board = this.$refs.board;
             if (!board) return;
-            // The box around the board (Blockli's pop-ups stand in it) takes the size, so they keep to the board.
+            // The box around the board (Blockli's repetition warning stands in it) takes the size, so the warning keeps to the board.
             const box = board.closest('[data-board-box]') ?? board;
             const column = box.parentElement;
             const grid = column.parentElement;
@@ -316,16 +319,21 @@ registerAlpine(() => {
                 grid.style.gridTemplateColumns = '';
                 box.style.maxWidth = Math.max(200, width) + 'px';
                 page.style.paddingBottom = (shown(sheet) ? 72 : 0) + (shown(dock) ? dock.offsetHeight : 0) + 24 + 'px';
-                // The pop-ups follow the board's new size.
-                if (this.layout.input === 'blocks') this.$nextTick(() => (this.preview ? this.placePopup() : this.measureBand()));
+                // The warning over the board follows the board's new size.
+                if (this.layout.input === 'blocks') this.$nextTick(() => this.measureBand());
 
                 return;
             }
             box.style.maxWidth = '';
             page.style.paddingBottom = '';
+            // The board gives way to the actions and the lower card only down to DESKTOP_BOARD: below that they follow under the
+            // first screen. A short window (a laptop at 150 %, about 1250 x 555: DerCaddy, 2026-10-14, the board had fallen to its
+            // floor of 300 px) gets the board that fits below the sticky header (the root's scroll-padding-top) with 16 px of air:
+            // scrolled to, it is whole there, the title row above it and the actions below.
+            const band = Math.round((innerHeight - (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) - 16) * (drawn.width / drawn.height));
             // From 87.5rem the players' chat is a third column (the page's grid classes).
             const third = this.$root.querySelector('[data-test=chat-panel]') && matchMedia('(width >= 87.5rem)').matches ? ' 380px' : '';
-            grid.style.gridTemplateColumns = 'minmax(0, ' + Math.min(560, Math.max(300, width)) + 'px)' + third + ' minmax(0, 1fr)';
+            grid.style.gridTemplateColumns = 'minmax(0, ' + Math.min(560, Math.max(300, width, Math.min(DESKTOP_BOARD, band))) + 'px)' + third + ' minmax(0, 1fr)';
         },
 
         /* ---- the board ------------------------------------------------------------------------------ */
@@ -402,6 +410,7 @@ registerAlpine(() => {
 
             this.layout.cells.forEach((cell) => svg.append(svgElement('rect', { x: cell.x, y: cell.y, width: cell.size, height: cell.size, fill: '#3F3F46' })));
             this.layout.lines.forEach(([x1, y1, x2, y2]) => svg.append(svgElement('line', { x1, y1, x2, y2, stroke: '#52525B', 'stroke-width': Math.max(2, r * 0.12), 'stroke-linecap': 'round' })));
+            this.drawCoordinates(svg);
 
             this.layout.points.forEach((point) => {
                 const piece = pieces[point.id] ?? null;
@@ -446,6 +455,41 @@ registerAlpine(() => {
                     svg.append(svgElement('rect', { x: at.x - width / 2, y: at.y - height / 2, width, height, rx: this.bar.thickness / 2, fill: this.preview.move ? 'rgba(247, 147, 26, 0.9)' : 'rgba(239, 68, 68, 0.8)', 'pointer-events': 'none', 'data-preview': this.preview.move ? 'legal' : 'illegal' }));
                 }
             }
+        },
+
+        /**
+         * The squares' names on the edge squares, as on a chessboard (Markus, 2026-10-11: "spart das ständige Abzählen,
+         * wenn man alte Züge nachvollziehen will"): the file in the bottom right corner of the bottom row, the rank in the
+         * top left corner of the left column, both as the player sees the board. Only for a full grid of cells whose
+         * squares are named like a chessboard's (a1, e9); under the pieces, and never in the way of a click.
+         */
+        drawCoordinates(svg) {
+            const geometry = geometryOf(this.layout);
+            const named = this.layout.cells
+                .map((cell) => ({ cell, id: geometry.squareOf.get(cell.x + cell.size / 2 + ',' + (cell.y + cell.size / 2)) }))
+                .filter(({ id }) => /^[a-z]\d+$/.test(id ?? ''));
+            if (named.length < 4) return;
+            // Black's board is turned: its bottom row and left column are the drawing's top row and right column.
+            const turned = this.color === 'b';
+            const ys = named.map(({ cell }) => cell.y);
+            const xs = named.map(({ cell }) => cell.x);
+            const [bottom, left] = turned ? [Math.min(...ys), Math.max(...xs)] : [Math.max(...ys), Math.min(...xs)];
+            // A full grid only (Blockli): on checkers' dark squares the edge would name every other file and rank.
+            if (ys.filter((y) => y === bottom).length !== new Set(xs).size || xs.filter((x) => x === left).length !== new Set(ys).size) return;
+            named.forEach(({ cell, id }) => {
+                const size = cell.size;
+                const pad = size * 0.08;
+                const label = (text, corner, anchor, baseline) => {
+                    // The corner as seen; on the turned board the text turns back, so it reads upright.
+                    const [x, y] = turned ? [cell.x + size - corner[0], cell.y + size - corner[1]] : [cell.x + corner[0], cell.y + corner[1]];
+                    const element = svgElement('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': baseline, 'font-size': size * 0.28, 'font-weight': 700, fill: '#A1A1AA', 'pointer-events': 'none', 'aria-hidden': 'true', 'data-coordinate': text });
+                    if (turned) element.setAttribute('transform', 'rotate(180 ' + x + ' ' + y + ')');
+                    element.textContent = text;
+                    svg.append(element);
+                };
+                if (cell.y === bottom) label(id[0], [size - pad, size - pad], 'end', 'text-after-edge');
+                if (cell.x === left) label(id.slice(1), [pad, pad], 'start', 'text-before-edge');
+            });
         },
 
         pointLabel(id, piece) {
@@ -550,30 +594,23 @@ registerAlpine(() => {
             return this.blockMoves.size > 0;
         },
 
-        /** The block pop-up over the board (Blockli): the hint, or with a block shown Rotate, Confirm and Move the pawn. */
-        get blockPopup() {
+        /** Set-a-block mode on the player's move (Blockli). */
+        get settingBlock() {
             return this.blockMode && this.canMove;
         },
 
         /**
-         * The buttons in the pop-up, for a finger and the keys. A mouse sets the block with its click and turns it by
-         * pointing along the other groove, and on its way to buttons over the board the block would follow it and send
-         * them to the other side: it keeps the hint.
+         * Rotate, Confirm and Move the pawn, once a block is shown, for a finger and the keys: in Blockli's bar, never over
+         * the board (a player on an iPhone SE, 2026-10-14: a hint and buttons over a board of 200 px left no groove to tap).
+         * A mouse sets the block with its click and turns it by pointing along the other groove: it keeps the hint.
          */
         get blockButtons() {
-            return this.blockPopup && this.preview !== null && this.pointerType !== 'mouse';
+            return this.settingBlock && this.preview !== null && this.pointerType !== 'mouse';
         },
 
-        /**
-         * Where the pop-up stands (DerCaddy, 2026-10-09: lower, in the middle over the board): the buttons in the middle of
-         * the part of the board in view on the side the block shown is not on, clear of it; the hint, slim and letting taps
-         * through, at the top or bottom edge of that part.
-         */
-        get blockPopupStyle() {
-            if (!this.blockButtons || !this.popupRegion) return this.popupAt(!this.preview || this.popupTop);
-            const [top, bottom] = this.popupRegion;
-
-            return { top: top + 'px', bottom: 'auto', height: Math.max(0, bottom - top) + 'px' };
+        /** The bar's line: whose move it is, and in set-a-block mode what to do (the hint, red where no block fits). */
+        get barLine() {
+            return this.settingBlock ? this.blockHint : this.statusLine;
         },
 
         /**
@@ -607,7 +644,7 @@ registerAlpine(() => {
          * view, and gone while a block is being set; beside the board it stays.
          */
         get warningShown() {
-            return this.repetitionWarning !== '' && this.now < this.warningUntil && !this.blockPopup;
+            return this.repetitionWarning !== '' && this.now < this.warningUntil && !this.settingBlock;
         },
 
         /**
@@ -649,16 +686,16 @@ registerAlpine(() => {
             return mouse ? this.t.blocks.click : this.t.blocks.confirm;
         },
 
-        /** `event` is the button's click: one from a key (detail 0) switches the hint to the keys. */
+        /** `event` is the button's click: one from a key (detail 0) switches the hint to the keys, a mouse's to the mouse. */
         setBlockMode(on, event = null) {
             if (event && event.detail === 0) this.pointerType = 'keyboard';
-            // Focus on a button of the pop-up (Move the pawn, or Escape on Rotate) would go with it: it moves to "Set a block".
-            const inPopup = !!document.activeElement?.closest?.('[data-test=block-popup]');
+            else if (event?.pointerType) this.pointerType = event.pointerType;
+            // Focus on Rotate, Confirm or Move the pawn would go with them (Move the pawn, or Escape on Rotate): it moves to "Set a block".
+            const onButtons = !!document.activeElement?.closest?.('[data-block-buttons]');
             this.blockMode = on && this.canMove && this.canSetBlocks;
             this.preview = null;
             this.error = '';
-            if (this.blockMode) this.measureBand();
-            else if (inPopup) this.$nextTick(() => this.$root.querySelector('[data-test=mode-block]')?.focus());
+            if (!this.blockMode && onButtons) this.$nextTick(() => this.$root.querySelector('[data-test=mode-block]')?.focus());
             this.render();
         },
 
@@ -779,41 +816,13 @@ registerAlpine(() => {
         /** Shows a block; `turned` marks one the player rotated, which keeps its direction on that crossing. */
         showBlock(crossing, dir, turned = false) {
             this.preview = { crossing, dir, turned, move: this.blockMoves.get(crossing + ' ' + dir) ?? null };
-            this.placePopup();
-        },
-
-        /**
-         * The pop-up stands above the block shown or below it, as the board is seen (Black's is turned), on the side with
-         * more of the board in view; a block near the middle leaves it where it is, so it does not jump while a mouse
-         * crosses. The buttons stand in the middle of that side's stretch, 12 px clear of the block. On a small board a side
-         * may be shorter than their card: it gives way to the other side if that has more room, and where neither has
-         * enough, the card stays clear of the block and reaches past the edge of the part in view instead.
-         */
-        placePopup() {
-            this.measureBand();
-            const at = this.layout.points.find((point) => point.id === this.preview?.crossing);
-            const height = this.$refs.board?.getBoundingClientRect().height ?? 0;
-            if (!at || !height || !this.bar) return;
-            const scale = height / this.layout.height;
-            const y = (this.color === 'b' ? this.layout.height - at.y : at.y) * scale;
-            const half = ((this.preview.dir === 'h' ? this.bar.thickness : this.bar.length) / 2) * scale;
-            const [from, to] = [this.band.top - 8, height - this.band.bottom + 8];
-            const seen = to > from ? (y - from) / (to - from) : 0.5;
-            if (this.popupTop && seen < 0.4) this.popupTop = false;
-            else if (!this.popupTop && seen > 0.6) this.popupTop = true;
-            const [top, bottom] = [this.band.top, height - this.band.bottom];
-            const [above, below] = [Math.round(y - half - 12), Math.round(y + half + 12)];
-            const card = this.$root.querySelector('[data-block-card]')?.offsetHeight || 112;
-            const room = (onTop) => (onTop ? above - top : bottom - below);
-            if (this.blockButtons && room(this.popupTop) < card && room(!this.popupTop) > room(this.popupTop)) this.popupTop = !this.popupTop;
-            this.popupRegion = this.popupTop ? [Math.min(top, above - card), Math.max(top, above)] : [Math.min(bottom, below), Math.max(bottom, below + card)];
         },
 
         /**
          * The part of the board in view, below the sticky header and above the phone's tab bar and the dock (the root's
          * scroll padding names both) and above the bars fixed to a phone's bottom (Blockli's bar, the chat sheet, the
-         * dock's tab: `data-page-bar`, `data-live-floor`): on a phone the board may reach under one of them, and a pop-up
-         * at its very edge would stand there unseen. The pop-ups stand 8 px inside that part. True when it changed.
+         * dock's tab: `data-page-bar`, `data-live-floor`): on a phone the board may reach under one of them, and the
+         * repetition warning at its very edge would stand there unseen. It stands 8 px inside that part. True when it changed.
          */
         measureBand() {
             const box = this.$refs.board?.getBoundingClientRect();
@@ -828,7 +837,7 @@ registerAlpine(() => {
                 if (edge.height > 0 && edge.left < box.right && edge.right > box.left && edge.top > box.top) floor = Math.min(floor, edge.top);
             });
             const bottom = Math.min(box.bottom, floor);
-            // Never off the board: a pop-up keeps about 100 px of it below or above.
+            // Never off the board: the warning keeps about 100 px of it below or above.
             const edge = (inset) => Math.round(Math.min(Math.max(0, inset), Math.max(0, box.height - 108))) + 8;
             const band = { top: edge(top - box.top), bottom: edge(box.bottom - bottom) };
             if (band.top === this.band.top && band.bottom === this.band.bottom) return false;
@@ -837,7 +846,7 @@ registerAlpine(() => {
             return true;
         },
 
-        /** The style of a pop-up over the board: at the top or the bottom of the part of the board in view. */
+        /** The style of the warning over the board: at the top or the bottom of the part of the board in view. */
         popupAt(top) {
             return top ? { top: this.band.top + 'px', bottom: 'auto', height: 'auto' } : { top: 'auto', bottom: this.band.bottom + 'px', height: 'auto' };
         },

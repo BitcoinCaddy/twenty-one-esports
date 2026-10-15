@@ -94,13 +94,12 @@ test('the board, the pawn/block switch and Confirm fit the first phone screen ab
         // One row: "Set a block" beside whose move it is; the board takes what the second row and the tab on it took.
         ->and($m['dock']['h'])->toBeLessThanOrEqual(58, 'Blockli\'s bar is one row')
         ->and($m['board']['right'] - $m['board']['left'])->toBeGreaterThanOrEqual($width === 390 ? $width - 32 : 300, 'the board keeps the width')
-        ->and($m['rotate']['bottom'])->toBeLessThanOrEqual($m['board']['bottom'], 'Rotate stands over the board')
-        ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($m['board']['bottom'], 'Confirm stands over the board')
+        // Nothing over the board (a player on an iPhone SE, 2026-10-14): Rotate, Confirm and Move the pawn take the bar's row.
+        ->and([$m['rotate']['top'] >= $m['dock']['top'], $m['confirm']['bottom'] <= $m['dock']['bottom'], $m['modeMove']['bottom'] <= $m['dock']['bottom']])->toBe([true, true, true], 'Rotate, Confirm and Move the pawn stand in Blockli\'s bar')
         ->and(max($m['board']['bottom'], $m['bottomCard']['bottom']))->toBeLessThanOrEqual($m['dock']['top'], 'board and player cards end above the bar')
         ->and($m['dock']['bottom'])->toBeLessThanOrEqual($m['sheet'], 'the bar ends above the chat sheet')
         ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($m['sheet'])
-        ->and($m['modeBlock']['h'])->toBeGreaterThanOrEqual(44)
-        ->and($m['confirm']['h'])->toBeGreaterThanOrEqual(44)
+        ->and(min($m['rotate']['h'], $m['confirm']['h'], $m['modeMove']['h']))->toBeGreaterThanOrEqual(44)
         // The board stays playable by finger: every field at least 28 px (plan, risks).
         ->and($m['field'])->toBeGreaterThanOrEqual(28)
         ->and($m['overflow'])->toBeLessThanOrEqual(0)
@@ -273,7 +272,7 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
     BrowserWait::until($page, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
     $before = $page->evaluate(BLOCKLI_FOLD);
     $page->locator('[data-test=mode-block]')->click();
-    // A mouse sets with its click and keeps the hint; an arrow key shows a block in the middle with Rotate and Confirm over the board.
+    // A mouse sets with its click and keeps the hint; an arrow key shows a block in the middle, with Rotate and Confirm under the switch.
     $page->locator('[data-test=mode-block]')->press('ArrowUp');
     BrowserWait::until($page, '() => !!Alpine.$data(document.querySelector("[data-test=board-game]")).preview', 5_000);
     $m = $page->evaluate(BLOCKLI_FOLD);
@@ -294,7 +293,7 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
         ->and($width >= 1400 ? $m['chatPanel']['top'] <= $m['board']['top'] : $m['chatPanel']['top'] > $m['bottomCard']['bottom'])->toBeTrue('chat beside the board from 1400, under it below')
         ->and($m['chatPanel']['h'])->toBeGreaterThanOrEqual(400, 'the chat keeps room for messages')
         ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($height, 'Confirm inside the first screen')
-        ->and($m['confirm']['bottom'])->toBeLessThanOrEqual($m['board']['bottom'], 'Confirm over the board')
+        ->and($m['confirm']['left'])->toBeGreaterThanOrEqual($m['board']['right'], 'Confirm beside the board, not over it')
         ->and($m['modeBlock']['bottom'])->toBeLessThanOrEqual($height)
         // The switch to block mode does not move the board.
         ->and($m['board'])->toBe($before['board'])
@@ -308,6 +307,45 @@ test('on a desktop the board, the lower player card, the switch and Confirm fit 
     '1280x720' => [1280, 720],
     '1024x768' => [1024, 768],
     '1920x1080' => [1920, 1080],
+]);
+
+/*
+| A laptop at 150 % (DerCaddy, 2026-10-14: "am PC ist das Spielbrett plötzlich super klein"), about 1250 x 555 CSS px:
+| for the actions and the lower card under it the board had fallen to its floor of 300 px. It now gives way only down
+| to 380 px; a window too short for that much below the header gets the board that fits there, whole when scrolled to.
+| Taller windows keep the first-screen fit above.
+*/
+
+test('on a short desktop window the board keeps a playable size and is whole when scrolled to', function (int $width, int $height, int $least) {
+    [$anna, $bert] = User::factory()->count(2)->create();
+    $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
+    $page = visit(BrowserLogin::url($anna))->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $page->setViewportSize($width, $height);
+    $page->goto(ComputeUrl::from(route('board.show', $game, false)));
+    BrowserWait::until($page, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
+    $top = $page->evaluate(BLOCKLI_FOLD);
+    // Scrolled to the board as the page scrolls an anchor there: its top at the root's scroll-padding-top, below the sticky header.
+    $there = $page->evaluate(<<<'JS'
+        () => {
+            const board = document.querySelector('[data-test=board]');
+            scrollTo(0, board.getBoundingClientRect().top + scrollY - (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0));
+            const r = board.getBoundingClientRect();
+            return { top: Math.round(r.top), bottom: Math.round(r.bottom), header: Math.round(document.querySelector('body > header').getBoundingClientRect().bottom), height: innerHeight };
+        }
+        JS);
+    fwrite(STDERR, PHP_EOL."short desktop {$width}x{$height} ".json_encode(['board' => $top['board'], 'there' => $there, 'field' => $top['field']]).PHP_EOL);
+
+    expect($top['board']['right'] - $top['board']['left'])->toBeGreaterThanOrEqual($least, 'not the old floor of 300 px')
+        ->and($there['top'])->toBeGreaterThanOrEqual($there['header'], 'below the header')
+        ->and($there['bottom'])->toBeLessThanOrEqual($there['height'], 'whole in the window')
+        ->and($top['field'])->toBeGreaterThanOrEqual(38)
+        ->and($top['overflow'])->toBeLessThanOrEqual(0)
+        ->and($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+})->with([
+    'DerCaddy\'s laptop at 150 %' => [1250, 555, 350],
+    'a 1366 x 768 laptop' => [1366, 650, 380],
 ]);
 
 test('on a desktop board page the match dock sits in the title row, not over the chat\'s input', function () {

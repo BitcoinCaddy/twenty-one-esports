@@ -13,9 +13,10 @@ import { StreamPlayer } from './streamPlayer.js';
  * It never covers a bar at the bottom edge: every visible element marked
  * `data-live-floor` (the match dock) or `data-page-bar` (a page's own bottom
  * bar) that shares its columns lifts it above that bar, re-measured once a
- * second, on resize and after a click. It steps aside while a sheet of the
- * shell or the dock is open (a button with aria-haspopup="dialog" expanded)
- * or the on-screen keyboard is up.
+ * second, on resize, on scroll and after a click. It steps aside while a
+ * sheet of the shell or the dock is open (a button with aria-haspopup="dialog"
+ * expanded) or the on-screen keyboard is up, and the folded tab while a game
+ * board (`data-live-clear`) lies where it would stand.
  *
  * `liveStage`: the big player of /live, with the browser's own controls; it
  * starts when the page's live feed says the stream came on air.
@@ -57,6 +58,9 @@ function statusText(labels, status) {
 export function livePlayer(config) {
     // Outside Alpine's reactive state: hls.js must never sit behind a Proxy.
     let player = null;
+    // The folded tab's last place on screen (left, right, height), for while it stands aside; one measure per frame on scroll.
+    let tabBox = null;
+    let scrollFrame = 0;
 
     return {
         view: 'tab',
@@ -75,6 +79,14 @@ export function livePlayer(config) {
 
             this.measure = this.measure.bind(this);
             this.onClick = () => requestAnimationFrame(this.measure);
+            // A board scrolled under the tab, or away from it.
+            this.onScroll = () => {
+                if (scrollFrame) return;
+                scrollFrame = requestAnimationFrame(() => {
+                    scrollFrame = 0;
+                    this.measure();
+                });
+            };
             this.onNavigated = () => {
                 // wire:navigate onto a page with its own player (/live): this one stops.
                 if (document.querySelector('[data-live-stage]')) this.halt();
@@ -85,6 +97,7 @@ export function livePlayer(config) {
                 if (!document.hidden) this.measure();
             }, 1000);
             window.addEventListener('resize', this.measure);
+            window.addEventListener('scroll', this.onScroll, { passive: true });
             window.visualViewport?.addEventListener('resize', this.measure);
             document.addEventListener('click', this.onClick, true);
             document.addEventListener('livewire:navigated', this.onNavigated);
@@ -93,7 +106,9 @@ export function livePlayer(config) {
 
         destroy() {
             clearInterval(this.timer);
+            cancelAnimationFrame(scrollFrame);
             window.removeEventListener('resize', this.measure);
+            window.removeEventListener('scroll', this.onScroll);
             window.visualViewport?.removeEventListener('resize', this.measure);
             document.removeEventListener('click', this.onClick, true);
             document.removeEventListener('livewire:navigated', this.onNavigated);
@@ -205,7 +220,27 @@ export function livePlayer(config) {
             const keyboard = !!viewport && viewport.height < window.innerHeight * 0.7;
             // An open sheet or panel of the shell or the dock (the More sheet, the game hub, the dock's list).
             const sheet = document.querySelector('[aria-haspopup="dialog"][aria-expanded="true"]') !== null;
-            this.stepAside = keyboard || sheet;
+            this.stepAside = keyboard || sheet || this.overBoard(rect);
+        },
+
+        /**
+         * Whether a game board (`data-live-clear`) lies where the folded tab stands, or would stand while it is aside: over a
+         * board's lower left corner it hid squares and took their clicks (DerCaddy, 2026-10-14, a laptop at 150 %, where the
+         * board reaches down to the window's bottom). The open player stays where the viewer opened it.
+         */
+        overBoard(rect) {
+            if (this.view !== 'tab') return false;
+            if (rect.width > 0) tabBox = { left: rect.left, right: rect.right, height: rect.height };
+            const tab = tabBox ?? { left: GAP * 2, right: GAP * 2 + 240, height: 56 };
+            const bottom = window.innerHeight - (this.bottom ?? GAP * 2);
+            const top = bottom - tab.height;
+
+            return [...document.querySelectorAll('[data-live-clear]')].some((el) => {
+                if (el.getClientRects().length === 0) return false;
+                const r = el.getBoundingClientRect();
+
+                return r.width > 0 && r.left < tab.right && r.right > tab.left && r.top < bottom && r.bottom > top;
+            });
         },
 
         /**
