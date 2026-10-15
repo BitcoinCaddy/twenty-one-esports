@@ -231,6 +231,18 @@ it('expires nothing unused any more: every script keeps its ten-year expiry (use
         ->and($queue->claim($now->addMinutes(10))?->id)->toBe($script->id);
 });
 
+it('keeps a time-critical kind on its own lifetime: a live tournament comment expires with its max age', function () {
+    $now = CarbonImmutable::now();
+    $queue = casterQueue();
+    // A whole afternoon of these piled up and aired en bloc instead of in its interval (live 2026-10-15): a kind
+    // that carries `maxAgeMinutes` is news only for that long.
+    $script = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, 'Blocki-Update.', 'h', 0, $now, topic: 'tournament-live', maxAgeMinutes: 30);
+
+    expect($script->expires_at->getTimestamp() - $now->getTimestamp())->toBe(30 * 60)
+        ->and($queue->expire($now->addMinutes(31)))->toBe(1)
+        ->and($script->fresh()->status)->toBe(CasterScript::EXPIRED);
+});
+
 it('expires scene scripts written for facts that changed, while superseding is on', function () {
     config(['tv.commentary.scripts.supersede' => true]);
     $now = CarbonImmutable::now();

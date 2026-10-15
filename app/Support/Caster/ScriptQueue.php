@@ -876,7 +876,7 @@ class ScriptQueue
         $parts = $inParts ? self::parts($text, (int) config('tv.commentary.parts.sentences', 5)) : [$text];
         $group = count($parts) > 1 ? (string) Str::ulid() : null;
 
-        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $parts, $group, $speakers, $airsAt, $expiresAt): CasterScript {
+        return DB::transaction(function () use ($kind, $phase, $scene, $source, $topic, $priority, $factsHash, $now, $maxAgeMinutes, $parts, $group, $speakers, $airsAt, $expiresAt): CasterScript {
             $first = null;
             $offset = 0;
 
@@ -896,10 +896,12 @@ class ScriptQueue
                     'facts_hash' => $factsHash,
                     'status' => CasterScript::QUEUED,
                     'estimated_seconds' => self::estimateSeconds($part),
-                    // Nothing expires unused any more (user 2026-10-15: "verfallen soll nichts mehr, wir liefern
-                    // das aus, was generiert wurde"): only a slot deadline (`$expiresAt`, a bulletin's) still ends
-                    // a script early; the spool's caps keep the buffer bounded instead.
-                    'expires_at' => $expiresAt?->utc() ?? $now->addYears(10),
+                    // Nothing expires unused by default (user 2026-10-15: "verfallen soll nichts mehr, wir liefern
+                    // das aus, was generiert wurde") — but a kind that carries its own explicit lifetime
+                    // (`$maxAgeMinutes`, a live tournament comment, a stock talk) stays time-critical: its news is
+                    // only news for that long, and a backlog of it plays en bloc instead of in its interval
+                    // (live 2026-10-15). The config default does not count as one.
+                    'expires_at' => $expiresAt?->utc() ?? ($maxAgeMinutes !== null ? $now->addMinutes($maxAgeMinutes) : $now->addYears(10)),
                     'airs_at' => $airsAt?->utc(),
                     'part_group' => $group,
                     'part_index' => $group === null ? null : $index + 1,

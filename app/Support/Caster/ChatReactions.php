@@ -243,7 +243,9 @@ class ChatReactions
             return 'hourly_cap';
         }
 
-        return preg_match('/\p{L}/u', self::sanitizeMessage($event->content)) === 1 ? null : 'no_content';
+        // A number alone is content too (user 2026-10-15: "21.000.000" got no reaction): a letter or a digit is
+        // enough; only links, markup and noise stripped down to nothing stay skipped.
+        return preg_match('/[\p{L}\p{N}]/u', self::sanitizeMessage($event->content)) === 1 ? null : 'no_content';
     }
 
     /**
