@@ -45,10 +45,14 @@
                     <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" :class="m.from === 'me' ? 'text-btc-hi' : 'text-ink-2'">
                         <span x-text="m.name + ', ' + time(m.at)"></span>
                         <span x-show="m.manager" class="inline-flex h-5 items-center gap-1 rounded-xs bg-btc-chip px-1.5 font-bold text-btc-hi" data-test="desk-direction"><x-icon name="shield-check" :size="12" /><span x-text="t.direction"></span></span>
+                        {{-- Written in another Nostr client into a slightly different group: shown, never lost, but marked. --}}
+                        <span x-show="m.otherRoom" class="inline-flex h-5 items-center rounded-xs bg-raised px-1.5 text-ink-3" data-test="desk-other-room" x-text="t.otherRoom"></span>
                     </span>
                     <span class="break-words" x-text="m.text"></span>
                 </li>
             </template>
+            {{-- Tagged for this desk by someone who is no member: hidden, never silently. --}}
+            <li x-show="hidden > 0" x-cloak class="self-center text-xs text-ink-3" data-test="desk-hidden" x-text="hidden === 1 ? t.hiddenOne : t.hiddenMany.replace(':count', hidden)"></li>
             <li x-show="status === 'live' && messages.length === 0" class="text-ink-3">{{ __('No messages yet. Ask the tournament direction anything.') }}</li>
             <li x-show="status === 'starting'" class="text-ink-3">{{ __('Connecting to the chat …') }}</li>
             <li x-show="status === 'needs-signer'" class="flex flex-col items-start gap-2 text-ink-2">

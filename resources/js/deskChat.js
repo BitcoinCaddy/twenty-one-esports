@@ -22,7 +22,7 @@
  * Mute is not offered here: the direction's notices reach every member.
  */
 import { loadCache } from './chatCache.js';
-import { deskMessages } from './nostrChat.js';
+import { deskHidden, deskMessages, deskPlacement } from './nostrChat.js';
 import { roomChat } from './roomChat.js';
 
 const readKey = (me, desk) => `esports.desk.read.${me}.${desk}`;
@@ -100,6 +100,8 @@ export function deskChat(config) {
         },
 
         get messages() {
+            const members = new Set(config.members.map((m) => m.pubkey));
+
             return this.thread.rumors.map((rumor) => ({
                 id: rumor.id,
                 at: rumor.created_at * 1000,
@@ -108,10 +110,17 @@ export function deskChat(config) {
                 name: this.memberName(rumor.pubkey),
                 text: rumor.content,
                 manager: managers.has(rumor.pubkey),
+                // Written in another Nostr client into a group that is not quite the desk (deskPlacement() `near`): shown, marked.
+                otherRoom: deskPlacement(rumor, { me: config.me, members, desk: config.desk }) === 'near',
                 viaDm: false,
                 card: null,
                 mutedCard: false,
             }));
+        },
+
+        /** Messages tagged for this desk by someone who is no member: hidden, but the desk says how many. */
+        get hidden() {
+            return deskHidden(this.rumors, { me: config.me, members: config.members.map((m) => m.pubkey), desk: config.desk });
         },
 
         /** Messages of the others since the desk was last read. */

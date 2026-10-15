@@ -358,23 +358,63 @@ export function gameMessages(rumors, { me, opponent, match, muted = [], dm = nul
  * before a player withdrew still names them and stays readable. Messages
  * from muted pubkeys are left out.
  */
+/** A wide group (an entry list of five and more) counts as the desk with this share of its room members. */
+const DESK_ROOM_SHARE = 0.8;
+
+/** Below the desk's share, a wide group with at least this share of members is still shown, marked as another group. */
+const NEAR_ROOM_SHARE = 0.5;
+
+/**
+ * Where a rumor addressed to me belongs for this desk (user 2026-10-15: "Kann das sein, dass mir nicht alle
+ * Nachrichten angezeigt werden"; DerCaddy, tournament 27): the inbox holds every NIP-17 message to my key (private
+ * DMs, match rooms, other desks), so the desk picks its own:
+ *
+ *   - `desk`: our own `desk` tag of this tournament, written by a member; or a group message from another client
+ *     (Amethyst, 0xchat carry no `desk` tag) by a member whose room is the desk: all members in a small group of
+ *     three or four, at least DESK_ROOM_SHARE of a wider one (a reply in an older room keeps a player who withdrew
+ *     during sign-up, and was lost here while everyone in Amethyst read it);
+ *   - `near`: such a wide group with at least NEAR_ROOM_SHARE members, shown marked as another group, never lost;
+ *   - `stranger`: our `desk` tag of this tournament from someone who is not a member: hidden (anyone can send to my
+ *     key, and must not speak in the desk, nor as its direction), but counted, so the desk says it hid one;
+ *   - null: anything else (a DM, a match room, another desk, a small group with an outsider).
+ *
+ * @returns {'desk'|'near'|'stranger'|null}
+ */
+export function deskPlacement(rumor, { me, members, desk }) {
+    if (!isRumor(rumor)) return null;
+    const memberSet = members instanceof Set ? members : new Set(members);
+    const recipients = rumor.tags.filter((t) => t[0] === 'p').map((t) => t[1]);
+    const deskTags = rumor.tags.filter((t) => t[0] === 'desk');
+    const toMe = rumor.pubkey === me || recipients.includes(me);
+
+    if (!toMe || recipients.length === 0) return null;
+
+    if (deskTags.length > 0) {
+        if (!deskTags.some((t) => t[1] === String(desk))) return null;
+
+        return memberSet.has(rumor.pubkey) ? 'desk' : 'stranger';
+    }
+
+    const room = new Set([rumor.pubkey, ...recipients]);
+    if (room.size < 3 || !memberSet.has(rumor.pubkey)) return null;
+    const share = [...room].filter((p) => memberSet.has(p)).length / room.size;
+
+    if (room.size < 5) return share === 1 ? 'desk' : null;
+    if (share >= DESK_ROOM_SHARE) return 'desk';
+
+    return share >= NEAR_ROOM_SHARE ? 'near' : null;
+}
+
 export function deskMessages(rumors, { me, members, desk, muted = [] }) {
     const memberSet = new Set(members);
-
-    const tagged = rumors.filter((rumor) => {
-        if (!isRumor(rumor)) return false;
-        const recipients = rumor.tags.filter((t) => t[0] === 'p').map((t) => t[1]);
-        const deskTags = rumor.tags.filter((t) => t[0] === 'desk');
-        // A reply from another Nostr client (Amethyst, 0xchat …) is a plain NIP-17 group message without our `desk` tag
-        // (tournament 27, 2026-10-14: players' messages were readable in Amethyst and missing here). It belongs to the
-        // desk when its whole room (sender and recipients) is players and directors of this tournament, three or more.
-        const room = new Set([rumor.pubkey, ...recipients]);
-        const deskRoom = deskTags.length === 0 && room.size >= 3 && [...room].every((p) => memberSet.has(p));
-        const forDesk = deskTags.some((t) => t[1] === String(desk)) || deskRoom;
-        const toMe = rumor.pubkey === me || recipients.includes(me);
-
-        return forDesk && toMe && memberSet.has(rumor.pubkey) && recipients.length > 0;
-    });
+    const tagged = rumors.filter((rumor) => ['desk', 'near'].includes(deskPlacement(rumor, { me, members: memberSet, desk })));
 
     return withReplies(tagged, [], muted);
+}
+
+/** How many messages the desk hid because their sender is no member (deskPlacement() `stranger`), each once. */
+export function deskHidden(rumors, { me, members, desk }) {
+    const memberSet = new Set(members);
+
+    return new Set(rumors.filter((rumor) => deskPlacement(rumor, { me, members: memberSet, desk }) === 'stranger').map((rumor) => rumor.id)).size;
 }

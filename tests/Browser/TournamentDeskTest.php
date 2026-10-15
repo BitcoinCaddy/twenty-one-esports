@@ -491,3 +491,45 @@ test('a guest and a logged-in non-member get the game\'s chat in the rail at 144
 
     fwrite(STDERR, "\n[desk none] ".json_encode(array_map(fn (array $m): array => array_intersect_key($m, array_flip(['heroBox', 'contentRight', 'hostPadRight', 'rail'])), $measured))."\n");
 });
+
+test('a message from another client into a slightly different group shows marked, an outsider\'s desk message is hidden with a note, at 390 and 1440', function () {
+    // DerCaddy 2026-10-15, tournament 27: "Kann das sein, dass mir nicht alle Nachrichten angezeigt werden" — a reply
+    // in Amethyst to an older room was dropped here while everyone in Amethyst read it.
+    $port = (int) Process::run(['php', '-r', '$s = stream_socket_server("tcp://127.0.0.1:0"); echo explode(":", stream_socket_get_name($s, false))[1];'])->output();
+    $relay = Process::path(base_path())->start(['php', 'tests/Support/mini-relay.php', (string) $port]);
+
+    try {
+        WaitForPort::open('127.0.0.1', $port);
+        config(['esports.chat.relays' => ['ws://127.0.0.1:'.$port], 'esports.profile_relays' => []]);
+        $tournament = runningChess(TournamentFormat::SingleElimination, 8, TournamentResultsMode::Players);
+        $tournament->forceFill(['published_at' => now()->subDay()])->save();
+        $users = $tournament->participants()->orderBy('id')->get()->map(fn ($entry) => User::query()->findOrFail($entry->user_id));
+        $anna = $users[0];
+        $anna->forceFill(['locale' => 'de'])->save();
+        TestSigner::forBrowser($anna);
+        $anna->refresh();
+        $members = $users->pluck('pubkey')->all();
+        $outsiders = array_map(fn (int $i): string => str_repeat(dechex($i), 64), [10, 11, 12, 13]);
+        $rumor = fn (string $id, string $from, array $to, array $extra = []): array => ['id' => str_repeat($id, 64), 'kind' => 14, 'pubkey' => $from, 'created_at' => now()->getTimestamp() - 60,
+            'content' => 'Eine Minute Bedenkzeit fände ich gut', 'tags' => [...array_map(fn (string $p): array => ['p', $p], $to), ...$extra], 'sig' => ''];
+        // A member answers from another client into a room of four members and four outsiders: shown, marked.
+        $near = $rumor('a', $members[1], [$anna->pubkey, $members[2], $members[3], ...$outsiders]);
+        // Someone outside the tournament tags this desk: hidden, counted.
+        $intruder = $rumor('b', str_repeat('e', 64), [$anna->pubkey, $members[1]], [['desk', (string) $tournament->id]]);
+
+        foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+            $page = deskPage($anna, route('tournaments.show', $tournament, false).'?lang=de', $width, $height);
+            $page->evaluate('(r) => Alpine.$data(document.querySelector("[data-test=desk-chat]")).rumors.push(...r)', [$near, $intruder]);
+            BrowserWait::until($page, '() => !!document.querySelector("[data-test=desk-other-room]")?.checkVisibility()', 10_000);
+            $m = $page->evaluate('() => { const mark = document.querySelector("[data-test=desk-other-room]"), note = document.querySelector("[data-test=desk-hidden]"), li = mark.closest("li"), list = document.querySelector("[data-test=desk-messages]").getBoundingClientRect(); const r = li.getBoundingClientRect(); return { mark: mark.innerText.trim(), text: li.innerText.includes("Eine Minute"), note: note.checkVisibility() ? note.innerText.trim() : null, inside: r.left >= list.left - 0.5 && r.right <= list.right + 0.5, markH: Math.round(mark.getBoundingClientRect().height), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, intruderShown: [...document.querySelectorAll("[data-test=desk-messages] li")].filter((el) => el.innerText.includes("Eine Minute")).length }; }');
+            fwrite(STDERR, PHP_EOL."[desk foreign {$width}] ".json_encode($m, JSON_UNESCAPED_UNICODE).PHP_EOL);
+
+            expect($m)->toMatchArray(['mark' => 'aus einer anderen Gruppe', 'text' => true, 'note' => '1 Nachricht von jemandem außerhalb des Turniers wurde ausgeblendet.', 'inside' => true, 'intruderShown' => 1])
+                ->and($m['overflow'])->toBeLessThanOrEqual(0)
+                ->and($page->evaluate('() => window.__errors'))->toBe([], "{$width}: console");
+            $page->close();
+        }
+    } finally {
+        $relay->stop(1);
+    }
+});

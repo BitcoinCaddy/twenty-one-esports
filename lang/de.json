@@ -8646,5 +8646,8 @@
     "standing :score": "Stand :score",
     "Critical": "Kritisch",
     "Due soon": "Bald fällig",
-    "5h12 = time to the move deadline": "5h12 = Zeit bis zur Zugfrist"
+    "5h12 = time to the move deadline": "5h12 = Zeit bis zur Zugfrist",
+    "from another group": "aus einer anderen Gruppe",
+    "1 message from someone outside this tournament was hidden.": "1 Nachricht von jemandem außerhalb des Turniers wurde ausgeblendet.",
+    ":count messages from people outside this tournament were hidden.": ":count Nachrichten von Personen außerhalb des Turniers wurden ausgeblendet."
 }

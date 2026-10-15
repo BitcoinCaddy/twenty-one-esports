@@ -136,6 +136,9 @@ final class TournamentDesk
             'labels' => [
                 'you' => __('you'),
                 'direction' => __('Tournament direction'),
+                'otherRoom' => __('from another group'),
+                'hiddenOne' => __('1 message from someone outside this tournament was hidden.'),
+                'hiddenMany' => __(':count messages from people outside this tournament were hidden.'),
                 'noSigner' => __('No Nostr signer found. Install a Nostr browser extension or use a remote signer.'),
                 'notSent' => __('The message did not reach any relay. Please try again.'),
                 'failed' => __('That did not work. Please try again.'),
