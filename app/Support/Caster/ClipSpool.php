@@ -102,6 +102,14 @@ class ClipSpool
 
         $path = $this->dir().'/'.$script->id.'-'.Str::lower(Str::random(10)).'.opus';
         $this->disk()->put($path, $opus);
+        // Decoded right here, in the uploader's request (pcm() reads it from then on): never in the stream
+        // daemon's tick — a decode there blocked it for seconds and starved the voice feed (live 2026-10-15).
+        // Blocks stay lazy (pcm() decodes and caches them on first use): one can run to ten minutes of audio.
+        $decoded = self::decode($opus);
+
+        if ($decoded !== null) {
+            $this->disk()->put($path.'.pcm', $decoded);
+        }
 
         $ends = array_map(fn (float $end): float => round(max(0.0, min($durationSeconds, $end)), 3), $sentenceEnds);
         sort($ends);
@@ -639,18 +647,41 @@ class ClipSpool
      */
     public function pcm(CasterClip $clip): ?string
     {
+        // Decoded once at upload (decodeFor(), in the workstation's request, never in the stream daemon's tick):
+        // a decode in the tick blocked it for up to ten seconds a clip (live 2026-10-15: the voice feed starved,
+        // the siren tone rose, and chat reactions ended as 1.8-second stumps of their first sentence).
+        $decoded = $this->disk()->get($clip->path.'.pcm');
+
+        if (is_string($decoded) && $decoded !== '') {
+            return $decoded;
+        }
+
         $opus = $this->disk()->get($clip->path);
 
         if (! is_string($opus) || $opus === '') {
             return null;
         }
 
+        $pcm = self::decode($opus);
+
+        if ($pcm !== null) {
+            $this->disk()->put($clip->path.'.pcm', $pcm);
+        }
+
+        return $pcm;
+    }
+
+    /**
+     * The clip's Opus bytes as raw mono PCM (s16le at the mix's rate), decoded by ffmpeg in memory. Whole samples
+     * only: an odd byte would shift every sample a jingle appended after it (Imaging::wrap()).
+     */
+    public static function decode(string $opus): ?string
+    {
         $result = Process::timeout(10)->env(ChildEnvironment::withoutSecrets())->input($opus)->run([
             (string) config('twentyone.stream.ffmpeg', 'ffmpeg'), '-nostdin', '-hide_banner', '-loglevel', 'error',
             '-f', 'ogg', '-i', 'pipe:0', '-ac', '1', '-ar', (string) (int) config('tv.commentary.mix.sample_rate', 24000), '-f', 's16le', 'pipe:1',
         ]);
 
-        // Whole samples only: an odd byte would shift every sample a jingle appended after it (Imaging::wrap()).
         $pcm = $result->successful() ? $result->output() : '';
         $pcm = substr($pcm, 0, strlen($pcm) - strlen($pcm) % Pcm::BYTES_PER_SAMPLE);
 
@@ -705,7 +736,7 @@ class ClipSpool
     {
         // A podcast chunk's file is the library's: it airs again tomorrow (PodcastLibrary trims it).
         if ($clip->kind !== CasterScript::PODCAST) {
-            $this->disk()->delete($clip->path);
+            $this->disk()->delete([$clip->path, $clip->path.'.pcm']);
         }
 
         $this->deleteRow($clip);
