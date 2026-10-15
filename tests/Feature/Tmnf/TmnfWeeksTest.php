@@ -388,7 +388,7 @@ test('the stream\'s TMNF set races the top 5 to the author time, calls to join T
     // marker of a time under the author time past the line, the slower ones further from it.
     expect(tmnfSlideWords($race))->toContain('TMNF Week 41, 2026', 'The race to the author time', 'A01-Race by Nadeo: author time 0:24.540', 'Author 0:24.540',
         "Ada\n0:24.420\n-0.120", "Ben\n0:25.100\n+0.560", "Cy\n0:26.900\n+2.360")
-        ->and(array_combine($markers[1], array_map('floatval', $markers[2])))->toBe(['1' => 1092.9, '2' => 924.7, '3' => 400.0])
+        ->and(array_combine($markers[1], array_map('floatval', $markers[2])))->toBe(['1' => 884.9, '2' => 766.1, '3' => 400.0])
         // The call to join: our server, the favourite link and the four steps, the QR code of How to join.
         ->and(tmnfSlideWords($join))->toContain('Join TWENTY ONE', 'Paste tmtp://#addfavourite=twentyone_srv into the Explorer bar', 'Get TrackMania Nations Forever, free on Steam',
             "Link your login: type the code from the site in the\nserver chat", 'Drive A01-Race. Your best time of the week counts.', 'How to join', 'esports.einundzwanzig.space/scores/tmnf')

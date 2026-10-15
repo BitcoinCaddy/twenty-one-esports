@@ -26,8 +26,18 @@
         (bool) ($leader['new'] ?? false) => 'New #1 on the board',
         default => 'The time to beat',
     };
-    $week = K::fit(K::text($t ?? [], 'week', 'TMNF this week'), K::MONO, 22, 560);
-    $name = $leader ? K::name(K::text($leader, 'name'), 'Player', 48, 560) : null;
+    $week = K::fit(K::text($t ?? [], 'week', 'TMNF this week'), K::MONO, 22, 440);
+    // Right of the face up to x 1016: a long name steps down a size before it loses letters.
+    $nameSize = 48;
+    $name = null;
+    if ($leader) {
+        foreach ([48, 40, 34] as $nameSize) {
+            $name = K::name(K::text($leader, 'name'), 'Player', $nameSize, 716);
+            if ($name['text'] === K::clean(K::text($leader, 'name'))) {
+                break;
+            }
+        }
+    }
     $time = $leader ? K::text($leader, 'time') : '';
     $cells = $time !== '' ? K::digitCells($time, 300, 96) : null;
     $versus = $leader ? K::fit(K::text($leader, 'versus'), K::MONO, 24, 640) : '';
@@ -39,23 +49,24 @@
         in_array($state, ['finished', 'checking'], true) => 'A new week starts every Monday on '.$server.'.',
         $leader === null => 'Drive it on '.$server.'. Your best time counts until '.$closes.'.',
         default => 'Beat it on '.$server.' by '.$closes.'.',
-    }, K::MONO, 22, 1200);
+    }, K::MONO, 22, 976);
 @endphp
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
 @include('stream.rotation.partials.defs')
 <rect width="1280" height="720" fill="#0A0A0B"/>
-@include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => $t ? 0 : 0.86])
+{{-- The still centred on the content area (x 0..1040); the stream's now-playing column covers the rest. --}}
+@include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => $t ? 0 : 0.86, 'bdW' => 1040])
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'trackmania'])
 
 @if ($t)
 @include('stream.rotation.partials.game-mark', ['gmCover' => $cover ?? null, 'gmX' => 40, 'gmY' => 104, 'gmW' => 192, 'gmEdge' => '#5EEAD4'])
-<text data-unit="week" data-box="255 112 817 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
-<text data-unit="title" data-box="254 150 1000 198" x="256" y="188" font-family="Unbounded" font-weight="800" font-size="40" fill="#FFFFFF">{{ $title }}</text>
+<text data-unit="week" data-box="255 112 697 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
+<text data-unit="title" data-box="254 150 1016 198" x="256" y="188" font-family="Unbounded" font-weight="800" font-size="40" fill="#FFFFFF">{{ $title }}</text>
 <text data-unit="track" data-box="255 202 900 224" x="256" y="220" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#C9C9CE">{{ K::fit($track, K::MONO, 18, 640) }}</text>
 
 @if ($leader)
 @include('stream.rotation.partials.face', ['face' => K::prideFace($leader), 'x' => 40, 'y' => 312, 'd' => 216, 'id' => 'tml', 'fUnit' => 'leader-face', 'fRing' => '#5EEAD4', 'fCrown' => '#F7931A'])
-<text data-unit="name" data-box="299 272 900 324" x="300" y="314" font-family="{{ $name['font'] }}" font-weight="800" font-size="48" fill="#FFFFFF">{{ $name['text'] }}</text>
+<text data-unit="name" data-box="299 272 1016 324" x="300" y="314" font-family="{{ $name['font'] }}" font-weight="800" font-size="{{ $nameSize }}" fill="#FFFFFF">{{ $name['text'] }}</text>
 @if ($cells)@include('stream.rotation.partials.clock', ['c' => $cells, 'y' => 432, 'fill' => '#5EEAD4'])@endif
 @if ($versus !== '')<text data-unit="versus" data-box="299 458 960 486" x="300" y="480" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">{{ $versus }}</text>@endif
 @if ($when !== '')<text data-unit="when" data-box="299 494 960 518" x="300" y="514" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#C9C9CE">{{ $when }}</text>@endif
@@ -65,9 +76,9 @@
 <text data-unit="versus" data-box="299 380 1000 408" x="300" y="402" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">{{ K::fit('Set the first time on '.$track.'.', K::MONO, 24, 700) }}</text>
 @endif
 
-<text data-unit="foot" data-box="39 572 1241 598" x="40" y="592" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ $foot }}</text>
+<text data-unit="foot" data-box="39 572 1017 598" x="40" y="592" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ $foot }}</text>
 @else
-<text data-unit="title" data-box="38 150 1241 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
-<text data-unit="claim" data-box="39 240 1241 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
+<text data-unit="title" data-box="38 150 1017 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
+<text data-unit="claim" data-box="39 240 1017 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
 @endif
 </svg>

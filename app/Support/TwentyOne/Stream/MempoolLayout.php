@@ -9,7 +9,10 @@ use Throwable;
 
 /**
  * Where everything of the mempool slide (m1) sits on the 1280x720 still, as
- * plain numbers and fitted strings: stream views define no closures (they
+ * plain numbers (all of it on the content area x 40..1016, LEFT..RIGHT: the
+ * stream's now-playing column owns x 1040 on, so the five cubes of
+ * MempoolSlides::COLUMNS are 160 px wide and a casual game's chip sits on the
+ * cube's top edge instead of beside its time) and fitted strings: stream views define no closures (they
  * leak on every render without the CLI opcache), so the view only draws what
  * layout() hands it.
  *
@@ -30,13 +33,18 @@ use Throwable;
  */
 final class MempoolLayout
 {
+    /** The content area the slide is laid out on (the now-playing column after it). */
+    public const LEFT = 40;
+
+    public const RIGHT = 1016;
+
     /** Front face of a cube. */
-    public const W = 196;
+    public const W = 160;
 
     public const H = 152;
 
     /** Depth of the top and side faces. */
-    public const D = 14;
+    public const D = 12;
 
     /** One column: the cube with its depth. */
     public const COL = self::W + self::D;
@@ -233,14 +241,14 @@ final class MempoolLayout
 
     /**
      * Where the columns start: the left group, a gap for the divider, the
-     * right group, all of it centred on the 1280 px width.
+     * right group, all of it centred on the content area (LEFT..RIGHT).
      *
      * @return array{left: list<float>, right: list<float>, divider: float|null}
      */
-    public static function columns(int $left, int $right, float $width = self::COL, float $gap = 20, float $divider = 72): array
+    public static function columns(int $left, int $right, float $width = self::COL, float $gap = 16, float $divider = 56): array
     {
         $total = ($left + $right) * $width + max(0, $left - 1) * $gap + max(0, $right - 1) * $gap + ($left > 0 && $right > 0 ? $divider : 0);
-        $x = round((1280 - $total) / 2, 1);
+        $x = round(self::LEFT + (self::RIGHT - self::LEFT - $total) / 2, 1);
         $out = ['left' => [], 'right' => [], 'divider' => null];
 
         for ($i = 0; $i < $left; $i++) {
@@ -273,7 +281,7 @@ final class MempoolLayout
      * Everything the view draws, from MempoolSlides::all().
      *
      * @param  array<string, mixed>  $m
-     * @return array{season: bool, empty: bool, bugNote: string, headline: string, lead: string, cta: string, labels: list<array{text: string, x: float}>, divider: float|null, cubes: list<array<string, mixed>>, legend: list<array{name: string, colour: string, x: float, textX: float, size: int}>}
+     * @return array{season: bool, empty: bool, bugNote: string, headline: string, headlineSize: float, lead: string, leadSize: int, cta: string, labels: list<array{text: string, x: float}>, divider: float|null, cubes: list<array<string, mixed>>, legend: list<array{name: string, colour: string, x: float, textX: float, size: int}>}
      */
     public static function layout(array $m): array
     {
@@ -332,26 +340,35 @@ final class MempoolLayout
 
         $rest = (string) ($m['rest'] ?? 'pre-launch');
         $mining = $rest === 'between' ? 'Rated wins mine blocks again when a season runs.' : 'Rated wins mine blocks once the season starts.';
+        $lead = match (true) {
+            $season && $left === [] => 'Rated wins mine blocks. The first one is up for grabs.',
+            $season => 'Rated wins mine blocks. Every block pays its winners in sats.',
+            $empty => 'Start a game and it lands here first. '.$mining,
+            default => 'Every game, played and running. '.$mining,
+        };
+        // A size down (22 to 20) before the lead loses a word.
+        $leadSize = K::width($lead, K::MONO, 22) <= self::RIGHT - self::LEFT ? 22 : 20;
+        // The call to act stands right-aligned on the headline's row, so the last row is the legend's alone; the
+        // headline takes the largest size that ends 32 px before it.
+        $cta = $season ? 'Mine the next block.' : 'Your game lands here next.';
+        $headline = $season ? K::clean((string) ($m['season'] ?? 'Season')).' chain' : ($empty ? 'The mempool is empty.' : 'Mempool');
+        $headRoom = self::RIGHT - self::LEFT - K::width($cta, K::MONO, 22) - 32;
+        $headlineSize = self::displaySize($headline, 52, $headRoom, 32);
 
         return [
             'season' => $season,
             'empty' => $empty,
             'bugNote' => $season ? 'season chain live' : 'every game, live',
-            'headline' => $season
-                ? K::fit(K::clean((string) ($m['season'] ?? 'Season')).' chain', K::DISPLAY, 52, 1200)
-                : ($empty ? 'The mempool is empty.' : 'Mempool'),
-            'lead' => K::fit(match (true) {
-                $season && $left === [] => 'Rated wins mine blocks. The first one is up for grabs.',
-                $season => 'Rated wins mine blocks. Every block pays its winners in sats.',
-                $empty => 'Start a game and it lands here first. '.$mining,
-                default => 'Every game, played and running. '.$mining,
-            }, K::MONO, 22, 1200),
+            'headline' => K::fit($headline, K::DISPLAY, $headlineSize, $headRoom),
+            'headlineSize' => $headlineSize,
+            'lead' => K::fit($lead, K::MONO, $leadSize, self::RIGHT - self::LEFT),
+            'leadSize' => $leadSize,
             // The site's address is in the ticker below on every slide; this row says what to do.
-            'cta' => $cta = $season ? 'Mine the next block.' : 'Your game lands here next.',
+            'cta' => $cta,
             'labels' => $labels,
             'divider' => $cols['divider'],
             'cubes' => $cubes,
-            'legend' => self::legend(self::inRegistryOrder($legend), 40 + K::width($cta, K::MONO, 22) + 48),
+            'legend' => self::legend(self::inRegistryOrder($legend), self::LEFT),
         ];
     }
 
@@ -391,12 +408,12 @@ final class MempoolLayout
         foreach ([[18, 40], [16, 28], [14, 20]] as [$size, $gap]) {
             $width = array_sum(array_map(fn (array $game): float => 24 + K::width($game['name'], K::MONO, $size), $games)) + $gap * max(0, $count - 1);
 
-            if ($fits = $x + $width <= 1240) {
+            if ($fits = $x + $width <= self::RIGHT) {
                 break;
             }
         }
 
-        $share = $fits || $count === 0 ? PHP_FLOAT_MAX : (1240 - $x - $gap * max(0, $count - 1)) / $count - 24;
+        $share = $fits || $count === 0 ? PHP_FLOAT_MAX : (self::RIGHT - $x - $gap * max(0, $count - 1)) / $count - 24;
         $out = [];
 
         foreach ($games as $game) {
@@ -425,8 +442,8 @@ final class MempoolLayout
         $c = $ghost ? self::colours('other') : self::gameColours((string) ($item['slug'] ?? ''), (string) ($item['game'] ?? 'other'));
         $dark = in_array($state, ['fin', 'mined'], true);
         $casual = ! $ghost && $kind !== 'mined' && (bool) ($item['casual'] ?? false);
-        // The casual chip takes 60 px and a gap from the right of the line.
-        $whenMax = self::W - 32 - ($casual ? 66 : 0);
+        // The casual chip sits on the cube's top edge (the view), so the time has the whole line.
+        $whenMax = self::W - 32;
 
         $score = match ($state) {
             'ghost' => '',
@@ -486,20 +503,20 @@ final class MempoolLayout
 
             foreach (array_slice($sides, 0, 3) as $i => $side) {
                 $faces[] = $team
-                    ? self::face($side, $x + $i * 66, self::SIDES_Y + 16, 56, $id.'w'.$i, self::BTC, self::BTC)
+                    ? self::face($side, $x + $i * 58, self::SIDES_Y + 16, 56, $id.'w'.$i, self::BTC, self::BTC)
                     : self::face($side, $x, self::SIDES_Y, 72, $id.'w'.$i, self::BTC, self::BTC);
             }
 
             $first = $sides[0]['name'] ?? '';
             $more = count($sides) > 1 ? ' +'.(count($sides) - 1) : '';
-            $name = K::name((string) $first, 'Winner', 22, $max - K::width($more, K::DISPLAY, 22) * 1.04);
+            $name = self::lineName((string) $first, 'Winner', $max, $more);
             $reward = (int) ($item['reward'] ?? 0);
             $perPlayer = (int) ($item['perPlayer'] ?? 0);
 
             return [
                 'faces' => $faces,
                 'vs' => null,
-                'line1' => ['text' => $name['text'].$more, 'font' => $name['font'], 'size' => 22],
+                'line1' => ['text' => $name['text'].$more, 'font' => $name['font'], 'size' => $name['size']],
                 // The block's reward as /mining lists it, named as such; a team's share per winner under it. Nothing when the block carries none.
                 'line2' => $reward > 0 ? ['text' => K::fit(K::sats($reward).' sats', K::MONO, 20, $max), 'ink' => self::BTC, 'size' => 20] : null,
                 'extra' => match (true) {
@@ -512,13 +529,13 @@ final class MempoolLayout
 
         if (count($sides) === 1) {
             // A highscore attempt (ScoreAttempts): one player, the mode under them ("40 blocks"; the game's name is on the cube now); nobody was beaten.
-            $name = K::name((string) ($sides[0]['name'] ?? ''), 'Player', 22, $max);
+            $name = self::lineName((string) ($sides[0]['name'] ?? ''), 'Player', $max);
 
             return [
                 'faces' => [self::face($sides[0], $x, self::SIDES_Y, 72, $id.'p', null, null)],
                 'vs' => null,
                 'extra' => [],
-                'line1' => ['text' => $name['text'], 'font' => $name['font'], 'size' => 22],
+                'line1' => ['text' => $name['text'], 'font' => $name['font'], 'size' => $name['size']],
                 'line2' => ['text' => K::fit(K::clean((string) ($item['mode'] ?? '')), K::MONO, 18, $max), 'ink' => self::MUTED, 'size' => 18],
             ];
         }
@@ -536,7 +553,7 @@ final class MempoolLayout
 
         if ($state === 'fin' && $winner !== null) {
             $loser = $sides[1 - $winner] ?? ['name' => ''];
-            $name = K::name((string) ($sides[$winner]['name'] ?? ''), 'Player', 22, $max);
+            $name = self::lineName((string) ($sides[$winner]['name'] ?? ''), 'Player', $max);
             // A win nobody played for (a forfeit or no-show) stays on the record, but uncrowned and without "beat".
             $forfeit = (bool) ($item['forfeit'] ?? false);
 
@@ -547,12 +564,12 @@ final class MempoolLayout
                 ],
                 'vs' => null,
                 'extra' => [],
-                'line1' => ['text' => $name['text'], 'font' => $name['font'], 'size' => 22],
+                'line1' => ['text' => $name['text'], 'font' => $name['font'], 'size' => $name['size']],
                 'line2' => ['text' => $forfeit ? 'won by forfeit' : K::fit('beat '.K::clean((string) ($loser['name'] ?? '')), K::MONO, 18, $max), 'ink' => self::MUTED, 'size' => 18],
             ];
         }
 
-        $name = K::name((string) ($a['name'] ?? ''), 'Player', 22, $max);
+        $name = self::lineName((string) ($a['name'] ?? ''), 'Player', $max);
 
         return [
             'faces' => [
@@ -561,9 +578,30 @@ final class MempoolLayout
             ],
             'vs' => ['x' => $x + 80, 'y' => self::SIDES_Y + 50],
             'extra' => [],
-            'line1' => ['text' => $name['text'], 'font' => $name['font'], 'size' => 22],
+            'line1' => ['text' => $name['text'], 'font' => $name['font'], 'size' => $name['size']],
             'line2' => ['text' => K::fit('vs '.K::clean((string) ($b['name'] ?? '')), K::MONO, 18, $max), 'ink' => self::MUTED, 'size' => 18],
         ];
+    }
+
+    /**
+     * A name under a cube: a size down (22, 19, 17) before it loses letters, `$suffix` (a team's "+2") kept whole.
+     *
+     * @return array{text: string, font: string, size: int}
+     */
+    private static function lineName(string $name, string $fallback, float $max, string $suffix = ''): array
+    {
+        $fitted = ['text' => $fallback, 'font' => K::DISPLAY];
+        $size = 22;
+
+        foreach ([22, 19, 17] as $size) {
+            $fitted = K::name($name, $fallback, $size, $max - K::width($suffix, K::DISPLAY, $size) * 1.04);
+
+            if ($fitted['text'] === K::clean($name)) {
+                break;
+            }
+        }
+
+        return [...$fitted, 'size' => $size];
     }
 
     /**

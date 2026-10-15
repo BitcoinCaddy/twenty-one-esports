@@ -4,7 +4,7 @@
     colour and the format's tagline; right the countdown as a solid block in the family colour (the minutes huge,
     "um 14:45" under them; from an hour on the time is the big number). Under it what follows the show. The next show
     is the first that is not a bulletin, else the next bulletin, at night the loop's next episode
-    (ProgrammeSlides::spotlight()). Nothing in the LIVE badge's corner (x >= 1040, y < 112).
+    (ProgrammeSlides::spotlight()). Nothing right of x 1016: the stream's now-playing column owns x 1040 on.
 
     Data contract (ProgrammeSlides::scene()): $programme as r1 describes it; $backdrop ?string, the brand cover.
 --}}
@@ -17,12 +17,13 @@
     if ($show !== null) {
         $family = $show['family'];
         $ink = PS::COLOURS[$family] ?? '#FFFFFF';
-        // The title, the bar and two lines of tagline stay above the rule at y 584.
-        $title = PS::spotTitle($show['title'], 780, 224);
+        // The title, the bar and two lines of tagline stay above the rule at y 584, left of the countdown block
+        // (x 728..1016; the stream's now-playing column owns x 1040 on).
+        $title = PS::spotTitle($show['title'], 640, 224);
         $pitch = round($title['size'] * 1.12);
         $titleTop = 196;
         $bars = $titleTop + count($title['lines']) * $pitch + 8;
-        $tagline = K::wrap($show['tagline'], K::MONO, 26, 780, 2);
+        $tagline = K::wrap($show['tagline'], K::MONO, 26, 640, 2);
         $seconds = (int) $show['at'] - $now;
         $minutes = (int) ceil(max(0, $seconds) / 60);
         $countdown = PS::countdown((int) $show['at'], $now);
@@ -43,11 +44,11 @@
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.86])
 @include('stream.rotation.partials.r-chrome', ['section' => 'Gleich auf Sendung'])
 @if ($show !== null)
-<g data-unit="family" data-box="40 112 840 168">
+<g data-unit="family" data-box="40 112 680 168">
 @include('stream.rotation.partials.r-glyph', ['family' => $family, 'gx' => 40, 'gy' => 112, 'gs' => 56])
 <text x="120" y="152" font-family="Unbounded" font-weight="800" font-size="28" fill="{{ $ink }}">{{ PS::FAMILY_NAMES[$family] ?? '' }}</text>
 </g>
-<g data-unit="title" data-box="40 {{ $titleTop }} 840 {{ $bars }}">
+<g data-unit="title" data-box="40 {{ $titleTop }} 680 {{ $bars }}">
 @foreach ($title['lines'] as $i => $line)
 <text x="40" y="{{ round($titleTop + ($i + 1) * $pitch - $title['size'] * 0.2, 1) }}" font-family="{{ $title['font'] }}" font-weight="{{ $title['font'] === 'Unbounded' ? 800 : 700 }}" font-size="{{ $title['size'] }}" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
@@ -57,27 +58,27 @@
 <text data-unit="tagline" x="40" y="{{ $bars + 68 + $i * 36 }}" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#FFFFFF">{{ $line }}</text>
 @endforeach
 {{-- The countdown block. --}}
-<g data-unit="countdown" data-box="880 120 1240 520">
-<rect x="880" y="120" width="360" height="400" rx="4" fill="{{ $ink }}"/>
+<g data-unit="countdown" data-box="728 120 1016 520">
+<rect x="728" y="120" width="288" height="400" rx="4" fill="{{ $ink }}"/>
 @if ($countdown === 'jetzt')
-<text x="1060" y="330" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="88" fill="#0A0A0B">jetzt</text>
-<text x="1060" y="400" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">um {{ $at }}</text>
+<text x="872" y="326" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="72" fill="#0A0A0B">jetzt</text>
+<text x="872" y="400" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">um {{ $at }}</text>
 @elseif ($minutes < 60)
-<text x="912" y="184" font-family="Unbounded" font-weight="800" font-size="32" fill="#0A0A0B">in</text>
-<text data-unit="countdown-minutes" x="1060" y="372" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="168" fill="#0A0A0B">{{ $minutes }}</text>
-<text x="1060" y="432" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="40" fill="#0A0A0B">min</text>
-<rect x="912" y="456" width="296" height="3" fill="#0A0A0B"/>
-<text x="1060" y="496" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">um {{ $at }}</text>
+<text x="760" y="184" font-family="Unbounded" font-weight="800" font-size="32" fill="#0A0A0B">in</text>
+<text data-unit="countdown-minutes" x="872" y="366" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="152" fill="#0A0A0B">{{ $minutes }}</text>
+<text x="872" y="432" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="40" fill="#0A0A0B">min</text>
+<rect x="760" y="456" width="224" height="3" fill="#0A0A0B"/>
+<text x="872" y="496" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">um {{ $at }}</text>
 @else
-<text x="912" y="184" font-family="Unbounded" font-weight="800" font-size="32" fill="#0A0A0B">um</text>
-<text data-unit="countdown-time" x="1060" y="344" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="84" fill="#0A0A0B">{{ $at }}</text>
-<rect x="912" y="456" width="296" height="3" fill="#0A0A0B"/>
-<text x="1060" y="496" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">{{ $countdown }}</text>
+<text x="760" y="184" font-family="Unbounded" font-weight="800" font-size="32" fill="#0A0A0B">um</text>
+<text data-unit="countdown-time" x="872" y="340" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="66" fill="#0A0A0B">{{ $at }}</text>
+<rect x="760" y="456" width="224" height="3" fill="#0A0A0B"/>
+<text x="872" y="496" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">{{ $countdown }}</text>
 @endif
 </g>
 @if ($after !== null)
-<rect x="40" y="584" width="1200" height="2" fill="#2A2A30"/>
-@php($afterText = K::fit('Danach um '.PS::time((int) $after['at']).': '.$after['title'], K::MONO, 22, 1160))
+<rect x="40" y="584" width="976" height="2" fill="#2A2A30"/>
+@php($afterText = K::fit('Danach um '.PS::time((int) $after['at']).': '.$after['title'], K::MONO, 22, 932))
 @include('stream.rotation.partials.r-glyph', ['family' => $after['family'], 'gx' => 40, 'gy' => 616, 'gs' => 28])
 <text data-unit="after" x="84" y="638" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">{{ $afterText }}</text>
 @endif

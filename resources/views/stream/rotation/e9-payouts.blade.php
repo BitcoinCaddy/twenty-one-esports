@@ -24,7 +24,7 @@
                 // The payout's own rank: a name the fonts cannot draw drops its row, it never renumbers the others.
                 'rank' => $rank = is_int($row['rank'] ?? null) ? $row['rank'] : $i + 1,
                 'y' => 424 + $i * 58, 'lead' => $rank === 1, 'face' => K::prideFace($row),
-                'name' => K::fit($row['name'], K::MONO, 22, 560),
+                'name' => K::fit($row['name'], K::MONO, 22, 540),
                 'blocks' => is_int($row['blocks'] ?? null) ? (string) $row['blocks'] : '',
                 'sats' => is_int($row['sats'] ?? null) ? K::sats($row['sats']) : '',
             ];
@@ -37,23 +37,24 @@
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.8])
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'season payouts'])
 @if ($paid)
-<text data-unit="paid-season" data-box="39 110 1240 138" x="40" y="132" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#A1A1A7">{{ K::fit($season !== '' ? ucfirst($season).' paid its miners' : 'The season paid its miners', K::MONO, 24, 1200) }}</text>
+<text data-unit="paid-season" data-box="39 110 1016 138" x="40" y="132" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#A1A1A7">{{ K::fit($season !== '' ? ucfirst($season).' paid its miners' : 'The season paid its miners', K::MONO, 24, 976) }}</text>
 <text data-unit="paid-total" data-box="38 150 {{ 44 + $totalW }} 266" x="40" y="244" font-family="Unbounded" font-weight="800" font-size="96" fill="#F7931A">{{ $total }}</text>
 <text x="{{ 64 + $totalW }}" y="244" font-family="JetBrains Mono" font-weight="700" font-size="32" fill="#F7931A">sats</text>
-<text data-unit="paid-players" data-box="39 276 1240 304" x="40" y="298" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">to {{ K::plural($players, 'player', 'players') }}, one block at a time.</text>
+<text data-unit="paid-players" data-box="39 276 1016 304" x="40" y="298" font-family="JetBrains Mono" font-weight="700" font-size="24" fill="#FFFFFF">to {{ K::plural($players, 'player', 'players') }}, one block at a time.</text>
 <text x="40" y="376" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">#</text>
 <text x="112" y="376" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">player</text>
-<text x="820" y="376" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">blocks</text>
-<text x="1240" y="376" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7" text-anchor="end">sats</text>
-<rect x="40" y="384" width="1200" height="1" fill="#2A2A30"/>
+{{-- The table over x 40..1016: rank, face, player to x 652, blocks from 696, sats right-aligned to 1016. --}}
+<text x="696" y="376" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7">blocks</text>
+<text x="1016" y="376" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#A1A1A7" text-anchor="end">sats</text>
+<rect x="40" y="384" width="976" height="1" fill="#2A2A30"/>
 @foreach ($rows as $ri => $r)
 @php($ink = $r['lead'] ? '#F7931A' : '#FFFFFF')
 <text x="40" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}">{{ $r['rank'] }}</text>
 @include('stream.rotation.partials.face', ['face' => $r['face'], 'x' => 68, 'y' => $r['y'] - 30, 'd' => 38, 'id' => 'paid-'.$ri, 'fUnit' => 'paid-face-'.$ri, 'fShape' => 'square', 'fRing' => $r['lead'] ? '#F7931A' : '#6B6B72', 'fCrown' => $r['lead'] ? '#F7931A' : null])
-<text data-unit="paid-name-{{ $ri }}" data-box="111 {{ $r['y'] - 22 }} 700 {{ $r['y'] + 6 }}" x="112" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}">{{ $r['name'] }}</text>
-@if ($r['blocks'] !== '')<text data-unit="paid-blocks-{{ $ri }}" data-box="819 {{ $r['y'] - 22 }} 960 {{ $r['y'] + 6 }}" x="820" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}">{{ $r['blocks'] }}</text>@endif
-@if ($r['sats'] !== '')<text data-unit="paid-sats-{{ $ri }}" data-box="980 {{ $r['y'] - 22 }} 1241 {{ $r['y'] + 6 }}" x="1240" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}" text-anchor="end">{{ $r['sats'] }}</text>@endif
-<rect x="40" y="{{ $r['y'] + 18 }}" width="1200" height="1" fill="#2A2A30"/>
+<text data-unit="paid-name-{{ $ri }}" data-box="111 {{ $r['y'] - 22 }} 652 {{ $r['y'] + 6 }}" x="112" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}">{{ $r['name'] }}</text>
+@if ($r['blocks'] !== '')<text data-unit="paid-blocks-{{ $ri }}" data-box="695 {{ $r['y'] - 22 }} 820 {{ $r['y'] + 6 }}" x="696" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}">{{ $r['blocks'] }}</text>@endif
+@if ($r['sats'] !== '')<text data-unit="paid-sats-{{ $ri }}" data-box="836 {{ $r['y'] - 22 }} 1017 {{ $r['y'] + 6 }}" x="1016" y="{{ $r['y'] }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="{{ $ink }}" text-anchor="end">{{ $r['sats'] }}</text>@endif
+<rect x="40" y="{{ $r['y'] + 18 }}" width="976" height="1" fill="#2A2A30"/>
 @endforeach
 @else
 <text x="40" y="200" font-family="Unbounded" font-weight="800" font-size="48" fill="#FFFFFF">No season paid out yet.</text>

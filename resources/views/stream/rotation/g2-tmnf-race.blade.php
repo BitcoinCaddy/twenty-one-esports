@@ -16,18 +16,19 @@
       $cover     ?string: TMNF's cover as a data URI, the game's mark
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
+@use('App\Support\TwentyOne\Stream\TmnfSlides', 'Tm')
 @php
     $t = is_array($tmnf ?? null) ? $tmnf : null;
     $state = K::text($t ?? [], 'state', 'empty');
-    $week = K::fit(K::text($t ?? [], 'week', 'TMNF this week'), K::MONO, 22, 560);
+    $week = K::fit(K::text($t ?? [], 'week', 'TMNF this week'), K::MONO, 22, 440);
     $authorTime = K::text($t ?? [], 'authorTime');
     $author = K::text($t ?? [], 'author');
-    $sub = K::fit(K::text($t ?? [], 'track', 'A01-Race').($author !== '' ? ' by '.$author : '').($authorTime !== '' ? ': author time '.$authorTime : ''), K::MONO, 18, 640);
+    $sub = K::fit(K::text($t ?? [], 'track', 'A01-Race').($author !== '' ? ' by '.$author : '').($authorTime !== '' ? ': author time '.$authorTime : ''), K::MONO, 18, 720);
     $corner = K::fit(match ($state) {
         'finished' => 'Final standings',
         'checking' => 'Week over, the times are being checked',
         default => 'Closes '.K::text($t ?? [], 'closes', 'Monday 00:00 Berlin'),
-    }, K::MONO, 18, 340);
+    }, K::MONO, 18, 300);
     $lanes = [];
     foreach (array_slice(is_array($t['lanes'] ?? null) ? $t['lanes'] : [], 0, 5) as $i => $lane) {
         if (! is_array($lane)) {
@@ -35,7 +36,7 @@
         }
         $n = count($lanes);
         $cy = 284 + $n * 72;
-        $x = is_numeric($lane['x'] ?? null) ? max(400.0, min(1184.0, (float) $lane['x'])) : 400.0;
+        $x = is_numeric($lane['x'] ?? null) ? max((float) Tm::LANE_FROM, min((float) (Tm::LANE_LINE + Tm::LANE_PAST), (float) $lane['x'])) : (float) Tm::LANE_FROM;
         $versus = K::fit(K::text($lane, 'versus'), K::MONO, 18, 120);
         $room = $x - 40 - 96;
         $time = K::fit(K::text($lane, 'time'), K::MONO, 18, 140);
@@ -48,25 +49,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="720" viewBox="0 0 1280 720">
 @include('stream.rotation.partials.defs')
 <rect width="1280" height="720" fill="#0A0A0B"/>
-@include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => $t ? 0 : 0.86])
+{{-- The still centred on the content area (x 0..1040); the stream's now-playing column covers the rest. --}}
+@include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => $t ? 0 : 0.86, 'bdW' => 1040])
 @include('stream.rotation.partials.c-chrome', ['stats' => $stats ?? [], 'section' => 'trackmania'])
 
 @if ($t)
 @include('stream.rotation.partials.game-mark', ['gmCover' => $cover ?? null, 'gmX' => 40, 'gmY' => 104, 'gmW' => 192, 'gmEdge' => '#5EEAD4'])
-<text data-unit="week" data-box="255 112 817 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
-<text data-unit="title" data-box="254 150 1000 198" x="256" y="188" font-family="Unbounded" font-weight="800" font-size="40" fill="#FFFFFF">The race to the author time</text>
-<text data-unit="track" data-box="255 202 900 224" x="256" y="220" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#C9C9CE">{{ $sub }}</text>
-<text data-unit="closes" data-box="899 116 1241 138" x="1240" y="132" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF" text-anchor="end">{{ $corner }}</text>
+<text data-unit="week" data-box="255 112 697 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
+<text data-unit="title" data-box="254 150 1016 198" x="256" y="188" font-family="Unbounded" font-weight="800" font-size="34" fill="#FFFFFF">The race to the author time</text>
+<text data-unit="track" data-box="255 202 976 224" x="256" y="220" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#C9C9CE">{{ $sub }}</text>
+<text data-unit="closes" data-box="715 116 1017 138" x="1016" y="132" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#FFFFFF" text-anchor="end">{{ $corner }}</text>
 
 {{-- The author time's line: what every lane races towards. --}}
 @if ($authorTime !== '')
-<text data-unit="author-label" data-box="990 220 1186 240" x="1088" y="236" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#5EEAD4" text-anchor="middle">Author {{ $authorTime }}</text>
-<rect x="1086" y="246" width="4" height="362" fill="#5EEAD4"/>
+<text data-unit="author-label" data-box="{{ Tm::LANE_LINE - 98 }} 220 {{ Tm::LANE_LINE + 98 }} 240" x="{{ Tm::LANE_LINE }}" y="236" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#5EEAD4" text-anchor="middle">Author {{ $authorTime }}</text>
+<rect x="{{ Tm::LANE_LINE - 2 }}" y="246" width="4" height="362" fill="#5EEAD4"/>
 @endif
 
 @for ($i = 0; $i < 5; $i++)
 @php($ly = 284 + $i * 72)
-<line x1="400" y1="{{ $ly }}" x2="1184" y2="{{ $ly }}" stroke="#55555C" stroke-width="2" stroke-dasharray="10 10"/>
+<line x1="{{ Tm::LANE_FROM }}" y1="{{ $ly }}" x2="{{ Tm::LANE_LINE + Tm::LANE_PAST }}" y2="{{ $ly }}" stroke="#55555C" stroke-width="2" stroke-dasharray="10 10"/>
 @endfor
 @foreach ($lanes as $l)
 <text data-unit="place-{{ $l['place'] }}" data-box="39 {{ $l['cy'] - 22 }} 80 {{ $l['cy'] + 14 }}" x="40" y="{{ $l['cy'] + 10 }}" font-family="Unbounded" font-weight="800" font-size="28" fill="#5EEAD4">{{ $l['place'] }}</text>
@@ -78,11 +80,11 @@
 </g>
 @endforeach
 @if ($lanes === [])
-<text data-unit="empty" data-box="399 400 1080 440" x="400" y="434" font-family="Unbounded" font-weight="800" font-size="30" fill="#FFFFFF">Nobody on the board yet.</text>
-<text data-unit="empty-line" data-box="399 452 1080 476" x="400" y="472" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#C9C9CE">Set the first time and lead the race.</text>
+<text data-unit="empty" data-box="399 400 1016 440" x="400" y="434" font-family="Unbounded" font-weight="800" font-size="30" fill="#FFFFFF">Nobody on the board yet.</text>
+<text data-unit="empty-line" data-box="399 452 1016 476" x="400" y="472" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#C9C9CE">Set the first time and lead the race.</text>
 @endif
 @else
-<text data-unit="title" data-box="38 150 1241 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
-<text data-unit="claim" data-box="39 240 1241 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
+<text data-unit="title" data-box="38 150 1017 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
+<text data-unit="claim" data-box="39 240 1017 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
 @endif
 </svg>

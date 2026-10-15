@@ -315,6 +315,11 @@ test('every programme slide renders at 1280 x 720 with every text inside the fra
             if ($t['y'] < 112) {
                 expect($t['right'])->toBeLessThan(1040, $scene.' '.$t['text']);
             }
+
+            // The slide's own texts end by x 1016, before the stream's now-playing column (x 1040 on).
+            if ($t['left'] < 1040) {
+                expect($t['right'])->toBeLessThanOrEqual(1016, $scene.' '.$t['text']);
+            }
         }
 
         if ($png !== null) {

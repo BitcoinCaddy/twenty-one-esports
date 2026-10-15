@@ -14,6 +14,7 @@
     Positions and fitted strings come from MempoolLayout::layout(); this view only draws them.
 --}}
 @use('App\Support\TwentyOne\Stream\MempoolLayout', 'L')
+@use('App\Support\TwentyOne\Stream\RotationKit', 'K')
 @php
     $lay = L::layout(is_array($mempool ?? null) ? $mempool : []);
     $w = L::W;
@@ -26,8 +27,10 @@
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.8])
 @include('stream.rotation.partials.b-chrome', ['stats' => $stats ?? [], 'bugNote' => $lay['bugNote']])
-<text data-unit="headline" data-box="39 100 1241 164" x="40" y="150" font-family="Unbounded" font-weight="800" font-size="52" fill="#FFFFFF">{{ $lay['headline'] }}</text>
-<text data-unit="lead" data-box="39 172 1241 200" x="40" y="194" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">{{ $lay['lead'] }}</text>
+<text data-unit="headline" data-box="39 100 {{ round(40 + K::width($lay['headline'], K::DISPLAY, $lay['headlineSize']) * 1.04 + 2) }} 164" x="40" y="150" font-family="Unbounded" font-weight="800" font-size="{{ $lay['headlineSize'] }}" fill="#FFFFFF">{{ $lay['headline'] }}</text>
+{{-- The call to act right-aligned on the headline's row (x .. 1016), the last row is the legend's. --}}
+<text data-unit="cta" data-box="{{ round(1016 - K::width($lay['cta'], K::MONO, 22) - 1) }} 128 1017 156" x="1016" y="150" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF" text-anchor="end">{{ $lay['cta'] }}</text>
+<text data-unit="lead" data-box="39 172 1017 200" x="40" y="194" font-family="JetBrains Mono" font-weight="700" font-size="{{ $lay['leadSize'] }}" fill="#ADADB0">{{ $lay['lead'] }}</text>
 @foreach ($lay['labels'] as $i => $label)
 <text data-unit="group-{{ $i }}" data-box="{{ $label['x'] - 1 }} 206 {{ $label['x'] + 200 }} 230" x="{{ $label['x'] }}" y="224" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#ADADB0">{{ $label['text'] }}</text>
 @endforeach
@@ -76,11 +79,12 @@
 <g transform="translate({{ $x + 14 }} {{ $cy + 14 }}) scale(0.9167)" fill="{{ $cube['ink'] }}" stroke="{{ $cube['ink'] }}">{!! L::logo($cube['icon']) !!}</g>
 <text data-unit="mode-{{ $id }}" data-box="{{ $x + 45 }} {{ $cy + 14 }} {{ $x + $w - 12 }} {{ $cy + 40 }}" x="{{ $x + 46 }}" y="{{ $cy + 33 }}" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="{{ $cube['ink'] }}">{{ $cube['mode'] }}</text>
 <text data-unit="score-{{ $id }}" data-box="{{ $x + 15 }} {{ $cy + 46 }} {{ $x + $w - 12 }} {{ $cy + 108 }}" x="{{ $x + 16 }}" y="{{ $cy + 96 }}" font-family="Unbounded" font-weight="800" font-size="{{ $cube['scoreSize'] }}" fill="{{ $cube['ink'] }}">{{ $cube['score'] }}</text>
-@if ($cube['when'] !== '')<text data-unit="when-{{ $id }}" data-box="{{ $x + 15 }} {{ $cy + 118 }} {{ $x + ($cube['casual'] ? $w - 80 : $w - 12) }} {{ $cy + 144 }}" x="{{ $x + 16 }}" y="{{ $cy + 137 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="{{ $cube['inkSoft'] }}">{{ $cube['when'] }}</text>@endif
+@if ($cube['when'] !== '')<text data-unit="when-{{ $id }}" data-box="{{ $x + 15 }} {{ $cy + 118 }} {{ $x + $w - 12 }} {{ $cy + 144 }}" x="{{ $x + 16 }}" y="{{ $cy + 137 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="{{ $cube['inkSoft'] }}">{{ $cube['when'] }}</text>@endif
 @if ($cube['casual'])
-<g data-unit="casual-{{ $id }}" data-box="{{ $x + $w - 76 }} {{ $cy + 116 }} {{ $x + $w - 12 }} {{ $cy + 146 }}">
-<rect x="{{ $x + $w - 74 }}" y="{{ $cy + 118 }}" width="60" height="26" rx="4" fill="none" stroke="{{ $cube['inkSoft'] }}" stroke-width="1.5"/>
-<text x="{{ $x + $w - 44 }}" y="{{ $cy + 136 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="{{ $cube['inkSoft'] }}" text-anchor="middle">casual</text>
+{{-- The casual chip on the cube's top edge, as the tournament TV puts its Live chip: the time keeps the whole line. --}}
+<g data-unit="casual-{{ $id }}" data-box="{{ $x + $w - 74 }} {{ $cy - 13 }} {{ $x + $w - 12 }} {{ $cy + 13 }}">
+<rect x="{{ $x + $w - 72 }}" y="{{ $cy - 12 }}" width="60" height="24" rx="4" fill="#17120A" stroke="{{ $c[0] }}" stroke-width="1.5"/>
+<text x="{{ $x + $w - 42 }}" y="{{ $cy + 5 }}" font-family="JetBrains Mono" font-weight="700" font-size="14" fill="#FFFFFF" text-anchor="middle">casual</text>
 </g>
 @endif
 @endif
@@ -98,5 +102,4 @@
 <rect x="{{ $key['x'] }}" y="{{ L::FOOT_Y - 14 }}" width="16" height="16" rx="3" fill="{{ $key['colour'] }}"/>
 <text data-unit="legend-{{ $i }}" data-box="{{ $key['textX'] - 1 }} {{ L::FOOT_Y - 17 }} {{ $key['textX'] + mb_strlen($key['name']) * 0.6 * $key['size'] + 2 }} {{ L::FOOT_Y + 6 }}" x="{{ $key['textX'] }}" y="{{ L::FOOT_Y }}" font-family="JetBrains Mono" font-weight="700" font-size="{{ $key['size'] }}" fill="#ADADB0">{{ $key['name'] }}</text>
 @endforeach
-<text data-unit="cta" data-box="39 {{ L::FOOT_Y - 20 }} {{ $lay['legend'][0]['x'] ?? 1241 }} {{ L::FOOT_Y + 8 }}" x="40" y="{{ L::FOOT_Y }}" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#FFFFFF">{{ $lay['cta'] }}</text>
 </svg>

@@ -119,10 +119,10 @@ test('the result slide shows the winner\'s pose, both players and figures, the s
         ->and($data['pong']['sides'][0]['picture'])->toStartWith('data:image/png;base64,')
         ->and($data['pong']['sides'][1]['picture'])->toStartWith('data:image/jpeg;base64,')
         ->and($data['art']['still'])->toStartWith('data:image/jpeg;base64,')
-        ->and($svg)->toContain('>23:21<', '>as Michael Saylor<', '>as Markus Turm<', '>Bert Hodler<', 'Elo 1016 (+16)', 'Elo 984 (-16)', '>WINNER<', '>PLAY NOW<', '>esports.einundzwanzig.space/proof-of-pong<', 'data-unit="still-art"', 'data-unit="pose-art"')
+        ->and($svg)->toContain('>23:21<', '>as Michael Saylor<', '>as Markus Turm<', '>Bert Hodler<', 'Elo 1016 (+16)', 'Elo 984 (-16)', '>WINNER<', '>PLAY NOW<', '>esports.einundzwanzig.space<', '>/proof-of-pong<', 'data-unit="still-art"', 'data-unit="pose-art"')
         ->not->toContain('Satoshis Very Long Display Name For The Stream', '→', '−');
 
-    // Every text inside the frame, clear of the LIVE badge (x >= 1040, y < 112), and the middle column clear of the right one.
+    // Every text left of x 1016 (the stream's now-playing column owns x 1040 on), and the middle column (x 336..680) clear of the right one.
     preg_match_all('#<text[^>]*\sx="([\d.]+)"[^>]*\sy="([\d.]+)"[^>]*font-family="(Unbounded|JetBrains Mono)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>#', $svg, $texts, PREG_SET_ORDER);
     expect(count($texts))->toBeGreaterThan(10);
 
@@ -135,15 +135,11 @@ test('the result slide shows the winner\'s pose, both players and figures, the s
         };
 
         expect($left)->toBeGreaterThanOrEqual(0, $text)
-            ->and($left + $width)->toBeLessThanOrEqual(1280, $text)
+            ->and($left + $width)->toBeLessThanOrEqual(1016, $text)
             ->and((float) $y)->toBeLessThanOrEqual(720, $text);
 
-        if ((float) $y < 112) {
-            expect($left + $width)->toBeLessThan(1040, $text);
-        }
-
-        if ($left >= 400 && $left < 870) {
-            expect($left + $width)->toBeLessThanOrEqual(870, $text);
+        if ($left >= 336 && $left < 680) {
+            expect($left + $width)->toBeLessThanOrEqual(680, $text);
         }
     }
 

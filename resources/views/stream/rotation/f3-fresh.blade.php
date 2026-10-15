@@ -40,7 +40,7 @@
         }
     }
     // The news keeps its time whole: only the name gives way ("New #1: Mühlenmeister Groß… 0:47.833").
-    $headW = 984;
+    $headW = 760;
     $newsLead = ($news['badge'] ?? null) === 'top' ? 'New #1: ' : 'Personal best: ';
     $newsTime = $news === null ? '' : ' '.K::clean(K::text($news, 'time'));
     $newsName = $news === null ? '' : K::clean(K::text($news, 'name'));
@@ -60,16 +60,27 @@
         default => $newsLead.($newsFit ?: 'Player').$newsTime,
     };
     $head = ['text' => $headline, 'font' => $news === null ? K::DISPLAY : $newsFont, 'size' => $news === null ? 44 : $newsSize];
-    $week = K::fit('Blockfill '.(preg_replace('/^Blockfill\s*/', '', K::text($b ?? [], 'title')) ?: 'this week'), K::MONO, 22, 560);
+    $week = K::fit('Blockfill '.(preg_replace('/^Blockfill\s*/', '', K::text($b ?? [], 'title')) ?: 'this week'), K::MONO, 22, 440);
     $lead = $runs === [] ? '' : 'A run counts once the league has replayed it.';
 
-    // The row: four runs, or the runs and the call, sharing 1200 px (each block 36 px apart, the last one's side 16 px).
+    // The row: four runs, or the runs and the call, sharing x 40..1016 (976 px; each block 24 px apart, the last one's side 16 px).
     $cy = 268;
     $h = 180;
     $dd = 16;
-    $gap = 36;
+    $gap = 24;
     $slots = min(4, count($runs) + 1);
-    $w = floor((1200 - $dd - ($slots - 1) * $gap) / $slots);
+    $w = floor((976 - $dd - ($slots - 1) * $gap) / $slots);
+    // A run's time keeps every digit: the size comes down to fit the block, it is never cut.
+    $timeSize = 36;
+    foreach ([36, 32, 28, 24] as $timeSize) {
+        $widest = 0;
+        foreach ($runs as $run) {
+            $widest = max($widest, K::width(K::text($run, 'time'), K::DISPLAY, $timeSize) * 1.04);
+        }
+        if ($widest <= $w - 32) {
+            break;
+        }
+    }
     $callAt = count($runs) < 4 ? count($runs) : null;
 
     // The call: the time to beat, the game page.
@@ -95,10 +106,10 @@
 
 @if ($b)
 @include('stream.rotation.partials.game-mark', ['gmCover' => $cover ?? null, 'gmX' => 40, 'gmY' => 104, 'gmW' => 192, 'gmEdge' => '#F7931A'])
-<text data-unit="week" data-box="255 112 817 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
-<text data-unit="headline" data-box="254 146 1241 200" x="256" y="188" font-family="{{ $head['font'] }}" font-weight="800" font-size="{{ $head['size'] }}" fill="#FFFFFF">{{ $head['text'] }}</text>
+<text data-unit="week" data-box="255 112 697 138" x="256" y="132" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#A1A1A7">{{ $week }}</text>
+<text data-unit="headline" data-box="254 146 1017 200" x="256" y="188" font-family="{{ $head['font'] }}" font-weight="800" font-size="{{ $head['size'] }}" fill="#FFFFFF">{{ $head['text'] }}</text>
 @if ($lead !== '')
-<text data-unit="lead" data-box="255 202 1241 226" x="256" y="220" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ $lead }}</text>
+<text data-unit="lead" data-box="255 202 1017 226" x="256" y="220" font-family="JetBrains Mono" font-weight="700" font-size="20" fill="#ADADB0">{{ $lead }}</text>
 @endif
 
 @for ($i = 0; $i < $slots; $i++)
@@ -159,7 +170,7 @@
 @if ($waiting)
 <text data-unit="block-time-{{ $i }}" data-box="{{ $x + 15 }} {{ $cy + 86 }} {{ $x + $w - 15 }} {{ $cy + 116 }}" x="{{ $x + 16 }}" y="{{ $cy + 110 }}" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#ADADB0">unconfirmed</text>
 @else
-<text data-unit="block-time-{{ $i }}" data-box="{{ $x + 15 }} {{ $cy + 72 }} {{ $x + $w - 15 }} {{ $cy + 118 }}" x="{{ $x + 16 }}" y="{{ $cy + 114 }}" font-family="Unbounded" font-weight="800" font-size="36" fill="{{ $ink }}">{{ K::fit(K::text($run, 'time'), K::DISPLAY, 36, $w - 32) }}</text>
+<text data-unit="block-time-{{ $i }}" data-box="{{ $x + 15 }} {{ $cy + 72 }} {{ $x + $w - 15 }} {{ $cy + 118 }}" x="{{ $x + 16 }}" y="{{ $cy + 114 }}" font-family="Unbounded" font-weight="800" font-size="{{ $timeSize }}" fill="{{ $ink }}">{{ K::fit(K::text($run, 'time'), K::DISPLAY, $timeSize, $w - 32) }}</text>
 @endif
 <text data-unit="block-when-{{ $i }}" data-box="{{ $x + 15 }} {{ $cy + 146 }} {{ $x + $w - 15 }} {{ $cy + 168 }}" x="{{ $x + 16 }}" y="{{ $cy + 164 }}" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="{{ $badge === 'top' ? '#17120A' : '#A1A1A7' }}">{{ K::fit(K::text($run, 'when'), K::MONO, 16, $w - 32) }}</text>
 @php($name = K::name(K::text($run, 'name'), 'Player', 22, $w + $dd - 64))
@@ -168,7 +179,7 @@
 @endif
 @endfor
 @else
-<text data-unit="title" data-box="38 150 1241 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
-<text data-unit="claim" data-box="39 240 1241 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
+<text data-unit="title" data-box="38 150 1017 210" x="40" y="200" font-family="Unbounded" font-weight="800" font-size="56" fill="#FFFFFF">Every game</text>
+<text data-unit="claim" data-box="39 240 1017 270" x="40" y="262" font-family="JetBrains Mono" font-weight="700" font-size="22" fill="#ADADB0">Every game of the league is on the site.</text>
 @endif
 </svg>
