@@ -266,14 +266,15 @@ it('remembers what every chatter wrote and the start of the reply, trusted or no
         ->and($lines->contains(fn ($line) => str_contains((string) $line->message, 'zwiebelcoin')))->toBeTrue();
 });
 
-it('remembers a message held back by the cooldown, without a reply', function () {
+it('answers a message that once sat out a cooldown: nothing is held back any more (user 2026-10-15)', function () {
     config(['tv.commentary.chat.per_person_minutes' => 15]);
     $ada = chatContextTrusted('Ada');
     ChatterProfile::query()->where('pubkey', $ada->pubkey)->update(['last_reaction_at' => now()->subMinute()]);
+    VoiceAgent::fake([['text' => 'Ada, hinterher ist jetzt gleich, du kriegst sofort Antwort.', 'canon_id' => null, 'mood' => 'call']]);
     $this->reader->events = [chatContextMessage($ada, 'noch eine frage hinterher')];
 
-    expect(app(ChatReactions::class)->poll(CarbonImmutable::now()))->toBe(0)
-        ->and(ChatterLine::query()->sole()->only(['name', 'message', 'reply']))->toBe(['name' => 'Ada', 'message' => 'noch eine frage hinterher', 'reply' => null]);
+    expect(app(ChatReactions::class)->poll(CarbonImmutable::now()))->toBe(1)
+        ->and(ChatterLine::query()->sole()->only(['name', 'message']))->toBe(['name' => 'Ada', 'message' => 'noch eine frage hinterher']);
 });
 
 it('gives the reply the podcast, the asker\'s thread and the others\' lines, all as data after the fixed parts', function () {

@@ -223,29 +223,15 @@ class ChatReactions
     /** Why a message gets no reaction, or null. */
     public function skipReason(SignedEvent $event, CarbonImmutable $now): ?string
     {
+        // Muted only (user 2026-10-15: "es soll NICHTS mehr übersprungen werden!"): no web of trust, no cooldown,
+        // no hourly cap — nothing rationates a reply any more; the spool's caps keep the workstation from lagging
+        // behind. Only a message that sanitizes down to nothing (a bare link, markup noise) cannot be answered:
+        // there is no content left to answer.
         if (! $this->cache->isReactable($event->pubkey)) {
             return 'untrusted';
         }
 
-        $settings = (array) config('tv.commentary.chat', []);
-        $profile = ChatterProfile::query()->where('pubkey', $event->pubkey)->first();
-
-        // 0 means no limit, for the cooldown and the hourly cap alike.
-        $personMinutes = (int) ($settings['per_person_minutes'] ?? 15);
-        if ($personMinutes > 0 && $profile?->last_reaction_at !== null && $profile->last_reaction_at->greaterThan($now->subMinutes($personMinutes))) {
-            return 'person_cooldown';
-        }
-
-        // The greetings for everybody (everyone_minutes) and the YouTube summaries (every_minutes) have their own limits and do not count here.
-        $perHour = (int) ($settings['per_hour'] ?? 6);
-        if ($perHour > 0 && CasterScript::query()->where('kind', CasterScript::CHAT)->where(fn ($query) => $query->whereNull('topic')->orWhereNotIn('topic', [self::GREETING_TOPIC, YouTubeChatSummary::TOPIC]))
-            ->where('created_at', '>', $now->subHour())->count() >= $perHour) {
-            return 'hourly_cap';
-        }
-
-        // A number alone is content too (user 2026-10-15: "21.000.000" got no reaction): a letter or a digit is
-        // enough; only links, markup and noise stripped down to nothing stay skipped.
-        return preg_match('/[\p{L}\p{N}]/u', self::sanitizeMessage($event->content)) === 1 ? null : 'no_content';
+        return self::sanitizeMessage($event->content) === '' ? 'no_content' : null;
     }
 
     /**

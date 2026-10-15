@@ -155,21 +155,21 @@ it('trusts every chatter now, whatever the season\'s rank said (user 2026-10-15:
         ->and(app(ChatterCache::class)->isReactable($low))->toBeTrue();
 });
 
-it('reacts to a person at most once per cooldown (2 min) and to everybody at most twenty times an hour', function () {
+it('skips nothing any more: no cooldown, no hourly cap, whatever the profile and the hour (user 2026-10-15)', function () {
     $chatter = new TestSigner;
     WotLevel::query()->create(['pubkey' => $chatter->pubkey, 'level' => 1, 'computed_at' => now()]);
     $now = CarbonImmutable::now();
     ChatterProfile::query()->create(['pubkey' => $chatter->pubkey, 'last_reaction_at' => $now->subMinute()]);
-
-    expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now))->toBe('person_cooldown')
-        ->and(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now->addMinutes(2)))->toBeNull();
 
     foreach (range(1, 20) as $i) {
         CasterScript::query()->create(['kind' => CasterScript::CHAT, 'phase' => 'break', 'priority' => 50, 'text' => 'Hey.', 'facts_hash' => 'h',
             'status' => CasterScript::QUEUED, 'estimated_seconds' => 1, 'expires_at' => $now->addMinutes(10)]);
     }
 
-    expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now->addMinutes(2)))->toBe('hourly_cap');
+    // "Es soll NICHTS mehr übersprungen werden!": a chatter who was answered a minute ago gets the next reply at
+    // once, and the twentieth of the hour is no different — the spool's caps keep the workstation from lagging.
+    expect(casterReactions()->skipReason(casterChat($chatter, 'gute partie gerade'), $now))->toBeNull()
+        ->and(casterReactions()->skipReason(casterChat($chatter, '21.000.000'), $now))->toBeNull();
 });
 
 it('keeps only lowercase keywords of a chat message: no names, numbers or links', function () {
