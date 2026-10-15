@@ -258,7 +258,9 @@ export default function matchDock(config) {
         measure() {
             let top = null;
             document.querySelectorAll('[data-page-bar]').forEach((bar) => {
-                if (bar.getClientRects().length === 0) return;
+                // Only a bar fixed to the bottom owns it: from lg Blockli's bar heads the board's side column, and taken for a
+                // page bar it grew the root's scroll-padding-bottom to about 270 px (BitcoinCaddy, PR #8).
+                if (bar.getClientRects().length === 0 || getComputedStyle(bar).position !== 'fixed') return;
                 const rect = bar.getBoundingClientRect();
                 if (rect.height > 0 && (top === null || rect.top < top)) top = rect.top;
             });

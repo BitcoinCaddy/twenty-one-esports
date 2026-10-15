@@ -246,6 +246,8 @@ test('two players play Blockli to a win with every way to set a block: groove ta
 test('while a block is shown, Rotate, Confirm and Move the pawn stand in Blockli\'s bar, every button is at least 44 px high and Confirm is the only filled one; a mouse sets it by its click, without them', function (int $width, int $height, bool $touch) {
     [$anna, $bert] = User::factory()->count(2)->create();
     $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
+    // A second game of Anna's, so the match dock has something to carry on this page.
+    app(BoardGameService::class)->start('blockli', $anna, User::factory()->create());
     // In German, the longest labels ("Figur bewegen"): R11, a button never wraps its text.
     $white = blockliPage($anna, route('board.show', ['boardGame' => $game, 'lang' => 'de'], false), $width, $height, $touch);
     BrowserWait::until($white, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
@@ -263,6 +265,11 @@ test('while a block is shown, Rotate, Confirm and Move the pawn stand in Blockli
         ->and(collect($buttons)->where('filled', true)->pluck('test')->all())->toBe($touch ? ['set-block'] : [])
         ->and(collect($buttons)->where('lines', '>', 1)->pluck('text')->all())->toBe([])
         ->and($white->evaluate('() => window.__errors'))->toBe([]);
+    // From lg Blockli's bar heads the side column, not fixed: the dock must not take it for a page bar and reserve room
+    // for its tab under it (BitcoinCaddy, PR #8: the root's scroll-padding-bottom grew to about 270 px).
+    $padding = $white->evaluate('() => parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom) || 0');
+    fwrite(STDERR, "[scroll-padding-bottom {$width}] {$padding}".PHP_EOL);
+    expect($touch || $padding < 100)->toBeTrue("scroll-padding-bottom {$padding} px on a desktop board page");
 })->with([
     'phone 320 (touch)' => [320, 640, true],
     'phone 360 (touch)' => [360, 740, true],
