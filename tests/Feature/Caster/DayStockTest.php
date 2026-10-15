@@ -148,11 +148,20 @@ it('rotates the formats, a tutorial with its rules and no advice, a format witho
     }
 });
 
-it('hands out stock scripts only to a stock claim in the stock window, written on demand, and marks them done', function () {
+it('hands out stock scripts only to a stock claim, written by the scheduler, and marks them done', function () {
     // The fixture ends on the tutorial's back-announce (StockScripts::BACK_ANNOUNCE).
     config(['tv.commentary.blocks.stock.formats' => ['tutorial']]);
+    Http::fake([
+        'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title><item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
+        'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud.</p></article></body></html>'),
+    ]);
     VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(), 'canon_id' => null, 'mood' => 'fakten']);
     $this->travelTo(CarbonImmutable::parse('2026-10-13 03:00', 'Europe/Berlin'));
+
+    // The scheduler writes the stock now (ScriptQueue::fill -> fillStock, CLI with no web timeout; user 2026-10-16):
+    // with the workstation reporting room, one programme lands in the queue for the claim to hand out.
+    DayStock::rememberReport('100.0;0', CarbonImmutable::now());
+    expect(app(ScriptQueue::class)->fillStock(CarbonImmutable::now()))->toBe(1);
 
     $claim = dayStockClaim('?only=stock')->assertOk();
     $id = $claim->json('script.id');
@@ -170,10 +179,12 @@ it('hands out stock scripts only to a stock claim in the stock window, written o
     $this->postJson('/api/caster/stock/stored', [], ['Authorization' => 'Bearer '.DAY_STOCK_TOKEN, 'X-Caster-Scripts' => (string) $id])->assertOk()->assertJson(['stored' => 1]);
     expect($script->fresh()->status)->toBe(CasterScript::VOICED);
 
-    // By day without the day share: no stock script.
+    // By day without the day share: the scheduler writes no more, and the claim has nothing.
     config(['tv.commentary.blocks.stock.day_share' => false]);
     $this->travelTo(CarbonImmutable::parse('2026-10-13 14:00', 'Europe/Berlin'));
     CasterScript::query()->where('scene', StockScripts::SCENE)->delete();
+    DayStock::rememberReport('100.0;0', CarbonImmutable::now());
+    expect(app(ScriptQueue::class)->fillStock(CarbonImmutable::now()))->toBe(0);
     expect(dayStockClaim('?only=stock')->json('script'))->toBeNull();
 });
 
@@ -266,6 +277,7 @@ it('uploads a stock block by day below the upload mark, moves it to the archive 
     Http::assertNotSent(fn (Request $request): bool => str_ends_with($request->url(), '/api/caster/stock/blocks'));
 
     $this->travelTo(CarbonImmutable::parse('2026-10-13 14:00', 'Europe/Berlin'));
+    config(['tv.commentary.blocks.stock.window' => ['from' => '00:00', 'to' => '23:59']]);
     expect((new CasterFetcher(fn () => null))->runOnce())->toBe(CasterFetcher::VOICED)
         ->and($stock->entries())->toBe([])
         ->and(array_values(ReplayArchive::fromConfig()->entries())[0]['evergreen'])->toBeTrue();

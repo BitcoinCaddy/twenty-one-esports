@@ -616,10 +616,15 @@ class CasterFetcher
         return $opus;
     }
 
-    /** Whether a block's topics are all timeless (user 2026-10-15): nothing that carries a clock. */
+    /**
+     * Whether a block's topics are all timeless (user 2026-10-15: nothing that carries a clock; user 2026-10-16:
+     * "News, Sport und Wetter will ich auch nicht haben"): a live tournament, the news talk, sport and weather,
+     * a bulletin, the news itself and every programme the clock places are perishable - only the evergreen
+     * programmes stay in the local render archive.
+     */
     public static function timelessTopics(array $topics): bool
     {
-        $perishable = [Programme\TournamentLive::TOPIC, Programme\NewsTalk::TOPIC, Programme\SportWeather::TOPIC];
+        $perishable = [Programme\TournamentLive::TOPIC, Programme\NewsTalk::TOPIC, Programme\SportWeather::TOPIC, Programme\TournamentLive::TOPIC];
 
         return collect($topics)->filter(fn ($topic): bool => is_string($topic) && $topic !== '')
             ->every(fn (string $topic): bool => ! in_array($topic, $perishable, true));
