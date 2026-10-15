@@ -246,7 +246,8 @@ test('two players play Blockli to a win with every way to set a block: groove ta
 test('while a block is shown, Rotate, Confirm and Move the pawn stand in Blockli\'s bar, every button is at least 44 px high and Confirm is the only filled one; a mouse sets it by its click, without them', function (int $width, int $height, bool $touch) {
     [$anna, $bert] = User::factory()->count(2)->create();
     $game = BlockliOn::setUp(app(BoardGameService::class)->start('blockli', $anna, $bert), 'e7 e3 10 10 w - 0');
-    $white = blockliPage($anna, route('board.show', $game, false), $width, $height, $touch);
+    // In German, the longest labels ("Figur bewegen"): R11, a button never wraps its text.
+    $white = blockliPage($anna, route('board.show', ['boardGame' => $game, 'lang' => 'de'], false), $width, $height, $touch);
     BrowserWait::until($white, '() => window.Alpine && Alpine.$data(document.querySelector("[data-test=board-game]"))?.canMove', 10_000);
 
     $touch ? $white->locator('[data-test=mode-block]')->tap() : $white->locator('[data-test=mode-block]')->click();
@@ -254,13 +255,17 @@ test('while a block is shown, Rotate, Confirm and Move the pawn stand in Blockli
     // Filled = the orange primary ground (bg-btc); the pressed toggle keeps a dark tint (bg-btc-press).
     // Nothing stands over the board (a player on an iPhone SE, 2026-10-14): on a phone Rotate, Confirm and Move the pawn
     // take the bar's row and "Set a block" gives way to them; a mouse keeps the toggle alone.
-    $buttons = $white->evaluate('() => [...document.querySelectorAll("[data-test=block-input] button")].filter((b) => b.checkVisibility()).map((b) => ({ test: b.dataset.test, h: Math.round(b.getBoundingClientRect().height), filled: b.classList.contains("bg-btc") }))');
+    $buttons = $white->evaluate('() => [...document.querySelectorAll("[data-test=block-input] button")].filter((b) => b.checkVisibility()).map((b) => { const range = document.createRange(); range.selectNodeContents(b); return { test: b.dataset.test, h: Math.round(b.getBoundingClientRect().height), filled: b.classList.contains("bg-btc"), lines: Math.round(range.getBoundingClientRect().height / (parseFloat(getComputedStyle(b).lineHeight) || parseFloat(getComputedStyle(b).fontSize) * 1.5)), text: b.innerText.trim() }; })');
+    fwrite(STDERR, PHP_EOL."[bar buttons {$width}] ".json_encode($buttons).PHP_EOL);
 
     expect(collect($buttons)->pluck('test')->all())->toBe($touch ? ['rotate-block', 'set-block', 'mode-move'] : ['mode-block'])
         ->and(collect($buttons)->every(fn (array $b): bool => $b['h'] >= 44))->toBeTrue()
         ->and(collect($buttons)->where('filled', true)->pluck('test')->all())->toBe($touch ? ['set-block'] : [])
+        ->and(collect($buttons)->where('lines', '>', 1)->pluck('text')->all())->toBe([])
         ->and($white->evaluate('() => window.__errors'))->toBe([]);
 })->with([
+    'phone 320 (touch)' => [320, 640, true],
+    'phone 360 (touch)' => [360, 740, true],
     'phone 390 (touch)' => [390, 844, true],
     'desktop 1440 (mouse)' => [1440, 900, false],
 ]);

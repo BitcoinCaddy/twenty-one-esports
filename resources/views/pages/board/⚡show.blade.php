@@ -460,13 +460,14 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
                                 :aria-pressed="blockMode ? 'true' : 'false'" :disabled="!myTurn || !canSetBlocks" x-on:click="setBlockMode(!blockMode, $event)" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight R Enter Escape" data-test="mode-block">
                             {{ __('Set a block') }} <span class="tabular-nums" x-text="blocksLeft"></span>
                         </button>
-                        {{-- With a block shown: Rotate, Confirm and Move the pawn, side by side in the row; a label may wrap on a narrow phone. --}}
-                        <div class="min-w-0 grow grid-cols-3 gap-2 lg:order-3" :class="blockButtons ? 'grid' : 'hidden'" data-block-buttons>
-                            <button type="button" class="inline-flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-md border border-line bg-well px-2 text-[13px] leading-tight text-ink btn-w hover:text-ink disabled:cursor-default disabled:opacity-50"
+                        {{-- With a block shown: Rotate, Confirm and Move the pawn, side by side in the row, each as wide as its label and never
+                             wrapping it (R11; "Figur bewegen" wrapped at 320 to 390 px in German): 12 px under 360 px. --}}
+                        <div class="min-w-0 grow gap-2 lg:order-3" :class="blockButtons ? 'flex' : 'hidden'" data-block-buttons>
+                            <button type="button" class="inline-flex h-11 grow cursor-pointer items-center justify-center rounded-md border border-line bg-well px-2 text-xs whitespace-nowrap min-[360px]:text-[13px] text-ink btn-w hover:text-ink disabled:cursor-default disabled:opacity-50"
                                     x-bind:disabled="!preview" x-on:click="rotateBlock()" data-test="rotate-block">{{ __('Rotate') }}</button>
-                            <button type="button" class="inline-flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-md bg-btc px-2 text-[13px] leading-tight font-bold text-on-btc btn-p hover:text-on-btc disabled:cursor-default disabled:opacity-50"
+                            <button type="button" class="inline-flex h-11 grow cursor-pointer items-center justify-center rounded-md bg-btc px-2 text-xs whitespace-nowrap min-[360px]:text-[13px] font-bold text-on-btc btn-p hover:text-on-btc disabled:cursor-default disabled:opacity-50"
                                     x-bind:disabled="!preview || !preview.move" x-on:click="setBlock()" data-test="set-block">{{ __('Confirm') }}</button>
-                            <button type="button" class="inline-flex h-11 min-w-0 cursor-pointer items-center justify-center rounded-md border border-edge px-2 text-[13px] leading-tight text-ink btn-s hover:text-ink"
+                            <button type="button" class="inline-flex h-11 grow cursor-pointer items-center justify-center rounded-md border border-edge px-2 text-xs whitespace-nowrap min-[360px]:text-[13px] text-ink btn-s hover:text-ink"
                                     x-on:click="setBlockMode(false)" data-test="mode-move">{{ __('Move the pawn') }}</button>
                         </div>
                         {{-- Always in the page, so a screen reader hears each new hint (the keys say where the block is). --}}
