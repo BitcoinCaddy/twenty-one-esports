@@ -328,7 +328,8 @@ new #[Layout('layouts::app', ['realtime' => true, 'scripts' => ['resources/js/bo
     <div wire:ignore x-data="boardGame(@js($config))" x-on:keydown.window="browseKey($event)" @class(["mx-auto flex w-full max-w-[1000px] flex-col gap-2 lg:gap-5", "min-[87.5rem]:max-w-[1360px]" => $chat]) data-test="board-game" data-mode="{{ $boardGame->mode }}">
 
         {{-- Title row --}}
-        <div @class(['flex flex-wrap items-center gap-x-4 gap-y-2', 'max-lg:gap-x-2' => $banner])>
+        {{-- 8 px apart below lg: at 320 px the connection pill fell onto a line of its own and took the board 40 px of height. --}}
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-2 lg:gap-x-4">
             {{-- On a phone the credit stands beside the name: the board gets the height (P2). A tournament game shows its
                  banner there instead; the name stays for screen readers. --}}
             <div @class(['flex min-w-0 items-baseline gap-2 lg:block', 'max-lg:sr-only' => $banner])>

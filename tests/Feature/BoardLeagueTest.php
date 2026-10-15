@@ -366,6 +366,17 @@ test('a board game cup\'s bracket links each running board for spectators, guest
         ->assertSee(route('board.show', $game), false);
 });
 
+test('a tournament game\'s page carries the tournament as a chip in the shell header for phones; a casual game\'s page none (2026-10-15)', function () {
+    $tournament = runningBoardTournament(Checkers::SLUG, 2);
+    $cupGame = BoardGame::query()->sole();
+    $casual = app(BoardGameService::class)->start(Checkers::SLUG, ...User::factory()->count(2)->create()->all());
+
+    $this->get(route('board.show', $cupGame))->assertOk()
+        ->assertSeeHtml('data-test="shell-tournament"')
+        ->assertSeeInOrder(['data-test="shell-tournament"', e($tournament->name), 'data-test="board-page"'], false);
+    $this->get(route('board.show', $casual))->assertOk()->assertDontSeeHtml('data-test="shell-tournament"');
+});
+
 test('a drawn board game in a knockout is replayed with the colours swapped', function () {
     $tournament = runningBoardTournament(NineMensMorris::SLUG, 2);
     $service = app(BoardGameService::class);

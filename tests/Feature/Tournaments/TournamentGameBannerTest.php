@@ -54,7 +54,9 @@ test('a live tournament chess game opens with the banner above the game, the cup
         ->assertSee(route('tournaments.show', $tournament), false)
         ->assertSee('Make your first move within :time or you lose this cup game')
         ->assertSee('data-test="tournament-chip"', false)
-        ->assertDontSee('data-test="rating"', false);
+        ->assertDontSee('data-test="rating"', false)
+        // On a phone the shell header carries it too, always at the top (2026-10-15).
+        ->assertSeeInOrder(['data-test="shell-tournament"', $tournament->name, 'Round 1', 'data-test="tournament-banner"'], false);
 
     // A spectator sees the banner too.
     $this->actingAs(User::factory()->create())->get(route('games.show', $game))->assertOk()
@@ -88,6 +90,7 @@ test('a casual chess game has no banner and keeps its rating and plain first-mov
 
     $this->actingAs($game->white)->get(route('games.show', $game))->assertOk()
         ->assertDontSee('data-test="tournament-banner"', false)
+        ->assertDontSee('data-test="shell-tournament"', false)
         ->assertDontSee('data-test="tournament-chip"', false)
         ->assertDontSee('or you lose this cup game')
         ->assertSee('data-test="rating"', false);
@@ -132,5 +135,6 @@ test('a tournament board game and a tournament series room open with the banner'
     $match = SeriesMatch::query()->whereIn('tournament_match_id', TournamentMatch::query()->where('tournament_id', $series->id)->select('id'))->orderBy('id')->firstOrFail();
 
     $this->actingAs(User::query()->findOrFail($match->rosterSide('challenger')[0]))->get(route('matches.room', $match))->assertOk()
-        ->assertSeeInOrder(['data-test="tournament-banner"', $series->name, 'Round 1', 'Tournament page', 'data-test="room-status"'], false);
+        ->assertSeeInOrder(['data-test="tournament-banner"', $series->name, 'Round 1', 'Tournament page', 'data-test="room-status"'], false)
+        ->assertSee('data-test="shell-tournament"', false);
 });

@@ -12,7 +12,7 @@
 @if ($banner)
     @php($desk = isset($banner['tournamentId']) && ($deskTournament = \App\Models\Tournament::query()->find($banner['tournamentId'])) !== null ? \App\Support\Tournaments\TournamentDesk::for($deskTournament, auth()->user()) : null)
     @php($round = $banner['round'].($banner['step'] ? ' · '.$banner['step'] : ''))
-    <a href="{{ $banner['url'] }}" {{ $attributes->class('relative -my-[5px] flex h-11 min-w-0 grow basis-0 items-center lg:hidden') }}
+    <a href="{{ $banner['url'] }}" data-tournament-inline {{ $attributes->class('relative -my-[5px] flex h-11 min-w-0 grow basis-0 items-center lg:hidden') }}
        aria-label="{{ ($banner['cup'] ? __('Cup game') : __('Tournament game')).': '.$banner['tournament'].', '.$round.'. '.__('Tournament page') }}" data-test="tournament-banner-row">
         <span class="flex h-[34px] w-full min-w-0 items-center gap-2 rounded-md bg-btc-tint px-2.5 text-[13px] shadow-[inset_0_0_0_2px_var(--color-btc)]" aria-hidden="true">
             <x-icon name="trophy" :size="16" class="shrink-0 text-btc" />

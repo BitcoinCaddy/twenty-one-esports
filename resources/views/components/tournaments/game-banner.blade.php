@@ -11,10 +11,13 @@
     ist das Spielbrett mega klein"; user: "Das Turnier-Banner darf auf keinen Fall in mobile stören und muss am besten wo
     anders hin"): the board fits the first screen, and above it the banner took 222 px of it (board 203 px wide at
     390x844). On a phone it is one row: the trophy, the stake and the button labels give way, the buttons keep 44 px
-    and their names for screen readers.
+    and their names for screen readers. Wherever it stands, the shell header carries a chip of it on a phone while no
+    banner of the page is in view (people, 2026-10-15: a small mark always at the top that this is a tournament match).
 --}}
 @if ($banner)
-    <section aria-label="{{ $banner['cup'] ? __('Cup game') : __('Tournament game') }}"
+    {{-- The shell header shows the tournament as a chip on a phone, always at the top (components/shell/header). --}}
+    @php(request()->attributes->set('tournament-banner', $banner))
+    <section data-tournament-inline aria-label="{{ $banner['cup'] ? __('Cup game') : __('Tournament game') }}"
              {{ $attributes->class('flex items-center gap-x-4 gap-y-3 rounded-lg bg-btc-tint px-4 py-3 shadow-[inset_0_0_0_2px_var(--color-btc)] max-lg:order-last max-lg:mt-4 max-lg:mb-0 max-sm:gap-x-2 max-sm:py-2 max-sm:pr-2 sm:flex-wrap lg:px-6 lg:py-4') }} data-test="tournament-banner">
         <span class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-btc text-on-btc max-sm:hidden lg:size-12" aria-hidden="true"><x-icon name="trophy" :size="24" /></span>
         <span class="flex min-w-0 grow basis-0 flex-col gap-0.5 sm:basis-56">

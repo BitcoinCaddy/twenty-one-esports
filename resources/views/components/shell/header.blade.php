@@ -80,6 +80,22 @@
         {{-- Phones: the stream's LIVE mark next to the logo (Header.dc.html "Handy"). --}}
         <x-live-badge class="flex lg:hidden" compact />
 
+        {{-- Phones on a tournament game's page (the page's game-banner tells): a chip with the tournament and its round, always at
+             the top, since the header stays (people, 2026-10-15: "eine kleine Anzeige immer oben, ob es sich um ein Turnier-Match
+             handelt"). It costs the board nothing; while a banner of the page is in view it gives way, so nothing stands twice. Under
+             360 px on air (the LIVE mark beside it) it may shrink to its trophy, or the row spilled 9 px (measured at 320). --}}
+        @if ($tournamentBanner = request()->attributes->get('tournament-banner'))
+            <a href="{{ $tournamentBanner['url'] }}" class="flex h-11 min-w-[34px] shrink items-center min-[360px]:ml-1 min-[360px]:min-w-11 lg:hidden" x-cloak x-show="shown"
+               x-data="{ shown: true, io: null, init() { const inline = [...document.querySelectorAll('[data-tournament-inline]')]; if (! inline.length) return; this.shown = false; const seen = new Set(); this.io = new IntersectionObserver((entries) => { entries.forEach((e) => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)); this.shown = seen.size === 0; }, { rootMargin: '-52px 0px 0px 0px' }); inline.forEach((el) => this.io.observe(el)); }, destroy() { this.io?.disconnect(); } }"
+               aria-label="{{ ($tournamentBanner['cup'] ? __('Cup game') : __('Tournament game')).': '.$tournamentBanner['tournament'].', '.$tournamentBanner['round'].'. '.__('Tournament page') }}" data-test="shell-tournament">
+                <span class="flex h-[30px] min-w-0 items-center gap-1.5 rounded-md bg-btc-tint px-2 text-xs shadow-[inset_0_0_0_1px_var(--color-btc)]" aria-hidden="true">
+                    <x-icon name="trophy" :size="14" class="shrink-0 text-btc" />
+                    <b class="min-w-0 truncate text-ink" data-test="shell-tournament-name">{{ $tournamentBanner['tournament'] }}</b>
+                    <span class="shrink-0 font-bold whitespace-nowrap text-btc-hi max-[359px]:hidden" data-test="shell-tournament-round">{{ $tournamentBanner['round'] }}</span>
+                </span>
+            </a>
+        @endif
+
         <span class="grow"></span>
 
         {{-- The site search (P16, SearchController): from lg a field in the row, on phones a button that opens the field under it. "/" focuses it. --}}
