@@ -80,6 +80,6 @@
 {{-- The chain's open end: the next block, waiting for its miner. --}}
 <rect x="809" y="401" width="206" height="70" fill="none" stroke="#F7931A" stroke-width="2" stroke-dasharray="8 6"/>
 <text x="912" y="446" font-family="Unbounded" font-weight="800" font-size="24" fill="#F7931A" text-anchor="middle">next</text>
-<text x="912" y="506" font-family="JetBrains Mono" font-weight="700" font-size="18" fill="#A1A1A7" text-anchor="middle">waiting for its miner</text>
+<text x="912" y="506" font-family="JetBrains Mono" font-weight="700" font-size="16" fill="#A1A1A7" text-anchor="middle">waiting for its miner</text>
 @endif
 </svg>
