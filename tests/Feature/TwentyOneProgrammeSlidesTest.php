@@ -165,6 +165,11 @@ test('a podcast airing shows its episode and part on air; a stored daytime episo
         'chunks' => [['path' => 'caster/podcasts/einundzwanzig/c1.opus', 'seconds' => 3600.0, 'bytes' => 1, 'pauses' => []]]]));
     Storage::disk('local')->put('caster/podcasts/einundzwanzig/c1.opus', 'x');
 
+    // Outside the replay window (00:00 to 09:00 Berlin, user 2026-10-15) the slot never airs, so the programme leaves it out.
+    config(['tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '09:00']]);
+    expect(collect(programmeNow()['upcoming'])->firstWhere('family', ProgrammeSlides::PODCAST))->toBeNull();
+
+    config(['tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '00:00']]);
     $replay = collect(programmeNow()['upcoming'])->firstWhere('family', ProgrammeSlides::PODCAST);
     expect(ProgrammeSlides::time($replay['at']).' '.$replay['title'])->toBe('16:03 Folge 1890: Der Bitcoin-Standard');
 

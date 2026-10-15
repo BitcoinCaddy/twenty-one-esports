@@ -471,7 +471,7 @@ class ProgrammeSlides
             foreach ([PodcastReplay::slotStart($source['starts_at'], $now), PodcastReplay::slotStart($source['starts_at'], $now->addDay())] as $start) {
                 $at = $start->getTimestamp();
 
-                if ($at <= $now->getTimestamp() || $at > $until || in_array($at, $podcastAts, true) || PodcastReplay::airedToday($key, $start)) {
+                if ($at <= $now->getTimestamp() || $at > $until || in_array($at, $podcastAts, true) || ! PodcastLibrary::airsAt($start) || PodcastReplay::airedToday($key, $start)) {
                     continue;
                 }
 

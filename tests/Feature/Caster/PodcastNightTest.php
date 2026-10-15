@@ -45,6 +45,8 @@ beforeEach(function () {
         'tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10, 'tv.commentary.repeat_hours' => 0,
         'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00',
         'tv.commentary.podcast_replay.enabled' => true,
+        // These tests are about the slot and the loop themselves: no replay window (PodcastLibrary::airsAt()).
+        'tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '00:00'],
         'tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => true,
         'tv.commentary.podcast_replay.sources.resat.enabled' => false,
         'tv.commentary.podcast_replay.night' => [

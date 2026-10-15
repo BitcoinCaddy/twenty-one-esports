@@ -178,7 +178,7 @@ class ProgrammePreview
         // The podcast replay: an enabled source with a stored episode that has not aired today.
         foreach (PodcastLibrary::sources() as $key => $source) {
             foreach ([PodcastReplay::slotStart($source['starts_at'], $from), PodcastReplay::slotStart($source['starts_at'], $from->addDay())] as $start) {
-                if ($start->lessThan($from) || $start->greaterThan($until) || PodcastReplay::airedToday($key, $start)) {
+                if ($start->lessThan($from) || $start->greaterThan($until) || ! PodcastLibrary::airsAt($start) || PodcastReplay::airedToday($key, $start)) {
                     continue;
                 }
 

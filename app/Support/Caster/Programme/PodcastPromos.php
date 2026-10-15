@@ -64,6 +64,12 @@ class PodcastPromos
             }
 
             $slot = PodcastReplay::slotStart($source['starts_at'], $now);
+
+            // A slot outside the replay window never airs: nothing to promote.
+            if (! PodcastLibrary::airsAt($slot)) {
+                continue;
+            }
+
             $airing = PodcastReplay::airing($key, $slot);
 
             if ($airing !== null) {

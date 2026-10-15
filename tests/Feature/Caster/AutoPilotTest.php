@@ -55,6 +55,8 @@ beforeEach(function () {
     Storage::fake('local');
     config([
         'tv.commentary.enabled' => true,
+        // The daytime slots and hours these tests use: no replay window (PodcastLibrary::airsAt()).
+        'tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '00:00'],
         'tv.commentary.fetch.token' => AUTOPILOT_TOKEN,
         'tv.commentary.fetch.online_seconds' => 120,
         'tv.commentary.voicestudio.server' => 'https://tv.test',

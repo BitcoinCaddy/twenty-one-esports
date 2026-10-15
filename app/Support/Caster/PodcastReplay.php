@@ -53,7 +53,8 @@ final class PodcastReplay
             $slot = self::slotStart($source['starts_at'], $now);
             $day = $slot->setTimezone(self::timezone())->format('Y-m-d');
 
-            if ($now->lessThan($slot->subMinutes((int) ($settings['ahead_minutes'] ?? 15))) || $now->greaterThan($slot->addMinutes((int) ($settings['late_minutes'] ?? 60)))) {
+            // A slot outside the replay window never airs (PodcastLibrary::airsAt()).
+            if (! PodcastLibrary::airsAt($slot) || $now->lessThan($slot->subMinutes((int) ($settings['ahead_minutes'] ?? 15))) || $now->greaterThan($slot->addMinutes((int) ($settings['late_minutes'] ?? 60)))) {
                 $outcomes[$key] = self::NOT_DUE;
 
                 continue;

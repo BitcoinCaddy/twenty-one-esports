@@ -1450,6 +1450,10 @@ return [
         // talk and the workstation's GPU renders day stock (`gpu` stock) or idles (`gpu` idle).
         'podcast_replay' => [
             'enabled' => (bool) env('TV_PODCAST_REPLAY', true),
+            // Podcasts start only in this window (Berlin; user 2026-10-15: "Die Podcast Wiederholungen sollen nur zwischen
+            // 24 Uhr und 09 Uhr morgens laufen"): a day slot (`starts_at`) outside it never airs and gets no promo, the
+            // autopilot and the night loop start no episode outside it (PodcastLibrary::airsAt()). The same from and to: any time.
+            'window' => ['from' => env('TV_PODCAST_REPLAY_WINDOW_FROM', '00:00'), 'to' => env('TV_PODCAST_REPLAY_WINDOW_TO', '09:00')],
             'dir' => 'caster/podcasts',
             'sources' => [
                 // The user hosts it (EINUNDZWANZIG main feed: all its shows, the newest episode).
@@ -1532,7 +1536,7 @@ return [
             // source (within `max_bytes`) and stores up to `prefetch_per_run` missing ones per feed read.
             'night' => [
                 'enabled' => (bool) env('TV_PODCAST_NIGHT', true),
-                'from' => env('TV_PODCAST_NIGHT_FROM', '01:00'),
+                'from' => env('TV_PODCAST_NIGHT_FROM', '00:00'),
                 'to' => env('TV_PODCAST_NIGHT_TO', '09:00'),
                 'until' => env('TV_PODCAST_NIGHT_UNTIL', '2026-10-13 09:00'),
                 'episodes' => (int) env('TV_PODCAST_NIGHT_EPISODES', 6),
@@ -1541,7 +1545,8 @@ return [
                 'queue_ahead_seconds' => 900,
                 // Music between two episodes for this many minutes (0: back to back).
                 'break_minutes' => (int) env('TV_PODCAST_NIGHT_BREAK_MINUTES', 0),
-                'overrun_minutes' => 30,
+                // No episode that would run past `to` (user 2026-10-15: podcasts only until 09:00).
+                'overrun_minutes' => 0,
                 'prefetch_per_run' => 6,
             ],
         ],

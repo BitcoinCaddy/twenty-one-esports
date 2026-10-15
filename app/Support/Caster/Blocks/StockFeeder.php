@@ -322,7 +322,7 @@ final class StockFeeder
         $last = Cache::get(self::PODCAST_AT);
         $hour = $now->setTimezone((string) config('tv.commentary.programme.timezone', 'Europe/Berlin'))->startOfHour()->addHour()->utc();
 
-        if (! PodcastLibrary::enabled() || ! AutoPilot::podcastDue(is_int($last) ? $last : null, $now) || $hour->getTimestamp() - $now->getTimestamp() > 600
+        if (! PodcastLibrary::enabled() || ! PodcastLibrary::airsAt($hour) || ! AutoPilot::podcastDue(is_int($last) ? $last : null, $now) || $hour->getTimestamp() - $now->getTimestamp() > 600
             || CasterClip::query()->where('kind', CasterScript::PODCAST)->whereIn('status', [CasterClip::READY, CasterClip::PLAYING])->exists()) {
             return null;
         }

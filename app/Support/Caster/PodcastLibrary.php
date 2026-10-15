@@ -85,6 +85,34 @@ class PodcastLibrary
     }
 
     /**
+     * Whether a podcast may start at `$at`: inside the replay window (`window`, Berlin; user 2026-10-15: "Die Podcast
+     * Wiederholungen sollen nur zwischen 24 Uhr und 09 Uhr morgens laufen"), one that passes midnight too. The same
+     * `from` and `to`: no window, any time.
+     */
+    public static function airsAt(CarbonImmutable $at): bool
+    {
+        $window = (array) (self::settings()['window'] ?? []);
+        $from = self::minuteOfDay((string) ($window['from'] ?? '00:00'));
+        $to = self::minuteOfDay((string) ($window['to'] ?? '09:00'));
+        $local = $at->setTimezone((string) config('tv.commentary.programme.timezone', 'Europe/Berlin'));
+        $minute = $local->hour * 60 + $local->minute;
+
+        if ($from === $to) {
+            return true;
+        }
+
+        return $from < $to ? $minute >= $from && $minute < $to : $minute >= $from || $minute < $to;
+    }
+
+    /** `HH:MM` as minutes since midnight. */
+    private static function minuteOfDay(string $time): int
+    {
+        [$hour, $minute] = array_map('intval', explode(':', $time) + [1 => 0]);
+
+        return $hour * 60 + $minute;
+    }
+
+    /**
      * The enabled sources by key, each with its feed and slot; none while the replay is off.
      *
      * @return array<string, array{name: string, spoken: string, feed: string, title_pattern: string|null, require_pattern: string|null, exclude_pattern: string|null, starts_at: string}>

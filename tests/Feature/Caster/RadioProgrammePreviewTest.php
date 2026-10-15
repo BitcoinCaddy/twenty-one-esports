@@ -34,6 +34,8 @@ beforeEach(function () {
     Http::fake(['*' => Http::response([], 404)]);
     config([
         'tv.commentary.enabled' => true,
+        // The daytime slots and hours these tests use: no replay window (PodcastLibrary::airsAt()).
+        'tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '00:00'],
         'tv.commentary.ai' => true,
         'tv.commentary.news.enabled' => true,
         'tv.commentary.programme.enabled' => true,

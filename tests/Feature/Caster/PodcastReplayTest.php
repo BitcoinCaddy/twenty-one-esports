@@ -55,6 +55,8 @@ beforeEach(function () {
         'tv.commentary.enabled' => true, 'tv.commentary.spool.filler_below_seconds' => 10, 'tv.commentary.repeat_hours' => 0,
         'tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00',
         'tv.commentary.podcast_replay.enabled' => true,
+        // These tests are about the slot and the loop themselves: no replay window (PodcastLibrary::airsAt()).
+        'tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '00:00'],
         'tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => true,
         'tv.commentary.podcast_replay.sources.resat.enabled' => false,
         // The night loop has its own file (PodcastNightTest).
@@ -811,4 +813,28 @@ it('never stops the podcast for a rubric whose slot comes while it plays', funct
 
     expect(podcastReplayOrder($air))->toBe([21])
         ->and(podcastReplaySecondsOf($air, 21))->toBe(120.0);
+});
+
+it('airs podcasts only inside the replay window in Berlin time: no day slot, promo or programme entry outside it', function () {
+    config(['tv.commentary.podcast_replay.window' => ['from' => '00:00', 'to' => '09:00'], 'tv.commentary.programme.timezone' => 'Europe/Berlin']);
+
+    // Berlin midnight is 22:00 UTC in summer time: the window opens then, not at the server's 00:00 UTC.
+    expect(PodcastLibrary::airsAt(CarbonImmutable::parse('2026-10-15 21:59', 'UTC')))->toBeFalse()
+        ->and(PodcastLibrary::airsAt(CarbonImmutable::parse('2026-10-15 22:00', 'UTC')))->toBeTrue()
+        ->and(PodcastLibrary::airsAt(CarbonImmutable::parse('2026-10-16 06:59', 'UTC')))->toBeTrue()
+        ->and(PodcastLibrary::airsAt(CarbonImmutable::parse('2026-10-16 07:00', 'UTC')))->toBeFalse()
+        ->and(PodcastLibrary::airsAt(CarbonImmutable::parse('2026-10-16 12:03', 'UTC')))->toBeFalse();
+
+    // The 14:03 slot (Berlin) with a stored episode, a quarter of an hour ahead: never scheduled.
+    podcastReplayStored('einundzwanzig', 'g-335', [[300.0, [100.0, 200.0]]]);
+    $replay = new PodcastReplay(new PodcastLibrary);
+    $slot = CarbonImmutable::parse('2026-10-16 14:03', 'Europe/Berlin');
+
+    expect($replay->schedule($slot->subMinutes(15)))->toBe(['einundzwanzig' => PodcastReplay::NOT_DUE])
+        ->and($replay->schedule($slot))->toBe(['einundzwanzig' => PodcastReplay::NOT_DUE])
+        ->and(CasterScript::query()->where('kind', CasterScript::PODCAST)->exists())->toBeFalse();
+
+    // Moved into the window (00:30 Berlin), the same slot airs.
+    config(['tv.commentary.podcast_replay.sources.einundzwanzig.starts_at' => '00:30']);
+    expect($replay->schedule(CarbonImmutable::parse('2026-10-16 00:20', 'Europe/Berlin')))->toBe(['einundzwanzig' => PodcastReplay::SCHEDULED]);
 });

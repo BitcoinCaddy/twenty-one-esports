@@ -119,7 +119,8 @@ final class PodcastNight
         $outcomes = [];
         $settings = self::settings();
         $counts = array_filter(array_map(fn (string $key): int => self::episodeCount($key, $now), array_combine(array_keys(PodcastLibrary::sources()), array_keys(PodcastLibrary::sources()))));
-        $window = $counts === [] ? null : self::window($now);
+        // Never outside the replay window either (PodcastLibrary::airsAt()), whatever the night loop's own hours.
+        $window = $counts === [] || ! PodcastLibrary::airsAt($now) ? null : self::window($now);
 
         if ($window === null) {
             return array_map(fn (): string => self::NOT_DUE, $counts);
