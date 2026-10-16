@@ -50,7 +50,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use Random\Randomizer;
 use RuntimeException;
 use Symfony\Component\Process\Exception\ProcessSignaledException;
@@ -1293,7 +1292,7 @@ class TwentyOneStreamCommand extends Command
     }
 
     /**
-     * The four music sources, in the order they take turns (user 2026-10-15). An empty folder is left out.
+     * The music folders' files (the artist cycle plays them all; the folders decide nothing). An empty folder is left out.
      *
      * @return list<list<string>>
      */
@@ -1332,15 +1331,12 @@ class TwentyOneStreamCommand extends Command
             return 'ffmpeg not found or not executable: '.$ffmpeg.' (TWENTYONE_STREAM_FFMPEG)';
         }
 
-        // Both modes play the music; the scene mode can start at any second.
-        try {
-            $sources = $this->musicSources();
+        // Both modes play the music; the scene mode can start at any second. The artist cycle needs two titles at
+        // least, or one would follow itself.
+        $music = array_merge(...$this->musicSources());
 
-            if ($sources === [] || MusicPlaylist::rotate($sources) === []) {
-                throw new InvalidArgumentException('No music sources.');
-            }
-        } catch (InvalidArgumentException) {
-            return 'No usable music in the vocal, instrumental, PlebRap or Wavlake folders (`<title>__v<n>.m4a`, and a single source needs at least two titles).';
+        if (count(array_unique(array_map(MusicPlaylist::title(...), $music))) < 2) {
+            return 'No usable music in the music folders (`<title>__v<n>.m4a`, at least two titles).';
         }
 
         $rsvg = (string) config('twentyone.stream.scene.rsvg_convert');

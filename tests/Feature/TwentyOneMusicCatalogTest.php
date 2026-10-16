@@ -85,7 +85,7 @@ test('the catalog credits every file of the old indexes exactly as the indexes d
 
         $credit = MusicCredits::forFile($file);
         $picture = is_string($artists[$artist]['picture'] ?? null) && str_starts_with($artists[$artist]['picture'], 'https://') ? $artists[$artist]['picture'] : null;
-        $expected = $qrTarget === null ? (MusicCredits::isHouse($file) ? MusicCredits::house() : null)
+        $expected = $qrTarget === null ? null
             : ['artist' => $artist, 'title' => $title, 'target' => $qrTarget, 'kind' => $kind, 'picture' => $picture];
 
         if ($credit !== $expected) {
@@ -121,9 +121,9 @@ test('the catalog command measures the library once, keeps ids across runs and m
 
     $tracks = MusicCatalog::tracks();
     expect(array_keys($tracks))->toBe(['Song One - Somebody__v1.m4a', 'plebrap/Song Two__v1.m4a'])
-        ->and($tracks['Song One - Somebody__v1.m4a'])->toMatchArray(['source' => 'vocals', 'credit_source' => 'house', 'artists' => ['dj-bitcoin'], 'title' => 'Song One - Somebody'])
-        // A PlebRap file no index names: no credit, never the house artist.
-        ->and($tracks['plebrap/Song Two__v1.m4a'])->toMatchArray(['source' => 'plebrap', 'credit_source' => 'none', 'artists' => []])
+        // Files no index names have no credit, wherever they lie: the folder decides nothing (user 2026-10-16).
+        ->and($tracks['Song One - Somebody__v1.m4a'])->toMatchArray(['credit_source' => 'none', 'artists' => [], 'title' => 'Song One - Somebody'])
+        ->and($tracks['plebrap/Song Two__v1.m4a'])->toMatchArray(['credit_source' => 'none', 'artists' => []])
         ->and(MusicCredits::forFile('plebrap/Song Two__v1.m4a'))->toBeNull()
         ->and($tracks['Song One - Somebody__v1.m4a']['duration'])->toEqualWithDelta(15.0, 0.2)
         ->and($tracks['Song One - Somebody__v1.m4a']['lufs'])->toBeFloat()->toBeLessThan(0.0)
@@ -131,16 +131,20 @@ test('the catalog command measures the library once, keeps ids across runs and m
         ->and($tracks['Song One - Somebody__v1.m4a']['sha1'])->toBe(sha1_file($music.'/Song One - Somebody__v1.m4a'))
         ->and(count(MusicCatalog::fingerprints()[$tracks['plebrap/Song Two__v1.m4a']['id']]))->toBeGreaterThan(50);
 
+    // The catalog names the house artist for a track: a new run keeps it, as every other credit.
+    $tracks['Song One - Somebody__v1.m4a'] = [...$tracks['Song One - Somebody__v1.m4a'], 'artists' => ['dj-bitcoin'], 'credit_source' => 'house'];
+    MusicCatalog::write($tracks, MusicCatalog::artists(), collect($tracks)->mapWithKeys(fn (array $track): array => [$track['id'] => MusicCatalog::fingerprints()[$track['id']]])->all());
     $before = (string) file_get_contents(MusicCatalog::path());
     $this->artisan('twentyone:music-catalog', ['--dir' => $music])->expectsOutputToContain('2 files, 0 to measure, 2 unchanged')->assertSuccessful();
-    expect((string) file_get_contents(MusicCatalog::path()))->toBe($before);
+    expect((string) file_get_contents(MusicCatalog::path()))->toBe($before)
+        ->and(MusicCredits::forFile('Song One - Somebody__v1.m4a'))->toBe(MusicCredits::house());
 
     // A moved file keeps its id.
     $id = $tracks['plebrap/Song Two__v1.m4a']['id'];
     File::ensureDirectoryExists($music.'/wavlake');
     rename($music.'/plebrap/Song Two__v1.m4a', $music.'/wavlake/Song Two__v1.m4a');
     $this->artisan('twentyone:music-catalog', ['--dir' => $music])->assertSuccessful();
-    expect(MusicCatalog::track('wavlake/Song Two__v1.m4a'))->toMatchArray(['id' => $id, 'source' => 'wavlake'])
+    expect(MusicCatalog::track('wavlake/Song Two__v1.m4a'))->toMatchArray(['id' => $id])
         ->and(MusicCatalog::track('plebrap/Song Two__v1.m4a'))->toBeNull();
 });
 
@@ -183,21 +187,22 @@ test('a new song is normalised to -15 LUFS and at most -1 dBTP under the user\'s
     catalogFixture($this->root.'/upload/Loud Song.m4a', 3, '192k', 4.0);
     $this->artisan('twentyone:music-catalog', ['--dir' => $music])->assertSuccessful();
 
-    $this->artisan('twentyone:music-add', ['file' => $this->root.'/upload/Loud Song.m4a', '--artist' => 'New Rapper', '--lud16' => 'theben@getalby.com', '--source' => 'plebrap', '--dir' => $music])
+    $this->artisan('twentyone:music-add', ['file' => $this->root.'/upload/Loud Song.m4a', '--artist' => 'New Rapper', '--lud16' => 'theben@getalby.com', '--dir' => $music])
         ->expectsOutputToContain('Credit: New Rapper, lud16 theben@getalby.com')->assertSuccessful();
 
-    $track = MusicCatalog::track('plebrap/Loud Song__v1.m4a');
-    expect(is_file($music.'/plebrap/Loud Song__v1.m4a'))->toBeTrue()
-        ->and($track)->toMatchArray(['source' => 'plebrap', 'artists' => ['new-rapper'], 'credit_source' => 'manual', 'title' => 'Loud Song'])
+    // Straight into the music folder: the catalog knows the artist, not a folder.
+    $track = MusicCatalog::track('Loud Song__v1.m4a');
+    expect(is_file($music.'/Loud Song__v1.m4a'))->toBeTrue()
+        ->and($track)->toMatchArray(['artists' => ['new-rapper'], 'credit_source' => 'manual', 'title' => 'Loud Song'])
         ->and($track['lufs'])->toEqualWithDelta(-15.0, 1.0)
         ->and($track['true_peak'])->toBeLessThanOrEqual(-1.0)
         ->and(MusicCatalog::artists()['new-rapper'])->toBe(['name' => 'New Rapper', 'lud16' => 'theben@getalby.com'])
-        ->and(MusicCredits::forFile('plebrap/Loud Song__v1.m4a'))->toMatchArray(['artist' => 'New Rapper', 'kind' => 'lud16']);
+        ->and(MusicCredits::forFile('Loud Song__v1.m4a'))->toMatchArray(['artist' => 'New Rapper', 'kind' => 'lud16']);
 
     // The same recording under another name is refused.
     copy($this->root.'/upload/Loud Song.m4a', $this->root.'/upload/Same Again.m4a');
     $this->artisan('twentyone:music-add', ['file' => $this->root.'/upload/Same Again.m4a', '--dir' => $music])
-        ->expectsOutputToContain('Already in the library: plebrap/Loud Song__v1.m4a')->assertFailed();
+        ->expectsOutputToContain('Already in the library: Loud Song__v1.m4a')->assertFailed();
 
     catalogFixture($this->root.'/upload/Drone - ICT - DJ Lexo.m4a', 7);
     $this->artisan('twentyone:music-add', ['file' => $this->root.'/upload/Drone - ICT - DJ Lexo.m4a', '--dir' => $music])
@@ -207,10 +212,10 @@ test('a new song is normalised to -15 LUFS and at most -1 dBTP under the user\'s
     $this->artisan('twentyone:music-add', ['file' => $this->root.'/upload/broken.m4a', '--dir' => $music])
         ->expectsOutputToContain('Not readable as audio')->assertFailed();
 
-    // Without an artist: entered as "none", no card even straight in the music folder, where the house rule would apply.
+    // Without an artist: entered as "none", no card, never the house artist in silence.
     catalogFixture($this->root.'/upload/Quiet__v2.m4a', 7);
     $this->artisan('twentyone:music-add', ['file' => $this->root.'/upload/Quiet__v2.m4a', '--dir' => $music])->assertSuccessful();
-    expect(MusicCatalog::track('Quiet__v2.m4a'))->toMatchArray(['source' => 'vocals', 'credit_source' => 'none'])
+    expect(MusicCatalog::track('Quiet__v2.m4a'))->toMatchArray(['credit_source' => 'none'])
         ->and(MusicCredits::forFile('Quiet__v2.m4a'))->toBeNull()
         ->and(collect(File::allFiles($music))->map->getFilename()->sort()->values()->all())->toBe(['Loud Song__v1.m4a', 'Quiet__v2.m4a']);
 });

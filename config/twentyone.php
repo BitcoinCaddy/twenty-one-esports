@@ -205,35 +205,32 @@ return [
 
         /*
         | Music under the picture in both modes: `<title>__v<n>.m4a` files
-        | (AAC-LC 44.1 kHz stereo). The supervisor writes a shuffled ffconcat
-        | list of about `list_hours`, `list_passes` times over: ffmpeg's
-        | -stream_loop cannot loop a list with in/outpoints (MusicPlaylist::ffconcat()),
-        | and an encoder whose segments lose the audio track is restarted
-        | (TwentyOneStreamCommand, AUDIO_LOSS_SEGMENTS). The four sources take
-        | turns, one track each: vocals, instrumentals, PlebRap, Wavlake Top 40
-        | (MusicPlaylist::rotate()). An empty source is skipped.
+        | (AAC-LC 44.1 kHz stereo). The supervisor writes an ffconcat list of
+        | about `list_hours`, `list_passes` times over: ffmpeg's -stream_loop
+        | cannot loop a list with in/outpoints (MusicPlaylist::ffconcat()), and
+        | an encoder whose segments lose the audio track is restarted
+        | (TwentyOneStreamCommand, AUDIO_LOSS_SEGMENTS). The order is the artist
+        | cycle (ArtistCycle): one track of every artist per round, over the
+        | files of all four folders; the folders only hold the files.
         */
         'music' => [
             'dir' => env('TWENTYONE_STREAM_MUSIC_DIR') ?: storage_path('app/stream/music'),
+            // The folders below `dir` the stream reads files from as well (TwentyOneStreamCommand::musicSources(),
+            // SceneDirector::musicTracksFromConfig() for the music breaks).
             'instrumental_dir' => env('TWENTYONE_STREAM_INSTRUMENTAL_DIR') ?: storage_path('app/stream/music/instrumental'),
-            // Kept for the older interleave path. The live rotation does not read it.
-            'instrumentals_per_vocal' => (int) env('TWENTYONE_STREAM_INSTRUMENTALS_PER_VOCAL', 6),
             'plebrap_dir' => env('TWENTYONE_STREAM_PLEBRAP_DIR') ?: storage_path('app/stream/music/plebrap'),
-            // Wavlake Top 40 (user 2026-10-15). A song already in another source is not copied here.
             'wavlake_dir' => env('TWENTYONE_STREAM_WAVLAKE_DIR') ?: storage_path('app/stream/music/wavlake'),
             // Artists banned for good, whatever a future import brings back (user 2026-10-15: ICT - DJ Lexo):
             // comma-separated names, matched against the file name.
             'banned_artists' => env('TWENTYONE_STREAM_MUSIC_BANNED_ARTISTS', 'ICT - DJ Lexo'),
             // The music catalog (MusicCatalog): tracks, artists, credits; fingerprints.json sits next to it.
             'catalog' => env('TWENTYONE_STREAM_MUSIC_CATALOG') ?: resource_path('data/music/catalog.json'),
-            // Tracks at least between two of the same artist in the rotation (plan "Musik-Katalog" P5): 1 never plays
-            // an artist twice in a row, 0 turns the spacing off. Any value but 1 starts a new music timeline once.
+            // Tracks at least between two of the same artist in the artist cycle, at least 1 (never twice in a row).
             'artist_gap' => (int) env('TWENTYONE_STREAM_MUSIC_ARTIST_GAP', 1),
-            // Unused by the live rotation. Left so an old env line does not error.
-            'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
-            'list_hours' => 12,
-            // How many times over the list is written (12 h x 6 = 3 days before an encoder would run out of music).
-            'list_passes' => 6,
+            // Fresh rounds for three days: an encoder that runs that long without a restart still hears no repeat.
+            'list_hours' => 72,
+            // How many times over the list is written (72 h x 2 = 6 days before an encoder would run out of music).
+            'list_passes' => 2,
             // Where the music is on the wall clock (MusicTimeline): a new encoder goes on from there.
             'timeline_file' => env('TWENTYONE_STREAM_MUSIC_TIMELINE_FILE') ?: storage_path('app/stream/music-timeline.json'),
         ],

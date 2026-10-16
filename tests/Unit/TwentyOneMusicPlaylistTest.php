@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\TwentyOne\Stream\ArtistCycle;
 use App\Support\TwentyOne\Stream\MusicPlaylist;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
@@ -209,73 +210,115 @@ test('PlebRap plays in runs of three to five, each followed by exactly one other
     }
 });
 
-test('the four sources take turns one track each, every file of the longest source once, and the list does not open on its closing title', function () {
-    $vocals = ['/music/vocal/alpha__v1.m4a', '/music/vocal/beta__v1.m4a'];
-    $instrumentals = ['/music/instrumental/01__v1.m4a', '/music/instrumental/02__v1.m4a', '/music/instrumental/03__v1.m4a'];
-    $plebrap = ['/music/plebrap/fomo__v1.m4a'];
-    $wavlake = ['/music/wavlake/speedo__v1.m4a', '/music/wavlake/sparks__v1.m4a'];
+/**
+ * Five artists with one to five tracks each, every title its own.
+ *
+ * @return array<string, list<string>>
+ */
+function cycleArtists(): array
+{
+    $byArtist = [];
 
-    foreach ([1, 2, 3, 4, 7] as $seed) {
-        $list = MusicPlaylist::rotate([$vocals, $instrumentals, $plebrap, $wavlake], new Randomizer(new Mt19937($seed)));
-        $pattern = implode('', array_map(function (string $file): string {
-            return match (true) {
-                str_contains($file, '/vocal/') => 'V',
-                str_contains($file, '/instrumental/') => 'I',
-                str_contains($file, '/plebrap/') => 'P',
-                default => 'W',
-            };
-        }, $list));
-
-        expect($pattern)->toStartWith('VIPW')
-            ->and(substr_count($pattern, 'I'))->toBe(3)
-            ->and(count(array_unique(array_filter($list, fn (string $file): bool => str_contains($file, '/instrumental/')))))->toBe(3)
-            ->and(MusicPlaylist::title($list[0]))->not->toBe(MusicPlaylist::title($list[array_key_last($list)]));
-
-        foreach (array_slice($list, 1) as $index => $file) {
-            expect(MusicPlaylist::title($file))->not->toBe(MusicPlaylist::title($list[$index]));
+    foreach (['A' => 5, 'B' => 1, 'C' => 2, 'D' => 3, 'E' => 1] as $artist => $count) {
+        foreach (range(1, $count) as $number) {
+            $byArtist[$artist][] = "/music/{$artist}-{$number}__v1.m4a";
         }
     }
 
-    expect(MusicPlaylist::rotate([[], $instrumentals, []], new Randomizer(new Mt19937(1))))
-        ->toHaveCount(3)
-        ->and(MusicPlaylist::rotate([]))->toBe([]);
-});
+    return $byArtist;
+}
 
-test('the rotation spaces artists from the tracks before it on, prefers no shared co-artist, and bends only where a source has no other artist', function () {
-    $artists = [
-        '/music/before__v1.m4a' => ['X'],
-        '/music/x-1__v1.m4a' => ['X'], '/music/x-2__v1.m4a' => ['X'], '/music/y-1__v1.m4a' => ['Y'],
-        '/music/instrumental/01__v1.m4a' => ['DJ Bitcoin'], '/music/instrumental/02__v1.m4a' => ['DJ Bitcoin'], '/music/instrumental/03__v1.m4a' => ['DJ Bitcoin'],
-        '/music/plebrap/duo__v1.m4a' => ['Q', 'A'], '/music/wavlake/a__v1.m4a' => ['A'], '/music/wavlake/w__v1.m4a' => ['W'],
-        '/music/house-1__v1.m4a' => ['DJ Bitcoin'], '/music/house-2__v1.m4a' => ['DJ Bitcoin'], '/music/k-1__v1.m4a' => ['K'],
-    ];
-    $vocals = ['/music/x-1__v1.m4a', '/music/x-2__v1.m4a', '/music/y-1__v1.m4a'];
-    $wavlake = ['/music/wavlake/a__v1.m4a', '/music/wavlake/w__v1.m4a'];
-    $instrumentals = ['/music/instrumental/01__v1.m4a', '/music/instrumental/02__v1.m4a', '/music/instrumental/03__v1.m4a'];
-    $opensOnX = 0;
+test('the artist cycle plays every artist exactly once a round, each round in a fresh order that never opens with the closing artist, and an artist repeats a track only after all its tracks', function () {
+    $byArtist = cycleArtists();
+    $artistOf = fn (string $file): string => explode('-', basename($file))[0];
+    $cycle = new ArtistCycle($byArtist);
+    $random = new Randomizer(new Mt19937(11));
+    $bends = 0;
+    $played = [];
 
-    foreach (range(1, 8) as $seed) {
-        // The set follows a track by X (MusicTimeline: the end of the last set): it opens with Y.
-        $spaced = MusicPlaylist::rotate([$vocals, $wavlake], new Randomizer(new Mt19937($seed)), $artists, 1, ['/music/before__v1.m4a']);
-        $opensOnX += $artists[MusicPlaylist::rotate([$vocals, $wavlake], new Randomizer(new Mt19937($seed)))[0]][0] === 'X' ? 1 : 0;
-        // After Q and A's PlebRap track, W's Wavlake track while both are left in the bag.
-        $duo = MusicPlaylist::rotate([['/music/plebrap/duo__v1.m4a'], $wavlake], new Randomizer(new Mt19937($seed)), $artists, 1);
-
-        expect($spaced[0])->toBe('/music/y-1__v1.m4a')
-            ->and($duo[1])->toBe('/music/wavlake/w__v1.m4a');
+    foreach (range(1, 5 * 6) as $pick) {
+        $played[] = $cycle->next($random, $bends);
     }
 
-    // Every instrumental is the house artist's, as two of the songs: a house song is followed by one anyway, the music
-    // never stops over it, every instrumental still comes round once, and each such bend is counted.
-    $bends = 0;
-    $list = MusicPlaylist::rotate([['/music/house-1__v1.m4a', '/music/house-2__v1.m4a', '/music/k-1__v1.m4a'], $instrumentals], new Randomizer(new Mt19937(5)), $artists, 1, [], $bends);
-    $houseTwice = count(array_filter(range(1, count($list) - 1), fn (int $index): bool => $artists[$list[$index - 1]][0] === $artists[$list[$index]][0]));
+    $rounds = array_chunk(array_map($artistOf, $played), 5);
 
-    expect($opensOnX)->toBeGreaterThan(0)
-        ->and($list)->toHaveCount(6)
-        ->and(array_values(array_intersect($list, $instrumentals)))->toEqualCanonicalizing($instrumentals)
-        ->and($houseTwice)->toBeGreaterThan(0)
-        ->and($bends)->toBe($houseTwice);
+    foreach ($rounds as $round) {
+        expect($round)->toEqualCanonicalizing(['A', 'B', 'C', 'D', 'E']);
+    }
+
+    foreach (array_slice($played, 1) as $index => $file) {
+        expect($artistOf($file))->not->toBe($artistOf($played[$index]))
+            ->and(MusicPlaylist::title($file))->not->toBe(MusicPlaylist::title($played[$index]));
+    }
+
+    // A's five tracks over the first five rounds are five different ones, and its bag starts over with another than
+    // the last; C's two take turns.
+    $of = fn (string $artist): array => array_values(array_filter($played, fn (string $file): bool => $artistOf($file) === $artist));
+    expect(array_unique(array_slice($of('A'), 0, 5)))->toHaveCount(5)
+        ->and($of('A')[5])->not->toBe($of('A')[4])
+        ->and(collect(array_chunk($of('C'), 2))->every(fn (array $pair): bool => count(array_unique($pair)) === count($pair)))->toBeTrue()
+        ->and(count(array_unique(array_map(fn (array $round): string => implode('', $round), $rounds))))->toBeGreaterThan(1)
+        ->and($bends)->toBe(0);
+});
+
+test('a kept cycle goes on where it was: a new track joins the open part of its artist\'s bag, a new artist joins the round while three are left, a removed track drops out', function () {
+    $byArtist = cycleArtists();
+    $cycle = new ArtistCycle($byArtist);
+    $random = new Randomizer(new Mt19937(4));
+    $first = $cycle->next($random);
+    $second = $cycle->next($random);
+    $state = $cycle->toState();
+
+    // Two of five played: three artists left in the round, so a new one joins it.
+    $more = [...$byArtist, 'F' => ['/music/F-1__v1.m4a']];
+    $more['A'][] = '/music/A-6__v1.m4a';
+    $kept = ArtistCycle::fromState($more, json_decode((string) json_encode($state), true), 1);
+    $left = $kept?->toState()['pending'];
+
+    expect($kept)->not->toBeNull()
+        ->and($left)->toHaveCount(4)->toContain('F')
+        ->and($kept?->toState()['played'])->toMatchArray(array_filter($state['played']))
+        ->and($kept?->toState()['recent'])->toBe($state['recent']);
+
+    // The rest of the round: the four left, never the two that played; the new track waits in A's bag, unplayed.
+    $rest = array_map(fn (): string => $kept->next($random), range(1, 4));
+    expect(array_map(fn (string $file): string => explode('-', basename($file))[0], $rest))->toEqualCanonicalizing($left)
+        ->and(array_intersect($rest, [$first, $second]))->toBe([]);
+
+    // One artist left in the round: a new artist waits for the next round. A removed track leaves its bag.
+    $late = new ArtistCycle($byArtist);
+    foreach (range(1, 4) as $pick) {
+        $late->next($random);
+    }
+    $playedA = $late->toState()['played']['A'];
+    $fewer = [...$byArtist, 'F' => ['/music/F-1__v1.m4a'], 'A' => array_values(array_diff($byArtist['A'], $playedA))];
+    $later = ArtistCycle::fromState($fewer, $late->toState(), 1);
+
+    expect($later?->toState()['pending'])->toHaveCount(1)->not->toContain('F')
+        ->and($later?->toState()['played']['A'])->toBe([])
+        ->and(ArtistCycle::fromState($byArtist, ['version' => 0], 1))->toBeNull();
+});
+
+test('with too few artists for the gap the cycle bends and counts it, and an artist whose only title was just played still plays', function () {
+    $bends = 0;
+    $cycle = new ArtistCycle(['A' => ['/music/same__v1.m4a', '/music/a-2__v1.m4a'], 'B' => ['/music/same__v2.m4a']], gap: 2);
+    $random = new Randomizer(new Mt19937(3));
+    $played = [];
+
+    foreach (range(1, 6) as $pick) {
+        $played[] = $cycle->next($random, $bends);
+    }
+
+    // Two artists cannot keep two tracks between the same artist: every round's first pick bends.
+    expect($played)->toHaveCount(6)
+        ->and($bends)->toBeGreaterThan(0);
+
+    foreach (array_slice($played, 1) as $index => $file) {
+        if (MusicPlaylist::title($file) === MusicPlaylist::title($played[$index])) {
+            // Only B, with that single title, may follow it.
+            expect($file)->toBe('/music/same__v2.m4a');
+        }
+    }
 });
 
 test('a PlebRap name with spaces, apostrophes, umlauts and parentheses is quoted for the concat demuxer', function () {

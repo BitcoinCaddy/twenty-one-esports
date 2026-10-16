@@ -37,16 +37,22 @@ use Throwable;
  * a few encoder starts instead of holding one back; until then a file plays
  * whole, as before.
  *
- * Artists are spaced in the source rotation (plan "Musik-Katalog" P5): no
- * artist plays again within `artistGap` tracks (config
- * `twentyone.stream.music.artist_gap`, default 1: never twice in a row),
- * also from one set into the next. Where the library cannot keep the gap the
- * rule bends, and that is logged once per process; it never stops the music.
+ * The stream's music is the artist cycle (ArtistCycle, plan "Musik-Katalog",
+ * user 2026-10-16): one track of every artist per round, no artist again
+ * within `artistGap` tracks (config `twentyone.stream.music.artist_gap`, at
+ * least 1: never twice in a row). Its state (what has played: the round, the
+ * artists' bags) is kept in the file with the timeline and never starts over:
+ * not for a restart, a deploy, a changed library or a changed setting (user
+ * 2026-10-16: "deploy und stream restarts dürfen ab jetzt auch nicht mehr die
+ * Playlist Reihenfolge irgendwie neustarten"). Where too few artists cannot
+ * keep the gap the rule bends, logged once per process; the music never stops.
+ * Only the older orders (vocals with instrumentals, priority runs) still start
+ * a new timeline when their files change.
  */
 final class MusicTimeline
 {
-    /** How far back played entries are kept (seconds). */
-    private const KEEP_PLAYED = 3600;
+    /** How far back played entries are kept (seconds): the history a migration of the artist cycle counts as heard. */
+    private const KEEP_PLAYED = 12 * 3600;
 
     /** Shuffles tried for a set whose first title must differ from the last one played. */
     private const ATTEMPTS = 20;
@@ -63,8 +69,8 @@ final class MusicTimeline
     /**
      * @param  Closure(string): (float|array{seconds: float, lead?: float, tail?: float}|null)  $probe  a file's duration in seconds (with its silent edges), null when unreadable
      * @param  int  $edgeProbes  kept files at most whose edges are probed again in one call
-     * @param  int|null  $artistGap  tracks at least between two of one artist (0: no spacing); null reads the config
-     * @param  (Closure(string): list<string>)|null  $artists  who a file is by, the credited artist first; null is MusicPlaylist::artists()
+     * @param  int|null  $artistGap  tracks at least between two of one artist (at least 1); null reads the config
+     * @param  (Closure(string): string)|null  $artists  the artist a file is by; null is MusicPlaylist::artist()
      */
     public function __construct(
         private string $path,
@@ -82,8 +88,8 @@ final class MusicTimeline
      * With `$priority` files (PlebRap, user 2026-10-13) a set is MusicPlaylist::priorityRuns() instead: every priority
      * file once in runs of `$run` min to max, one of the vocals and instrumentals after each run.
      *
-     * With `$sources` (user 2026-10-15: vocal, instrumental, PlebRap, Wavlake, one each in turn) a set is
-     * MusicPlaylist::rotate() and the priority run is not used. Empty source lists are left out.
+     * With `$sources` (the music folders, whatever they hold) the timeline is the artist cycle over all their files
+     * (see cycle()); the folders only list the files, they decide nothing.
      *
      * @param  list<string>  $vocals
      * @param  list<string>  $instrumentals
@@ -96,45 +102,44 @@ final class MusicTimeline
     {
         $sources = array_values(array_filter($sources, fn (array $files): bool => $files !== []));
         $state = $this->read();
-        $gap = $sources === [] ? 0 : $this->gap();
-        $fingerprint = self::fingerprint($vocals, $instrumentals, $perVocal, $priority, $run, $sources, $gap);
+        $gap = $this->gap();
         $pool = $sources === [] ? [...$priority, ...$vocals, ...$instrumentals] : array_merge(...$sources);
+        $fingerprint = self::fingerprint($vocals, $instrumentals, $perVocal, $priority, $run, $sources === [] ? [] : $pool, $gap);
         $durations = $this->durations($pool, $state['durations'] ?? []);
-        $artists = $gap > 0 ? $this->artistsOf($pool) : [];
-        $bends = 0;
-        $added = 0;
-        $restarted = ($state['fingerprint'] ?? null) !== $fingerprint || ($state['entries'] ?? []) === [];
+        // The artist cycle never starts over for a changed library or setting (user 2026-10-16); the older orders do.
+        $restarted = ($state['entries'] ?? []) === [] || ($sources === [] && ($state['fingerprint'] ?? null) !== $fingerprint);
 
         /** @var list<array{0: string, 1: float, 2: float, 3: float|null}> $entries */
         $entries = $restarted ? [] : $state['entries'];
         $anchor = $restarted ? $now : (float) $state['anchor'];
+        $cycle = null;
+        $bends = 0;
 
-        // Drop what played more than an hour ago, moving the anchor with it.
+        // Drop what played more than KEEP_PLAYED ago, moving the anchor with it.
         while ($entries !== [] && $anchor + $entries[0][1] < $now - self::KEEP_PLAYED) {
             $anchor += array_shift($entries)[1];
         }
 
-        $end = $anchor + array_sum(array_column($entries, 1));
+        if ($sources !== []) {
+            [$entries, $anchor, $cycle, $bends] = $this->cycle($entries, $anchor, $now, $hours, $pool, $durations, $state['cycle'] ?? null, $gap, $random);
+        } else {
+            $end = $anchor + array_sum(array_column($entries, 1));
 
-        // A timeline that ended long ago (the stream was off) starts again now.
-        if ($end < $now) {
-            [$entries, $anchor, $end] = [[], $now, $now];
-        }
+            // A timeline that ended long ago (the stream was off) starts again now.
+            if ($end < $now) {
+                [$entries, $anchor, $end] = [[], $now, $now];
+            }
 
-        while ($end < $now + 3600 * $hours) {
-            // The tracks the next set follows: the last one for its title, the last `$gap` for the artist spacing.
-            $before = array_column(array_slice($entries, -max(1, $gap)), 0);
-
-            foreach ($this->set($vocals, $instrumentals, $perVocal, $before, $random, $priority, $run, $sources, $artists, $gap, $bends) as $file) {
-                ['seconds' => $seconds, 'lead' => $lead, 'trimmed' => $trimmed] = $durations[$file];
-                $entries[] = [$file, $seconds, $lead, $trimmed ? round($lead + $seconds, 3) : null];
-                $end += $seconds;
-                $added++;
+            while ($end < $now + 3600 * $hours) {
+                foreach ($this->set($vocals, $instrumentals, $perVocal, array_column(array_slice($entries, -1), 0), $random, $priority, $run) as $file) {
+                    $entries[] = self::entry($file, $durations);
+                    $end += $durations[$file]['seconds'];
+                }
             }
         }
 
         if ($bends > 0) {
-            self::warnOnce('bends', sprintf('music: %d of %d new tracks play within %d of the same artist; the library has too few other artists to space them (artist_gap)', $bends, $added, $gap));
+            self::warnOnce('bends', sprintf('music: %d new tracks play within %d of the same artist; there are too few artists to space them (artist_gap)', $bends, $gap));
         }
 
         $start = $anchor;
@@ -145,7 +150,7 @@ final class MusicTimeline
             $index++;
         }
 
-        $this->write(['fingerprint' => $fingerprint, 'anchor' => $anchor, 'entries' => $entries, 'durations' => $this->probed]);
+        $this->write(['fingerprint' => $fingerprint, 'anchor' => $anchor, 'entries' => $entries, 'durations' => $this->probed, ...($cycle === null ? [] : ['cycle' => $cycle])]);
 
         $rest = array_slice($entries, $index);
 
@@ -155,6 +160,81 @@ final class MusicTimeline
             'restarted' => $restarted,
             'points' => array_map(fn (array $entry): array => ['in' => $entry[2], 'out' => $entry[3]], $rest),
         ];
+    }
+
+    /**
+     * The timeline of the artist cycle from now on. What has played stays: the entries up to the one playing now (it
+     * goes on at its second, unless its file is gone; then the next track starts now). The cycle's kept state is
+     * brought up to now with the tracks that played since it was written, or, kept in an older format (the source
+     * rotation, before the cycle), started from the tracks of the last KEEP_PLAYED, which then count as heard. The
+     * queue after the playing track is drawn again from that state, so a new track or artist joins as ArtistCycle
+     * says and a removed one is gone, and nothing that played comes back before its turn.
+     *
+     * @param  list<array{0: string, 1: float, 2: float, 3: float|null}>  $entries
+     * @param  list<string>  $pool
+     * @param  array<string, array{seconds: float, lead: float, trimmed: bool}>  $durations
+     * @return array{0: list<array{0: string, 1: float, 2: float, 3: float|null}>, 1: float, 2: array<string, mixed>, 3: int}
+     */
+    private function cycle(array $entries, float $anchor, float $now, float $hours, array $pool, array $durations, mixed $kept, int $gap, Randomizer $random): array
+    {
+        $byArtist = $this->byArtist($pool);
+        $inPool = array_flip($pool);
+        $heard = [];
+        $starts = [];
+        $start = $anchor;
+
+        foreach ($entries as $entry) {
+            $end = $start + $entry[1];
+
+            if ($start > $now || ($end > $now && ! isset($inPool[$entry[0]]))) {
+                break;
+            }
+
+            $heard[] = $entry;
+            $starts[] = $start;
+            $start = $end;
+        }
+
+        // A pause (the stream was off, or the playing track's file is gone): the next track starts now.
+        $end = max($start, $now);
+        $anchor += $end - $start;
+        $cycle = ArtistCycle::fromState($byArtist, $kept, $gap);
+
+        if ($cycle === null) {
+            $cycle = ArtistCycle::seeded($byArtist, array_column($heard, 0), $gap);
+        } else {
+            $since = is_array($kept) && is_numeric($kept['until'] ?? null) ? (float) $kept['until'] - 0.001 : INF;
+
+            foreach ($heard as $index => $entry) {
+                if ($starts[$index] >= $since) {
+                    $cycle->played($entry[0]);
+                }
+            }
+        }
+
+        $state = [...$cycle->toState(), 'until' => $end];
+        $bends = 0;
+
+        while ($end < $now + 3600 * $hours) {
+            $file = $cycle->next($random, $bends);
+            $heard[] = self::entry($file, $durations);
+            $end += $durations[$file]['seconds'];
+        }
+
+        return [$heard, $anchor, $state, $bends];
+    }
+
+    /**
+     * A timeline entry: the file, its length as it sounds, where it starts and ends in the file (null: its end).
+     *
+     * @param  array<string, array{seconds: float, lead: float, trimmed: bool}>  $durations
+     * @return array{0: string, 1: float, 2: float, 3: float|null}
+     */
+    private static function entry(string $file, array $durations): array
+    {
+        ['seconds' => $seconds, 'lead' => $lead, 'trimmed' => $trimmed] = $durations[$file];
+
+        return [$file, $seconds, $lead, $trimmed ? round($lead + $seconds, 3) : null];
     }
 
     /**
@@ -193,84 +273,71 @@ final class MusicTimeline
     }
 
     /**
-     * One set: every vocal once with instrumentals after each; a first title
-     * other than the last of `$before` where a shuffle allows it. The source
-     * rotation also spaces artists from `$before` on (`$gap` tracks, 0: off).
+     * One set of the older orders: every vocal once with instrumentals after
+     * each (or the priority runs); a first title other than the last of
+     * `$before` where a shuffle allows it.
      *
      * @param  list<string>  $vocals
      * @param  list<string>  $instrumentals
      * @param  list<string>  $before  the tracks the set follows, the latest last
      * @param  list<string>  $priority
      * @param  array{0: int, 1: int}  $run
-     * @param  list<list<string>>  $sources
-     * @param  array<string, list<string>>  $artists
      * @return list<string>
      */
-    private function set(array $vocals, array $instrumentals, int $perVocal, array $before, Randomizer $random, array $priority = [], array $run = [3, 5], array $sources = [], array $artists = [], int $gap = 0, int &$bends = 0): array
+    private function set(array $vocals, array $instrumentals, int $perVocal, array $before, Randomizer $random, array $priority = [], array $run = [3, 5]): array
     {
         $set = [];
-        $bent = 0;
         $last = $before === [] ? null : MusicPlaylist::title($before[count($before) - 1]);
 
         for ($attempt = 0; $attempt < self::ATTEMPTS; $attempt++) {
-            // Without spacing the set is drawn as before P5, so `artist_gap` 0 restores the old order exactly.
-            $bent = 0;
-            $set = $sources !== []
-                ? MusicPlaylist::rotate($sources, $random, $artists, $gap, $gap > 0 ? $before : [], $bent)
-                : ($priority !== []
-                    ? MusicPlaylist::priorityRuns($priority, [...$vocals, ...$instrumentals], (int) $run[0], (int) $run[1], $random)
-                    : MusicPlaylist::interleave(MusicPlaylist::order($vocals, 1, $random), $instrumentals, $random, $perVocal));
+            $set = $priority !== []
+                ? MusicPlaylist::priorityRuns($priority, [...$vocals, ...$instrumentals], (int) $run[0], (int) $run[1], $random)
+                : MusicPlaylist::interleave(MusicPlaylist::order($vocals, 1, $random), $instrumentals, $random, $perVocal);
 
             if ($set !== [] && ($last === null || MusicPlaylist::title($set[0]) !== $last)) {
-                $bends += $bent;
-
                 return $set;
             }
         }
-
-        $bends += $bent;
 
         return $set;
     }
 
     /**
-     * The configured artist gap (`twentyone.stream.music.artist_gap`), 1 where no config can be read.
+     * The configured artist gap (`twentyone.stream.music.artist_gap`), at least 1; 1 where no config can be read.
      */
     private function gap(): int
     {
-        if ($this->artistGap !== null) {
-            return max(0, $this->artistGap);
-        }
-
         try {
-            return max(0, (int) config('twentyone.stream.music.artist_gap', 1));
+            return max(1, $this->artistGap ?? (int) config('twentyone.stream.music.artist_gap', 1));
         } catch (Throwable) {
             return 1;
         }
     }
 
     /**
-     * Who each file is by. A file whose credits cannot be read counts as by nobody known, so it never clashes: the
-     * music plays on unspaced rather than stop, and the first such failure is logged.
+     * Every artist's files. A file whose credit cannot be read joins MusicPlaylist::UNKNOWN_ARTIST, so the music plays
+     * on, and the first such failure is logged.
      *
      * @param  list<string>  $files
      * @return array<string, list<string>>
      */
-    private function artistsOf(array $files): array
+    private function byArtist(array $files): array
     {
-        $resolve = $this->artists ?? MusicPlaylist::artists(...);
-        $artists = [];
+        $resolve = $this->artists ?? MusicPlaylist::artist(...);
+        $byArtist = [];
 
         foreach ($files as $file) {
             try {
-                $artists[$file] = array_values(array_filter($resolve($file), fn (string $name): bool => $name !== ''));
+                $artist = $resolve($file);
             } catch (Throwable $e) {
-                $artists[$file] = [];
-                self::warnOnce('artists', 'music: artists not readable, tracks play unspaced: '.basename($file).': '.$e->getMessage());
+                $artist = MusicPlaylist::UNKNOWN_ARTIST;
+                self::warnOnce('artists', 'music: credits not readable, '.basename($file).' plays as '.MusicPlaylist::UNKNOWN_ARTIST.': '.$e->getMessage());
             }
+
+            $byArtist[$artist === '' ? MusicPlaylist::UNKNOWN_ARTIST : $artist][] = $file;
         }
 
-        return $artists;
+        return $byArtist;
     }
 
     /**
@@ -359,25 +426,20 @@ final class MusicTimeline
      * @param  list<string>  $instrumentals
      * @param  list<string>  $priority
      * @param  array{0: int, 1: int}  $run
-     * @param  list<list<string>>  $sources
-     * @param  int  $artistGap  the rotation's artist spacing
+     * @param  list<string>  $cycled  every file of the artist cycle
+     * @param  int  $artistGap  the cycle's artist spacing
      */
-    private static function fingerprint(array $vocals, array $instrumentals, int $perVocal, array $priority = [], array $run = [3, 5], array $sources = [], int $artistGap = 1): string
+    private static function fingerprint(array $vocals, array $instrumentals, int $perVocal, array $priority = [], array $run = [3, 5], array $cycled = [], int $artistGap = 1): string
     {
         sort($vocals);
         sort($instrumentals);
         sort($priority);
 
-        if ($sources !== []) {
-            $named = $sources;
+        if ($cycled !== []) {
+            sort($cycled);
 
-            foreach ($named as &$files) {
-                sort($files);
-            }
-
-            // The default gap (1) keeps the fingerprint it had before P5, so its deploy does not restart a running
-            // timeline: the kept entries play out and every set drawn after them is spaced. Another gap starts anew.
-            return sha1(json_encode($artistGap === 1 ? ['rotate', $named] : ['rotate', $named, $artistGap], JSON_THROW_ON_ERROR));
+            // New with the artist cycle: its deploy starts a new timeline once, as the order changes whole.
+            return sha1(json_encode(['artist-cycle', $cycled, $artistGap], JSON_THROW_ON_ERROR));
         }
 
         // Without priority music the fingerprint stays what it was, so a deploy does not restart a running timeline.

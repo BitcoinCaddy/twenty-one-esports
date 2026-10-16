@@ -16,8 +16,8 @@ use RuntimeException;
 /**
  * Adds a new song to the music library and the catalog (plan "Musik-Katalog", P3): refuses a file that cannot be read
  * as audio, a song the catalog already holds (Chromaprint, Chromaprint::SAME_RECORDING) and a banned artist
- * (twentyone.stream.music.banned_artists); brings it to the library's loudness (LoudnessNormalizer) into the source's
- * folder, enters it with its credit and draws the credit's QR code.
+ * (twentyone.stream.music.banned_artists); brings it to the library's loudness (LoudnessNormalizer) straight into the
+ * music folder (the catalog knows artists, not folders), enters it with its credit and draws the credit's QR code.
  *
  * The name stays the user's (user: never rename music files); only the ending becomes .m4a, and a name without a
  * version gets `__v1`, because the stream plays `*__v*.m4a` only (TwentyOneStreamCommand::musicFiles()). Without
@@ -28,7 +28,6 @@ use RuntimeException;
     {file : The song to add (any format ffmpeg reads)}
     {--artist= : The artist, by name or catalog id; a new name is added to the catalog}
     {--title= : The title (default: the file name)}
-    {--source=vocals : vocals, instrumental, plebrap or wavlake}
     {--npub= : A new artist\'s npub}
     {--lud16= : A new artist\'s lightning address}
     {--dir= : The music folder (default: twentyone.stream.music.dir)}')]
@@ -39,12 +38,7 @@ class TwentyOneMusicAddCommand extends Command
     {
         $file = (string) $this->argument('file');
         $dir = rtrim((string) ($this->option('dir') ?: config('twentyone.stream.music.dir')), '/');
-        $source = (string) $this->option('source');
         $artist = trim((string) $this->option('artist'));
-
-        if (! in_array($source, MusicCatalog::SOURCES, true)) {
-            return $this->refuse('Unknown source '.$source.' (vocals, instrumental, plebrap, wavlake).');
-        }
 
         if ($dir === '' || ! is_dir($dir)) {
             return $this->refuse('No music folder at '.$dir);
@@ -74,15 +68,11 @@ class TwentyOneMusicAddCommand extends Command
         }
 
         $name = self::libraryName($file);
-        $relative = MusicCatalog::folderOf($source).$name;
+        $relative = $name;
         $target = $dir.'/'.$relative;
 
         if (file_exists($target)) {
             return $this->refuse('A file of that name exists already: '.$relative);
-        }
-
-        if (! is_dir(dirname($target))) {
-            return $this->refuse('No folder for '.$source.' at '.dirname($target));
         }
 
         try {
@@ -118,7 +108,6 @@ class TwentyOneMusicAddCommand extends Command
         $id = MusicCatalog::newId($relative, array_fill_keys(array_keys($prints), true));
         $tracks[$relative] = [
             'id' => $id,
-            'source' => $source,
             'artists' => $artistIds,
             'title' => (string) ($this->option('title') ?: MusicPlaylist::title($name)),
             'duration' => $result['duration'],

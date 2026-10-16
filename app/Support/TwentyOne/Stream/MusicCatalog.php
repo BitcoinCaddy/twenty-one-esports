@@ -12,12 +12,13 @@ use RuntimeException;
  * codes read. `php artisan twentyone:music-catalog` writes it from the music folder, `twentyone:music-add` adds a song.
  *
  * A track: a stable `id` (kept across runs by file, a moved file keeps it over its fingerprint), its `file` relative to
- * the music folder, the `artists` (ids, in credit order), `title`, `source` (vocals, instrumental, plebrap, wavlake:
- * the folder), `duration`, `bitrate` (kb/s), `lufs`, `true_peak` (dBTP), the Chromaprint `fingerprint` hash (the items
- * live in fingerprints.json beside it), `sha1` of the bytes, `size` and `mtime` (a file with both unchanged is not
- * measured again) and `credit_source`: where the credit comes from (wavlake-index, plebrap-index, manual: added with
- * an artist; house: the house rule; none: no credit, never the house artist in silence). A Wavlake track also carries
- * the target the index found for it (`qr_target`, `qr_kind`), used when its artist has none.
+ * the music folder, the `artists` (ids, in credit order), `title`, `duration`, `bitrate` (kb/s), `lufs`, `true_peak`
+ * (dBTP), the Chromaprint `fingerprint` hash (the items live in fingerprints.json beside it), `sha1` of the bytes,
+ * `size` and `mtime` (a file with both unchanged is not measured again) and `credit_source`: where the credit comes
+ * from (wavlake-index, plebrap-index, manual: added with an artist; house: the house artist DJ Bitcoin; none: no
+ * credit, never the house artist in silence). A Wavlake track also carries the target the index found for it
+ * (`qr_target`, `qr_kind`), used when its artist has none. The catalog knows artists only (user 2026-10-16: "Es im
+ * Katalog nur noch um den Artists"): no genre or source, and the folder a file lies in decides nothing.
  *
  * An artist, keyed by id (slug of the name): `name` and every field of the former artists.json (npub, pubkey, lud16,
  * picture, qr_target, qr_kind, youtube, evidence, confidence).
@@ -27,8 +28,6 @@ use RuntimeException;
  */
 final class MusicCatalog
 {
-    public const SOURCES = ['vocals', 'instrumental', 'plebrap', 'wavlake'];
-
     public const CREDIT_SOURCES = ['wavlake-index', 'plebrap-index', 'manual', 'house', 'none'];
 
     /** @var array{tracks: array<string, array<string, mixed>>, artists: array<string, array<string, mixed>>}|null */
@@ -122,24 +121,6 @@ final class MusicCatalog
     {
         self::$data = null;
         self::$fingerprints = null;
-    }
-
-    /** The source a file belongs to by its folder, null outside the four (disabled/, anything else). */
-    public static function sourceOf(string $relative): ?string
-    {
-        if (! str_contains($relative, '/')) {
-            return 'vocals';
-        }
-
-        $folder = explode('/', $relative, 2)[0];
-
-        return in_array($folder, ['instrumental', 'plebrap', 'wavlake'], true) && substr_count($relative, '/') === 1 ? $folder : null;
-    }
-
-    /** The folder (relative to the music folder) a source's files live in, '' for the vocals. */
-    public static function folderOf(string $source): string
-    {
-        return $source === 'vocals' ? '' : $source.'/';
     }
 
     public static function slug(string $name): string

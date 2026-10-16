@@ -17,7 +17,7 @@ afterEach(fn () => MusicCredits::flush());
 
 test('every credited track and the house artist have their QR code drawn, so no card ever goes missing', function () {
     MusicCredits::flush();
-    $credits = [...MusicCredits::all(), MusicCredits::house()];
+    $credits = [...array_filter(MusicCredits::all(), fn (array $credit): bool => $credit['artist'] !== MusicCredits::HOUSE_ARTIST), MusicCredits::house()];
 
     // Every Wavlake and PlebRap track of the catalog (115 + 38: the Wavlake index's 116th, "Who Comes Home - Under
     // The Mulga Groove", is not in the library) and the house artist.
@@ -29,12 +29,14 @@ test('every credited track and the house artist have their QR code drawn, so no 
     }
 });
 
-test('a Wavlake track credits its artist with the lightning address, a PlebRap track its first artist, an uncredited instrumental or own song DJ Bitcoin', function () {
+test('a Wavlake track credits its artist with the lightning address, a PlebRap track its first artist, a house track DJ Bitcoin, a file the catalog does not know nobody', function () {
     $dir = rtrim((string) config('twentyone.stream.music.dir'), '/');
 
     expect(MusicCredits::forFile($dir."/wavlake/Can't Say I'm Not Trying - Ainsley Costello__v1.m4a"))->toMatchArray(['artist' => 'Ainsley Costello', 'kind' => 'lud16', 'target' => 'ainsleycostello@getalby.com'])
-        ->and(MusicCredits::forFile('instrumental/07 - Something__v1.m4a'))->toMatchArray(['artist' => 'DJ Bitcoin', 'kind' => 'lud16', 'target' => 'theben@getalby.com'])
+        ->and(MusicCredits::forFile('instrumental/01__v1.m4a'))->toMatchArray(['artist' => 'DJ Bitcoin', 'kind' => 'lud16', 'target' => 'theben@getalby.com'])
         ->and(MusicCredits::forFile($dir.'/einundzwanzig-song__v1.m4a'))->toMatchArray(['artist' => 'DJ Bitcoin'])
+        // The folder decides nothing any more: an instrumental the catalog does not list has no credit.
+        ->and(MusicCredits::forFile('instrumental/07 - Something__v1.m4a'))->toBeNull()
         // A Wavlake track of an artist nobody found stays without a card, never a guess.
         ->and(MusicCredits::qrPayload('theben@getalby.com', 'lud16'))->toBe('lightning:theben@getalby.com')
         ->and(MusicCredits::qrPayload('https://njump.me/npub1x', 'njump'))->toBe('https://njump.me/npub1x');

@@ -15,9 +15,10 @@ namespace App\Support\TwentyOne\Stream;
  * or without any target has no credit: the card stays off rather than show a guess.
  *
  * The house artist (user 2026-10-15: "alle instrumentals, die unbekannt sind von DJ Bitcoin und auch die vocals in
- * music, die noch keinen Artist haben … theben@getalby.com als Lightning Adresse"): every instrumental and every song
- * straight in the music folder that nothing else credits is HOUSE_ARTIST, tipped at HOUSE_LUD16. A track the catalog
- * marks `none` (added without a credit, plan "Musik-Katalog") stays without one, never the house artist in silence.
+ * music, die noch keinen Artist haben … theben@getalby.com als Lightning Adresse"): the catalog names HOUSE_ARTIST
+ * for each such track with credit_source `house`, tipped at HOUSE_LUD16; where a file lies decides nothing (user
+ * 2026-10-16: "Es im Katalog nur noch um den Artists"). A track the catalog marks `none` (added without a credit)
+ * stays without one, never the house artist in silence.
  *
  * Every target has its code drawn in advance (`php artisan twentyone:music-qr`, qrencode) under
  * resources/stream/qr/music, as the stream's other codes are: the daemon never encodes at render time.
@@ -40,24 +41,7 @@ final class MusicCredits
      */
     public static function forFile(string $file): ?array
     {
-        $relative = self::relative($file);
-
-        if (isset(self::all()[$relative])) {
-            return self::all()[$relative];
-        }
-
-        // Added without a credit, or with an artist that has no target: no card rather than the house artist.
-        if (in_array(MusicCatalog::track($relative)['credit_source'] ?? null, ['none', 'manual'], true)) {
-            return null;
-        }
-
-        return self::isHouse($relative) ? self::house() : null;
-    }
-
-    /** An uncredited instrumental, or an uncredited song straight in the music folder: the house artist's. */
-    public static function isHouse(string $relative): bool
-    {
-        return str_starts_with($relative, 'instrumental/') || ! str_contains($relative, '/');
+        return self::all()[self::relative($file)] ?? null;
     }
 
     /**
@@ -87,6 +71,12 @@ final class MusicCredits
 
         foreach (MusicCatalog::tracks() as $file => $track) {
             $first = $track['artists'][0] ?? null;
+
+            if (($track['credit_source'] ?? null) === 'house') {
+                $credits[$file] = self::house();
+
+                continue;
+            }
 
             if (! in_array($track['credit_source'] ?? null, ['wavlake-index', 'plebrap-index', 'manual'], true) || ! is_string($first)) {
                 continue;

@@ -12,13 +12,14 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 /**
- * Writes the music catalog (MusicCatalog) from the music folder: every .m4a straight in it (vocals) and in
- * instrumental/, plebrap/ and wavlake/ (disabled/ and anything else is left out), measured with ffprobe, ebur128 and
- * fpcalc at nice 19, two files at a time. A file whose size and mtime did not change keeps its measurements.
+ * Writes the music catalog (MusicCatalog) from the music folder: every .m4a straight in it or in one of its folders
+ * (all but disabled/, where switched-off songs wait), measured with ffprobe, ebur128 and fpcalc at nice 19, two files
+ * at a time. A file whose size and mtime did not change keeps its measurements. The folders only hold files: the
+ * catalog records no source or genre (user 2026-10-16: "Es im Katalog nur noch um den Artists").
  *
  * Credits come from the former indexes while they exist (wavlake-index.json, plebrap-index.json, artists.json under
- * resources/data/music), then from the catalog itself (a credit added with twentyone:music-add stays), else from the
- * house rule (MusicCredits::isHouse(): DJ Bitcoin), else none.
+ * resources/data/music), then from the catalog itself (a credit added with twentyone:music-add stays, and so does the
+ * house artist DJ Bitcoin where the catalog names it), else none.
  */
 #[Signature('twentyone:music-catalog {--dir= : The music folder (default: twentyone.stream.music.dir)}')]
 #[Description('Scan the music folder and write resources/data/music/catalog.json (tracks, artists, credits, loudness, fingerprints)')]
@@ -98,8 +99,7 @@ class TwentyOneMusicCatalogCommand extends Command
         MusicCatalog::write($tracks, $artists, $byId);
         MusicCredits::flush();
 
-        $this->info(sprintf('Catalog: %d tracks (%s), %d artists; credits %s.', count($tracks),
-            self::counts(array_column($tracks, 'source')), count($artists), self::counts(array_column($tracks, 'credit_source'))));
+        $this->info(sprintf('Catalog: %d tracks, %d artists; credits %s.', count($tracks), count($artists), self::counts(array_column($tracks, 'credit_source'))));
 
         foreach ($unreadable as $relative) {
             $this->warn('Unreadable, left out: '.$relative);
@@ -109,16 +109,18 @@ class TwentyOneMusicCatalogCommand extends Command
     }
 
     /**
-     * The music files under `$dir` by their path relative to it: .m4a only (a SHA256SUMS or a cover is no track), no
-     * hidden file (a temp file of twentyone:music-add), without control characters in the name (MusicPlaylist::isSafePath()).
+     * The music files under `$dir` by their path relative to it, straight in it or one folder down (not disabled/):
+     * .m4a only (a SHA256SUMS or a cover is no track), no hidden file (a temp file of twentyone:music-add), without
+     * control characters in the name (MusicPlaylist::isSafePath()).
      *
      * @return array<string, string>
      */
     public static function scan(string $dir): array
     {
         $files = [];
+        $folders = array_filter(scandir($dir) ?: [], fn (string $name): bool => $name[0] !== '.' && $name !== 'disabled' && is_dir($dir.'/'.$name));
 
-        foreach (['', 'instrumental/', 'plebrap/', 'wavlake/'] as $folder) {
+        foreach (['', ...array_map(fn (string $name): string => $name.'/', $folders)] as $folder) {
             foreach (is_dir($dir.'/'.$folder) ? (scandir($dir.'/'.$folder) ?: []) : [] as $name) {
                 $path = $dir.'/'.$folder.$name;
 
@@ -249,23 +251,14 @@ class TwentyOneMusicCatalogCommand extends Command
             $old = $previousById[$id] ?? null;
             $credit = $indexed[$relative] ?? null;
 
-            if ($credit === null && $old !== null && in_array($old['credit_source'] ?? null, ['wavlake-index', 'plebrap-index', 'manual'], true)) {
+            if ($credit === null && $old !== null && in_array($old['credit_source'] ?? null, ['wavlake-index', 'plebrap-index', 'manual', 'house'], true)) {
                 $credit = array_intersect_key($old, array_flip(['artists', 'title', 'credit_source', 'qr_target', 'qr_kind', 'wavlake_track_id']));
             }
 
-            if ($credit === null) {
-                $house = MusicCredits::isHouse($relative);
-                $credit = [
-                    'artists' => $house ? [$artistId(MusicCredits::HOUSE_ARTIST)] : [],
-                    'title' => MusicPlaylist::title($relative),
-                    'credit_source' => $house ? 'house' : 'none',
-                ];
-            }
-
+            $credit ??= ['artists' => [], 'title' => MusicPlaylist::title($relative), 'credit_source' => 'none'];
             $measured = array_diff_key($track, array_flip(['id', 'source', 'artists', 'title', 'credit_source', 'qr_target', 'qr_kind', 'wavlake_track_id']));
             $result[$relative] = [
                 'id' => $id,
-                'source' => (string) MusicCatalog::sourceOf($relative),
                 'artists' => $credit['artists'],
                 'title' => $credit['title'] ?? MusicPlaylist::title($relative),
                 ...$measured,

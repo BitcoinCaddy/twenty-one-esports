@@ -8,8 +8,10 @@ use RuntimeException;
 /**
  * Brings a song to the library's loudness (plan "Musik-Katalog": −15 LUFS, true peak ≤ −1.5 dBTP, 44.1 kHz stereo
  * AAC): two-pass loudnorm (I=-15:TP=-1.5:LRA=11, linear) with a lookahead limiter at −1.5 dB behind it, encoded as
- * AAC 128k .m4a, then measured with ebur128. A result whose true peak is above −1.0 dBTP (the AAC encoder overshoots
- * the limiter by a few tenths) is made again with one more dB of headroom; still above, it is refused.
+ * AAC 128k .m4a, then measured with ebur128. A result whose true peak is above −1.0 dBTP is made again with the
+ * limiter lowered by the measured excess and half a dB more, at most TRIES encodes in all; still above, it is refused.
+ * The AAC encoder overshoots the limiter, by more than a fixed dB on some songs (2026-10-16: "Journalists Are
+ * Cypherpunks - Richard Greaser" kept +0.2 dBTP at a −2.5 dB ceiling).
  *
  * The 68 songs measured above −1 dBTP on 2026-10-16 (up to +2.3) are re-made this way from their originals
  * (twentyone:music-renormalize); new songs come in through twentyone:music-add.
@@ -21,8 +23,14 @@ final class LoudnessNormalizer
     /** The highest true peak a result may keep, in dBTP. */
     public const MAX_TRUE_PEAK = -1.0;
 
-    /** Limiter ceilings tried in turn, in dB. */
-    private const LIMITS = [-1.5, -2.5];
+    /** The limiter's first ceiling, in dB. */
+    private const LIMIT = -1.5;
+
+    /** Encodes at most, each with a lower ceiling than the one before. */
+    public const TRIES = 3;
+
+    /** Headroom added below the measured excess when the ceiling is lowered, in dB. */
+    private const MARGIN = 0.5;
 
     public function __construct(private string $ffmpeg = 'ffmpeg') {}
 
@@ -39,7 +47,9 @@ final class LoudnessNormalizer
         $temp = dirname($output).'/.'.basename($output).'.normalize-'.getmypid().'.part';
 
         try {
-            foreach (self::LIMITS as $limit) {
+            $limit = self::LIMIT;
+
+            for ($try = 0; $try < self::TRIES; $try++) {
                 $chain = sprintf('loudnorm=%s:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true,alimiter=limit=%.4f:level=false:latency=true',
                     self::TARGET, $measured['input_i'], $measured['input_tp'], $measured['input_lra'], $measured['input_thresh'], $measured['target_offset'], 10 ** ($limit / 20));
 
@@ -60,6 +70,9 @@ final class LoudnessNormalizer
 
                     return [...$result, 'limit' => $limit];
                 }
+
+                // A peak ebur128 could not read counts as one dB too high.
+                $limit -= ($result['true_peak'] === null ? 1.0 : $result['true_peak'] - self::MAX_TRUE_PEAK) + self::MARGIN;
             }
 
             throw new RuntimeException(sprintf('%s: true peak %s dBTP after the limiter, above %.1f', basename($input), $result['true_peak'] ?? 'unknown', self::MAX_TRUE_PEAK));

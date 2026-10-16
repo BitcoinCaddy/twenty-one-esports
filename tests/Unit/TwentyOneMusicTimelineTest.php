@@ -100,35 +100,6 @@ test('with PlebRap files the timeline plays them in runs of three to five with o
         ->and($timeline->from($this->vocals, $this->instrumentals, 3, 1020.0, 2, new Randomizer, $plebrap, [3, 5])['restarted'])->toBeFalse();
 });
 
-test('four sources take turns and a new source starts the timeline again', function () {
-    mkdir($this->dir.'/plebrap');
-    mkdir($this->dir.'/wavlake');
-    $plebrap = [];
-    $wavlake = [];
-
-    foreach (range(1, 3) as $number) {
-        touch($plebrap[] = "{$this->dir}/plebrap/pleb-{$number}__v1.m4a");
-        touch($wavlake[] = "{$this->dir}/wavlake/wave-{$number}__v1.m4a");
-    }
-
-    $timeline = ($this->timeline)();
-    $plain = $timeline->from($this->vocals, $this->instrumentals, 3, 1000.0, 1);
-    $music = $timeline->from([], [], 1, 1010.0, 1, new Randomizer(new Mt19937(4)), [], [3, 5], [$this->vocals, $this->instrumentals, $plebrap, $wavlake]);
-    $pattern = implode('', array_map(function (string $file): string {
-        return match (true) {
-            str_contains($file, '/plebrap/') => 'P',
-            str_contains($file, '/wavlake/') => 'W',
-            str_contains($file, '/instrumental/') => 'I',
-            default => 'V',
-        };
-    }, array_slice($music['files'], 0, 8)));
-
-    expect($plain['restarted'])->toBeTrue()
-        ->and($music['restarted'])->toBeTrue()
-        ->and($pattern)->toBe('VIPWVIPW')
-        ->and($timeline->from([], [], 1, 1020.0, 1, new Randomizer, [], [3, 5], [$this->vocals, $this->instrumentals, $plebrap, $wavlake])['restarted'])->toBeFalse();
-});
-
 test('added music, a corrupt file or a stream that was off for longer than the timeline start a new timeline', function () {
     $timeline = ($this->timeline)();
     $timeline->from($this->vocals, $this->instrumentals, 3, 1000.0, 1);
@@ -205,48 +176,94 @@ test('the silencedetect logs of a track\'s ends give its silent lead and tail, a
         ->and(TwentyOneStreamCommand::tailSilence('', 12.0))->toBe(0.0);
 });
 
-test('no artist plays twice in a row over several sets, across the set boundary and where the timeline goes on after a restart', function () {
-    mkdir($this->dir.'/plebrap');
-    mkdir($this->dir.'/wavlake');
-    // Plan "Musik-Katalog" P5: who each file is by, the credited artist first; the instrumentals are the house artist's.
-    $by = [];
-    $add = function (string $file, array $artists) use (&$by): string {
-        touch($file);
-        $by[$file] = $artists;
+/**
+ * The artist cycle's library in `$dir`: A with three songs, B with two, C with one, and the six instrumentals of the
+ * fixture as DJ Bitcoin's; the artist of a file is told by its name (`a-1` is A's).
+ *
+ * @param  list<string>  $instrumentals
+ * @return array{0: list<list<string>>, 1: Closure(string): string}
+ */
+function cycleLibrary(string $dir, array $instrumentals, array $songs = ['a-1', 'a-2', 'a-3', 'b-1', 'b-2', 'c-1']): array
+{
+    $files = [];
 
-        return $file;
-    };
-    $vocals = array_map(fn (array $song): string => $add("{$this->dir}/{$song[0]}__v1.m4a", [$song[1]]), [['a-1', 'A'], ['a-2', 'A'], ['b-1', 'B'], ['c-1', 'C'], ['d-1', 'D'], ['e-1', 'E']]);
-    $instrumentals = array_map(fn (string $file): string => $add($file, ['DJ Bitcoin']), array_slice($this->instrumentals, 0, 4));
-    $plebrap = [$add("{$this->dir}/plebrap/pleb-1__v1.m4a", ['P']), $add("{$this->dir}/plebrap/pleb-2__v1.m4a", ['P']), $add("{$this->dir}/plebrap/pleb-3__v1.m4a", ['Q', 'A'])];
-    $wavlake = array_map(fn (array $song): string => $add("{$this->dir}/wavlake/{$song[0]}__v1.m4a", [$song[1]]), [['wave-1', 'B'], ['wave-2', 'C'], ['wave-3', 'A'], ['wave-4', 'W']]);
-    $sources = [$vocals, $instrumentals, $plebrap, $wavlake];
-    $timeline = fn (int $gap): MusicTimeline => new MusicTimeline("{$this->dir}/timeline-{$gap}.json", fn (): float => 100.0, 180, 25, $gap, fn (string $file): array => $by[$file] ?? []);
-    // Neighbours with the same credited artist; and neighbours that share any artist, a co-artist included.
-    $clashes = fn (array $files): int => count(array_filter(range(1, count($files) - 1), fn (int $index): bool => $by[$files[$index - 1]][0] === $by[$files[$index]][0]));
-    $shared = fn (array $files): int => count(array_filter(range(1, count($files) - 1), fn (int $index): bool => array_intersect($by[$files[$index - 1]], $by[$files[$index]]) !== []));
+    foreach ($songs as $song) {
+        touch($files[] = "{$dir}/{$song}__v1.m4a");
+    }
 
-    // 6 rounds of 4 sources: a set is 24 tracks of 100 s, so 2 h hold three sets and two boundaries.
-    $first = $timeline(1)->from([], [], 1, 1000.0, 2, new Randomizer(new Mt19937(3)), [], [3, 5], $sources);
-    // 5000.5 s later a new encoder goes on with the kept entries, and new sets are drawn behind them.
-    $later = $timeline(1)->from([], [], 1, 6000.5, 4, new Randomizer(new Mt19937(4)), [], [3, 5], $sources);
-    $unspaced = $timeline(0)->from([], [], 1, 1000.0, 6, new Randomizer(new Mt19937(3)), [], [3, 5], $sources);
+    return [[$files, $instrumentals], fn (string $file): string => str_contains($file, '/instrumental/') ? 'DJ Bitcoin' : strtoupper(explode('-', basename($file))[0])];
+}
 
-    expect(count($first['files']))->toBe(72)
-        ->and($later['restarted'])->toBeFalse()
-        ->and(array_slice($later['files'], 0, 22))->toBe(array_slice($first['files'], 50))
-        ->and(count($later['files']))->toBeGreaterThan(144)
-        ->and($clashes($first['files']))->toBe(0)
-        ->and($clashes($later['files']))->toBe(0)
-        // The same files without the rule do clash, so the zero above is the rule's.
-        ->and($clashes($unspaced['files']))->toBeGreaterThan(0)
-        // A shared co-artist is avoided where the bag allows it: Q and A's pleb-3 meets A's wave-3 only as the last
-        // file left in the Wavlake bag.
-        ->and($shared($later['files']) / count($later['files']))->toBeLessThan($shared($unspaced['files']) / count($unspaced['files']) / 2);
+test('the artist cycle goes on across restarts, never starts over for a changed library, and plays nothing again before its turn', function () {
+    [$sources, $artist] = cycleLibrary($this->dir, $this->instrumentals);
+    $timeline = fn (): MusicTimeline => new MusicTimeline($this->dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist);
 
-    foreach ([$first['files'], $later['files']] as $files) {
-        foreach (array_slice($files, 1) as $index => $file) {
-            expect(MusicPlaylist::title($file))->not->toBe(MusicPlaylist::title($files[$index]));
+    $first = $timeline()->from([], [], 1, 1000.0, 2, new Randomizer(new Mt19937(1)), [], [3, 5], $sources);
+    // A restart 250.5 s later: the third track, 50.5 s in.
+    $restart = $timeline()->from([], [], 1, 1250.5, 2, new Randomizer(new Mt19937(2)), [], [3, 5], $sources);
+    // A new song for A and a changed setting of the older orders: nothing starts over.
+    touch($sources[0][] = $this->dir.'/a-4__v1.m4a');
+    $added = $timeline()->from([], [], 1, 1460.0, 2, new Randomizer(new Mt19937(3)), [], [3, 5], $sources);
+
+    expect($first['restarted'])->toBeTrue()
+        ->and([$restart['restarted'], $restart['files'][0], $restart['inpoint']])->toBe([false, $first['files'][2], 50.5])
+        ->and([$added['restarted'], $added['files'][0], $added['inpoint']])->toBe([false, $restart['files'][2], 60.0]);
+
+    // What played and what is queued, as the file keeps it: every round has every artist once, never one twice in a
+    // row, and A's four songs all play before one of them again, the new one within that turn.
+    $played = array_column(json_decode((string) file_get_contents($this->dir.'/timeline.json'), true)['entries'], 0);
+    $artists = array_map($artist, $played);
+
+    foreach (array_chunk($artists, 4) as $round) {
+        if (count($round) === 4) {
+            expect($round)->toEqualCanonicalizing(['A', 'B', 'C', 'DJ Bitcoin']);
         }
     }
+
+    foreach (array_slice($artists, 1) as $index => $name) {
+        expect($name)->not->toBe($artists[$index]);
+    }
+
+    expect(array_unique(array_slice(array_values(array_filter($played, fn (string $file): bool => $artist($file) === 'A')), 0, 4)))->toHaveCount(4);
+});
+
+test('a removed track leaves the timeline and the playing one gives way at once; a new artist joins the round', function () {
+    [$sources, $artist] = cycleLibrary($this->dir, $this->instrumentals);
+    $timeline = fn (): MusicTimeline => new MusicTimeline($this->dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist);
+    $first = $timeline()->from([], [], 1, 1000.0, 1, new Randomizer(new Mt19937(5)), [], [3, 5], $sources);
+
+    // The playing track's file goes away, and D arrives while three artists are still to play in the round.
+    $gone = $first['files'][0];
+    unlink($gone);
+    $sources = array_map(fn (array $files): array => array_values(array_diff($files, [$gone])), $sources);
+    touch($sources[0][] = $this->dir.'/d-1__v1.m4a');
+    $later = $timeline()->from([], [], 1, 1050.0, 1, new Randomizer(new Mt19937(6)), [], [3, 5], $sources);
+    $names = array_map($artist, $later['files']);
+
+    expect($later['restarted'])->toBeFalse()
+        ->and($later['inpoint'])->toBe(0.0)
+        ->and($later['files'])->not->toContain($gone)
+        // The round had three artists left besides the one whose track went: D plays within it.
+        ->and(array_slice($names, 0, 4))->toContain('D');
+
+    foreach (array_slice($names, 1) as $index => $name) {
+        expect($name)->not->toBe($names[$index]);
+    }
+});
+
+test('the first start of the artist cycle counts the tracks of the old timeline as heard, and the playing one goes on', function () {
+    [$sources, $artist] = cycleLibrary($this->dir, $this->instrumentals);
+    // As the source rotation left it: three tracks played, the fourth 50 s in at 1000.
+    file_put_contents($this->dir.'/timeline.json', json_encode(['fingerprint' => 'rotate', 'anchor' => 650.0, 'entries' => [
+        ["{$this->dir}/a-1__v1.m4a", 100.0, 0.0, null], [$this->instrumentals[0], 100.0, 0.0, null], ["{$this->dir}/b-1__v1.m4a", 100.0, 0.0, null], ["{$this->dir}/a-2__v1.m4a", 100.0, 0.0, null],
+    ], 'durations' => []]));
+
+    $music = (new MusicTimeline($this->dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist))->from([], [], 1, 1000.0, 1, new Randomizer(new Mt19937(7)), [], [3, 5], $sources);
+    $next = fn (string $name): ?string => collect(array_slice($music['files'], 1))->first(fn (string $file): bool => $artist($file) === $name);
+
+    expect([$music['restarted'], $music['files'][0], $music['inpoint']])->toBe([false, "{$this->dir}/a-2__v1.m4a", 50.0])
+        // a-1 and a-2 were heard: A goes on with a-3; B with b-2; the house artist with another instrumental.
+        ->and($next('A'))->toBe("{$this->dir}/a-3__v1.m4a")
+        ->and($next('B'))->toBe("{$this->dir}/b-2__v1.m4a")
+        ->and($next('DJ Bitcoin'))->not->toBe($this->instrumentals[0]);
 });
