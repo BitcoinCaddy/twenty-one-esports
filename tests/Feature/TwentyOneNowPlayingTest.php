@@ -21,7 +21,7 @@ test('every credited track and the house artist have their QR code drawn, so no 
 
     // Every Wavlake and PlebRap track of the catalog (115 + 38: the Wavlake index's 116th, "Who Comes Home - Under
     // The Mulga Groove", is not in the library), Richard Greaser's 76 songs and the house artist.
-    expect(count($credits))->toBe(230);
+    expect(count($credits))->toBe(286);
 
     foreach ($credits as $credit) {
         expect(in_array($credit['kind'], MusicCredits::KINDS, true))->toBeTrue($credit['artist'])

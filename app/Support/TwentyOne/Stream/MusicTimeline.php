@@ -212,10 +212,14 @@ final class MusicTimeline
             }
         }
 
-        // The pool as a key: while it is unchanged, the queue already drawn stays as it is.
-        $sortedPool = $pool;
-        sort($sortedPool);
-        $poolKey = sha1(implode("\n", $sortedPool));
+        // The library as a key (files, their artists, the gap): while it is unchanged, the queue already drawn stays.
+        $library = $byArtist;
+        ksort($library);
+        $poolKey = sha1(json_encode([array_map(function (array $files): array {
+            sort($files);
+
+            return $files;
+        }, $library), $gap], JSON_THROW_ON_ERROR));
         $state = [...$cycle->toState(), 'until' => $end, 'pool' => $poolKey];
         $bends = 0;
 
