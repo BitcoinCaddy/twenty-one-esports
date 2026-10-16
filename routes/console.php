@@ -854,7 +854,11 @@ if (app(GameRegistry::class)->find(TrackmaniaNationsForever::SLUG) !== null) {
  * caps whatever the switches say (and are emptied after a switch-off).
  * `caster:fetch` is not scheduled here: it runs on the workstation that voices.
  */
-Schedule::command('caster:script')->everyMinute()->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
+// The overlap lock expires after 30 minutes, not the 24-hour default (live 2026-10-16: a caster:script run
+// killed mid-write - deploy or kill - never released its Redis lock, and the scheduler silently skipped the
+// writer for hours: no bulletins, no shows, the radio fell back to music). A legitimate show write runs
+// minutes, never close to thirty.
+Schedule::command('caster:script')->everyMinute()->withoutOverlapping(30)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
 // Every ten seconds (user 2026-10-15: reactions must reach the air at once): a chat line is seen within seconds, not
 // up to a minute, and the workstation voices it while it is fresh.
 Schedule::command('caster:chat')->everyTenSeconds()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
