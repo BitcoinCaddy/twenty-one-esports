@@ -2,6 +2,74 @@
     "_readme": "Music catalog of the stream (MusicCatalog): tracks by file relative to the music folder, artists by id. Written by php artisan twentyone:music-catalog and twentyone:music-add; commit it after a change. Fingerprint items in fingerprints.json.",
     "tracks": [
         {
+            "file": "01 - sabu__v1.m4a",
+            "id": "dfec890311ba",
+            "artists": [
+                "sabu"
+            ],
+            "title": "01",
+            "duration": 173.32,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "69ede5b4150ae890",
+            "sha1": "e1d034b106a25161c978896ece1ae13a5a27f091",
+            "size": 2860428,
+            "mtime": 1792144754,
+            "credit_source": "manual"
+        },
+        {
+            "file": "01776 - sabu__v1.m4a",
+            "id": "a0a75621394b",
+            "artists": [
+                "sabu"
+            ],
+            "title": "01776",
+            "duration": 103.52,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "addd3e738f905f3d",
+            "sha1": "a3a1c1d1f11149371b9a7efdd610a38b745d208e",
+            "size": 1735304,
+            "mtime": 1792144800,
+            "credit_source": "manual"
+        },
+        {
+            "file": "23 - sabu__v1.m4a",
+            "id": "41d428855bdc",
+            "artists": [
+                "sabu"
+            ],
+            "title": "23",
+            "duration": 127.84,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.3,
+            "fingerprint": "1bf1d1b5e8356f15",
+            "sha1": "855e6fd291b7a97ddb93ad3b1391ac6b52f1158a",
+            "size": 2127889,
+            "mtime": 1792144418,
+            "credit_source": "manual"
+        },
+        {
+            "file": "942298 - sabu__v1.m4a",
+            "id": "84e319ed9f2a",
+            "artists": [
+                "sabu"
+            ],
+            "title": "942298",
+            "duration": 136.36,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.3,
+            "fingerprint": "b56b35a777d3be92",
+            "sha1": "22be7783e4d38452aadeaa4517279855ced12fb7",
+            "size": 2274570,
+            "mtime": 1792144438,
+            "credit_source": "manual"
+        },
+        {
             "file": "A Little More Here - Under The Mulga Groove__v1.m4a",
             "id": "e4f5ee5bec64",
             "artists": [
@@ -20,6 +88,74 @@
             "qr_target": "https://wavlake.com/track/f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c",
             "qr_kind": "wavlake",
             "wavlake_track_id": "f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c"
+        },
+        {
+            "file": "All Day Calm Demeanors - Trance version - sabu__v1.m4a",
+            "id": "6cbd7d5ac063",
+            "artists": [
+                "sabu"
+            ],
+            "title": "All Day Calm Demeanors - Trance version",
+            "duration": 198.12,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "e464983dc39f15d8",
+            "sha1": "29d3267fadd7049b09956134813a55cb6a5417ce",
+            "size": 3251985,
+            "mtime": 1792144667,
+            "credit_source": "manual"
+        },
+        {
+            "file": "All Day Calm Demeanors - sabu__v1.m4a",
+            "id": "1a783471ea59",
+            "artists": [
+                "sabu"
+            ],
+            "title": "All Day Calm Demeanors",
+            "duration": 176.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "b0f8ce8ec95e0987",
+            "sha1": "d5d7ca74e6e0980b0dea1d75c4e91c8b8d7a9755",
+            "size": 2909256,
+            "mtime": 1792144655,
+            "credit_source": "manual"
+        },
+        {
+            "file": "All I know is spin around taste death - sabu__v1.m4a",
+            "id": "9c0aa62badc0",
+            "artists": [
+                "sabu"
+            ],
+            "title": "All I know is spin around taste death",
+            "duration": 131.08,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "2098425524a0fca6",
+            "sha1": "0eaf8c72336e0ed3e9ba37cc78db8d0853990470",
+            "size": 2154740,
+            "mtime": 1792144402,
+            "credit_source": "manual"
+        },
+        {
+            "file": "All these feathers - sabu__v1.m4a",
+            "id": "5b79d2b949da",
+            "artists": [
+                "sabu"
+            ],
+            "title": "All these feathers",
+            "duration": 277.92,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "537459804c7764fe",
+            "sha1": "7e26a6c480867784bafc877891779b72cae54b32",
+            "size": 4572889,
+            "mtime": 1792144367,
+            "credit_source": "manual"
         },
         {
             "file": "Almost Elsewhere - Under The Mulga Groove__v1.m4a",
@@ -119,6 +255,23 @@
             "wavlake_track_id": "5e866f89-f124-48c2-a985-b03107cd9ba9"
         },
         {
+            "file": "Angel Wing of a c-17 - sabu__v1.m4a",
+            "id": "b23667f701e0",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Angel Wing of a c-17",
+            "duration": 60.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -4.1,
+            "fingerprint": "cf2c551a32f1a3de",
+            "sha1": "5fd76976322ac2b40da6940e802aeedb1fac9ff9",
+            "size": 995651,
+            "mtime": 1792144373,
+            "credit_source": "manual"
+        },
+        {
             "file": "Another Sad Song - Joe Martin__v1.m4a",
             "id": "cc728b72ac01",
             "artists": [
@@ -137,6 +290,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "1278ecc0-b541-4b2a-8773-4ac14f29f801"
+        },
+        {
+            "file": "Arkon Hammer, cybernetic - sabu__v1.m4a",
+            "id": "abff14ffc654",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Arkon Hammer, cybernetic",
+            "duration": 209.1,
+            "bitrate": 134,
+            "lufs": -15.1,
+            "true_peak": -1.7,
+            "fingerprint": "bf0b7ed888eb9cf4",
+            "sha1": "12c430036d895d1fae61721620498d5cbad12889",
+            "size": 3542080,
+            "mtime": 1792144548,
+            "credit_source": "manual"
         },
         {
             "file": "Backseat Driver - Joe Martin__v1.m4a",
@@ -177,6 +347,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "4d3443ba-4ec9-41a7-bf0a-78dc35896aa4"
+        },
+        {
+            "file": "Blackbird in the ocean - sabu__v1.m4a",
+            "id": "ac261e379a9e",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Blackbird in the ocean",
+            "duration": 188.93,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.6,
+            "fingerprint": "9919ac808e4343a7",
+            "sha1": "ab2bd322b402986ffc5ca7c5a1bc2318064fa486",
+            "size": 3125224,
+            "mtime": 1792144507,
+            "credit_source": "manual"
         },
         {
             "file": "Born To Die Young - Joe Martin__v1.m4a",
@@ -379,6 +566,23 @@
             "wavlake_track_id": "1c43b75f-b003-4482-9f37-a606792b4f3c"
         },
         {
+            "file": "Die or Live Infamy - sabu__v1.m4a",
+            "id": "989cd106db88",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Die or Live Infamy",
+            "duration": 38.72,
+            "bitrate": 132,
+            "lufs": -14.9,
+            "true_peak": -3.1,
+            "fingerprint": "e0e6a9b8d9f434da",
+            "sha1": "13052f2d992c030c1f7cc3468ed4cd874076fbd5",
+            "size": 647181,
+            "mtime": 1792144785,
+            "credit_source": "manual"
+        },
+        {
             "file": "Doesn't Rain In LA (set 1) - Joe Martin__v1.m4a",
             "id": "39a44104e20b",
             "artists": [
@@ -419,6 +623,23 @@
             "wavlake_track_id": "bc59cdf1-022d-4896-9add-94a1b84a79de"
         },
         {
+            "file": "Donald Trum, DJT - sabu__v1.m4a",
+            "id": "626b0bad7fd6",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Donald Trum, DJT",
+            "duration": 57.0,
+            "bitrate": 134,
+            "lufs": -15.4,
+            "true_peak": -2.0,
+            "fingerprint": "b81ce98f8bf8fb32",
+            "sha1": "18fb2d20f71c693ad684ba8350c64d03ebc2a4da",
+            "size": 967313,
+            "mtime": 1792144449,
+            "credit_source": "manual"
+        },
+        {
             "file": "Empty Passenger Seat (set 2) - Joe Martin__v1.m4a",
             "id": "50b5a5aee9e5",
             "artists": [
@@ -457,6 +678,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "c8ec175f-dd5d-4a01-8e3a-e85c1591698f"
+        },
+        {
+            "file": "Erdoğan is my hero - sabu__v1.m4a",
+            "id": "1192aee22622",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Erdoğan is my hero",
+            "duration": 206.9,
+            "bitrate": 131,
+            "lufs": -15.2,
+            "true_peak": -2.9,
+            "fingerprint": "8844dc7d86578fc7",
+            "sha1": "cf230c71eee4a8708bc3f56ff84e89ada910edc2",
+            "size": 3412256,
+            "mtime": 1792144222,
+            "credit_source": "manual"
         },
         {
             "file": "Fell For A Promise (set 2) - Joe Martin__v1.m4a",
@@ -577,6 +815,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "57304017-2d67-483f-9df4-a87a225f3082"
+        },
+        {
+            "file": "Geodetic - sabu__v1.m4a",
+            "id": "b04ea3b9ebc4",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Geodetic",
+            "duration": 240.0,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "000fd8fe4efb6ab3",
+            "sha1": "6ba25fe299875729b67db864323a9173edd0726c",
+            "size": 3950677,
+            "mtime": 1792144310,
+            "credit_source": "manual"
         },
         {
             "file": "Hand Me Down Heart - Joe Martin__v1.m4a",
@@ -816,6 +1071,23 @@
             "wavlake_track_id": "d808c27e-27c5-4a3a-8df1-f2b9d65ee421"
         },
         {
+            "file": "LA-rge bezels - sabu__v1.m4a",
+            "id": "87609d98b2d4",
+            "artists": [
+                "sabu"
+            ],
+            "title": "LA-rge bezels",
+            "duration": 182.7,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "0466dbd6125639da",
+            "sha1": "4c37f9eecc7153b7426d41a64976ecb080f5c722",
+            "size": 3030437,
+            "mtime": 1792144496,
+            "credit_source": "manual"
+        },
+        {
             "file": "Leave The Porch Light Low - Under The Mulga Groove__v1.m4a",
             "id": "7ff8cd1294e7",
             "artists": [
@@ -876,6 +1148,23 @@
             "wavlake_track_id": "15f7dd3e-4b10-494e-841e-4348ceab4d95"
         },
         {
+            "file": "Lights Out Hot Stars Out, and vinyl Ryders - sabu__v1.m4a",
+            "id": "cb795805569a",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Lights Out Hot Stars Out, and vinyl Ryders",
+            "duration": 330.2,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "4b0ed8feddb5d8ee",
+            "sha1": "009aeeb78fd26e857e89c72e5765150a29a841d8",
+            "size": 5453164,
+            "mtime": 1792144522,
+            "credit_source": "manual"
+        },
+        {
             "file": "Living Death - Under The Mulga Groove__v1.m4a",
             "id": "d763d5471492",
             "artists": [
@@ -894,6 +1183,23 @@
             "qr_target": "https://wavlake.com/track/28b6e197-87df-4886-86b5-804dddf847b6",
             "qr_kind": "wavlake",
             "wavlake_track_id": "28b6e197-87df-4886-86b5-804dddf847b6"
+        },
+        {
+            "file": "Logos H20 - sabu__v1.m4a",
+            "id": "5a65353ac4c6",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Logos H20",
+            "duration": 99.08,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "33b1b5a1a49117ca",
+            "sha1": "775f660da6274696fc211b04779b941dac8d32cc",
+            "size": 1675575,
+            "mtime": 1792144465,
+            "credit_source": "manual"
         },
         {
             "file": "Love Strong (set 1) - Joe Martin__v1.m4a",
@@ -934,6 +1240,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "4c5616d9-5eb1-40ec-89d8-29865735c4ff"
+        },
+        {
+            "file": "Mag 7 Mag 7 - sabu__v1.m4a",
+            "id": "c7df31c74086",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Mag 7 Mag 7",
+            "duration": 107.5,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.2,
+            "fingerprint": "d269ad73b40b880f",
+            "sha1": "f15ab13a2ce443c1e76f7cf601629cc9d8d9b1b4",
+            "size": 1790632,
+            "mtime": 1792144357,
+            "credit_source": "manual"
         },
         {
             "file": "Man You Need - Joe Martin__v1.m4a",
@@ -1054,6 +1377,125 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "ee291605-b4cb-41d3-a343-44c7f897c8f2"
+        },
+        {
+            "file": "New song, it called akron hammer - sabu__v1.m4a",
+            "id": "faff8059cd83",
+            "artists": [
+                "sabu"
+            ],
+            "title": "New song, it called akron hammer",
+            "duration": 148.6,
+            "bitrate": 131,
+            "lufs": -15.2,
+            "true_peak": -1.3,
+            "fingerprint": "05979f1b9a268361",
+            "sha1": "1d177e5b734f685aacdc2ac21ced0e25f001e04c",
+            "size": 2462207,
+            "mtime": 1792144771,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Only Grok - sabu__v1.m4a",
+            "id": "ff6e579224fb",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Only Grok",
+            "duration": 110.72,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "786cd65c01e33541",
+            "sha1": "8cb9a42c7259a4b439b4de09d6dbdb90d784637c",
+            "size": 1848553,
+            "mtime": 1792144429,
+            "credit_source": "manual"
+        },
+        {
+            "file": "SOC 2 - sabu__v1.m4a",
+            "id": "d8ee6e4122d1",
+            "artists": [
+                "sabu"
+            ],
+            "title": "SOC 2",
+            "duration": 39.32,
+            "bitrate": 133,
+            "lufs": -14.9,
+            "true_peak": -3.9,
+            "fingerprint": "9508b253ab5c2bd7",
+            "sha1": "ba7dd363b5cb78927618d44d7f3854595309cfc2",
+            "size": 661397,
+            "mtime": 1792144134,
+            "credit_source": "manual"
+        },
+        {
+            "file": "SOC22 - sabu__v1.m4a",
+            "id": "c9a8ac72810e",
+            "artists": [
+                "sabu"
+            ],
+            "title": "SOC22",
+            "duration": 60.0,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -2.8,
+            "fingerprint": "465ff0ad6f2fe6fd",
+            "sha1": "1fff3d4ff6e5873e629aa31e746f37fd0eefe9b4",
+            "size": 1016095,
+            "mtime": 1792144139,
+            "credit_source": "manual"
+        },
+        {
+            "file": "SOC222 - sabu__v1.m4a",
+            "id": "5bd50546abfc",
+            "artists": [
+                "sabu"
+            ],
+            "title": "SOC222",
+            "duration": 62.8,
+            "bitrate": 135,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "78233d854adf22e1",
+            "sha1": "41fa51079da68bd342dd51884c9f95895fb513ff",
+            "size": 1071549,
+            "mtime": 1792144128,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Season remixes - sabu__v1.m4a",
+            "id": "a24fabc374bc",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Season remixes",
+            "duration": 90.04,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "791656e8dc7e4f4d",
+            "sha1": "4dd40cbf4f6e78d24171a9d02d06aff15d8b11d8",
+            "size": 1495930,
+            "mtime": 1792144815,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Shirley Shirley Shirley, surely you can't be serious - sabu__v1.m4a",
+            "id": "3255eda581c4",
+            "artists": [
+                "sabu"
+            ],
+            "title": "Shirley Shirley Shirley, surely you can't be serious",
+            "duration": 264.48,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.8,
+            "fingerprint": "184a99ec2c3bcc66",
+            "sha1": "f1d3fd6e956909f7c78480ccdf2688a8801fc927",
+            "size": 4356782,
+            "mtime": 1792144626,
+            "credit_source": "manual"
         },
         {
             "file": "Silent Vow (set 1) - Joe Martin__v1.m4a",
@@ -1586,6 +2028,74 @@
             "credit_source": "house"
         },
         {
+            "file": "all around me - sabu__v1.m4a",
+            "id": "e987e1b9bd4b",
+            "artists": [
+                "sabu"
+            ],
+            "title": "all around me",
+            "duration": 146.36,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -2.0,
+            "fingerprint": "f097f7b86882125b",
+            "sha1": "3225025baf37e596a7f386f86ed1abca08345de4",
+            "size": 2455874,
+            "mtime": 1792144231,
+            "credit_source": "manual"
+        },
+        {
+            "file": "all the duet - sabu__v1.m4a",
+            "id": "a38027322fad",
+            "artists": [
+                "sabu"
+            ],
+            "title": "all the duet",
+            "duration": 124.68,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -3.4,
+            "fingerprint": "7772362917d762cd",
+            "sha1": "0e3b6f54373d4650046832faf13113d0ef80ac2b",
+            "size": 2097110,
+            "mtime": 1792144476,
+            "credit_source": "manual"
+        },
+        {
+            "file": "avocado fastbreaks - sabu__v1.m4a",
+            "id": "4fdb9894bd51",
+            "artists": [
+                "sabu"
+            ],
+            "title": "avocado fastbreaks",
+            "duration": 237.48,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.6,
+            "fingerprint": "dd0d24f4f92b4a4f",
+            "sha1": "5c2aa7a048f31aae78a889bf1d056252bda66ec7",
+            "size": 3923012,
+            "mtime": 1792144744,
+            "credit_source": "manual"
+        },
+        {
+            "file": "bah bah back past the bow shock - sabu__v1.m4a",
+            "id": "061eefeafc58",
+            "artists": [
+                "sabu"
+            ],
+            "title": "bah bah back past the bow shock",
+            "duration": 193.8,
+            "bitrate": 135,
+            "lufs": -15.1,
+            "true_peak": -1.3,
+            "fingerprint": "f97614ea3c692073",
+            "sha1": "d3bdd207e8f2652a3006685fc5e747ce45cd1bb5",
+            "size": 3308104,
+            "mtime": 1792144346,
+            "credit_source": "manual"
+        },
+        {
             "file": "bitcoin-warriors__v1.m4a",
             "id": "fc0b9127f8f1",
             "artists": [
@@ -1618,6 +2128,57 @@
             "size": 3566362,
             "mtime": 1792101178,
             "credit_source": "house"
+        },
+        {
+            "file": "botanical black magic - sabu__v1.m4a",
+            "id": "606d779cbc62",
+            "artists": [
+                "sabu"
+            ],
+            "title": "botanical black magic",
+            "duration": 166.88,
+            "bitrate": 132,
+            "lufs": -15.4,
+            "true_peak": -3.1,
+            "fingerprint": "f6612da98a06db63",
+            "sha1": "bee5bde341207cf2c7396044dc53896050ab0370",
+            "size": 2791618,
+            "mtime": 1792144198,
+            "credit_source": "manual"
+        },
+        {
+            "file": "butterfly grenades - sabu__v1.m4a",
+            "id": "bb896dc893d8",
+            "artists": [
+                "sabu"
+            ],
+            "title": "butterfly grenades",
+            "duration": 240.0,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "b5da3ac387c5fd6d",
+            "sha1": "2484f6d503ef6a99e5db5bcf06860c2ab3576874",
+            "size": 4007629,
+            "mtime": 1792144297,
+            "credit_source": "manual"
+        },
+        {
+            "file": "caught in a brigade like a bi-plane red - sabu__v1.m4a",
+            "id": "c2b982cc4843",
+            "artists": [
+                "sabu"
+            ],
+            "title": "caught in a brigade like a bi-plane red",
+            "duration": 69.92,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "b9a5b54e7def8484",
+            "sha1": "133c14fc9f445acc94d5d1c45d67219b5fd6f270",
+            "size": 1172787,
+            "mtime": 1792144409,
+            "credit_source": "manual"
         },
         {
             "file": "cerca-wette-remix__v1.m4a",
@@ -1654,6 +2215,40 @@
             "credit_source": "house"
         },
         {
+            "file": "concrete staticess - sabu__v1.m4a",
+            "id": "0940cf873523",
+            "artists": [
+                "sabu"
+            ],
+            "title": "concrete staticess",
+            "duration": 137.3,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.1,
+            "fingerprint": "8e7fb1ed1b6a2200",
+            "sha1": "9d71a36376d033baeda1eb2f34d30c3e65ebfc6a",
+            "size": 2269500,
+            "mtime": 1792144833,
+            "credit_source": "manual"
+        },
+        {
+            "file": "dew ignites - sabu__v1.m4a",
+            "id": "a6966f4f0710",
+            "artists": [
+                "sabu"
+            ],
+            "title": "dew ignites",
+            "duration": 232.96,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.4,
+            "fingerprint": "f00c07dcc25e931a",
+            "sha1": "21a361c07d5b460b74be3eab85565b284e800b8b",
+            "size": 3798832,
+            "mtime": 1792144331,
+            "credit_source": "manual"
+        },
+        {
             "file": "einundzwanzig-song__v1.m4a",
             "id": "2ce2548101ff",
             "artists": [
@@ -1688,6 +2283,23 @@
             "credit_source": "house"
         },
         {
+            "file": "ferranti mark 1 - sabu__v1.m4a",
+            "id": "8e9cc4798a43",
+            "artists": [
+                "sabu"
+            ],
+            "title": "ferranti mark 1",
+            "duration": 198.4,
+            "bitrate": 134,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "b1d14708070682d6",
+            "sha1": "e238df0bc4f4c238512282c0c27262923bf566d3",
+            "size": 3360361,
+            "mtime": 1792144183,
+            "credit_source": "manual"
+        },
+        {
             "file": "filter-end-game__v1.m4a",
             "id": "26586165d206",
             "artists": [
@@ -1720,6 +2332,23 @@
             "size": 1963607,
             "mtime": 1790371844,
             "credit_source": "house"
+        },
+        {
+            "file": "half-adamantium - sabu__v1.m4a",
+            "id": "6f8a9839a56c",
+            "artists": [
+                "sabu"
+            ],
+            "title": "half-adamantium",
+            "duration": 158.12,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -4.9,
+            "fingerprint": "271b4f3f800d3622",
+            "sha1": "aec607d19628182f591a39bc661a78311c0e3e75",
+            "size": 2658079,
+            "mtime": 1792144457,
+            "credit_source": "manual"
         },
         {
             "file": "instrumental/01__v1.m4a",
@@ -3269,6 +3898,125 @@
             "credit_source": "house"
         },
         {
+            "file": "irisWoodenWindows - sabu__v1.m4a",
+            "id": "7ec92d40d051",
+            "artists": [
+                "sabu"
+            ],
+            "title": "irisWoodenWindows",
+            "duration": 211.4,
+            "bitrate": 130,
+            "lufs": -15.2,
+            "true_peak": -1.9,
+            "fingerprint": "a882371926b36cb8",
+            "sha1": "1f87ff6586087eaa4b3c2d6f7b6d03f51f1a1459",
+            "size": 3474432,
+            "mtime": 1792144612,
+            "credit_source": "manual"
+        },
+        {
+            "file": "la familiar, the releast - sabu__v1.m4a",
+            "id": "f13122834e19",
+            "artists": [
+                "sabu"
+            ],
+            "title": "la familiar, the releast",
+            "duration": 119.56,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.5,
+            "fingerprint": "3c3cf1ff652ad89e",
+            "sha1": "8e7dbbcad72bf7f6a15904ff2f0435183fb3ed93",
+            "size": 1991955,
+            "mtime": 1792144319,
+            "credit_source": "manual"
+        },
+        {
+            "file": "latest-athena.3036.-hustle-flow-push-base-1Tspark101.1-pull - sabu__v1.m4a",
+            "id": "b2ee1d79e1f0",
+            "artists": [
+                "sabu"
+            ],
+            "title": "latest-athena.3036.-hustle-flow-push-base-1Tspark101.1-pull",
+            "duration": 104.56,
+            "bitrate": 136,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "1b83a66bf26667ec",
+            "sha1": "e78a4b3dab0119c511f47ec93d646c1a67589e73",
+            "size": 1797048,
+            "mtime": 1792144702,
+            "credit_source": "manual"
+        },
+        {
+            "file": "latest-athena.5056.-flow - sabu__v1.m4a",
+            "id": "e45db631e2ae",
+            "artists": [
+                "sabu"
+            ],
+            "title": "latest-athena.5056.-flow",
+            "duration": 182.9,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "6952eec35b70dc62",
+            "sha1": "f5b5e78dcfe446e85b1660802237f2536c728aec",
+            "size": 3101183,
+            "mtime": 1792144733,
+            "credit_source": "manual"
+        },
+        {
+            "file": "like Broom Broom with the fire - sabu__v1.m4a",
+            "id": "ba427d732d38",
+            "artists": [
+                "sabu"
+            ],
+            "title": "like Broom Broom with the fire",
+            "duration": 162.3,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.4,
+            "fingerprint": "2d3dd3bc4bdfb82e",
+            "sha1": "1c37a3455529832a1d20ccd989687bcd78a96b0e",
+            "size": 2662492,
+            "mtime": 1792144568,
+            "credit_source": "manual"
+        },
+        {
+            "file": "like an island Bullock - sabu__v1.m4a",
+            "id": "17d8442b2854",
+            "artists": [
+                "sabu"
+            ],
+            "title": "like an island Bullock",
+            "duration": 151.12,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "0be9d0dd0aaa6869",
+            "sha1": "7d964ad5275bf8567f3299fb705e4bb89a5179a6",
+            "size": 2522991,
+            "mtime": 1792144486,
+            "credit_source": "manual"
+        },
+        {
+            "file": "loch ness monstah slayin - sabu__v1.m4a",
+            "id": "70facdf7d071",
+            "artists": [
+                "sabu"
+            ],
+            "title": "loch ness monstah slayin",
+            "duration": 53.28,
+            "bitrate": 134,
+            "lufs": -14.9,
+            "true_peak": -2.2,
+            "fingerprint": "ab7859eb39da8d0b",
+            "sha1": "b6a6205680b3c9f178c7e99c417dfc4835160c39",
+            "size": 901722,
+            "mtime": 1792144760,
+            "credit_source": "manual"
+        },
+        {
             "file": "muted-shadows__v1.m4a",
             "id": "c484700beccd",
             "artists": [
@@ -3301,6 +4049,23 @@
             "size": 2776942,
             "mtime": 1790371845,
             "credit_source": "house"
+        },
+        {
+            "file": "new verses, new records, times tennin' - sabu__v1.m4a",
+            "id": "c5b9ce4b30b4",
+            "artists": [
+                "sabu"
+            ],
+            "title": "new verses, new records, times tennin'",
+            "duration": 88.92,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "b80850d6a216a924",
+            "sha1": "72f7e483083e4301f7f274dc37e26ae9b4db0990",
+            "size": 1468230,
+            "mtime": 1792144791,
+            "credit_source": "manual"
         },
         {
             "file": "not-your-keys-not-your-coins-dnb-remix__v1.m4a",
@@ -4137,6 +4902,40 @@
             "credit_source": "house"
         },
         {
+            "file": "punch up the jam - sabu__v1.m4a",
+            "id": "3c34b6e49c87",
+            "artists": [
+                "sabu"
+            ],
+            "title": "punch up the jam",
+            "duration": 161.36,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -3.6,
+            "fingerprint": "cd09308a38cf0177",
+            "sha1": "088ce562bf5928675945c181a12f7adf928f2f15",
+            "size": 2689740,
+            "mtime": 1792144147,
+            "credit_source": "manual"
+        },
+        {
+            "file": "rock version spinnin up the lights version - sabu__v1.m4a",
+            "id": "c155dfaca70b",
+            "artists": [
+                "sabu"
+            ],
+            "title": "rock version spinnin up the lights version",
+            "duration": 181.64,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "70f39652edddb660",
+            "sha1": "8f0533f4177aee2c6299176d48b024c319600f8b",
+            "size": 2999854,
+            "mtime": 1792144679,
+            "credit_source": "manual"
+        },
+        {
             "file": "samurai-s-stand__v1.m4a",
             "id": "6b800a324003",
             "artists": [
@@ -4169,6 +4968,23 @@
             "size": 3189490,
             "mtime": 1792102262,
             "credit_source": "house"
+        },
+        {
+            "file": "shitcoin up your ass blueberry pop tart song - sabu__v1.m4a",
+            "id": "00d66d95b48a",
+            "artists": [
+                "sabu"
+            ],
+            "title": "shitcoin up your ass blueberry pop tart song",
+            "duration": 34.2,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -1.6,
+            "fingerprint": "fcdfe02ede45d3c2",
+            "sha1": "f834d898490e65a34698056aa3068f5576506a9d",
+            "size": 565342,
+            "mtime": 1792144780,
+            "credit_source": "manual"
         },
         {
             "file": "shitcoin-shuffle__v1.m4a",
@@ -4239,6 +5055,40 @@
             "credit_source": "house"
         },
         {
+            "file": "simplify? okay - sabu__v1.m4a",
+            "id": "47907af007a1",
+            "artists": [
+                "sabu"
+            ],
+            "title": "simplify? okay",
+            "duration": 79.2,
+            "bitrate": 132,
+            "lufs": -15.2,
+            "true_peak": -1.9,
+            "fingerprint": "a21ca3389a4669c7",
+            "sha1": "c0ce72527fdb92ecd3fd282d695e52e5f4f90b9b",
+            "size": 1325991,
+            "mtime": 1792144161,
+            "credit_source": "manual"
+        },
+        {
+            "file": "singin' and swoonin', cracked n' mogged - sabu__v1.m4a",
+            "id": "50d5168162b6",
+            "artists": [
+                "sabu"
+            ],
+            "title": "singin' and swoonin', cracked n' mogged",
+            "duration": 222.43,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.1,
+            "fingerprint": "a9a5df61f0cb1c35",
+            "sha1": "bc5e58a50c1734b9d8ea89b73cc434a33313af17",
+            "size": 3684627,
+            "mtime": 1792144581,
+            "credit_source": "manual"
+        },
+        {
             "file": "small-brains-satoshi-pain__v1.m4a",
             "id": "df8def8831f7",
             "artists": [
@@ -4305,6 +5155,74 @@
             "size": 1948616,
             "mtime": 1790371853,
             "credit_source": "house"
+        },
+        {
+            "file": "synesthesia wrapped up in dreams - sabu__v1.m4a",
+            "id": "b6f5127be5aa",
+            "artists": [
+                "sabu"
+            ],
+            "title": "synesthesia wrapped up in dreams",
+            "duration": 115.6,
+            "bitrate": 135,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "adae69db93aae9b3",
+            "sha1": "d38f1f325e5ee8d2603fa75e0c84efa1f09adce3",
+            "size": 1977897,
+            "mtime": 1792144240,
+            "credit_source": "manual"
+        },
+        {
+            "file": "theseARGlass-uhs - sabu__v1.m4a",
+            "id": "beb2b21b3e43",
+            "artists": [
+                "sabu"
+            ],
+            "title": "theseARGlass-uhs",
+            "duration": 42.0,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -1.5,
+            "fingerprint": "c06be69aa3560875",
+            "sha1": "d3cb591a8c7feded99374159d472a55a8b4b7173",
+            "size": 707639,
+            "mtime": 1792144808,
+            "credit_source": "manual"
+        },
+        {
+            "file": "thin veiled addresses - sabu__v1.m4a",
+            "id": "2030402ea104",
+            "artists": [
+                "sabu"
+            ],
+            "title": "thin veiled addresses",
+            "duration": 229.6,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "84748c814b25c237",
+            "sha1": "0f3acd4b1ed590f49d3a67ea76af8c7f30cde0c4",
+            "size": 3776719,
+            "mtime": 1792144639,
+            "credit_source": "manual"
+        },
+        {
+            "file": "toss ‘em up let’s see what lights! - sabu__v1.m4a",
+            "id": "ffef3644086e",
+            "artists": [
+                "sabu"
+            ],
+            "title": "toss ‘em up let’s see what lights!",
+            "duration": 249.96,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "ee739e63e5313a79",
+            "sha1": "41046a989cf724c01bd2ee795b9dd39d58d4d5a6",
+            "size": 4181751,
+            "mtime": 1792144694,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/All Time High - Richard Greaser__v1.m4a",
@@ -6265,6 +7183,40 @@
             "credit_source": "wavlake-index",
             "qr_target": "https://njump.me/npub1tw0t53nnge3m5wmzhzqpudr7whe7qpvyyj9q2dqnsf8ef97xgsrqugjc3r",
             "qr_kind": "njump"
+        },
+        {
+            "file": "we already know - sabu__v1.m4a",
+            "id": "2f9a02f416de",
+            "artists": [
+                "sabu"
+            ],
+            "title": "we already know",
+            "duration": 170.0,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "204b61caaa80009b",
+            "sha1": "4b3177c76b4012b0f4f704f4097cf79b12abe57c",
+            "size": 2774998,
+            "mtime": 1792144395,
+            "credit_source": "manual"
+        },
+        {
+            "file": "why don't we all go - sabu__v1.m4a",
+            "id": "1f4b2ca7ca05",
+            "artists": [
+                "sabu"
+            ],
+            "title": "why don't we all go",
+            "duration": 210.1,
+            "bitrate": 132,
+            "lufs": -15.2,
+            "true_peak": -2.1,
+            "fingerprint": "54f2e67cf4170c77",
+            "sha1": "99660be0f9ddc45d29a8076ee0496bd816338323",
+            "size": 3491749,
+            "mtime": 1792144273,
+            "credit_source": "manual"
         }
     ],
     "artists": {
