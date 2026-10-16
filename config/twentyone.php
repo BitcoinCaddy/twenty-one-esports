@@ -224,6 +224,9 @@ return [
             // Artists banned for good, whatever a future import brings back (user 2026-10-15: ICT - DJ Lexo):
             // comma-separated names, matched against the file name.
             'banned_artists' => env('TWENTYONE_STREAM_MUSIC_BANNED_ARTISTS', 'ICT - DJ Lexo'),
+            // Tracks at least between two of the same artist in the rotation (plan "Musik-Katalog" P5): 1 never plays
+            // an artist twice in a row, 0 turns the spacing off. Any value but 1 starts a new music timeline once.
+            'artist_gap' => (int) env('TWENTYONE_STREAM_MUSIC_ARTIST_GAP', 1),
             // Unused by the live rotation. Left so an old env line does not error.
             'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
             'list_hours' => 12,

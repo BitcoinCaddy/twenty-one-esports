@@ -204,3 +204,49 @@ test('the silencedetect logs of a track\'s ends give its silent lead and tail, a
         ->and(TwentyOneStreamCommand::tailSilence($inside, 12.0))->toBe(0.0)
         ->and(TwentyOneStreamCommand::tailSilence('', 12.0))->toBe(0.0);
 });
+
+test('no artist plays twice in a row over several sets, across the set boundary and where the timeline goes on after a restart', function () {
+    mkdir($this->dir.'/plebrap');
+    mkdir($this->dir.'/wavlake');
+    // Plan "Musik-Katalog" P5: who each file is by, the credited artist first; the instrumentals are the house artist's.
+    $by = [];
+    $add = function (string $file, array $artists) use (&$by): string {
+        touch($file);
+        $by[$file] = $artists;
+
+        return $file;
+    };
+    $vocals = array_map(fn (array $song): string => $add("{$this->dir}/{$song[0]}__v1.m4a", [$song[1]]), [['a-1', 'A'], ['a-2', 'A'], ['b-1', 'B'], ['c-1', 'C'], ['d-1', 'D'], ['e-1', 'E']]);
+    $instrumentals = array_map(fn (string $file): string => $add($file, ['DJ Bitcoin']), array_slice($this->instrumentals, 0, 4));
+    $plebrap = [$add("{$this->dir}/plebrap/pleb-1__v1.m4a", ['P']), $add("{$this->dir}/plebrap/pleb-2__v1.m4a", ['P']), $add("{$this->dir}/plebrap/pleb-3__v1.m4a", ['Q', 'A'])];
+    $wavlake = array_map(fn (array $song): string => $add("{$this->dir}/wavlake/{$song[0]}__v1.m4a", [$song[1]]), [['wave-1', 'B'], ['wave-2', 'C'], ['wave-3', 'A'], ['wave-4', 'W']]);
+    $sources = [$vocals, $instrumentals, $plebrap, $wavlake];
+    $timeline = fn (int $gap): MusicTimeline => new MusicTimeline("{$this->dir}/timeline-{$gap}.json", fn (): float => 100.0, 180, 25, $gap, fn (string $file): array => $by[$file] ?? []);
+    // Neighbours with the same credited artist; and neighbours that share any artist, a co-artist included.
+    $clashes = fn (array $files): int => count(array_filter(range(1, count($files) - 1), fn (int $index): bool => $by[$files[$index - 1]][0] === $by[$files[$index]][0]));
+    $shared = fn (array $files): int => count(array_filter(range(1, count($files) - 1), fn (int $index): bool => array_intersect($by[$files[$index - 1]], $by[$files[$index]]) !== []));
+
+    // 6 rounds of 4 sources: a set is 24 tracks of 100 s, so 2 h hold three sets and two boundaries.
+    $first = $timeline(1)->from([], [], 1, 1000.0, 2, new Randomizer(new Mt19937(3)), [], [3, 5], $sources);
+    // 5000.5 s later a new encoder goes on with the kept entries, and new sets are drawn behind them.
+    $later = $timeline(1)->from([], [], 1, 6000.5, 4, new Randomizer(new Mt19937(4)), [], [3, 5], $sources);
+    $unspaced = $timeline(0)->from([], [], 1, 1000.0, 6, new Randomizer(new Mt19937(3)), [], [3, 5], $sources);
+
+    expect(count($first['files']))->toBe(72)
+        ->and($later['restarted'])->toBeFalse()
+        ->and(array_slice($later['files'], 0, 22))->toBe(array_slice($first['files'], 50))
+        ->and(count($later['files']))->toBeGreaterThan(144)
+        ->and($clashes($first['files']))->toBe(0)
+        ->and($clashes($later['files']))->toBe(0)
+        // The same files without the rule do clash, so the zero above is the rule's.
+        ->and($clashes($unspaced['files']))->toBeGreaterThan(0)
+        // A shared co-artist is avoided where the bag allows it: Q and A's pleb-3 meets A's wave-3 only as the last
+        // file left in the Wavlake bag.
+        ->and($shared($later['files']) / count($later['files']))->toBeLessThan($shared($unspaced['files']) / count($unspaced['files']) / 2);
+
+    foreach ([$first['files'], $later['files']] as $files) {
+        foreach (array_slice($files, 1) as $index => $file) {
+            expect(MusicPlaylist::title($file))->not->toBe(MusicPlaylist::title($files[$index]));
+        }
+    }
+});

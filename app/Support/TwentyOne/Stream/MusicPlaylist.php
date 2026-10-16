@@ -16,6 +16,10 @@ use Random\Randomizer;
  *
  * Instrumentals (a folder of their own, same naming) alternate with the
  * vocal tracks: `interleave()` puts one after every vocal track.
+ *
+ * The source rotation (`rotate()`) also spaces artists (plan "Musik-Katalog"
+ * P5): with an artist gap, no artist plays again within that many tracks,
+ * where the files allow it (see `spaced()`).
  */
 final class MusicPlaylist
 {
@@ -30,6 +34,30 @@ final class MusicPlaylist
         $name = pathinfo($file, PATHINFO_FILENAME);
 
         return explode('__v', $name)[0];
+    }
+
+    /**
+     * Who a file is by, for the artist spacing (plan "Musik-Katalog" P5): the credited artist first
+     * (MusicCredits::forFile(), which names the house artist for an uncredited instrumental or top-level song), then
+     * the co-artists the file name lists after its last " - " when that list opens with the credited artist
+     * ("01 - Feuer über Fiat - Too Bit to Fail, Hanspanzer"). Empty without a credit: an unknown artist never clashes.
+     *
+     * @return list<string>
+     */
+    public static function artists(string $file): array
+    {
+        $artist = MusicCredits::forFile($file)['artist'] ?? null;
+
+        if (! is_string($artist) || $artist === '') {
+            return [];
+        }
+
+        $parts = explode(' - ', self::title(basename($file)));
+        $named = count($parts) < 2 ? false : preg_split('/\s*,\s*|\s+feat\.\s+/i', trim($parts[count($parts) - 1]));
+
+        return is_array($named) && ($named[0] ?? null) === $artist
+            ? array_values(array_unique(array_filter($named, fn (string $name): bool => $name !== '')))
+            : [$artist];
     }
 
     /**
@@ -189,10 +217,17 @@ final class MusicPlaylist
      *
      * The list wraps like `order()`: its last title differs from its first where a swap can do that.
      *
+     * With `$artistGap` (plan "Musik-Katalog" P5) no artist of `$artists` plays again within that many tracks, where
+     * the sources allow it; `$before` are the tracks played just before the list (MusicTimeline: the end of the last
+     * set), so this rule and the title rule hold across a set boundary. Where no file of a source can keep the gap,
+     * the rule bends rather than leave the slot empty, and `$bends` counts it. One source alone ignores the gap.
+     *
      * @param  list<list<string>>  $sources  in rotation order
+     * @param  array<string, list<string>>  $artists  per file, the credited artist first (artists()); a file without one never clashes
+     * @param  list<string>  $before
      * @return list<string>
      */
-    public static function rotate(array $sources, Randomizer $random = new Randomizer): array
+    public static function rotate(array $sources, Randomizer $random = new Randomizer, array $artists = [], int $artistGap = 0, array $before = [], int &$bends = 0): array
     {
         $sources = array_values(array_filter($sources, fn (array $files): bool => $files !== []));
 
@@ -207,11 +242,12 @@ final class MusicPlaylist
         $rounds = max(array_map('count', $sources));
         $bags = array_map(fn (array $files): array => [], $sources);
         $list = [];
-        $previous = null;
+        $previous = $before === [] ? null : self::title($before[count($before) - 1]);
+        $recent = $artistGap > 0 ? array_slice($before, -$artistGap) : [];
 
         for ($round = 0; $round < $rounds; $round++) {
             foreach ($sources as $index => $files) {
-                $pick = self::draw($bags[$index], $files, $previous, $random);
+                $pick = self::draw($bags[$index], $files, $previous, $random, $recent, $artists, $bends);
 
                 if ($pick === null) {
                     continue;
@@ -219,10 +255,14 @@ final class MusicPlaylist
 
                 $list[] = $pick;
                 $previous = self::title($pick);
+
+                if ($artistGap > 0) {
+                    $recent = array_slice([...$recent, $pick], -$artistGap);
+                }
             }
         }
 
-        return self::unwrap($list);
+        return self::unwrap($list, $artists, $artistGap);
     }
 
     /**
@@ -230,39 +270,112 @@ final class MusicPlaylist
      * when it is empty, and once more when everything left would repeat the title; then the slot
      * stays empty and the bag is left for the next round.
      *
+     * Among the files left in the bag that fit, the artist decides (`spaced()`, window by window from the whole gap
+     * down to the track just before). Only when none keeps even the track just before does the rule bend and the
+     * first fitting file plays; the bag is never refilled early for an artist, so every file of a source still comes
+     * round before one repeats. Every pick short of the whole gap counts in `$bends` (measured 2026-10-16: an
+     * uncredited top-level song is the house artist's, and so is every instrumental, which plays right after it).
+     *
      * @param  list<string>  $bag
      * @param  list<string>  $files
+     * @param  list<string>  $recent  the last tracks within the artist gap, the latest last
+     * @param  array<string, list<string>>  $artists
      */
-    private static function draw(array &$bag, array $files, ?string $avoid, Randomizer $random): ?string
+    private static function draw(array &$bag, array $files, ?string $avoid, Randomizer $random, array $recent = [], array $artists = [], int &$bends = 0): ?string
     {
         for ($refill = 0; $refill < 2; $refill++) {
             if ($bag === []) {
                 $bag = $random->shuffleArray($files);
             }
 
-            foreach ($bag as $key => $file) {
-                if ($avoid === null || self::title($file) !== $avoid) {
-                    unset($bag[$key]);
-                    $bag = array_values($bag);
+            $fitting = array_keys(array_filter($bag, fn (string $file): bool => $avoid === null || self::title($file) !== $avoid));
 
-                    return $file;
+            if ($fitting === []) {
+                $bag = [];
+
+                continue;
+            }
+
+            for ($window = count($recent); $window > 0; $window--) {
+                $key = self::spaced($bag, $fitting, array_slice($recent, -$window), $artists);
+
+                if ($key !== null) {
+                    $bends += $window < count($recent) ? 1 : 0;
+
+                    return array_splice($bag, $key, 1)[0];
                 }
             }
 
-            $bag = [];
+            $bends += $recent === [] ? 0 : 1;
+
+            return array_splice($bag, $fitting[0], 1)[0];
         }
 
         return null;
     }
 
     /**
-     * Where the list would open with the title it closes on, swap the last file with an earlier
-     * one that fits both its new neighbours. Leaves the list when no swap does.
+     * The first key of `$fitting` (in bag order) whose file shares no artist with the `$near` tracks, else the first
+     * whose credited artist is none of theirs; null when every one has the credited artist of a near track.
+     *
+     * @param  list<string>  $bag
+     * @param  list<int>  $fitting
+     * @param  list<string>  $near
+     * @param  array<string, list<string>>  $artists
+     */
+    private static function spaced(array $bag, array $fitting, array $near, array $artists): ?int
+    {
+        $named = array_merge(...array_map(fn (string $file): array => $artists[$file] ?? [], $near));
+        $credited = array_map(fn (string $file): ?string => ($artists[$file] ?? [])[0] ?? null, $near);
+        $rules = [
+            fn (array $own): bool => array_intersect($own, $named) === [],
+            fn (array $own): bool => ! isset($own[0]) || ! in_array($own[0], $credited, true),
+        ];
+
+        foreach ($rules as $keeps) {
+            foreach ($fitting as $key) {
+                if ($keeps($artists[$bag[$key]] ?? [])) {
+                    return $key;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether the credited artist at `$position` plays again within `$gap` tracks either side of it.
      *
      * @param  list<string>  $list
+     * @param  array<string, list<string>>  $artists
+     */
+    private static function crowded(array $list, int $position, array $artists, int $gap): bool
+    {
+        $artist = ($artists[$list[$position]] ?? [])[0] ?? null;
+
+        if ($artist === null) {
+            return false;
+        }
+
+        for ($index = max(0, $position - $gap); $index <= min(count($list) - 1, $position + $gap); $index++) {
+            if ($index !== $position && (($artists[$list[$index]] ?? [])[0] ?? null) === $artist) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Where the list would open with the title it closes on, swap the last file with an earlier
+     * one that fits both its new neighbours. Leaves the list when no swap does. With an artist gap, a swap that
+     * would bring an artist closer to itself than the gap is not taken.
+     *
+     * @param  list<string>  $list
+     * @param  array<string, list<string>>  $artists
      * @return list<string>
      */
-    private static function unwrap(array $list): array
+    private static function unwrap(array $list, array $artists = [], int $artistGap = 0): array
     {
         $last = count($list) - 1;
 
@@ -282,9 +395,13 @@ final class MusicPlaylist
                 continue;
             }
 
-            [$list[$index], $list[$last]] = [$list[$last], $list[$index]];
+            $swapped = [...array_slice($list, 0, $index), $list[$last], ...array_slice($list, $index + 1, $last - $index - 1), $list[$index]];
 
-            return $list;
+            if ($artistGap > 0 && (self::crowded($swapped, $index, $artists, $artistGap) || self::crowded($swapped, $last, $artists, $artistGap))) {
+                continue;
+            }
+
+            return $swapped;
         }
 
         return $list;

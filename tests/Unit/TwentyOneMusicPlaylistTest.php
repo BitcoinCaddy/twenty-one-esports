@@ -241,6 +241,43 @@ test('the four sources take turns one track each, every file of the longest sour
         ->and(MusicPlaylist::rotate([]))->toBe([]);
 });
 
+test('the rotation spaces artists from the tracks before it on, prefers no shared co-artist, and bends only where a source has no other artist', function () {
+    $artists = [
+        '/music/before__v1.m4a' => ['X'],
+        '/music/x-1__v1.m4a' => ['X'], '/music/x-2__v1.m4a' => ['X'], '/music/y-1__v1.m4a' => ['Y'],
+        '/music/instrumental/01__v1.m4a' => ['DJ Bitcoin'], '/music/instrumental/02__v1.m4a' => ['DJ Bitcoin'], '/music/instrumental/03__v1.m4a' => ['DJ Bitcoin'],
+        '/music/plebrap/duo__v1.m4a' => ['Q', 'A'], '/music/wavlake/a__v1.m4a' => ['A'], '/music/wavlake/w__v1.m4a' => ['W'],
+        '/music/house-1__v1.m4a' => ['DJ Bitcoin'], '/music/house-2__v1.m4a' => ['DJ Bitcoin'], '/music/k-1__v1.m4a' => ['K'],
+    ];
+    $vocals = ['/music/x-1__v1.m4a', '/music/x-2__v1.m4a', '/music/y-1__v1.m4a'];
+    $wavlake = ['/music/wavlake/a__v1.m4a', '/music/wavlake/w__v1.m4a'];
+    $instrumentals = ['/music/instrumental/01__v1.m4a', '/music/instrumental/02__v1.m4a', '/music/instrumental/03__v1.m4a'];
+    $opensOnX = 0;
+
+    foreach (range(1, 8) as $seed) {
+        // The set follows a track by X (MusicTimeline: the end of the last set): it opens with Y.
+        $spaced = MusicPlaylist::rotate([$vocals, $wavlake], new Randomizer(new Mt19937($seed)), $artists, 1, ['/music/before__v1.m4a']);
+        $opensOnX += $artists[MusicPlaylist::rotate([$vocals, $wavlake], new Randomizer(new Mt19937($seed)))[0]][0] === 'X' ? 1 : 0;
+        // After Q and A's PlebRap track, W's Wavlake track while both are left in the bag.
+        $duo = MusicPlaylist::rotate([['/music/plebrap/duo__v1.m4a'], $wavlake], new Randomizer(new Mt19937($seed)), $artists, 1);
+
+        expect($spaced[0])->toBe('/music/y-1__v1.m4a')
+            ->and($duo[1])->toBe('/music/wavlake/w__v1.m4a');
+    }
+
+    // Every instrumental is the house artist's, as two of the songs: a house song is followed by one anyway, the music
+    // never stops over it, every instrumental still comes round once, and each such bend is counted.
+    $bends = 0;
+    $list = MusicPlaylist::rotate([['/music/house-1__v1.m4a', '/music/house-2__v1.m4a', '/music/k-1__v1.m4a'], $instrumentals], new Randomizer(new Mt19937(5)), $artists, 1, [], $bends);
+    $houseTwice = count(array_filter(range(1, count($list) - 1), fn (int $index): bool => $artists[$list[$index - 1]][0] === $artists[$list[$index]][0]));
+
+    expect($opensOnX)->toBeGreaterThan(0)
+        ->and($list)->toHaveCount(6)
+        ->and(array_values(array_intersect($list, $instrumentals)))->toEqualCanonicalizing($instrumentals)
+        ->and($houseTwice)->toBeGreaterThan(0)
+        ->and($bends)->toBe($houseTwice);
+});
+
 test('a PlebRap name with spaces, apostrophes, umlauts and parentheses is quoted for the concat demuxer', function () {
     $file = "/srv/music/plebrap/20 - Orange Pill 'o' Sophie - Too Bit to Fail (Grüße)__v1.m4a";
 
