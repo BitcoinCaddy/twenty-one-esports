@@ -568,12 +568,14 @@ return [
                 'keep_scene_topics' => ['live_games', 'live_tournament'],
                 // The writer: one model call per script, `turns` turns of up to `sentences_per_turn` sentences.
                 'daily_cap' => (int) env('TV_COMMENTARY_STOCK_DAILY_CAP', 220),
-                'max_output_tokens' => 3000,
+                'max_output_tokens' => (int) env('TV_COMMENTARY_STOCK_MAX_OUTPUT_TOKENS', 24000),
                 // The stock's writer (P21): Sonnet like prod's ESPORTS_VOICE_MODEL, whatever the local default is.
                 'model' => env('TV_COMMENTARY_STOCK_MODEL', 'claude-sonnet-5-5'),
-                // One talk is one block (P21: no second talk glued on to reach a length), so a talk carries its own
-                // length: up to sixteen short turns of quick banter.
-                'turns' => ['min' => 8, 'max' => 16],
+                // One talk is one block (P21: no second talk glued on to reach a length - user 2026-10-16:
+                // "nicht einfach zusammenhangslos zusammenkleben, der Textgenerator muss kontextuell längere
+                // Programmtexte schreiben"), so a talk carries the whole programme's length: one continuous
+                // conversation over many acts (programme_minutes, default 20).
+                'turns' => ['min' => 40, 'max' => 80],
                 // The coherence gate before a draft is queued (StockCoherenceJudge, P21): premise, through-line, payoff,
                 // fit and liveliness 1 to 5; below `min_score` on any, written once more with the judge's hint, then dropped.
                 'judge' => [
@@ -1248,7 +1250,7 @@ return [
             // Banter, not two monologues (plan "TWENTY ONE Radio" P17, user 2026-10-12: "wie echte Programme aus dem Radio"):
             // live 2026-10-12 most duets were one Markus turn and one Sirius turn of three to six sentences; now mostly four to
             // six short turns of one to three sentences, about as many sentences in all.
-            'turns' => ['min' => 2, 'max' => 6],
+            'turns' => ['min' => 2, 'max' => (int) env('TV_COMMENTARY_DUET_TURNS_MAX', 100)],
             'max_run' => 2,
             'stop' => [2 => 0.2, 3 => 0.3, 4 => 0.5, 5 => 0.7, 6 => 1.0],
             'patterns' => [
