@@ -323,6 +323,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Ask Why We Shouldn't Have Money - Black Vulcanite__v1.m4a",
+            "id": "8350e827d6e7",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Ask Why We Shouldn't Have Money",
+            "duration": 179.1,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "2b32809b57e10438",
+            "sha1": "155696f0ee68534d69c28da6826a5232376b7fae",
+            "size": 2994678,
+            "mtime": 1792154789,
+            "credit_source": "manual"
+        },
+        {
             "file": "Babilonios - Cristo Currensi__v1.m4a",
             "id": "0577136cde46",
             "artists": [
@@ -360,6 +377,91 @@
             "wavlake_track_id": "01c0c75f-2f53-4e9c-ba17-a65207c3f406"
         },
         {
+            "file": "Beautiful Melancholia - Black Vulcanite__v1.m4a",
+            "id": "105e08c21beb",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Beautiful Melancholia",
+            "duration": 342.25,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -6.3,
+            "fingerprint": "a28d345cc0547843",
+            "sha1": "2b6a4c436e7ff1c645e6fd59aa212e10da051002",
+            "size": 5659460,
+            "mtime": 1792154602,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Beware Of Cars - Black Vulcanite__v1.m4a",
+            "id": "86f8dacc333e",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Beware Of Cars",
+            "duration": 336.59,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -3.7,
+            "fingerprint": "daa3b08bc3a3b984",
+            "sha1": "a6e23cd75c9a24c70caa279f3e831c838eb6947d",
+            "size": 5629761,
+            "mtime": 1792152775,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Black Colonialists - Black Vulcanite__v1.m4a",
+            "id": "dfccb17f00f9",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Black Colonialists",
+            "duration": 160.1,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -1.5,
+            "fingerprint": "22eb644ed3c8be26",
+            "sha1": "ff15c2f0caf4b6a44c9287e08d196e50c2b5cc56",
+            "size": 2615557,
+            "mtime": 1792152923,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Black Future Super Computer - Black Vulcanite__v1.m4a",
+            "id": "466f9ca6d85a",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Black Future Super Computer",
+            "duration": 270.1,
+            "bitrate": 127,
+            "lufs": -15.2,
+            "true_peak": -2.3,
+            "fingerprint": "73721180fa59caaa",
+            "sha1": "2409e2344c6c3df95c89adbcde60d56f8adfa432",
+            "size": 4335679,
+            "mtime": 1792154561,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Black Narcissism - Black Vulcanite__v1.m4a",
+            "id": "2b94f9710350",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Black Narcissism",
+            "duration": 217.05,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -4.7,
+            "fingerprint": "34b43c842a8b0b52",
+            "sha1": "a0c59a76ba85567b862c2c2edbc0b9208cd10ee3",
+            "size": 3663020,
+            "mtime": 1792152702,
+            "credit_source": "manual"
+        },
+        {
             "file": "Blackbird in the ocean - sabu__v1.m4a",
             "id": "ac261e379a9e",
             "artists": [
@@ -394,6 +496,40 @@
             "credit_source": "manual"
         },
         {
+            "file": "Bonus Track - Big Ego's ft Ruby Burton - Black Vulcanite__v1.m4a",
+            "id": "1ce5758145b4",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Bonus Track - Big Ego's ft Ruby Burton",
+            "duration": 262.32,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "9f586987406bb71f",
+            "sha1": "d9957a4d8c57404006164545e8a73148ba0b294a",
+            "size": 4326533,
+            "mtime": 1792152907,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bonus Track - One Night - Black Vulcanite__v1.m4a",
+            "id": "991de9b61f1d",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Bonus Track - One Night",
+            "duration": 201.25,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.6,
+            "fingerprint": "95b3135cd64c1e88",
+            "sha1": "96bdb3c18a3429f3ba3e6c84d01c3e11bc0cc62e",
+            "size": 3350811,
+            "mtime": 1792152893,
+            "credit_source": "manual"
+        },
+        {
             "file": "Born To Die Young - Joe Martin__v1.m4a",
             "id": "f6a4c80898bb",
             "artists": [
@@ -412,6 +548,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "d2e8e9cc-6f5d-44e6-8144-b7500545fb2d"
+        },
+        {
+            "file": "Brazil (Featuring Star Dust) - Black Vulcanite__v1.m4a",
+            "id": "1b92de2d040d",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Brazil (Featuring Star Dust)",
+            "duration": 310.08,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -5.8,
+            "fingerprint": "127aa32622b50768",
+            "sha1": "5221c9305cbee32c285646e4a6001b68cab0410f",
+            "size": 5136438,
+            "mtime": 1792154700,
+            "credit_source": "manual"
         },
         {
             "file": "Brown Paper Bag - Joe Martin__v1.m4a",
@@ -454,6 +607,23 @@
             "wavlake_track_id": "c4a170ed-71da-4863-9189-8818409789f3"
         },
         {
+            "file": "Check It Out ft Jay Prince - Black Vulcanite__v1.m4a",
+            "id": "e5f00d21d403",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Check It Out ft Jay Prince",
+            "duration": 290.14,
+            "bitrate": 132,
+            "lufs": -15.2,
+            "true_peak": -2.7,
+            "fingerprint": "60fb8abb341ded72",
+            "sha1": "d018c4576aceea3eca604ff599a9e8630553b08d",
+            "size": 4844362,
+            "mtime": 1792152793,
+            "credit_source": "manual"
+        },
+        {
             "file": "Checkmate - Joe Martin__v1.m4a",
             "id": "89f8bfa69646",
             "artists": [
@@ -472,6 +642,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "ace88a9c-bc7b-4663-959f-de61fdd0b869"
+        },
+        {
+            "file": "Clan Of The Dragon Fist - Black Vulcanite__v1.m4a",
+            "id": "20225a8174a5",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Clan Of The Dragon Fist",
+            "duration": 120.07,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -3.4,
+            "fingerprint": "687ece28fe092785",
+            "sha1": "3b5c916aa36bda60f04f7a0407b8db175a0ff1b1",
+            "size": 2027016,
+            "mtime": 1792154720,
+            "credit_source": "manual"
         },
         {
             "file": "Coal Town - Joe Martin__v1.m4a",
@@ -508,6 +695,40 @@
             "sha1": "d5e9d4db23beae4878ab508fee3b0901f638d478",
             "size": 3122821,
             "mtime": 1792148138,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Cosmic Symphony ft Kita Keetz - Black Vulcanite__v1.m4a",
+            "id": "e74ed9f58f9c",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Cosmic Symphony ft Kita Keetz",
+            "duration": 244.87,
+            "bitrate": 130,
+            "lufs": -15.2,
+            "true_peak": -4.1,
+            "fingerprint": "9210ba60ce8e90b5",
+            "sha1": "ffae7f71eb952a84a356968b8b1cf163f1704578",
+            "size": 4020831,
+            "mtime": 1792152834,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Coyote - Black Vulcanite__v1.m4a",
+            "id": "2a06d2aca0df",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Coyote",
+            "duration": 242.85,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -4.6,
+            "fingerprint": "3ae785a10ee53a86",
+            "sha1": "e59cf727739339eefc4c353245b5121230fdf795",
+            "size": 3933630,
+            "mtime": 1792154686,
             "credit_source": "manual"
         },
         {
@@ -662,6 +883,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Do It Again (Featuring Youngsta CPT) - Black Vulcanite__v1.m4a",
+            "id": "4a70969dd3cd",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Do It Again (Featuring Youngsta CPT)",
+            "duration": 138.89,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -4.5,
+            "fingerprint": "63e1a389119b4941",
+            "sha1": "960218df3d650a3eb202990a5ea37e3659d81a87",
+            "size": 2322230,
+            "mtime": 1792154579,
+            "credit_source": "manual"
+        },
+        {
             "file": "Doesn't Rain In LA (set 1) - Joe Martin__v1.m4a",
             "id": "39a44104e20b",
             "artists": [
@@ -719,6 +957,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Drinking Life ft Youngsta - Black Vulcanite__v1.m4a",
+            "id": "28b9978d9e24",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Drinking Life ft Youngsta",
+            "duration": 227.81,
+            "bitrate": 137,
+            "lufs": -15.0,
+            "true_peak": -3.1,
+            "fingerprint": "df044100cf104d70",
+            "sha1": "b5668779f19e8ac8d3f673747df815c3a6035842",
+            "size": 3938699,
+            "mtime": 1792152737,
+            "credit_source": "manual"
+        },
+        {
             "file": "Empty Passenger Seat (set 2) - Joe Martin__v1.m4a",
             "id": "50b5a5aee9e5",
             "artists": [
@@ -773,6 +1028,23 @@
             "sha1": "cf230c71eee4a8708bc3f56ff84e89ada910edc2",
             "size": 3412256,
             "mtime": 1792144222,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Fallen Sun - Black Vulcanite__v1.m4a",
+            "id": "c7d2860c583c",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Fallen Sun",
+            "duration": 172.17,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "fcd3beed4f566eed",
+            "sha1": "31da9d8ecb70cedca76a48cc28a9ce95de62e59e",
+            "size": 2803988,
+            "mtime": 1792152761,
             "credit_source": "manual"
         },
         {
@@ -871,6 +1143,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "a438595c-db68-4e6b-925f-c524b759b2f1"
+        },
+        {
+            "file": "Friends And More - Black Vulcanite__v1.m4a",
+            "id": "4eefbf59c8d8",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Friends And More",
+            "duration": 194.13,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.7,
+            "fingerprint": "4df1ac402847fd3b",
+            "sha1": "7cd59cec7439996f970b79259023281613e74c1b",
+            "size": 3210762,
+            "mtime": 1792154612,
+            "credit_source": "manual"
         },
         {
             "file": "Full Time Dreamer (set 2) - Joe Martin__v1.m4a",
@@ -1067,6 +1356,91 @@
             "wavlake_track_id": "3928208d-2bf1-4255-aa0d-6ab287e913ac"
         },
         {
+            "file": "Highschool Cool - Black Vulcanite__v1.m4a",
+            "id": "e38b099dcb85",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Highschool Cool",
+            "duration": 167.29,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "875efb07b5c23c44",
+            "sha1": "c344c2d737298f9d1bde12258613a5395b579214",
+            "size": 2728945,
+            "mtime": 1792154746,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Hip Hop - Black Vulcanite__v1.m4a",
+            "id": "e46c025f190f",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Hip Hop",
+            "duration": 235.33,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "509616b0f99553a1",
+            "sha1": "ac95f197f92fb0f3a9ac80c1c4217c7e29f00edc",
+            "size": 3845797,
+            "mtime": 1792154731,
+            "credit_source": "manual"
+        },
+        {
+            "file": "How To Rap About Africa - Black Vulcanite__v1.m4a",
+            "id": "369b5774c2fe",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "How To Rap About Africa",
+            "duration": 179.41,
+            "bitrate": 132,
+            "lufs": -15.4,
+            "true_peak": -4.4,
+            "fingerprint": "0f1296391ee648e6",
+            "sha1": "51959f9c31277ff56e9dbc718b83a5488e76083f",
+            "size": 3003567,
+            "mtime": 1792154663,
+            "credit_source": "manual"
+        },
+        {
+            "file": "I Hope They Write - Black Vulcanite__v1.m4a",
+            "id": "f6f1f2fcd011",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "I Hope They Write",
+            "duration": 300.36,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -3.7,
+            "fingerprint": "1ce5f26f307358a6",
+            "sha1": "c29ab97878cf355d20ad81c3e9747a90fc8eee40",
+            "size": 5011192,
+            "mtime": 1792152718,
+            "credit_source": "manual"
+        },
+        {
+            "file": "If It's Not You - Black Vulcanite__v1.m4a",
+            "id": "3ab9c024eddc",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "If It's Not You",
+            "duration": 230.1,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -1.9,
+            "fingerprint": "8b57511b17778c65",
+            "sha1": "b539798c9fce6425ac99daabccc2344cf37806c0",
+            "size": 3798409,
+            "mtime": 1792154775,
+            "credit_source": "manual"
+        },
+        {
             "file": "Interoception - Under The Mulga Groove__v1.m4a",
             "id": "3415dc0f2193",
             "artists": [
@@ -1101,6 +1475,23 @@
             "sha1": "b9a7d834be236762c0fdb8d3c5729891d63297b4",
             "size": 3560144,
             "mtime": 1792142755,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Jupiter's Love - Black Vulcanite__v1.m4a",
+            "id": "4010370700a0",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Jupiter's Love",
+            "duration": 205.91,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -5.2,
+            "fingerprint": "b181c202273089f5",
+            "sha1": "9b5b6519675fc003b6469a29a4908dcbec5ad888",
+            "size": 3397838,
+            "mtime": 1792154587,
             "credit_source": "manual"
         },
         {
@@ -1142,6 +1533,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "df118be8-e1f3-46cb-8cfb-362376577a6c"
+        },
+        {
+            "file": "Kaneda And The Youth - Black Vulcanite__v1.m4a",
+            "id": "92af8de9a207",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Kaneda And The Youth",
+            "duration": 128.57,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -7.0,
+            "fingerprint": "f3e12cad43bffad9",
+            "sha1": "96eff1f0301ecbdce76f58e258579b07f934a5e3",
+            "size": 2106491,
+            "mtime": 1792154738,
+            "credit_source": "manual"
         },
         {
             "file": "Killing Me Slowly (set 1) - Joe Martin__v1.m4a",
@@ -1201,6 +1609,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Lady In The Blue Dress - Black Vulcanite__v1.m4a",
+            "id": "0f880be7aea5",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Lady In The Blue Dress",
+            "duration": 89.2,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "05fa8401364b159d",
+            "sha1": "78baf6763e8479c7aa62aad67f2a84dc7fd4afb6",
+            "size": 1468031,
+            "mtime": 1792152807,
+            "credit_source": "manual"
+        },
+        {
             "file": "Leave The Porch Light Low - Under The Mulga Groove__v1.m4a",
             "id": "7ff8cd1294e7",
             "artists": [
@@ -1219,6 +1644,23 @@
             "qr_target": "https://wavlake.com/track/27a9ff24-12d5-4931-b81c-e907ef601790",
             "qr_kind": "wavlake",
             "wavlake_track_id": "27a9ff24-12d5-4931-b81c-e907ef601790"
+        },
+        {
+            "file": "Let It Be ft Rafael & Quido - Black Vulcanite__v1.m4a",
+            "id": "85b619c1501d",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Let It Be ft Rafael & Quido",
+            "duration": 247.33,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "514bef155c1f8801",
+            "sha1": "add98e594936e035338e6cb08faf92d42ae82a98",
+            "size": 4087773,
+            "mtime": 1792152856,
+            "credit_source": "manual"
         },
         {
             "file": "Letters Of Regret (set 1) - Joe Martin__v1.m4a",
@@ -1526,6 +1968,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Nostalgia - Black Vulcanite__v1.m4a",
+            "id": "a28b07cc47f1",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Nostalgia",
+            "duration": 148.77,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "21128daf0bde9d73",
+            "sha1": "34a6795fd6efaab7f7456d407901fc24c4124a9f",
+            "size": 2471018,
+            "mtime": 1792152815,
+            "credit_source": "manual"
+        },
+        {
             "file": "OFFCHAIN 2030 feat. Yin & John Perry Barlow - Cristo Currensi__v1.m4a",
             "id": "aa94f87d48b5",
             "artists": [
@@ -1557,6 +2016,40 @@
             "sha1": "8cb9a42c7259a4b439b4de09d6dbdb90d784637c",
             "size": 1848553,
             "mtime": 1792144429,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Playing With Dolls - Black Vulcanite__v1.m4a",
+            "id": "a2ff9e146800",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Playing With Dolls",
+            "duration": 263.73,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "ed0113a821933212",
+            "sha1": "9bd3182ad60f742b7c7f5a892e2927be13dbd203",
+            "size": 4289355,
+            "mtime": 1792154633,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Reparations - Black Vulcanite__v1.m4a",
+            "id": "c66f03c706ba",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Reparations",
+            "duration": 256.6,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -5.3,
+            "fingerprint": "61f71e67f4947ba8",
+            "sha1": "ca53159ba114206d7610fca6d826eadde2449d08",
+            "size": 4223834,
+            "mtime": 1792154674,
             "credit_source": "manual"
         },
         {
@@ -1659,6 +2152,23 @@
             "sha1": "4dd40cbf4f6e78d24171a9d02d06aff15d8b11d8",
             "size": 1495930,
             "mtime": 1792144815,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Semper Fidelis - Black Vulcanite__v1.m4a",
+            "id": "3edf582b46b1",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Semper Fidelis",
+            "duration": 247.49,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.4,
+            "fingerprint": "a906bf7ca5929dac",
+            "sha1": "4ff753e5cf1ed1a88bdfa9fc3a66ca139f70f36b",
+            "size": 4104177,
+            "mtime": 1792152880,
             "credit_source": "manual"
         },
         {
@@ -1810,6 +2320,23 @@
             "wavlake_track_id": "b07bb6c2-00be-4a4d-96d5-79477d754d21"
         },
         {
+            "file": "Smooth As A Mutha - Black Vulcanite__v1.m4a",
+            "id": "06e42a1d064e",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Smooth As A Mutha",
+            "duration": 250.07,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "d08d18c988abc627",
+            "sha1": "491a1d89bf767525b085ff156fa0ec25328ee4cc",
+            "size": 4177590,
+            "mtime": 1792154572,
+            "credit_source": "manual"
+        },
+        {
             "file": "Sticky Carpet Cosmos - Under The Mulga Groove__v1.m4a",
             "id": "9f68983f8c1f",
             "artists": [
@@ -1930,6 +2457,23 @@
             "wavlake_track_id": "c5ea0863-f82f-4644-9a48-8c682751db02"
         },
         {
+            "file": "That's How I Feel - Black Vulcanite__v1.m4a",
+            "id": "c15470ce3499",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "That's How I Feel",
+            "duration": 88.1,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "71626710ef30a829",
+            "sha1": "0b6c0909847704c21f0444050d4a431141e441d3",
+            "size": 1446093,
+            "mtime": 1792152844,
+            "credit_source": "manual"
+        },
+        {
             "file": "The Chair Beside Me - Under The Mulga Groove__v1.m4a",
             "id": "b5fb67f8168e",
             "artists": [
@@ -1945,6 +2489,23 @@
             "size": 3993546,
             "mtime": 1792102377,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "The Clock - Black Vulcanite__v1.m4a",
+            "id": "ab7cd3c14691",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "The Clock",
+            "duration": 167.97,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -4.7,
+            "fingerprint": "6a1bbe5190eea9f8",
+            "sha1": "cce5035f7e5d8f35d39c791a72ae33e4891da0c2",
+            "size": 2839841,
+            "mtime": 1792152934,
+            "credit_source": "manual"
         },
         {
             "file": "The Jetsons - Joe Martin__v1.m4a",
@@ -1982,6 +2543,57 @@
             "size": 4375945,
             "mtime": 1792102420,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "Time Goes By ft Yuppie DaRapper - Black Vulcanite__v1.m4a",
+            "id": "5c2dc70e88ef",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Time Goes By ft Yuppie DaRapper",
+            "duration": 237.35,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.2,
+            "fingerprint": "3d99158259f8e52f",
+            "sha1": "05ac0bd82bed20009054ee5a4a5b35efd67d2d38",
+            "size": 3902321,
+            "mtime": 1792152867,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Visions ft Sandra Amarie & Tanya Dirango - Black Vulcanite__v1.m4a",
+            "id": "99c89687cc60",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Visions ft Sandra Amarie & Tanya Dirango",
+            "duration": 268.83,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -4.0,
+            "fingerprint": "c2de287b4cf7e4aa",
+            "sha1": "be9e8f0eeb65ab1a4ffdcd171a12b85e85bae0cc",
+            "size": 4459199,
+            "mtime": 1792152752,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Waiting For God (Featuring Star Dust) - Black Vulcanite__v1.m4a",
+            "id": "974827d92560",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Waiting For God (Featuring Star Dust)",
+            "duration": 263.03,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.1,
+            "fingerprint": "ad80968d614c91b5",
+            "sha1": "da0818240fa44734e81df8a45830d51877bd98b6",
+            "size": 4381247,
+            "mtime": 1792154650,
+            "credit_source": "manual"
         },
         {
             "file": "Want You To Stay - Joe Martin__v1.m4a",
@@ -2056,6 +2668,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "7e7b0937-e472-4c46-b532-15cb5bb0b579"
+        },
+        {
+            "file": "Wayward Soul (Featuring Harry) - Black Vulcanite__v1.m4a",
+            "id": "c3d7bc133897",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Wayward Soul (Featuring Harry)",
+            "duration": 243.97,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -2.1,
+            "fingerprint": "d8c53efec8e9a6ed",
+            "sha1": "d7b8e3cddf409d242ecd9b36b675349fa1c59db2",
+            "size": 4129711,
+            "mtime": 1792154713,
+            "credit_source": "manual"
         },
         {
             "file": "When I Die - Under The Mulga Groove__v1.m4a",
@@ -2189,6 +2818,23 @@
             "sha1": "e393c531c909d2dbd19f61ec7bd429cbd92ede61",
             "size": 2902754,
             "mtime": 1792148202,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Yardie - Black Vulcanite__v1.m4a",
+            "id": "84a7a64d7e8d",
+            "artists": [
+                "black-vulcanite"
+            ],
+            "title": "Yardie",
+            "duration": 216.59,
+            "bitrate": 127,
+            "lufs": -15.1,
+            "true_peak": -5.8,
+            "fingerprint": "c9ca2e634a1b47b0",
+            "sha1": "5a2e5223a8da91ae002a4d03caa731b31c8cf720",
+            "size": 3470688,
+            "mtime": 1792154622,
             "credit_source": "manual"
         },
         {
