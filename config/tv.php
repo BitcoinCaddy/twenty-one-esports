@@ -571,6 +571,10 @@ return [
                 'max_output_tokens' => (int) env('TV_COMMENTARY_STOCK_MAX_OUTPUT_TOKENS', 24000),
                 // The stock's writer (P21): Sonnet like prod's ESPORTS_VOICE_MODEL, whatever the local default is.
                 'model' => env('TV_COMMENTARY_STOCK_MODEL', 'claude-sonnet-5-5'),
+                // At most this many whole-programme writes an hour (live 2026-10-16): one such write holds the
+                // writer and the gateway for minutes at a time, and the day's fresh programme (the shows, the
+                // bulletins) must never queue behind them. 0 is not a stop: at least one write an hour goes out.
+                'writes_per_hour' => (int) env('TV_COMMENTARY_STOCK_WRITES_PER_HOUR', 2),
                 // One talk is one block (P21: no second talk glued on to reach a length - user 2026-10-16:
                 // "nicht einfach zusammenhangslos zusammenkleben, der Textgenerator muss kontextuell längere
                 // Programmtexte schreiben"), so a talk carries the whole programme's length: one continuous
@@ -971,7 +975,9 @@ return [
                 ],
                 'max_output_tokens' => 6_000,
                 // A five-minute show is about a thousand words: longer to write than `esports.voice.timeout_seconds` allows a post.
-                'timeout_seconds' => (int) env('TV_COMMENTARY_SHOWS_TIMEOUT', 90),
+                // 240 s, not 90 (live 2026-10-16): the gateway answered a segment's prompt in 100 to 240 s, and the
+                // friedhof's segments died at the old default until the slot passed - 7 attempts, 1 accepted, no show.
+                'timeout_seconds' => (int) env('TV_COMMENTARY_SHOWS_TIMEOUT', 240),
                 // A long show is written in segments (ShowScripts::inSegments()): six to twelve calls a show.
                 'daily_cap' => (int) env('TV_COMMENTARY_SHOWS_DAILY_CAP', 120),
                 'formats' => [
@@ -1007,7 +1013,7 @@ return [
                     // times a day. Its own usage channel and `daily_cap`, `timeout_seconds` for the long write.
                     'stammtisch' => ['seconds' => ['min' => 360, 'max' => 600], 'sentences' => ['min' => 55, 'max' => 110], 'speakers' => ['markus', 'sirius', 'genossin'],
                         'sentences_per_turn' => 3, 'min_words' => 3, 'host_moves' => 14, 'host_question_share' => 0.6, 'min_turns' => 6, 'turn_gap_ms' => ['min' => 450, 'max' => 800], 'interrupt_gap_ms' => 250, 'max_interruptions' => 2, 'long_gap_ms' => ['min' => 1000, 'max' => 1400], 'headline_hours' => 24, 'repeat_days' => 2, 'write_minutes_ahead' => 120, 'stock_per_day' => 2,
-                        'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 60), 'timeout_seconds' => 180, 'max_output_tokens' => 9_000,
+                        'daily_cap' => (int) env('TV_COMMENTARY_TALKSHOW_DAILY_CAP', 60), 'timeout_seconds' => 240, 'max_output_tokens' => 9_000,
                         // P20 (user 2026-10-13: "wenn im Programm steht TalkShow von 19:00 bis 19:30, dann muss die TalkShow auch 30
                         // min gehen!"): the talk owns a window of `slot_minutes` (BroadcastClock: no headlines inside it) and fills it
                         // to `slot_margin_seconds` short of its end on air (TalkShow::airSeconds(): `air_words_per_second`, the turn

@@ -423,6 +423,59 @@ it('writes stock talks ahead only in the stock window and while the workstation 
     expect($queue->fillStock(CarbonImmutable::now()))->toBe(0);
 });
 
+it('writes no stock while a show window is open: the writer belongs to the show (live 2026-10-16)', function () {
+    config(['tv.commentary.blocks.stock.formats' => ['tutorial'], 'tv.commentary.blocks.stock.judge.enabled' => false, 'tv.commentary.blocks.stock.turns' => ['min' => 2, 'max' => 10],
+        'tv.commentary.programme.enabled' => true, 'tv.commentary.news.enabled' => true, 'tv.commentary.programme.shows.enabled' => true,
+        'tv.commentary.programme.rubrics.enabled' => true]);
+    Http::fake([
+        'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title>'
+            .'<item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
+        'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud: Wer seine Worter fotografiert, schenkt sie dem nachsten Datenleck. Metall ubersteht sogar einen Wohnungsbrand, Papier nicht. Ein Bierdeckel ist ubrigens keine Aufbewahrung.</p></article></html>'),
+    ]);
+    VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(false), 'canon_id' => null, 'mood' => 'fakten']);
+    $queue = app(ScriptQueue::class);
+    $stockTalks = fn (): int => CasterScript::query()->where('scene', StockScripts::SCENE)->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count();
+
+    // 08:40 Berlin, the stock window open and the workstation reports room: the jahrestag of 10:03 is inside its
+    // 90-minute write window and not written, so the stock writer waits.
+    $this->travelTo(CarbonImmutable::parse('2026-10-13 08:40', 'Europe/Berlin'));
+    DayStock::rememberReport('100.0;0', CarbonImmutable::now());
+    expect($queue->fillStock(CarbonImmutable::now()))->toBe(0)
+        ->and($stockTalks())->toBe(0);
+
+    // The show written (the slot's script exists): the stock writes again.
+    CasterScript::create(['kind' => CasterScript::RUBRIC, 'phase' => 'break', 'status' => CasterScript::QUEUED, 'source' => 'ai', 'topic' => 'jahrestag',
+        'text' => 'Markus: Die Bitcoin-Zeitreise steht.', 'facts_hash' => 'show-window-open-1', 'priority' => 70, 'estimated_seconds' => 30,
+        'expires_at' => CarbonImmutable::parse('2026-10-13 10:10', 'Europe/Berlin')->utc(),
+        'airs_at' => CarbonImmutable::parse('2026-10-13 10:03', 'Europe/Berlin')->utc(), 'speakers' => ['markus', 'sirius']]);
+    expect($queue->fillStock(CarbonImmutable::now()))->toBe(1)
+        ->and($stockTalks())->toBe(1);
+});
+
+it('caps the stock writes per hour: one whole-programme write holds the writer for minutes', function () {
+    config(['tv.commentary.blocks.stock.formats' => ['tutorial'], 'tv.commentary.blocks.stock.judge.enabled' => false, 'tv.commentary.blocks.stock.turns' => ['min' => 2, 'max' => 10],
+        'tv.commentary.blocks.stock.writes_per_hour' => 1]);
+    Http::fake([
+        'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title>'
+            .'<item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
+        'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud: Wer seine Worter fotografiert, schenkt sie dem nachsten Datenleck. Metall ubersteht sogar einen Wohnungsbrand, Papier nicht. Ein Bierdeckel ist ubrigens keine Aufbewahrung.</p></article></html>'),
+    ]);
+    VoiceAgent::fake(fn (): array => ['text' => dayStockAnswer(false), 'canon_id' => null, 'mood' => 'fakten']);
+    $queue = app(ScriptQueue::class);
+
+    // 03:00 Berlin, room reported: the first programme of the hour writes, the second waits (one queued, so the
+    // two-queued guard alone would let it through).
+    $this->travelTo(CarbonImmutable::parse('2026-10-13 03:00', 'Europe/Berlin'));
+    DayStock::rememberReport('100.0;0', CarbonImmutable::now());
+    expect($queue->fillStock(CarbonImmutable::now()))->toBe(1)
+        ->and($queue->fillStock(CarbonImmutable::now()))->toBe(0);
+
+    // An hour past the first write: the next programme goes out.
+    $this->travelTo(CarbonImmutable::parse('2026-10-13 04:01', 'Europe/Berlin'));
+    DayStock::rememberReport('100.0;0', CarbonImmutable::now());
+    expect($queue->fillStock(CarbonImmutable::now()))->toBe(1);
+});
+
 it('answers a chat reaction in the middle of a stock render: fresh items keep the GPU', function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-13 03:00', 'Europe/Berlin'));
     config(['tv.commentary.blocks.stock.seconds' => ['min' => 1, 'max' => 60], 'tv.commentary.blocks.urgent_poll_seconds' => 0]);

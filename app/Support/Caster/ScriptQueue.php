@@ -185,7 +185,6 @@ class ScriptQueue
         // 40-70 s, and nginx killed every such claim with a 502 - the GPU stayed idle all night). fillStock's own
         // gates (window, report, library target) decide; the claim only hands out what is queued.
         $written += $this->fillStock($now);
-        $written += $this->fillStock($now);
         $written += $this->fillPodcast($now);
 
         $settings = (array) config('tv.commentary.scripts', []);
@@ -301,12 +300,53 @@ class ScriptQueue
     public function fillStock(CarbonImmutable $now): int
     {
         if (! DayPlanner::writeStockAhead($now, DayStock::report())
+            // A long format's write window is open: the writer belongs to the show, the stock waits (live
+            // 2026-10-16: one whole-programme stock write holds the writer for minutes, and the day's shows
+            // expired unwritten behind them).
+            || self::showWriteOpen($now)
             || CasterScript::query()->where('scene', StockScripts::SCENE)->where('status', CasterScript::QUEUED)->where('expires_at', '>', $now)
-                ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count() >= 2) {
+                ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count() >= 2
+            // At most `writes_per_hour` programmes an hour (live 2026-10-16): a whole-programme write holds the
+            // writer and the gateway for minutes, and the fresh programme must not queue behind it.
+            || CasterScript::query()->where('scene', StockScripts::SCENE)->where('created_at', '>=', $now->subHour())
+                ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count()
+                >= max(1, (int) config('tv.commentary.blocks.stock.writes_per_hour', 2))) {
             return 0;
         }
 
         return $this->writeStock($now) !== null ? 1 : 0;
+    }
+
+    /**
+     * Whether a long format's write window is open: a show slot the schedule owns, within its `write_minutes_ahead`
+     * and not written yet (the same slot fillRubric() would write). While one is, the stock writer waits, so a
+     * show's segments are never queued behind a whole-programme stock write.
+     */
+    private static function showWriteOpen(CarbonImmutable $now): bool
+    {
+        if (config('tv.commentary.programme.shows.enabled') !== true) {
+            return false;
+        }
+
+        $furthest = max(1, ...array_values(array_map(
+            fn (mixed $format): int => is_array($format) ? (int) ($format['write_minutes_ahead'] ?? 0) : 0,
+            (array) config('tv.commentary.programme.shows.formats', []),
+        )));
+
+        foreach (BroadcastClock::fromConfig()->upcoming($now, $furthest) as $slot) {
+            if ($slot['type'] !== BroadcastClock::RUBRIC) {
+                continue;
+            }
+
+            $show = app(Shows::class)->scheduledFor($slot);
+            $ahead = $slot['key'] - $now->getTimestamp();
+
+            if ($show !== null && $ahead <= 60 * (int) (Shows::settings($show)['write_minutes_ahead'] ?? 0) && ! Rubrics::written($slot['key'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
