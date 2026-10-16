@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Process;
 /**
  * Draws the QR code of every music credit's target (MusicCredits) into resources/stream/qr/music, as the stream's
  * other codes are made (resources/stream/qr/README.md: qrencode, EC level M, no margin, modules #17120A on white),
- * and removes codes no credit uses any more. Run after the music indexes change, commit the files: the daemon never
+ * and removes codes no credit uses any more. The credits come from the music catalog (MusicCatalog). Run after the
+ * catalog changes, commit the files: the daemon never
  * encodes at render time (NowPlaying shows no card for a target without its code).
  */
 #[Signature('twentyone:music-qr {--qrencode=qrencode : The qrencode binary}')]
@@ -40,11 +41,10 @@ class TwentyOneMusicQrCommand extends Command
                 continue;
             }
 
-            $run = Process::run([(string) $this->option('qrencode'), '-t', 'SVG', '--svg-path', '-l', 'M', '-m', '0', '-s', '1',
-                '--foreground=17120A', '--background=FFFFFF', '-o', $path, MusicCredits::qrPayload($credit['target'], $credit['kind'])]);
+            $error = self::draw($credit['target'], $credit['kind'], (string) $this->option('qrencode'));
 
-            if ($run->failed()) {
-                $this->error('qrencode failed for '.$credit['artist'].': '.trim($run->errorOutput()));
+            if ($error !== null) {
+                $this->error('qrencode failed for '.$credit['artist'].': '.$error);
 
                 return self::FAILURE;
             }
@@ -64,5 +64,24 @@ class TwentyOneMusicQrCommand extends Command
         $this->info(sprintf('Music QR codes: %d drawn, %d kept, %d removed.', $drawn, count($wanted) - $drawn, $removed));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Draws the code of one target unless it is drawn already (twentyone:music-add uses it for a new song); the
+     * error of qrencode, null on success.
+     */
+    public static function draw(string $target, string $kind, string $qrencode = 'qrencode'): ?string
+    {
+        $path = MusicCredits::qrFile($target, $kind);
+
+        if (is_file($path)) {
+            return null;
+        }
+
+        File::ensureDirectoryExists(dirname($path));
+        $run = Process::run([$qrencode, '-t', 'SVG', '--svg-path', '-l', 'M', '-m', '0', '-s', '1',
+            '--foreground=17120A', '--background=FFFFFF', '-o', $path, MusicCredits::qrPayload($target, $kind)]);
+
+        return $run->failed() ? trim($run->errorOutput()) : null;
     }
 }
