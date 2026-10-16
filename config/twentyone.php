@@ -227,6 +227,9 @@ return [
             'catalog' => env('TWENTYONE_STREAM_MUSIC_CATALOG') ?: resource_path('data/music/catalog.json'),
             // Tracks at least between two of the same artist in the artist cycle, at least 1 (never twice in a row).
             'artist_gap' => (int) env('TWENTYONE_STREAM_MUSIC_ARTIST_GAP', 1),
+            // An artist plays only with at least this many songs in the library (user 2026-10-16: artists with five
+            // or fewer songs sit out until they have more; a single song would play every round).
+            'min_artist_tracks' => (int) env('TWENTYONE_STREAM_MUSIC_MIN_ARTIST_TRACKS', 6),
             // Fresh rounds for three days: an encoder that runs that long without a restart still hears no repeat.
             'list_hours' => 72,
             // How many times over the list is written (72 h x 2 = 6 days before an encoder would run out of music).

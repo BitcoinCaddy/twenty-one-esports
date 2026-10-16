@@ -178,6 +178,8 @@ final class MusicTimeline
     private function cycle(array $entries, float $anchor, float $now, float $hours, array $pool, array $durations, mixed $kept, int $gap, Randomizer $random): array
     {
         $byArtist = $this->byArtist($pool);
+        // What plays: the files of the artists that take part (an artist below min_artist_tracks sits out).
+        $pool = array_merge(...array_values($byArtist));
         $inPool = array_flip($pool);
         $heard = [];
         $starts = [];
@@ -333,6 +335,16 @@ final class MusicTimeline
     /**
      * The configured artist gap (`twentyone.stream.music.artist_gap`), at least 1; 1 where no config can be read.
      */
+    /** The configured `min_artist_tracks`, at least 1; 1 (everyone plays) where no config can be read. */
+    private static function minArtistTracks(): int
+    {
+        try {
+            return max(1, (int) config('twentyone.stream.music.min_artist_tracks', 6));
+        } catch (Throwable) {
+            return 1;
+        }
+    }
+
     private function gap(): int
     {
         try {
@@ -365,7 +377,18 @@ final class MusicTimeline
             $byArtist[$artist === '' ? MusicPlaylist::UNKNOWN_ARTIST : $artist][] = $file;
         }
 
-        return $byArtist;
+        // An artist with only a few songs would repeat them every round (user 2026-10-16: "Wenn wir von einem Artist
+        // nur einen einzelnen Track haben, dann wird dieser ganz oft gespielt. Diese Artists schalten wir erstmal ab,
+        // so lange wir nicht mehr als 5 Songs von ihnen haben"): they sit out until they have `min_artist_tracks`.
+        // Never down to fewer than two artists: then everyone plays.
+        $min = self::minArtistTracks();
+        $enough = array_filter($byArtist, fn (array $files): bool => count($files) >= $min);
+
+        if (count($enough) < count($byArtist)) {
+            self::warnOnce('min-tracks', sprintf('music: %d artists with fewer than %d songs sit out: %s', count($byArtist) - count($enough), $min, implode(', ', array_keys(array_diff_key($byArtist, $enough)))));
+        }
+
+        return count($enough) >= 2 ? $enough : $byArtist;
     }
 
     /**

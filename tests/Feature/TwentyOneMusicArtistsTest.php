@@ -3,6 +3,7 @@
 use App\Support\TwentyOne\Stream\MusicCredits;
 use App\Support\TwentyOne\Stream\MusicPlaylist;
 use App\Support\TwentyOne\Stream\MusicTimeline;
+use Illuminate\Support\Facades\File;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 
@@ -51,5 +52,38 @@ test('the timeline reads its artist gap from the config, a changed gap starts no
             ->and(count($broken['files']))->toBeGreaterThanOrEqual(30);
     } finally {
         exec('rm -rf '.escapeshellarg($dir));
+    }
+});
+
+test('an artist with fewer than min_artist_tracks songs sits out of the cycle and plays again once they have enough', function () {
+    $dir = sys_get_temp_dir().'/music-min-'.bin2hex(random_bytes(4));
+    mkdir($dir);
+    $make = function (string $artist, int $count) use ($dir): array {
+        $files = [];
+
+        foreach (range(1, $count) as $number) {
+            touch($files[] = "{$dir}/{$artist}-{$number}__v1.m4a");
+        }
+
+        return $files;
+    };
+    $artist = fn (string $file): string => explode('-', basename($file))[0];
+    $timeline = fn (): MusicTimeline => new MusicTimeline($dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist);
+    $pool = [...$make('A', 6), ...$make('B', 6), ...$make('Single', 1), ...$make('Few', 5)];
+
+    try {
+        config(['twentyone.stream.music.min_artist_tracks' => 6]);
+        $artists = array_unique(array_map($artist, $timeline()->from([], [], 1, 1000.0, 2, new Randomizer(new Mt19937(1)), [], [3, 5], [$pool])['files']));
+
+        // Few reaches six songs: it joins without anything starting over.
+        $pool[] = $dir.'/Few-6__v1.m4a';
+        touch($dir.'/Few-6__v1.m4a');
+        $later = $timeline()->from([], [], 1, 1500.0, 3, new Randomizer(new Mt19937(2)), [], [3, 5], [$pool]);
+
+        expect($artists)->toEqualCanonicalizing(['A', 'B'])
+            ->and($later['restarted'])->toBeFalse()
+            ->and(array_unique(array_map($artist, $later['files'])))->toContain('Few')->not->toContain('Single');
+    } finally {
+        File::deleteDirectory($dir);
     }
 });
