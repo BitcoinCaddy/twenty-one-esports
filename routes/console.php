@@ -859,6 +859,11 @@ if (app(GameRegistry::class)->find(TrackmaniaNationsForever::SLUG) !== null) {
 // writer for hours: no bulletins, no shows, the radio fell back to music). A legitimate show write runs
 // minutes, never close to thirty.
 Schedule::command('caster:script')->everyMinute()->withoutOverlapping(30)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
+// The news in their own lane (live 2026-10-16): a long write inside caster:script - a talk show's acts ran
+// fifty minutes - held the writer past the bulletin window, and the 16:30/17:00 Berlin news never aired.
+// This lane writes nothing but the next bulletin, in parallel; fillBulletin's hash check keeps the lanes
+// from writing one slot twice.
+Schedule::command('caster:bulletin')->everyMinute()->withoutOverlapping(10)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.news.enabled') === true);
 // Every ten seconds (user 2026-10-15: reactions must reach the air at once): a chat line is seen within seconds, not
 // up to a minute, and the workstation voices it while it is fresh.
 Schedule::command('caster:chat')->everyTenSeconds()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
