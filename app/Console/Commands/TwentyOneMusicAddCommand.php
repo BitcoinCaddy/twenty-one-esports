@@ -36,6 +36,17 @@ class TwentyOneMusicAddCommand extends Command
 {
     public function handle(AudioProbe $probe, LoudnessNormalizer $normalizer): int
     {
+        // The duplicate check votes over every fingerprint of the library; past ~440 tracks it outgrows the CLI
+        // default of 128 MB (measured 2026-10-16), as twentyone:music-duplicates does.
+        $limit = (string) ini_get('memory_limit');
+        $bytes = (int) $limit * match (strtoupper(substr($limit, -1))) {
+            'G' => 1024 ** 3, 'M' => 1024 ** 2, 'K' => 1024, default => 1
+        };
+
+        if ($limit !== '-1' && $bytes < 1024 ** 3) {
+            ini_set('memory_limit', '1G');
+        }
+
         $file = (string) $this->argument('file');
         $dir = rtrim((string) ($this->option('dir') ?: config('twentyone.stream.music.dir')), '/');
         $artist = trim((string) $this->option('artist'));
