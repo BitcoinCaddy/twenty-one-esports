@@ -53,6 +53,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "25 Girasoles feat. BRADL3Y 🌻 - Cristo Currensi__v1.m4a",
+            "id": "faf586a26fdb",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "25 Girasoles feat. BRADL3Y 🌻",
+            "duration": 172.29,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.2,
+            "fingerprint": "6f6b6c883e2049fd",
+            "sha1": "ce0084009e215c600322acdc4066d25d808909f1",
+            "size": 2839328,
+            "mtime": 1792148211,
+            "credit_source": "manual"
+        },
+        {
             "file": "942298 - sabu__v1.m4a",
             "id": "84e319ed9f2a",
             "artists": [
@@ -88,6 +105,23 @@
             "qr_target": "https://wavlake.com/track/f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c",
             "qr_kind": "wavlake",
             "wavlake_track_id": "f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c"
+        },
+        {
+            "file": "ALELUYA - Cristo Currensi__v1.m4a",
+            "id": "68517087af89",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "ALELUYA",
+            "duration": 150.98,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.3,
+            "fingerprint": "cc8b28a4819f513c",
+            "sha1": "e81e38e2bf39fc9b3c1f810b53066e555d251a7b",
+            "size": 2516570,
+            "mtime": 1792148221,
+            "credit_source": "manual"
         },
         {
             "file": "All Day Calm Demeanors - Trance version - sabu__v1.m4a",
@@ -309,6 +343,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Babilonios - Cristo Currensi__v1.m4a",
+            "id": "0577136cde46",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Babilonios",
+            "duration": 181.8,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "5e01c56d64574fad",
+            "sha1": "4179a7d498af388cf07b1dabec05881bfef57935",
+            "size": 3004927,
+            "mtime": 1792148279,
+            "credit_source": "manual"
+        },
+        {
             "file": "Backseat Driver - Joe Martin__v1.m4a",
             "id": "cdd11b06e4ac",
             "artists": [
@@ -363,6 +414,23 @@
             "sha1": "ab2bd322b402986ffc5ca7c5a1bc2318064fa486",
             "size": 3125224,
             "mtime": 1792144507,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bloque Génesis - Cristo Currensi__v1.m4a",
+            "id": "26ff1a3d8c2b",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Bloque Génesis",
+            "duration": 229.55,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "a76327d999499feb",
+            "sha1": "b09b86cacd7445f8a0096d529b74e41fcc19197b",
+            "size": 3832350,
+            "mtime": 1792148257,
             "credit_source": "manual"
         },
         {
@@ -466,6 +534,23 @@
             "wavlake_track_id": "b7454718-a5c4-4479-a988-237095c1f4a9"
         },
         {
+            "file": "Connecting Nodes (prod. Louie On The Beat) - Cristo Currensi__v1.m4a",
+            "id": "ba52b2f20505",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Connecting Nodes (prod. Louie On The Beat)",
+            "duration": 187.62,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "c98e8ae29f167786",
+            "sha1": "d5e9d4db23beae4878ab508fee3b0901f638d478",
+            "size": 3122821,
+            "mtime": 1792148138,
+            "credit_source": "manual"
+        },
+        {
             "file": "Crocodile Tears - Joe Martin__v1.m4a",
             "id": "5a27991a6fb7",
             "artists": [
@@ -484,6 +569,40 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "13817895-bda8-4f5a-8a1a-8f7a5fd2185c"
+        },
+        {
+            "file": "Crypto - Cristo Currensi__v1.m4a",
+            "id": "d988b032ffc4",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Crypto",
+            "duration": 210.0,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.6,
+            "fingerprint": "3b469a6df2b6dcf2",
+            "sha1": "075714f2c9b52f252b2700ab878613ba6fd9b2ff",
+            "size": 3458207,
+            "mtime": 1792148267,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Cypher Nuestro - Cristo Currensi__v1.m4a",
+            "id": "71da2ce21079",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Cypher Nuestro",
+            "duration": 48.0,
+            "bitrate": 128,
+            "lufs": -14.9,
+            "true_peak": -5.6,
+            "fingerprint": "7d99185244d764b6",
+            "sha1": "d8882e7868c73e06b7bd606e5757a0a05dd72df5",
+            "size": 779885,
+            "mtime": 1792148236,
+            "credit_source": "manual"
         },
         {
             "file": "Daddy Gene (set 1 ) - Joe Martin__v1.m4a",
@@ -737,6 +856,23 @@
             "wavlake_track_id": "7e0c8084-f972-4d29-84b6-577bb5ed2bde"
         },
         {
+            "file": "Few Understand (prod. 🦁) - Cristo Currensi__v1.m4a",
+            "id": "c4aa6a39d374",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Few Understand (prod. 🦁)",
+            "duration": 140.0,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "779a8f3ca42047d4",
+            "sha1": "aca0d9d973b59613f1401bd890c26beda4780299",
+            "size": 2287715,
+            "mtime": 1792148127,
+            "credit_source": "manual"
+        },
+        {
             "file": "Forgotten Country Song (set 2) - Joe Martin__v1.m4a",
             "id": "144554dc0085",
             "artists": [
@@ -831,6 +967,23 @@
             "sha1": "6ba25fe299875729b67db864323a9173edd0726c",
             "size": 3950677,
             "mtime": 1792144310,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Haketia (prod. JellyBeatz) - Cristo Currensi__v1.m4a",
+            "id": "8aa17ba87e72",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Haketia (prod. JellyBeatz)",
+            "duration": 144.55,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.8,
+            "fingerprint": "1ad7396d3aab0902",
+            "sha1": "5618cb8ecc549d805450f4c2bc5fa63f26cc12fb",
+            "size": 2397723,
+            "mtime": 1792148192,
             "credit_source": "manual"
         },
         {
@@ -1379,6 +1532,23 @@
             "wavlake_track_id": "ee291605-b4cb-41d3-a343-44c7f897c8f2"
         },
         {
+            "file": "NAMIKAZE - Cristo Currensi__v1.m4a",
+            "id": "6c110ae5d78b",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "NAMIKAZE",
+            "duration": 178.7,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.4,
+            "fingerprint": "0104a2a8104af40f",
+            "sha1": "9b631ced7ae3927a9d896949d382f0315d6660c3",
+            "size": 2956198,
+            "mtime": 1792148231,
+            "credit_source": "manual"
+        },
+        {
             "file": "New song, it called akron hammer - sabu__v1.m4a",
             "id": "faff8059cd83",
             "artists": [
@@ -1393,6 +1563,23 @@
             "sha1": "1d177e5b734f685aacdc2ac21ced0e25f001e04c",
             "size": 2462207,
             "mtime": 1792144771,
+            "credit_source": "manual"
+        },
+        {
+            "file": "OFFCHAIN 2030 feat. Yin & John Perry Barlow - Cristo Currensi__v1.m4a",
+            "id": "aa94f87d48b5",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "OFFCHAIN 2030 feat. Yin & John Perry Barlow",
+            "duration": 219.9,
+            "bitrate": 130,
+            "lufs": -17.1,
+            "true_peak": -1.7,
+            "fingerprint": "f89ad26385b668fa",
+            "sha1": "5b24fbda722d32de218d6aad2b0040c9cdc74b87",
+            "size": 3609592,
+            "mtime": 1792148180,
             "credit_source": "manual"
         },
         {
@@ -1461,6 +1648,40 @@
             "sha1": "41fa51079da68bd342dd51884c9f95895fb513ff",
             "size": 1071549,
             "mtime": 1792144128,
+            "credit_source": "manual"
+        },
+        {
+            "file": "STAC3Y - Cristo Currensi__v1.m4a",
+            "id": "39dd81e43696",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "STAC3Y",
+            "duration": 160.46,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.1,
+            "fingerprint": "95fbf0d41cb7945c",
+            "sha1": "802a48327f9b1bc64eaaed073bad13ac7d68eca5",
+            "size": 2648186,
+            "mtime": 1792148147,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Salmo del Custodio - Cristo Currensi__v1.m4a",
+            "id": "d523c8ef5510",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "Salmo del Custodio",
+            "duration": 172.5,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "0c18c2abde9789af",
+            "sha1": "036cce419f0ef0d303e1e2817db574d8a94d6a14",
+            "size": 2877285,
+            "mtime": 1792148245,
             "credit_source": "manual"
         },
         {
@@ -1992,6 +2213,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "0d4b8a6a-2b11-40c1-ac18-a20e08f76a71"
+        },
+        {
+            "file": "WoB (Warriors of Bitcoin) - Cristo Currensi__v1.m4a",
+            "id": "9d8fb78a4ae8",
+            "artists": [
+                "cristo-currensi"
+            ],
+            "title": "WoB (Warriors of Bitcoin)",
+            "duration": 176.08,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.7,
+            "fingerprint": "09eb2f55f5a898b2",
+            "sha1": "e393c531c909d2dbd19f61ec7bd429cbd92ede61",
+            "size": 2902754,
+            "mtime": 1792148202,
+            "credit_source": "manual"
         },
         {
             "file": "a-call-for-decentralization__v1.m4a",
@@ -7284,7 +7522,7 @@
             "name": "Cristo Currensi",
             "npub": "npub1amen03z5xpjq2yppwyc8qsa0x9gahr3lmgvn4qd0u6qv336x9rxsxpaa0v",
             "pubkey": "eef337c454306405102171307043af3151db8e3fda193a81afe680c8c74628cd",
-            "picture": "https://void.cat/d/JZ2DboWWczh6v7MeU9raUg.webp",
+            "picture": "https://d12wklypp119aj.cloudfront.net/image/d2bbb926-83a0-4a98-a042-a22e70873d99.jpg",
             "lud16": "cristocurrensi@coinos.io",
             "qr_target": "cristocurrensi@coinos.io",
             "qr_kind": "lud16",
@@ -7492,7 +7730,7 @@
             "name": "Riot in Progress",
             "npub": "npub1ljr66vfadhr5rkldt2yhyzn7yqqqkeedhg9fq8vkyrdycgpzgtws440z3v",
             "pubkey": "fc87ad313d6dc741dbed5a89720a7e20000b672dba0a901d9620da4c202242dd",
-            "picture": "https://pbs.twimg.com/profile_images/1459544481930305538/tBhqKl6w_400x400.jpg",
+            "picture": "https://d12wklypp119aj.cloudfront.net/image/e942d3ca-7134-4947-8c50-c70c0bbcd0aa.jpg",
             "lud16": "guysmilely@fountain.fm",
             "qr_target": "guysmilely@fountain.fm",
             "qr_kind": "lud16",

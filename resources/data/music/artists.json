@@ -45,7 +45,7 @@
  "Cristo Currensi": {
   "npub": "npub1amen03z5xpjq2yppwyc8qsa0x9gahr3lmgvn4qd0u6qv336x9rxsxpaa0v",
   "pubkey": "eef337c454306405102171307043af3151db8e3fda193a81afe680c8c74628cd",
-  "picture": "https://void.cat/d/JZ2DboWWczh6v7MeU9raUg.webp",
+  "picture": "https://d12wklypp119aj.cloudfront.net/image/d2bbb926-83a0-4a98-a042-a22e70873d99.jpg",
   "lud16": "cristocurrensi@coinos.io",
   "qr_target": "cristocurrensi@coinos.io",
   "qr_kind": "lud16",
@@ -342,7 +342,7 @@
  "Riot in Progress": {
   "npub": "npub1ljr66vfadhr5rkldt2yhyzn7yqqqkeedhg9fq8vkyrdycgpzgtws440z3v",
   "pubkey": "fc87ad313d6dc741dbed5a89720a7e20000b672dba0a901d9620da4c202242dd",
-  "picture": "https://pbs.twimg.com/profile_images/1459544481930305538/tBhqKl6w_400x400.jpg",
+  "picture": "https://d12wklypp119aj.cloudfront.net/image/e942d3ca-7134-4947-8c50-c70c0bbcd0aa.jpg",
   "lud16": "guysmilely@fountain.fm",
   "qr_target": "guysmilely@fountain.fm",
   "qr_kind": "lud16",

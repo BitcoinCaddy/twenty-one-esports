@@ -19,9 +19,11 @@ test('every credited track and the house artist have their QR code drawn, so no 
     MusicCredits::flush();
     $credits = [...array_filter(MusicCredits::all(), fn (array $credit): bool => $credit['artist'] !== MusicCredits::HOUSE_ARTIST), MusicCredits::house()];
 
-    // Every Wavlake and PlebRap track of the catalog (115 + 38: the Wavlake index's 116th, "Who Comes Home - Under
-    // The Mulga Groove", is not in the library), Richard Greaser's 76 songs and the house artist.
-    expect(count($credits))->toBe(286);
+    // Every credited, non-house track of the catalog and the house artist: the count follows the catalog, so an
+    // import (twentyone:music-add) never has to touch this test; the floor catches a catalog that lost its credits.
+    $catalog = json_decode((string) file_get_contents(resource_path('data/music/catalog.json')), true);
+    $credited = count(array_filter($catalog['tracks'], fn (array $track): bool => ! in_array($track['credit_source'] ?? 'none', ['none', 'house'], true)));
+    expect(count($credits))->toBe($credited + 1)->toBeGreaterThanOrEqual(154);
 
     foreach ($credits as $credit) {
         expect(in_array($credit['kind'], MusicCredits::KINDS, true))->toBeTrue($credit['artist'])
