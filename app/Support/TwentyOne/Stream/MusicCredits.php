@@ -4,12 +4,10 @@ namespace App\Support\TwentyOne\Stream;
 
 /**
  * Who made the music on air and how to tip them (user 2026-10-15: the stream slides show the artist of the track that
- * plays, with their Nostr avatar and a QR code to send them sats). Three files under resources/data/music:
- *
- * - wavlake-index.json: the Wavlake tracks, file => artist and the zap route found for it;
- * - plebrap-index.json: the PlebRap tracks, file => artists in credit order (the first is named);
- * - artists.json: per artist (exactly as named in the indexes) the Nostr identity found: npub, picture, lud16, and
- *   the QR target with its kind. It wins over a track's own target.
+ * plays, with their Nostr avatar and a QR code to send them sats). Read from the music catalog (MusicCatalog,
+ * resources/data/music/catalog.json): per track its artists in credit order (the first is named) and where the credit
+ * comes from, per artist the Nostr identity found: npub, picture, lud16, and the QR target with its kind. The artist's
+ * own identity wins over a track's own target (a Wavlake track's page).
  *
  * The QR target, in this order (user 2026-10-15: "wenn du zu einem Artist npub keine Lightning Adresse findest, dann
  * verlinke wenigstens zu seinem Nostr Profil mit njump oder Youtube Seite"): the lightning address (`lud16`), the
@@ -18,7 +16,8 @@ namespace App\Support\TwentyOne\Stream;
  *
  * The house artist (user 2026-10-15: "alle instrumentals, die unbekannt sind von DJ Bitcoin und auch die vocals in
  * music, die noch keinen Artist haben … theben@getalby.com als Lightning Adresse"): every instrumental and every song
- * straight in the music folder that no index credits is HOUSE_ARTIST, tipped at HOUSE_LUD16.
+ * straight in the music folder that nothing else credits is HOUSE_ARTIST, tipped at HOUSE_LUD16. A track the catalog
+ * marks `none` (added without a credit, plan "Musik-Katalog") stays without one, never the house artist in silence.
  *
  * Every target has its code drawn in advance (`php artisan twentyone:music-qr`, qrencode) under
  * resources/stream/qr/music, as the stream's other codes are: the daemon never encodes at render time.
@@ -43,7 +42,16 @@ final class MusicCredits
     {
         $relative = self::relative($file);
 
-        return self::all()[$relative] ?? (self::isHouse($relative) ? self::house() : null);
+        if (isset(self::all()[$relative])) {
+            return self::all()[$relative];
+        }
+
+        // Added without a credit, or with an artist that has no target: no card rather than the house artist.
+        if (in_array(MusicCatalog::track($relative)['credit_source'] ?? null, ['none', 'manual'], true)) {
+            return null;
+        }
+
+        return self::isHouse($relative) ? self::house() : null;
     }
 
     /** An uncredited instrumental, or an uncredited song straight in the music folder: the house artist's. */
@@ -57,7 +65,7 @@ final class MusicCredits
      */
     public static function house(): array
     {
-        $identity = self::read('artists.json')[self::HOUSE_ARTIST] ?? null;
+        $identity = MusicCatalog::artists()[MusicCatalog::slug(self::HOUSE_ARTIST)] ?? null;
         $picture = is_array($identity) && is_string($identity['picture'] ?? null) && str_starts_with($identity['picture'], 'https://') ? $identity['picture'] : null;
 
         return ['artist' => self::HOUSE_ARTIST, 'title' => null, 'target' => self::HOUSE_LUD16, 'kind' => 'lud16', 'picture' => $picture];
@@ -74,33 +82,22 @@ final class MusicCredits
             return self::$byFile;
         }
 
-        $artists = self::read('artists.json');
+        $artists = MusicCatalog::artists();
         $credits = [];
 
-        foreach ((array) (self::read('wavlake-index.json')['tracks'] ?? []) as $track) {
-            if (! is_array($track) || ! is_string($track['file'] ?? null) || ! is_string($track['artist'] ?? null)) {
-                continue;
-            }
-
-            $own = ['target' => $track['qr_target'] ?? null, 'kind' => self::kindOfRoute((string) ($track['zap_route'] ?? ''), (string) ($track['qr_target'] ?? ''))];
-            $credit = self::credit($track['artist'], is_string($track['title'] ?? null) ? $track['title'] : null, $artists[$track['artist']] ?? null, $own);
-
-            if ($credit !== null) {
-                $credits[$track['file']] = $credit;
-            }
-        }
-
-        foreach ((array) (self::read('plebrap-index.json')['tracks'] ?? []) as $track) {
+        foreach (MusicCatalog::tracks() as $file => $track) {
             $first = $track['artists'][0] ?? null;
 
-            if (! is_array($track) || ! is_string($track['file'] ?? null) || ! is_string($first)) {
+            if (! in_array($track['credit_source'] ?? null, ['wavlake-index', 'plebrap-index', 'manual'], true) || ! is_string($first)) {
                 continue;
             }
 
-            $credit = self::credit($first, is_string($track['title'] ?? null) ? $track['title'] : null, $artists[$first] ?? null, ['target' => null, 'kind' => null]);
+            $own = ['target' => $track['qr_target'] ?? null, 'kind' => is_string($track['qr_kind'] ?? null) ? $track['qr_kind'] : null];
+            $identity = is_array($artists[$first] ?? null) ? $artists[$first] : null;
+            $credit = self::credit((string) ($identity['name'] ?? $first), is_string($track['title'] ?? null) ? $track['title'] : null, $identity, $own);
 
             if ($credit !== null) {
-                $credits[$track['file']] = $credit;
+                $credits[$file] = $credit;
             }
         }
 
@@ -111,6 +108,7 @@ final class MusicCredits
     public static function flush(): void
     {
         self::$byFile = null;
+        MusicCatalog::flush();
     }
 
     /**
@@ -182,18 +180,6 @@ final class MusicCredits
         return [null, 'wavlake'];
     }
 
-    /** A track's zap route in the Wavlake index as a target kind. */
-    private static function kindOfRoute(string $route, string $target): ?string
-    {
-        return match (true) {
-            $route === 'nostr-lud16' && str_contains($target, '@') => 'lud16',
-            str_starts_with($target, 'https://njump.me/') => 'njump',
-            str_starts_with($target, 'https://www.youtube.com/') || str_starts_with($target, 'https://youtube.com/') => 'youtube',
-            str_starts_with($target, 'https://wavlake.com/') => 'wavlake',
-            default => null,
-        };
-    }
-
     private static function usable(string $target, string $kind): bool
     {
         return $kind === 'lud16' ? str_contains($target, '@') : str_starts_with($target, 'https://');
@@ -204,16 +190,5 @@ final class MusicCredits
         $dir = rtrim((string) config('twentyone.stream.music.dir'), '/').'/';
 
         return str_starts_with($file, $dir) ? substr($file, strlen($dir)) : ltrim($file, '/');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function read(string $name): array
-    {
-        $path = resource_path('data/music/'.$name);
-        $data = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
-
-        return is_array($data) ? $data : [];
     }
 }

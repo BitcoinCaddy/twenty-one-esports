@@ -19,8 +19,9 @@ test('every credited track and the house artist have their QR code drawn, so no 
     MusicCredits::flush();
     $credits = [...MusicCredits::all(), MusicCredits::house()];
 
-    // Every Wavlake and PlebRap track (116 + 38) and the house artist.
-    expect(count($credits))->toBe(155);
+    // Every Wavlake and PlebRap track of the catalog (115 + 38: the Wavlake index's 116th, "Who Comes Home - Under
+    // The Mulga Groove", is not in the library) and the house artist.
+    expect(count($credits))->toBe(154);
 
     foreach ($credits as $credit) {
         expect(in_array($credit['kind'], MusicCredits::KINDS, true))->toBeTrue($credit['artist'])

@@ -224,6 +224,8 @@ return [
             // Artists banned for good, whatever a future import brings back (user 2026-10-15: ICT - DJ Lexo):
             // comma-separated names, matched against the file name.
             'banned_artists' => env('TWENTYONE_STREAM_MUSIC_BANNED_ARTISTS', 'ICT - DJ Lexo'),
+            // The music catalog (MusicCatalog): tracks, artists, credits; fingerprints.json sits next to it.
+            'catalog' => env('TWENTYONE_STREAM_MUSIC_CATALOG') ?: resource_path('data/music/catalog.json'),
             // Unused by the live rotation. Left so an old env line does not error.
             'priority_run' => [(int) env('TWENTYONE_STREAM_PRIORITY_RUN_MIN', 3), (int) env('TWENTYONE_STREAM_PRIORITY_RUN_MAX', 5)],
             'list_hours' => 12,
