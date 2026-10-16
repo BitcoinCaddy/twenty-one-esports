@@ -36,6 +36,57 @@
             "credit_source": "manual"
         },
         {
+            "file": "110 - Zazawowow__v1.m4a",
+            "id": "4f3d8de03cfc",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "110",
+            "duration": 182.82,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -4.4,
+            "fingerprint": "9325cfe1b5d856ee",
+            "sha1": "12d27022fb333c634f994af59df3743268528462",
+            "size": 3039101,
+            "mtime": 1792166039,
+            "credit_source": "manual"
+        },
+        {
+            "file": "21 Million Deep - Contra__v1.m4a",
+            "id": "06e48d109d32",
+            "artists": [
+                "contra"
+            ],
+            "title": "21 Million Deep",
+            "duration": 214.84,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.1,
+            "fingerprint": "4a19e42520121c7e",
+            "sha1": "2c9f3bddb659ca76f1f5deea1fef15ba80eae8d3",
+            "size": 3576392,
+            "mtime": 1792164730,
+            "credit_source": "manual"
+        },
+        {
+            "file": "21 to None - Contra__v1.m4a",
+            "id": "1ed815f385a1",
+            "artists": [
+                "contra"
+            ],
+            "title": "21 to None",
+            "duration": 238.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "b42f0a92fe75e03f",
+            "sha1": "ab30c316bde8f1fa9bb960c5c53e1a3332c40592",
+            "size": 3900403,
+            "mtime": 1792162313,
+            "credit_source": "manual"
+        },
+        {
             "file": "23 - sabu__v1.m4a",
             "id": "41d428855bdc",
             "artists": [
@@ -67,6 +118,40 @@
             "sha1": "ce0084009e215c600322acdc4066d25d808909f1",
             "size": 2839328,
             "mtime": 1792148211,
+            "credit_source": "manual"
+        },
+        {
+            "file": "3 AM Lullaby - Contra__v1.m4a",
+            "id": "ac6b38eaec5f",
+            "artists": [
+                "contra"
+            ],
+            "title": "3 AM Lullaby",
+            "duration": 224.84,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.3,
+            "fingerprint": "96ec14926f430736",
+            "sha1": "782a87f05dd712c476e86f73b006e71eb575c2ba",
+            "size": 3686878,
+            "mtime": 1792162581,
+            "credit_source": "manual"
+        },
+        {
+            "file": "51 - Contra__v1.m4a",
+            "id": "ef91323c6ba6",
+            "artists": [
+                "contra"
+            ],
+            "title": "51",
+            "duration": 171.6,
+            "bitrate": 138,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "f2fa1c7afcbdd7b7",
+            "sha1": "92245d2b87659b6972b7c5e5d6dc07ccbf0907a4",
+            "size": 2989259,
+            "mtime": 1792165271,
             "credit_source": "manual"
         },
         {
@@ -107,6 +192,23 @@
             "wavlake_track_id": "f9e45308-6df2-4e03-8cbd-8dd3a9b6f38c"
         },
         {
+            "file": "A Nostr Haiku - Contra__v1.m4a",
+            "id": "0b3c34981528",
+            "artists": [
+                "contra"
+            ],
+            "title": "A Nostr Haiku",
+            "duration": 222.0,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "4c489f4df6cbc782",
+            "sha1": "4d5edc31084818a950aeeffa03d00e8555113eef",
+            "size": 3740863,
+            "mtime": 1792163786,
+            "credit_source": "manual"
+        },
+        {
             "file": "ALELUYA - Cristo Currensi__v1.m4a",
             "id": "68517087af89",
             "artists": [
@@ -121,6 +223,57 @@
             "sha1": "e81e38e2bf39fc9b3c1f810b53066e555d251a7b",
             "size": 2516570,
             "mtime": 1792148221,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Acre - Contra__v1.m4a",
+            "id": "4b322637264d",
+            "artists": [
+                "contra"
+            ],
+            "title": "Acre",
+            "duration": 279.92,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "72de0fc902be876c",
+            "sha1": "822d82a2f61d7fe60890f22f59e552a4f9d0aaae",
+            "size": 4656820,
+            "mtime": 1792164800,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Ain’t Askin’ Twice - Contra__v1.m4a",
+            "id": "d6344d66e3ab",
+            "artists": [
+                "contra"
+            ],
+            "title": "Ain’t Askin’ Twice",
+            "duration": 314.92,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -4.2,
+            "fingerprint": "9fd33fafa796995d",
+            "sha1": "dee74087dded7b40036f4f06932cb4b6241b85a8",
+            "size": 5214245,
+            "mtime": 1792164527,
+            "credit_source": "manual"
+        },
+        {
+            "file": "All About The Sats - Contra__v1.m4a",
+            "id": "e50768cf546e",
+            "artists": [
+                "contra"
+            ],
+            "title": "All About The Sats",
+            "duration": 268.64,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "694ee4543a0e0fe7",
+            "sha1": "6820eef25fae8cee4802228ccc6da32b8996f2a2",
+            "size": 4423956,
+            "mtime": 1792162741,
             "credit_source": "manual"
         },
         {
@@ -172,6 +325,40 @@
             "sha1": "0eaf8c72336e0ed3e9ba37cc78db8d0853990470",
             "size": 2154740,
             "mtime": 1792144402,
+            "credit_source": "manual"
+        },
+        {
+            "file": "All Or Nothing - Contra__v1.m4a",
+            "id": "aae914bdb0d9",
+            "artists": [
+                "contra"
+            ],
+            "title": "All Or Nothing",
+            "duration": 224.84,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.3,
+            "fingerprint": "a4966ca5783342e1",
+            "sha1": "3f466eb2a84807bae1c7a14a17213c069d9029ed",
+            "size": 3680826,
+            "mtime": 1792162930,
+            "credit_source": "manual"
+        },
+        {
+            "file": "All The Leaves Are Brown - Zazawowow__v1.m4a",
+            "id": "877e2f408806",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "All The Leaves Are Brown",
+            "duration": 132.12,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -4.4,
+            "fingerprint": "a13f802f3ca2f945",
+            "sha1": "a8169f824a214ae00136cb99e0deaf17fa71b26f",
+            "size": 2182414,
+            "mtime": 1792165951,
             "credit_source": "manual"
         },
         {
@@ -269,6 +456,57 @@
             "wavlake_track_id": "5e866f89-f124-48c2-a985-b03107cd9ba9"
         },
         {
+            "file": "Anchor In The Flood - Contra__v1.m4a",
+            "id": "573fc304519a",
+            "artists": [
+                "contra"
+            ],
+            "title": "Anchor In The Flood",
+            "duration": 323.28,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -5.3,
+            "fingerprint": "1ea186d8f85b11f3",
+            "sha1": "a999ee2ba14dfd8d4a7ed30f77e4bed767023d27",
+            "size": 5268654,
+            "mtime": 1792162356,
+            "credit_source": "manual"
+        },
+        {
+            "file": "And Then It Goes Like - Contra__v1.m4a",
+            "id": "4374fe2792f6",
+            "artists": [
+                "contra"
+            ],
+            "title": "And Then It Goes Like",
+            "duration": 203.92,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "1a8641b1dc04df1c",
+            "sha1": "2646bbc1b5710ae3cc72ae0e132c1ce83bf51265",
+            "size": 3366948,
+            "mtime": 1792165363,
+            "credit_source": "manual"
+        },
+        {
+            "file": "And Then You Met Me - Contra__v1.m4a",
+            "id": "9387f7e8de89",
+            "artists": [
+                "contra"
+            ],
+            "title": "And Then You Met Me",
+            "duration": 216.0,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "7e6d28e9627377e8",
+            "sha1": "36010b1348c016be6e46e8daaa72e7f250f8a950",
+            "size": 3586986,
+            "mtime": 1792165415,
+            "credit_source": "manual"
+        },
+        {
             "file": "Angel Wing of a c-17 - sabu__v1.m4a",
             "id": "b23667f701e0",
             "artists": [
@@ -306,6 +544,40 @@
             "wavlake_track_id": "1278ecc0-b541-4b2a-8773-4ac14f29f801"
         },
         {
+            "file": "Architects of Agony - Contra__v1.m4a",
+            "id": "52567e569c98",
+            "artists": [
+                "contra"
+            ],
+            "title": "Architects of Agony",
+            "duration": 351.64,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "146ce1f19ab78d5e",
+            "sha1": "995e0eaafe7082775bc2cc628e448a3ffb6bb551",
+            "size": 5855416,
+            "mtime": 1792163315,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Architects of Tomorrow - Zazawowow__v1.m4a",
+            "id": "476b26e882cd",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Architects of Tomorrow",
+            "duration": 180.65,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.4,
+            "fingerprint": "0aeb9f60b894e19c",
+            "sha1": "c4a6bd2acba3340fba72832d8a735eeefadd25eb",
+            "size": 3010832,
+            "mtime": 1792165820,
+            "credit_source": "manual"
+        },
+        {
             "file": "Arkon Hammer, cybernetic - sabu__v1.m4a",
             "id": "abff14ffc654",
             "artists": [
@@ -320,6 +592,57 @@
             "sha1": "12c430036d895d1fae61721620498d5cbad12889",
             "size": 3542080,
             "mtime": 1792144548,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Around Me - Contra__v1.m4a",
+            "id": "72bbd54e7f1b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Around Me",
+            "duration": 231.71,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.6,
+            "fingerprint": "850c12b83b9786f7",
+            "sha1": "9e97d473abe90c329a1e418deeca8cf54b1d15e7",
+            "size": 3824607,
+            "mtime": 1792164943,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Ashes And Ghosts - Contra__v1.m4a",
+            "id": "df73fbcec636",
+            "artists": [
+                "contra"
+            ],
+            "title": "Ashes And Ghosts",
+            "duration": 292.52,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "d7b9d77ba92b5c07",
+            "sha1": "19d60c3978cac41fccb587abb71e2ba8157d76a3",
+            "size": 4780147,
+            "mtime": 1792163117,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Ashes To Armor - Contra__v1.m4a",
+            "id": "fd258e9b428e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Ashes To Armor",
+            "duration": 299.92,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.5,
+            "fingerprint": "4f4b0d532c7cf004",
+            "sha1": "df3d1239d4a666ca0cbda456f217369e527fbd17",
+            "size": 4947358,
+            "mtime": 1792163263,
             "credit_source": "manual"
         },
         {
@@ -411,6 +734,74 @@
             "credit_source": "manual"
         },
         {
+            "file": "Bitcoin Bass - Contra__v1.m4a",
+            "id": "4cb71a2f00d1",
+            "artists": [
+                "contra"
+            ],
+            "title": "Bitcoin Bass",
+            "duration": 196.92,
+            "bitrate": 134,
+            "lufs": -15.1,
+            "true_peak": -1.9,
+            "fingerprint": "0aae03b102e45575",
+            "sha1": "6f9c47c04e6d9c9068d68ef03fbf2e3ff734510f",
+            "size": 3330047,
+            "mtime": 1792164715,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bitcoin Revolución - NumberGoExp__v1.m4a",
+            "id": "8a77c48402c7",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Bitcoin Revolución",
+            "duration": 309.97,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.3,
+            "fingerprint": "fc7c078fbb630c49",
+            "sha1": "e0d81e8d83bf98f58afa31525769ebbf05c7d480",
+            "size": 5119967,
+            "mtime": 1792165585,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bitcoin and Chill - Contra__v1.m4a",
+            "id": "e56b1abfc781",
+            "artists": [
+                "contra"
+            ],
+            "title": "Bitcoin and Chill",
+            "duration": 236.32,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -2.1,
+            "fingerprint": "df78c70c030ce448",
+            "sha1": "7548f15c9639fc703df118f36c0fa8d649b0052a",
+            "size": 3957242,
+            "mtime": 1792164157,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bitcoin is for the people - NumberGoExp__v1.m4a",
+            "id": "c46c4a9b4365",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Bitcoin is for the people",
+            "duration": 279.9,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "c9906d9c7d4400dd",
+            "sha1": "40da7fb012fcb03b8ee8334823941d0526a31e77",
+            "size": 4601078,
+            "mtime": 1792165599,
+            "credit_source": "manual"
+        },
+        {
             "file": "Black Colonialists - Black Vulcanite__v1.m4a",
             "id": "dfccb17f00f9",
             "artists": [
@@ -496,6 +887,40 @@
             "credit_source": "manual"
         },
         {
+            "file": "Blown Away - Contra__v1.m4a",
+            "id": "ba6f48fe37f7",
+            "artists": [
+                "contra"
+            ],
+            "title": "Blown Away",
+            "duration": 274.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "d10661f3fa3cb71e",
+            "sha1": "6d77fcb5ccf3b1211655586d5e4d949451983205",
+            "size": 4507677,
+            "mtime": 1792163229,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Blueprint Dreams - Contra__v1.m4a",
+            "id": "5247eb575b44",
+            "artists": [
+                "contra"
+            ],
+            "title": "Blueprint Dreams",
+            "duration": 169.84,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -2.6,
+            "fingerprint": "7d0fe2fc40c065b9",
+            "sha1": "7022e8f93fec1594810147335b799a5740bca22a",
+            "size": 2777510,
+            "mtime": 1792162591,
+            "credit_source": "manual"
+        },
+        {
             "file": "Bonus Track - Big Ego's ft Ruby Burton - Black Vulcanite__v1.m4a",
             "id": "1ce5758145b4",
             "artists": [
@@ -567,6 +992,40 @@
             "credit_source": "manual"
         },
         {
+            "file": "Break Me On Purpose - Contra__v1.m4a",
+            "id": "9ef3a2350fb6",
+            "artists": [
+                "contra"
+            ],
+            "title": "Break Me On Purpose",
+            "duration": 257.86,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "46b014ff15f2efc9",
+            "sha1": "0668f8ae198055a2ff8fa754afe0bec2cc2ec1a6",
+            "size": 4241756,
+            "mtime": 1792164057,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Broken Silence - Contra__v1.m4a",
+            "id": "598288b0af32",
+            "artists": [
+                "contra"
+            ],
+            "title": "Broken Silence",
+            "duration": 236.36,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.3,
+            "fingerprint": "5a7be17c367ad99d",
+            "sha1": "14c8291153ed19969773887b074c38f108ab6697",
+            "size": 3902758,
+            "mtime": 1792165389,
+            "credit_source": "manual"
+        },
+        {
             "file": "Brown Paper Bag - Joe Martin__v1.m4a",
             "id": "16ccc4d24bd9",
             "artists": [
@@ -587,6 +1046,125 @@
             "wavlake_track_id": "47a029d0-1700-41fb-ab38-b5280089e3fb"
         },
         {
+            "file": "Built From Teeth - Contra__v1.m4a",
+            "id": "a34e0a67d330",
+            "artists": [
+                "contra"
+            ],
+            "title": "Built From Teeth",
+            "duration": 200.72,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "0cc6bd8462a5ebec",
+            "sha1": "d8c68ffd98132f1e26b8c2af9674c8c0540a7264",
+            "size": 3284811,
+            "mtime": 1792163810,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Built on The Rock (No Retreat) - Contra__v1.m4a",
+            "id": "6ab9b10f23b8",
+            "artists": [
+                "contra"
+            ],
+            "title": "Built on The Rock (No Retreat)",
+            "duration": 243.0,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "cb2d87990a2a1e3a",
+            "sha1": "57bd2836c7c347df80fe9487f38f5b194257da7b",
+            "size": 3964201,
+            "mtime": 1792163696,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Built to Withstand - Contra__v1.m4a",
+            "id": "d1a8c5a971a2",
+            "artists": [
+                "contra"
+            ],
+            "title": "Built to Withstand",
+            "duration": 274.88,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.5,
+            "fingerprint": "0418943483ffcea0",
+            "sha1": "798ac9b29edce45ee168cc4c03ea6495190345a3",
+            "size": 4507196,
+            "mtime": 1792163671,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bulletproof - Contra__v1.m4a",
+            "id": "c6b1e2b30f38",
+            "artists": [
+                "contra"
+            ],
+            "title": "Bulletproof",
+            "duration": 379.88,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.4,
+            "fingerprint": "c052bb3c14cbde47",
+            "sha1": "0a83beeed74d52ada8affd16a77db84cdf7d081c",
+            "size": 6276039,
+            "mtime": 1792163505,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bullish - Contra__v1.m4a",
+            "id": "9c9553941b0b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Bullish",
+            "duration": 279.72,
+            "bitrate": 131,
+            "lufs": -15.3,
+            "true_peak": -3.7,
+            "fingerprint": "632a90bb2fdb0554",
+            "sha1": "558a88902ace9a4a9bea87ef7488a2e7124526c7",
+            "size": 4617490,
+            "mtime": 1792162889,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Burn The Cage - Contra__v1.m4a",
+            "id": "151a7939d74b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Burn The Cage",
+            "duration": 291.44,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "7790f88b27ed0b16",
+            "sha1": "6276da741d4c6a0b5140f754e673c6947ea0bb1c",
+            "size": 4780285,
+            "mtime": 1792163196,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Burn The Script - Contra__v1.m4a",
+            "id": "41cc4d7f98de",
+            "artists": [
+                "contra"
+            ],
+            "title": "Burn The Script",
+            "duration": 328.72,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "15d539a634dcf7d0",
+            "sha1": "0e0e0c44909e02e1e386bb65d3e1eecb8c550ccb",
+            "size": 5458737,
+            "mtime": 1792163385,
+            "credit_source": "manual"
+        },
+        {
             "file": "Can't Promise You The World - Joe Martin__v1.m4a",
             "id": "c91724483e79",
             "artists": [
@@ -605,6 +1183,108 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "c4a170ed-71da-4863-9189-8818409789f3"
+        },
+        {
+            "file": "Cantillon’s Ghost - Contra__v1.m4a",
+            "id": "f0fc98c6936f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Cantillon’s Ghost",
+            "duration": 254.1,
+            "bitrate": 132,
+            "lufs": -15.4,
+            "true_peak": -3.4,
+            "fingerprint": "2c9412e3bd7bcc5e",
+            "sha1": "ec6bd3ab9d24b68f69e2061b8e81bb17b4c1a9cc",
+            "size": 4236300,
+            "mtime": 1792164431,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Carved Math - Contra__v1.m4a",
+            "id": "602f29fcb7ec",
+            "artists": [
+                "contra"
+            ],
+            "title": "Carved Math",
+            "duration": 207.6,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "4cef5ffcda00b064",
+            "sha1": "a5ccbd71e8931bc35b869010a76d8d681f3e5f2a",
+            "size": 3443515,
+            "mtime": 1792164093,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Caveat Emptor - Zazawowow__v1.m4a",
+            "id": "afc03eb662a6",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Caveat Emptor",
+            "duration": 183.65,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -1.6,
+            "fingerprint": "0822a14a61638bb7",
+            "sha1": "0a41641982c6fd043db85ffbdf3fac0ac5f78cd8",
+            "size": 3078113,
+            "mtime": 1792165835,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Chains In The Light - Contra__v1.m4a",
+            "id": "b1698e117e09",
+            "artists": [
+                "contra"
+            ],
+            "title": "Chains In The Light",
+            "duration": 231.44,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "fe834d753216300b",
+            "sha1": "752590237e6485ff3b9e4ad2141b1c88c106272c",
+            "size": 3817933,
+            "mtime": 1792162468,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Chaos Reigns - Zazawowow__v1.m4a",
+            "id": "71e544e72823",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Chaos Reigns",
+            "duration": 206.17,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "595f6a9cb8653fb7",
+            "sha1": "6e0b8ef3255fc5cd3cb26030c80bb5962def7082",
+            "size": 3396885,
+            "mtime": 1792165788,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Chaos Theory - Contra__v1.m4a",
+            "id": "38ef9af12b02",
+            "artists": [
+                "contra"
+            ],
+            "title": "Chaos Theory",
+            "duration": 341.84,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "ca3f948eab2322d3",
+            "sha1": "75d69e61f8ecedfb81101e3a87d5b2af69bff834",
+            "size": 5646678,
+            "mtime": 1792163248,
+            "credit_source": "manual"
         },
         {
             "file": "Check It Out ft Jay Prince - Black Vulcanite__v1.m4a",
@@ -644,6 +1324,40 @@
             "wavlake_track_id": "ace88a9c-bc7b-4663-959f-de61fdd0b869"
         },
         {
+            "file": "Chemical Hearts - Contra__v1.m4a",
+            "id": "364516557101",
+            "artists": [
+                "contra"
+            ],
+            "title": "Chemical Hearts",
+            "duration": 214.92,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "16893d530dd9a4ea",
+            "sha1": "d114b29e97ee2ec6f063b0d8166d1efcd8a33fdf",
+            "size": 3542142,
+            "mtime": 1792164664,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Circle of Dying - Contra__v1.m4a",
+            "id": "4cc61a6f5ab8",
+            "artists": [
+                "contra"
+            ],
+            "title": "Circle of Dying",
+            "duration": 240.0,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "8b321718f34b5134",
+            "sha1": "223ca7cce415a232e95bed9fda1f28e24ed30aa1",
+            "size": 3916832,
+            "mtime": 1792162435,
+            "credit_source": "manual"
+        },
+        {
             "file": "Clan Of The Dragon Fist - Black Vulcanite__v1.m4a",
             "id": "20225a8174a5",
             "artists": [
@@ -658,6 +1372,23 @@
             "sha1": "3b5c916aa36bda60f04f7a0407b8db175a0ff1b1",
             "size": 2027016,
             "mtime": 1792154720,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Clothed In Christ - Contra__v1.m4a",
+            "id": "e78f8a153bd6",
+            "artists": [
+                "contra"
+            ],
+            "title": "Clothed In Christ",
+            "duration": 239.96,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "fe1394c62deee119",
+            "sha1": "57299855ea5d77c30f68838161b2885fc5d4de5a",
+            "size": 3957174,
+            "mtime": 1792165445,
             "credit_source": "manual"
         },
         {
@@ -681,6 +1412,125 @@
             "wavlake_track_id": "b7454718-a5c4-4479-a988-237095c1f4a9"
         },
         {
+            "file": "Code Your Freedom - Contra__v1.m4a",
+            "id": "991c4e3d92fb",
+            "artists": [
+                "contra"
+            ],
+            "title": "Code Your Freedom",
+            "duration": 247.72,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "4be72960655c9938",
+            "sha1": "7b59f304be519d2ef03d8b878f8b1b837014630e",
+            "size": 4062467,
+            "mtime": 1792162686,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Code is law - NumberGoExp__v1.m4a",
+            "id": "f8f3258915c7",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Code is law",
+            "duration": 425.17,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.3,
+            "fingerprint": "cb4edf04ec2d4897",
+            "sha1": "f4ba59657a5dbba181cb456d58b63d085a36c722",
+            "size": 6996292,
+            "mtime": 1792165523,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Coffee at Dawn - Contra__v1.m4a",
+            "id": "dad956781ebe",
+            "artists": [
+                "contra"
+            ],
+            "title": "Coffee at Dawn",
+            "duration": 244.88,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -2.2,
+            "fingerprint": "ba0080358d3550ab",
+            "sha1": "994ce26c6b66f2683181a8a524f7d23e6fa3505c",
+            "size": 4006298,
+            "mtime": 1792162509,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Coinbase Maturity - Contra__v1.m4a",
+            "id": "5d68cd7281fc",
+            "artists": [
+                "contra"
+            ],
+            "title": "Coinbase Maturity",
+            "duration": 235.96,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.6,
+            "fingerprint": "9970952077634a43",
+            "sha1": "bae471a20fe748b3dfd0c9f6ea538eabdea85f1b",
+            "size": 3942598,
+            "mtime": 1792165219,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Cold Storage - Contra__v1.m4a",
+            "id": "ff1f91df3053",
+            "artists": [
+                "contra"
+            ],
+            "title": "Cold Storage",
+            "duration": 199.72,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "5dc24f036ccd1cdc",
+            "sha1": "24fe932cc78fd5eb90a103d70443e900381842cb",
+            "size": 3353689,
+            "mtime": 1792165122,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Collapse - Contra__v1.m4a",
+            "id": "42565e4104ad",
+            "artists": [
+                "contra"
+            ],
+            "title": "Collapse",
+            "duration": 309.76,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.6,
+            "fingerprint": "f8239a33f8f35c10",
+            "sha1": "9e7f2f41580a9359d1234952f57f2d89a6039062",
+            "size": 5088854,
+            "mtime": 1792164928,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Comply or Bleed - Contra__v1.m4a",
+            "id": "453caf1a0308",
+            "artists": [
+                "contra"
+            ],
+            "title": "Comply or Bleed",
+            "duration": 327.16,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "d0e78ede048afdfd",
+            "sha1": "e0b27dd531010639d65703cce6e3d50ffa00e0df",
+            "size": 5346317,
+            "mtime": 1792163643,
+            "credit_source": "manual"
+        },
+        {
             "file": "Connecting Nodes (prod. Louie On The Beat) - Cristo Currensi__v1.m4a",
             "id": "ba52b2f20505",
             "artists": [
@@ -695,6 +1545,23 @@
             "sha1": "d5e9d4db23beae4878ab508fee3b0901f638d478",
             "size": 3122821,
             "mtime": 1792148138,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Coronation - Contra__v1.m4a",
+            "id": "3900cde204e7",
+            "artists": [
+                "contra"
+            ],
+            "title": "Coronation",
+            "duration": 317.6,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.1,
+            "fingerprint": "afdbfcefc73d4f88",
+            "sha1": "21a47252ec774e24da4a87b256d881fcdf600b1a",
+            "size": 5224953,
+            "mtime": 1792164817,
             "credit_source": "manual"
         },
         {
@@ -769,6 +1636,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Cut The Line - Contra__v1.m4a",
+            "id": "003f73ff277a",
+            "artists": [
+                "contra"
+            ],
+            "title": "Cut The Line",
+            "duration": 289.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "91be4481272fd0d4",
+            "sha1": "725d29e9be927d93b93679f9add4460d81e44abe",
+            "size": 4749491,
+            "mtime": 1792163628,
+            "credit_source": "manual"
+        },
+        {
             "file": "Cypher Nuestro - Cristo Currensi__v1.m4a",
             "id": "71da2ce21079",
             "artists": [
@@ -826,6 +1710,91 @@
             "wavlake_track_id": "5882508a-bbcb-48d8-93d1-a8a0f5a3c702"
         },
         {
+            "file": "Dead Weight - Contra__v1.m4a",
+            "id": "67b5af04198e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Dead Weight",
+            "duration": 244.84,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.9,
+            "fingerprint": "2d4c7e3c2c10356f",
+            "sha1": "b397785205f295a36dcf60c3476227492ca05d2d",
+            "size": 4059213,
+            "mtime": 1792164703,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Deadweight - Contra__v1.m4a",
+            "id": "4d2ba90458ab",
+            "artists": [
+                "contra"
+            ],
+            "title": "Deadweight",
+            "duration": 198.8,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.6,
+            "fingerprint": "db2adf26c5afa50e",
+            "sha1": "14245bf9f850afe2e42827cafbf3fae9114d2030",
+            "size": 3252015,
+            "mtime": 1792163836,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Death is a Gift - Zazawowow__v1.m4a",
+            "id": "e9f8243e844b",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Death is a Gift",
+            "duration": 254.0,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -1.2,
+            "fingerprint": "bf310d81c811fa4c",
+            "sha1": "badc8e7efbe5d4fe8b998210dec6f9dc20699b3f",
+            "size": 4284097,
+            "mtime": 1792165861,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Decentrealise - Zazawowow__v1.m4a",
+            "id": "38f8f7fea8f9",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Decentrealise",
+            "duration": 177.48,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.3,
+            "fingerprint": "9025487c3c947427",
+            "sha1": "0498f108be6cbb386908d5e676eb03f0e9e504a8",
+            "size": 2951987,
+            "mtime": 1792165901,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Delusions - Contra__v1.m4a",
+            "id": "51da1e45f0a1",
+            "artists": [
+                "contra"
+            ],
+            "title": "Delusions",
+            "duration": 199.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "bd8a2fb37612a61d",
+            "sha1": "adfe0d89c3f996db9db2a3a960e6335e0fd601c0",
+            "size": 3285141,
+            "mtime": 1792162920,
+            "credit_source": "manual"
+        },
+        {
             "file": "Denver (set 1) - Joe Martin__v1.m4a",
             "id": "072cdc8336ea",
             "artists": [
@@ -864,6 +1833,74 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "1c43b75f-b003-4482-9f37-a606792b4f3c"
+        },
+        {
+            "file": "Devil in The Dollar - Contra__v1.m4a",
+            "id": "998c3f62b264",
+            "artists": [
+                "contra"
+            ],
+            "title": "Devil in The Dollar",
+            "duration": 350.06,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.7,
+            "fingerprint": "29e4cc1cc5d3b67a",
+            "sha1": "9b40b2112165ef5716fde9fbc5f25d17b3260b74",
+            "size": 5788630,
+            "mtime": 1792164494,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Diamond Dirt - Contra__v1.m4a",
+            "id": "11824c331183",
+            "artists": [
+                "contra"
+            ],
+            "title": "Diamond Dirt",
+            "duration": 204.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "e9facb47e2a0c8a3",
+            "sha1": "527f75329e11ddb52014fdb0911ac61f4014ca0f",
+            "size": 3347724,
+            "mtime": 1792162532,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Diamond Hands Forever - Contra__v1.m4a",
+            "id": "44a94c0e6a83",
+            "artists": [
+                "contra"
+            ],
+            "title": "Diamond Hands Forever",
+            "duration": 174.96,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -3.7,
+            "fingerprint": "e261b25b414dbb9f",
+            "sha1": "634dfd97735c565d0cd0df96e88c742be14a5b52",
+            "size": 2927705,
+            "mtime": 1792163733,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Diary of Sin - Contra__v1.m4a",
+            "id": "3f96401fad4b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Diary of Sin",
+            "duration": 336.24,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "1647a90046f2e638",
+            "sha1": "00e300dd0f7610714b68d04d43657d24730a99be",
+            "size": 5505715,
+            "mtime": 1792162454,
+            "credit_source": "manual"
         },
         {
             "file": "Die or Live Infamy - sabu__v1.m4a",
@@ -974,6 +2011,74 @@
             "credit_source": "manual"
         },
         {
+            "file": "Dying To Live - Contra__v1.m4a",
+            "id": "db5b7b8fab91",
+            "artists": [
+                "contra"
+            ],
+            "title": "Dying To Live",
+            "duration": 236.8,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "8cfff2aaa6a15514",
+            "sha1": "33643ead56911e66db9a56384a56ed17ebaad428",
+            "size": 3912272,
+            "mtime": 1792165427,
+            "credit_source": "manual"
+        },
+        {
+            "file": "EP - Zazawowow__v1.m4a",
+            "id": "14ca2742adb5",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "EP",
+            "duration": 214.8,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "762be2cc3a455710",
+            "sha1": "043d02f2da77c7bf3994d25296bc80622590c869",
+            "size": 3579129,
+            "mtime": 1792166053,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Echoes In My Chest - Contra__v1.m4a",
+            "id": "26ccb49bb24a",
+            "artists": [
+                "contra"
+            ],
+            "title": "Echoes In My Chest",
+            "duration": 266.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "b65fd3553c34ff98",
+            "sha1": "df6f2afbccbf23bf6900be6872b4ec97ac69a5a6",
+            "size": 4371631,
+            "mtime": 1792163168,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Echoes In My Head - Contra__v1.m4a",
+            "id": "0b6c3e8f9adc",
+            "artists": [
+                "contra"
+            ],
+            "title": "Echoes In My Head",
+            "duration": 238.6,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "c39ba31b18933921",
+            "sha1": "d69926d86efae625b737fc8ad19657ce316e9b1a",
+            "size": 3921598,
+            "mtime": 1792164971,
+            "credit_source": "manual"
+        },
+        {
             "file": "Empty Passenger Seat (set 2) - Joe Martin__v1.m4a",
             "id": "50b5a5aee9e5",
             "artists": [
@@ -1028,6 +2133,40 @@
             "sha1": "cf230c71eee4a8708bc3f56ff84e89ada910edc2",
             "size": 3412256,
             "mtime": 1792144222,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Even When - Contra__v1.m4a",
+            "id": "17a2627a6e43",
+            "artists": [
+                "contra"
+            ],
+            "title": "Even When",
+            "duration": 239.32,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "af9195d2ee2004f0",
+            "sha1": "353ba4846d3bbdc80c90ea8e9b9be2f13c7bcf25",
+            "size": 3914510,
+            "mtime": 1792162974,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Event Horizon - Contra__v1.m4a",
+            "id": "bd23d6aa9317",
+            "artists": [
+                "contra"
+            ],
+            "title": "Event Horizon",
+            "duration": 327.92,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "b77414286a6cff95",
+            "sha1": "200a923db13684b0c5e8f5bef68fb8adf4a37134",
+            "size": 5417248,
+            "mtime": 1792163927,
             "credit_source": "manual"
         },
         {
@@ -1105,6 +2244,57 @@
             "credit_source": "manual"
         },
         {
+            "file": "Fine Print - Contra__v1.m4a",
+            "id": "5f8f052ed297",
+            "artists": [
+                "contra"
+            ],
+            "title": "Fine Print",
+            "duration": 175.6,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "687eae3e96bffed7",
+            "sha1": "c58b88687d192d582d37bd9f78188549c1398057",
+            "size": 2948007,
+            "mtime": 1792165076,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Follow The Thread - Zazawowow__v1.m4a",
+            "id": "09921431c737",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Follow The Thread",
+            "duration": 277.0,
+            "bitrate": 134,
+            "lufs": -15.1,
+            "true_peak": -1.4,
+            "fingerprint": "1a6e15380bdb9f18",
+            "sha1": "d566d85e536bacd920707aeb116e44bd1361943f",
+            "size": 4689203,
+            "mtime": 1792166029,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Footstool Fire - Contra__v1.m4a",
+            "id": "7df1c1072f38",
+            "artists": [
+                "contra"
+            ],
+            "title": "Footstool Fire",
+            "duration": 277.16,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -4.9,
+            "fingerprint": "c4c49ce497beb6a5",
+            "sha1": "ad17dc9dbe2669ebb22cb31ac131cf05602a808f",
+            "size": 4532147,
+            "mtime": 1792162407,
+            "credit_source": "manual"
+        },
+        {
             "file": "Forgotten Country Song (set 2) - Joe Martin__v1.m4a",
             "id": "144554dc0085",
             "artists": [
@@ -1145,6 +2335,40 @@
             "wavlake_track_id": "a438595c-db68-4e6b-925f-c524b759b2f1"
         },
         {
+            "file": "Freedom - Contra__v1.m4a",
+            "id": "a7cc71f08486",
+            "artists": [
+                "contra"
+            ],
+            "title": "Freedom",
+            "duration": 284.88,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.7,
+            "fingerprint": "118d94864e0f4ac9",
+            "sha1": "e2f61e952e0333b76af20ef3057986170df58cc3",
+            "size": 4678526,
+            "mtime": 1792162944,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Freedom's Code - NumberGoExp__v1.m4a",
+            "id": "eb255e712d14",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Freedom's Code",
+            "duration": 221.64,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.2,
+            "fingerprint": "d02041f2109eb7d6",
+            "sha1": "f42d054ec423cc4e42e774f76b673a7d8828f97c",
+            "size": 3631468,
+            "mtime": 1792165488,
+            "credit_source": "manual"
+        },
+        {
             "file": "Friends And More - Black Vulcanite__v1.m4a",
             "id": "4eefbf59c8d8",
             "artists": [
@@ -1159,6 +2383,40 @@
             "sha1": "7cd59cec7439996f970b79259023281613e74c1b",
             "size": 3210762,
             "mtime": 1792154612,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Front Porch Light - Contra__v1.m4a",
+            "id": "3029cb5e9f9f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Front Porch Light",
+            "duration": 236.52,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "aa41e7b17eb73fb3",
+            "sha1": "db82c0c7cd579e87899968196853e2d430498359",
+            "size": 3901597,
+            "mtime": 1792162622,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Fuck the Fucking Fuckers (Inspired by Chiefmonkey) - Zazawowow__v1.m4a",
+            "id": "cbdbac82d216",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Fuck the Fucking Fuckers (Inspired by Chiefmonkey)",
+            "duration": 165.0,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -5.1,
+            "fingerprint": "8b0420206ac2606f",
+            "sha1": "bce1111179900aa7f60cf9e1535055393c89974a",
+            "size": 2754937,
+            "mtime": 1792165891,
             "credit_source": "manual"
         },
         {
@@ -1202,6 +2460,57 @@
             "wavlake_track_id": "57304017-2d67-483f-9df4-a87a225f3082"
         },
         {
+            "file": "Gaps In My Armor - Contra__v1.m4a",
+            "id": "264a8b98f622",
+            "artists": [
+                "contra"
+            ],
+            "title": "Gaps In My Armor",
+            "duration": 319.92,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "445a5874d7f74e0e",
+            "sha1": "c2ea3e128c323e45eb3a97418ba48ffe4c14ce44",
+            "size": 5227874,
+            "mtime": 1792162960,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Genesis - Contra__v1.m4a",
+            "id": "7fc7f5f3dd5a",
+            "artists": [
+                "contra"
+            ],
+            "title": "Genesis",
+            "duration": 208.4,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -1.6,
+            "fingerprint": "4e4fabf4600c15fb",
+            "sha1": "eac0f5d5a108eaed09a174dda7db28b0033fea2a",
+            "size": 3487857,
+            "mtime": 1792165351,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Genesis Block - Contra__v1.m4a",
+            "id": "919ac92757ab",
+            "artists": [
+                "contra"
+            ],
+            "title": "Genesis Block",
+            "duration": 234.0,
+            "bitrate": 131,
+            "lufs": -15.2,
+            "true_peak": -1.3,
+            "fingerprint": "3ba74ac62cb4afbf",
+            "sha1": "ede5f4d37511d3292e2d8b1307f4146c3dfbb96d",
+            "size": 3880245,
+            "mtime": 1792162777,
+            "credit_source": "manual"
+        },
+        {
             "file": "Geodetic - sabu__v1.m4a",
             "id": "b04ea3b9ebc4",
             "artists": [
@@ -1216,6 +2525,125 @@
             "sha1": "6ba25fe299875729b67db864323a9173edd0726c",
             "size": 3950677,
             "mtime": 1792144310,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Get Back Up - Contra__v1.m4a",
+            "id": "a324c01803a8",
+            "artists": [
+                "contra"
+            ],
+            "title": "Get Back Up",
+            "duration": 337.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "35fb9e23dca7d2d6",
+            "sha1": "24ec77bac31fe5fb01435b541f86a931287a0fe7",
+            "size": 5553087,
+            "mtime": 1792163537,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Glass Veins - Contra__v1.m4a",
+            "id": "ddb073468411",
+            "artists": [
+                "contra"
+            ],
+            "title": "Glass Veins",
+            "duration": 479.4,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "aad7b1e01a36553d",
+            "sha1": "69b2bd5264218c4fb7d45f97d89903bf2810ff64",
+            "size": 7854549,
+            "mtime": 1792164687,
+            "credit_source": "manual"
+        },
+        {
+            "file": "God Fearing Man - Contra__v1.m4a",
+            "id": "a3e5f9640f89",
+            "artists": [
+                "contra"
+            ],
+            "title": "God Fearing Man",
+            "duration": 336.1,
+            "bitrate": 129,
+            "lufs": -15.2,
+            "true_peak": -1.1,
+            "fingerprint": "30081aceb893ae49",
+            "sha1": "8a09423b44c9a24ee6dce28793042bc942435655",
+            "size": 5489549,
+            "mtime": 1792162379,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Gods Don’t Bleed - Contra__v1.m4a",
+            "id": "8c8c940098e1",
+            "artists": [
+                "contra"
+            ],
+            "title": "Gods Don’t Bleed",
+            "duration": 316.48,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.6,
+            "fingerprint": "1d756b4006f2b536",
+            "sha1": "ccbbb2738348c0bdd348703791614cd5ab6b9e01",
+            "size": 5205282,
+            "mtime": 1792163298,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Gov cucks - Zazawowow__v1.m4a",
+            "id": "253810bcb236",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Gov cucks",
+            "duration": 213.76,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "81359ae48358039c",
+            "sha1": "fddb7c576e26ced49616a3c7fa944084c5d8da55",
+            "size": 3597233,
+            "mtime": 1792165880,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Gravel Road Home - Contra__v1.m4a",
+            "id": "83a05c987202",
+            "artists": [
+                "contra"
+            ],
+            "title": "Gravel Road Home",
+            "duration": 222.28,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "59d731af5202d066",
+            "sha1": "efb75eeb3fc790652fb08c32c93af58fbe116c62",
+            "size": 3628361,
+            "mtime": 1792162520,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Ground Truth - Contra__v1.m4a",
+            "id": "6c2d0152a78b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Ground Truth",
+            "duration": 279.76,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.7,
+            "fingerprint": "c54a67ec369546d0",
+            "sha1": "fdd438690ab2b24fc0b91c7e68ab8c1a573dedd1",
+            "size": 4628927,
+            "mtime": 1792163976,
             "credit_source": "manual"
         },
         {
@@ -1254,6 +2682,40 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "81c98053-ce9b-4824-b689-fe0934fe7b00"
+        },
+        {
+            "file": "Hand On The Switch - Contra__v1.m4a",
+            "id": "c7d8c6988b72",
+            "artists": [
+                "contra"
+            ],
+            "title": "Hand On The Switch",
+            "duration": 349.72,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "7f9eafac527e34a0",
+            "sha1": "3ff5fd4d01e916910ef214257ee0e5fa124f724d",
+            "size": 5734818,
+            "mtime": 1792163595,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Hard Truth, Hard Men - Contra__v1.m4a",
+            "id": "f68dd81bb140",
+            "artists": [
+                "contra"
+            ],
+            "title": "Hard Truth, Hard Men",
+            "duration": 270.0,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "0299b56a350d8dd9",
+            "sha1": "8257c84939e6fa3fb7960359667f1f1f688665d5",
+            "size": 4468310,
+            "mtime": 1792164545,
+            "credit_source": "manual"
         },
         {
             "file": "Heartbreak Cult (set 1) - Joe Martin__v1.m4a",
@@ -1356,6 +2818,23 @@
             "wavlake_track_id": "3928208d-2bf1-4255-aa0d-6ab287e913ac"
         },
         {
+            "file": "High on Now - NumberGoExp__v1.m4a",
+            "id": "6cc256f68fa5",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "High on Now",
+            "duration": 175.2,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "8b1acc3ce949fc5e",
+            "sha1": "cf7dfd590622ad067b712f4fab12070260503b1b",
+            "size": 2927382,
+            "mtime": 1792165766,
+            "credit_source": "manual"
+        },
+        {
             "file": "Highschool Cool - Black Vulcanite__v1.m4a",
             "id": "e38b099dcb85",
             "artists": [
@@ -1387,6 +2866,108 @@
             "sha1": "ac95f197f92fb0f3a9ac80c1c4217c7e29f00edc",
             "size": 3845797,
             "mtime": 1792154731,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Ho ho hodl for a better future - NumberGoExp__v1.m4a",
+            "id": "8053d2635891",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Ho ho hodl for a better future",
+            "duration": 249.7,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "212314e00f9b61da",
+            "sha1": "f876a3e006c130323b236ff8d127a39b45264359",
+            "size": 4144309,
+            "mtime": 1792165730,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Hold On - Contra__v1.m4a",
+            "id": "146468610adf",
+            "artists": [
+                "contra"
+            ],
+            "title": "Hold On",
+            "duration": 297.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "253c0ca2f67e91f9",
+            "sha1": "ec2d8e469b574890ed38bfad2e130280a4f464d1",
+            "size": 4884288,
+            "mtime": 1792163963,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Hollow Victory - Contra__v1.m4a",
+            "id": "3a7606276df8",
+            "artists": [
+                "contra"
+            ],
+            "title": "Hollow Victory",
+            "duration": 404.4,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "7f89b484b3d9b610",
+            "sha1": "1e41aa863f0b070939d1912e43b33c42a1bdeaa4",
+            "size": 6632521,
+            "mtime": 1792163337,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Honey Badger to the moon - NumberGoExp__v1.m4a",
+            "id": "767a19745013",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Honey Badger to the moon",
+            "duration": 171.32,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.0,
+            "fingerprint": "c27005c8da7e6317",
+            "sha1": "2722bbc3f22a0320cb3483141e5b4f380a2c6cdf",
+            "size": 2816614,
+            "mtime": 1792165622,
+            "credit_source": "manual"
+        },
+        {
+            "file": "HoneyBadger doesn't give a fuck. Higher - NumberGoExp__v1.m4a",
+            "id": "b66a72650af3",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "HoneyBadger doesn't give a fuck. Higher",
+            "duration": 239.92,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.7,
+            "fingerprint": "ce7e91c40c1d8f9f",
+            "sha1": "454875da0054c8f71a3f6e8a842dab94d566b68a",
+            "size": 3956482,
+            "mtime": 1792165647,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Hootcoiner - Zazawowow__v1.m4a",
+            "id": "0337fe69a7b0",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Hootcoiner",
+            "duration": 185.38,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "b0e80b8400e183f0",
+            "sha1": "1de3c7b08b1513d2691936d7f4fefb0d8c38fde5",
+            "size": 3073218,
+            "mtime": 1792165798,
             "credit_source": "manual"
         },
         {
@@ -1441,6 +3022,91 @@
             "credit_source": "manual"
         },
         {
+            "file": "Immutable - Contra__v1.m4a",
+            "id": "c9e074282c8c",
+            "artists": [
+                "contra"
+            ],
+            "title": "Immutable",
+            "duration": 248.28,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "4c0f5c386881532c",
+            "sha1": "cb082ea225387731899c10698a9aeaae3089c891",
+            "size": 4080331,
+            "mtime": 1792162866,
+            "credit_source": "manual"
+        },
+        {
+            "file": "In My Head - Contra__v1.m4a",
+            "id": "05c2bf0093d2",
+            "artists": [
+                "contra"
+            ],
+            "title": "In My Head",
+            "duration": 311.2,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "e6d22885f0db5487",
+            "sha1": "f1d283993253ec78844f108c7527b35680320de2",
+            "size": 5099693,
+            "mtime": 1792163555,
+            "credit_source": "manual"
+        },
+        {
+            "file": "In-Difference-To-Brutality - Contra__v1.m4a",
+            "id": "1041297e870d",
+            "artists": [
+                "contra"
+            ],
+            "title": "In-Difference-To-Brutality",
+            "duration": 289.48,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -4.2,
+            "fingerprint": "4de30a27e2e34c8d",
+            "sha1": "675d29c159aad94ad505af0c7f06804dac96f04e",
+            "size": 4732019,
+            "mtime": 1792162392,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Initial Block Download - Contra__v1.m4a",
+            "id": "8e3b5395b051",
+            "artists": [
+                "contra"
+            ],
+            "title": "Initial Block Download",
+            "duration": 278.4,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -2.0,
+            "fingerprint": "d136c9ff37b0b514",
+            "sha1": "e52a19782a2176763f32c46044be06e35d772fa8",
+            "size": 4666593,
+            "mtime": 1792165207,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Inside The Evil Within - Contra__v1.m4a",
+            "id": "598d8fea915c",
+            "artists": [
+                "contra"
+            ],
+            "title": "Inside The Evil Within",
+            "duration": 261.36,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -1.4,
+            "fingerprint": "71ecf1441201f1fa",
+            "sha1": "0518bdc54fea60bc9c63ef152af311a30490a87f",
+            "size": 4344090,
+            "mtime": 1792165030,
+            "credit_source": "manual"
+        },
+        {
             "file": "Interoception - Under The Mulga Groove__v1.m4a",
             "id": "3415dc0f2193",
             "artists": [
@@ -1459,6 +3125,74 @@
             "qr_target": "https://wavlake.com/track/0eef8584-2d47-46d6-904c-7e50dcd788f2",
             "qr_kind": "wavlake",
             "wavlake_track_id": "0eef8584-2d47-46d6-904c-7e50dcd788f2"
+        },
+        {
+            "file": "Iron Hunger - Contra__v1.m4a",
+            "id": "737c4e88fa6c",
+            "artists": [
+                "contra"
+            ],
+            "title": "Iron Hunger",
+            "duration": 239.9,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.6,
+            "fingerprint": "208424e9b5b380ed",
+            "sha1": "a53f86d118991a0a94de2944a5f0c5111bb16bec",
+            "size": 3948721,
+            "mtime": 1792162909,
+            "credit_source": "manual"
+        },
+        {
+            "file": "It's the only way through - Zazawowow__v1.m4a",
+            "id": "6dce26ae8bdf",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "It's the only way through",
+            "duration": 252.04,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "2af82aac5febfc19",
+            "sha1": "017bd8b36ebb17ba698966a745353e16f4d3dd39",
+            "size": 4221238,
+            "mtime": 1792165942,
+            "credit_source": "manual"
+        },
+        {
+            "file": "It’s All Coming Together - Contra__v1.m4a",
+            "id": "4045964ca66b",
+            "artists": [
+                "contra"
+            ],
+            "title": "It’s All Coming Together",
+            "duration": 234.52,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "73beb4d3657ae49f",
+            "sha1": "8f3cb30bfff343523b83f9c16218837db92c6260",
+            "size": 3847593,
+            "mtime": 1792162698,
+            "credit_source": "manual"
+        },
+        {
+            "file": "It’s Beneath Me - Contra__v1.m4a",
+            "id": "9ffef03661f8",
+            "artists": [
+                "contra"
+            ],
+            "title": "It’s Beneath Me",
+            "duration": 260.22,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.9,
+            "fingerprint": "dc50fd1673e42a9c",
+            "sha1": "7bf66f6ccfc1e2932505e34ce1dbfc1329cf50ea",
+            "size": 4280242,
+            "mtime": 1792164898,
+            "credit_source": "manual"
         },
         {
             "file": "Journalists Are Cypherpunks - Richard Greaser__v1.m4a",
@@ -1552,6 +3286,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Keys In My Pocket - Contra__v1.m4a",
+            "id": "bc0a82eba0d3",
+            "artists": [
+                "contra"
+            ],
+            "title": "Keys In My Pocket",
+            "duration": 276.2,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "49717606de3f16ff",
+            "sha1": "943a8ecc19cdc67543d88ae991d50af08f35298a",
+            "size": 4590579,
+            "mtime": 1792164513,
+            "credit_source": "manual"
+        },
+        {
             "file": "Killing Me Slowly (set 1) - Joe Martin__v1.m4a",
             "id": "6d15eb19d7d6",
             "artists": [
@@ -1590,6 +3341,40 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "d808c27e-27c5-4a3a-8df1-f2b9d65ee421"
+        },
+        {
+            "file": "King Of Nothing - Contra__v1.m4a",
+            "id": "08c24759a425",
+            "artists": [
+                "contra"
+            ],
+            "title": "King Of Nothing",
+            "duration": 419.1,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.2,
+            "fingerprint": "7dfa9cd481f6c26a",
+            "sha1": "9f76520a4ae4dc56ba5203d287ee9c75cb27b6c7",
+            "size": 6875371,
+            "mtime": 1792163153,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Kingdom of Ruin - Contra__v1.m4a",
+            "id": "7149303a66c6",
+            "artists": [
+                "contra"
+            ],
+            "title": "Kingdom of Ruin",
+            "duration": 354.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.0,
+            "fingerprint": "08d42e4177ca6495",
+            "sha1": "c788244fdf4e70ea2ff5b65ae3c49fdab176b0e1",
+            "size": 5848833,
+            "mtime": 1792163279,
+            "credit_source": "manual"
         },
         {
             "file": "LA-rge bezels - sabu__v1.m4a",
@@ -1644,6 +3429,40 @@
             "qr_target": "https://wavlake.com/track/27a9ff24-12d5-4931-b81c-e907ef601790",
             "qr_kind": "wavlake",
             "wavlake_track_id": "27a9ff24-12d5-4931-b81c-e907ef601790"
+        },
+        {
+            "file": "Led Astray - Contra__v1.m4a",
+            "id": "4e3c1fc42489",
+            "artists": [
+                "contra"
+            ],
+            "title": "Led Astray",
+            "duration": 281.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "3b82963f3e0f0290",
+            "sha1": "07e767cea521d7695c020717e992087db7d08b9d",
+            "size": 4636051,
+            "mtime": 1792163211,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Let It All Fall Down - Contra__v1.m4a",
+            "id": "14274c3bfe1f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Let It All Fall Down",
+            "duration": 228.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "83b318da738cba0c",
+            "sha1": "ea9398ba2ab52d632be370cf9c14bd62d341dc5b",
+            "size": 3757251,
+            "mtime": 1792165401,
+            "credit_source": "manual"
         },
         {
             "file": "Let It Be ft Rafael & Quido - Black Vulcanite__v1.m4a",
@@ -1703,6 +3522,23 @@
             "wavlake_track_id": "15f7dd3e-4b10-494e-841e-4348ceab4d95"
         },
         {
+            "file": "Light The Lamp - Contra__v1.m4a",
+            "id": "ebd78176cb8d",
+            "artists": [
+                "contra"
+            ],
+            "title": "Light The Lamp",
+            "duration": 327.92,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "cf09031a37b5f953",
+            "sha1": "ea43bc4150da87f89e7a011854ae6730003de1c2",
+            "size": 5373269,
+            "mtime": 1792163993,
+            "credit_source": "manual"
+        },
+        {
             "file": "Lights Out Hot Stars Out, and vinyl Ryders - sabu__v1.m4a",
             "id": "cb795805569a",
             "artists": [
@@ -1754,6 +3590,23 @@
             "sha1": "775f660da6274696fc211b04779b941dac8d32cc",
             "size": 1675575,
             "mtime": 1792144465,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Long Game - Contra__v1.m4a",
+            "id": "b8253dd240f3",
+            "artists": [
+                "contra"
+            ],
+            "title": "Long Game",
+            "duration": 325.2,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "ca5ebf2a05f18d7f",
+            "sha1": "ec5f28b5a9f9a7a41723ccbcfd31726d9736bdaa",
+            "size": 5388800,
+            "mtime": 1792164477,
             "credit_source": "manual"
         },
         {
@@ -1832,6 +3685,91 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "5d5df0da-7bed-4d35-9bec-99093c6713a4"
+        },
+        {
+            "file": "Marionetas Adormecidas - NumberGoExp__v1.m4a",
+            "id": "b75a83d2ebe7",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Marionetas Adormecidas",
+            "duration": 174.9,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.1,
+            "fingerprint": "00b910cdc269e4cb",
+            "sha1": "f72e42c9adfe294d3cc56fdca3f0f25c05ccbfa3",
+            "size": 2887407,
+            "mtime": 1792165669,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Marionetas controladas - NumberGoExp__v1.m4a",
+            "id": "f7fdd93874b3",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Marionetas controladas",
+            "duration": 229.88,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.9,
+            "fingerprint": "fb4df0e622862bc0",
+            "sha1": "bd93dedc7c8671b54fe69b5cd9cc912f9287cab1",
+            "size": 3791206,
+            "mtime": 1792165680,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Max Says Build - Zazawowow__v1.m4a",
+            "id": "3937103690a2",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Max Says Build",
+            "duration": 186.87,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "69a3762f3cb89aaa",
+            "sha1": "504f7e111a00d63e5ea5eee2b896ae9e8731841a",
+            "size": 3132589,
+            "mtime": 1792165911,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Medications - Contra__v1.m4a",
+            "id": "37fc4a54ca22",
+            "artists": [
+                "contra"
+            ],
+            "title": "Medications",
+            "duration": 249.64,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -4.3,
+            "fingerprint": "c093116972a68825",
+            "sha1": "ba510ae5f55a3f566bb1454b60066c0cb5e45fa3",
+            "size": 4132990,
+            "mtime": 1792164653,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Michael Michael Saylor - Zazawowow__v1.m4a",
+            "id": "bb500b4c6616",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Michael Michael Saylor",
+            "duration": 182.99,
+            "bitrate": 135,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "7dc201ff4ae10b08",
+            "sha1": "36c5db3e236d656e8ff4ad2bc5a5d20d82dede69",
+            "size": 3122148,
+            "mtime": 1792166128,
+            "credit_source": "manual"
         },
         {
             "file": "MiddleMan - Under The Mulga Groove__v1.m4a",
@@ -1951,6 +3889,57 @@
             "credit_source": "manual"
         },
         {
+            "file": "Narrow Path - Contra__v1.m4a",
+            "id": "cc8677cc9377",
+            "artists": [
+                "contra"
+            ],
+            "title": "Narrow Path",
+            "duration": 309.96,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "c4da64876a2b8639",
+            "sha1": "f4d404284271c70c7e8d68415d5b65b9864e32c6",
+            "size": 5174990,
+            "mtime": 1792164613,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Neo-Morality - Zazawowow__v1.m4a",
+            "id": "4883d99e9b2d",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Neo-Morality",
+            "duration": 183.96,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -5.2,
+            "fingerprint": "dc1f48e478ade906",
+            "sha1": "4ca4840261bd7ac28af5d1306e459cff6a2626e4",
+            "size": 3087707,
+            "mtime": 1792165811,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Neon Lonesome - Contra__v1.m4a",
+            "id": "453eff8f4823",
+            "artists": [
+                "contra"
+            ],
+            "title": "Neon Lonesome",
+            "duration": 241.08,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.7,
+            "fingerprint": "31c826ad6b37087f",
+            "sha1": "8adfd803284a549ba789a568fc11088147ec7be5",
+            "size": 3953397,
+            "mtime": 1792162494,
+            "credit_source": "manual"
+        },
+        {
             "file": "New song, it called akron hammer - sabu__v1.m4a",
             "id": "faff8059cd83",
             "artists": [
@@ -1965,6 +3954,125 @@
             "sha1": "1d177e5b734f685aacdc2ac21ced0e25f001e04c",
             "size": 2462207,
             "mtime": 1792144771,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Next Satoshi - Contra__v1.m4a",
+            "id": "cffd91cd55fa",
+            "artists": [
+                "contra"
+            ],
+            "title": "Next Satoshi",
+            "duration": 236.2,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.5,
+            "fingerprint": "8d4768f8847c7c81",
+            "sha1": "9d411e1b27522097c6dba3b031ee187cdf5f238c",
+            "size": 3898276,
+            "mtime": 1792162818,
+            "credit_source": "manual"
+        },
+        {
+            "file": "No Control - Contra__v1.m4a",
+            "id": "9a906c2872a0",
+            "artists": [
+                "contra"
+            ],
+            "title": "No Control",
+            "duration": 272.48,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "533ed449cd3558f0",
+            "sha1": "884bb55ce74503a0097ff261a99810e7f7345f84",
+            "size": 4479827,
+            "mtime": 1792163611,
+            "credit_source": "manual"
+        },
+        {
+            "file": "No Crown, No Crowd - Contra__v1.m4a",
+            "id": "b00bf24ef17d",
+            "artists": [
+                "contra"
+            ],
+            "title": "No Crown, No Crowd",
+            "duration": 236.59,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.6,
+            "fingerprint": "dc6275c607a972ce",
+            "sha1": "49253ef6037dc8a5fcbbf5e4551b43cfa3c45b8b",
+            "size": 3900866,
+            "mtime": 1792164830,
+            "credit_source": "manual"
+        },
+        {
+            "file": "No One At The Top - Contra__v1.m4a",
+            "id": "7a34120c4596",
+            "artists": [
+                "contra"
+            ],
+            "title": "No One At The Top",
+            "duration": 232.2,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "54cd1ad8bcc29e81",
+            "sha1": "684cf8c982c4e26dddd694f92fd993d5c393d618",
+            "size": 3880105,
+            "mtime": 1792164744,
+            "credit_source": "manual"
+        },
+        {
+            "file": "No Permission Required - Contra__v1.m4a",
+            "id": "5800c11a0d46",
+            "artists": [
+                "contra"
+            ],
+            "title": "No Permission Required",
+            "duration": 221.52,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -4.3,
+            "fingerprint": "fa92af3df976a704",
+            "sha1": "67a81ac3216f7d0c088e850f4cd439ef7c3c5802",
+            "size": 3613089,
+            "mtime": 1792163751,
+            "credit_source": "manual"
+        },
+        {
+            "file": "No Single Point of Failure - Contra__v1.m4a",
+            "id": "b1c237ba08f1",
+            "artists": [
+                "contra"
+            ],
+            "title": "No Single Point of Failure",
+            "duration": 369.96,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "da4dbcc7657c73fa",
+            "sha1": "d9899bfb0dca819a583f59edab5fd73862ae7edb",
+            "size": 6121287,
+            "mtime": 1792162852,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Nodes of Eden - Contra__v1.m4a",
+            "id": "9adf35217839",
+            "artists": [
+                "contra"
+            ],
+            "title": "Nodes of Eden",
+            "duration": 317.92,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -5.3,
+            "fingerprint": "a0c667e01b326d74",
+            "sha1": "54a29bcbe879d3783127c8acfaf756ab101ef68a",
+            "size": 5195915,
+            "mtime": 1792162279,
             "credit_source": "manual"
         },
         {
@@ -1985,6 +4093,74 @@
             "credit_source": "manual"
         },
         {
+            "file": "Nostr Memories - Contra__v1.m4a",
+            "id": "8f50421fd2b2",
+            "artists": [
+                "contra"
+            ],
+            "title": "Nostr Memories",
+            "duration": 172.5,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "a7eea1d214ad00e5",
+            "sha1": "db4883bac884332421f2a5cc73e338672c29c6c8",
+            "size": 2886918,
+            "mtime": 1792164107,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Not Your Keys - NumberGoExp__v1.m4a",
+            "id": "77615ea34571",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Not Your Keys",
+            "duration": 220.8,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "5aeed89dbaebfbf0",
+            "sha1": "71d23b67e5f82aefe2404e27893350099f1b48a1",
+            "size": 3681655,
+            "mtime": 1792165754,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Not Yours - Contra__v1.m4a",
+            "id": "c7a85e95528f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Not Yours",
+            "duration": 204.56,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.5,
+            "fingerprint": "0fe3cce889089a2c",
+            "sha1": "13e593395c46d9a3c979b15d589768352f39bcbe",
+            "size": 3370901,
+            "mtime": 1792163682,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Nothing Given - Contra__v1.m4a",
+            "id": "6397b0eacadc",
+            "artists": [
+                "contra"
+            ],
+            "title": "Nothing Given",
+            "duration": 244.96,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "407b1c3622aa0c95",
+            "sha1": "0105c43cb081fb79dd927a9c7ea2757a4db48584",
+            "size": 4031307,
+            "mtime": 1792163860,
+            "credit_source": "manual"
+        },
+        {
             "file": "OFFCHAIN 2030 feat. Yin & John Perry Barlow - Cristo Currensi__v1.m4a",
             "id": "aa94f87d48b5",
             "artists": [
@@ -1999,6 +4175,57 @@
             "sha1": "5b24fbda722d32de218d6aad2b0040c9cdc74b87",
             "size": 3609592,
             "mtime": 1792148180,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Off the Clock - Contra__v1.m4a",
+            "id": "fdbed0ac64f0",
+            "artists": [
+                "contra"
+            ],
+            "title": "Off the Clock",
+            "duration": 317.83,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "945088de4f535e9a",
+            "sha1": "744b203218779472a83c97feedd053269fda94c4",
+            "size": 5261103,
+            "mtime": 1792164045,
+            "credit_source": "manual"
+        },
+        {
+            "file": "On The Firing Line - Contra__v1.m4a",
+            "id": "d6d8d6f9597a",
+            "artists": [
+                "contra"
+            ],
+            "title": "On The Firing Line",
+            "duration": 266.44,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -1.7,
+            "fingerprint": "600a328d9b4d3898",
+            "sha1": "6a0133b09049759d7e906735a0f861510f5ee7a8",
+            "size": 4402326,
+            "mtime": 1792162482,
+            "credit_source": "manual"
+        },
+        {
+            "file": "On The Offensive - Contra__v1.m4a",
+            "id": "7d87391c7cb4",
+            "artists": [
+                "contra"
+            ],
+            "title": "On The Offensive",
+            "duration": 406.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "4a0edbc7b7eaad0c",
+            "sha1": "c788a06801c36e17af99fdf894b1dc8c2a5a2cd7",
+            "size": 6654431,
+            "mtime": 1792163522,
             "credit_source": "manual"
         },
         {
@@ -2019,6 +4246,91 @@
             "credit_source": "manual"
         },
         {
+            "file": "Orange Pill the Block - Contra__v1.m4a",
+            "id": "149faab5e4cd",
+            "artists": [
+                "contra"
+            ],
+            "title": "Orange Pill the Block",
+            "duration": 180.8,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.0,
+            "fingerprint": "8f2c2c949f907291",
+            "sha1": "6cebe404265368133ed45f80027bf661e5e96c8a",
+            "size": 3013014,
+            "mtime": 1792165134,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Orange Signal - Contra__v1.m4a",
+            "id": "a91e9774d159",
+            "artists": [
+                "contra"
+            ],
+            "title": "Orange Signal",
+            "duration": 178.64,
+            "bitrate": 136,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "cfd95373b23ef11d",
+            "sha1": "0ac56341fea89f895f6c16aba4779291fb1dc42a",
+            "size": 3064552,
+            "mtime": 1792165099,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Own The Signal - Contra__v1.m4a",
+            "id": "1cf0c514639f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Own The Signal",
+            "duration": 312.84,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "17623fc84ef68213",
+            "sha1": "5c0b8858c5eac1694c44f6785f8a0db879847206",
+            "size": 5133193,
+            "mtime": 1792162757,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Paper Chain - Contra__v1.m4a",
+            "id": "6ea319c48cc5",
+            "artists": [
+                "contra"
+            ],
+            "title": "Paper Chain",
+            "duration": 165.64,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -1.2,
+            "fingerprint": "049d5099663117cb",
+            "sha1": "42d032c08fd416ff1992a822f82ae71ac0e0ed6a",
+            "size": 2799294,
+            "mtime": 1792165065,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Pilgrim Feet - Contra__v1.m4a",
+            "id": "326e84ef56c9",
+            "artists": [
+                "contra"
+            ],
+            "title": "Pilgrim Feet",
+            "duration": 219.96,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "e8360bfae3041a6c",
+            "sha1": "37dc704f199545607ba878437cc06b1c84794f91",
+            "size": 3639650,
+            "mtime": 1792165374,
+            "credit_source": "manual"
+        },
+        {
             "file": "Playing With Dolls - Black Vulcanite__v1.m4a",
             "id": "a2ff9e146800",
             "artists": [
@@ -2036,6 +4348,193 @@
             "credit_source": "manual"
         },
         {
+            "file": "Plug In Mesh UP - Zazawowow__v1.m4a",
+            "id": "91ddf205ec71",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Plug In Mesh UP",
+            "duration": 221.88,
+            "bitrate": 136,
+            "lufs": -15.0,
+            "true_peak": -3.6,
+            "fingerprint": "54e2fb1c36cf4dff",
+            "sha1": "d90d845c06d5baa65da42d969772e81d9298ab9f",
+            "size": 3823691,
+            "mtime": 1792166085,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Prescription For The Dead - Contra__v1.m4a",
+            "id": "72b863c24ec4",
+            "artists": [
+                "contra"
+            ],
+            "title": "Prescription For The Dead",
+            "duration": 228.36,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -4.0,
+            "fingerprint": "07251c0ecb5aa308",
+            "sha1": "787311ca8568e534e7ab09814aa6d7f7b7555e97",
+            "size": 3778116,
+            "mtime": 1792164625,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Prometheus Unbound - Contra__v1.m4a",
+            "id": "05a92ee1983d",
+            "artists": [
+                "contra"
+            ],
+            "title": "Prometheus Unbound",
+            "duration": 414.9,
+            "bitrate": 132,
+            "lufs": -15.2,
+            "true_peak": -1.7,
+            "fingerprint": "0b8b47a836489320",
+            "sha1": "c621c56f6f9ef1b3e83d1a853cab2d01e6e74371",
+            "size": 6908375,
+            "mtime": 1792163370,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Proof - Contra__v1.m4a",
+            "id": "adb9df8cf199",
+            "artists": [
+                "contra"
+            ],
+            "title": "Proof",
+            "duration": 185.8,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.1,
+            "fingerprint": "1b8f19b28bb27a00",
+            "sha1": "8c0700194a6e14b39ad8aa0fe12a8c4ab1418a1c",
+            "size": 3100372,
+            "mtime": 1792163773,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Proof Of Pain - Contra__v1.m4a",
+            "id": "bd23ac58133e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Proof Of Pain",
+            "duration": 250.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.9,
+            "fingerprint": "8db93a32ed6ca7c3",
+            "sha1": "50f1350e7fb8fe0d678120ef73aae7b231e3a9c1",
+            "size": 4121754,
+            "mtime": 1792162806,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Proof of Silence - Contra__v1.m4a",
+            "id": "92041d8e9b4e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Proof of Silence",
+            "duration": 208.2,
+            "bitrate": 135,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "0f4f20e22280db20",
+            "sha1": "0f7387b1ee5e2c404d60a9432cd16707729a6ec5",
+            "size": 3544689,
+            "mtime": 1792164766,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Proof of Work - Contra__v1.m4a",
+            "id": "5e09ede565a5",
+            "artists": [
+                "contra"
+            ],
+            "title": "Proof of Work",
+            "duration": 192.6,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "12363cbe52f60710",
+            "sha1": "a3f2de9bb1f8e53956432548cbbf5c3e7dd8fd4c",
+            "size": 3210232,
+            "mtime": 1792164395,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Protocol Of Freedom - Contra__v1.m4a",
+            "id": "b04b65f5c215",
+            "artists": [
+                "contra"
+            ],
+            "title": "Protocol Of Freedom",
+            "duration": 211.2,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "863aaaf9e738739b",
+            "sha1": "c29a4702d09233b0a05a60d8ee32f8f0cd6c8047",
+            "size": 3488325,
+            "mtime": 1792163722,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Puppet Strings - Contra__v1.m4a",
+            "id": "91c3dfbef718",
+            "artists": [
+                "contra"
+            ],
+            "title": "Puppet Strings",
+            "duration": 359.72,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.3,
+            "fingerprint": "3c72bcd42551ce2a",
+            "sha1": "dcd56001b121028850f08899bf8f06f179b8d900",
+            "size": 5943859,
+            "mtime": 1792163402,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Rabbit Hole - Contra__v1.m4a",
+            "id": "a218c0db69ce",
+            "artists": [
+                "contra"
+            ],
+            "title": "Rabbit Hole",
+            "duration": 159.4,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "1daf226d6c69f6d7",
+            "sha1": "d2f67b038082575521699d8543b6086c52dc8bbb",
+            "size": 2683856,
+            "mtime": 1792165087,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Relay Rage - Contra__v1.m4a",
+            "id": "fc1cf3683baf",
+            "artists": [
+                "contra"
+            ],
+            "title": "Relay Rage",
+            "duration": 225.4,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "66b9e5695fbd5eb7",
+            "sha1": "94d460e2f02137428d199cef785387e2a9655579",
+            "size": 3734219,
+            "mtime": 1792163763,
+            "credit_source": "manual"
+        },
+        {
             "file": "Reparations - Black Vulcanite__v1.m4a",
             "id": "c66f03c706ba",
             "artists": [
@@ -2050,6 +4549,176 @@
             "sha1": "ca53159ba114206d7610fca6d826eadde2449d08",
             "size": 4223834,
             "mtime": 1792154674,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Replace by Fee - Contra__v1.m4a",
+            "id": "e788e13a2a2d",
+            "artists": [
+                "contra"
+            ],
+            "title": "Replace by Fee",
+            "duration": 271.04,
+            "bitrate": 137,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "40a22adc1ced1c7e",
+            "sha1": "17b09c9c37385e349660c19979ae808cfb1ad5bc",
+            "size": 4703216,
+            "mtime": 1792165233,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Roots Before Fruit - Contra__v1.m4a",
+            "id": "96cc47ea1d4b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Roots Before Fruit",
+            "duration": 354.08,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "582ee9b8d6cf73ef",
+            "sha1": "1fd1e14190ff36e608007af1ebfb580dde1b748c",
+            "size": 5881253,
+            "mtime": 1792164077,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Roots Down Deep - Contra__v1.m4a",
+            "id": "d338e3f53d95",
+            "artists": [
+                "contra"
+            ],
+            "title": "Roots Down Deep",
+            "duration": 297.88,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.6,
+            "fingerprint": "0d2a4fc8c7b943cf",
+            "sha1": "5e91552b45318bef3c03fa85630433aeb03f8eff",
+            "size": 4945377,
+            "mtime": 1792164596,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Ross’d - Contra__v1.m4a",
+            "id": "69b6950182b6",
+            "artists": [
+                "contra"
+            ],
+            "title": "Ross’d",
+            "duration": 132.8,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "1c22c3dda5d33575",
+            "sha1": "2d94358292e441571f6aa8b13c4643648574409c",
+            "size": 2217547,
+            "mtime": 1792163740,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Route Around - Contra__v1.m4a",
+            "id": "f638cb575552",
+            "artists": [
+                "contra"
+            ],
+            "title": "Route Around",
+            "duration": 189.88,
+            "bitrate": 135,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "ce04d60f2f7bcd1d",
+            "sha1": "45a902b868b4097e6aa00a6a787d2c8fd9ca5fbf",
+            "size": 3249506,
+            "mtime": 1792164274,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Run Your Own Node - Contra__v1.m4a",
+            "id": "037ca703ebd4",
+            "artists": [
+                "contra"
+            ],
+            "title": "Run Your Own Node",
+            "duration": 302.16,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -3.9,
+            "fingerprint": "387f596b0aad5b7b",
+            "sha1": "250ed154c3f3837f4b00187016701c8965011562",
+            "size": 4905476,
+            "mtime": 1792162342,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Running From The Echo - Contra__v1.m4a",
+            "id": "a32a5e4cceb3",
+            "artists": [
+                "contra"
+            ],
+            "title": "Running From The Echo",
+            "duration": 267.4,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -4.5,
+            "fingerprint": "02d1fe805651f1b0",
+            "sha1": "baf2174af19593ad2d512c7aef6159dcb3b1eb2b",
+            "size": 4377946,
+            "mtime": 1792163181,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Running in Circles - Contra__v1.m4a",
+            "id": "e1cfe2ddc0c0",
+            "artists": [
+                "contra"
+            ],
+            "title": "Running in Circles",
+            "duration": 134.8,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "6b1791b9c3ac4aad",
+            "sha1": "bede5b8e83a29ce4e7b89de60b5d3385d23dbcf8",
+            "size": 2220741,
+            "mtime": 1792164871,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Rust And Rain - Contra__v1.m4a",
+            "id": "16bad543e5bc",
+            "artists": [
+                "contra"
+            ],
+            "title": "Rust And Rain",
+            "duration": 276.9,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.2,
+            "fingerprint": "6acc8d9dd0e6ae79",
+            "sha1": "5fad0e679e08dc6f65e3190d1d3f95ddd28465d1",
+            "size": 4601514,
+            "mtime": 1792163092,
+            "credit_source": "manual"
+        },
+        {
+            "file": "SMRI - Zazawowow__v1.m4a",
+            "id": "7c8bc5303859",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "SMRI",
+            "duration": 200.1,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "f5816179019ad206",
+            "sha1": "45b857dccd9a130b9cb31b9b2fec7b928e5efffa",
+            "size": 3340107,
+            "mtime": 1792165995,
             "credit_source": "manual"
         },
         {
@@ -2138,6 +4807,108 @@
             "credit_source": "manual"
         },
         {
+            "file": "Satoshi's freedom - NumberGoExp__v1.m4a",
+            "id": "a8f03ead8189",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Satoshi's freedom",
+            "duration": 261.56,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.8,
+            "fingerprint": "1a0c2ce14e78e49f",
+            "sha1": "164957faa6f3d2f5cc55f39573e4a50e323fdaad",
+            "size": 4306625,
+            "mtime": 1792165503,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Scams. Bitcoin only hope - NumberGoExp__v1.m4a",
+            "id": "359f0bb8408c",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Scams. Bitcoin only hope",
+            "duration": 191.8,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.7,
+            "fingerprint": "7e2ba79064a736d4",
+            "sha1": "ba5583f18f84b18d8460f22ec4f16926cf68d5ad",
+            "size": 3179855,
+            "mtime": 1792165659,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Scars Don’t Lie - Contra__v1.m4a",
+            "id": "43823ba7002d",
+            "artists": [
+                "contra"
+            ],
+            "title": "Scars Don’t Lie",
+            "duration": 344.8,
+            "bitrate": 130,
+            "lufs": -15.4,
+            "true_peak": -3.9,
+            "fingerprint": "ac2a5b008d3d7f21",
+            "sha1": "cd56124ac2c48107d6415b5311d9ec2d4e919c33",
+            "size": 5642787,
+            "mtime": 1792163465,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Scorched Earth - Contra__v1.m4a",
+            "id": "24a9421474ca",
+            "artists": [
+                "contra"
+            ],
+            "title": "Scorched Earth",
+            "duration": 265.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "6ac9ac398e5a9102",
+            "sha1": "2360f7822e6a3879ba369c4d8600b48626b3f95b",
+            "size": 4397124,
+            "mtime": 1792164843,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Scripted Crowd - Contra__v1.m4a",
+            "id": "9d4404b69f1a",
+            "artists": [
+                "contra"
+            ],
+            "title": "Scripted Crowd",
+            "duration": 258.6,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.6,
+            "fingerprint": "59c7bdf2c697e207",
+            "sha1": "cd246736e090184c93c2b6f048717b0f3655a631",
+            "size": 4242508,
+            "mtime": 1792163872,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Scrolling - Contra__v1.m4a",
+            "id": "0fb1aea9694c",
+            "artists": [
+                "contra"
+            ],
+            "title": "Scrolling",
+            "duration": 250.16,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -5.0,
+            "fingerprint": "13526d3dc2111bb0",
+            "sha1": "ae38cbe556ce966784a168df7e24dc2be7629e97",
+            "size": 4093190,
+            "mtime": 1792162297,
+            "credit_source": "manual"
+        },
+        {
             "file": "Season remixes - sabu__v1.m4a",
             "id": "a24fabc374bc",
             "artists": [
@@ -2152,6 +4923,23 @@
             "sha1": "4dd40cbf4f6e78d24171a9d02d06aff15d8b11d8",
             "size": 1495930,
             "mtime": 1792144815,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Seated - Contra__v1.m4a",
+            "id": "28ba3f8a0c68",
+            "artists": [
+                "contra"
+            ],
+            "title": "Seated",
+            "duration": 479.4,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "7b984c626e71ff8a",
+            "sha1": "ecd65f4bcea94e81727d3cd837f189c2fb36765d",
+            "size": 7788337,
+            "mtime": 1792164787,
             "credit_source": "manual"
         },
         {
@@ -2172,6 +4960,91 @@
             "credit_source": "manual"
         },
         {
+            "file": "Send The Zap - Contra__v1.m4a",
+            "id": "79bab69445ef",
+            "artists": [
+                "contra"
+            ],
+            "title": "Send The Zap",
+            "duration": 206.36,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -1.5,
+            "fingerprint": "c206327956a201d9",
+            "sha1": "95be08a5423df032352040fddb6b844ad9037c75",
+            "size": 3463905,
+            "mtime": 1792164314,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Shadows On The Windowpane - Contra__v1.m4a",
+            "id": "3d83f9218887",
+            "artists": [
+                "contra"
+            ],
+            "title": "Shadows On The Windowpane",
+            "duration": 250.4,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "0fdecf76da7a58c8",
+            "sha1": "8cc48ed3f0f668eb682ad93f87284ba662c69a74",
+            "size": 4103168,
+            "mtime": 1792163022,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Shanty For The Sovereign - Contra__v1.m4a",
+            "id": "2a745c16432f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Shanty For The Sovereign",
+            "duration": 296.84,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.4,
+            "fingerprint": "44a2a8b05a376fcf",
+            "sha1": "5e32ed853d8feecd1f8268d124d7400625803aee",
+            "size": 4911122,
+            "mtime": 1792164124,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Shattered Spine - Contra__v1.m4a",
+            "id": "6d4d9118cf26",
+            "artists": [
+                "contra"
+            ],
+            "title": "Shattered Spine",
+            "duration": 239.72,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "b96450c89dd226fc",
+            "sha1": "8e2946484153951b5317a416a14b1ac9d287b9f4",
+            "size": 3977763,
+            "mtime": 1792165014,
+            "credit_source": "manual"
+        },
+        {
+            "file": "She’s The Reason - Contra__v1.m4a",
+            "id": "51698c2e8510",
+            "artists": [
+                "contra"
+            ],
+            "title": "She’s The Reason",
+            "duration": 273.88,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.9,
+            "fingerprint": "ffcfb3f25a2e1500",
+            "sha1": "c2aa2a4d47449cf6a2821a917a03d9cbf66fab99",
+            "size": 4536439,
+            "mtime": 1792164560,
+            "credit_source": "manual"
+        },
+        {
             "file": "Shirley Shirley Shirley, surely you can't be serious - sabu__v1.m4a",
             "id": "3255eda581c4",
             "artists": [
@@ -2186,6 +5059,23 @@
             "sha1": "f1d3fd6e956909f7c78480ccdf2688a8801fc927",
             "size": 4356782,
             "mtime": 1792144626,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Shitcoin Season (Devil’s Advocate) - Contra__v1.m4a",
+            "id": "81f8fbca977e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Shitcoin Season (Devil’s Advocate)",
+            "duration": 252.64,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -1.9,
+            "fingerprint": "472168ffe897662a",
+            "sha1": "c9e81693a4f5d8acbfc55506ebd35df268ddaedb",
+            "size": 4239196,
+            "mtime": 1792165289,
             "credit_source": "manual"
         },
         {
@@ -2283,6 +5173,23 @@
             "credit_source": "wavlake-index"
         },
         {
+            "file": "Sixteen Sats - Contra__v1.m4a",
+            "id": "9760d208257c",
+            "artists": [
+                "contra"
+            ],
+            "title": "Sixteen Sats",
+            "duration": 210.8,
+            "bitrate": 136,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "e9083a29ca568060",
+            "sha1": "42abce47c8e99e8e5a642db90b38992e813e7e97",
+            "size": 3619839,
+            "mtime": 1792165248,
+            "credit_source": "manual"
+        },
+        {
             "file": "Sleeper Current - Under The Mulga Groove__v1.m4a",
             "id": "e6b9e3cf0592",
             "artists": [
@@ -2298,6 +5205,40 @@
             "size": 4418050,
             "mtime": 1792093442,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "Slipping Through - Contra__v1.m4a",
+            "id": "d5f3d127dda0",
+            "artists": [
+                "contra"
+            ],
+            "title": "Slipping Through",
+            "duration": 279.4,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.9,
+            "fingerprint": "446005dfa8c44478",
+            "sha1": "cb5d9679545ad0a1ba624751aaf6031408f9d42e",
+            "size": 4641757,
+            "mtime": 1792164884,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Small Town - Contra__v1.m4a",
+            "id": "ffebdd2b87f4",
+            "artists": [
+                "contra"
+            ],
+            "title": "Small Town",
+            "duration": 232.2,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "6f503d9fee9e546f",
+            "sha1": "59b2250ade3c89f723dd47edd13aaa53f297d5a3",
+            "size": 3879588,
+            "mtime": 1792164169,
+            "credit_source": "manual"
         },
         {
             "file": "Smokin' and Cryin' feat. Katy Hurt - Joe Martin__v1.m4a",
@@ -2337,6 +5278,159 @@
             "credit_source": "manual"
         },
         {
+            "file": "Sound Money - Zazawowow__v1.m4a",
+            "id": "81d774e2c350",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Sound Money",
+            "duration": 254.84,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "e79808f2f6099e73",
+            "sha1": "72ff6bea0f1e325297aad2321b4379a4ef46c4d3",
+            "size": 4194101,
+            "mtime": 1792165977,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Sound Money Freedom - NumberGoExp__v1.m4a",
+            "id": "b3706dd722c4",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Sound Money Freedom",
+            "duration": 229.6,
+            "bitrate": 129,
+            "lufs": -15.3,
+            "true_peak": -3.7,
+            "fingerprint": "35cf3c7a8cfb53e4",
+            "sha1": "f69e02241c66c23d02eb7fb95e4554fe0bd02b1c",
+            "size": 3752346,
+            "mtime": 1792165548,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Sovereign Web - Contra__v1.m4a",
+            "id": "7a7bf95cb178",
+            "artists": [
+                "contra"
+            ],
+            "title": "Sovereign Web",
+            "duration": 240.0,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -2.4,
+            "fingerprint": "42bb8755da5454c1",
+            "sha1": "34e80d3ebcd1d98aac69c0322447973939686e1f",
+            "size": 4022091,
+            "mtime": 1792164355,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Stack - Contra__v1.m4a",
+            "id": "62efb59d8523",
+            "artists": [
+                "contra"
+            ],
+            "title": "Stack",
+            "duration": 243.28,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "eadd7c14b7f4d3e6",
+            "sha1": "ed17875f6f79d1a37d3e9f7d9fc7bba757746b97",
+            "size": 3976091,
+            "mtime": 1792162328,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Stack Sats, Run Code - Contra__v1.m4a",
+            "id": "fffa9aa8ae7c",
+            "artists": [
+                "contra"
+            ],
+            "title": "Stack Sats, Run Code",
+            "duration": 232.0,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "969abed31a43dbd1",
+            "sha1": "4f7c2e09225902ad6acbeb08f78a49a9e0a9d361",
+            "size": 3872232,
+            "mtime": 1792163709,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Stackin’ in the Dark - Contra__v1.m4a",
+            "id": "c75acbe1bcca",
+            "artists": [
+                "contra"
+            ],
+            "title": "Stackin’ in the Dark",
+            "duration": 213.28,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "e73d71d7d4d9f53c",
+            "sha1": "45f2e274ba30b5b98384841876d32965361b694a",
+            "size": 3583220,
+            "mtime": 1792165110,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Stacks or Shackles - Zazawowow__v1.m4a",
+            "id": "1da0feee4144",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Stacks or Shackles",
+            "duration": 305.96,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "784b438ab05a9c9a",
+            "sha1": "d5ab9fd90967f97485e3e15dcfd34ee79c16752d",
+            "size": 5101821,
+            "mtime": 1792165928,
+            "credit_source": "manual"
+        },
+        {
+            "file": "State of Defiance - Contra__v1.m4a",
+            "id": "cd930eac1798",
+            "artists": [
+                "contra"
+            ],
+            "title": "State of Defiance",
+            "duration": 278.04,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.5,
+            "fingerprint": "a72ed8e168e9af06",
+            "sha1": "df5d11a21e933a90f774e51798bc3991cd4245f4",
+            "size": 4569308,
+            "mtime": 1792163655,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Static god - Contra__v1.m4a",
+            "id": "2ff9633b9019",
+            "artists": [
+                "contra"
+            ],
+            "title": "Static god",
+            "duration": 244.69,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "2939c9845a946866",
+            "sha1": "e9fe36dfb5938f3ee91d3f6c5b32d418e336f0ad",
+            "size": 4013027,
+            "mtime": 1792164986,
+            "credit_source": "manual"
+        },
+        {
             "file": "Sticky Carpet Cosmos - Under The Mulga Groove__v1.m4a",
             "id": "9f68983f8c1f",
             "artists": [
@@ -2355,6 +5449,57 @@
             "qr_target": "https://wavlake.com/track/9c780643-378e-4a85-9d89-5c97d99d71c6",
             "qr_kind": "wavlake",
             "wavlake_track_id": "9c780643-378e-4a85-9d89-5c97d99d71c6"
+        },
+        {
+            "file": "Stones For The Sons - Contra__v1.m4a",
+            "id": "8324954f7de4",
+            "artists": [
+                "contra"
+            ],
+            "title": "Stones For The Sons",
+            "duration": 298.8,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "70f24b626ffd2fdb",
+            "sha1": "6e0d7c132e16b1742eb112712f28724db2aa903e",
+            "size": 4892408,
+            "mtime": 1792164142,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Storm Season - Contra__v1.m4a",
+            "id": "5aea4697a8fd",
+            "artists": [
+                "contra"
+            ],
+            "title": "Storm Season",
+            "duration": 239.92,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.1,
+            "fingerprint": "5c4b890635dcab04",
+            "sha1": "325e974f97bf63af93562f9fb20bc9abf3fa8842",
+            "size": 3930561,
+            "mtime": 1792162605,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Stranger In The Daylight - Contra__v1.m4a",
+            "id": "6899f17289aa",
+            "artists": [
+                "contra"
+            ],
+            "title": "Stranger In The Daylight",
+            "duration": 254.12,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "caebb3c418d5feee",
+            "sha1": "79344413d19458aeb9fe23cf3190b99d862a93a5",
+            "size": 4155818,
+            "mtime": 1792163104,
+            "credit_source": "manual"
         },
         {
             "file": "Strangers To Lovers - Joe Martin__v1.m4a",
@@ -2397,6 +5542,40 @@
             "wavlake_track_id": "65968416-3b5e-4279-a038-533314af7490"
         },
         {
+            "file": "Suffocate - Contra__v1.m4a",
+            "id": "f6ef9cf0c70f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Suffocate",
+            "duration": 292.8,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "422e2884dd8f8b79",
+            "sha1": "19cd7c4f11c129573e0a1ce436ad0fd98d13375a",
+            "size": 4798206,
+            "mtime": 1792164913,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Suitcoiners - Zazawowow__v1.m4a",
+            "id": "c1ff458758e6",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Suitcoiners",
+            "duration": 191.83,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.5,
+            "fingerprint": "2de2c0644a0fadd9",
+            "sha1": "f1501278439e4eeecd46bdfc4996a931bc0c04fb",
+            "size": 3160488,
+            "mtime": 1792166006,
+            "credit_source": "manual"
+        },
+        {
             "file": "Take Me Home Tonight (set 2) - Joe Martin__v1.m4a",
             "id": "e23b5c46685f",
             "artists": [
@@ -2435,6 +5614,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "24bc2346-0b40-4816-9434-400684844707"
+        },
+        {
+            "file": "Teeth In The Halo - Contra__v1.m4a",
+            "id": "b3c6c0a6887f",
+            "artists": [
+                "contra"
+            ],
+            "title": "Teeth In The Halo",
+            "duration": 296.52,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.6,
+            "fingerprint": "66b6f33a9c5ae5ac",
+            "sha1": "ede1693aa4fa743d7127450b195e4777a2e47478",
+            "size": 4865596,
+            "mtime": 1792163823,
+            "credit_source": "manual"
         },
         {
             "file": "Tguitar - Under The Mulga Groove__v1.m4a",
@@ -2508,6 +5704,125 @@
             "credit_source": "manual"
         },
         {
+            "file": "The Darkness Hides - Contra__v1.m4a",
+            "id": "e4437f963b55",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Darkness Hides",
+            "duration": 269.28,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "bf551e143278b050",
+            "sha1": "5006c0f0a9bd6766011d6527801319196060066a",
+            "size": 4438999,
+            "mtime": 1792164959,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Decimal They Never Named - Contra__v1.m4a",
+            "id": "b26c574699b6",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Decimal They Never Named",
+            "duration": 202.7,
+            "bitrate": 134,
+            "lufs": -15.1,
+            "true_peak": -1.5,
+            "fingerprint": "de56826cbecf3f63",
+            "sha1": "a3aeaf5cdc991990a1abf474ac82d9541f3f9194",
+            "size": 3420668,
+            "mtime": 1792164380,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Door I Left Open - Contra__v1.m4a",
+            "id": "682a85d99d9d",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Door I Left Open",
+            "duration": 333.1,
+            "bitrate": 130,
+            "lufs": -15.2,
+            "true_peak": -1.6,
+            "fingerprint": "a05c5c6f90ca8c04",
+            "sha1": "5c578b39e05a776efc454f70ffe6a52a6ebfe5b4",
+            "size": 5452192,
+            "mtime": 1792163058,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Genesis Block - Contra__v1.m4a",
+            "id": "f74a4e56bb3f",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Genesis Block",
+            "duration": 234.8,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "e7a7aec0ce440251",
+            "sha1": "663b08524c2af3bfc20a8d061d3bfd26f2359df4",
+            "size": 3876552,
+            "mtime": 1792165146,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Halving - Contra__v1.m4a",
+            "id": "9751c8313b5d",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Halving",
+            "duration": 214.84,
+            "bitrate": 134,
+            "lufs": -15.1,
+            "true_peak": -1.4,
+            "fingerprint": "3e78619dcd87d66b",
+            "sha1": "be6991e47cff15ea7b5eb6f68b4ed4ff34353089",
+            "size": 3632186,
+            "mtime": 1792164233,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Handoff - Contra__v1.m4a",
+            "id": "8decfb4d768d",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Handoff",
+            "duration": 281.2,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -1.5,
+            "fingerprint": "66bfbe14e6127a44",
+            "sha1": "948fb8d92de6f48b222d9b36be7549db229f132d",
+            "size": 4725322,
+            "mtime": 1792165193,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Happiest Man - Contra__v1.m4a",
+            "id": "e69c13a29f28",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Happiest Man",
+            "duration": 332.44,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "1b1a3338273bb60e",
+            "sha1": "7dc4b7ffcf15f3c82ec5fda8711aa6f2b5bc75fe",
+            "size": 5472745,
+            "mtime": 1792164030,
+            "credit_source": "manual"
+        },
+        {
             "file": "The Jetsons - Joe Martin__v1.m4a",
             "id": "b0b3903899c7",
             "artists": [
@@ -2528,6 +5843,227 @@
             "wavlake_track_id": "076e6d0d-81e1-42d1-a0af-4a98ebb2e494"
         },
         {
+            "file": "The Kingdom Shall Not Fail - Contra__v1.m4a",
+            "id": "e4f34a8be5c0",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Kingdom Shall Not Fail",
+            "duration": 188.16,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.4,
+            "fingerprint": "9635e4b3b74a5137",
+            "sha1": "6118a42c086b23ead8ea89fdb777d19161ec1326",
+            "size": 3093179,
+            "mtime": 1792164457,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Lie Feels Safe - Contra__v1.m4a",
+            "id": "2cb7742a63da",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Lie Feels Safe",
+            "duration": 347.8,
+            "bitrate": 130,
+            "lufs": -15.2,
+            "true_peak": -2.8,
+            "fingerprint": "c41b9f7c9d9469f9",
+            "sha1": "8bdc43bef81f96f80d9edc42e94b8652020daa5a",
+            "size": 5703678,
+            "mtime": 1792163580,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Mission Ahead - Contra__v1.m4a",
+            "id": "c98307c54a7e",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Mission Ahead",
+            "duration": 313.92,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "d0d45b98b6963915",
+            "sha1": "61ce8560549df605c8be5137df556999295c78af",
+            "size": 5132862,
+            "mtime": 1792162989,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The New Tower - Zazawowow__v1.m4a",
+            "id": "c37b2f13fdf5",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "The New Tower",
+            "duration": 254.2,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -2.7,
+            "fingerprint": "1290b6111c574d1e",
+            "sha1": "29f8bd5e34149b8d710539f78f1e6c003d05f89f",
+            "size": 4262596,
+            "mtime": 1792166115,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Record - Contra__v1.m4a",
+            "id": "8f74aba6640c",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Record",
+            "duration": 274.24,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "3d806c680334e439",
+            "sha1": "c131c762607bb2b7a7cf8aa7812d85e4e281f75d",
+            "size": 4616118,
+            "mtime": 1792164444,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Rise - Contra__v1.m4a",
+            "id": "e3ba6159b3e6",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Rise",
+            "duration": 269.48,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "cca3d3111582e949",
+            "sha1": "0aaad22de9b54ea8833d4a9bce2156b8a034fbd0",
+            "size": 4455045,
+            "mtime": 1792165044,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Shape of The Fall - Contra__v1.m4a",
+            "id": "50ba92773111",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Shape of The Fall",
+            "duration": 307.52,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "2230dbd3e6695b61",
+            "sha1": "bac8915d4edf5c08f39d88bb96909e3185cced44",
+            "size": 5031390,
+            "mtime": 1792163799,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Sound It Makes - Contra__v1.m4a",
+            "id": "d501cb0d233b",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Sound It Makes",
+            "duration": 224.81,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.3,
+            "fingerprint": "0b2f534d5a4829fc",
+            "sha1": "36d73faa204ecd8bd31c88bc99678e8bceb31203",
+            "size": 3699300,
+            "mtime": 1792164856,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Static - Contra__v1.m4a",
+            "id": "d671e714fa91",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Static",
+            "duration": 216.36,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "9097b6ff9a71e5dc",
+            "sha1": "60fcce6467dfe43fdfe18a5ad7d872714886f346",
+            "size": 3569457,
+            "mtime": 1792163130,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Value War: A Tale of Freedom and Control - NumberGoExp__v1.m4a",
+            "id": "750e6ae50fbb",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "The Value War: A Tale of Freedom and Control",
+            "duration": 277.84,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "4e6173fb92009862",
+            "sha1": "dac82a10134652706cd787d3d27313a62f8395b9",
+            "size": 4518954,
+            "mtime": 1792165476,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The Weight of Seeing - Contra__v1.m4a",
+            "id": "9ca57d7b7579",
+            "artists": [
+                "contra"
+            ],
+            "title": "The Weight of Seeing",
+            "duration": 200.7,
+            "bitrate": 133,
+            "lufs": -15.2,
+            "true_peak": -2.6,
+            "fingerprint": "3c645ab7d4bc5c3d",
+            "sha1": "f5cb376dde383a182385474b3f1b545be7f02aad",
+            "size": 3362338,
+            "mtime": 1792164259,
+            "credit_source": "manual"
+        },
+        {
+            "file": "The uncorruptable - Contra__v1.m4a",
+            "id": "31486c2adc94",
+            "artists": [
+                "contra"
+            ],
+            "title": "The uncorruptable",
+            "duration": 207.56,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -2.3,
+            "fingerprint": "1315535e90346922",
+            "sha1": "4e002c768c3a7e04f42933536643cfc4dea5154a",
+            "size": 3487130,
+            "mtime": 1792164366,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Thought Criminal - Contra__v1.m4a",
+            "id": "7042580d3935",
+            "artists": [
+                "contra"
+            ],
+            "title": "Thought Criminal",
+            "duration": 293.2,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.1,
+            "fingerprint": "e4a6b6dd7d3b7d21",
+            "sha1": "07cff199b79398be9ee9900b6e328d86747c5e21",
+            "size": 4826535,
+            "mtime": 1792163426,
+            "credit_source": "manual"
+        },
+        {
             "file": "Three In Motion - Under The Mulga Groove__v1.m4a",
             "id": "ad9c1450be63",
             "artists": [
@@ -2545,6 +6081,23 @@
             "credit_source": "wavlake-index"
         },
         {
+            "file": "Thrones Of Ashes - Contra__v1.m4a",
+            "id": "f2b6be0a3986",
+            "artists": [
+                "contra"
+            ],
+            "title": "Thrones Of Ashes",
+            "duration": 294.88,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.5,
+            "fingerprint": "120cc3486158e2c5",
+            "sha1": "4d0c5fa562415c3f508177a2a0582386188c6695",
+            "size": 4841003,
+            "mtime": 1792163006,
+            "credit_source": "manual"
+        },
+        {
             "file": "Time Goes By ft Yuppie DaRapper - Black Vulcanite__v1.m4a",
             "id": "5c2dc70e88ef",
             "artists": [
@@ -2559,6 +6112,227 @@
             "sha1": "05ac0bd82bed20009054ee5a4a5b35efd67d2d38",
             "size": 3902321,
             "mtime": 1792152867,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Timechain - Contra__v1.m4a",
+            "id": "fdb155302771",
+            "artists": [
+                "contra"
+            ],
+            "title": "Timechain",
+            "duration": 296.0,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "e8b01791cf5f2290",
+            "sha1": "a9771ca49fa950e3c6553f355db3c0bd51d04e46",
+            "size": 4980810,
+            "mtime": 1792165339,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Timechain Revolution - NumberGoExp__v1.m4a",
+            "id": "99c3da5b172b",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Timechain Revolution",
+            "duration": 374.72,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.0,
+            "fingerprint": "955484e290a67c15",
+            "sha1": "61cba4050f4e93739bcd49b74d2aa2792779b63b",
+            "size": 6146302,
+            "mtime": 1792165568,
+            "credit_source": "manual"
+        },
+        {
+            "file": "To the Moon Pump - NumberGoExp__v1.m4a",
+            "id": "73c5bbcdf81a",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "To the Moon Pump",
+            "duration": 181.93,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.3,
+            "fingerprint": "2f18aba7acd021ab",
+            "sha1": "aa023b52a371df8423191818393d479a4f3c7d2d",
+            "size": 3000386,
+            "mtime": 1792165634,
+            "credit_source": "manual"
+        },
+        {
+            "file": "To the moon - NumberGoExp__v1.m4a",
+            "id": "14077da617fa",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "To the moon",
+            "duration": 204.97,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.6,
+            "fingerprint": "ba22f7f4b66b8458",
+            "sha1": "9694c98b75324ff3775369a2491d9241719aade4",
+            "size": 3359800,
+            "mtime": 1792165611,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Truth and Conviction - Contra__v1.m4a",
+            "id": "c2344e353c13",
+            "artists": [
+                "contra"
+            ],
+            "title": "Truth and Conviction",
+            "duration": 264.72,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.3,
+            "fingerprint": "055188ffd89ed9cb",
+            "sha1": "1fe7629a9b359feb58f231205bb9cea1ed60986c",
+            "size": 4324624,
+            "mtime": 1792165056,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Twelve Words - Contra__v1.m4a",
+            "id": "1bd456953bf9",
+            "artists": [
+                "contra"
+            ],
+            "title": "Twelve Words",
+            "duration": 166.8,
+            "bitrate": 134,
+            "lufs": -15.2,
+            "true_peak": -2.0,
+            "fingerprint": "29abd6a834c065e6",
+            "sha1": "b8a672498fcfef1ccba936715983503c49413bcb",
+            "size": 2817286,
+            "mtime": 1792164302,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Twenty One Guns - Contra__v1.m4a",
+            "id": "0eb4580fe6a8",
+            "artists": [
+                "contra"
+            ],
+            "title": "Twenty One Guns",
+            "duration": 294.12,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "f6a3be5997f2a6bb",
+            "sha1": "a3d8dac3d069d2f4a7ff7f935bcf1e57bba423f5",
+            "size": 4868067,
+            "mtime": 1792164186,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Two Pink Lines - Contra__v1.m4a",
+            "id": "8063bac9e179",
+            "artists": [
+                "contra"
+            ],
+            "title": "Two Pink Lines",
+            "duration": 214.9,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "bc0e678d6cd27589",
+            "sha1": "bccd79b1916742c184b12f8cbe61a641e2d3ae04",
+            "size": 3532169,
+            "mtime": 1792162570,
+            "credit_source": "manual"
+        },
+        {
+            "file": "UTXO (unspent) - Contra__v1.m4a",
+            "id": "e0cef92c6e90",
+            "artists": [
+                "contra"
+            ],
+            "title": "UTXO (unspent)",
+            "duration": 297.68,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "c12685657505118b",
+            "sha1": "b7fb403cbd672af0bb39c4e8da32784ba6eeeb54",
+            "size": 4904975,
+            "mtime": 1792162833,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Unstoppable Brrrr: Sissy Hands Derail - NumberGoExp__v1.m4a",
+            "id": "33a42fd86724",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "Unstoppable Brrrr: Sissy Hands Derail",
+            "duration": 171.88,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "060914478c2e9f89",
+            "sha1": "9ec4bcc845fb70106d149babe532e34c718f9cac",
+            "size": 2845609,
+            "mtime": 1792165741,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Untouchable - Contra__v1.m4a",
+            "id": "ea0466125d4e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Untouchable",
+            "duration": 420.0,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -1.2,
+            "fingerprint": "142a57c86493ef65",
+            "sha1": "1d2ce8675674e5bbb57d4307e8e1afd51b2d41ed",
+            "size": 6856017,
+            "mtime": 1792163489,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Vibe Coding - Contra__v1.m4a",
+            "id": "d671b6160bf7",
+            "artists": [
+                "contra"
+            ],
+            "title": "Vibe Coding",
+            "duration": 182.8,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.6,
+            "fingerprint": "375240a7e1df89a5",
+            "sha1": "d897589e8ed94db5f0c8b2402b7d786de54b44cd",
+            "size": 2992211,
+            "mtime": 1792162646,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Vibe Coding At Midnight - Contra__v1.m4a",
+            "id": "237c73bbbf3e",
+            "artists": [
+                "contra"
+            ],
+            "title": "Vibe Coding At Midnight",
+            "duration": 263.2,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.2,
+            "fingerprint": "c4973b159c2dcfd7",
+            "sha1": "12b404417950868d403edb0bb2b960f1127e81cd",
+            "size": 4319388,
+            "mtime": 1792162636,
             "credit_source": "manual"
         },
         {
@@ -2579,6 +6353,40 @@
             "credit_source": "manual"
         },
         {
+            "file": "WEBFIVEFOURTHREETWOONE - Zazawowow__v1.m4a",
+            "id": "4228f1eb152e",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "WEBFIVEFOURTHREETWOONE",
+            "duration": 249.68,
+            "bitrate": 136,
+            "lufs": -15.0,
+            "true_peak": -1.2,
+            "fingerprint": "5d4e94facbfbb867",
+            "sha1": "52c927641d93c2c8d0935fa672710e9d2bedfe80",
+            "size": 4283049,
+            "mtime": 1792166070,
+            "credit_source": "manual"
+        },
+        {
+            "file": "WW3 - Contra__v1.m4a",
+            "id": "700789b961a4",
+            "artists": [
+                "contra"
+            ],
+            "title": "WW3",
+            "duration": 293.16,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "9cfac1ae408bc248",
+            "sha1": "cf36aee049518c68411dd921be056908fe1fece0",
+            "size": 4804692,
+            "mtime": 1792163909,
+            "credit_source": "manual"
+        },
+        {
             "file": "Waiting For God (Featuring Star Dust) - Black Vulcanite__v1.m4a",
             "id": "974827d92560",
             "artists": [
@@ -2593,6 +6401,40 @@
             "sha1": "da0818240fa44734e81df8a45830d51877bd98b6",
             "size": 4381247,
             "mtime": 1792154650,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Waking Up Wrong - Contra__v1.m4a",
+            "id": "043d5285fb95",
+            "artists": [
+                "contra"
+            ],
+            "title": "Waking Up Wrong",
+            "duration": 256.92,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.2,
+            "fingerprint": "051396e43e8b98e9",
+            "sha1": "49924da3df363e154342d70b7d38fa290348e1eb",
+            "size": 4292723,
+            "mtime": 1792164640,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Wall and Hearth - Contra__v1.m4a",
+            "id": "3265776f5b92",
+            "artists": [
+                "contra"
+            ],
+            "title": "Wall and Hearth",
+            "duration": 323.12,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.4,
+            "fingerprint": "1c7d618cca8deb27",
+            "sha1": "5aa70c2df5726eebafffa31c33c00d251253bd84",
+            "size": 5319911,
+            "mtime": 1792164011,
             "credit_source": "manual"
         },
         {
@@ -2614,6 +6456,40 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "50d2520f-96f5-4ce3-b291-c3eff8823588"
+        },
+        {
+            "file": "War Within - Contra__v1.m4a",
+            "id": "8b62c4f723e6",
+            "artists": [
+                "contra"
+            ],
+            "title": "War Within",
+            "duration": 339.84,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.9,
+            "fingerprint": "2134e47114d07530",
+            "sha1": "c10d00d6bdcef5a65edce9e8fb5628a1f5fa7a26",
+            "size": 5559507,
+            "mtime": 1792162423,
+            "credit_source": "manual"
+        },
+        {
+            "file": "War on Command - Contra__v1.m4a",
+            "id": "aeaac90ba73d",
+            "artists": [
+                "contra"
+            ],
+            "title": "War on Command",
+            "duration": 234.36,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "803de3f0e227adb5",
+            "sha1": "c5dcff8886e9776d9e9914007297409393870f14",
+            "size": 3832710,
+            "mtime": 1792163849,
+            "credit_source": "manual"
         },
         {
             "file": "Warm Machine - Under The Mulga Groove__v1.m4a",
@@ -2687,6 +6563,91 @@
             "credit_source": "manual"
         },
         {
+            "file": "Weight of Ash - Contra__v1.m4a",
+            "id": "6c8f0d4e5af9",
+            "artists": [
+                "contra"
+            ],
+            "title": "Weight of Ash",
+            "duration": 271.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.3,
+            "fingerprint": "849011a38b081b4b",
+            "sha1": "7181e8a908c52b8d93395aad103bb146afe1d906",
+            "size": 4442739,
+            "mtime": 1792163893,
+            "credit_source": "manual"
+        },
+        {
+            "file": "What Cost You Nothing - Contra__v1.m4a",
+            "id": "864d06ad4b72",
+            "artists": [
+                "contra"
+            ],
+            "title": "What Cost You Nothing",
+            "duration": 239.5,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -1.3,
+            "fingerprint": "921980922011812c",
+            "sha1": "1edee51eb38b3cb306134bbf72fddb8f47a0f603",
+            "size": 3997777,
+            "mtime": 1792164220,
+            "credit_source": "manual"
+        },
+        {
+            "file": "What I Leave Behind - Contra__v1.m4a",
+            "id": "a65b33040e45",
+            "artists": [
+                "contra"
+            ],
+            "title": "What I Leave Behind",
+            "duration": 318.68,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "285ebbdf18a6be3e",
+            "sha1": "09ba7fa18361891eee230cb5390ed2a3ea2c8959",
+            "size": 5279569,
+            "mtime": 1792164578,
+            "credit_source": "manual"
+        },
+        {
+            "file": "What They Buried - Contra__v1.m4a",
+            "id": "ba4b554d5a58",
+            "artists": [
+                "contra"
+            ],
+            "title": "What They Buried",
+            "duration": 192.16,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -2.4,
+            "fingerprint": "45c924951d5d08e7",
+            "sha1": "e0d7f46ecae50b5738469afbd071af366ea4516b",
+            "size": 3211114,
+            "mtime": 1792164197,
+            "credit_source": "manual"
+        },
+        {
+            "file": "What the Fire Left - Contra__v1.m4a",
+            "id": "86da9f78a566",
+            "artists": [
+                "contra"
+            ],
+            "title": "What the Fire Left",
+            "duration": 406.8,
+            "bitrate": 128,
+            "lufs": -15.1,
+            "true_peak": -3.7,
+            "fingerprint": "81e29199a9c84960",
+            "sha1": "970c9d03be9d232c62ba6ec1edb9c2314c2e464a",
+            "size": 6597852,
+            "mtime": 1792165165,
+            "credit_source": "manual"
+        },
+        {
             "file": "When I Die - Under The Mulga Groove__v1.m4a",
             "id": "4c4cea7145b3",
             "artists": [
@@ -2705,6 +6666,23 @@
             "qr_target": "https://wavlake.com/track/7323732c-ae61-4ed4-95e3-502f7b665f5b",
             "qr_kind": "wavlake",
             "wavlake_track_id": "7323732c-ae61-4ed4-95e3-502f7b665f5b"
+        },
+        {
+            "file": "When The Ledger Breaks - Contra__v1.m4a",
+            "id": "5194cb0461db",
+            "artists": [
+                "contra"
+            ],
+            "title": "When The Ledger Breaks",
+            "duration": 133.0,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -5.3,
+            "fingerprint": "04fef20c2cc76ed6",
+            "sha1": "a68322974ce7543c5795feb29ae8c7f21e49f601",
+            "size": 2166651,
+            "mtime": 1792162287,
+            "credit_source": "manual"
         },
         {
             "file": "When The Time Is Right (set 1) - Joe Martin__v1.m4a",
@@ -2745,6 +6723,40 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "c438596a-ef5d-42f2-8d8a-baf308a6674d"
+        },
+        {
+            "file": "When There Is No Peace - Contra__v1.m4a",
+            "id": "4a7e8d8e2949",
+            "artists": [
+                "contra"
+            ],
+            "title": "When There Is No Peace",
+            "duration": 324.12,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -4.5,
+            "fingerprint": "5016e95a0061800b",
+            "sha1": "ff9febd5ea84d5fcad685c5f9b25b901a25e97d4",
+            "size": 5303326,
+            "mtime": 1792163946,
+            "credit_source": "manual"
+        },
+        {
+            "file": "White Dress, Bare Feet - Contra__v1.m4a",
+            "id": "ffe312b11e5b",
+            "artists": [
+                "contra"
+            ],
+            "title": "White Dress, Bare Feet",
+            "duration": 174.96,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.0,
+            "fingerprint": "9fed00e47e758fc6",
+            "sha1": "89e963fe522b629add68914081573bf55c984095",
+            "size": 2893048,
+            "mtime": 1792162542,
+            "credit_source": "manual"
         },
         {
             "file": "Who Comes Home Instrumental - Under The Mulga Groove__v1.m4a",
@@ -2804,6 +6816,40 @@
             "wavlake_track_id": "0d4b8a6a-2b11-40c1-ac18-a20e08f76a71"
         },
         {
+            "file": "Who's Garden? - Zazawowow__v1.m4a",
+            "id": "c9ec456f9513",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Who's Garden?",
+            "duration": 242.16,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -1.8,
+            "fingerprint": "0dc1a8e9700d4f33",
+            "sha1": "927e198a229c7b23e416fc1c44838f4707a9f00e",
+            "size": 4097110,
+            "mtime": 1792166100,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Winning is Invisible (Shadrap) - Zazawowow__v1.m4a",
+            "id": "156a7acf61ed",
+            "artists": [
+                "zazawowow"
+            ],
+            "title": "Winning is Invisible (Shadrap)",
+            "duration": 200.43,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -4.1,
+            "fingerprint": "09ff4dcc6b5008a5",
+            "sha1": "a14beccc1adb1d101fefb100298a2c796be1bd6b",
+            "size": 3317745,
+            "mtime": 1792165963,
+            "credit_source": "manual"
+        },
+        {
             "file": "WoB (Warriors of Bitcoin) - Cristo Currensi__v1.m4a",
             "id": "9d8fb78a4ae8",
             "artists": [
@@ -2821,6 +6867,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Worse of The Abyss - Contra__v1.m4a",
+            "id": "858208964b8b",
+            "artists": [
+                "contra"
+            ],
+            "title": "Worse of The Abyss",
+            "duration": 285.19,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -2.4,
+            "fingerprint": "512c36c29aa1b831",
+            "sha1": "86cb89ffea39fd3b9cbbde855de64669fa6b6e39",
+            "size": 4702369,
+            "mtime": 1792165002,
+            "credit_source": "manual"
+        },
+        {
             "file": "Yardie - Black Vulcanite__v1.m4a",
             "id": "84a7a64d7e8d",
             "artists": [
@@ -2835,6 +6898,23 @@
             "sha1": "5a2e5223a8da91ae002a4d03caa731b31c8cf720",
             "size": 3470688,
             "mtime": 1792154622,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Zap - Contra__v1.m4a",
+            "id": "0d8ef6a79811",
+            "artists": [
+                "contra"
+            ],
+            "title": "Zap",
+            "duration": 323.4,
+            "bitrate": 131,
+            "lufs": -15.2,
+            "true_peak": -1.0,
+            "fingerprint": "93cb8b94319275aa",
+            "sha1": "83271c77bf1e00f44df1e76cb7aa564a00086ae4",
+            "size": 5340780,
+            "mtime": 1792162671,
             "credit_source": "manual"
         },
         {
@@ -3176,6 +7256,23 @@
             "size": 1963607,
             "mtime": 1790371844,
             "credit_source": "house"
+        },
+        {
+            "file": "follow Me - Contra__v1.m4a",
+            "id": "6c32067db67e",
+            "artists": [
+                "contra"
+            ],
+            "title": "follow Me",
+            "duration": 254.6,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.1,
+            "fingerprint": "3e10588c696e2d66",
+            "sha1": "12b7d4f41174ddf239072be5f3674dba0fb47d5b",
+            "size": 4190241,
+            "mtime": 1792162726,
+            "credit_source": "manual"
         },
         {
             "file": "half-adamantium - sabu__v1.m4a",
@@ -6069,6 +10166,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "vibe Coding Is Expensive - Contra__v1.m4a",
+            "id": "8f075725a6bc",
+            "artists": [
+                "contra"
+            ],
+            "title": "vibe Coding Is Expensive",
+            "duration": 290.8,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.8,
+            "fingerprint": "64d31530bf2eefef",
+            "sha1": "d542398d499741dfb52bbf1dc83243be9b918ecb",
+            "size": 4764364,
+            "mtime": 1792162711,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/All Time High - Richard Greaser__v1.m4a",
             "id": "aab87265cf30",
             "artists": [
@@ -8020,6 +12134,23 @@
             "sha1": "99660be0f9ddc45d29a8076ee0496bd816338323",
             "size": 3491749,
             "mtime": 1792144273,
+            "credit_source": "manual"
+        },
+        {
+            "file": "¡Ho Ho HODL! Feliz Navidad - NumberGoExp__v1.m4a",
+            "id": "173f0bed5867",
+            "artists": [
+                "numbergoexp"
+            ],
+            "title": "¡Ho Ho HODL! Feliz Navidad",
+            "duration": 224.88,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.8,
+            "fingerprint": "e241677fe3d7be56",
+            "sha1": "d67b07edcb7ec81063f7059ffe10cc2663d9a255",
+            "size": 3685170,
+            "mtime": 1792165692,
             "credit_source": "manual"
         }
     ],
