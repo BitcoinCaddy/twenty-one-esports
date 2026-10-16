@@ -9,9 +9,14 @@ use RuntimeException;
  * Brings a song to the library's loudness (plan "Musik-Katalog": −15 LUFS, true peak ≤ −1.5 dBTP, 44.1 kHz stereo
  * AAC): two-pass loudnorm (I=-15:TP=-1.5:LRA=11, linear) with a lookahead limiter at −1.5 dB behind it, encoded as
  * AAC 128k .m4a, then measured with ebur128. A result whose true peak is above −1.0 dBTP is made again with the
- * limiter lowered by the measured excess and half a dB more, at most TRIES encodes in all; still above, it is refused.
- * The AAC encoder overshoots the limiter, by more than a fixed dB on some songs (2026-10-16: "Journalists Are
- * Cypherpunks - Richard Greaser" kept +0.2 dBTP at a −2.5 dB ceiling).
+ * ceiling lowered by the measured excess and half a dB more, at most TRIES encodes in all; still above, it is refused.
+ * The ceiling is lowered from the song's own peak where that lies below it, since a ceiling above the peak limits
+ * nothing. The AAC encoder overshoots the limiter, by more than a fixed dB on some songs: "Journalists Are
+ * Cypherpunks - Richard Greaser" (peak −3.1 dB after loudnorm) kept +0.2 dBTP at ceilings of −1.5, −3.2 and −4.5 dB
+ * and came to −1.1 at −5.2 (measured 2026-10-16).
+ *
+ * The limiter runs without latency compensation: with it (`latency=true`) the same song measured +4.2 dBTP at a
+ * −4.9 dB ceiling, against −2.3 without it; the delay it saves is the 5 ms lookahead at the start of the song.
  *
  * The 68 songs measured above −1 dBTP on 2026-10-16 (up to +2.3) are re-made this way from their originals
  * (twentyone:music-renormalize); new songs come in through twentyone:music-add.
@@ -23,8 +28,11 @@ final class LoudnessNormalizer
     /** The highest true peak a result may keep, in dBTP. */
     public const MAX_TRUE_PEAK = -1.0;
 
-    /** The limiter's first ceiling, in dB. */
+    /** The limiter's first ceiling, and loudnorm's own true-peak target, in dB. */
     private const LIMIT = -1.5;
+
+    /** loudnorm's integrated loudness target, in LUFS. */
+    private const LOUDNESS = -15.0;
 
     /** Encodes at most, each with a lower ceiling than the one before. */
     public const TRIES = 3;
@@ -46,11 +54,14 @@ final class LoudnessNormalizer
         // Hidden and without the .m4a ending: neither the stream's glob nor the catalog's scan takes it for a song.
         $temp = dirname($output).'/.'.basename($output).'.normalize-'.getmypid().'.part';
 
+        // The song's peak after loudnorm: its own raised by the linear gain, at most loudnorm's target.
+        $peak = min((float) $measured['input_tp'] + self::LOUDNESS - (float) $measured['input_i'], self::LIMIT);
+
         try {
             $limit = self::LIMIT;
 
             for ($try = 0; $try < self::TRIES; $try++) {
-                $chain = sprintf('loudnorm=%s:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true,alimiter=limit=%.4f:level=false:latency=true',
+                $chain = sprintf('loudnorm=%s:measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true,alimiter=limit=%.4f:level=false:latency=false',
                     self::TARGET, $measured['input_i'], $measured['input_tp'], $measured['input_lra'], $measured['input_thresh'], $measured['target_offset'], 10 ** ($limit / 20));
 
                 $encode = Process::timeout(1800)->run(['nice', '-n', '19', $this->ffmpeg, '-y', '-hide_banner', '-nostats', '-i', $input, '-map', '0:a:0',
@@ -72,7 +83,7 @@ final class LoudnessNormalizer
                 }
 
                 // A peak ebur128 could not read counts as one dB too high.
-                $limit -= ($result['true_peak'] === null ? 1.0 : $result['true_peak'] - self::MAX_TRUE_PEAK) + self::MARGIN;
+                $limit = min($limit, $peak) - ($result['true_peak'] === null ? 1.0 : $result['true_peak'] - self::MAX_TRUE_PEAK) - self::MARGIN;
             }
 
             throw new RuntimeException(sprintf('%s: true peak %s dBTP after the limiter, above %.1f', basename($input), $result['true_peak'] ?? 'unknown', self::MAX_TRUE_PEAK));

@@ -106,7 +106,7 @@ test('the catalog credits every file of the old indexes exactly as the indexes d
             expect(MusicCredits::forFile($file))->toBe(MusicCredits::house());
         }
     }
-    expect(collect(MusicCatalog::tracks())->pluck('credit_source')->unique()->sort()->values()->all())->toBe(['house', 'plebrap-index', 'wavlake-index']);
+    expect(collect(MusicCatalog::tracks())->pluck('credit_source')->unique()->sort()->values()->all())->toBe(['house', 'manual', 'plebrap-index', 'wavlake-index']);
 });
 
 test('the catalog command measures the library once, keeps ids across runs and moves, and leaves out disabled/ and other files', function () {

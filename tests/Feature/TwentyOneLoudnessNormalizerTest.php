@@ -15,17 +15,19 @@ use Illuminate\Support\Facades\Process;
  * @param  list<float>  $peaks
  * @return ArrayObject<int, float> the limiter ceilings the encodes used, in dB
  */
-function fakeLoudnessRuns(array $peaks): ArrayObject
+function fakeLoudnessRuns(array $peaks, string $inputLoudness = '-20.0', string $inputPeak = '-3.0'): ArrayObject
 {
     $limits = new ArrayObject;
 
-    Process::fake(function (PendingProcess $process) use (&$peaks, $limits) {
+    Process::fake(function (PendingProcess $process) use (&$peaks, $limits, $inputLoudness, $inputPeak) {
         $command = (array) $process->command;
         $line = implode(' ', $command);
 
         if (str_contains($line, 'print_format=json')) {
-            return Process::result(errorOutput: "[Parsed_loudnorm_0]\n{\n\"input_i\" : \"-20.0\",\n\"input_tp\" : \"-3.0\",\n\"input_lra\" : \"6.0\",\n\"input_thresh\" : \"-30.0\",\n\"target_offset\" : \"0.1\"\n}\n");
+            return Process::result(errorOutput: "[Parsed_loudnorm_0]\n{\n\"input_i\" : \"{$inputLoudness}\",\n\"input_tp\" : \"{$inputPeak}\",\n\"input_lra\" : \"6.0\",\n\"input_thresh\" : \"-30.0\",\n\"target_offset\" : \"0.1\"\n}\n");
         }
+
+        expect($line)->not->toContain('latency=true');
 
         if (str_contains($line, 'alimiter')) {
             preg_match('/alimiter=limit=([\d.]+)/', $line, $limit);
@@ -53,6 +55,21 @@ test('a result above the true-peak ceiling is encoded again with the limiter low
         expect($limits->getArrayCopy())->toBe([-1.5, -3.2])
             ->and($result)->toBe(['lufs' => -15.0, 'true_peak' => -1.2, 'limit' => -3.2])
             ->and(is_file($dir.'/out__v1.m4a'))->toBeTrue();
+    } finally {
+        exec('rm -rf '.escapeshellarg($dir));
+    }
+});
+
+test('a song whose own peak lies below the first ceiling is limited from its peak down, since a higher ceiling limits nothing', function () {
+    $dir = sys_get_temp_dir().'/normalize-'.bin2hex(random_bytes(4));
+    mkdir($dir);
+    // "Journalists Are Cypherpunks - Richard Greaser": -15.6 LUFS, -3.71 dBTP, so -3.11 dBTP after +0.6 dB of loudnorm.
+    $limits = fakeLoudnessRuns([0.2, -1.1], '-15.60', '-3.71');
+
+    try {
+        (new LoudnessNormalizer)->normalize($dir.'/in.mp3', $dir.'/out__v1.m4a');
+
+        expect($limits->getArrayCopy())->toBe([-1.5, -4.8]);
     } finally {
         exec('rm -rf '.escapeshellarg($dir));
     }

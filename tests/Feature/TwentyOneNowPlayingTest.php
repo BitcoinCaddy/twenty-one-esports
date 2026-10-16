@@ -20,8 +20,8 @@ test('every credited track and the house artist have their QR code drawn, so no 
     $credits = [...array_filter(MusicCredits::all(), fn (array $credit): bool => $credit['artist'] !== MusicCredits::HOUSE_ARTIST), MusicCredits::house()];
 
     // Every Wavlake and PlebRap track of the catalog (115 + 38: the Wavlake index's 116th, "Who Comes Home - Under
-    // The Mulga Groove", is not in the library) and the house artist.
-    expect(count($credits))->toBe(154);
+    // The Mulga Groove", is not in the library), Richard Greaser's 76 songs and the house artist.
+    expect(count($credits))->toBe(230);
 
     foreach ($credits as $credit) {
         expect(in_array($credit['kind'], MusicCredits::KINDS, true))->toBeTrue($credit['artist'])
