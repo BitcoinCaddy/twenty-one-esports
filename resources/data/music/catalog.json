@@ -4529,6 +4529,60 @@
             "credit_source": "house"
         },
         {
+            "file": "wavlake/All Time High - Richard Greaser__v1.m4a",
+            "id": "aab87265cf30",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "All Time High",
+            "duration": 260.84,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -4.3,
+            "fingerprint": "43370824a29e0714",
+            "sha1": "8411a0294f6a0ace0ab0577b9dd124eca06782fb",
+            "size": 4335338,
+            "mtime": 1792141231,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Ayn Rand Says Smoking Is Good 4 U - Richard Greaser__v1.m4a",
+            "id": "1f09624aef96",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Ayn Rand Says Smoking Is Good 4 U",
+            "duration": 227.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.7,
+            "fingerprint": "8395de92f4120068",
+            "sha1": "cf96ee77a198e1301babd9ee56cf47d52d04f9c8",
+            "size": 3734189,
+            "mtime": 1792140606,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Bonnie and Clyde - Richard Greaser__v1.m4a",
+            "id": "28825197821d",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Bonnie and Clyde",
+            "duration": 275.68,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.6,
+            "fingerprint": "bb4e930c37afb378",
+            "sha1": "212d3b050237552341379561281b83eac47b2a17",
+            "size": 4575877,
+            "mtime": 1792141113,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Bullet Train - My Friend Jimi__v1.m4a",
             "id": "d435026884ed",
             "source": "wavlake",
@@ -4649,6 +4703,78 @@
             "wavlake_track_id": "729ff127-1fcc-4086-8e67-4386e87ac585"
         },
         {
+            "file": "wavlake/Come Back Down From Suicide Mountain - Richard Greaser__v1.m4a",
+            "id": "fd0fd0784aab",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Come Back Down From Suicide Mountain",
+            "duration": 231.84,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "9b43bc09840c84ff",
+            "sha1": "67be77e997a74ce6bd2f7a10c344936a40e97424",
+            "size": 3810699,
+            "mtime": 1792140537,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Cory and the Swans - Richard Greaser__v1.m4a",
+            "id": "91c890e0c22c",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Cory and the Swans",
+            "duration": 210.61,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -1.0,
+            "fingerprint": "f58809c1176b033a",
+            "sha1": "5144b0957509e9a56c721e1e451da5de5e438d08",
+            "size": 3466017,
+            "mtime": 1792141038,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Cursed With Sight - Richard Greaser__v1.m4a",
+            "id": "bce9ef2818cd",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Cursed With Sight",
+            "duration": 233.72,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.1,
+            "fingerprint": "ced6f4ea6ff0935d",
+            "sha1": "782f14dd9c23f295ae87c1d531c8ec4d8bb891f9",
+            "size": 3872175,
+            "mtime": 1792140881,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Dagny Taggart - Richard Greaser__v1.m4a",
+            "id": "436f9503b635",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Dagny Taggart",
+            "duration": 237.48,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.8,
+            "fingerprint": "046ea21852ebd1be",
+            "sha1": "12e14abe5f240ce160772d0e688b1b736a076b84",
+            "size": 3892074,
+            "mtime": 1792140740,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Daydreamer - Ainsley Costello__v1.m4a",
             "id": "f10d17dedc1a",
             "source": "wavlake",
@@ -4690,6 +4816,42 @@
             "qr_kind": "lud16"
         },
         {
+            "file": "wavlake/Did You Think This Would Be Easy - Richard Greaser__v1.m4a",
+            "id": "d82e222eefd6",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Did You Think This Would Be Easy",
+            "duration": 223.16,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -4.4,
+            "fingerprint": "8d8b9bed3526937f",
+            "sha1": "2fc828d693891afaf96cb7999f6db3f093deecf1",
+            "size": 3677315,
+            "mtime": 1792140509,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Doomsday's DJ - Richard Greaser__v1.m4a",
+            "id": "60da702caf29",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Doomsday's DJ",
+            "duration": 294.84,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "e284eac4e7d1e6b5",
+            "sha1": "9a3d332a796755fbc5b3a82298bffb0dbf2c477f",
+            "size": 4875756,
+            "mtime": 1792140921,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/EXLESS - Ainsley Costello__v1.m4a",
             "id": "a7a523acd405",
             "source": "wavlake",
@@ -4709,6 +4871,24 @@
             "qr_target": "ainsleycostello@getalby.com",
             "qr_kind": "lud16",
             "wavlake_track_id": "27d4da8d-4fa4-478c-a65c-fae4147fe054"
+        },
+        {
+            "file": "wavlake/Ember In The Dark - Richard Greaser__v1.m4a",
+            "id": "3ca9f03b6780",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Ember In The Dark",
+            "duration": 269.44,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "5064ea7929123868",
+            "sha1": "0e5595e2ff09be2613e45dc34e815c4c3876bef4",
+            "size": 4426105,
+            "mtime": 1792141002,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/Empty Passenger Seat - Joe Martin__v1.m4a",
@@ -4732,6 +4912,96 @@
             "wavlake_track_id": "c8ec175f-dd5d-4a01-8e3a-e85c1591698f"
         },
         {
+            "file": "wavlake/Empty Wallet In My Hand - Richard Greaser__v1.m4a",
+            "id": "af03d7e3575d",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Empty Wallet In My Hand",
+            "duration": 174.0,
+            "bitrate": 131,
+            "lufs": -15.2,
+            "true_peak": -1.7,
+            "fingerprint": "99920f276197a3f3",
+            "sha1": "6b06469892d561f094acb19232fe6ab21b48f632",
+            "size": 2881635,
+            "mtime": 1792140327,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Everywhere I Look I See The CIA - Richard Greaser__v1.m4a",
+            "id": "d60c74af32e2",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Everywhere I Look I See The CIA",
+            "duration": 131.44,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.9,
+            "fingerprint": "b5fe7a4b6bddfe14",
+            "sha1": "e753fcbf549a736d834e72e7fba2595f5f2bfc64",
+            "size": 2180740,
+            "mtime": 1792140546,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Fast Food Misery - Richard Greaser__v1.m4a",
+            "id": "78bb88f21852",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Fast Food Misery",
+            "duration": 112.92,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "13ffc8ba73b99a11",
+            "sha1": "0a157cf4a7a986787e3958b509ef3a2f04ba0e7d",
+            "size": 1834775,
+            "mtime": 1792140248,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Feel The Rage - Richard Greaser__v1.m4a",
+            "id": "b8f191a0f1e6",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Feel The Rage",
+            "duration": 295.32,
+            "bitrate": 133,
+            "lufs": -15.0,
+            "true_peak": -1.5,
+            "fingerprint": "7a6c30b744e26c90",
+            "sha1": "085cf20f948826aaf6a20a2163b019eefa2a8764",
+            "size": 4967814,
+            "mtime": 1792141131,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Fire Burning - Richard Greaser__v1.m4a",
+            "id": "c48e42b79b19",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Fire Burning",
+            "duration": 360.0,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.3,
+            "fingerprint": "4f3ceb39cb6327d5",
+            "sha1": "77fe52ce26e3679440b1f82ddf395cb46c6180e2",
+            "size": 5930586,
+            "mtime": 1792141266,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Fix the Money - NumberGoExp__v1.m4a",
             "id": "44df0141d096",
             "source": "wavlake",
@@ -4748,6 +5018,42 @@
             "size": 2208228,
             "mtime": 1792102505,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "wavlake/Flying Cars - Richard Greaser__v1.m4a",
+            "id": "ef12536873de",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Flying Cars",
+            "duration": 199.0,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "30e94ec664348390",
+            "sha1": "8a8d26a11f17c27e5ea5d1fd72b94785abd34333",
+            "size": 3308209,
+            "mtime": 1792140570,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Funeral For Your Youth - Richard Greaser__v1.m4a",
+            "id": "5c90ab826e64",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Funeral For Your Youth",
+            "duration": 209.0,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -5.5,
+            "fingerprint": "93468d895d7cf0de",
+            "sha1": "fedb9f733a09d5f47a694eaed0a84470ba63f06b",
+            "size": 3411749,
+            "mtime": 1792140718,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/GOD IS DECENTRALIZED - Zazawowow__v1.m4a",
@@ -4786,6 +5092,24 @@
             "credit_source": "wavlake-index"
         },
         {
+            "file": "wavlake/Gonna Stay - Richard Greaser__v1.m4a",
+            "id": "0582a361a244",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Gonna Stay",
+            "duration": 420.0,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.6,
+            "fingerprint": "3c599502c1bea7d1",
+            "sha1": "67a0e16353399dbc5430d4d2cca5fbd5056ae117",
+            "size": 6978033,
+            "mtime": 1792141215,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Good Times ft Quido - Black Vulcanite__v1.m4a",
             "id": "3e014a093d26",
             "source": "wavlake",
@@ -4804,6 +5128,186 @@
             "credit_source": "wavlake-index"
         },
         {
+            "file": "wavlake/Heroes - Richard Greaser__v1.m4a",
+            "id": "7ee88ac6bdd1",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Heroes",
+            "duration": 294.8,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "d93af728c4ac64e8",
+            "sha1": "e979ca039215cf9a6ad5e1accaf495624e15d61e",
+            "size": 4891498,
+            "mtime": 1792141097,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Heroes Of The Truth - Richard Greaser__v1.m4a",
+            "id": "787893803f35",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Heroes Of The Truth",
+            "duration": 240.0,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -3.6,
+            "fingerprint": "d7a148a59863112e",
+            "sha1": "d4468057504e7646a360395f899dd89be30814fa",
+            "size": 3894018,
+            "mtime": 1792140390,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Holding Out For An Announcement - Richard Greaser__v1.m4a",
+            "id": "af550378039e",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Holding Out For An Announcement",
+            "duration": 295.96,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "8e65bab2177e6b89",
+            "sha1": "fa54fd784407a3b7f24db3c20aea0359ee4d2f7d",
+            "size": 4889269,
+            "mtime": 1792141069,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/I Can't Afford Taxes - Richard Greaser__v1.m4a",
+            "id": "e3a7ad7958f3",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "I Can't Afford Taxes",
+            "duration": 203.6,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.1,
+            "fingerprint": "7b710b77c4206cd9",
+            "sha1": "7015f6b7921e77f4269b66e3069094d0725d4cf5",
+            "size": 3346364,
+            "mtime": 1792140524,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/I Remember The Days - Richard Greaser__v1.m4a",
+            "id": "eae6582b0566",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "I Remember The Days",
+            "duration": 184.52,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "091b206b215d2e36",
+            "sha1": "554b3b6cc6c551d23906abe842b5bdbcce681dfe",
+            "size": 3025069,
+            "mtime": 1792140349,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/I Want Cheap Food - Richard Greaser__v1.m4a",
+            "id": "167f99414b27",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "I Want Cheap Food",
+            "duration": 239.04,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -2.5,
+            "fingerprint": "ac74044f7745ed0c",
+            "sha1": "d5861cd15d10aff8e90f3238522d9915163e5035",
+            "size": 3909150,
+            "mtime": 1792140301,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/I'd Love to Change the World - Richard Greaser__v1.m4a",
+            "id": "9ee68176c602",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "I'd Love to Change the World",
+            "duration": 163.36,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -5.6,
+            "fingerprint": "aa007493e8e91257",
+            "sha1": "2ca70b9d1764db5182a68c8d12ede8449e1de393",
+            "size": 2658793,
+            "mtime": 1792140843,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/I'm Awake - Richard Greaser__v1.m4a",
+            "id": "22abb2036c09",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "I'm Awake",
+            "duration": 252.88,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.0,
+            "fingerprint": "dcab92dbdd816bbb",
+            "sha1": "1bd5cc8dc1aff7276e39bd717110ed461f3da7dc",
+            "size": 4167071,
+            "mtime": 1792140987,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/I'm Grumpy - Richard Greaser__v1.m4a",
+            "id": "b30c86511f42",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "I'm Grumpy",
+            "duration": 197.12,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -4.0,
+            "fingerprint": "2ed45cd318c543f8",
+            "sha1": "e7035a324c27fd41b409cc0c4a19ac91f2e94e2a",
+            "size": 3255593,
+            "mtime": 1792140835,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Jerry Calbrone - Richard Greaser__v1.m4a",
+            "id": "5f95cbdd1616",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Jerry Calbrone",
+            "duration": 132.0,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.5,
+            "fingerprint": "559ae770ade89ab1",
+            "sha1": "15d2d2466aa2d812c3f4aa0a2aa8b3b76d0367fa",
+            "size": 2168919,
+            "mtime": 1792140669,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Keep On Movin' - Cal Volpe__v1.m4a",
             "id": "aa75d13d380e",
             "source": "wavlake",
@@ -4820,6 +5324,24 @@
             "size": 3169505,
             "mtime": 1792102525,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "wavlake/Lately I've Been Seeing Things - Richard Greaser__v1.m4a",
+            "id": "3dc64f443c8f",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Lately I've Been Seeing Things",
+            "duration": 214.16,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.6,
+            "fingerprint": "4cc8c93e0e20b033",
+            "sha1": "d2988d9e5b01eef16cdc6ce6a5d3be8d0af45d55",
+            "size": 3509904,
+            "mtime": 1792140707,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/Leave The Porch Light Low - Under The Mulga Groove__v1.m4a",
@@ -4841,6 +5363,96 @@
             "qr_target": "https://wavlake.com/track/27a9ff24-12d5-4931-b81c-e907ef601790",
             "qr_kind": "wavlake",
             "wavlake_track_id": "27a9ff24-12d5-4931-b81c-e907ef601790"
+        },
+        {
+            "file": "wavlake/Lemmings - Richard Greaser__v1.m4a",
+            "id": "3efca5dbc54d",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Lemmings",
+            "duration": 244.0,
+            "bitrate": 133,
+            "lufs": -15.1,
+            "true_peak": -1.4,
+            "fingerprint": "5d103797719f2392",
+            "sha1": "5df5e4eba739f689b8196b4296e6fccb955308cb",
+            "size": 4085352,
+            "mtime": 1792140960,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Lil Boogie - Richard Greaser__v1.m4a",
+            "id": "da394d9b9131",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Lil Boogie",
+            "duration": 238.32,
+            "bitrate": 132,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "3ad4a4db33e89e62",
+            "sha1": "f50b064ebba12be10fd2c0e48c0657120814c538",
+            "size": 3967160,
+            "mtime": 1792141245,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Live By Lies - Richard Greaser__v1.m4a",
+            "id": "11cea228569c",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Live By Lies",
+            "duration": 209.92,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -4.9,
+            "fingerprint": "a673399a206d42a8",
+            "sha1": "a700132c2406ded48e1b69b0bd70629802d20dad",
+            "size": 3461252,
+            "mtime": 1792140855,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Lost and Found - Richard Greaser__v1.m4a",
+            "id": "5839bfab5e67",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Lost and Found",
+            "duration": 223.68,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.7,
+            "fingerprint": "b5584cd038573dc2",
+            "sha1": "7d70b33c8debed1894c6f7599d5feb4b784210a4",
+            "size": 3708721,
+            "mtime": 1792140767,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Lyn Alden Is Hot - Richard Greaser__v1.m4a",
+            "id": "72158f45b321",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Lyn Alden Is Hot",
+            "duration": 182.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "a0ea5057a91aa651",
+            "sha1": "0509d29cfd761436eb87fbd9cfeb8264f7761947",
+            "size": 3014898,
+            "mtime": 1792140645,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/MEMOBOT - Cristo Currensi__v1.m4a",
@@ -4881,6 +5493,24 @@
             "qr_kind": "lud16"
         },
         {
+            "file": "wavlake/Marty Says This Time Is Different - Richard Greaser__v1.m4a",
+            "id": "48918a2fff20",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Marty Says This Time Is Different",
+            "duration": 211.96,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.0,
+            "fingerprint": "6299136e880a757f",
+            "sha1": "7f129092dde194964b1fa62c98550f0100f55c63",
+            "size": 3512954,
+            "mtime": 1792140800,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Mask Off - NumberGoExp__v1.m4a",
             "id": "1bba84199e59",
             "source": "wavlake",
@@ -4897,6 +5527,132 @@
             "size": 1655625,
             "mtime": 1792061012,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "wavlake/Masters of Slop - Richard Greaser__v1.m4a",
+            "id": "90816eed69e7",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Masters of Slop",
+            "duration": 412.8,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.7,
+            "fingerprint": "0eba5890087e7972",
+            "sha1": "7b6bfd71a15f1dfdca7429e98b3472957e0a5c64",
+            "size": 6797843,
+            "mtime": 1792141055,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Maybe Things Will Get Better - Richard Greaser__v1.m4a",
+            "id": "6ed9b80ec43d",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Maybe Things Will Get Better",
+            "duration": 234.6,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.8,
+            "fingerprint": "e4f4eaedd151b683",
+            "sha1": "ea53843cd3bd51233bbd4745250938c918192868",
+            "size": 3913710,
+            "mtime": 1792141083,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/McDonalds You Did Us Wrong - Richard Greaser__v1.m4a",
+            "id": "f15412b119fe",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "McDonalds You Did Us Wrong",
+            "duration": 116.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "5fccc06f5a8f7132",
+            "sha1": "e81b54b0e8d7a1988b2a3cdb55b09bedbecbfaec",
+            "size": 1925178,
+            "mtime": 1792140233,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Menu of Broken Dreams and Lies - Richard Greaser__v1.m4a",
+            "id": "62f81978996d",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Menu of Broken Dreams and Lies",
+            "duration": 110.64,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.2,
+            "fingerprint": "a27913777d17bda4",
+            "sha1": "19a25e518717a18c7de012324bdc3549d3de977d",
+            "size": 1850283,
+            "mtime": 1792140280,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Midwit Elegy - Richard Greaser__v1.m4a",
+            "id": "b0b76487eb04",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Midwit Elegy",
+            "duration": 187.56,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "a4256f5a5e449beb",
+            "sha1": "8ab2f426c77c168b177bd6f24c192a240b3e1079",
+            "size": 3076871,
+            "mtime": 1792140468,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Monitoring The Situation - Richard Greaser__v1.m4a",
+            "id": "fbf462c803b1",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Monitoring The Situation",
+            "duration": 194.88,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -4.3,
+            "fingerprint": "bffb2a7f70d24a48",
+            "sha1": "d1047eb45fa2cb55c427134025b8701eb4d8226e",
+            "size": 3187123,
+            "mtime": 1792140947,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/My Pockets Are Empty - Richard Greaser__v1.m4a",
+            "id": "99aa90cfafb1",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "My Pockets Are Empty",
+            "duration": 118.92,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -3.9,
+            "fingerprint": "bf3c6a0c1aee8c46",
+            "sha1": "a357363d69f7306a0ebb2989da0e029858ffa33f",
+            "size": 2011390,
+            "mtime": 1792140265,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/Never Attained Anything - Patrick Manian__v1.m4a",
@@ -4937,6 +5693,60 @@
             "credit_source": "wavlake-index",
             "qr_target": "guysmilely@fountain.fm",
             "qr_kind": "lud16"
+        },
+        {
+            "file": "wavlake/No One Is Coming To Save You - Richard Greaser__v1.m4a",
+            "id": "e512cdb905fe",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "No One Is Coming To Save You",
+            "duration": 172.56,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -3.6,
+            "fingerprint": "e21a2487eda1475d",
+            "sha1": "359fa8859c009d85b276ec238d979d730af31bfc",
+            "size": 2871331,
+            "mtime": 1792140452,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Noncompliant 1776 - Richard Greaser__v1.m4a",
+            "id": "6094486e3fe7",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Noncompliant 1776",
+            "duration": 174.6,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "0f37d38c9e728816",
+            "sha1": "6671f5928282dc97db8fe0c2fa71f08070c2582d",
+            "size": 2866717,
+            "mtime": 1792140431,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Orange Wedding - Richard Greaser__v1.m4a",
+            "id": "d9cccf66db03",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Orange Wedding",
+            "duration": 214.56,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.9,
+            "fingerprint": "8f2c290de17c61c9",
+            "sha1": "ae30faf558aeb49823ae67830fe1c3199d6e2a2a",
+            "size": 3555783,
+            "mtime": 1792140634,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/Patience - Greensands__v1.m4a",
@@ -4996,6 +5806,24 @@
             "credit_source": "wavlake-index"
         },
         {
+            "file": "wavlake/Pioneers - Richard Greaser__v1.m4a",
+            "id": "62b895a5b7fc",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Pioneers",
+            "duration": 224.64,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "a0e4412e68b24c0d",
+            "sha1": "81ddf766fcc10e273ca5fcc3e23eee7dddd0a793",
+            "size": 3690121,
+            "mtime": 1792140972,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Pirate Radio - Vertigo Kidd__v1.m4a",
             "id": "f91aef9c2ea5",
             "source": "wavlake",
@@ -5012,6 +5840,24 @@
             "size": 3631667,
             "mtime": 1792060848,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "wavlake/Price of Greed - Richard Greaser__v1.m4a",
+            "id": "690fe4932db0",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Price of Greed",
+            "duration": 115.0,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -4.6,
+            "fingerprint": "4aeac27cef30821d",
+            "sha1": "b19d514b48a0227f01dc12ce84ff0faa53e2f715",
+            "size": 1871437,
+            "mtime": 1792140256,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/Put 'Em In A Cage - Yellow Velvet Milk Club__v1.m4a",
@@ -5091,6 +5937,96 @@
             "qr_kind": "njump"
         },
         {
+            "file": "wavlake/Run With The Wind - Richard Greaser__v1.m4a",
+            "id": "d96ac06be5b0",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Run With The Wind",
+            "duration": 240.9,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.1,
+            "fingerprint": "416320bfeb3a27c8",
+            "sha1": "f316056dad5f70e591379822c93a0c98fca271ff",
+            "size": 3959241,
+            "mtime": 1792140867,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Satoshi is Proud - Richard Greaser__v1.m4a",
+            "id": "fade8fb99a19",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Satoshi is Proud",
+            "duration": 205.5,
+            "bitrate": 131,
+            "lufs": -14.9,
+            "true_peak": -1.1,
+            "fingerprint": "867406967a0a772c",
+            "sha1": "9e44337b07b59a772acbab26412a7e88e40ac9f8",
+            "size": 3411293,
+            "mtime": 1792140485,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Saylor Fly Me To The Moon - Richard Greaser__v1.m4a",
+            "id": "ad0e33b2b832",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Saylor Fly Me To The Moon",
+            "duration": 169.2,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -1.4,
+            "fingerprint": "b12cb7d573171b2c",
+            "sha1": "ad34d87faa3547bf8931fdffce75ac93982bf6dd",
+            "size": 2741089,
+            "mtime": 1792140660,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Shrug - Richard Greaser__v1.m4a",
+            "id": "609d34b3d295",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Shrug",
+            "duration": 234.2,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -4.4,
+            "fingerprint": "bfb9532f4fe079f3",
+            "sha1": "3f58b9553aa33e70a1df4e0bcc93bb50420488de",
+            "size": 3821131,
+            "mtime": 1792140753,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Sound the Call - Richard Greaser__v1.m4a",
+            "id": "19d4c05b4922",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Sound the Call",
+            "duration": 139.4,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -1.5,
+            "fingerprint": "9e1fca28186d9e2c",
+            "sha1": "482a46beddaaf757c2153af2d2bd221ba71c0ce9",
+            "size": 2257817,
+            "mtime": 1792140369,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Speedo Vigilante - Fundamentals__v1.m4a",
             "id": "02f9a1e2ae6e",
             "source": "wavlake",
@@ -5109,6 +6045,60 @@
             "credit_source": "wavlake-index",
             "qr_target": "fundamentals@zeuspay.com",
             "qr_kind": "lud16"
+        },
+        {
+            "file": "wavlake/Stay Misinformed - Richard Greaser__v1.m4a",
+            "id": "b7dc881938d8",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Stay Misinformed",
+            "duration": 224.48,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.5,
+            "fingerprint": "bf99faa6dda3d926",
+            "sha1": "970cd0d58b6853ce3c04a5e0dff3aa134cbc3271",
+            "size": 3710596,
+            "mtime": 1792140496,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Stomach Growling - Richard Greaser__v1.m4a",
+            "id": "c7208f8330eb",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Stomach Growling",
+            "duration": 118.0,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "e8183dfb34db8404",
+            "sha1": "7c9c3499dd54e97134fe763d8fb56bc389716647",
+            "size": 1967190,
+            "mtime": 1792140338,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Story To Tell - Richard Greaser__v1.m4a",
+            "id": "eb95cbd25524",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Story To Tell",
+            "duration": 234.88,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -2.5,
+            "fingerprint": "c000d4bb94cf2598",
+            "sha1": "abe29ce11158b90b52f734a1c5d71a317dec3296",
+            "size": 3909404,
+            "mtime": 1792141195,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/THEREGOESMY! - Ainsley Costello__v1.m4a",
@@ -5132,6 +6122,150 @@
             "wavlake_track_id": "598f2d62-1d8f-4937-8dcb-a3803443279b"
         },
         {
+            "file": "wavlake/Take Command - Richard Greaser__v1.m4a",
+            "id": "195e2d2e80d5",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Take Command",
+            "duration": 298.0,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.0,
+            "fingerprint": "3e79d161a8d09336",
+            "sha1": "0f8b9bc2fdcbe8608141f9f8008e8ce6f009ed5c",
+            "size": 4898550,
+            "mtime": 1792141283,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Take My Hand - Richard Greaser__v1.m4a",
+            "id": "ab46b7396741",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Take My Hand",
+            "duration": 292.04,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -1.7,
+            "fingerprint": "2d98df1c8b444489",
+            "sha1": "34e299cbf116d76ec165f3d3e43de63367a6af32",
+            "size": 4848622,
+            "mtime": 1792140936,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/The Battle Is Not Lost (Remix) - Richard Greaser__v1.m4a",
+            "id": "7a52f1507730",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The Battle Is Not Lost (Remix)",
+            "duration": 264.4,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.1,
+            "fingerprint": "a5ff1d59918c469b",
+            "sha1": "fbdce9e90c60f7baec955bed8a61d94d64aff40c",
+            "size": 4348771,
+            "mtime": 1792141166,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/The Battle Is Not Lost - Richard Greaser__v1.m4a",
+            "id": "905e34e694c2",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The Battle Is Not Lost",
+            "duration": 228.12,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.8,
+            "fingerprint": "4f0ab35df97ada33",
+            "sha1": "b609051dd6801b02f235eae9341e6e1643229269",
+            "size": 3725652,
+            "mtime": 1792140728,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/The Dollar Menu Blues - Richard Greaser__v1.m4a",
+            "id": "17070956a68f",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The Dollar Menu Blues",
+            "duration": 114.96,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "9ce959eb58e1e912",
+            "sha1": "824d66765882618593e169386cf6bdda459eee63",
+            "size": 1864841,
+            "mtime": 1792140272,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/The John Galt Of Journalism - Richard Greaser__v1.m4a",
+            "id": "d860ec9f5e63",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The John Galt Of Journalism",
+            "duration": 247.24,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -4.8,
+            "fingerprint": "c2e6252e477b90bb",
+            "sha1": "8ed32033089041d55a9ecd4d5d2ad7f094464c6d",
+            "size": 4053927,
+            "mtime": 1792141014,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/The Princess And The Podcast Listener - Richard Greaser__v1.m4a",
+            "id": "efae6a14716e",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The Princess And The Podcast Listener",
+            "duration": 168.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.0,
+            "fingerprint": "0f7f7844e22e17a2",
+            "sha1": "fe1fe12ca8f4365beccfa5b229b0b772bc33c16b",
+            "size": 2785152,
+            "mtime": 1792140442,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/The Revolutions Won't Have Good UX - Richard Greaser__v1.m4a",
+            "id": "40d778b87c3d",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The Revolutions Won't Have Good UX",
+            "duration": 180.12,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.1,
+            "fingerprint": "d684433f3e3c29d0",
+            "sha1": "a30635c5bee9cdeac532a15ea9a61eac5e147ac6",
+            "size": 2967562,
+            "mtime": 1792140777,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/The Rhythm of Your Breath - Sorout Beats__v1.m4a",
             "id": "13d534084a2a",
             "source": "wavlake",
@@ -5148,6 +6282,96 @@
             "size": 2211474,
             "mtime": 1792061018,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "wavlake/The Way Back Home - Richard Greaser__v1.m4a",
+            "id": "fd7aeecfc068",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "The Way Back Home",
+            "duration": 444.32,
+            "bitrate": 134,
+            "lufs": -15.0,
+            "true_peak": -2.6,
+            "fingerprint": "3fcaaa65a8baba06",
+            "sha1": "52e7ac4a2b60a2fbfae39aa2ba78601e04821466",
+            "size": 7496102,
+            "mtime": 1792141152,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/This Christmas Let's Be Free - Richard Greaser__v1.m4a",
+            "id": "f5827670f01c",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "This Christmas Let's Be Free",
+            "duration": 211.32,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.2,
+            "fingerprint": "c467645036fecd06",
+            "sha1": "f2c097c55017d11410d95976892aa204d0de1ced",
+            "size": 3462003,
+            "mtime": 1792140812,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/This Politician Loves Me - Richard Greaser__v1.m4a",
+            "id": "029911d64df8",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "This Politician Loves Me",
+            "duration": 184.0,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.4,
+            "fingerprint": "f70534169c69eef4",
+            "sha1": "28ecdf6816fdb1026250f50bed4c96e9d5cbc6b5",
+            "size": 3054550,
+            "mtime": 1792140560,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Timechain Police - Richard Greaser__v1.m4a",
+            "id": "9da2d84f0684",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Timechain Police",
+            "duration": 195.1,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -1.2,
+            "fingerprint": "6740a56e2c092d2e",
+            "sha1": "12224f60af9ad211f93909aa2fa4a34f36a6c0f0",
+            "size": 3170079,
+            "mtime": 1792140684,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Truth Under Those Chemtrail Skies - Richard Greaser__v1.m4a",
+            "id": "aacf8c411d10",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Truth Under Those Chemtrail Skies",
+            "duration": 198.6,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -4.5,
+            "fingerprint": "bcea1d4fab7ee16a",
+            "sha1": "23ce78a6c68015b3498cbaf3ea7ced25b790fd4f",
+            "size": 3254842,
+            "mtime": 1792140358,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/Two Ships - Ainsley Costello__v1.m4a",
@@ -5192,6 +6416,96 @@
             "wavlake_track_id": "e638bf06-1d06-4115-b646-09cd2a64c3e4"
         },
         {
+            "file": "wavlake/Typical Politician - Richard Greaser__v1.m4a",
+            "id": "a575cc575896",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Typical Politician",
+            "duration": 177.36,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -2.8,
+            "fingerprint": "601269a6fc29d5c9",
+            "sha1": "75ea9a67fa45a84215c2ae3fc98a9be8744a1c68",
+            "size": 2932398,
+            "mtime": 1792140581,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Ungovernable Misfit - Richard Greaser__v1.m4a",
+            "id": "8aaeea5d7bb2",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Ungovernable Misfit",
+            "duration": 200.96,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -1.7,
+            "fingerprint": "07c0f4582141e1f0",
+            "sha1": "d2827bae5a9348d4d13706b9ae19f1c5c67197f1",
+            "size": 3331528,
+            "mtime": 1792140788,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Use Your Brain - Richard Greaser__v1.m4a",
+            "id": "f9ff42d50b58",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Use Your Brain",
+            "duration": 224.56,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -1.8,
+            "fingerprint": "171dae84a1bab08e",
+            "sha1": "001e8cd45db3705ca070cefdabfc1cff8fe1123a",
+            "size": 3685595,
+            "mtime": 1792140695,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Villains - Richard Greaser__v1.m4a",
+            "id": "f2a6a4f6a844",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Villains",
+            "duration": 264.76,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.8,
+            "fingerprint": "73347cc4685165f9",
+            "sha1": "ebda7acd37578415aacf23faee207c8c24fb782d",
+            "size": 4365961,
+            "mtime": 1792141181,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/Virginia - Richard Greaser__v1.m4a",
+            "id": "822647020337",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Virginia",
+            "duration": 193.44,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -1.7,
+            "fingerprint": "20376b3018990279",
+            "sha1": "5f213baf6cdb7bd1c709df8c4423d3ee61f317b7",
+            "size": 3194235,
+            "mtime": 1792140824,
+            "credit_source": "manual"
+        },
+        {
             "file": "wavlake/Wealthy Man - Arthur Yoria__v1.m4a",
             "id": "d7a009c1d797",
             "source": "wavlake",
@@ -5208,6 +6522,42 @@
             "size": 2733846,
             "mtime": 1792061008,
             "credit_source": "wavlake-index"
+        },
+        {
+            "file": "wavlake/Who Needs Viagra When You've Got Dennis Porter - Richard Greaser__v1.m4a",
+            "id": "bcc13831e874",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "Who Needs Viagra When You've Got Dennis Porter",
+            "duration": 205.4,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.4,
+            "fingerprint": "d88a3de7425b9bd0",
+            "sha1": "7a6ff7301e4a365efb76a2cf9490ff9a7fb77a16",
+            "size": 3409080,
+            "mtime": 1792140617,
+            "credit_source": "manual"
+        },
+        {
+            "file": "wavlake/With Me Now - Richard Greaser__v1.m4a",
+            "id": "af7c66188f74",
+            "source": "wavlake",
+            "artists": [
+                "richard-greaser"
+            ],
+            "title": "With Me Now",
+            "duration": 319.1,
+            "bitrate": 130,
+            "lufs": -15.2,
+            "true_peak": -1.6,
+            "fingerprint": "af89008fdc05b998",
+            "sha1": "a9b29fa646b50c2e47153cacb01f9eee7a45f466",
+            "size": 5260089,
+            "mtime": 1792140907,
+            "credit_source": "manual"
         },
         {
             "file": "wavlake/You Problem - Ainsley Costello__v1.m4a",
@@ -5513,6 +6863,11 @@
             "youtube": null,
             "evidence": "Re-verified index npub (from Wavlake profile): about 'Buddhism, music, freedom'. CHANGE vs index: kind 0 now carries lud16 bronzestarfish11@primal.net, so the QR moves from njump to lud16. kind 0 seen on 1 of 7 general relays (purplepag.es).",
             "confidence": "high"
+        },
+        "richard-greaser": {
+            "name": "Richard Greaser",
+            "npub": "npub1563z6kxmvuy7s8zhzan8m0hzmkavyfzg2aw6h7f0fvcvdms398csaxc9n6",
+            "lud16": "masflojo@blink.sv"
         },
         "riot-in-progress": {
             "name": "Riot in Progress",
