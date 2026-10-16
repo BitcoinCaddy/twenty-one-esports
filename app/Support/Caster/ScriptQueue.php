@@ -25,6 +25,7 @@ use App\Support\Caster\Programme\TournamentLive;
 use App\Support\Voice\VoiceHygiene;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -437,6 +438,13 @@ class ScriptQueue
 
         if ($ahead > 60 * (float) ($settings['write_minutes_ahead'] ?? 7) || $ahead < 60 * (float) ($settings['last_write_minutes'] ?? 2)
             || CasterScript::query()->where('kind', CasterScript::BULLETIN)->where('facts_hash', $hash)->exists()) {
+            return 0;
+        }
+
+        // Two lanes write at once (caster:script and caster:bulletin, live 2026-10-16): the hash check above
+        // sees only what already landed, so a slot being written right now is claimed here first. The lock
+        // covers a slow write and frees itself for the retry after a failed one.
+        if (! Cache::add('caster:bulletin:writing:'.$slot['key'], true, $now->addMinutes(3))) {
             return 0;
         }
 

@@ -15,6 +15,7 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -213,7 +214,7 @@ it('has every bulletin of three simulated hours in the spool at least sixty seco
         expect($due === null || CasterScript::query()->find($due->caster_script_id)->airs_at->getTimestamp() <= $t->getTimestamp())->toBeTrue();
     }
 
-    $slots = array_map(fn (int $i): int => $start->addMinutes(10 + 30 * $i)->getTimestamp(), range(0, 5));
+    $slots = array_map(fn (int $i): int => $start->addMinutes(10 + 30 * $i)->getTimestamp(), range(0, 6));
     expect(array_keys($ready))->toBe($slots);
 
     foreach ($ready as $slot => $at) {
@@ -233,7 +234,8 @@ it('writes the bulletin once per slot and only within its writing window, also i
     VoiceAgent::fake(fn (string $prompt): array => radioBulletinAnswer($prompt));
     $queue = app(ScriptQueue::class);
 
-    // 15 minutes ahead: too early; 07:00 ahead: written; again: not twice; the :30 in the night: never.
+    // 16 minutes ahead: too early (the window opens at fifteen, live 2026-10-16); 07:00 ahead: written; again: not twice; the :30 in the night: never.
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 03:44:00', 'Europe/Berlin'));
     expect($queue->fillBulletin(CarbonImmutable::now()))->toBe(0);
     $this->travelTo(CarbonImmutable::parse('2026-10-12 03:53:00', 'Europe/Berlin'));
     expect($queue->fill(CarbonImmutable::now()))->toBeGreaterThanOrEqual(1)
@@ -242,10 +244,32 @@ it('writes the bulletin once per slot and only within its writing window, also i
     expect($queue->fillBulletin(CarbonImmutable::now()))->toBe(0);
 
     $bulletin = CasterScript::query()->where('kind', CasterScript::BULLETIN)->sole();
-    expect($bulletin->airs_at->setTimezone('Europe/Berlin')->format('H:i'))->toBe('04:00')
-        ->and($bulletin->expires_at->getTimestamp() - $bulletin->airs_at->getTimestamp())->toBe(120)
+    expect($bulletin->airs_at->setTimezone('Europe/Berlin')->format('H:i'))->toBe('04:00')->and($bulletin->expires_at->getTimestamp() - $bulletin->airs_at->getTimestamp())->toBe(120)
         ->and($bulletin->priority)->toBe(75)
         ->and($bulletin->sentences()[0])->toBe('Es ist vier Uhr, hier sind die Nachrichten auf TWENTY ONE T Fau.');
+});
+
+it('gives the bulletin its own lane: the command writes the slot, the writing lock keeps both lanes to one model call', function () {
+    radioClockAwake();
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 13:46:00', 'Europe/Berlin'));
+    radioHeadlines(3);
+    VoiceAgent::fake(fn (string $prompt): array => radioBulletinAnswer($prompt));
+    $queue = app(ScriptQueue::class);
+    $slot = CarbonImmutable::parse('2026-10-12 14:00', 'Europe/Berlin');
+
+    // The other lane is mid-write: the lock makes this lane wait instead of writing the slot twice
+    // (caster:script and caster:bulletin run in parallel, live 2026-10-16).
+    Cache::put('caster:bulletin:writing:'.$slot->getTimestamp(), true, CarbonImmutable::now()->addMinutes(3));
+    expect($queue->fillBulletin(CarbonImmutable::now()))->toBe(0);
+    $this->artisan('caster:bulletin')->assertSuccessful();
+    expect(CasterScript::query()->where('kind', CasterScript::BULLETIN)->count())->toBe(0);
+
+    // The lock gone, the lane command alone writes the slot - and neither lane writes it twice.
+    Cache::forget('caster:bulletin:writing:'.$slot->getTimestamp());
+    $this->artisan('caster:bulletin')->assertSuccessful();
+    expect(CasterScript::query()->where('kind', CasterScript::BULLETIN)->count())->toBe(1)
+        ->and(CasterScript::query()->where('kind', CasterScript::BULLETIN)->sole()->airs_at->getTimestamp())->toBe($slot->getTimestamp())
+        ->and($queue->fillBulletin(CarbonImmutable::now()))->toBe(0);
 });
 
 it('hands out the bulletin to the workstation also while the spool is full', function () {

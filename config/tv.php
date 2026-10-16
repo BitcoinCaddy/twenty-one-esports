@@ -851,7 +851,9 @@ return [
                 'league' => true,
                 'league_hours' => 12,
                 // Ten minutes ahead (2026-10-13): two bulletins expired unvoiced with seven minutes of lead.
-                'write_minutes_ahead' => (int) env('TV_COMMENTARY_BULLETIN_WRITE_MINUTES', 10),
+                // Fifteen (live 2026-10-16): a busy writer - a talk show's acts - pushed the 17:00 Berlin bulletin
+                // to 2:18 before its slot, and its 162 s of voicing never made ready_seconds before the slot.
+                'write_minutes_ahead' => (int) env('TV_COMMENTARY_BULLETIN_WRITE_MINUTES', 15),
                 'last_write_minutes' => 2,
                 // Not voiced this long before its slot, the bulletin is skipped with its follow-ups (ScriptQueue::expire()).
                 'ready_seconds' => 60,
