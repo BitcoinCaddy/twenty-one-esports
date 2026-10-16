@@ -227,6 +227,18 @@ test('the artist cycle goes on across restarts, never starts over for a changed 
     expect(array_unique(array_slice(array_values(array_filter($played, fn (string $file): bool => $artist($file) === 'A')), 0, 4)))->toHaveCount(4);
 });
 
+test('a restart with the same library keeps the queue already drawn, so a handoff never jumps to another next track', function () {
+    [$sources, $artist] = cycleLibrary($this->dir, $this->instrumentals);
+    $timeline = fn (): MusicTimeline => new MusicTimeline($this->dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist);
+
+    $first = $timeline()->from([], [], 1, 1000.0, 2, new Randomizer(new Mt19937(1)), [], [3, 5], $sources);
+    // 20 s later another encoder starts (a mode switch) with another seed: the same track at its second, the same queue.
+    $switch = $timeline()->from([], [], 1, 1020.0, 2, new Randomizer(new Mt19937(99)), [], [3, 5], $sources);
+
+    expect([$switch['files'][0], $switch['inpoint']])->toBe([$first['files'][0], 20.0])
+        ->and(array_slice($switch['files'], 0, 30))->toBe(array_slice($first['files'], 0, 30));
+});
+
 test('a removed track leaves the timeline and the playing one gives way at once; a new artist joins the round', function () {
     [$sources, $artist] = cycleLibrary($this->dir, $this->instrumentals);
     $timeline = fn (): MusicTimeline => new MusicTimeline($this->dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist);

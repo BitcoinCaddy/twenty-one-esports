@@ -212,11 +212,35 @@ final class MusicTimeline
             }
         }
 
-        $state = [...$cycle->toState(), 'until' => $end];
+        // The pool as a key: while it is unchanged, the queue already drawn stays as it is.
+        $sortedPool = $pool;
+        sort($sortedPool);
+        $poolKey = sha1(implode("\n", $sortedPool));
+        $state = [...$cycle->toState(), 'until' => $end, 'pool' => $poolKey];
         $bends = 0;
 
+        // The queue after the playing track stays while the library is the same: an encoder that starts during a
+        // make-before-break switch, or a restart, plays the next track the old one would have played (no jump in a
+        // song at the handoff), and readers of the timeline see one queue. The kept state covers only what played;
+        // the queued tracks are replayed onto a copy to draw on from their end.
+        $draw = $cycle;
+
+        if (is_array($kept) && ($kept['pool'] ?? null) === $poolKey && $start >= $now) {
+            $draw = clone $cycle;
+
+            foreach (array_slice($entries, count($heard)) as $entry) {
+                if (! isset($inPool[$entry[0]])) {
+                    break;
+                }
+
+                $draw->played($entry[0]);
+                $heard[] = $entry;
+                $end += $entry[1];
+            }
+        }
+
         while ($end < $now + 3600 * $hours) {
-            $file = $cycle->next($random, $bends);
+            $file = $draw->next($random, $bends);
             $heard[] = self::entry($file, $durations);
             $end += $durations[$file]['seconds'];
         }
@@ -438,7 +462,7 @@ final class MusicTimeline
         if ($cycled !== []) {
             sort($cycled);
 
-            // New with the artist cycle: its deploy starts a new timeline once, as the order changes whole.
+            // New with the artist cycle; the cycle never compares it (MusicTimeline::from() keeps its state on a change).
             return sha1(json_encode(['artist-cycle', $cycled, $artistGap], JSON_THROW_ON_ERROR));
         }
 
