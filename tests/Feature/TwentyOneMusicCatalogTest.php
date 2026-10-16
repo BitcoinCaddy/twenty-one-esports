@@ -95,8 +95,15 @@ test('the catalog credits every file of the old indexes exactly as the indexes d
 
     expect(count($legacy))->toBe(154)
         ->and($differences)->toBe([])
-        // Indexed, but not in the prod library the catalog was made from (110 vocals there, 2026-10-16).
-        ->and($missing)->toBe(['Who Comes Home - Under The Mulga Groove__v1.m4a'])
+        // Indexed, but not in the prod library the catalog was made from: the broken upload (~/music-broken) and the
+        // four duplicates moved to disabled/ on 2026-10-16 (twentyone:music-duplicates).
+        ->and($missing)->toEqualCanonicalizing([
+            'Who Comes Home - Under The Mulga Groove__v1.m4a',
+            'Alone In Valentine - single - Joe Martin__v1.m4a',
+            'Backseat Driver - single - Joe Martin__v1.m4a',
+            'wavlake/Empty Passenger Seat - Joe Martin__v1.m4a',
+            'wavlake/Leave The Porch Light Low - Under The Mulga Groove__v1.m4a',
+        ])
         // Every artist of artists.json in the catalog, every field kept.
         ->and(collect($artists)->except('_readme')->every(fn (array $identity, string $name): bool => MusicCatalog::artists()[MusicCatalog::slug($name)] === ['name' => $name, ...$identity]))->toBeTrue();
 
