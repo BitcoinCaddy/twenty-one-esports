@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\CasterVoice;
 use App\Support\Caster\ScriptQueue;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
@@ -22,6 +23,12 @@ class CasterBulletinCommand extends Command
 {
     public function handle(ScriptQueue $queue): int
     {
+        if (! CasterVoice::enabled()) {
+            $this->line('TV commentary is off (TV_COMMENTARY).');
+
+            return self::SUCCESS;
+        }
+
         $queue->fillBulletin(CarbonImmutable::now());
 
         return self::SUCCESS;
