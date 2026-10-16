@@ -49,30 +49,45 @@ class CasterRenderLocalCommand extends Command
                 continue;
             }
 
-            // The text comes from the local gateway: no claim, no server, no tunnel.
-            $talk = null;
+            // One programme is a whole show, not a bite (user 2026-10-16: "ein Programm durchaus 20 min lang"):
+            // talks are written and collected until they reach the programme's target length together.
+            $target = 60.0 * (float) env('TV_COMMENTARY_STOCK_PROGRAMME_MINUTES', 20);
+            $batch = [];
+            $seconds = 0.0;
 
-            try {
-                $talk = app(StockScripts::class)->write();
-            } catch (Throwable $e) {
-                $this->line(now()->toDateTimeString().' writer failed: '.mb_substr($e->getMessage(), 0, 160));
+            while ($seconds < $target && count($batch) < (int) config('tv.commentary.blocks.max_scripts', 40) && ! $stopping && ! $fetcher->stopping()) {
+                // The text comes from the local gateway: no claim, no server, no tunnel.
+                $talk = null;
+
+                try {
+                    $talk = app(StockScripts::class)->write();
+                } catch (Throwable $e) {
+                    $this->line(now()->toDateTimeString().' writer failed: '.mb_substr($e->getMessage(), 0, 160));
+                }
+
+                if ($talk === null) {
+                    break;
+                }
+
+                $talkSeconds = ceil(mb_strlen($talk['text']) / 12);
+                $batch[] = [
+                    'id' => 0,
+                    'kind' => CasterScript::SCENE,
+                    'scene' => StockScripts::SCENE,
+                    'topic' => StockScripts::TOPIC_PREFIX.$talk['format'],
+                    'sentences' => array_values(array_filter(array_map('trim', explode("\n", $talk['text'])), fn (string $line): bool => $line !== '')),
+                    'speakers' => $talk['speakers'] ?? null,
+                    'estimated_seconds' => $talkSeconds,
+                ];
+                $seconds += $talkSeconds;
+                $this->line(now()->toDateTimeString().' talk '.($talk['format']).' collected ('.round($seconds).' s of '.round($target).' s target)');
             }
 
-            if ($talk === null) {
+            if ($batch === []) {
                 $this->wait(30, $stopping);
 
                 continue;
             }
-
-            $batch = [[
-                'id' => 0,
-                'kind' => CasterScript::SCENE,
-                'scene' => StockScripts::SCENE,
-                'topic' => StockScripts::TOPIC_PREFIX.$talk['format'],
-                'sentences' => array_values(array_filter(array_map('trim', explode("\n", $talk['text'])), fn (string $line): bool => $line !== '')),
-                'speakers' => $talk['speakers'] ?? null,
-                'estimated_seconds' => ceil(mb_strlen($talk['text']) / 12),
-            ]];
 
             $renderer = new BlockRenderer($fetcher, JingleLibrary::fromConfig(), Idents::fromConfig(), null, null);
             $block = $renderer->render($batch, [], CarbonImmutable::now(), evergreen: true);
@@ -94,7 +109,8 @@ class CasterRenderLocalCommand extends Command
                 continue;
             }
 
-            $this->line(now()->toDateTimeString().sprintf(' programme kept: %s (%.1f s, %s)', $name, $seconds, $talk['format']));
+            $formats = implode('+', array_unique(array_map(fn (array $script): string => (string) ($script['topic'] ?? ''), $batch)));
+            $this->line(now()->toDateTimeString().sprintf(' programme kept: %s (%.1f s, %d talks, %s)', $name, $seconds, count($batch), $formats));
 
             // Straight up into the server's library (the one upload this machine makes).
             try {
