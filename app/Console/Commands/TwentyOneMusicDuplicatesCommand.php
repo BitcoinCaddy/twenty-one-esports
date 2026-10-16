@@ -34,6 +34,11 @@ class TwentyOneMusicDuplicatesCommand extends Command
 {
     public function handle(AudioProbe $probe): int
     {
+        // The vote table over ~420 fingerprints outgrows the CLI default of 128 MB (measured 2026-10-16 at 422 files).
+        if ((int) ini_get('memory_limit') !== -1 && (int) ini_get('memory_limit') < 1024) {
+            ini_set('memory_limit', '1G');
+        }
+
         $dir = rtrim((string) ($this->option('dir') ?: config('twentyone.stream.music.dir')), '/');
 
         if ($dir === '' || ! is_dir($dir)) {
