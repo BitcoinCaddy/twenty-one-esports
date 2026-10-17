@@ -696,6 +696,11 @@ Schedule::command('esports:block0-heads-up')->everyFiveMinutes()->withoutOverlap
  */
 // The last run's output, failing avatar hosts included: prod logs errors only.
 Schedule::command('twentyone:stream:images')->everyTenMinutes()->withoutOverlapping()->sendOutputTo(storage_path('logs/stream-images.log'));
+// New tracks of our Wavlake artists every night (plan "Wavlake-Sync", user 2026-10-17: "jede Nacht einmal ein Sync"):
+// into the overlay music catalog, then a stream restart when something came. In the background: downloads and
+// normalising take minutes.
+Schedule::command('twentyone:music-wavlake-sync')->dailyAt('03:30')->timezone('Europe/Berlin')->withoutOverlapping(180)->onOneServer()->runInBackground()
+    ->sendOutputTo(storage_path('logs/music-wavlake-sync.log'))->when(fn (): bool => config('twentyone.stream.music.wavlake_sync.enabled') === true);
 
 /*
  * Horizon's metrics dashboard stays empty without regular snapshots.

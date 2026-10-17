@@ -28,7 +28,10 @@ class TwentyOneMusicQrCommand extends Command
         $wanted = [];
         $drawn = 0;
 
-        foreach ([...MusicCredits::all(), MusicCredits::house()] as $credit) {
+        // The artists of the nightly Wavlake sync too: the server adds their tracks without drawing (plan "Wavlake-Sync").
+        $synced = array_filter(array_map(MusicCredits::forArtist(...), array_values((array) config('twentyone.stream.music.wavlake_sync.artists', []))));
+
+        foreach ([...MusicCredits::all(), MusicCredits::house(), ...$synced] as $credit) {
             $path = MusicCredits::qrFile($credit['target'], $credit['kind']);
 
             if (isset($wanted[$path])) {

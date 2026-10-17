@@ -58,6 +58,8 @@
         <env name="ESPORTS_TMNF" value="false" force="true"/>
         <!-- A prod-like .env with TV_COMMENTARY=true put the radio director into every stream daemon test: a slot with nothing to say holds 15 s (tv.commentary.scenes.silent_min_scene_seconds), so TwentyOneStreamTest went red at any hour (2026-10-16). Tests that need the commentary switch it on with config(). -->
         <env name="TV_COMMENTARY" value="false" force="true"/>
+        <!-- The night's Wavlake overlay catalog (storage/app/stream/music-sync) stays out of every test: a sync run on a dev machine would otherwise change what the music tests read. Tests that need it set config(). -->
+        <env name="TWENTYONE_STREAM_MUSIC_OVERLAY" value="" force="true"/>
         <env name="TV_COMMENTARY_NEWS" value="false" force="true"/>
         <env name="TV_COMMENTARY_HISTORY" value="false" force="true"/>
         <!-- The radio programme's rubrics, teasers and news talk (plan "TWENTY ONE Radio", P5) depend on the clock: their own tests switch them on. -->

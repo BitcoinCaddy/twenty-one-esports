@@ -97,6 +97,17 @@
   "evidence": "Profile display_name 'Zazawowow', about 'Synthographer, Trading Systems Designer, Bitcoiner', website zazawowow.com (domain does not resolve today); Bitcoin-themed Wavlake catalogue fits, but no link from a music page. Alternative: zazawowow@getalby.com appears on two other profiles ('Wowowzaza', '1BTC1 ... Jukebox'). kind 0 seen on 1 of 7 general relays (purplepag.es). Lightning address matched by name only: not used, the card points at the Wavlake track.",
   "confidence": "medium"
  },
+ "PlebRap": {
+  "npub": null,
+  "pubkey": null,
+  "picture": "https://d12wklypp119aj.cloudfront.net/image/90c5ac7c-4bae-4951-b934-06173e66e1ac.jpg",
+  "lud16": null,
+  "qr_target": "https://wavlake.com/plebrap",
+  "qr_kind": "wavlake",
+  "youtube": null,
+  "evidence": "The PlebRap collective's Wavlake artist page (artistNpub empty, 2026-10-17); it carries the 38 PlebRap tracks. Credit for tracks the nightly Wavlake sync brings in under PlebRap; zaps reach the collective's account.",
+  "confidence": "high"
+ },
  "Too Bit to Fail": {
   "npub": "npub1pzcj8yfs3kx2thtjpz3agr2w54m52kv9a2933smqyt6n6k2ql3aq2d0wlx",
   "pubkey": "08b12391308d8ca5dd7208a3d40d4ea577455985ea8b18c36022f53d5940fc7a",

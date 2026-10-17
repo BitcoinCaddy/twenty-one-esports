@@ -120,6 +120,20 @@ final class MusicCredits
         return null;
     }
 
+    /**
+     * The credit a new track of this artist would get from the artist's own identity (the nightly Wavlake sync adds
+     * tracks under the artists it lists), null without a usable target.
+     *
+     * @return array{artist: string, title: string|null, target: string, kind: string, picture: string|null}|null
+     */
+    public static function forArtist(string $name): ?array
+    {
+        $id = MusicCatalog::artistId($name);
+        $identity = $id === null ? null : (MusicCatalog::artists()[$id] ?? null);
+
+        return is_array($identity) ? self::credit((string) ($identity['name'] ?? $name), null, $identity, ['target' => null, 'kind' => null]) : null;
+    }
+
     /** Forget what was read (tests, and a daemon that reloads the files). */
     public static function flush(): void
     {

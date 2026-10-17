@@ -225,6 +225,9 @@ return [
             'banned_artists' => env('TWENTYONE_STREAM_MUSIC_BANNED_ARTISTS', 'ICT - DJ Lexo'),
             // The music catalog (MusicCatalog): tracks, artists, credits; fingerprints.json sits next to it.
             'catalog' => env('TWENTYONE_STREAM_MUSIC_CATALOG') ?: resource_path('data/music/catalog.json'),
+            // The night's additions (plan "Wavlake-Sync"): a catalog of the same shape under storage that only
+            // twentyone:music-wavlake-sync writes; read together with the repo catalog. Empty = none.
+            'overlay' => env('TWENTYONE_STREAM_MUSIC_OVERLAY', storage_path('app/stream/music-sync/catalog.json')),
             // Tracks at least between two of the same artist in the artist cycle, at least 1 (never twice in a row).
             'artist_gap' => (int) env('TWENTYONE_STREAM_MUSIC_ARTIST_GAP', 1),
             // An artist takes its own turn only with at least this many songs (user 2026-10-16: a single song would
@@ -236,7 +239,39 @@ return [
             // haben"). Name => the tracks it takes: by `credit_source` (a whole index) and/or by `artists` (names as the
             // catalog credits them, any credited artist of a track). The card still names the track's own artist.
             'playlists' => [
-                'PlebRap' => ['credit_source' => 'plebrap-index'],
+                'PlebRap' => ['credit_source' => 'plebrap-index', 'artists' => ['PlebRap']],
+            ],
+            // The nightly Wavlake sync (plan "Wavlake-Sync", user 2026-10-17: "Automatisches Abholen von neuen Tracks
+            // von Wavlake von unseren Artists ... jede Nacht"): new tracks of exactly these artists (Wavlake slug =>
+            // the name the catalog credits) go into the overlay catalog, newest first, at most `per_run` downloads a
+            // night. A new artist joins only when the user names it (user 2026-10-17: "neue Artists über dich").
+            'wavlake_sync' => [
+                'enabled' => (bool) env('TWENTYONE_STREAM_MUSIC_WAVLAKE_SYNC', true),
+                'artists' => [
+                    'ainsley-costello' => 'Ainsley Costello',
+                    'arthur-yoria' => 'Arthur Yoria',
+                    'black-vulcanite' => 'Black Vulcanite',
+                    'contra' => 'Contra',
+                    'cristo-currensi' => 'Cristo Currensi',
+                    'dj-bitcoin' => 'DJ Bitcoin',
+                    'greensands' => 'Greensands',
+                    'joe-martin' => 'Joe Martin',
+                    'numbergoexp' => 'NumberGoExp',
+                    'plebrap' => 'PlebRap',
+                    'richard-greaser' => 'Richard Greaser',
+                    'sabu' => 'sabu',
+                    'under-the-mulga-groove' => 'Under The Mulga Groove',
+                    'zazawowow' => 'Zazawowow',
+                ],
+                'per_run' => (int) env('TWENTYONE_STREAM_MUSIC_WAVLAKE_PER_RUN', 25),
+                // Downloads come only over https from these hosts (Wavlake's media URLs go through op3.dev to CloudFront).
+                'hosts' => ['op3.dev', 'd12wklypp119aj.cloudfront.net'],
+                'max_bytes' => 80 * 1024 * 1024,
+                // A track that fails this many nights in a row is given up (the state keeps why).
+                'max_tries' => 3,
+                'state' => storage_path('app/stream/music-sync/state.json'),
+                // After a night with new tracks the stream daemon restarts to play them (it reads the folders at start).
+                'restart_stream' => true,
             ],
             // Fresh rounds for three days: an encoder that runs that long without a restart still hears no repeat.
             'list_hours' => 72,

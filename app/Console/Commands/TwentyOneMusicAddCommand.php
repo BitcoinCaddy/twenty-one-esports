@@ -23,6 +23,10 @@ use RuntimeException;
  * version gets `__v1`, because the stream plays `*__v*.m4a` only (TwentyOneStreamCommand::musicFiles()). Without
  * --artist the song is entered with credit_source `none`: no card, never the house artist in silence. Commit
  * catalog.json, fingerprints.json and the new code afterwards.
+ *
+ * With --overlay (the nightly Wavlake sync on the server) the song goes into the overlay catalog instead, the
+ * duplicate check still covering both, and nothing is written into the repo tree: a QR code is only used when it is
+ * drawn already (every listed artist has one), a missing one leaves the card off with a warning.
  */
 #[Signature('twentyone:music-add
     {file : The song to add (any format ffmpeg reads)}
@@ -30,7 +34,9 @@ use RuntimeException;
     {--title= : The title (default: the file name)}
     {--npub= : A new artist\'s npub}
     {--lud16= : A new artist\'s lightning address}
-    {--dir= : The music folder (default: twentyone.stream.music.dir)}')]
+    {--dir= : The music folder (default: twentyone.stream.music.dir)}
+    {--overlay : Enter it in the overlay catalog under storage (twentyone:music-wavlake-sync), not the repo catalog}
+    {--wavlake-id= : The Wavlake track id it came from, kept with the track}')]
 #[Description('Add a song to the music library: check, normalise to -15 LUFS / -1.5 dBTP, enter it in the catalog with its credit, draw the QR')]
 class TwentyOneMusicAddCommand extends Command
 {
@@ -100,8 +106,10 @@ class TwentyOneMusicAddCommand extends Command
             return $this->refuse('The normalised file cannot be read back; nothing added.');
         }
 
-        $tracks = MusicCatalog::tracks();
-        $artists = MusicCatalog::artists();
+        $overlay = (bool) $this->option('overlay');
+        ['tracks' => $tracks, 'artists' => $artists] = $overlay
+            ? MusicCatalog::overlay()
+            : ['tracks' => MusicCatalog::tracks(), 'artists' => MusicCatalog::artists()];
         $prints = [];
 
         foreach ($tracks as $track) {
@@ -112,11 +120,15 @@ class TwentyOneMusicAddCommand extends Command
 
         if ($artist !== '') {
             $id = MusicCatalog::artistId($artist) ?? MusicCatalog::slug($artist);
-            $artists[$id] ??= array_filter(['name' => $artist, 'npub' => $this->option('npub'), 'lud16' => $this->option('lud16')], fn (mixed $value): bool => is_string($value) && $value !== '');
+            // In the overlay only an artist the repo catalog does not know yet is entered.
+            $known = MusicCatalog::artists()[$id] ?? null;
+            $artists[$id] ??= $known !== null && $overlay ? null : array_filter(['name' => $artist, 'npub' => $this->option('npub'), 'lud16' => $this->option('lud16')], fn (mixed $value): bool => is_string($value) && $value !== '');
             $artistIds = [$id];
         }
 
-        $id = MusicCatalog::newId($relative, array_fill_keys(array_keys($prints), true));
+        // Taken across both catalogs: an overlay id never repeats one of the repo's.
+        $taken = array_fill_keys([...array_keys($prints), ...array_map(fn (array $track): string => (string) $track['id'], MusicCatalog::tracks())], true);
+        $id = MusicCatalog::newId($relative, $taken);
         $tracks[$relative] = [
             'id' => $id,
             'artists' => $artistIds,
@@ -130,10 +142,12 @@ class TwentyOneMusicAddCommand extends Command
             'size' => (int) filesize($target),
             'mtime' => (int) filemtime($target),
             'credit_source' => $artistIds === [] ? 'none' : 'manual',
+            ...($this->option('wavlake-id') ? ['wavlake_track_id' => (string) $this->option('wavlake-id')] : []),
         ];
         $prints[$id] = $result['fingerprint'];
+        $artists = array_filter($artists, 'is_array');
 
-        MusicCatalog::write($tracks, $artists, $prints);
+        $overlay ? MusicCatalog::writeOverlay($tracks, $artists, $prints) : MusicCatalog::write($tracks, $artists, $prints);
         MusicCredits::flush();
 
         $this->info(sprintf('Added %s: %.1f LUFS, true peak %.1f dBTP (limiter %.1f dB), %.1f s.', $relative, $result['lufs'] ?? $loudness['lufs'], $result['true_peak'] ?? $loudness['true_peak'], $loudness['limit'], $result['duration']));
@@ -143,6 +157,12 @@ class TwentyOneMusicAddCommand extends Command
         if ($credit === null) {
             $without = count(array_filter(array_keys(MusicCatalog::tracks()), fn (string $file): bool => MusicCredits::forFile($file) === null));
             $this->warn(sprintf('No credit (no artist, or an artist without npub, lud16 or link): no card on air. %d tracks without credit in the catalog.', $without));
+
+            return self::SUCCESS;
+        }
+
+        if ($overlay && ! is_file(MusicCredits::qrFile($credit['target'], $credit['kind']))) {
+            $this->warn(sprintf('Credit: %s, but no QR code drawn for %s %s: no card on air until twentyone:music-qr runs in the repo.', $credit['artist'], $credit['kind'], $credit['target']));
 
             return self::SUCCESS;
         }

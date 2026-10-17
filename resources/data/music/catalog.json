@@ -12447,6 +12447,18 @@
             "evidence": "Profile name 'numbergoexp' with lud16 numbergoexp@fountain.fm (Fountain = V4V music app); about empty, no direct link from his pages. His label channel (YouTube @NakaUnboundMusic) names NumberGoExp and links wavlake.com/numbergoexp. Other same-name profiles: npub1nyuzll6h... (no lud16), one with numbergoexp@minibits.cash. kind 0 seen on 1 of 7 general relays (purplepag.es). Lightning address matched by name only: not used, the card points at the Wavlake track.",
             "confidence": "medium"
         },
+        "plebrap": {
+            "name": "PlebRap",
+            "npub": null,
+            "pubkey": null,
+            "picture": "https://d12wklypp119aj.cloudfront.net/image/90c5ac7c-4bae-4951-b934-06173e66e1ac.jpg",
+            "lud16": null,
+            "qr_target": "https://wavlake.com/plebrap",
+            "qr_kind": "wavlake",
+            "youtube": null,
+            "evidence": "The PlebRap collective's Wavlake artist page (artistNpub empty, 2026-10-17); it carries the 38 PlebRap tracks. Credit for tracks the nightly Wavlake sync brings in under PlebRap; zaps reach the collective's account.",
+            "confidence": "high"
+        },
         "richard-greaser": {
             "name": "Richard Greaser",
             "npub": "npub1563z6kxmvuy7s8zhzan8m0hzmkavyfzg2aw6h7f0fvcvdms398csaxc9n6",

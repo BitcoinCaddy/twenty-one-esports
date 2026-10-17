@@ -25,6 +25,12 @@ use RuntimeException;
  *
  * File names stay as the user uploaded them (user: never rename music files): the catalog points at files, it
  * neither renames nor moves anything.
+ *
+ * The overlay (plan "Wavlake-Sync", user 2026-10-17: new tracks of our artists come every night on the server): a
+ * second catalog of the same shape under storage (`twentyone.stream.music.overlay`, empty = none) that only
+ * `twentyone:music-wavlake-sync` writes (writeOverlay()). Every reader sees both; a file or artist of the repo
+ * catalog wins over the overlay's. write() never carries an overlay entry into the repo catalog, so a deploy and the
+ * curated catalog stay apart from what the night brings.
  */
 final class MusicCatalog
 {
@@ -36,6 +42,9 @@ final class MusicCatalog
     /** @var array<string, list<int>>|null */
     private static ?array $fingerprints = null;
 
+    /** @var array{tracks: array<string, array<string, mixed>>, artists: array<string, array<string, mixed>>}|null */
+    private static ?array $overlay = null;
+
     public static function path(): string
     {
         return (string) config('twentyone.stream.music.catalog', resource_path('data/music/catalog.json'));
@@ -44,6 +53,26 @@ final class MusicCatalog
     public static function fingerprintsPath(): string
     {
         return dirname(self::path()).'/fingerprints.json';
+    }
+
+    /** The overlay catalog, null when none is configured. */
+    public static function overlayPath(): ?string
+    {
+        $path = (string) config('twentyone.stream.music.overlay', '');
+
+        return $path === '' ? null : $path;
+    }
+
+    /**
+     * The overlay's own tracks and artists (writeOverlay() takes them back with what it adds).
+     *
+     * @return array{tracks: array<string, array<string, mixed>>, artists: array<string, array<string, mixed>>}
+     */
+    public static function overlay(): array
+    {
+        $path = self::overlayPath();
+
+        return self::$overlay ??= $path === null ? ['tracks' => [], 'artists' => []] : self::read($path);
     }
 
     /**
@@ -103,13 +132,16 @@ final class MusicCatalog
             return self::$fingerprints;
         }
 
-        $path = self::fingerprintsPath();
-        $data = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
         $prints = [];
+        $overlay = self::overlayPath();
 
-        foreach (is_array($data) ? (array) ($data['fingerprints'] ?? []) : [] as $id => $encoded) {
-            if (is_string($encoded) && ($items = Chromaprint::decode($encoded)) !== []) {
-                $prints[(string) $id] = $items;
+        foreach ([self::fingerprintsPath(), ...($overlay === null ? [] : [dirname($overlay).'/fingerprints.json'])] as $path) {
+            $data = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
+
+            foreach (is_array($data) ? (array) ($data['fingerprints'] ?? []) : [] as $id => $encoded) {
+                if (! isset($prints[(string) $id]) && is_string($encoded) && ($items = Chromaprint::decode($encoded)) !== []) {
+                    $prints[(string) $id] = $items;
+                }
             }
         }
 
@@ -121,6 +153,7 @@ final class MusicCatalog
     {
         self::$data = null;
         self::$fingerprints = null;
+        self::$overlay = null;
     }
 
     public static function slug(string $name): string
@@ -156,6 +189,38 @@ final class MusicCatalog
      */
     public static function write(array $tracks, array $artists, array $fingerprints): void
     {
+        // What the readers merged in from the overlay stays there.
+        $overlay = self::overlay();
+        $base = self::read(self::path());
+        $tracks = array_diff_key($tracks, array_diff_key($overlay['tracks'], $base['tracks']));
+        $artists = array_diff_key($artists, array_diff_key($overlay['artists'], $base['artists']));
+
+        self::writeTo(self::path(), self::fingerprintsPath(), $tracks, $artists, $fingerprints);
+    }
+
+    /**
+     * Writes the overlay (twentyone:music-wavlake-sync, through twentyone:music-add --overlay): its own tracks and
+     * artists only, never one the repo catalog holds.
+     *
+     * @param  array<string, array<string, mixed>>  $tracks  by file
+     * @param  array<string, array<string, mixed>>  $artists  by id
+     * @param  array<string, list<int>>  $fingerprints  by track id
+     */
+    public static function writeOverlay(array $tracks, array $artists, array $fingerprints): void
+    {
+        $path = self::overlayPath() ?? throw new RuntimeException('No overlay catalog configured (twentyone.stream.music.overlay).');
+        $base = self::read(self::path());
+
+        self::writeTo($path, dirname($path).'/fingerprints.json', array_diff_key($tracks, $base['tracks']), array_diff_key($artists, $base['artists']), $fingerprints);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $tracks  by file
+     * @param  array<string, array<string, mixed>>  $artists  by id
+     * @param  array<string, list<int>>  $fingerprints  by track id
+     */
+    private static function writeTo(string $path, string $fingerprintsPath, array $tracks, array $artists, array $fingerprints): void
+    {
         ksort($tracks, SORT_STRING);
         ksort($artists, SORT_STRING);
         $ids = array_flip(array_map(fn (array $track): string => (string) $track['id'], $tracks));
@@ -168,11 +233,11 @@ final class MusicCatalog
             'artists' => $artists,
         ];
 
-        self::put(self::path(), (string) json_encode($catalog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)."\n");
+        self::put($path, (string) json_encode($catalog, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)."\n");
 
         // One line per track keeps a diff to the tracks that changed.
         $lines = array_map(fn (string $id, array $items): string => '    '.json_encode($id).': "'.Chromaprint::encode($items).'"', array_keys($fingerprints), $fingerprints);
-        self::put(self::fingerprintsPath(), "{\n  \"_readme\": \"Chromaprint fingerprints (fpcalc -raw, first 120 s) per track id, little-endian uint32, base64.\",\n  \"fingerprints\": {\n".implode(",\n", $lines)."\n  }\n}\n");
+        self::put($fingerprintsPath, "{\n  \"_readme\": \"Chromaprint fingerprints (fpcalc -raw, first 120 s) per track id, little-endian uint32, base64.\",\n  \"fingerprints\": {\n".implode(",\n", $lines)."\n  }\n}\n");
 
         self::flush();
     }
@@ -186,7 +251,19 @@ final class MusicCatalog
             return self::$data;
         }
 
-        $path = self::path();
+        $base = self::read(self::path());
+        $overlay = self::overlay();
+
+        return self::$data = ['tracks' => $base['tracks'] + $overlay['tracks'], 'artists' => $base['artists'] + $overlay['artists']];
+    }
+
+    /**
+     * One catalog file: tracks by file, artists by id; empty when the file is missing or unreadable.
+     *
+     * @return array{tracks: array<string, array<string, mixed>>, artists: array<string, array<string, mixed>>}
+     */
+    private static function read(string $path): array
+    {
         $data = is_file($path) ? json_decode((string) file_get_contents($path), true) : null;
         $tracks = [];
 
@@ -201,7 +278,7 @@ final class MusicCatalog
         $artists = array_filter(is_array($data) ? (array) ($data['artists'] ?? []) : [], 'is_array');
 
         /** @var array<string, array<string, mixed>> $artists */
-        return self::$data = ['tracks' => $tracks, 'artists' => $artists];
+        return ['tracks' => $tracks, 'artists' => $artists];
     }
 
     private static function put(string $path, string $contents): void
