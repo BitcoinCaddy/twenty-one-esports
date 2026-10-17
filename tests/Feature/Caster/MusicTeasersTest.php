@@ -75,7 +75,9 @@ it('writes a music announcement in a calm gap, from the timeline\'s real next tr
     // The artist's last note, cached the way lastNote() would have fetched it (the relays are not the test's).
     $pubkey = MusicCatalog::artists()['ainsley-costello']['pubkey'];
     Cache::put('caster:music_teaser:note:'.substr(sha1($pubkey), 0, 12), ['text' => 'Neue Single ist fertig, Leute.', 'ago' => 'vor zwei Stunden'], now()->addHour());
-    VoiceAgent::fake(fn (): array => ['text' => "Gleich in der Musik: Ainsley Costello mit Can't Say I'm Not Trying.\nAuf Nostr schreibt sie gerade, die neue Single sei fertig.", 'canon_id' => null, 'mood' => 'fakten']);
+    // The gateway's envelope, the way the workstation's schema answers (live 2026-10-17: the first announcement
+    // carried it word for word): the text is what it wraps.
+    VoiceAgent::fake(fn (): array => ['text' => '{"text":"Gleich in der Musik: Ainsley Costello mit Can\'t Say I\'m Not Trying.\\nAuf Nostr schreibt sie gerade, die neue Single sei fertig.","canon_id":null,"mood":"hype"}']);
 
     expect(app(ScriptQueue::class)->fillMusicTeaser($this->now))->toBe(1);
 
@@ -84,8 +86,10 @@ it('writes a music announcement in a calm gap, from the timeline\'s real next tr
         ->and($script->status)->toBe(CasterScript::QUEUED)
         ->and($script->topic)->toBe('music')
         ->and($script->expires_at->getTimestamp())->toBeLessThanOrEqual($this->now->getTimestamp() + 9 * 60)
-        ->and($script->speakers)->toBe([DuetDirector::MARKUS])
-        ->and($script->text)->toContain('Ainsley Costello');
+        ->and($script->speakers)->toBe([DuetDirector::MARKUS, DuetDirector::MARKUS])
+        ->and($script->text)->toContain('Ainsley Costello')
+        ->and($script->text)->toContain("Can't Say I'm Not Trying")
+        ->and($script->text)->not->toStartWith('{');
 
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Ainsley Costello')
         && str_contains($prompt->prompt, "Can't Say I'm Not Trying")

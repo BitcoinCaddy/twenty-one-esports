@@ -201,7 +201,22 @@ final class MusicTeasers
                     ->prompt(self::prompt($next, $note, $try > 0));
                 $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
-                $text = $this->evaluate($response->text, $next);
+                // The gateway answers in its envelope ({"text": …, "canon_id": …, "mood": …}, the workstation's schema,
+                // live 2026-10-17: a first announcement carried the envelope word for word, and a faked structured
+                // answer may wrap it once more): the text is what the innermost envelope wraps.
+                $raw = $response->text;
+
+                for ($unpack = 0; $unpack < 2; $unpack++) {
+                    $answer = json_decode($raw, true);
+
+                    if (! is_array($answer) || ! is_string($answer['text'] ?? null)) {
+                        break;
+                    }
+
+                    $raw = $answer['text'];
+                }
+
+                $text = $this->evaluate($raw, $next);
 
                 if ($text !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
@@ -233,6 +248,7 @@ final class MusicTeasers
         if ($plain === ''
             || preg_match('/\d/u', $plain) === 1
             || preg_match(ScriptQueue::SIGN_OFF, $plain) === 1
+            || str_starts_with($plain, '{')
             || mb_stripos($plain, $next['artist']) === false
             || ($next['title'] !== null && mb_stripos($plain, $next['title']) === false)) {
             return null;
