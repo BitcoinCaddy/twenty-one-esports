@@ -262,9 +262,6 @@ class ScriptQueue
             $written++;
         }
 
-        // A music announcement fills a gap the scenes could not (MusicTeasers): no clip ready, no programme near.
-        $written += $this->fillMusicTeaser($now);
-
         return $written;
     }
 
@@ -732,7 +729,8 @@ class ScriptQueue
      * `min_gap_minutes`, at `chance` per opportunity, capped per day. Expires after `max_age_minutes`, so a late
      * one announces nothing that played. The live-only mode holds no generic talk back here (user 2026-10-17: the
      * announcement belongs to the music, like the imaging that rides its track changes; the bulletin, show and
-     * reaction gates stay theirs).
+     * reaction gates stay theirs). Called from its own lane (caster:music-teaser), so a digest-slow caster:script
+     * run never keeps the window from being rolled.
      */
     public function fillMusicTeaser(CarbonImmutable $now): int
     {

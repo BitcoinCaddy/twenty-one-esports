@@ -100,6 +100,9 @@ it('writes a music announcement in a calm gap, from the timeline\'s real next tr
 it('stays silent while the voice ahead still fills the air, or a slot is near, or the quiet hours run', function () {
     $queue = app(ScriptQueue::class);
 
+    // Its own lane runs on its own, whatever keeps the caster:script writer busy.
+    $this->artisan('caster:music-teaser')->assertSuccessful();
+
     // Five minutes of voice ahead (a long ready clip): no handover to the music in sight.
     $clip = CasterScript::query()->create(['kind' => CasterScript::SCENE, 'phase' => 'break', 'text' => 'x', 'facts_hash' => 'x', 'status' => CasterScript::QUEUED, 'priority' => 0, 'estimated_seconds' => 300, 'expires_at' => now()->addYears(9)]);
     CasterClip::query()->create(['caster_script_id' => $clip->id, 'phase' => 'break', 'kind' => CasterScript::SCENE, 'path' => 'x/'.$clip->id.'.opus', 'duration_seconds' => 300, 'bytes' => 10, 'sentence_ends' => [300.0], 'status' => CasterClip::READY, 'expires_at' => now()->addMinutes(10)]);

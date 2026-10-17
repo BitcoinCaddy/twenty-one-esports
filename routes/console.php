@@ -859,6 +859,10 @@ if (app(GameRegistry::class)->find(TrackmaniaNationsForever::SLUG) !== null) {
 // writer for hours: no bulletins, no shows, the radio fell back to music). A legitimate show write runs
 // minutes, never close to thirty.
 Schedule::command('caster:script')->everyMinute()->withoutOverlapping(30)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
+// The music announcements in their own lane (live 2026-10-17): caster:script sat for minutes in its podcast
+// digest four times that day, and the minute ticker behind it never rolled a music announcement. This lane
+// only tries MusicTeasers::fillMusicTeaser(), whose own cooldown, chance and cap keep it from piling up.
+Schedule::command('caster:music-teaser')->everyMinute()->withoutOverlapping(5)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
 // The news in their own lane (live 2026-10-16): a long write inside caster:script - a talk show's acts ran
 // fifty minutes - held the writer past the bulletin window, and the 16:30/17:00 Berlin news never aired.
 // This lane writes nothing but the next bulletin, in parallel; fillBulletin's hash check keeps the lanes
