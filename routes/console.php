@@ -863,6 +863,10 @@ Schedule::command('caster:script')->everyMinute()->withoutOverlapping(30)->onOne
 // digest four times that day, and the minute ticker behind it never rolled a music announcement. This lane
 // only tries MusicTeasers::fillMusicTeaser(), whose own cooldown, chance and cap keep it from piling up.
 Schedule::command('caster:music-teaser')->everyMinute()->withoutOverlapping(5)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
+// The artists' last Nostr notes for those announcements, warmed hourly on their own lane: the answering path
+// reads the cache only (a relay read once hung the minute lane, live 2026-10-17, and the 16:00 Sport und Wetter
+// never aired). This lane may hang on a relay for all it costs: its own overlap lock and nobody else's airtime.
+Schedule::command('caster:music-notes')->hourly()->withoutOverlapping(30)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
 // The news in their own lane (live 2026-10-16): a long write inside caster:script - a talk show's acts ran
 // fifty minutes - held the writer past the bulletin window, and the 16:30/17:00 Berlin news never aired.
 // This lane writes nothing but the next bulletin, in parallel; fillBulletin's hash check keeps the lanes

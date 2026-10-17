@@ -304,6 +304,12 @@ it('reads the artist\'s last note relay by relay, newest wins, and a nothing is 
     $eleven = $teasers->lastNote($next, $this->now);
     expect($eleven)->not->toBeNull()->and($eleven['ago'])->toBe('elf Minuten');
 
+    // The answering path asks no relay: without a cached note there is none, and no call either.
+    Cache::forget('caster:music_teaser:note:'.substr(sha1(MusicCatalog::artists()['ainsley-costello']['pubkey']), 0, 12));
+    $reader->calls = 0;
+    expect($teasers->lastNote($next, $this->now, fetch: false))->toBeNull()
+        ->and($reader->calls)->toBe(0);
+
     // A nothing (every relay failed or empty) is cached the same way.
     $reader->answer = ['wss://one' => null];
     $reader->calls = 0;

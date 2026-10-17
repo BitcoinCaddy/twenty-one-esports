@@ -112,10 +112,14 @@ final class MusicTeasers
      * how long ago it was posted. Null without an npub, without a readable note, or when the relays had nothing —
      * each cached, so the relays are not asked again for the same artist within NOTE_CACHE_MINUTES.
      *
-     * @param  array{npub: string|null, ...}  $next
+     * With `$fetch` false (the answering path, live 2026-10-17: a relay read hung the minute lane behind it and
+     * the 16:00 Sport und Wetter never aired) this reads the cache only: no socket, nothing to hang on. The
+     * hourly caster:music-notes warms the cache for every artist with an npub.
+     *
+     * @param  array{npub: string|null, artist: string, ...}  $next
      * @return array{text: string, ago: string}|null
      */
-    public function lastNote(array $next, CarbonImmutable $now): ?array
+    public function lastNote(array $next, CarbonImmutable $now, bool $fetch = true): ?array
     {
         if ($next['npub'] === null) {
             return null;
@@ -132,6 +136,10 @@ final class MusicTeasers
 
         if ($cached !== null) {
             return is_array($cached) ? ['text' => (string) $cached['text'], 'ago' => (string) $cached['ago']] : null;
+        }
+
+        if (! $fetch) {
+            return null;
         }
 
         $note = null;
@@ -186,7 +194,8 @@ final class MusicTeasers
         }
 
         $settings = (array) config('tv.commentary.programme.music_teasers', []);
-        $note = $this->lastNote($next, $now);
+        // Cache only on the answering path: a relay read may hang, and this runs in the minute lane (2026-10-17).
+        $note = $this->lastNote($next, $now, fetch: false);
 
         try {
             for ($try = 0; $try < 2; $try++) {
