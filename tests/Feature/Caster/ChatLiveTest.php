@@ -81,16 +81,9 @@ it('stays silent with the reactions off, and moves no cursor while the autopilot
 
 it('pushes only well-formed events of the subscription, rotating a silent relay away', function () {
     $chatter = liveMessage();
-    $frame = static fn (string $json): Text => new Text($json);
-    $event = ['EVENT', 'live-x', ['id' => str_repeat('a', 64), 'pubkey' => $chatter->pubkey, 'created_at' => $chatter->createdAt, 'kind' => 1311, 'tags' => [['a', StreamCoordinates::fromConfig()->address()]], 'content' => 'push', 'sig' => str_repeat('b', 128)]];
-    $malformed = ['EVENT', 'live-x', ['id' => 'nope']];
-    $seen = [];
-    $clients = 0;
-
-    $connect = function () use (&$clients): object {
-        $clients++;
-
-        return new class($clients === 1 ? [$frame((string) json_encode($event)), $frame((string) json_encode($malformed))] : [])
+    // The first client carries a good frame and a malformed one; every client after it stays silent.
+    $this->liveClients = [
+        new class([new Text((string) json_encode(['EVENT', 'live-x', ['id' => str_repeat('a', 64), 'pubkey' => $chatter->pubkey, 'created_at' => $chatter->createdAt, 'kind' => 1311, 'tags' => [['a', StreamCoordinates::fromConfig()->address()]], 'content' => 'push', 'sig' => str_repeat('b', 128)]])), new Text((string) json_encode(['EVENT', 'live-x', ['id' => 'nope']]))])
         {
             /** @var list<Text> */
             public array $remaining;
@@ -115,15 +108,24 @@ it('pushes only well-formed events of the subscription, rotating a silent relay 
             }
 
             public function close(): void {}
-        };
+        },
+        new class {},
+        new class {},
+    ];
+    $this->liveConnects = 0;
+    $connect = function () {
+        $this->liveConnects++;
+
+        return array_shift($this->liveClients) ?? new class {};
     };
+    $seen = [];
 
     $subscription = new RelaySubscription(['wss://one.test', 'wss://two.test'], $connect);
     $pushed = $subscription->run(1, [['kinds' => [1311], 'limit' => 1]], function (SignedEvent $event) use (&$seen): void {
         $seen[] = $event->createdAt;
     });
 
-    expect($pushed)->toBe(1)->and($seen)->toBe([$chatter->createdAt])->and($clients)->toBeGreaterThanOrEqual(2);
+    expect($pushed)->toBe(1)->and($seen)->toBe([$chatter->createdAt])->and($this->liveConnects)->toBeGreaterThanOrEqual(2);
 });
 
 it('says so and stays put without a stream or chat relays', function () {
