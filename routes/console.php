@@ -868,6 +868,11 @@ Schedule::command('caster:script')->everyMinute()->withoutOverlapping(30)->onOne
 // digest four times that day, and the minute ticker behind it never rolled a music announcement. This lane
 // only tries MusicTeasers::fillMusicTeaser(), whose own cooldown, chance and cap keep it from piling up.
 Schedule::command('caster:music-teaser')->everyMinute()->withoutOverlapping(5)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
+// The podcast digest on its own lane (live 2026-10-17): its transcript-sized text call over the workstation's
+// gateway can run for many minutes, and while it held the caster:script writer six times that day, the minute
+// ticker behind the writer's overlap lock never wrote the news follow-ups — the 16:00 Sport und Wetter never
+// aired. ensureDigest() keeps its own thirty-minute retry lock; hanging here costs only this lane.
+Schedule::command('caster:podcast-digest')->everyFiveMinutes()->withoutOverlapping(60)->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true);
 // The artists' last Nostr notes for those announcements, warmed hourly on their own lane: the answering path
 // reads the cache only (a relay read once hung the minute lane, live 2026-10-17, and the 16:00 Sport und Wetter
 // never aired). This lane may hang on a relay for all it costs: its own overlap lock and nobody else's airtime.

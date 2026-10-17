@@ -41,10 +41,10 @@ class CasterScriptCommand extends Command
             return self::SUCCESS;
         }
 
-        if (ScriptQueue::aiEnabled() && $transcripts->ensureDigest()) {
-            $this->line('Wrote the digest of the latest podcast episode.');
-        }
-
+        // The podcast digest moved to its own lane (caster:podcast-digest, live 2026-10-17): its transcript-sized
+        // text call over the workstation's gateway can run for many minutes, and while it held this writer six
+        // times that day (do_poll, no hard timeout at the gateway), the minute ticker behind the writer's overlap
+        // lock never wrote the news follow-ups — the 16:00 Sport und Wetter never aired.
         $written = $queue->fill(CarbonImmutable::now());
         $this->line(sprintf('Wrote %d script(s); %.0f s of airtime ahead.', $written, $queue->airtimeAhead()));
 
