@@ -4,11 +4,16 @@ namespace App\Support\TwentyOne\Stream;
 
 use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\Process;
+use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Measures music files for the catalog (MusicCatalog): length and bitrate (ffprobe), loudness and true peak (ffmpeg
  * ebur128) and the Chromaprint fingerprint (fpcalc). Every tool runs at nice 19 and at most two files at a time (plan
  * "Musik-Katalog": the fingerprints of 300 songs cost CPU on the server).
+ *
+ * Where fpcalc is not installed (the server has no chromaprint tools and no root to add them, 2026-10-17), ffmpeg's
+ * chromaprint muxer gives the same items: `-algorithm 1` is fpcalc's default algorithm, `-t 120` its default length;
+ * 947 and 948 of 948 items matched fpcalc on two library songs.
  */
 final class AudioProbe
 {
@@ -36,12 +41,14 @@ final class AudioProbe
                 'format=duration,bit_rate:stream=codec_type,bit_rate', '-of', 'json', $path]);
             $levels = $loudness ? $this->concurrently($batch, fn (string $path): array => [$this->ffmpeg, '-hide_banner', '-nostats', '-i', $path,
                 '-map', '0:a:0', '-filter:a', 'ebur128=peak=true', '-f', 'null', '-'], stderr: true) : [];
-            $prints = $this->concurrently($batch, fn (string $path): array => [$this->fpcalc, '-raw', '-json', $path]);
+            $fpcalc = $this->hasFpcalc();
+            $prints = $this->concurrently($batch, fn (string $path): array => $fpcalc
+                ? [$this->fpcalc, '-raw', '-json', $path]
+                : [$this->ffmpeg, '-v', 'error', '-i', $path, '-t', '120', '-f', 'chromaprint', '-fp_format', 'raw', '-algorithm', '1', '-']);
 
             foreach (array_keys($batch) as $key) {
                 $probe = self::probe($probes[$key] ?? '');
-                $print = json_decode($prints[$key] ?? '', true);
-                $items = is_array($print) && is_array($print['fingerprint'] ?? null) ? array_values(array_map('intval', $print['fingerprint'])) : [];
+                $items = $fpcalc ? self::fpcalcItems($prints[$key] ?? '') : self::rawItems($prints[$key] ?? '');
 
                 if ($probe === null || $items === []) {
                     $results[$key] = null;
@@ -54,6 +61,32 @@ final class AudioProbe
         }
 
         return $results;
+    }
+
+    /** @return list<int> */
+    public static function fpcalcItems(string $json): array
+    {
+        $print = json_decode($json, true);
+
+        return is_array($print) && is_array($print['fingerprint'] ?? null) ? array_values(array_map('intval', $print['fingerprint'])) : [];
+    }
+
+    /**
+     * The items of ffmpeg's raw chromaprint output: little-endian uint32, as fpcalc -raw prints them.
+     *
+     * @return list<int>
+     */
+    public static function rawItems(string $bytes): array
+    {
+        $usable = strlen($bytes) - strlen($bytes) % 4;
+        $items = $usable > 0 ? unpack('V*', substr($bytes, 0, $usable)) : [];
+
+        return $items === false ? [] : array_values(array_map('intval', $items));
+    }
+
+    private function hasFpcalc(): bool
+    {
+        return str_contains($this->fpcalc, '/') ? is_executable($this->fpcalc) : (new ExecutableFinder)->find($this->fpcalc) !== null;
     }
 
     /**
