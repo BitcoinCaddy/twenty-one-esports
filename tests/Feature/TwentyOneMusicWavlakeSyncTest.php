@@ -91,7 +91,9 @@ test('the sync adds new tracks of a listed artist to the overlay, skips known id
     Http::fake([
         // Wavlake's rate limit once: the listing waits and asks again.
         'catalog.wavlake.com/v1/artists/test-artist/url' => Http::sequence()->push(['error' => 'Too many requests'], 429)->whenEmpty(Http::response(['data' => ['id' => $id('9')]])),
-        'wavlake.com/api/v1/content/artist/*' => Http::response(['data' => ['albums' => [['id' => $id('8')]]]]),
+        // A second album Wavlake cannot read (500): skipped, the first one is synced.
+        'wavlake.com/api/v1/content/artist/*' => Http::response(['data' => ['albums' => [['id' => $id('8')], ['id' => $id('7')]]]]),
+        'wavlake.com/api/v1/content/album/'.$id('7') => Http::response(['error' => 'Error fetching album data'], 500),
         'wavlake.com/api/v1/content/album/*' => Http::response(['data' => ['tracks' => $tracks]]),
         'op3.dev/*'.$id('1').'*' => Http::response((string) file_get_contents($this->root.'/src/new.mp3')),
         'op3.dev/*'.$id('2').'*' => Http::response((string) file_get_contents($this->root.'/src/known.mp3')),
@@ -126,7 +128,7 @@ test('the sync adds new tracks of a listed artist to the overlay, skips known id
     Process::assertRanTimes(fn ($process): bool => $process->command === ['pkill', '-TERM', '-f', 'artisan twentyone:stream$'], 2);
 
     // A night without anything new downloads nothing and restarts nothing; the foreign host is tried until max_tries.
-    Http::assertSentCount(10);
+    Http::assertSentCount(12);
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), $id('5')));
     expect(Artisan::call('twentyone:music-wavlake-sync'))->toBe(0)->and(Artisan::output())->toContain('added 0, 0 duplicates, 1 failed');
     expect(Artisan::call('twentyone:music-wavlake-sync'))->toBe(0)->and(Artisan::output())->toContain('added 0, 0 duplicates, 1 failed');

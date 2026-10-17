@@ -187,19 +187,30 @@ class TwentyOneMusicWavlakeSyncCommand extends Command
         }
 
         $tracks = [];
+        $albums = array_values(array_filter((array) (self::json(self::API.'/artist/'.$artistId)['albums'] ?? []), fn (mixed $album): bool => is_array($album) && preg_match('/^[0-9a-f-]{36}$/', (string) ($album['id'] ?? '')) === 1));
+        $broken = 0;
 
-        foreach ((array) (self::json(self::API.'/artist/'.$artistId)['albums'] ?? []) as $album) {
-            $albumId = (string) ($album['id'] ?? '');
+        foreach ($albums as $album) {
+            // Wavlake answers single albums with 500 (sabu, Under The Mulga Groove, 2026-10-17): that album waits for
+            // another night, the artist's other albums are read.
+            try {
+                $listed = (array) (self::json(self::API.'/album/'.$album['id'])['tracks'] ?? []);
+            } catch (Throwable $e) {
+                $broken++;
+                $this->warn("{$slug}: album {$album['id']}: ".mb_substr($e->getMessage(), 0, 120));
 
-            if (preg_match('/^[0-9a-f-]{36}$/', $albumId) !== 1) {
                 continue;
             }
 
-            foreach ((array) (self::json(self::API.'/album/'.$albumId)['tracks'] ?? []) as $track) {
+            foreach ($listed as $track) {
                 if (is_string($track['id'] ?? null) && is_string($track['title'] ?? null) && is_string($track['mediaUrl'] ?? null) && trim($track['title']) !== '') {
                     $tracks[] = ['id' => $track['id'], 'title' => trim($track['title']), 'url' => $track['mediaUrl'], 'released' => (string) ($track['releaseDate'] ?? '')];
                 }
             }
+        }
+
+        if ($albums !== [] && $broken === count($albums)) {
+            throw new RuntimeException('no album readable');
         }
 
         return $tracks;
