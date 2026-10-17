@@ -729,13 +729,15 @@ class ScriptQueue
      * data (user 2026-10-17). Only between the programme — no clip ready, no slot the clock places or stock block
      * within `guard_minutes` — and not every track: one at most per `min_gap_minutes`, at `chance` per
      * opportunity, capped per day. Expires after `max_age_minutes`, so a late one announces nothing that played.
+     * The live-only mode holds no generic talk back here (user 2026-10-17: the announcement belongs to the music,
+     * like the imaging that rides its track changes; the bulletin, show and reaction gates stay theirs).
      */
     public function fillMusicTeaser(CarbonImmutable $now): int
     {
         $settings = (array) config('tv.commentary.programme.music_teasers', []);
 
         if (! self::aiEnabled() || ! MusicTeasers::enabled() || QuietHours::active($now)
-            || PodcastReplay::active($now) || LiveOnly::active($now)
+            || PodcastReplay::active($now)
             || app(ClipSpool::class)->hasFresh($now)
             || $this->programmeNear($now, (int) ($settings['guard_minutes'] ?? 4))) {
             return 0;
