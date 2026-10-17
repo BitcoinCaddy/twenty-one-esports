@@ -1171,7 +1171,12 @@ return [
                 'min_gap_minutes' => (int) env('TV_COMMENTARY_MUSIC_TEASER_MIN_GAP_MINUTES', 25),
                 'guard_minutes' => 4,
                 'ahead_below_seconds' => (int) env('TV_COMMENTARY_MUSIC_TEASER_AHEAD_BELOW_SECONDS', 240),
-                'lead_seconds' => 45,
+                // The track named starts at least this long after the write: the voicing needs two to four
+                // minutes, and a named track must not be playing already when the announcement airs
+                // (live 2026-10-17: 45 s named the previous title).
+                'lead_seconds' => 200,
+                // The lead grows by the voice ahead plus this much voicing latency.
+                'render_seconds' => 150,
                 'max_age_minutes' => 8,
                 'priority' => 70,
                 'daily_cap' => (int) env('TV_COMMENTARY_MUSIC_TEASER_DAILY_CAP', 16),

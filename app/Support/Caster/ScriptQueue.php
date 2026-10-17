@@ -755,8 +755,10 @@ class ScriptQueue
             return 0;
         }
 
-        // The track to name: the one that starts once the voice left has played and the announcement with it.
-        $lead = max((int) ($settings['lead_seconds'] ?? 45), (int) ceil($ahead) + 45);
+        // The track to name: the one that starts once the voice left, the announcement with it has aired and a
+        // breath has passed. The lead must cover the voicing latency (live 2026-10-17: a 45 s lead named a track
+        // that had been playing for minutes when the announcement finally aired).
+        $lead = max((int) ($settings['lead_seconds'] ?? 200), (int) ceil($ahead) + (int) ($settings['render_seconds'] ?? 150));
         $next = MusicTeasers::nextTrack($now, $lead);
 
         if ($next === null
