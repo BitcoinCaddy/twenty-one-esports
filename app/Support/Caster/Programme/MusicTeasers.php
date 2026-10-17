@@ -35,11 +35,11 @@ use Throwable;
  *
  * ScriptQueue::fillMusicTeaser() decides when: not every track (one at most
  * per `min_gap_minutes`, at `chance` per opportunity, capped per day), and
- * only in the gaps between the programme — no clip ready, no slot the clock
- * places or stock block near (user 2026-10-17: "wenn kein zeitloses Programm
- * läuft oder auch keine News. Also in den Zwischenräumen"). The script
- * expires after `max_age_minutes`, so a late one never announces a track
- * that has played.
+ * around the handover to the music — the voice ahead below
+ * `ahead_below_seconds` of airtime or gone, no clock slot or stock block
+ * near (user 2026-10-17: "wenn kein zeitloses Programm läuft oder auch
+ * keine News"), whatever mode the station runs in. The script expires after
+ * `max_age_minutes`, so a late one never announces a track that has played.
  */
 final class MusicTeasers
 {

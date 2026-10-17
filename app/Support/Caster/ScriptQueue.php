@@ -726,11 +726,13 @@ class ScriptQueue
 
     /**
      * A music announcement (MusicTeasers): what the music timeline really plays next, by the artist's collected
-     * data (user 2026-10-17). Only between the programme — no clip ready, no slot the clock places or stock block
-     * within `guard_minutes` — and not every track: one at most per `min_gap_minutes`, at `chance` per
-     * opportunity, capped per day. Expires after `max_age_minutes`, so a late one announces nothing that played.
-     * The live-only mode holds no generic talk back here (user 2026-10-17: the announcement belongs to the music,
-     * like the imaging that rides its track changes; the bulletin, show and reaction gates stay theirs).
+     * data (user 2026-10-17). It rides the handover to the music: written while the voice ahead runs low
+     * (`ahead_below_seconds` of airtime, the spool aiming for `ahead_seconds` of it) or has run out altogether,
+     * with no slot the clock places or stock block within `guard_minutes` — and not every track: one at most per
+     * `min_gap_minutes`, at `chance` per opportunity, capped per day. Expires after `max_age_minutes`, so a late
+     * one announces nothing that played. The live-only mode holds no generic talk back here (user 2026-10-17: the
+     * announcement belongs to the music, like the imaging that rides its track changes; the bulletin, show and
+     * reaction gates stay theirs).
      */
     public function fillMusicTeaser(CarbonImmutable $now): int
     {
@@ -738,8 +740,15 @@ class ScriptQueue
 
         if (! self::aiEnabled() || ! MusicTeasers::enabled() || QuietHours::active($now)
             || PodcastReplay::active($now)
-            || app(ClipSpool::class)->hasFresh($now)
             || $this->programmeNear($now, (int) ($settings['guard_minutes'] ?? 4))) {
+            return 0;
+        }
+
+        // The handover to the music: the voice ahead (queued, claimed, ready) below this much airtime, or gone.
+        // A single ready clip is not a programme — the announcement may follow it straight into the music.
+        $ahead = $this->airtimeAhead();
+
+        if ($ahead > (float) ($settings['ahead_below_seconds'] ?? 240)) {
             return 0;
         }
 
@@ -748,7 +757,9 @@ class ScriptQueue
             return 0;
         }
 
-        $next = MusicTeasers::nextTrack($now, (int) ($settings['lead_seconds'] ?? 45));
+        // The track to name: the one that starts once the voice left has played and the announcement with it.
+        $lead = max((int) ($settings['lead_seconds'] ?? 45), (int) ceil($ahead) + 45);
+        $next = MusicTeasers::nextTrack($now, $lead);
 
         if ($next === null
             || CasterScript::query()->where('kind', CasterScript::MUSIC_TEASER)->where('facts_hash', $next['hash'])->exists()) {

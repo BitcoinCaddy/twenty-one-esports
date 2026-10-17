@@ -1160,14 +1160,17 @@ return [
             // nächstes gespielt werden … aber nicht jedes Stück, sondern ab und an, wenn es passt"): the track the
             // music timeline really plays next, by the artist's collected data (Nostr identity, Wavlake, YouTube,
             // lightning address, the last kind-1 note when there is an npub; App\Support\Caster\Programme\MusicTeasers).
-            // Written only in a gap between the programme — no clip ready, no clock slot or stock block within
-            // `guard_minutes` — at most one per `min_gap_minutes`, at `chance` per opportunity, capped per day; the
-            // script expires after `max_age_minutes`, so a late one never announces a track that has played.
+            // Written only around the handover to the music — the voice ahead below `ahead_below_seconds` of
+            // airtime or gone, no clock slot or stock block within `guard_minutes` — at most one per
+            // `min_gap_minutes`, at `chance` per opportunity, capped per day; the script expires after
+            // `max_age_minutes`, so a late one never announces a track that has played. The live-only mode
+            // does not hold it back: the announcement belongs to the music (user 2026-10-17).
             'music_teasers' => [
                 'enabled' => (bool) env('TV_COMMENTARY_MUSIC_TEASERS', true),
                 'chance' => (float) env('TV_COMMENTARY_MUSIC_TEASER_CHANCE', 0.35),
                 'min_gap_minutes' => (int) env('TV_COMMENTARY_MUSIC_TEASER_MIN_GAP_MINUTES', 25),
                 'guard_minutes' => 4,
+                'ahead_below_seconds' => (int) env('TV_COMMENTARY_MUSIC_TEASER_AHEAD_BELOW_SECONDS', 240),
                 'lead_seconds' => 45,
                 'max_age_minutes' => 8,
                 'priority' => 70,

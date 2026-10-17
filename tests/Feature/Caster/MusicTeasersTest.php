@@ -93,8 +93,15 @@ it('writes a music announcement in a calm gap, from the timeline\'s real next tr
         && str_contains($prompt->prompt, 'Neue Single ist fertig'));
 });
 
-it('stays silent when the air is not the music\'s alone', function () {
+it('stays silent while the voice ahead still fills the air, or a slot is near, or the quiet hours run', function () {
     $queue = app(ScriptQueue::class);
+
+    // Five minutes of voice ahead (a long ready clip): no handover to the music in sight.
+    $clip = CasterScript::query()->create(['kind' => CasterScript::SCENE, 'phase' => 'break', 'text' => 'x', 'facts_hash' => 'x', 'status' => CasterScript::QUEUED, 'priority' => 0, 'estimated_seconds' => 300, 'expires_at' => now()->addYears(9)]);
+    CasterClip::query()->create(['caster_script_id' => $clip->id, 'phase' => 'break', 'kind' => CasterScript::SCENE, 'path' => 'x/'.$clip->id.'.opus', 'duration_seconds' => 300, 'bytes' => 10, 'sentence_ends' => [300.0], 'status' => CasterClip::READY, 'expires_at' => now()->addMinutes(10)]);
+    expect(app(ScriptQueue::class)->fillMusicTeaser($this->now))->toBe(0);
+    CasterClip::query()->delete();
+    CasterScript::query()->where('kind', CasterScript::SCENE)->delete();
 
     // The news at 15:00 are four minutes away: no announcement into the programme.
     $this->travelTo(CarbonImmutable::parse('2026-10-17 14:56:30', 'Europe/Berlin'));
@@ -105,13 +112,6 @@ it('stays silent when the air is not the music\'s alone', function () {
     CasterScript::query()->create(['kind' => CasterScript::TEASER, 'phase' => 'break', 'text' => 'x', 'facts_hash' => 't1', 'status' => CasterScript::QUEUED, 'priority' => 72, 'estimated_seconds' => 8, 'airs_at' => now()->addMinutes(2), 'expires_at' => now()->addYears(9)]);
     expect($queue->fillMusicTeaser(CarbonImmutable::now()))->toBe(0);
     CasterScript::query()->where('kind', CasterScript::TEASER)->delete();
-
-    // A clip ready: the next voice is on its way, this is no gap.
-    $clip = CasterScript::query()->create(['kind' => CasterScript::SCENE, 'phase' => 'break', 'text' => 'x', 'facts_hash' => 'x', 'status' => CasterScript::QUEUED, 'priority' => 0, 'estimated_seconds' => 4, 'expires_at' => now()->addYears(9)]);
-    CasterClip::query()->create(['caster_script_id' => $clip->id, 'phase' => 'break', 'kind' => CasterScript::SCENE, 'path' => 'x/'.$clip->id.'.opus', 'duration_seconds' => 4, 'bytes' => 10, 'sentence_ends' => [4.0], 'status' => CasterClip::READY, 'expires_at' => now()->addMinutes(10)]);
-    expect($queue->fillMusicTeaser(CarbonImmutable::now()))->toBe(0);
-    CasterClip::query()->delete();
-    CasterScript::query()->where('kind', CasterScript::SCENE)->delete();
 
     // The quiet hours: no music announcements.
     config(['tv.commentary.spool.quiet_hours.from' => '01:00', 'tv.commentary.spool.quiet_hours.to' => '09:00']);
