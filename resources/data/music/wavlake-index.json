@@ -229,28 +229,6 @@
    "nostr": null
   },
   {
-   "file": "wavlake/Keep On Movin' - Cal Volpe__v1.m4a",
-   "source": "wavlake",
-   "artist": "Cal Volpe",
-   "title": "Keep On Movin'",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
-   "file": "wavlake/Renaissance Man - Cal Volpe__v1.m4a",
-   "source": "wavlake",
-   "artist": "Cal Volpe",
-   "title": "Renaissance Man",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
    "file": "wavlake/Debasement - Contra__v1.m4a",
    "source": "wavlake",
    "artist": "Contra",
@@ -277,36 +255,10 @@
    "nostr": null
   },
   {
-   "file": "wavlake/Speedo Vigilante - Fundamentals__v1.m4a",
-   "source": "wavlake",
-   "artist": "Fundamentals",
-   "title": "Speedo Vigilante",
-   "track_id": null,
-   "qr_target": "fundamentals@zeuspay.com",
-   "npub": null,
-   "zap_route": "nostr-lud16",
-   "nostr": {
-    "npub": "npub12eml5kmtrjmdt0h8shgg32gye5yqsf2jha6a70jrqt82q9d960sspky99g",
-    "zap_address": "fundamentals@zeuspay.com",
-    "verified": "wavlake profile npub, kind-0 verified"
-   }
-  },
-  {
    "file": "wavlake/Patience - Greensands__v1.m4a",
    "source": "wavlake",
    "artist": "Greensands",
    "title": "Patience",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
-   "file": "wavlake/Garbage Ex-Employed - ikki_imittio__v1.m4a",
-   "source": "wavlake",
-   "artist": "ikki_imittio",
-   "title": "Garbage Ex-Employed",
    "track_id": null,
    "qr_target": null,
    "npub": null,
@@ -1244,17 +1196,6 @@
    }
   },
   {
-   "file": "wavlake/Bullet Train - My Friend Jimi__v1.m4a",
-   "source": "wavlake",
-   "artist": "My Friend Jimi",
-   "title": "Bullet Train",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
    "file": "wavlake/Fix the Money - NumberGoExp__v1.m4a",
    "source": "wavlake",
    "artist": "NumberGoExp",
@@ -1277,107 +1218,10 @@
    "nostr": null
   },
   {
-   "file": "wavlake/Never Attained Anything - Patrick Manian__v1.m4a",
-   "source": "wavlake",
-   "artist": "Patrick Manian",
-   "title": "Never Attained Anything",
-   "track_id": null,
-   "qr_target": "https://njump.me/npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-   "npub": null,
-   "zap_route": "nostr-profile",
-   "nostr": {
-    "npub": "npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-    "zap_address": "",
-    "verified": "wavlake profile npub; profile carries no lud16"
-   }
-  },
-  {
-   "file": "wavlake/Rightly So - Patrick Manian__v1.m4a",
-   "source": "wavlake",
-   "artist": "Patrick Manian",
-   "title": "Rightly So",
-   "track_id": null,
-   "qr_target": "https://njump.me/npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-   "npub": null,
-   "zap_route": "nostr-profile",
-   "nostr": {
-    "npub": "npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-    "zap_address": "",
-    "verified": "wavlake profile npub; profile carries no lud16"
-   }
-  },
-  {
-   "file": "wavlake/Marrow Road - Riot in Progress__v1.m4a",
-   "source": "wavlake",
-   "artist": "Riot in Progress",
-   "title": "Marrow Road",
-   "track_id": null,
-   "qr_target": "guysmilely@fountain.fm",
-   "npub": null,
-   "zap_route": "nostr-lud16",
-   "nostr": {
-    "npub": "npub1ljr66vfadhr5rkldt2yhyzn7yqqqkeedhg9fq8vkyrdycgpzgtws440z3v",
-    "zap_address": "guysmilely@fountain.fm",
-    "verified": "wavlake profile npub, kind-0 verified"
-   }
-  },
-  {
-   "file": "wavlake/Nevertheless - Riot in Progress__v1.m4a",
-   "source": "wavlake",
-   "artist": "Riot in Progress",
-   "title": "Nevertheless",
-   "track_id": null,
-   "qr_target": "guysmilely@fountain.fm",
-   "npub": null,
-   "zap_route": "nostr-lud16",
-   "nostr": {
-    "npub": "npub1ljr66vfadhr5rkldt2yhyzn7yqqqkeedhg9fq8vkyrdycgpzgtws440z3v",
-    "zap_address": "guysmilely@fountain.fm",
-    "verified": "wavlake profile npub, kind-0 verified"
-   }
-  },
-  {
    "file": "wavlake/Piano keys, watch out for these - sabu__v1.m4a",
    "source": "wavlake",
    "artist": "sabu",
    "title": "Piano keys, watch out for these",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
-   "file": "wavlake/bye bye birdie - shy kids__v1.m4a",
-   "source": "wavlake",
-   "artist": "shy kids",
-   "title": "bye bye birdie",
-   "track_id": null,
-   "qr_target": "https://njump.me/npub1tw0t53nnge3m5wmzhzqpudr7whe7qpvyyj9q2dqnsf8ef97xgsrqugjc3r",
-   "npub": null,
-   "zap_route": "nostr-profile",
-   "nostr": {
-    "npub": "npub1tw0t53nnge3m5wmzhzqpudr7whe7qpvyyj9q2dqnsf8ef97xgsrqugjc3r",
-    "zap_address": "",
-    "verified": "wavlake profile npub; profile carries no lud16"
-   }
-  },
-  {
-   "file": "wavlake/Chasing Dreams - Social Hijack__v1.m4a",
-   "source": "wavlake",
-   "artist": "Social Hijack",
-   "title": "Chasing Dreams",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
-   "file": "wavlake/The Rhythm of Your Breath - Sorout Beats__v1.m4a",
-   "source": "wavlake",
-   "artist": "Sorout Beats",
-   "title": "The Rhythm of Your Breath",
    "track_id": null,
    "qr_target": null,
    "npub": null,
@@ -1587,28 +1431,6 @@
    "source": "music",
    "artist": "Under The Mulga Groove",
    "title": "Who Comes Home Instrumental",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
-   "file": "wavlake/Pirate Radio - Vertigo Kidd__v1.m4a",
-   "source": "wavlake",
-   "artist": "Vertigo Kidd",
-   "title": "Pirate Radio",
-   "track_id": null,
-   "qr_target": null,
-   "npub": null,
-   "zap_route": "unknown",
-   "nostr": null
-  },
-  {
-   "file": "wavlake/Put 'Em In A Cage - Yellow Velvet Milk Club__v1.m4a",
-   "source": "wavlake",
-   "artist": "Yellow Velvet Milk Club",
-   "title": "Put 'Em In A Cage",
    "track_id": null,
    "qr_target": null,
    "npub": null,

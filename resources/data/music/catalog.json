@@ -751,23 +751,6 @@
             "credit_source": "manual"
         },
         {
-            "file": "Bitaxe Referendum - Fundamentals__v1.m4a",
-            "id": "f86005f24107",
-            "artists": [
-                "fundamentals"
-            ],
-            "title": "Bitaxe Referendum",
-            "duration": 159.32,
-            "bitrate": 130,
-            "lufs": -15.0,
-            "true_peak": -2.9,
-            "fingerprint": "e3a870693db5590a",
-            "sha1": "56aacf74e8a7f8eba7994a341297d5737774dae5",
-            "size": 2619181,
-            "mtime": 1792235636,
-            "credit_source": "manual"
-        },
-        {
             "file": "Bitcoin Bass - Contra__v1.m4a",
             "id": "4cb71a2f00d1",
             "artists": [
@@ -6920,23 +6903,6 @@
             "credit_source": "manual"
         },
         {
-            "file": "We made it 100K - Fundamentals__v1.m4a",
-            "id": "cc22b2740e47",
-            "artists": [
-                "fundamentals"
-            ],
-            "title": "We made it 100K",
-            "duration": 199.44,
-            "bitrate": 131,
-            "lufs": -15.1,
-            "true_peak": -3.4,
-            "fingerprint": "ccc93d7b9ffee2a4",
-            "sha1": "d6e0f7501b68c717b9a56caa1d95072e1073c6d3",
-            "size": 3291713,
-            "mtime": 1792235646,
-            "credit_source": "manual"
-        },
-        {
             "file": "Weight of Ash - Contra__v1.m4a",
             "id": "6c8f0d4e5af9",
             "artists": [
@@ -9609,44 +9575,6 @@
             "credit_source": "plebrap-index"
         },
         {
-            "file": "plebrap/08 - Bitcoin braucht dich nicht! - SatStacker, Mo__v1.m4a",
-            "id": "7623b60f9fc6",
-            "artists": [
-                "satstacker",
-                "mo"
-            ],
-            "title": "Bitcoin braucht dich nicht!",
-            "duration": 180.1,
-            "bitrate": 134,
-            "lufs": -16.2,
-            "true_peak": -3.0,
-            "fingerprint": "fc762f162e650264",
-            "sha1": "8567728d7e23059f67dc04da52206819d100f468",
-            "size": 3040297,
-            "mtime": 1792150320,
-            "credit_source": "plebrap-index"
-        },
-        {
-            "file": "plebrap/09 - Papa Hodlt - Hanni, JustAnotherNode, Too Bit to Fail, Mo__v1.m4a",
-            "id": "b7e45d1f2fbe",
-            "artists": [
-                "hanni",
-                "justanothernode",
-                "too-bit-to-fail",
-                "mo"
-            ],
-            "title": "Papa Hodlt",
-            "duration": 198.1,
-            "bitrate": 132,
-            "lufs": -15.3,
-            "true_peak": -1.3,
-            "fingerprint": "ec8cd6fb85a54db0",
-            "sha1": "6e2ff0f3eff0ae3f4e99e7b01cc7670b851f9f6c",
-            "size": 3293468,
-            "mtime": 1792150375,
-            "credit_source": "plebrap-index"
-        },
-        {
             "file": "plebrap/10 - Money Printer Go - Too Bit to Fail__v1.m4a",
             "id": "0c9a6b5dc47b",
             "artists": [
@@ -10608,23 +10536,6 @@
             "credit_source": "manual"
         },
         {
-            "file": "wavlake/Bullet Train - My Friend Jimi__v1.m4a",
-            "id": "d435026884ed",
-            "artists": [
-                "my-friend-jimi"
-            ],
-            "title": "Bullet Train",
-            "duration": 205.4,
-            "bitrate": 97,
-            "lufs": -15.1,
-            "true_peak": -2.3,
-            "fingerprint": "708f9cf9fc90e258",
-            "sha1": "a7e3909db30f5a120641a5e83bcda998e1bea1b9",
-            "size": 2522451,
-            "mtime": 1792060999,
-            "credit_source": "wavlake-index"
-        },
-        {
             "file": "wavlake/Can't Say I'm Not Trying - Ainsley Costello__v1.m4a",
             "id": "0ba4547a9075",
             "artists": [
@@ -10663,23 +10574,6 @@
             "qr_target": "ainsleycostello@getalby.com",
             "qr_kind": "lud16",
             "wavlake_track_id": "62767045-5cc0-4280-a552-145a56e6964a"
-        },
-        {
-            "file": "wavlake/Chasing Dreams - Social Hijack__v1.m4a",
-            "id": "c0eda6d4b1ef",
-            "artists": [
-                "social-hijack"
-            ],
-            "title": "Chasing Dreams",
-            "duration": 276.92,
-            "bitrate": 129,
-            "lufs": -15.1,
-            "true_peak": -1.9,
-            "fingerprint": "11685b8c53effa17",
-            "sha1": "8e1bd5afdb8900632f340748ea9fa65e410304b1",
-            "size": 4514506,
-            "mtime": 1792150743,
-            "credit_source": "wavlake-index"
         },
         {
             "file": "wavlake/Cherry On Top (90's Revival Remix) with Stereon - Ainsley Costello__v1.m4a",
@@ -11053,23 +10947,6 @@
             "credit_source": "wavlake-index"
         },
         {
-            "file": "wavlake/Garbage Ex-Employed - ikki_imittio__v1.m4a",
-            "id": "e6fbf3a6ff83",
-            "artists": [
-                "ikki-imittio"
-            ],
-            "title": "Garbage Ex-Employed",
-            "duration": 436.25,
-            "bitrate": 129,
-            "lufs": -14.9,
-            "true_peak": -1.0,
-            "fingerprint": "b45e394653e901a8",
-            "sha1": "37aeafd702fea310d4ba3b57da0284839ea74c30",
-            "size": 7132420,
-            "mtime": 1792102565,
-            "credit_source": "wavlake-index"
-        },
-        {
             "file": "wavlake/Gonna Stay - Richard Greaser__v1.m4a",
             "id": "0582a361a244",
             "artists": [
@@ -11274,23 +11151,6 @@
             "credit_source": "manual"
         },
         {
-            "file": "wavlake/Keep On Movin' - Cal Volpe__v1.m4a",
-            "id": "aa75d13d380e",
-            "artists": [
-                "cal-volpe"
-            ],
-            "title": "Keep On Movin'",
-            "duration": 193.8,
-            "bitrate": 130,
-            "lufs": -15.0,
-            "true_peak": -1.4,
-            "fingerprint": "8f261f6f74bdb783",
-            "sha1": "3562ace4c2d128773ff943d871279c2ec4adf579",
-            "size": 3181949,
-            "mtime": 1792150834,
-            "credit_source": "wavlake-index"
-        },
-        {
             "file": "wavlake/Lately I've Been Seeing Things - Richard Greaser__v1.m4a",
             "id": "3dc64f443c8f",
             "artists": [
@@ -11408,25 +11268,6 @@
             "size": 2772783,
             "mtime": 1792150854,
             "credit_source": "wavlake-index"
-        },
-        {
-            "file": "wavlake/Marrow Road - Riot in Progress__v1.m4a",
-            "id": "b59c67d2be8d",
-            "artists": [
-                "riot-in-progress"
-            ],
-            "title": "Marrow Road",
-            "duration": 245.4,
-            "bitrate": 97,
-            "lufs": -15.7,
-            "true_peak": -3.1,
-            "fingerprint": "04db91b2434632bc",
-            "sha1": "d25d9f64a408585dc4fbd852ace47c1a61ac2898",
-            "size": 3005333,
-            "mtime": 1792061011,
-            "credit_source": "wavlake-index",
-            "qr_target": "guysmilely@fountain.fm",
-            "qr_kind": "lud16"
         },
         {
             "file": "wavlake/Marty Says This Time Is Different - Richard Greaser__v1.m4a",
@@ -11582,44 +11423,6 @@
             "credit_source": "manual"
         },
         {
-            "file": "wavlake/Never Attained Anything - Patrick Manian__v1.m4a",
-            "id": "b17cc5e5d80c",
-            "artists": [
-                "patrick-manian"
-            ],
-            "title": "Never Attained Anything",
-            "duration": 198.1,
-            "bitrate": 129,
-            "lufs": -15.1,
-            "true_peak": -1.2,
-            "fingerprint": "2ba71adc26cda34c",
-            "sha1": "518f09afb3a259e5a1a2a6498c96a5945d81f648",
-            "size": 3233570,
-            "mtime": 1792150876,
-            "credit_source": "wavlake-index",
-            "qr_target": "https://njump.me/npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-            "qr_kind": "njump"
-        },
-        {
-            "file": "wavlake/Nevertheless - Riot in Progress__v1.m4a",
-            "id": "295d45cf7a63",
-            "artists": [
-                "riot-in-progress"
-            ],
-            "title": "Nevertheless",
-            "duration": 222.43,
-            "bitrate": 127,
-            "lufs": -15.1,
-            "true_peak": -1.2,
-            "fingerprint": "6314199c878c42b8",
-            "sha1": "67e981fc2a8518ee7f127746bb8a3d618efd44d5",
-            "size": 3574781,
-            "mtime": 1792150917,
-            "credit_source": "wavlake-index",
-            "qr_target": "guysmilely@fountain.fm",
-            "qr_kind": "lud16"
-        },
-        {
             "file": "wavlake/No One Is Coming To Save You - Richard Greaser__v1.m4a",
             "id": "e512cdb905fe",
             "artists": [
@@ -11742,23 +11545,6 @@
             "credit_source": "manual"
         },
         {
-            "file": "wavlake/Pirate Radio - Vertigo Kidd__v1.m4a",
-            "id": "f91aef9c2ea5",
-            "artists": [
-                "vertigo-kidd"
-            ],
-            "title": "Pirate Radio",
-            "duration": 296.1,
-            "bitrate": 97,
-            "lufs": -15.5,
-            "true_peak": -1.8,
-            "fingerprint": "8d8740081bac236b",
-            "sha1": "4fb706e52dc0e1b0c2a778825607c6694fca28f5",
-            "size": 3631667,
-            "mtime": 1792060848,
-            "credit_source": "wavlake-index"
-        },
-        {
             "file": "wavlake/Price of Greed - Richard Greaser__v1.m4a",
             "id": "690fe4932db0",
             "artists": [
@@ -11774,40 +11560,6 @@
             "size": 1871437,
             "mtime": 1792140256,
             "credit_source": "manual"
-        },
-        {
-            "file": "wavlake/Put 'Em In A Cage - Yellow Velvet Milk Club__v1.m4a",
-            "id": "d4a4812504b7",
-            "artists": [
-                "yellow-velvet-milk-club"
-            ],
-            "title": "Put 'Em In A Cage",
-            "duration": 177.5,
-            "bitrate": 94,
-            "lufs": -15.6,
-            "true_peak": -4.1,
-            "fingerprint": "a0c166915c5c6044",
-            "sha1": "67f4c2d3d7863933c012e365f599480da663b49e",
-            "size": 2122498,
-            "mtime": 1792061005,
-            "credit_source": "wavlake-index"
-        },
-        {
-            "file": "wavlake/Renaissance Man - Cal Volpe__v1.m4a",
-            "id": "6d79e9ce6c6e",
-            "artists": [
-                "cal-volpe"
-            ],
-            "title": "Renaissance Man",
-            "duration": 236.5,
-            "bitrate": 128,
-            "lufs": -15.0,
-            "true_peak": -1.2,
-            "fingerprint": "871fd1cf6c32700e",
-            "sha1": "4f8dc4296a7d55105ae7e10e41cfb04cbbe98542",
-            "size": 3839499,
-            "mtime": 1792102615,
-            "credit_source": "wavlake-index"
         },
         {
             "file": "wavlake/Rescued - Ainsley Costello__v1.m4a",
@@ -11828,25 +11580,6 @@
             "qr_target": "ainsleycostello@getalby.com",
             "qr_kind": "lud16",
             "wavlake_track_id": "604d03b2-35ba-45d9-a00e-4c0ca409e670"
-        },
-        {
-            "file": "wavlake/Rightly So - Patrick Manian__v1.m4a",
-            "id": "3a8a63d28280",
-            "artists": [
-                "patrick-manian"
-            ],
-            "title": "Rightly So",
-            "duration": 290.5,
-            "bitrate": 97,
-            "lufs": -15.4,
-            "true_peak": -1.5,
-            "fingerprint": "9bd23b948ebbbdb3",
-            "sha1": "61764299f7b5a95288071dee50f884b8cc5b659a",
-            "size": 3580000,
-            "mtime": 1792060904,
-            "credit_source": "wavlake-index",
-            "qr_target": "https://njump.me/npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-            "qr_kind": "njump"
         },
         {
             "file": "wavlake/Run With The Wind - Richard Greaser__v1.m4a",
@@ -11932,25 +11665,6 @@
             "size": 2257817,
             "mtime": 1792140369,
             "credit_source": "manual"
-        },
-        {
-            "file": "wavlake/Speedo Vigilante - Fundamentals__v1.m4a",
-            "id": "02f9a1e2ae6e",
-            "artists": [
-                "fundamentals"
-            ],
-            "title": "Speedo Vigilante",
-            "duration": 167.68,
-            "bitrate": 130,
-            "lufs": -15.1,
-            "true_peak": -2.0,
-            "fingerprint": "706608a3d0c661b4",
-            "sha1": "f3ac2aaa6aae85ad7f9b8dcc4795d1516b6b180d",
-            "size": 2754925,
-            "mtime": 1792150950,
-            "credit_source": "wavlake-index",
-            "qr_target": "fundamentals@zeuspay.com",
-            "qr_kind": "lud16"
         },
         {
             "file": "wavlake/Stay Misinformed - Richard Greaser__v1.m4a",
@@ -12158,23 +11872,6 @@
             "size": 2967562,
             "mtime": 1792140777,
             "credit_source": "manual"
-        },
-        {
-            "file": "wavlake/The Rhythm of Your Breath - Sorout Beats__v1.m4a",
-            "id": "13d534084a2a",
-            "artists": [
-                "sorout-beats"
-            ],
-            "title": "The Rhythm of Your Breath",
-            "duration": 182.0,
-            "bitrate": 96,
-            "lufs": -14.2,
-            "true_peak": -1.2,
-            "fingerprint": "ba049fd8d4dcd82f",
-            "sha1": "16e256c8f6d9fc83f3207990193b26da8510a67d",
-            "size": 2211474,
-            "mtime": 1792061018,
-            "credit_source": "wavlake-index"
         },
         {
             "file": "wavlake/The Way Back Home - Richard Greaser__v1.m4a",
@@ -12458,25 +12155,6 @@
             "wavlake_track_id": "29e8e18b-cdc7-4664-84e7-9cf06228a8f6"
         },
         {
-            "file": "wavlake/bye bye birdie - shy kids__v1.m4a",
-            "id": "8c9c0f2fe7d0",
-            "artists": [
-                "shy-kids"
-            ],
-            "title": "bye bye birdie",
-            "duration": 203.1,
-            "bitrate": 129,
-            "lufs": -15.0,
-            "true_peak": -1.1,
-            "fingerprint": "1c8144bdbc8c52be",
-            "sha1": "62bf464d78a94c5c2aadf115e029a0cc55056a6f",
-            "size": 3319839,
-            "mtime": 1792102434,
-            "credit_source": "wavlake-index",
-            "qr_target": "https://njump.me/npub1tw0t53nnge3m5wmzhzqpudr7whe7qpvyyj9q2dqnsf8ef97xgsrqugjc3r",
-            "qr_kind": "njump"
-        },
-        {
             "file": "we already know - sabu__v1.m4a",
             "id": "2f9a02f416de",
             "artists": [
@@ -12565,18 +12243,6 @@
             "evidence": "No Nostr profile found (NIP-50 search empty, Wavlake artistNpub empty). YouTube Topic channel describes 'rap group based in Windhoek, Namibia' and lists the Wavlake albums 'Black Colonialists' and 'Remember The Future'. Picture is the Wavlake artist art.",
             "confidence": "high"
         },
-        "cal-volpe": {
-            "name": "Cal Volpe",
-            "npub": "npub1tkvkv7phrzwzn3mlmw3q4lkja6dvjk3f6fzcjpxgvy2d6at4xerqyr00fg",
-            "pubkey": "5d99667837189c29c77fdba20afed2ee9ac95a29d2458904c86114dd75753646",
-            "picture": "https://blossom.primal.net/909156d5faf3c9032f536c386f7e59f9992bd9becb01ce52184d342d53bb4c93.jpg",
-            "lud16": "orchidsnake4@primal.net",
-            "qr_target": "orchidsnake4@primal.net",
-            "qr_kind": "lud16",
-            "youtube": "https://www.youtube.com/@cvolpe19",
-            "evidence": "Profile 'Cal Volpe' about: 'Canadian singer/songwriter/guitarist. Stream my first album “Alone” on Wavlake!' - 'Alone' is one of his Wavlake albums. kind 0 seen on 2 of 7 general relays (nostr.mom, purplepag.es).",
-            "confidence": "high"
-        },
         "contra": {
             "name": "Contra",
             "npub": "npub14hq5lgadtyy9dhvtszq46dnl0s0xwdddqr7e32rdqqhma8a4xhsspxjjzu",
@@ -12635,18 +12301,6 @@
             "evidence": "Unresolved on Nostr and YouTube (only unrelated 'Leblanc' hits). Fallback is the PlebRap Wavlake track 'Hit the Road FED' (zaps reach the PlebRap collective account).",
             "confidence": "low"
         },
-        "fundamentals": {
-            "name": "Fundamentals",
-            "npub": "npub12eml5kmtrjmdt0h8shgg32gye5yqsf2jha6a70jrqt82q9d960sspky99g",
-            "pubkey": "5677fa5b6b1cb6d5bee785d088a904cd08082552bf75df3e4302cea015a5d3e1",
-            "picture": "https://profilepics.nostur.com/profilepic_v1/1b3e2327f5c0f2bb4addd6c222d70cb1fd9b662cab42e73df7ab677570496ed9/profilepic.jpg?1778870362",
-            "lud16": "fundamentals@zeuspay.com",
-            "qr_target": "fundamentals@zeuspay.com",
-            "qr_kind": "lud16",
-            "youtube": null,
-            "evidence": "Re-verified index npub (from Wavlake profile): name 'Phundamentals' (Brian Hirschfield, Magic Internet Math); lud16 matches index. kind 0 seen on 1 of 7 general relays (purplepag.es).",
-            "confidence": "high"
-        },
         "greensands": {
             "name": "Greensands",
             "npub": null,
@@ -12659,18 +12313,6 @@
             "evidence": "No Nostr profile found. YouTube @Greensands_band (alternative rock band, Bedfordshire) lists 'Patience' and 'Kid Yourself', both Wavlake releases. Picture is the Wavlake artist art.",
             "confidence": "high"
         },
-        "hanni": {
-            "name": "Hanni",
-            "npub": null,
-            "pubkey": null,
-            "picture": null,
-            "lud16": null,
-            "qr_target": "https://wavlake.com/track/7b1a330d-71c4-49e4-83e9-2328b6a6dfd3",
-            "qr_kind": "wavlake",
-            "youtube": null,
-            "evidence": "Unresolved on Nostr: no profile with PlebRap context found (search plus follower/follow scan of the PlebRap accounts). Fallback is the PlebRap Wavlake track 'Papa Hodlt' (zaps reach the PlebRap collective account).",
-            "confidence": "low"
-        },
         "hanspanzer": {
             "name": "Hanspanzer",
             "npub": null,
@@ -12682,18 +12324,6 @@
             "youtube": "https://www.youtube.com/channel/UCoUMQ0mwsefCU8cbkvW5SDg",
             "evidence": "YouTube 'Hanspanzer - Topic' lists 'Feuer', 'FOMO', 'One Bit Wonder' (his PlebRap tracks with Too Bit to Fail). Nostr candidate npub1f390xggrvqn52kwzgv6uk6x5ru7l6f9xf35fc0gwwm7e57v6tkxsgs5mel (name 'hanspanzer', lud16 hanspanzer@getcurrent.io) found only on search.nos.today, not on any general relay, no notes, no PlebRap follows - not accepted.",
             "confidence": "medium"
-        },
-        "ikki-imittio": {
-            "name": "ikki_imittio",
-            "npub": null,
-            "pubkey": null,
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/cae24050-4e63-42a6-8a34-dc43fdb57a37.jpg",
-            "lud16": null,
-            "qr_target": "https://wavlake.com/track/6320617b-25eb-437c-809d-0ba96092ea55",
-            "qr_kind": "wavlake",
-            "youtube": null,
-            "evidence": "No Nostr profile, no YouTube channel found; Wavlake artistNpub empty. Fallback is the Wavlake track page of 'Garbage Ex-Employed'. Picture is the Wavlake artist art.",
-            "confidence": "low"
         },
         "joe-martin": {
             "name": "Joe Martin",
@@ -12755,18 +12385,6 @@
             "evidence": "Unresolved on Nostr: ambiguous name; only candidate 'mo' (mo@rizful.com, 'Music-Food-Bass', followed by two PlebRap accounts) shows no rap/PlebRap link - not accepted. Fallback is the PlebRap Wavlake track 'Bitcoin braucht dich nicht!' (zaps reach the PlebRap collective account).",
             "confidence": "low"
         },
-        "my-friend-jimi": {
-            "name": "My Friend Jimi",
-            "npub": null,
-            "pubkey": null,
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/0ea699be-e985-4aa1-8c00-43542e4b9e0d.jpg",
-            "lud16": null,
-            "qr_target": "https://www.youtube.com/channel/UC8fC9n50QKncLK_bL0Dvt7A",
-            "qr_kind": "youtube",
-            "youtube": "https://www.youtube.com/channel/UC8fC9n50QKncLK_bL0Dvt7A",
-            "evidence": "YouTube Topic channel lists 'Bullet Train' and 'Real Me' (Wavlake releases); @myfriendjimi is a 'Western Australian Indie musician'. Nostr: four bare 'My Friend Jimi' profiles without music evidence or lud16 (best guess npub16c94ez2d... posts 'Jamming', 'Im from WA') - not accepted. Picture is the Wavlake artist art.",
-            "confidence": "medium"
-        },
         "numbergoexp": {
             "name": "NumberGoExp",
             "npub": null,
@@ -12779,35 +12397,11 @@
             "evidence": "Profile name 'numbergoexp' with lud16 numbergoexp@fountain.fm (Fountain = V4V music app); about empty, no direct link from his pages. His label channel (YouTube @NakaUnboundMusic) names NumberGoExp and links wavlake.com/numbergoexp. Other same-name profiles: npub1nyuzll6h... (no lud16), one with numbergoexp@minibits.cash. kind 0 seen on 1 of 7 general relays (purplepag.es). Lightning address matched by name only: not used, the card points at the Wavlake track.",
             "confidence": "medium"
         },
-        "patrick-manian": {
-            "name": "Patrick Manian",
-            "npub": "npub1kzj9udp7pxuwyvx958hhxvrdx8xdhn4fvy3yv78hjxvka42lye5sz6nqyu",
-            "pubkey": "b0a45e343e09b8e230c5a1ef73306d31ccdbcea961224678f791996ed55f2669",
-            "picture": "https://blossom.primal.net/88b54fbe7112fa44c7560dbeda3555c9f0ae2219709b21c451d3d5293bc8576a.jpg",
-            "lud16": "bronzestarfish11@primal.net",
-            "qr_target": "bronzestarfish11@primal.net",
-            "qr_kind": "lud16",
-            "youtube": null,
-            "evidence": "Re-verified index npub (from Wavlake profile): about 'Buddhism, music, freedom'. CHANGE vs index: kind 0 now carries lud16 bronzestarfish11@primal.net, so the QR moves from njump to lud16. kind 0 seen on 1 of 7 general relays (purplepag.es).",
-            "confidence": "high"
-        },
         "richard-greaser": {
             "name": "Richard Greaser",
             "npub": "npub1563z6kxmvuy7s8zhzan8m0hzmkavyfzg2aw6h7f0fvcvdms398csaxc9n6",
             "lud16": "masflojo@blink.sv",
             "picture": "https://blossom.primal.net/f5bc4748cb425bed04a665ae771e2c2b7a9bed3d42495db56b109998d99a1b52.png"
-        },
-        "riot-in-progress": {
-            "name": "Riot in Progress",
-            "npub": "npub1ljr66vfadhr5rkldt2yhyzn7yqqqkeedhg9fq8vkyrdycgpzgtws440z3v",
-            "pubkey": "fc87ad313d6dc741dbed5a89720a7e20000b672dba0a901d9620da4c202242dd",
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/e942d3ca-7134-4947-8c50-c70c0bbcd0aa.jpg",
-            "lud16": "guysmilely@fountain.fm",
-            "qr_target": "guysmilely@fountain.fm",
-            "qr_kind": "lud16",
-            "youtube": null,
-            "evidence": "Re-verified index npub (from Wavlake profile): 'Guysmilely', 7-string guitarist; lud16 matches index. kind 0 seen on 1 of 7 general relays (purplepag.es).",
-            "confidence": "high"
         },
         "sabu": {
             "name": "sabu",
@@ -12819,54 +12413,6 @@
             "qr_kind": "wavlake",
             "youtube": null,
             "evidence": "Name too generic: NIP-50 hits are unrelated people; no YouTube channel matched. Fallback is the Wavlake track page of 'Piano keys, watch out for these'. Picture is the Wavlake artist art.",
-            "confidence": "low"
-        },
-        "satstacker": {
-            "name": "SatStacker",
-            "npub": null,
-            "pubkey": null,
-            "picture": null,
-            "lud16": null,
-            "qr_target": "https://wavlake.com/track/588e055e-b304-4670-83b3-4cd29797dbd7",
-            "qr_kind": "wavlake",
-            "youtube": null,
-            "evidence": "Unresolved on Nostr: 36 'SatStacker' profiles, none with PlebRap/music context (closest: npub for 'satstacker ... dad of 3' follows a PlebRap seed - not enough). No YouTube. Fallback is the PlebRap Wavlake track 'Bitcoin braucht dich nicht!' (zaps reach the PlebRap collective account, not him personally).",
-            "confidence": "low"
-        },
-        "shy-kids": {
-            "name": "shy kids",
-            "npub": "npub1tw0t53nnge3m5wmzhzqpudr7whe7qpvyyj9q2dqnsf8ef97xgsrqugjc3r",
-            "pubkey": "5b9eba46734663ba3b62b8801e347e75f3e00584248a053413824f9497c64406",
-            "picture": "https://pbs.twimg.com/profile_images/1598019169676558346/fItK7wMM_400x400.jpg",
-            "lud16": "shykids@primal.net",
-            "qr_target": "shykids@primal.net",
-            "qr_kind": "lud16",
-            "youtube": null,
-            "evidence": "Re-verified index npub: about 'band embracing bitcoin ... https://wavlake.com/shy-kids'. CHANGE vs index: kind 0 now carries lud16 shykids@primal.net, so the QR moves from njump to lud16. kind 0 seen on 1 of 7 general relays (purplepag.es).",
-            "confidence": "high"
-        },
-        "social-hijack": {
-            "name": "Social Hijack",
-            "npub": null,
-            "pubkey": null,
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/8a0520a6-5296-4878-bb4f-65ca8ba149d1.jpg",
-            "lud16": null,
-            "qr_target": "https://www.youtube.com/channel/UC-xHDBRVgCoJLAaGIvzfZ_Q",
-            "qr_kind": "youtube",
-            "youtube": "https://www.youtube.com/channel/UC-xHDBRVgCoJLAaGIvzfZ_Q",
-            "evidence": "No Nostr profile found. YouTube Topic channel lists 'Days' and 'Enough', both Social Hijack albums on Wavlake. Picture is the Wavlake artist art.",
-            "confidence": "medium"
-        },
-        "sorout-beats": {
-            "name": "Sorout Beats",
-            "npub": null,
-            "pubkey": null,
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/fdcb204d-aa20-47f7-9d54-8c31ff4f1131.jpg",
-            "lud16": null,
-            "qr_target": "https://wavlake.com/track/1eacbf06-dc6c-4fa2-8de7-7e37798d1988",
-            "qr_kind": "wavlake",
-            "youtube": null,
-            "evidence": "No Nostr profile and no YouTube channel found (YouTube search only returns 'Sprout' look-alikes). Fallback is the Wavlake track page of 'The Rhythm of Your Breath'. Picture is the Wavlake artist art.",
             "confidence": "low"
         },
         "too-bit-to-fail": {
@@ -12891,30 +12437,6 @@
             "qr_kind": "youtube",
             "youtube": "https://www.youtube.com/@UnderTheMulgaGroove",
             "evidence": "No Nostr profile (Wavlake artistNpub empty, NIP-50 empty). YouTube @UnderTheMulgaGroove ('ancient outback meets underground rhythm') lists 'Watermark'. Replaces the current wavlake-keysend track page per fallback order. Picture is the Wavlake artist art.",
-            "confidence": "high"
-        },
-        "vertigo-kidd": {
-            "name": "Vertigo Kidd",
-            "npub": null,
-            "pubkey": null,
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/eff27dd6-764c-497e-81fe-3a7e10eb7b3b.jpg",
-            "lud16": null,
-            "qr_target": "https://www.youtube.com/@vertigokidd",
-            "qr_kind": "youtube",
-            "youtube": "https://www.youtube.com/@vertigokidd",
-            "evidence": "No Nostr profile found. YouTube @vertigokidd lists 'Pirate Radio'. Picture is the Wavlake artist art.",
-            "confidence": "high"
-        },
-        "yellow-velvet-milk-club": {
-            "name": "Yellow Velvet Milk Club",
-            "npub": null,
-            "pubkey": null,
-            "picture": "https://d12wklypp119aj.cloudfront.net/image/3af15f28-35ab-48e4-a4d3-f4d4187b21fc.jpg",
-            "lud16": null,
-            "qr_target": "https://www.youtube.com/@YellowVelvetMilkClub",
-            "qr_kind": "youtube",
-            "youtube": "https://www.youtube.com/@YellowVelvetMilkClub",
-            "evidence": "No Nostr profile found. YouTube @YellowVelvetMilkClub lists 'Put 'Em In A Cage'. Picture is the Wavlake artist art.",
             "confidence": "high"
         },
         "zazawowow": {
