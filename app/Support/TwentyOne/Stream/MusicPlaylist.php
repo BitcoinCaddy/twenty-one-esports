@@ -185,13 +185,15 @@ final class MusicPlaylist
     }
 
     /**
-     * The artist a file is by for the artist cycle: its credited artist (MusicCredits::forFile(); a PlebRap
-     * collaboration counts under its first artist, the house artist DJ Bitcoin is one artist like any other), or
-     * UNKNOWN_ARTIST for a file without a credit: all of those share one turn per round.
+     * The artist a file is by for the artist cycle: its playlist (MusicCredits::playlist(): every PlebRap track is
+     * PlebRap's, one turn per round for all of them, while the card still names the track's own artist), else its
+     * credited artist
+     * (MusicCredits::forFile(); the house artist DJ Bitcoin is one artist like any other), or UNKNOWN_ARTIST for a
+     * file without a credit: all of those share one turn per round.
      */
     public static function artist(string $file): string
     {
-        $artist = MusicCredits::forFile($file)['artist'] ?? null;
+        $artist = MusicCredits::playlist($file) ?? MusicCredits::forFile($file)['artist'] ?? null;
 
         return is_string($artist) && $artist !== '' ? $artist : self::UNKNOWN_ARTIST;
     }

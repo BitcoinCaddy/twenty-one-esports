@@ -23,7 +23,7 @@ test('every credited track and the house artist have their QR code drawn, so no 
     // import (twentyone:music-add) never has to touch this test; the floor catches a catalog that lost its credits.
     $catalog = json_decode((string) file_get_contents(resource_path('data/music/catalog.json')), true);
     $credited = count(array_filter($catalog['tracks'], fn (array $track): bool => ! in_array($track['credit_source'] ?? 'none', ['none', 'house'], true)));
-    expect(count($credits))->toBe($credited + 1)->toBeGreaterThanOrEqual(138);
+    expect(count($credits))->toBe($credited + 1)->toBeGreaterThanOrEqual(140);
 
     foreach ($credits as $credit) {
         expect(in_array($credit['kind'], MusicCredits::KINDS, true))->toBeTrue($credit['artist'])
@@ -44,7 +44,7 @@ test('a Wavlake track credits its artist with the lightning address, a PlebRap t
         ->and(MusicCredits::qrPayload('https://njump.me/npub1x', 'njump'))->toBe('https://njump.me/npub1x');
 
     $plebrap = collect(json_decode((string) file_get_contents(resource_path('data/music/plebrap-index.json')), true)['tracks']);
-    expect($plebrap)->toHaveCount(36)
+    expect($plebrap)->toHaveCount(38)
         ->and($plebrap->firstWhere('file', 'plebrap/07 - Bank gegen Node - Too Bit to Fail, JustAnotherNode, Hanspanzer__v1.m4a')['artists'])->toBe(['Too Bit to Fail', 'JustAnotherNode', 'Hanspanzer']);
 });
 

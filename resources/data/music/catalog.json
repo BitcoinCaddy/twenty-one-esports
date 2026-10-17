@@ -9575,6 +9575,44 @@
             "credit_source": "plebrap-index"
         },
         {
+            "file": "plebrap/08 - Bitcoin braucht dich nicht! - SatStacker, Mo__v1.m4a",
+            "id": "7623b60f9fc6",
+            "artists": [
+                "satstacker",
+                "mo"
+            ],
+            "title": "Bitcoin braucht dich nicht!",
+            "duration": 180.1,
+            "bitrate": 134,
+            "lufs": -16.2,
+            "true_peak": -3.0,
+            "fingerprint": "fc762f162e650264",
+            "sha1": "8567728d7e23059f67dc04da52206819d100f468",
+            "size": 3040297,
+            "mtime": 1792150320,
+            "credit_source": "plebrap-index"
+        },
+        {
+            "file": "plebrap/09 - Papa Hodlt - Hanni, JustAnotherNode, Too Bit to Fail, Mo__v1.m4a",
+            "id": "b7e45d1f2fbe",
+            "artists": [
+                "hanni",
+                "justanothernode",
+                "too-bit-to-fail",
+                "mo"
+            ],
+            "title": "Papa Hodlt",
+            "duration": 198.1,
+            "bitrate": 132,
+            "lufs": -15.3,
+            "true_peak": -1.3,
+            "fingerprint": "ec8cd6fb85a54db0",
+            "sha1": "6e2ff0f3eff0ae3f4e99e7b01cc7670b851f9f6c",
+            "size": 3293468,
+            "mtime": 1792150375,
+            "credit_source": "plebrap-index"
+        },
+        {
             "file": "plebrap/10 - Money Printer Go - Too Bit to Fail__v1.m4a",
             "id": "0c9a6b5dc47b",
             "artists": [
@@ -12313,6 +12351,18 @@
             "evidence": "No Nostr profile found. YouTube @Greensands_band (alternative rock band, Bedfordshire) lists 'Patience' and 'Kid Yourself', both Wavlake releases. Picture is the Wavlake artist art.",
             "confidence": "high"
         },
+        "hanni": {
+            "name": "Hanni",
+            "npub": null,
+            "pubkey": null,
+            "picture": null,
+            "lud16": null,
+            "qr_target": "https://wavlake.com/track/7b1a330d-71c4-49e4-83e9-2328b6a6dfd3",
+            "qr_kind": "wavlake",
+            "youtube": null,
+            "evidence": "Unresolved on Nostr: no profile with PlebRap context found (search plus follower/follow scan of the PlebRap accounts). Fallback is the PlebRap Wavlake track 'Papa Hodlt' (zaps reach the PlebRap collective account).",
+            "confidence": "low"
+        },
         "hanspanzer": {
             "name": "Hanspanzer",
             "npub": null,
@@ -12413,6 +12463,18 @@
             "qr_kind": "wavlake",
             "youtube": null,
             "evidence": "Name too generic: NIP-50 hits are unrelated people; no YouTube channel matched. Fallback is the Wavlake track page of 'Piano keys, watch out for these'. Picture is the Wavlake artist art.",
+            "confidence": "low"
+        },
+        "satstacker": {
+            "name": "SatStacker",
+            "npub": null,
+            "pubkey": null,
+            "picture": null,
+            "lud16": null,
+            "qr_target": "https://wavlake.com/track/588e055e-b304-4670-83b3-4cd29797dbd7",
+            "qr_kind": "wavlake",
+            "youtube": null,
+            "evidence": "Unresolved on Nostr: 36 'SatStacker' profiles, none with PlebRap/music context (closest: npub for 'satstacker ... dad of 3' follows a PlebRap seed - not enough). No YouTube. Fallback is the PlebRap Wavlake track 'Bitcoin braucht dich nicht!' (zaps reach the PlebRap collective account, not him personally).",
             "confidence": "low"
         },
         "too-bit-to-fail": {

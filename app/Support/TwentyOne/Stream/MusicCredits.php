@@ -94,6 +94,32 @@ final class MusicCredits
         return self::$byFile = $credits;
     }
 
+    /**
+     * The playlist a file belongs to, null for none (`twentyone.stream.music.playlists`): artists merged into one
+     * artist of the cycle (user 2026-10-17: "PlebRap als einen Künstler ansehen und alle Tracks davon als Künstler
+     * rotieren"), by the track's credit source or by any of its credited artists. The first playlist that takes the
+     * track wins.
+     */
+    public static function playlist(string $file): ?string
+    {
+        $track = MusicCatalog::track(self::relative($file));
+
+        if ($track === null) {
+            return null;
+        }
+
+        foreach ((array) config('twentyone.stream.music.playlists', []) as $name => $rule) {
+            $artists = array_map(fn ($artist): ?string => MusicCatalog::artistId((string) $artist), (array) ($rule['artists'] ?? []));
+
+            if ((isset($rule['credit_source']) && ($track['credit_source'] ?? null) === $rule['credit_source'])
+                || array_intersect(array_filter($artists), (array) ($track['artists'] ?? [])) !== []) {
+                return (string) $name;
+            }
+        }
+
+        return null;
+    }
+
     /** Forget what was read (tests, and a daemon that reloads the files). */
     public static function flush(): void
     {

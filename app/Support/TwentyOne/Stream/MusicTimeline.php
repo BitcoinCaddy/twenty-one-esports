@@ -342,6 +342,30 @@ final class MusicTimeline
     /**
      * The configured artist gap (`twentyone.stream.music.artist_gap`), at least 1; 1 where no config can be read.
      */
+    /** The name the artists with too few songs share in the cycle (`twentyone.stream.music.various_artists`). */
+    private static function variousArtists(): string
+    {
+        try {
+            return (string) config('twentyone.stream.music.various_artists', 'Various Artists');
+        } catch (Throwable) {
+            return 'Various Artists';
+        }
+    }
+
+    /**
+     * The configured playlist names (`twentyone.stream.music.playlists`), none where no config can be read.
+     *
+     * @return array<string, mixed>
+     */
+    private static function playlists(): array
+    {
+        try {
+            return (array) config('twentyone.stream.music.playlists', []);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
     /** The configured `min_artist_tracks`, at least 1; 1 (everyone plays) where no config can be read. */
     private static function minArtistTracks(): int
     {
@@ -385,17 +409,37 @@ final class MusicTimeline
         }
 
         // An artist with only a few songs would repeat them every round (user 2026-10-16: "Wenn wir von einem Artist
-        // nur einen einzelnen Track haben, dann wird dieser ganz oft gespielt. Diese Artists schalten wir erstmal ab,
-        // so lange wir nicht mehr als 5 Songs von ihnen haben"): they sit out until they have `min_artist_tracks`.
-        // Never down to fewer than two artists: then everyone plays.
+        // nur einen einzelnen Track haben, dann wird dieser ganz oft gespielt"): below `min_artist_tracks` they all
+        // share one turn as Various Artists (user 2026-10-17: "So eine Artist Sammelbecken für Various Artists …, wo
+        // wir alle sammeln, die wenige Tracks bei Wavlake haben"). The card still names each track's own artist.
         $min = self::minArtistTracks();
-        $enough = array_filter($byArtist, fn (array $files): bool => count($files) >= $min);
+        $various = self::variousArtists();
+        $playlists = self::playlists();
+        $grouped = [];
+        $pooled = [];
 
-        if (count($enough) < count($byArtist)) {
-            self::warnOnce('min-tracks', sprintf('music: %d artists with fewer than %d songs sit out: %s', count($byArtist) - count($enough), $min, implode(', ', array_keys(array_diff_key($byArtist, $enough)))));
+        foreach ($byArtist as $artist => $songs) {
+            // A playlist is a pool of its own (user 2026-10-17: "PlebRap ist aber eine eigene Kategorie des
+            // Sammelbeckens"): it never joins Various Artists, however few songs it holds.
+            $pool = count($songs) < $min && $artist !== MusicPlaylist::UNKNOWN_ARTIST && ! isset($playlists[$artist]);
+            $key = $pool ? $various : $artist;
+            $grouped[$key] = [...($grouped[$key] ?? []), ...$songs];
+
+            if ($pool) {
+                $pooled[] = $artist;
+            }
         }
 
-        return count($enough) >= 2 ? $enough : $byArtist;
+        // Never down to a single turn: then everyone keeps their own.
+        if (count($grouped) < 2) {
+            return $byArtist;
+        }
+
+        if ($pooled !== []) {
+            self::warnOnce('min-tracks', sprintf('music: %d artists with fewer than %d songs play as %s: %s', count($pooled), $min, $various, implode(', ', $pooled)));
+        }
+
+        return $grouped;
     }
 
     /**

@@ -130,6 +130,17 @@
   "evidence": "Profile 'JustAnotherNode' about 'Bitcoin, LN, Plebrap', website https://PlebRap.de; mutual follow with Too Bit To Fail. kind 0 seen on 2 of 7 general relays (nostr.mom, purplepag.es).",
   "confidence": "high"
  },
+ "SatStacker": {
+  "npub": null,
+  "pubkey": null,
+  "picture": null,
+  "lud16": null,
+  "qr_target": "https://wavlake.com/track/588e055e-b304-4670-83b3-4cd29797dbd7",
+  "qr_kind": "wavlake",
+  "youtube": null,
+  "evidence": "Unresolved on Nostr: 36 'SatStacker' profiles, none with PlebRap/music context (closest: npub for 'satstacker ... dad of 3' follows a PlebRap seed - not enough). No YouTube. Fallback is the PlebRap Wavlake track 'Bitcoin braucht dich nicht!' (zaps reach the PlebRap collective account, not him personally).",
+  "confidence": "low"
+ },
  "Mo": {
   "npub": null,
   "pubkey": null,
@@ -139,6 +150,17 @@
   "qr_kind": "wavlake",
   "youtube": null,
   "evidence": "Unresolved on Nostr: ambiguous name; only candidate 'mo' (mo@rizful.com, 'Music-Food-Bass', followed by two PlebRap accounts) shows no rap/PlebRap link - not accepted. Fallback is the PlebRap Wavlake track 'Bitcoin braucht dich nicht!' (zaps reach the PlebRap collective account).",
+  "confidence": "low"
+ },
+ "Hanni": {
+  "npub": null,
+  "pubkey": null,
+  "picture": null,
+  "lud16": null,
+  "qr_target": "https://wavlake.com/track/7b1a330d-71c4-49e4-83e9-2328b6a6dfd3",
+  "qr_kind": "wavlake",
+  "youtube": null,
+  "evidence": "Unresolved on Nostr: no profile with PlebRap context found (search plus follower/follow scan of the PlebRap accounts). Fallback is the PlebRap Wavlake track 'Papa Hodlt' (zaps reach the PlebRap collective account).",
   "confidence": "low"
  },
  "Kid": {

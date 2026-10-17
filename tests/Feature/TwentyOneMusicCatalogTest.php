@@ -93,8 +93,8 @@ test('the catalog credits every file of the old indexes exactly as the indexes d
         }
     }
 
-    // 154 until 2026-10-17, when the 16 indexed files of 13 artists left the library (user: "Wir brauchen sie nicht").
-    expect(count($legacy))->toBe(138)
+    // 154 until 2026-10-17, when the 14 indexed Wavlake files of 11 artists left the library (user: "Wir brauchen sie nicht").
+    expect(count($legacy))->toBe(140)
         ->and($differences)->toBe([])
         // Indexed, but not in the prod library the catalog was made from: the broken upload (~/music-broken) and the
         // four duplicates moved to disabled/ on 2026-10-16 (twentyone:music-duplicates).

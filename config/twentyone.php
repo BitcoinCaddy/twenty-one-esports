@@ -227,9 +227,17 @@ return [
             'catalog' => env('TWENTYONE_STREAM_MUSIC_CATALOG') ?: resource_path('data/music/catalog.json'),
             // Tracks at least between two of the same artist in the artist cycle, at least 1 (never twice in a row).
             'artist_gap' => (int) env('TWENTYONE_STREAM_MUSIC_ARTIST_GAP', 1),
-            // An artist plays only with at least this many songs in the library (user 2026-10-16: artists with five
-            // or fewer songs sit out until they have more; a single song would play every round).
+            // An artist takes its own turn only with at least this many songs (user 2026-10-16: a single song would
+            // play every round); below it, its songs join `various_artists`, one shared turn (user 2026-10-17).
             'min_artist_tracks' => (int) env('TWENTYONE_STREAM_MUSIC_MIN_ARTIST_TRACKS', 6),
+            'various_artists' => 'Various Artists',
+            // Playlists: artists merged into one artist of the cycle, so artists with few songs still play (user
+            // 2026-10-17: "PlebRap als einen Künstler ansehen" and keep that for others "die nicht so viele Tracks
+            // haben"). Name => the tracks it takes: by `credit_source` (a whole index) and/or by `artists` (names as the
+            // catalog credits them, any credited artist of a track). The card still names the track's own artist.
+            'playlists' => [
+                'PlebRap' => ['credit_source' => 'plebrap-index'],
+            ],
             // Fresh rounds for three days: an encoder that runs that long without a restart still hears no repeat.
             'list_hours' => 72,
             // How many times over the list is written (72 h x 2 = 6 days before an encoder would run out of music).
