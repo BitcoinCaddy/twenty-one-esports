@@ -114,13 +114,16 @@ final class TournamentLive
 
         if ($talk === null) {
             // A comment every five minutes no matter what (user 2026-10-15: "Zwang! auch wenn nichts passiert
-            // ist!"): when the model gives nothing usable, the standby duet carries the slot, and the next try
-            // comes in a minute, not after the whole interval.
+            // ist!"): when the model gives nothing usable, the standby duet carries the slot. A standby that
+            // aired holds the whole interval like any comment (user 2026-10-17: "es kommen ständig Breakings" -
+            // the minute retry made one come every minute while the model gave nothing); only a try that aired
+            // nothing retries in a minute.
             $talk = ['text' => self::STANDBY[array_rand(self::STANDBY)], 'speakers' => [DuetDirector::MARKUS, DuetDirector::SIRIUS]];
-            Cache::put(self::LAST, $now->getTimestamp() - $every + 60, 6 * 3600);
+            $queued = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':standby:'.$now->getTimestamp()), 74, $now,
+                topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']);
+            Cache::put(self::LAST, $queued !== null ? $now->getTimestamp() : $now->getTimestamp() - $every + 60, 6 * 3600);
 
-            return $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':standby:'.$now->getTimestamp()), 74, $now,
-                topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']) !== null ? 1 : 0;
+            return $queued !== null ? 1 : 0;
         }
 
         Cache::put(self::SAID.':'.$tournament->id, array_slice([...$said, mb_substr(str_replace("\n", ' ', $talk['text']), 0, 400)], -4), 12 * 3600);

@@ -766,9 +766,12 @@ class ScriptQueue
 
         $text = app(MusicTeasers::class)->write($next, $now);
 
+        // `airs_at` set like a teaser's (fillTeaser): with the blocks on, storeBlock() keeps a lead's own kind only
+        // when it airs at a slot (live 2026-10-17: three announcements ended voiced without a clip, part of no
+        // block, never on air); without blocks nothing changes - the clip is due at once either way.
         return $text !== null && $this->enqueue(CasterScript::MUSIC_TEASER, ScenePhase::BREAK, $text, $next['hash'], (int) ($settings['priority'] ?? 70), $now,
             source: CasterScript::SOURCE_AI, topic: 'music', maxAgeMinutes: (int) ($settings['max_age_minutes'] ?? 8),
-            speakers: array_fill(0, count(ScriptGuard::lines($text)), DuetDirector::MARKUS)) !== null ? 1 : 0;
+            speakers: array_fill(0, count(ScriptGuard::lines($text)), DuetDirector::MARKUS), airsAt: $now) !== null ? 1 : 0;
     }
 
     /**
