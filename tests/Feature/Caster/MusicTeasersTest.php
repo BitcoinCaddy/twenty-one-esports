@@ -295,11 +295,18 @@ it('reads the artist\'s last note relay by relay, newest wins, and a nothing is 
     expect($teasers->lastNote($next, $this->now))->toBe($read)
         ->and($reader->calls)->toBe(1);
 
+    // Eleven minutes ago speaks as a count, not a clock face (no warning, no digit).
+    $reader->answer = ['wss://one' => [SignedEvent::fromInput($note($this->now->getTimestamp() - 660, 'Elf Minuten Test.'))], 'wss://two' => null];
+    Cache::forget('caster:music_teaser:note:'.substr(sha1(MusicCatalog::artists()['ainsley-costello']['pubkey']), 0, 12));
+    $eleven = $teasers->lastNote($next, $this->now);
+    expect($eleven)->not->toBeNull()->and($eleven['ago'])->toBe('elf Minuten');
+
     // A nothing (every relay failed or empty) is cached the same way.
     $reader->answer = ['wss://one' => null];
+    $reader->calls = 0;
     $pubkeyTwo = MusicCatalog::artists()['arthur-yoria']['pubkey'];
     $second = ['artist' => 'Arthur Yoria', 'npub' => 'npub1tsswp93g2v7ukcmfy935j4c67kctu76vjdzu0w9yqrdcygc9j3xq9v2eef'];
     Cache::put('caster:music_teaser:note:'.substr(sha1($pubkeyTwo), 0, 12), false, now()->addMinutes(360));
     expect($teasers->lastNote($second, $this->now))->toBeNull()
-        ->and($reader->calls)->toBe(1);
+        ->and($reader->calls)->toBe(0);
 });

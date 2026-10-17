@@ -297,24 +297,45 @@ final class MusicTeasers
         ]));
     }
 
-    /** How long ago a note was posted, in spoken words (no digits). */
+    /** How long ago a note was posted, in spoken words (no digits). BroadcastClock::number() speaks clock faces; this speaks counts. */
     private static function ago(int $created, CarbonImmutable $now): string
     {
         $minutes = max(1, intdiv($now->getTimestamp() - $created, 60));
 
         if ($minutes < 60) {
-            return $minutes === 1 ? 'eine Minute' : BroadcastClock::number(min(59, $minutes)).' Minuten';
+            return $minutes === 1 ? 'eine Minute' : self::count($minutes).' Minuten';
         }
 
         $hours = intdiv($minutes, 60);
 
         if ($hours < 24) {
-            return $hours === 1 ? 'eine Stunde' : BroadcastClock::number(min(59, $hours)).' Stunden';
+            return $hours === 1 ? 'eine Stunde' : self::count($hours).' Stunden';
         }
 
         $days = intdiv($hours, 24);
 
-        return $days === 1 ? 'ein Tag' : BroadcastClock::number(min(365, $days)).' Tagen';
+        return $days === 1 ? 'ein Tag' : self::count($days).' Tagen';
+    }
+
+    /** A count as a spoken German word, up to ninety-nine (the guard lets no digits through, so it stays spoken). */
+    private static function count(int $n): string
+    {
+        $ones = ['null', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'];
+        $teens = ['zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn', 'fünfzehn', 'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn'];
+        $tens = [2 => 'zwanzig', 3 => 'dreißig', 4 => 'vierzig', 5 => 'fünfzig', 6 => 'sechzig', 7 => 'siebzig', 8 => 'achtzig', 9 => 'neunzig'];
+
+        if ($n < 10) {
+            return $ones[$n];
+        }
+
+        if ($n < 20) {
+            return $teens[$n - 10];
+        }
+
+        $one = $n % 10;
+        $ten = intdiv($n, 10);
+
+        return $one === 0 ? $tens[$ten] : $ones[$one].'und'.$tens[$ten];
     }
 
     /** A string that says something, else null. */
