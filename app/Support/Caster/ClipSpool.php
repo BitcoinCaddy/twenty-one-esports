@@ -470,6 +470,17 @@ class ClipSpool
             return ['clip' => $clip, 'caption' => null, 'source' => 'scene'];
         }
 
+        // No scene clip waiting: a music announcement (MusicTeasers) plays before the filler — the gap fills with
+        // music, and it tells what the music plays next. It expires with its window, so a late one never airs.
+        // This stage is the blocks-off path: with TV_COMMENTARY_BLOCKS on, the claim renders the announcement as a
+        // block clip (ClipSpool::storeBlock(), its airs_at is null) and nextBlock() plays it before any scene. In
+        // both worlds the moment stays a programme gap, because fillMusicTeaser() only writes while the spool is empty.
+        $announcement = (clone $ready)->where('kind', CasterScript::MUSIC_TEASER)->orderBy('id')->first();
+
+        if ($announcement !== null) {
+            return ['clip' => $announcement, 'caption' => null, 'source' => 'music'];
+        }
+
         // No scene clip waiting, whatever its length (user 2026-10-15): the filler played longest ago (updated_at
         // moves on every play). No filler while the pattern fallback is off (user 2026-10-12: "KEINE SICH
         // WIEDERHOLENDEN FÜLLSÄTZE MEHR"): music instead.

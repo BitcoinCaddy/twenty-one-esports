@@ -9,6 +9,7 @@ use App\Support\Caster\Blocks\DayStock;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\Programme\Announcements;
 use App\Support\Caster\Programme\BroadcastClock;
+use App\Support\Caster\Programme\MusicTeasers;
 use App\Support\Caster\Programme\NewsBulletin;
 use App\Support\Caster\Programme\NewsTalk;
 use App\Support\Caster\Programme\PodcastPromos;
@@ -260,6 +261,9 @@ class ScriptQueue
             LengthMix::written(LengthMix::SCENE, $long);
             $written++;
         }
+
+        // A music announcement fills a gap the scenes could not (MusicTeasers): no clip ready, no programme near.
+        $written += $this->fillMusicTeaser($now);
 
         return $written;
     }
@@ -718,6 +722,62 @@ class ScriptQueue
         return $text !== null && $this->enqueue(CasterScript::TEASER, ScenePhase::BREAK, $text, $hash, (int) ($settings['priority'] ?? 72), $now,
             source: CasterScript::SOURCE_AI, topic: $target['type'], speakers: array_fill(0, count(ScriptGuard::lines($text)), DuetDirector::MARKUS),
             airsAt: $airsAt, expiresAt: $target['starts_at']->subSeconds(15)) !== null ? 1 : 0;
+    }
+
+    /**
+     * A music announcement (MusicTeasers): what the music timeline really plays next, by the artist's collected
+     * data (user 2026-10-17). Only between the programme — no clip ready, no slot the clock places or stock block
+     * within `guard_minutes` — and not every track: one at most per `min_gap_minutes`, at `chance` per
+     * opportunity, capped per day. Expires after `max_age_minutes`, so a late one announces nothing that played.
+     */
+    public function fillMusicTeaser(CarbonImmutable $now): int
+    {
+        $settings = (array) config('tv.commentary.programme.music_teasers', []);
+
+        if (! self::aiEnabled() || ! MusicTeasers::enabled() || QuietHours::active($now)
+            || PodcastReplay::active($now) || LiveOnly::active($now)
+            || app(ClipSpool::class)->hasFresh($now)
+            || $this->programmeNear($now, (int) ($settings['guard_minutes'] ?? 4))) {
+            return 0;
+        }
+
+        if (CasterScript::query()->where('kind', CasterScript::MUSIC_TEASER)->where('created_at', '>', $now->subMinutes((int) ($settings['min_gap_minutes'] ?? 25)))->exists()
+            || mt_rand(0, 999) >= 1000 * (float) ($settings['chance'] ?? 0.35)) {
+            return 0;
+        }
+
+        $next = MusicTeasers::nextTrack($now, (int) ($settings['lead_seconds'] ?? 45));
+
+        if ($next === null
+            || CasterScript::query()->where('kind', CasterScript::MUSIC_TEASER)->where('facts_hash', $next['hash'])->exists()) {
+            return 0;
+        }
+
+        $text = app(MusicTeasers::class)->write($next, $now);
+
+        return $text !== null && $this->enqueue(CasterScript::MUSIC_TEASER, ScenePhase::BREAK, $text, $next['hash'], (int) ($settings['priority'] ?? 70), $now,
+            source: CasterScript::SOURCE_AI, topic: 'music', maxAgeMinutes: (int) ($settings['max_age_minutes'] ?? 8),
+            speakers: array_fill(0, count(ScriptGuard::lines($text)), DuetDirector::MARKUS)) !== null ? 1 : 0;
+    }
+
+    /**
+     * Whether programme starts within `$minutes`: a script the clock places (`airs_at`, a bulletin, a teaser, a
+     * rubric) or the next bulletin slot of the broadcast clock. A stock block that waits is a clip and keeps
+     * ClipSpool::hasFresh() true; a podcast replay is a gate of its own.
+     */
+    private function programmeNear(CarbonImmutable $now, int $minutes): bool
+    {
+        if ($minutes <= 0) {
+            return false;
+        }
+
+        if (CasterScript::query()->where('airs_at', '>', $now->utc())->where('airs_at', '<=', $now->addMinutes($minutes)->utc())->exists()) {
+            return true;
+        }
+
+        $bulletin = BroadcastClock::fromConfig()->nextBulletin($now);
+
+        return $bulletin !== null && 60 * $minutes >= $bulletin['key'] - $now->getTimestamp();
     }
 
     /**

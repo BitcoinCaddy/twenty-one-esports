@@ -414,6 +414,13 @@ return [
             'pause_seconds' => 0.3,
             // The share of talk clips followed by a music gap that get a power intro over the gap's first seconds (by day).
             'power_intro_share' => (float) env('TV_IMAGING_POWER_INTRO_SHARE', 0.25),
+            // A short jingle over a track change of the music while no clip is on air (user 2026-10-17: "ganz kurze
+            // Jingles bei einem Musik-Titel-Wechsel, aber nicht immer, nur bei ruhigen Zeitphasen"): this share of the
+            // changes, at most one within `music_change_every_minutes`, none just before a bulletin or rubric slot; in
+            // the quiet hours (the calm stretch of the day) the short station ID only.
+            'music_change_share' => (float) env('TV_IMAGING_MUSIC_CHANGE_SHARE', 0.2),
+            'music_change_night_share' => (float) env('TV_IMAGING_MUSIC_CHANGE_NIGHT_SHARE', 0.15),
+            'music_change_every_minutes' => (int) env('TV_IMAGING_MUSIC_CHANGE_EVERY_MINUTES', 20),
             // Under this many seconds between a jingle's end and the next clip's start, the next clip opens without one.
             'back_to_back_seconds' => 12,
             // The bed a format's opener and promo are produced over (JingleSynth::LOOP_BEDS), on the workstation; and the
@@ -1148,6 +1155,23 @@ return [
                 'after_bulletin' => true,
                 'priority' => 72,
                 'daily_cap' => (int) env('TV_COMMENTARY_TEASER_DAILY_CAP', 120),
+            ],
+            // Music announcements (user 2026-10-17: "Im Radio werden doch auch die Musik-Titel angekündigt, die als
+            // nächstes gespielt werden … aber nicht jedes Stück, sondern ab und an, wenn es passt"): the track the
+            // music timeline really plays next, by the artist's collected data (Nostr identity, Wavlake, YouTube,
+            // lightning address, the last kind-1 note when there is an npub; App\Support\Caster\Programme\MusicTeasers).
+            // Written only in a gap between the programme — no clip ready, no clock slot or stock block within
+            // `guard_minutes` — at most one per `min_gap_minutes`, at `chance` per opportunity, capped per day; the
+            // script expires after `max_age_minutes`, so a late one never announces a track that has played.
+            'music_teasers' => [
+                'enabled' => (bool) env('TV_COMMENTARY_MUSIC_TEASERS', true),
+                'chance' => (float) env('TV_COMMENTARY_MUSIC_TEASER_CHANCE', 0.35),
+                'min_gap_minutes' => (int) env('TV_COMMENTARY_MUSIC_TEASER_MIN_GAP_MINUTES', 25),
+                'guard_minutes' => 4,
+                'lead_seconds' => 45,
+                'max_age_minutes' => 8,
+                'priority' => 70,
+                'daily_cap' => (int) env('TV_COMMENTARY_MUSIC_TEASER_DAILY_CAP', 16),
             ],
         ],
 

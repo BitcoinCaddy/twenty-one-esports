@@ -72,6 +72,9 @@ class CasterScript extends Model
     /** A programme teaser before a slot (App\Support\Caster\Programme\Announcements): played at a clip boundary from `airs_at` until it expires. */
     public const TEASER = 'teaser';
 
+    /** A music announcement: the track the music timeline really plays next, by the artist's collected data (MusicTeasers). */
+    public const MUSIC_TEASER = 'music_teaser';
+
     /** The stand-in script of a replayed block from the workstation's archive (P6 replay): voiced already, never claimed. */
     public const REPLAY = 'replay';
 

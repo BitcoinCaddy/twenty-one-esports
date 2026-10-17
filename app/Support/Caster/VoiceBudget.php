@@ -111,7 +111,7 @@ final class VoiceBudget
             // A live tournament comment right after the chat reactions: a reply to a viewer goes first.
             $kind === CasterScript::RUBRIC && $topic === TournamentLive::TOPIC => self::NEWS,
             $kind === CasterScript::NEWS, $kind === CasterScript::RUBRIC && in_array($topic, [NewsTalk::TOPIC, SportWeather::TOPIC], true) => self::NEWS,
-            in_array($kind, [CasterScript::RUBRIC, CasterScript::TEASER], true) => self::RUBRIC,
+            in_array($kind, [CasterScript::RUBRIC, CasterScript::TEASER, CasterScript::MUSIC_TEASER], true) => self::RUBRIC,
             in_array($kind, [CasterScript::HISTORY, CasterScript::FOLLOWED], true), $topic === WorldMemory::CALLBACK_TOPIC => self::SEGMENT,
             default => self::SCENE,
         };
@@ -132,7 +132,7 @@ final class VoiceBudget
             .' when kind in (?, ?) or (kind = ? and topic in ('.$marks($shows).')) then 1'
             .' when kind in (?, ?) or scene = ? then 2'
             .' when kind = ? or (kind = ? and topic in (?, ?, ?)) then 3'
-            .' when kind in (?, ?) then 4'
+            .' when kind in (?, ?, ?) then 4'
             .' when kind in (?, ?) or topic = ? then 5'
             .' else 6 end',
             [
@@ -140,7 +140,7 @@ final class VoiceBudget
                 CasterScript::PODCAST_INTRO, CasterScript::PODCAST_OUTRO, CasterScript::RUBRIC, ...$shows,
                 CasterScript::CHAT, CasterScript::LIVE, ChatWishes::SCENE,
                 CasterScript::NEWS, CasterScript::RUBRIC, NewsTalk::TOPIC, SportWeather::TOPIC, TournamentLive::TOPIC,
-                CasterScript::RUBRIC, CasterScript::TEASER,
+                CasterScript::RUBRIC, CasterScript::TEASER, CasterScript::MUSIC_TEASER,
                 CasterScript::HISTORY, CasterScript::FOLLOWED, WorldMemory::CALLBACK_TOPIC,
             ],
         ];

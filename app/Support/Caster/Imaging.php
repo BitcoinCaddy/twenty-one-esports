@@ -81,6 +81,9 @@ final class Imaging
     /** When the jingle the last clip closed with (or the power intro after it) ends, unix seconds; null: none. */
     private ?int $tailEndsAt = null;
 
+    /** When a jingle rode a track change of the music last (unix seconds), null: none yet. */
+    private ?int $trackChangeAt = null;
+
     /** @var Closure(): float */
     private Closure $random;
 
@@ -259,6 +262,47 @@ final class Imaging
         }
 
         return $intro;
+    }
+
+    /**
+     * A short jingle over a track change of the music (user 2026-10-17: "ganz kurze Jingles … bei einem
+     * Musik-Titel-Wechsel … aber nicht immer, nur bei ruhigen Zeitphasen"): the Anchor alone on the timeline while
+     * no clip is on air, the stream music ducks under it. Not every change — `music_change_share` of them, at most
+     * one within `music_change_every_minutes` — and none in the two minutes before a bulletin or rubric slot. In
+     * the quiet hours only the short station ID (the quiet hours' own imaging rule).
+     *
+     * @return array{id: string, line: string, category: string, file: string, seconds: float}|null
+     */
+    public function trackChange(CarbonImmutable $now): ?array
+    {
+        $night = QuietHours::active($now);
+        $share = (float) ($this->settings[$night ? 'music_change_night_share' : 'music_change_share'] ?? 0.0);
+
+        if ($share <= 0.0 || ($this->random)() >= $share) {
+            return null;
+        }
+
+        if ($this->trackChangeAt !== null && $now->getTimestamp() - $this->trackChangeAt < 60 * (int) ($this->settings['music_change_every_minutes'] ?? 20)) {
+            return null;
+        }
+
+        $clock = $this->clock ?? BroadcastClock::fromConfig();
+
+        foreach ($clock->enabled() ? $clock->upcoming($now, 2) : [] as $slot) {
+            if (BroadcastClock::isBulletin($slot['type']) || $slot['type'] === BroadcastClock::RUBRIC) {
+                return null;
+            }
+        }
+
+        $jingle = $this->library()->pick($night ? ['station-short'] : ['sweeper', 'liner', 'station-short'], $now);
+
+        if ($jingle !== null) {
+            $this->trackChangeAt = $now->getTimestamp();
+            $this->tailEndsAt = $now->getTimestamp() + (int) ceil($jingle['seconds']);
+            $this->previousTalk = false;
+        }
+
+        return $jingle;
     }
 
     /**

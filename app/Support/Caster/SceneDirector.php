@@ -160,6 +160,9 @@ final class SceneDirector
     /** The current run: its number, the position of the clip on air (0: no run), the run clips still to come. */
     private int $runId = 0;
 
+    /** The track change a music-change jingle was decided for (unix seconds), 0.0: none yet. */
+    private float $musicChangeDone = 0.0;
+
     private int $runPosition = 0;
 
     private int $runLeft = 0;
@@ -312,6 +315,11 @@ final class SceneDirector
 
         // A music break is planned at the boundary ahead, or one already planned is no longer whole.
         $this->planMusicBreak($now);
+
+        // A short jingle over the next track change of the music while the air is calm (Imaging::trackChange()).
+        if ($this->clip === null) {
+            $this->jingleTrackChange($now);
+        }
 
         // A programme block about to end: the next block joins it seamlessly, a breath after its last word (P6).
         if ($this->clip !== null && $this->clip->isBlock()) {
@@ -623,6 +631,41 @@ final class SceneDirector
         $start = $now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05);
         $this->timeline->start($pcm, [round(Pcm::seconds($pcm, $this->timeline->rate), 3)], $start);
         $this->imagingOnAir = ['power-intro'];
+    }
+
+    /**
+     * A short jingle over the next track change of the music (Imaging::trackChange(), user 2026-10-17: "ganz kurze
+     * Jingles bei einem Musik-Titel-Wechsel … nur bei ruhigen Zeitphasen"): only while the air is calm — no clip on
+     * air or planned, nothing held or due — and once per change, decided even when the imaging gives nothing. The
+     * jingle rides the change, the stream music ducks under it.
+     */
+    private function jingleTrackChange(float $now): void
+    {
+        if ($this->imaging === null || $this->musicTracks === null
+            || ($this->timeline->endsAt() ?? 0.0) > $now || $this->held !== [] || $this->part !== null
+            || $this->dueBulletin($now) !== null) {
+            return;
+        }
+
+        foreach (($this->musicTracks)($now + 0.2, $now + 2.5) as $track) {
+            if ((float) $track['start'] <= $this->musicChangeDone) {
+                continue;
+            }
+
+            $jingle = $this->imaging->trackChange(CarbonImmutable::createFromTimestamp($now));
+            $pcm = $jingle === null ? null : $this->imaging->pcm($jingle['file']);
+
+            if ($pcm !== null) {
+                $start = max($now + max((float) ($this->settings['lead_in_seconds'] ?? 0.5), (float) ($this->settings['feed_lead_seconds'] ?? 0.0) + 0.05), (float) $track['start'] - 0.8);
+                $this->timeline->start($pcm, [round(Pcm::seconds($pcm, $this->timeline->rate), 3)], $start);
+                $this->imagingOnAir = ['music-change'];
+            }
+
+            // This change is decided, jingle or not: it is not asked again.
+            $this->musicChangeDone = (float) $track['start'];
+
+            return;
+        }
     }
 
     /**
