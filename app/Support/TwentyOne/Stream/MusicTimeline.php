@@ -105,7 +105,14 @@ final class MusicTimeline
         $gap = $this->gap();
         $pool = $sources === [] ? [...$priority, ...$vocals, ...$instrumentals] : array_merge(...$sources);
         $fingerprint = self::fingerprint($vocals, $instrumentals, $perVocal, $priority, $run, $sources === [] ? [] : $pool, $gap);
+        // Probing new files takes real time (243 new songs: 55 s on prod, 2026-10-16), and the encoder starts only
+        // after it: `$now` moves on by that time, or the music starts that far behind the wall clock that the
+        // now-playing card and the music breaks follow (measured live 2026-10-17: the card ~56 s ahead of the song).
+        $probeStart = microtime(true);
         $durations = $this->durations($pool, $state['durations'] ?? []);
+        // (Below a second it is noise: a kept library probes nothing, and tests stay exact.)
+        $probed = microtime(true) - $probeStart;
+        $now += $probed >= 1.0 ? $probed : 0.0;
         // The artist cycle never starts over for a changed library or setting (user 2026-10-16); the older orders do.
         $restarted = ($state['entries'] ?? []) === [] || ($sources === [] && ($state['fingerprint'] ?? null) !== $fingerprint);
 

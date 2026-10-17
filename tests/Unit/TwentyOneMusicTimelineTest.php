@@ -279,3 +279,24 @@ test('the first start of the artist cycle counts the tracks of the old timeline 
         ->and($next('B'))->toBe("{$this->dir}/b-2__v1.m4a")
         ->and($next('DJ Bitcoin'))->not->toBe($this->instrumentals[0]);
 });
+
+test('the time spent probing new files moves the start on, so the music starts where the wall clock is when the encoder starts', function () {
+    [$sources, $artist] = cycleLibrary($this->dir, $this->instrumentals);
+    // Every probe takes 0.15 s of real time: the library of the cycle probes well over a second in all.
+    $slow = new MusicTimeline($this->dir.'/timeline.json', function (): float {
+        usleep(150_000);
+
+        return 100.0;
+    }, 180, 25, 1, $artist);
+    $pool = count(array_merge(...$sources));
+
+    $first = (new MusicTimeline($this->dir.'/timeline.json', fn (): float => 100.0, 180, 25, 1, $artist))->from([], [], 1, 1000.0, 2, new Randomizer(new Mt19937(1)), [], [3, 5], $sources);
+    // New files (changed mtimes) make every one probe again; the start is asked for at 1050 s.
+    foreach (array_merge(...$sources) as $file) {
+        touch($file, time() + 5);
+    }
+    $later = $slow->from([], [], 1, 1050.0, 2, new Randomizer(new Mt19937(2)), [], [3, 5], $sources);
+
+    expect($first['files'][0])->toBe($later['files'][0])
+        ->and($later['inpoint'])->toBeGreaterThanOrEqual(50.0 + 0.15 * $pool * 0.9);
+});
