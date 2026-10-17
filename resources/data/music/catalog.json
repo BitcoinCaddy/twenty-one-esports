@@ -663,6 +663,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "At Least You've Been Told - Arthur Yoria__v1.m4a",
+            "id": "2119e6ec0bdf",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "At Least You've Been Told",
+            "duration": 170.67,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.3,
+            "fingerprint": "bf4ed98b419d57ce",
+            "sha1": "9ab27d2951e579517985f2c35ce086ae70fe658e",
+            "size": 2852533,
+            "mtime": 1792235852,
+            "credit_source": "manual"
+        },
+        {
             "file": "Babilonios - Cristo Currensi__v1.m4a",
             "id": "0577136cde46",
             "artists": [
@@ -731,6 +748,23 @@
             "sha1": "a6e23cd75c9a24c70caa279f3e831c838eb6947d",
             "size": 5629761,
             "mtime": 1792152775,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Bitaxe Referendum - Fundamentals__v1.m4a",
+            "id": "f86005f24107",
+            "artists": [
+                "fundamentals"
+            ],
+            "title": "Bitaxe Referendum",
+            "duration": 159.32,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "e3a870693db5590a",
+            "sha1": "56aacf74e8a7f8eba7994a341297d5737774dae5",
+            "size": 2619181,
+            "mtime": 1792235636,
             "credit_source": "manual"
         },
         {
@@ -1009,6 +1043,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Breathe - Greensands__v1.m4a",
+            "id": "a24023494425",
+            "artists": [
+                "greensands"
+            ],
+            "title": "Breathe",
+            "duration": 266.9,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "8251504b4f26d49c",
+            "sha1": "9dcdb6cea1b30255e94fa1d4ea8005938c16c79b",
+            "size": 4367916,
+            "mtime": 1792235608,
+            "credit_source": "manual"
+        },
+        {
             "file": "Broken Silence - Contra__v1.m4a",
             "id": "598288b0af32",
             "artists": [
@@ -1162,6 +1213,23 @@
             "sha1": "0e0e0c44909e02e1e386bb65d3e1eecb8c550ccb",
             "size": 5458737,
             "mtime": 1792163385,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Call Me - Arthur Yoria__v1.m4a",
+            "id": "ea025656b401",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Call Me",
+            "duration": 208.41,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -3.5,
+            "fingerprint": "262b9160ce882508",
+            "sha1": "605a6141c4e5c7b6243c210d459517cdd2396afb",
+            "size": 3394230,
+            "mtime": 1792235732,
             "credit_source": "manual"
         },
         {
@@ -2244,6 +2312,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Find Out What You Want - Greensands__v1.m4a",
+            "id": "21d329bd59a5",
+            "artists": [
+                "greensands"
+            ],
+            "title": "Find Out What You Want",
+            "duration": 218.42,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -3.2,
+            "fingerprint": "9f724a9c5d790b0e",
+            "sha1": "46dde87481954b7657c9957d2e840d0ed59622e6",
+            "size": 3583375,
+            "mtime": 1792235583,
+            "credit_source": "manual"
+        },
+        {
             "file": "Fine Print - Contra__v1.m4a",
             "id": "5f8f052ed297",
             "artists": [
@@ -2596,6 +2681,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Going Gold - Greensands__v1.m4a",
+            "id": "15de00840667",
+            "artists": [
+                "greensands"
+            ],
+            "title": "Going Gold",
+            "duration": 183.02,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -2.7,
+            "fingerprint": "e712eb21a6b1b729",
+            "sha1": "f1369d4e4cb3857789e9d22ddf08a774bb75da75",
+            "size": 2991380,
+            "mtime": 1792235622,
+            "credit_source": "manual"
+        },
+        {
             "file": "Gov cucks - Zazawowow__v1.m4a",
             "id": "253810bcb236",
             "artists": [
@@ -2758,6 +2860,23 @@
             "wavlake_track_id": "f6b10ca6-8119-4b55-82f2-ec2b60e63fce"
         },
         {
+            "file": "Here To Stay - Arthur Yoria__v1.m4a",
+            "id": "9a508b6efd7b",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Here To Stay",
+            "duration": 315.8,
+            "bitrate": 132,
+            "lufs": -15.0,
+            "true_peak": -4.3,
+            "fingerprint": "c52f14a5f2d6eb6d",
+            "sha1": "ba96d0cb3d10af019a0dd556fd49776eb5c5a43d",
+            "size": 5256547,
+            "mtime": 1792235748,
+            "credit_source": "manual"
+        },
+        {
             "file": "Hero - Joe Martin__v1.m4a",
             "id": "1508d31fb3c3",
             "artists": [
@@ -2849,6 +2968,23 @@
             "sha1": "c344c2d737298f9d1bde12258613a5395b579214",
             "size": 2728945,
             "mtime": 1792154746,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Hija De Caos - Arthur Yoria__v1.m4a",
+            "id": "d94fb0e6567b",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Hija De Caos",
+            "duration": 204.31,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -2.6,
+            "fingerprint": "2bc355eecbc5df23",
+            "sha1": "4f3c5e8b88840e3af38533a82f6d0a7a253e3c35",
+            "size": 3324434,
+            "mtime": 1792235693,
             "credit_source": "manual"
         },
         {
@@ -3002,6 +3138,40 @@
             "sha1": "c29ab97878cf355d20ad81c3e9747a90fc8eee40",
             "size": 5011192,
             "mtime": 1792152718,
+            "credit_source": "manual"
+        },
+        {
+            "file": "I'll Be Here Awake - Arthur Yoria__v1.m4a",
+            "id": "2b0ef95cc16a",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "I'll Be Here Awake",
+            "duration": 128.64,
+            "bitrate": 130,
+            "lufs": -16.9,
+            "true_peak": -3.4,
+            "fingerprint": "ab5e080a1c1d7c21",
+            "sha1": "f33f66180102390e1509f3da7eda3474ea7587e5",
+            "size": 2120285,
+            "mtime": 1792235707,
+            "credit_source": "manual"
+        },
+        {
+            "file": "I'll Pretend - Arthur Yoria__v1.m4a",
+            "id": "7ddc25447464",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "I'll Pretend",
+            "duration": 207.01,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -3.5,
+            "fingerprint": "0654077b65ea574f",
+            "sha1": "9cb47b5b130c521310a29632c20610d004c59889",
+            "size": 3387845,
+            "mtime": 1792235789,
             "credit_source": "manual"
         },
         {
@@ -3300,6 +3470,23 @@
             "sha1": "943a8ecc19cdc67543d88ae991d50af08f35298a",
             "size": 4590579,
             "mtime": 1792164513,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Kid Yourself - Greensands__v1.m4a",
+            "id": "d5357a36c118",
+            "artists": [
+                "greensands"
+            ],
+            "title": "Kid Yourself",
+            "duration": 199.53,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -2.9,
+            "fingerprint": "a1c9a80364dc2bf4",
+            "sha1": "1bc9e91ebc58d3c5a627311b74e7d60ce7ccefbc",
+            "size": 3293072,
+            "mtime": 1792235557,
             "credit_source": "manual"
         },
         {
@@ -4297,6 +4484,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "P.S.A - Arthur Yoria__v1.m4a",
+            "id": "5354eb0a1dac",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "P.S.A",
+            "duration": 152.35,
+            "bitrate": 131,
+            "lufs": -15.0,
+            "true_peak": -3.9,
+            "fingerprint": "3ba594c6dca972b2",
+            "sha1": "0da9919b498a08e19b82477b0fd6c9e69ab74e8e",
+            "size": 2523830,
+            "mtime": 1792235778,
+            "credit_source": "manual"
+        },
+        {
             "file": "Paper Chain - Contra__v1.m4a",
             "id": "6ea319c48cc5",
             "artists": [
@@ -4311,6 +4515,23 @@
             "sha1": "42d032c08fd416ff1992a822f82ae71ac0e0ed6a",
             "size": 2799294,
             "mtime": 1792165065,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Permanent - Arthur Yoria__v1.m4a",
+            "id": "664af665d4bc",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Permanent",
+            "duration": 173.59,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -5.6,
+            "fingerprint": "734acbc12316415d",
+            "sha1": "2c41d5e0c8e19148045c354b6a6dddf873d94341",
+            "size": 2837955,
+            "mtime": 1792235721,
             "credit_source": "manual"
         },
         {
@@ -4977,6 +5198,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Sevilla - Arthur Yoria__v1.m4a",
+            "id": "79d1cd17c88d",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Sevilla",
+            "duration": 530.4,
+            "bitrate": 129,
+            "lufs": -15.3,
+            "true_peak": -2.8,
+            "fingerprint": "7c24d7e313294378",
+            "sha1": "40b1019f5b0ecd2e5ccdbc058d77abbb295e2f6c",
+            "size": 8660510,
+            "mtime": 1792235839,
+            "credit_source": "manual"
+        },
+        {
             "file": "Shadows On The Windowpane - Contra__v1.m4a",
             "id": "3d83f9218887",
             "artists": [
@@ -5025,6 +5263,23 @@
             "sha1": "8e2946484153951b5317a416a14b1ac9d287b9f4",
             "size": 3977763,
             "mtime": 1792165014,
+            "credit_source": "manual"
+        },
+        {
+            "file": "She Looks Like You - Arthur Yoria__v1.m4a",
+            "id": "4051d82395f3",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "She Looks Like You",
+            "duration": 205.68,
+            "bitrate": 130,
+            "lufs": -15.1,
+            "true_peak": -5.0,
+            "fingerprint": "aee3553e673a9d09",
+            "sha1": "6dde9a2e46bf2b022e1439673afe3a3d017e4bd3",
+            "size": 3371824,
+            "mtime": 1792235769,
             "credit_source": "manual"
         },
         {
@@ -5190,6 +5445,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Sleep Is On The Way - Arthur Yoria__v1.m4a",
+            "id": "6cf8b02db84c",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Sleep Is On The Way",
+            "duration": 161.52,
+            "bitrate": 129,
+            "lufs": -15.1,
+            "true_peak": -4.6,
+            "fingerprint": "6c0720c0db6d8f19",
+            "sha1": "ba57a152a4d1aac6f36bb3e740738d1417f0d248",
+            "size": 2637027,
+            "mtime": 1792235758,
+            "credit_source": "manual"
+        },
+        {
             "file": "Sleeper Current - Under The Mulga Groove__v1.m4a",
             "id": "e6b9e3cf0592",
             "artists": [
@@ -5326,6 +5598,23 @@
             "sha1": "34e80d3ebcd1d98aac69c0322447973939686e1f",
             "size": 4022091,
             "mtime": 1792164355,
+            "credit_source": "manual"
+        },
+        {
+            "file": "Spay And Neuter - Arthur Yoria__v1.m4a",
+            "id": "7e5823e883e0",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Spay And Neuter",
+            "duration": 260.08,
+            "bitrate": 129,
+            "lufs": -15.0,
+            "true_peak": -2.0,
+            "fingerprint": "e59bface4544d27c",
+            "sha1": "76fbfbe61333e5cef7c050a8064d50dbe8ed0eac",
+            "size": 4234934,
+            "mtime": 1792235667,
             "credit_source": "manual"
         },
         {
@@ -5614,6 +5903,23 @@
             "qr_target": "joe@nostrich.org",
             "qr_kind": "lud16",
             "wavlake_track_id": "24bc2346-0b40-4816-9434-400684844707"
+        },
+        {
+            "file": "Talking for the rest of the world - Greensands__v1.m4a",
+            "id": "f7b53116f4cd",
+            "artists": [
+                "greensands"
+            ],
+            "title": "Talking for the rest of the world",
+            "duration": 214.29,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -3.9,
+            "fingerprint": "a02c962bab1769d3",
+            "sha1": "cb9524a24550beaea45eb41ccd8c45693923a4b6",
+            "size": 3508323,
+            "mtime": 1792235546,
+            "credit_source": "manual"
         },
         {
             "file": "Teeth In The Halo - Contra__v1.m4a",
@@ -6302,6 +6608,23 @@
             "credit_source": "manual"
         },
         {
+            "file": "Upward Social Mobility - Arthur Yoria__v1.m4a",
+            "id": "e1d7a0688906",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "Upward Social Mobility",
+            "duration": 225.68,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -5.4,
+            "fingerprint": "65931cdd5ceb0f15",
+            "sha1": "b1ce6ae449e1d3e8e4df92affcbf41349d7554d3",
+            "size": 3642623,
+            "mtime": 1792235682,
+            "credit_source": "manual"
+        },
+        {
             "file": "Vibe Coding - Contra__v1.m4a",
             "id": "d671b6160bf7",
             "artists": [
@@ -6509,6 +6832,23 @@
             "credit_source": "wavlake-index"
         },
         {
+            "file": "Wasting Time - Greensands__v1.m4a",
+            "id": "c8de87676daf",
+            "artists": [
+                "greensands"
+            ],
+            "title": "Wasting Time",
+            "duration": 240.52,
+            "bitrate": 130,
+            "lufs": -15.0,
+            "true_peak": -4.0,
+            "fingerprint": "50088c8c4708f523",
+            "sha1": "dfa3015250f1e80db020f6010ef1e48307cadb99",
+            "size": 3950534,
+            "mtime": 1792235571,
+            "credit_source": "manual"
+        },
+        {
             "file": "Watermark - Under The Mulga Groove__v1.m4a",
             "id": "69e4dfc9a53e",
             "artists": [
@@ -6560,6 +6900,40 @@
             "sha1": "d7b8e3cddf409d242ecd9b36b675349fa1c59db2",
             "size": 4129711,
             "mtime": 1792154713,
+            "credit_source": "manual"
+        },
+        {
+            "file": "We Are The Rat - Arthur Yoria__v1.m4a",
+            "id": "8dd2e14b1125",
+            "artists": [
+                "arthur-yoria"
+            ],
+            "title": "We Are The Rat",
+            "duration": 123.46,
+            "bitrate": 128,
+            "lufs": -15.0,
+            "true_peak": -2.8,
+            "fingerprint": "70bae14360eef50e",
+            "sha1": "21a436eea25b203c5573b122e01fa9689d603376",
+            "size": 2001017,
+            "mtime": 1792235653,
+            "credit_source": "manual"
+        },
+        {
+            "file": "We made it 100K - Fundamentals__v1.m4a",
+            "id": "cc22b2740e47",
+            "artists": [
+                "fundamentals"
+            ],
+            "title": "We made it 100K",
+            "duration": 199.44,
+            "bitrate": 131,
+            "lufs": -15.1,
+            "true_peak": -3.4,
+            "fingerprint": "ccc93d7b9ffee2a4",
+            "sha1": "d6e0f7501b68c717b9a56caa1d95072e1073c6d3",
+            "size": 3291713,
+            "mtime": 1792235646,
             "credit_source": "manual"
         },
         {
