@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Sleep;
 
 /*
  * The nightly Wavlake sync (plan "Wavlake-Sync", user 2026-10-17: "Automatisches Abholen von neuen Tracks von Wavlake
@@ -34,10 +35,13 @@ beforeEach(function () {
         'twentyone.stream.music.wavlake_sync.artists' => ['test-artist' => 'Test Artist'],
         'twentyone.stream.music.wavlake_sync.state' => $this->root.'/sync/state.json',
         'twentyone.stream.music.wavlake_sync.per_run' => 10,
+        'twentyone.stream.music.wavlake_sync.pause_ms' => 0,
         // Never a real pkill from a test: the test that checks the restart fakes it and switches it on.
         'twentyone.stream.music.wavlake_sync.restart_stream' => false,
     ]);
     MusicCredits::flush();
+    // The 429 retry waits seconds in production; not here.
+    Sleep::fake();
 });
 
 afterEach(function () {
@@ -81,9 +85,12 @@ test('the sync adds new tracks of a listed artist to the overlay, skips known id
         ['id' => $id('2'), 'title' => 'Same Song Again', 'mediaUrl' => $cdn('2'), 'releaseDate' => '2026-10-15T00:00:00Z'],
         ['id' => $id('3'), 'title' => 'Elsewhere', 'mediaUrl' => 'https://evil.example/track.mp3', 'releaseDate' => '2026-10-14T00:00:00Z'],
         ['id' => $id('4'), 'title' => 'Older/One`', 'mediaUrl' => $cdn('4'), 'releaseDate' => '2025-01-01T00:00:00Z'],
+        // A title the artist already has (an import before the sync, without a Wavlake id): known, never downloaded.
+        ['id' => $id('5'), 'title' => 'KNOWN - Test Artist', 'mediaUrl' => $cdn('5'), 'releaseDate' => '2026-10-17T00:00:00Z'],
     ];
     Http::fake([
-        'catalog.wavlake.com/v1/artists/test-artist/url' => Http::response(['data' => ['id' => $id('9')]]),
+        // Wavlake's rate limit once: the listing waits and asks again.
+        'catalog.wavlake.com/v1/artists/test-artist/url' => Http::sequence()->push(['error' => 'Too many requests'], 429)->whenEmpty(Http::response(['data' => ['id' => $id('9')]])),
         'wavlake.com/api/v1/content/artist/*' => Http::response(['data' => ['albums' => [['id' => $id('8')]]]]),
         'wavlake.com/api/v1/content/album/*' => Http::response(['data' => ['tracks' => $tracks]]),
         'op3.dev/*'.$id('1').'*' => Http::response((string) file_get_contents($this->root.'/src/new.mp3')),
@@ -119,7 +126,8 @@ test('the sync adds new tracks of a listed artist to the overlay, skips known id
     Process::assertRanTimes(fn ($process): bool => $process->command === ['pkill', '-TERM', '-f', 'artisan twentyone:stream$'], 2);
 
     // A night without anything new downloads nothing and restarts nothing; the foreign host is tried until max_tries.
-    Http::assertSentCount(9);
+    Http::assertSentCount(10);
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), $id('5')));
     expect(Artisan::call('twentyone:music-wavlake-sync'))->toBe(0)->and(Artisan::output())->toContain('added 0, 0 duplicates, 1 failed');
     expect(Artisan::call('twentyone:music-wavlake-sync'))->toBe(0)->and(Artisan::output())->toContain('added 0, 0 duplicates, 1 failed');
     expect(Artisan::call('twentyone:music-wavlake-sync'))->toBe(0)->and(Artisan::output())->toContain('added 0, 0 duplicates, 0 failed, 0 waiting');

@@ -8,6 +8,7 @@ use App\Support\TwentyOne\Stream\MusicPlaylist;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -63,10 +64,15 @@ class TwentyOneMusicWavlakeSyncCommand extends Command
         $new = [];
 
         foreach ((array) $config['artists'] as $slug => $name) {
+            $titles = self::titlesOf((string) $name);
+
             try {
                 foreach ($this->tracks((string) $slug) as $track) {
                     $entry = $known[$track['id']] ?? null;
-                    $done = isset($catalogIds[$track['id']]) || ($entry !== null && ($entry['status'] !== 'failed' || ($entry['tries'] ?? 0) >= $maxTries));
+                    // A title the artist already has in the catalog (the imports before the sync carry no Wavlake id)
+                    // is known without a download; the fingerprint check in music-add catches the rest.
+                    $done = isset($catalogIds[$track['id']]) || self::hasTitle($titles, $track['title'])
+                        || ($entry !== null && ($entry['status'] !== 'failed' || ($entry['tries'] ?? 0) >= $maxTries));
 
                     if (! $done) {
                         $new[] = [...$track, 'artist' => (string) $name];
@@ -123,6 +129,48 @@ class TwentyOneMusicWavlakeSyncCommand extends Command
 
         // Failed only when Wavlake answered for none of the artists.
         return count($report['artists_failed']) === count((array) $config['artists']) ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * The normalised titles of the catalog tracks that play under this artist or playlist (MusicPlaylist::artist()).
+     *
+     * @return array<string, true>
+     */
+    private static function titlesOf(string $name): array
+    {
+        $titles = [];
+
+        foreach (MusicCatalog::tracks() as $file => $track) {
+            if (is_string($track['title'] ?? null) && MusicPlaylist::artist($file) === $name) {
+                $titles[self::normalise($track['title'])] = true;
+            }
+        }
+
+        unset($titles['']);
+
+        return $titles;
+    }
+
+    /**
+     * Whether a Wavlake title is one of these: the whole title, or one part of "Title - Artists" (the PlebRap
+     * playlist names its tracks so).
+     *
+     * @param  array<string, true>  $titles
+     */
+    private static function hasTitle(array $titles, string $title): bool
+    {
+        foreach ([$title, ...explode(' - ', $title)] as $part) {
+            if (isset($titles[self::normalise($part)])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function normalise(string $title): string
+    {
+        return (string) preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($title));
     }
 
     /**
@@ -226,7 +274,11 @@ class TwentyOneMusicWavlakeSyncCommand extends Command
      */
     private static function json(string $url): array
     {
-        $body = Http::timeout(30)->retry(2, 2000, throw: false)->acceptJson()->get($url)->throw()->json();
+        // Wavlake answers a quick series of requests with 429 (measured 2026-10-17 on the first listing): a pause
+        // before every request, and a longer one before each retry of a 429.
+        usleep((int) config('twentyone.stream.music.wavlake_sync.pause_ms', 400) * 1000);
+        $body = Http::timeout(30)->retry(3, fn (int $attempt): int => $attempt * 5000, fn (Throwable $e): bool => $e instanceof RequestException && $e->response->status() === 429, throw: false)
+            ->acceptJson()->get($url)->throw()->json();
 
         return is_array($body) ? (array) ($body['data'] ?? $body) : [];
     }

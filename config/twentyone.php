@@ -267,6 +267,8 @@ return [
                 // Downloads come only over https from these hosts (Wavlake's media URLs go through op3.dev to CloudFront).
                 'hosts' => ['op3.dev', 'd12wklypp119aj.cloudfront.net'],
                 'max_bytes' => 80 * 1024 * 1024,
+                // Between Wavlake API requests (a quick series is answered with 429).
+                'pause_ms' => 400,
                 // A track that fails this many nights in a row is given up (the state keeps why).
                 'max_tries' => 3,
                 'state' => storage_path('app/stream/music-sync/state.json'),
