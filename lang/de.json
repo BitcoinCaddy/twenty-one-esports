@@ -8654,5 +8654,7 @@
     "5h12 = time to the move deadline": "5h12 = Zeit bis zur Zugfrist",
     "from another group": "aus einer anderen Gruppe",
     "1 message from someone outside this tournament was hidden.": "1 Nachricht von jemandem außerhalb des Turniers wurde ausgeblendet.",
-    ":count messages from people outside this tournament were hidden.": ":count Nachrichten von Personen außerhalb des Turniers wurden ausgeblendet."
+    ":count messages from people outside this tournament were hidden.": ":count Nachrichten von Personen außerhalb des Turniers wurden ausgeblendet.",
+    "W D L counts pairings: first and second leg together. A pairing enters the table once both legs are over.": "S R N zählt Paarungen: Hin- und Rückspiel zusammen. Eine Paarung kommt erst nach beiden Partien in die Tabelle.",
+    "Pairings under way": "Laufende Paarungen"
 }

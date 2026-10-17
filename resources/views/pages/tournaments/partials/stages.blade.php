@@ -82,6 +82,24 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if ($part['two_legs'] ?? false)
+                            {{-- Blockli: the table ranks pairings of two legs (Nidan21 2026-10-17: a won and a lost game read as a wrong draw). --}}
+                            <p class="m-0 text-xs leading-snug text-ink-3" data-test="standings-legs-note">{{ __('W D L counts pairings: first and second leg together. A pairing enters the table once both legs are over.') }}</p>
+                            @if ($part['open'] !== [])
+                                <div class="flex flex-col gap-1" data-test="standings-open">
+                                    <span class="text-xs text-ink-3">{{ __('Pairings under way') }}</span>
+                                    <ul class="m-0 flex list-none flex-col p-0 text-[13px]">
+                                        @foreach ($part['open'] as $open)
+                                            <li class="flex items-center gap-2 border-t border-hairline py-1.5" data-test="standings-open-row">
+                                                <span class="min-w-0 flex-1 truncate">{{ $open['a'] }}</span>
+                                                <b class="shrink-0 tabular-nums">{{ $open['score'] }}</b>
+                                                <span class="min-w-0 flex-1 truncate text-right">{{ $open['b'] }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        @endif
                         @foreach (array_reverse($part['rounds'], true) as $number => $round)
                             <details @if ($loop->first) open @endif class="group">
                                 <summary class="flex min-h-9 cursor-pointer items-center gap-2 text-[13px] font-bold">

@@ -67,13 +67,24 @@ final class TournamentView
         $title = $group > 0 ? __('Group :group', ['group' => self::letter($group)]) : null;
 
         if ($stage->format === TournamentFormat::Swiss || $stage->format === TournamentFormat::RoundRobin) {
+            $rounds = $matches->groupBy(fn (TournamentMatch $match): int => $match->round->number)
+                ->map(fn (Collection $round): array => array_values($round->map(fn (TournamentMatch $match): array => $this->box($match))->all()))
+                ->all();
+
             return [
                 'kind' => 'table',
                 'title' => $title,
                 'rows' => $this->table($stage, $group, $matches),
-                'rounds' => $matches->groupBy(fn (TournamentMatch $match): int => $match->round->number)
-                    ->map(fn (Collection $round): array => array_values($round->map(fn (TournamentMatch $match): array => $this->box($match))->all()))
-                    ->all(),
+                'rounds' => $rounds,
+                // A two-leg game (Blockli) ranks pairings, and a pairing enters the table only after both legs: the table
+                // says so and lists the pairings under way with their standing (Nidan21 2026-10-17: a won and a lost
+                // game showed as one draw, a lost first leg nowhere).
+                'two_legs' => TournamentRunner::playsTwoLegs((string) $this->tournament->game),
+                'open' => array_values(array_map(fn (array $box): array => [
+                    'a' => $box['sides'][0]['name'] ?? '?',
+                    'b' => $box['sides'][1]['name'] ?? '?',
+                    'score' => $box['legs']['label'],
+                ], array_filter(array_merge(...array_values($rounds)), fn (array $box): bool => ($box['legs'] ?? null) !== null))),
             ];
         }
 

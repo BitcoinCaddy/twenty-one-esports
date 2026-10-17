@@ -771,3 +771,52 @@ test('right after a move its player can take it back for 21 seconds: the button 
     'phone, touch' => [390, 844, true],
     'desktop, mouse' => [1440, 900, false],
 ]);
+
+test('a Blockli group table says it counts pairings and lists the pairings under way in two-column groups, at 390, 1024 and 1920; clean console', function () {
+    // Nidan21 2026-10-17: a won and a lost leg read as a wrong draw, a lost first leg showed nowhere in the table.
+    $tournament = Tournament::factory()->create([
+        'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::TwoStage, 'name' => 'Blockli Group Cup',
+        'options' => FormatOptions::fromArray(['groupSize' => 4, 'advance' => 2, 'groupStage' => 'round-robin', 'finalStage' => 'single-elimination'], GameProfile::for('blockli', 'correspondence'))->toArray(),
+        'capacity' => 8, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running, 'slug' => 'blockli-group-table',
+    ]);
+    foreach (['Nidan21', 'Anomark', 'aHeck13', 'npub1rrc278e5x7kq9wlongname', 'DerCaddy', 'Noerd', 'Julian Jones', 'Zwo1Risiko⚡'] as $index => $name) {
+        $user = User::factory()->create();
+        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => $name, 'rating' => 1500 - $index, 'members' => [$user->id]]);
+    }
+    app(TournamentBrackets::class)->generate($tournament, str_repeat('12', 32));
+    app(TournamentRunner::class)->sync($tournament);
+    $service = app(BoardGameService::class);
+    foreach (TournamentMatch::query()->where('tournament_id', $tournament->id)->where('status', 'ready')->with('slots.participant')->orderBy('id')->get() as $match) {
+        // Every pairing's first leg ends (all six per group start at once): White's side resigns.
+        $game = BoardGame::query()->where('tournament_match_id', $match->id)->where('status', BoardGameStatus::Active)->first();
+        if ($game !== null) {
+            $service->resign($game, User::query()->findOrFail((int) $game->white_id));
+        }
+    }
+    $admin = User::factory()->create(['locale' => 'de']);
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+    $measure = '() => { const note = document.querySelector("[data-test=standings-legs-note]"); note.scrollIntoView(); const n = note.getBoundingClientRect(), card = note.parentElement.getBoundingClientRect(); const rows = [...document.querySelectorAll("[data-test=standings-open-row]")].map((r) => { const b = r.getBoundingClientRect(), own = r.closest("[data-test=standings-open]").parentElement.getBoundingClientRect(), score = r.querySelector("b"); return { h: Math.round(b.height), inside: b.left >= own.left - 0.5 && b.right <= own.right + 0.5, score: score.innerText.trim(), scoreClipped: score.scrollWidth > score.clientWidth + 0.5, names: [...r.querySelectorAll("span")].map((s) => ({ text: s.innerText.trim(), w: Math.round(s.getBoundingClientRect().width) })) }; }); return { notes: document.querySelectorAll("[data-test=standings-legs-note]").length, note: note.innerText.trim(), noteInside: n.left >= card.left - 0.5 && n.right <= card.right + 0.5, noteH: Math.round(n.height), cardW: Math.round(card.width), rows, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; }';
+
+    foreach ([[390, 844], [1024, 800], [1920, 1080]] as [$width, $height]) {
+        $page = blockliPage($admin, route('tournaments.show', $tournament, false).'?lang=de', $width, $height, false);
+        BrowserWait::until($page, '() => !!document.querySelector("[data-test=standings-legs-note]")', 10_000);
+        $m = $page->evaluate($measure);
+        fwrite(STDERR, PHP_EOL."[group table {$width}] ".json_encode($m).PHP_EOL);
+
+        expect($m['notes'])->toBe(2)
+            ->and($m['note'])->toBe('S R N zählt Paarungen: Hin- und Rückspiel zusammen. Eine Paarung kommt erst nach beiden Partien in die Tabelle.')
+            ->and($m['noteInside'])->toBeTrue()
+            ->and($m['rows'])->toHaveCount(12)
+            ->and($m['overflow'])->toBeLessThanOrEqual(0);
+        foreach ($m['rows'] as $row) {
+            expect($row['inside'])->toBeTrue()
+                ->and($row['score'])->toBeIn(['1–0', '0–1'])
+                ->and($row['scoreClipped'])->toBeFalse()
+                // Each name keeps room to be read, the long npub truncates instead of pushing the row wider.
+                ->and(min(array_column($row['names'], 'w')))->toBeGreaterThanOrEqual(80);
+        }
+        expect($page->evaluate('() => window.__errors'))->toBe([], "{$width}: console")
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "{$width}: responses");
+        $page->close();
+    }
+});
