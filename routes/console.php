@@ -885,6 +885,10 @@ Schedule::command('caster:bulletin')->everyMinute()->withoutOverlapping(10)->onO
 // Every ten seconds (user 2026-10-15: reactions must reach the air at once): a chat line is seen within seconds, not
 // up to a minute, and the workstation voices it while it is fresh.
 Schedule::command('caster:chat')->everyTenSeconds()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
+// The stream chat in real time (live 2026-10-17): a live relay subscription in its own lane — the sockets and
+// their failures live here and nowhere else (the polled reads above stay on as the safety net). A round runs
+// `live_seconds`, the next starts five minutes sharp, so deployed code is picked up within minutes too.
+Schedule::command('caster:chat-live')->everyFiveMinutes()->withoutOverlapping(6)->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true && config('tv.commentary.chat.live') === true);
 Schedule::command('caster:chat', ['--wot'])->dailyAt('05:11')->withoutOverlapping()->onOneServer()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.chat.reactions') === true);
 Schedule::command('caster:news')->everyFifteenMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.news.enabled') === true);
 Schedule::command('caster:followed')->everyFiveMinutes()->withoutOverlapping()->onOneServer()->runInBackground()->when(fn (): bool => config('tv.commentary.enabled') === true && config('tv.commentary.followed.enabled') === true);

@@ -148,10 +148,52 @@ class ChatReactions
         $events = $this->reader->fetch($filters, $relays, [], self::LIMIT);
         usort($events, fn (SignedEvent $a, SignedEvent $b): int => $a->createdAt <=> $b->createdAt);
 
+        return $this->process($events, $now, $stream);
+    }
+
+    /**
+     * Events that arrived on their own (the live subscription, caster:chat-live): the same gates and the same
+     * cursors as poll(), one shared road — a message answered twice stays as impossible as one read twice,
+     * and the cursor moves for every event that arrived, answered or not. The polled reads stay on as the
+     * safety net behind the subscription; the autopilot leaves the cursors alone, so its gap is read later.
+     *
+     * @param  list<SignedEvent>  $events
+     */
+    public function ingest(array $events, CarbonImmutable $now): int
+    {
+        $stream = StreamCoordinates::fromConfig();
+
+        if ($events === [] || ! self::enabled() || $stream === null || AutoPilot::active($now)) {
+            return 0;
+        }
+
+        return $this->process($events, $now, $stream);
+    }
+
+    /**
+     * Where the `since` of a live subscription begins: the older of the two cursors, less the zap overlap,
+     * so a socket's gap is closed by the next REQ (and by the polled reads).
+     */
+    public static function subscriptionSince(CarbonImmutable $now): int
+    {
+        $chat = (int) Cache::get(self::CURSOR, $now->subMinutes(2)->getTimestamp());
+        $zap = (int) Cache::get(self::ZAP_CURSOR, $now->subMinutes(2)->getTimestamp());
+
+        return min($chat, $zap) - self::ZAP_OVERLAP_SECONDS;
+    }
+
+    /**
+     * The shared road of the polled and the pushed events: react, thank, greet, and move the cursors.
+     *
+     * @param  list<SignedEvent>  $events
+     */
+    private function process(array $events, CarbonImmutable $now, StreamCoordinates $stream): int
+    {
+        $since = (int) Cache::get(self::CURSOR, $now->subMinutes(2)->getTimestamp());
         $own = self::ownPubkeys($stream);
         $queued = 0;
         $newest = $since;
-        $newestZap = $zapCursor;
+        $newestZap = (int) Cache::get(self::ZAP_CURSOR, $now->subMinutes(2)->getTimestamp());
         $receipts = [];
         $strangers = 0;
 

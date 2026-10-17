@@ -1321,6 +1321,13 @@ return [
         'chat' => [
             'reactions' => (bool) env('TV_COMMENTARY_CHAT', false),
             'profiles' => (bool) env('TV_COMMENTARY_CHAT_PROFILES', false),
+            // The live relay subscription (caster:chat-live): one round lasts this long in its own lane, the
+            // schedule starts the next five minutes sharp, and the REQ asks since the chat cursor, so a socket's
+            // gap closes with the next round (the polled reads stay on as the safety net). User 2026-10-17:
+            // "Realtime rein, keine Verzögerung mehr" - a message is in the reaction chain the moment the relay
+            // pushes it, not up to a poll interval later.
+            'live' => (bool) env('TV_COMMENTARY_CHAT_LIVE', true),
+            'live_seconds' => (int) env('TV_COMMENTARY_CHAT_LIVE_SECONDS', 270),
             'per_person_minutes' => (int) env('TV_COMMENTARY_CHAT_PERSON_MINUTES', 2),
             'per_hour' => (int) env('TV_COMMENTARY_CHAT_PER_HOUR', 20),
             // A reaction (a chat reply, a wish, a zap thank-you) waits at most this long after it is ready (user
