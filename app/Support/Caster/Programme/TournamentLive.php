@@ -14,6 +14,7 @@ use App\Support\Caster\CasterVoice;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\ScenePhase;
+use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
 use App\Support\Nostr\RelayReader;
 use App\Support\Voice\VoiceAgent;
@@ -365,9 +366,18 @@ final class TournamentLive
 
         if ($duet === null || $violations !== []) {
             $this->usage->recordRejection(self::CHANNEL, $violations === [] ? ['empty'] : $violations);
-            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
 
-            return null;
+            // Its one draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"); only what never goes on air leaves it.
+            $draft = $this->duets->lastDraft();
+            [$text, $speakers] = $draft === null ? ['', null] : ScriptGuard::airable($draft['text'], $draft['speakers']);
+
+            if ($text === '' || $speakers === null) {
+                $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+
+                return null;
+            }
+
+            $duet = ['text' => $text, 'speakers' => $speakers];
         }
 
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');

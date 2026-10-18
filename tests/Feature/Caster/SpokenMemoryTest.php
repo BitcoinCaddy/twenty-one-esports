@@ -29,26 +29,22 @@ beforeEach(function () {
 
 const MEMORY_SENTENCE = 'Und gleich geht es hier bei uns weiter mit der Liga, also bleibt bitte dran.';
 
-it('drops a sentence said within repeat_hours from any later script, and lets it back after the window', function () {
+it('queues a sentence said within repeat_hours again, and still remembers it as said until the window ends', function () {
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
 
     $first = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, MEMORY_SENTENCE."\nDie Lobby ist rund um die Uhr offen, und jeder kann jederzeit einsteigen.", 'a', 0, $now);
     $second = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, "Aus Berlin kommt heute eine Meldung, bei der man nur staunen kann.\n".MEMORY_SENTENCE, 'b', 0, $now->addMinutes(5));
 
-    $third = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, "Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.\n".MEMORY_SENTENCE, 'b2', 0, $now->addMinutes(5));
-
-    // The script ends before the repeat (P8): one sentence left is a setup without its point and is not queued.
+    // Nothing a writer produced is cut any more (user 2026-10-18: "Nie mehr verwerfen"), a script of nothing but repeats included.
     expect($first?->text)->toContain(MEMORY_SENTENCE)
-        ->and($second)->toBeNull()
-        ->and($third?->text)->toBe("Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.");
+        ->and($second?->text)->toBe("Aus Berlin kommt heute eine Meldung, bei der man nur staunen kann.\n".MEMORY_SENTENCE)
+        ->and($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, MEMORY_SENTENCE, 'c', 50, $now->addMinutes(6))?->text)->toBe(MEMORY_SENTENCE);
 
-    // A script of nothing but repeats is not queued at all.
-    expect($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, MEMORY_SENTENCE, 'c', 50, $now->addMinutes(6)))->toBeNull();
-
-    // After the window, from a fresh memory (the next run of caster:script), it may come back.
+    // The memory the prompts read ("already said") still knows it, until the window ends.
+    expect((new SpokenMemory)->repeated(MEMORY_SENTENCE, $now->addMinutes(7)))->toBe([MEMORY_SENTENCE]);
     $this->travel(25)->hours();
-    expect(app(ScriptQueue::class)->enqueue(CasterScript::SCENE, ScenePhase::BREAK, MEMORY_SENTENCE, 'd', 0, CarbonImmutable::now())?->text)->toBe(MEMORY_SENTENCE);
+    expect((new SpokenMemory)->repeated(MEMORY_SENTENCE, CarbonImmutable::now()))->toBe([]);
 });
 
 it('reads its memory from the queue table, so a second run still knows what the first one queued', function () {

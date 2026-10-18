@@ -255,17 +255,18 @@ it('writes the segment: intro with the display name, then the league voice\'s re
     NoteFactCheck::assertNeverPrompted();
 });
 
-it('falls back to a quote and a pattern reaction when the take breaks a house rule twice', function (string $draft, string $reason) {
+it('airs a take that breaks a house rule without the sentence that breaks it, and counts the rule', function (string $draft, string $reason) {
     $this->reader->events = [followedNote($this->author, 'Dieses Schmuckstück wurde für sehr viel Geld in den Hang betoniert und ist heute für die Hälfte zu haben, typisch Kesselstadt', 30)];
     app(FollowedNotes::class)->fetch(CarbonImmutable::now());
     VoiceAgent::fake([followedDraft($draft)]);
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
+    // The take airs all the same (user 2026-10-18: "Nie mehr verwerfen"); the link never does.
     $script = CasterScript::query()->sole();
-    expect($script->source)->toBe(CasterScript::SOURCE_PATTERN)
-        ->and($script->sentences()[0])->toBe('Auf Nostr schreibt ein Nostr-Kollege gerade Folgendes: Dieses Schmuckstück wurde für sehr viel Geld in den Hang betoniert und ist heute für die Hälfte zu haben, typisch…')
-        ->and(implode("\n", array_slice($script->sentences(), 1)))->toBeIn(FollowedScripts::data()['reactions'])
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->text)->not->toContain('example.com')
+        ->and($script->text)->toContain('Pech gehabt, kann ich da nur sagen')
         ->and(DB::table('voice_rejections')->where('channel', CasterVoice::FOLLOWED_CHANNEL)->where('reason', $reason)->value('count'))->toBe(1);
     VoiceAgent::assertPromptedTimes(1);
 })->with([

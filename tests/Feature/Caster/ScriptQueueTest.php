@@ -10,6 +10,8 @@ use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
 use App\Support\TwentyOne\Stream\TournamentSlides;
 use App\Support\Voice\VoiceAgent;
+use App\Support\Voice\VoiceGuard;
+use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -145,13 +147,26 @@ it('asks the league voice first, up to ai_calls_per_fill scripts, and fills only
     VoiceAgent::assertPromptedTimes(2);
 });
 
-it('falls back to a pattern script for the topic when the league voice gives nothing usable', function () {
-    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 6]);
-    // A broken draft (a link the voice would read out), not a short sentence: style no longer refuses a text
-    // (user 2026-10-15), so "nothing usable" means what breaks the stream.
+it('airs the second draft of a scene without its link, and falls back to a pattern script only when no word is left', function () {
+    config(['tv.commentary.scripts.ahead_seconds' => 5, 'tv.commentary.scripts.ai_calls_per_fill' => 1]);
+    // The last draft airs whatever the checks found (user 2026-10-18: "Nie mehr verwerfen"); a link never does.
     VoiceAgent::fake([
         ['text' => "Hey, schaut mal auf https://example.com vorbei.\nLäuft bei uns.", 'canon_id' => null, 'mood' => 'hype'],
         ['text' => "Hey, schaut mal auf https://example.com vorbei.\nLäuft bei uns.", 'canon_id' => null, 'mood' => 'hype'],
+    ]);
+
+    casterQueue()->fill(CarbonImmutable::now());
+
+    $aired = CasterScript::query()->where('kind', CasterScript::SCENE)->where('source', CasterScript::SOURCE_AI)->get();
+    expect($aired)->toHaveCount(1)
+        ->and($aired[0]->text)->toBe('Läuft bei uns.')
+        ->and(app(VoiceUsage::class)->rejections(app(VoiceUsage::class)->day(), app(VoiceUsage::class)->day())[CasterVoice::CHANNEL] ?? [])->toHaveKey(VoiceGuard::URL);
+
+    // A draft of nothing but the link leaves no word: the pattern fallback fills the topic.
+    CasterScript::query()->delete();
+    VoiceAgent::fake([
+        ['text' => 'Hey, schaut mal auf https://example.com vorbei.', 'canon_id' => null, 'mood' => 'hype'],
+        ['text' => 'Hey, schaut mal auf https://example.com vorbei.', 'canon_id' => null, 'mood' => 'hype'],
     ]);
 
     casterQueue()->fill(CarbonImmutable::now());
@@ -410,11 +425,50 @@ it('queues a chat reply as written while the chat gate is off, a repeated or goo
 
     config(['tv.commentary.chat.gate' => true]);
     expect($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:a', 50, $now))->not->toBeNull()
-        // The same reply again: with the gate on, the repeat filter leaves nothing.
-        ->and($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:b', 50, $now))->toBeNull();
+        // The same reply again: the queue has no repeat filter any more, gate or not (user 2026-10-18: "Nie mehr verwerfen").
+        ->and($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:b', 50, $now)?->text)->toBe($reply);
 
     config(['tv.commentary.chat.gate' => false]);
     $script = $queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:c', 50, $now);
     expect($script)->not->toBeNull()
         ->and($script->text)->toBe($reply);
+});
+
+it('queues a scene and a scene duet as written, a repeated line and a goodbye in the middle included (user 2026-10-18)', function () {
+    config(['tv.commentary.repeat_hours' => 24]);
+    $now = CarbonImmutable::now();
+    $queue = app(ScriptQueue::class);
+    $said = 'Die Liga läuft heute wieder rund um die Uhr, und jeder kann jederzeit einsteigen.';
+    $goodbye = 'Und dann sag ich euch allen für heute ciao, macht es gut da draußen.';
+    $after = 'Aber vorher schauen wir noch auf das Brett, auf dem es gerade richtig brennt.';
+    $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $said, 'a', 0, $now);
+
+    // "Nie mehr verwerfen": no repeat filter and no cut at a goodbye, for a solo scene ...
+    $solo = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [$said, $goodbye, $after]), 'b', 0, $now);
+    expect($solo?->sentences())->toBe([$said, $goodbye, $after]);
+
+    // ... and for a scene duet, each line with its speaker.
+    $duet = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [$after, $said, $goodbye]), 'c', 0, $now, speakers: ['markus', 'sirius', 'sirius']);
+    expect($duet?->sentences())->toBe([$after, $said, $goodbye])
+        ->and($duet?->speakers)->toBe(['markus', 'sirius', 'sirius']);
+});
+
+it('airs a last draft without the sentences that must never go on air, each kept line with its speaker', function () {
+    config(['esports.voice.blocklist' => ['startgeld']]);
+    $text = implode("\n", [
+        'Schaut mal auf https://example.com/cup vorbei. Die Bretter glühen heute richtig.',
+        'Zappt mir an satoshi@getalby.com, das wäre nett.',
+        'Mein Schlüssel ist npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq.',
+        'Ein Startgeld gibt es bei uns nicht, ehrlich.',
+        'Mehr steht auf einundzwanzig.space, wie immer.',
+        'Und weiter geht es mit #Bitcoin.',
+    ]);
+
+    [$safe, $speakers] = ScriptGuard::airable($text, ['markus', 'sirius', 'markus', 'sirius', 'markus', 'sirius']);
+    expect(explode("\n", $safe))->toBe(['Die Bretter glühen heute richtig.', 'Und weiter geht es mit Bitcoin.'])
+        ->and($speakers)->toBe(['markus', 'sirius']);
+
+    // A link one of the facts carries may be said, as the guard allows it; nothing left is nothing to air.
+    expect(ScriptGuard::airable('Mehr steht auf einundzwanzig.space, wie immer.', null, ['site' => 'einundzwanzig.space'])[0])->toBe('Mehr steht auf einundzwanzig.space, wie immer.')
+        ->and(ScriptGuard::airable('Alles unter https://example.com.'))->toBe(['', null]);
 });

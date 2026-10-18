@@ -23,7 +23,6 @@ use App\Support\Caster\Programme\ShowScripts;
 use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\Programme\TalkShowScripts;
 use App\Support\Caster\Programme\TournamentLive;
-use App\Support\Voice\VoiceHygiene;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -86,9 +85,6 @@ class ScriptQueue
 {
     /** Rows that left the queue are kept this long (for the counters of `caster:script`), then deleted. */
     private const KEEP_HOURS = 24;
-
-    /** The fewest sentences a script keeps before its first repeat or sign-off (enqueue()); a chat reply or live line needs one. */
-    public const MIN_COHERENT = 2;
 
     private PatternScripts $patterns;
 
@@ -905,25 +901,18 @@ class ScriptQueue
      * Queues a script; a long scene, segment or wished segment as its parts
      * (parts()), all with the same expiry. Returns the script, or its first
      * part; null for template text or a filler while the pattern fallback is
-     * off (PatternScripts::enabled()), and when too little of it is left
-     * before its first sentence said within `repeat_hours` (SpokenMemory: from
-     * any source, chat replies and fallbacks included) or its first sign-off.
-     * The script ends before such a sentence instead of losing it from the
-     * middle (plan "TWENTY ONE Radio" P8: the hole left the next sentence
-     * without its setup); a chat reply or a live line needs one sentence
-     * before it, every other kind MIN_COHERENT. A pattern script is a row of
-     * template lines that stand on their own: a repeated line just leaves it.
+     * off (PatternScripts::enabled()), beyond the voicing budget (VoiceBudget),
+     * and for a text without a word.
+     *
+     * Every kind is queued as it was written (user 2026-10-18: "Nie mehr
+     * verwerfen"), the way a bulletin always was: a sentence said within
+     * `repeat_hours` or a goodbye no longer cuts or drops a script, a duet
+     * keeps every line. Its lines are remembered all the same (SpokenMemory),
+     * so the writers' prompts still name what was said.
      *
      * `$speakers` (a duet, DuetDirector): the speaker of each line of `$text`;
-     * the duet likewise ends before its first sign-off or repeated line, each
-     * line keeping its speaker, and a scene duet needs both speakers in what
-     * is left; every part stores the speakers of its own lines.
-     *
-     * A bulletin (`$airsAt`, `$expiresAt`; fillBulletin()) is queued as it
-     * was written: its sentences are news and its ritual lines come back on
-     * purpose, so neither the repeat filter nor the sign-off filter touches
-     * it (NewsBulletin keeps goodbyes out of its commentary); its lines are
-     * remembered all the same.
+     * a line without a word leaves with its speaker, and every part stores the
+     * speakers of its own lines.
      *
      * @param  list<string>|null  $speakers
      */
@@ -949,59 +938,24 @@ class ScriptQueue
             return null;
         }
 
-        if ($kind === CasterScript::BULLETIN || ($kind === CasterScript::CHAT && ! CasterVoice::chatGated())) {
-            // A chat reply with the gate off (user 2026-10-18) airs as written, like a bulletin: the repeat and sign-off
-            // filters below emptied short replies (prod 16:16 UTC, ":pepeJAM:" answered but never queued).
-            $this->memory ??= new SpokenMemory;
-            $this->memory->remember($text, $now);
-        } elseif ($topic === SportWeather::TOPIC) {
-            // Data read out every hour repeats by nature: the same temperature or score at 20:00 and 21:00 cut the weather
-            // off the end of "Sport und Wetter" (user 2026-10-12: "Was ist mit dem Wetter passiert?"), and a repeated first
-            // line after the opener dropped the whole segment (live 22:00). Only a goodbye goes, each line with its speaker.
-            [$text, $speakers] = self::linesBeforeSignOff($text, $speakers);
-            $this->memory ??= new SpokenMemory;
-            $this->memory->remember($text, $now);
-        } elseif ($kind === CasterScript::RUBRIC && $speakers !== null) {
-            // The rubric's opening line (time and name) comes back on purpose; its content leaves repeats like a duet.
-            $lines = ScriptGuard::lines($text);
-            [$rest, $restSpeakers] = $this->duetLines(implode("\n", array_slice($lines, 1)), array_slice($speakers, 1), $now);
+        // Every script airs as it was written (user 2026-10-18: "Nie mehr verwerfen"): no repeat filter, no cut at a
+        // goodbye, no duet ending before a repeated line, the way a bulletin always aired. Only a line without a word
+        // leaves, with its speaker; the lines are remembered, so the writers' prompts still know what was said.
+        if ($speakers !== null) {
+            [$lines, $kept] = [[], []];
 
-            if ($lines === [] || $rest === '') {
-                return null;
+            foreach (ScriptGuard::lines($text) as $index => $line) {
+                if (trim(ScriptGuard::withoutMarkers($line)) !== '') {
+                    $lines[] = $line;
+                    $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
+                }
             }
 
-            [$text, $speakers] = [$lines[0]."\n".$rest, [$speakers[0] ?? DuetDirector::MARKUS, ...$restSpeakers]];
-        } elseif ($speakers !== null) {
-            [$text, $speakers] = $this->duetLines($text, $speakers, $now);
-
-            if ($text === '' || ($kind === CasterScript::SCENE && count(array_unique($speakers)) < 2)) {
-                return null;
-            }
-        } elseif ($kind === CasterScript::FILLER) {
-            $text = self::beforeSignOff($text);
-        } elseif ($source === CasterScript::SOURCE_PATTERN) {
-            // Template lines stand on their own (an intro, a carrier with a canon joke): a repeated one leaves, the rest stays.
-            $this->memory ??= new SpokenMemory;
-            $text = $this->memory->withoutRepeats(self::withoutSignOffs($text), $now);
-
-            if (trim(ScriptGuard::withoutMarkers($text)) === '') {
-                return null;
-            }
-
-            $this->memory->remember($text, $now);
-        } else {
-            $this->memory ??= new SpokenMemory;
-            $min = in_array($kind, [CasterScript::CHAT, CasterScript::LIVE, CasterScript::TEASER], true) ? 1 : self::MIN_COHERENT;
-            $whole = self::beforeSignOff($text, $signedOff);
-            $text = $this->memory->coherent($whole, $now, $min);
-
-            // A sign-off that cut the script counts like a repeat: a single setup sentence is no bit.
-            if (trim(ScriptGuard::withoutMarkers($text)) === '' || ($signedOff && count(VoiceHygiene::sentenceList(ScriptGuard::withoutMarkers($text))) < $min)) {
-                return null;
-            }
-
-            $this->memory->remember($text, $now);
+            [$text, $speakers] = [implode("\n", $lines), $kept];
         }
+
+        $this->memory ??= new SpokenMemory;
+        $this->memory->remember($text, $now);
 
         if (trim(ScriptGuard::withoutMarkers($text)) === '') {
             return null;
@@ -1049,39 +1003,6 @@ class ScriptQueue
             /** @var CasterScript $first */
             return $first;
         });
-    }
-
-    /**
-     * A duet's lines without sign-offs and without the sentences said within
-     * `repeat_hours` (SpokenMemory), each kept line with its speaker; the
-     * kept lines are remembered. An empty text when nothing is left.
-     *
-     * @param  list<string>  $speakers  one per line of `$text`
-     * @return array{0: string, 1: list<string>}
-     */
-    private function duetLines(string $text, array $speakers, CarbonImmutable $now): array
-    {
-        $this->memory ??= new SpokenMemory;
-        [$lines, $kept] = [[], []];
-
-        foreach (ScriptGuard::lines($text) as $index => $line) {
-            $line = self::beforeSignOff(trim($line), $signedOff);
-            $repeated = false;
-            $line = $line === '' ? '' : trim($this->memory->coherent($line, $now, 1, $repeated));
-
-            if (trim(ScriptGuard::withoutMarkers($line)) !== '') {
-                $this->memory->remember($line, $now);
-                $lines[] = str_replace("\n", ' ', $line);
-                $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
-            }
-
-            // A sign-off or a repeat ends the duet here: the next speaker would answer a line nobody heard (P8).
-            if ($signedOff || $repeated) {
-                break;
-            }
-        }
-
-        return [implode("\n", $lines), $kept];
     }
 
     /**

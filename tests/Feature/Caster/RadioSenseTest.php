@@ -48,7 +48,7 @@ it('ends a script before its first repeated sentence instead of cutting the repe
         ->and($memory->withoutRepeats($script, $now))->toContain('Denn wer so treu');
 });
 
-it('queues no hole: a news segment ends before the repeat, and one sentence left is not queued at all', function () {
+it('queues a news segment as written, its repeated sentence included, and one that would have lost all but one sentence too', function () {
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
     $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, RADIO_SAID, 'a', 0, $now);
@@ -56,29 +56,32 @@ it('queues no hole: a news segment ends before the repeat, and one sentence left
     $cut = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, "Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.\n".RADIO_SAID."\nDas nenne ich mal effiziente Bürokratie, liebe Freunde.", 'b', 0, $now);
     $lost = $queue->enqueue(CasterScript::NEWS, ScenePhase::BREAK, "Aus Bremen kommt heute eine Meldung, bei der man nur staunen kann.\n".RADIO_SAID."\nDas nenne ich mal effiziente Verwaltung, liebe Freunde.", 'c', 0, $now);
 
-    expect($cut?->text)->toBe("Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.")
-        ->and($lost)->toBeNull();
+    // Nothing a writer produced is cut any more (user 2026-10-18: "Nie mehr verwerfen").
+    expect($cut?->text)->toBe("Aus Hamburg kommt heute eine Meldung, die man sich merken sollte.\nDie Stadt plant ein neues Amt nur für die Verwaltung der anderen Ämter.\n".RADIO_SAID."\nDas nenne ich mal effiziente Bürokratie, liebe Freunde.")
+        ->and($lost?->sentences())->toHaveCount(3);
 });
 
-it('still drops only the repeated line of a template script: its lines stand on their own', function () {
+it('queues a template script as written, its repeated line included', function () {
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
     $queue->enqueue(CasterScript::LIVE, ScenePhase::BREAK, RADIO_SAID, 'a', 0, $now);
 
     $run = $queue->enqueue(CasterScript::LIVE, ScenePhase::BREAK, RADIO_SAID."\nDer erste Witz handelt von einem Banker, der sein Geld im Kopfkissen sucht.", 'b', 0, $now, source: CasterScript::SOURCE_PATTERN);
 
-    expect($run?->text)->toBe('Der erste Witz handelt von einem Banker, der sein Geld im Kopfkissen sucht.');
+    // No repeat filter for any source any more (user 2026-10-18: "Nie mehr verwerfen").
+    expect($run?->text)->toBe(RADIO_SAID."\nDer erste Witz handelt von einem Banker, der sein Geld im Kopfkissen sucht.");
 });
 
-it('lets a repeated call of a name leave a chat reply without ending it', function () {
+it('keeps a repeated call of a name in a chat reply', function () {
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
     $queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, 'El Presidento Ben! Du hast heute schon wieder die beste Frage im ganzen Chat gestellt.', 'a', 0, $now);
 
     $reply = $queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, "El Presidento Ben! Ben, du glaubst also, ein Klima Coin rettet die Welt, und ich glaube an den Weihnachtsmann.\nDer Strom steckt bei Bitcoin im Block, und der hält danach für immer.", 'b', 0, $now, speakers: ['markus', 'sirius']);
 
+    // Queued as written (user 2026-10-18: "Nie mehr verwerfen").
     expect($reply?->speakers)->toBe(['markus', 'sirius'])
-        ->and($reply?->text)->toStartWith('Ben, du glaubst also');
+        ->and($reply?->text)->toStartWith('El Presidento Ben! Ben, du glaubst also');
 });
 
 it('ends a script at its first goodbye, and only skips a goodbye before anything was said', function () {

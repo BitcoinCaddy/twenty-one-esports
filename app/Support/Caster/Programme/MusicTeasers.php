@@ -51,6 +51,9 @@ final class MusicTeasers
     /** How many of the timeline's next tracks may be searched for one with a credit (an uncredited instrumental has nothing to announce). */
     private const TRACK_LOOKAHEAD = 3;
 
+    /** The text of the last answer evaluate() checked, turned down or not ('' when it had no word). */
+    private string $draft = '';
+
     public function __construct(
         private readonly DuetScripts $duets,
         private readonly VoiceUsage $usage,
@@ -182,8 +185,8 @@ final class MusicTeasers
     }
 
     /**
-     * The announcement for `$next` (nextTrack()): one or two sentences by Markus, or null (off, capped, nothing
-     * true written in two tries). The note of `lastNote()` goes along when there is one.
+     * The announcement for `$next` (nextTrack()): one or two sentences by Markus, or null (off, capped, no word
+     * left in the second draft, which airs whatever the checks found). The note of `lastNote()` goes along when there is one.
      *
      * @param  array{file: string, artist: string, title: string|null, hash: string, npub: string|null, youtube: string|null, wavlake: bool, lud16: string|null}  $next
      */
@@ -227,6 +230,13 @@ final class MusicTeasers
 
                 $text = $this->evaluate($raw, $next);
 
+                // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"), counted; only what never
+                // goes on air leaves it (ScriptGuard::airable()), and an answer still in its JSON envelope is no text.
+                if ($text === null && $try === 1 && ! str_starts_with($this->draft, '{') && ($safe = ScriptGuard::airable($this->draft)[0]) !== '') {
+                    $this->usage->recordRejection(self::CHANNEL, ['music_teaser_rejected']);
+                    $text = $safe;
+                }
+
                 if ($text !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
@@ -253,6 +263,7 @@ final class MusicTeasers
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
         $text = ScriptGuard::trimSentences(ScriptGuard::withoutShort(ScriptGuard::sentenceLines(CasterVoice::withoutHashtags($this->hygiene->clean($raw, true, 'de'))), 1, $maxWords), 2);
         $plain = trim(ScriptGuard::withoutMarkers($text));
+        $this->draft = $plain === '' ? '' : $text;
 
         if ($plain === ''
             || preg_match('/\d/u', $plain) === 1

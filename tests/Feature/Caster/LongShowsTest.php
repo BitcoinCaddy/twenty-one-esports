@@ -95,11 +95,12 @@ it('writes a long show segment by segment until it fills its window, one opener,
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => ! str_contains($prompt->agent->instructions(), "Running Gags\n"));
 });
 
-it('drops a long show that stays short of its window, and records why', function () {
+it('airs a long show that stays short of its window, and records why', function () {
     VoiceAgent::fake(fn (): array => longShowSegment(0));
     $slot = BroadcastClock::fromConfig()->slotAt(CarbonImmutable::parse('2026-10-12 20:05', 'Europe/Berlin'));
 
-    expect(app(ShowScripts::class)->write($slot, Shows::TRIBUNAL, Shows::build('Angeklagt: Fritzi', ['Fritzi'], [], 'x', []), CarbonImmutable::now()))->toBeNull()
+    // What was written airs all the same (user 2026-10-18: "Nie mehr verwerfen"), counted as SHORT.
+    expect(app(ShowScripts::class)->write($slot, Shows::TRIBUNAL, Shows::build('Angeklagt: Fritzi', ['Fritzi'], [], 'x', []), CarbonImmutable::now()))->not->toBeNull()
         ->and(DB::table('voice_rejections')->where('channel', ShowScripts::CHANNEL)->pluck('reason')->all())->toContain(ShowScripts::SHORT);
 });
 

@@ -379,12 +379,18 @@ final class CasterVoice
             ...$this->scriptGuard->check($text, $min, $max, $maxWords),
         ]);
 
+        // Its one draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only what
+        // never goes on air leaves it (ScriptGuard::airable()).
         if ($violations !== []) {
             $violations = array_values(array_unique($violations));
             $this->usage->recordRejection(self::NEWS_CHANNEL, $violations);
-            $this->usage->recordOutcome(self::NEWS_CHANNEL, 'rejected');
+            [$text] = ScriptGuard::airable($text, null, $facts);
 
-            return ['skip' => false, 'text' => null, 'reasons' => $violations];
+            if ($text === '') {
+                $this->usage->recordOutcome(self::NEWS_CHANNEL, 'rejected');
+
+                return ['skip' => false, 'text' => null, 'reasons' => $violations];
+            }
         }
 
         $this->remember('news', $text, 10);
@@ -506,12 +512,18 @@ final class CasterVoice
             ...$this->scriptGuard->check($text, $min, $max, $maxWords),
         ]);
 
+        // Its one draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only what
+        // never goes on air leaves it (ScriptGuard::airable()).
         if ($violations !== []) {
             $violations = array_values(array_unique($violations));
             $this->usage->recordRejection(self::FOLLOWED_CHANNEL, $violations);
-            $this->usage->recordOutcome(self::FOLLOWED_CHANNEL, 'rejected');
+            [$text] = ScriptGuard::airable($text, null, $facts);
 
-            return ['skip' => false, 'text' => null, 'reasons' => $violations];
+            if ($text === '') {
+                $this->usage->recordOutcome(self::FOLLOWED_CHANNEL, 'rejected');
+
+                return ['skip' => false, 'text' => null, 'reasons' => $violations];
+            }
         }
 
         $this->remember('followed', $text, 10);
@@ -791,7 +803,7 @@ final class CasterVoice
      * @param  array<array-key, mixed>  $settings
      * @param  list<string>  $rejected
      * @param  array<string, string>  $data
-     * @param  bool  $last  the last try: a repeated sentence no longer turns it down (the queue ends the reply before it)
+     * @param  bool  $last  the last try: a repeated sentence no longer turns it down
      * @param  bool  $summary  a YouTube chat summary (youTubeSummary()) instead of a reply to one message
      * @return array{0: array{text: string, speakers: list<string>|null}|null, 1: list<string>}
      */
@@ -889,8 +901,11 @@ final class CasterVoice
         }
 
         // Ungated (`chat.gate` off): only a draft without words is no answer; whatever else it broke is counted, not dropped.
-        if ($violations !== [] && ! self::chatGated() && trim($spoken) !== '') {
+        // Even then nothing that never goes on air does (ScriptGuard::airable()): a link, an address, a key or a
+        // blocklisted word leaves with its sentence.
+        if ($violations !== [] && ! self::chatGated() && trim($spoken) !== '' && ($safe = ScriptGuard::airable($text, $speakers, $facts))[0] !== '') {
             $this->usage->recordRejection(self::UNGATED_CHANNEL, array_values(array_unique($violations)));
+            [$text, $speakers] = $safe;
             $violations = [];
         }
 
@@ -1301,7 +1316,7 @@ final class CasterVoice
      * A "Rückblick-Spitze" (user 2026-10-12: "ab und an immer wieder aus seinem 24-h-rollierenden Gedächtnis witzige
      * sarkastische Kommentare"): one or two real items of the world memory called back with a sarcastic remark,
      * `world.callback_sentences` long sentences. Free mode, two tries, its own usage channel; null when off,
-     * capped or both tries failed.
+     * capped or nothing with words was written (the second draft airs whatever the checks found).
      *
      * @param  list<array{key: string, at: int, kind: string, line: string}>  $items
      */
@@ -1358,7 +1373,7 @@ final class CasterVoice
      * the fixed intros, asides and outros repeated on every episode): the
      * episode's facts are data, the narration, the opening and the modern
      * sarcastic asides are the model's. Free mode (FREE_RULES), two tries;
-     * null when the voice is off, capped or both tries failed (the pattern
+     * null when the voice is off, capped or the second draft had no word left (the pattern
      * episode stands in then).
      *
      * @param  array{id: string, title: string, facts: list<array{text: string, source: string}>, twists: list<string>}  $episode
@@ -1415,7 +1430,7 @@ final class CasterVoice
     /**
      * One free-mode text: two tries at most (the second with the reasons of
      * the first), within the monthly budget and `scripts.daily_cap` of the
-     * channel; null when off, capped, failed, or both tries were turned down.
+     * channel; null when off, capped, failed, or the second draft had no word left (it airs whatever the checks found).
      */
     private function freeText(string $channel, string $prompt, int $min, int $max): ?string
     {
@@ -1452,7 +1467,7 @@ final class CasterVoice
                     ...$this->scriptGuard->check($text, 1, $max, $maxWords),
                 ]);
 
-                // A first draft that repeats the station is said anew once (P8); the queue cuts what is still left over.
+                // A first draft that repeats the station is said anew once (P8).
                 $repeated = $rejected === [] && $try === 0 ? $this->repeatedSentences($text) : [];
                 if ($repeated !== []) {
                     $rejected = [self::SPOKEN_REPEAT];
@@ -1465,6 +1480,15 @@ final class CasterVoice
                 }
 
                 $this->usage->recordRejection($channel, $rejected);
+
+                // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"); only what never goes on
+                // air leaves it (ScriptGuard::airable()).
+                if ($try === 1 && ($text = ScriptGuard::airable($text)[0]) !== '') {
+                    $this->usage->recordOutcome($channel, 'accepted');
+
+                    return $text;
+                }
+
                 $this->usage->recordOutcome($channel, 'rejected');
             }
         } catch (Throwable $exception) {
@@ -1750,7 +1774,7 @@ final class CasterVoice
      * @param  list<string>  $topics
      * @param  array<array-key, mixed>  $settings
      * @param  list<string>  $rejected  the reasons of the previous try
-     * @param  bool  $last  the last try: a repeated sentence no longer turns it down (the queue ends the script before it)
+     * @param  bool  $last  the last try: it airs whatever the checks found, only what never goes on air leaves it (ScriptGuard::airable())
      * @return array{0: array{text: string, canon_id: string|null, mood: string}|null, 1: list<string>}
      */
     private function draft(string $kind, string $phase, array $facts, int $minSentences, int $maxSentences, array $hints, array $topics, array $settings, array $rejected, bool $long = false, ?string $material = null, ?string $materialData = null, bool $last = true): array
@@ -1832,12 +1856,21 @@ final class CasterVoice
             $violations = [self::SPOKEN_REPEAT];
         }
 
+        // The last draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only what
+        // never goes on air leaves it (ScriptGuard::airable()).
+        if ($violations !== [] && $last) {
+            [$text] = ScriptGuard::airable($text, null, $facts);
+        }
+
         if ($violations !== []) {
             $violations = array_values(array_unique($violations));
             $this->usage->recordRejection(self::CHANNEL, $violations);
-            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
 
-            return [null, $violations];
+            if (! $last || $text === '') {
+                $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+
+                return [null, $violations];
+            }
         }
 
         $this->remember('texts', $text, (int) ($settings['recent'] ?? 10));

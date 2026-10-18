@@ -157,7 +157,7 @@ class NewsBulletin
 
     /**
      * The bulletin for `$slot`, or null (too few items, the voice off or
-     * capped, both tries turned down). Marks its items as read.
+     * capped, no word left in the second draft, which airs whatever the checks found). Marks its items as read.
      *
      * @param  Slot  $slot
      * @return array{text: string, speakers: list<string>, items: list<string>, dropped: list<string>}|null
@@ -186,7 +186,7 @@ class NewsBulletin
                     return null;
                 }
 
-                [$bulletin, $rejected] = $this->draft($slot, $items, $sirius, $rejected);
+                [$bulletin, $rejected] = $this->draft($slot, $items, $sirius, $rejected, $try === 1);
 
                 if ($bulletin !== null) {
                     $this->markRead([...$bulletin['items'], ...$bulletin['dropped']], $items, $now);
@@ -466,9 +466,10 @@ class NewsBulletin
      * @param  Slot  $slot
      * @param  list<BulletinItem>  $items
      * @param  list<string>  $rejected
+     * @param  bool  $last  the last try: a story the checks turned down is read all the same, and too few stories still air
      * @return array{0: array{text: string, speakers: list<string>, items: list<string>, dropped: list<string>}|null, 1: list<string>}
      */
-    private function draft(array $slot, array $items, bool $sirius, array $rejected): array
+    private function draft(array $slot, array $items, bool $sirius, array $rejected, bool $last = false): array
     {
         $settings = (array) config('tv.commentary.programme.bulletin', []);
         $itemRange = (array) ($settings['item_sentences'] ?? []);
@@ -496,6 +497,8 @@ class NewsBulletin
 
         $parsed['items'] = self::reassign($parsed['items'], $items);
         [$lines, $speakers, $keys, $reasons, $dropped] = [[self::timeLine($slot['type'], $this->clock()->spokenTime($slot['starts_at']))], [DuetDirector::MARKUS], [], [], []];
+        // What the checks turned down and airs all the same (user 2026-10-18: "Nie mehr verwerfen"), to be counted.
+        $aired = [];
 
         foreach ($items as $number => $item) {
             // The model found the story of an earlier item again: left out, and marked read with the bulletin.
@@ -511,7 +514,13 @@ class NewsBulletin
             if ($violations !== []) {
                 array_push($reasons, ...$violations);
 
-                continue;
+                // On the last try a story the checks turned down is read all the same; only what never goes on air
+                // leaves it (ScriptGuard::airable()).
+                if (! $last || $text === '' || ($text = ScriptGuard::airable($text)[0]) === '') {
+                    continue;
+                }
+
+                array_push($aired, ...$violations);
             }
 
             foreach (ScriptGuard::lines($text) as $line) {
@@ -521,20 +530,30 @@ class NewsBulletin
             $keys[] = $item['key'];
         }
 
+        // Too few stories: tried again; the last try reads the ones it has (counted as TOO_FEW), none at all is no bulletin.
         if (count($keys) < max(1, (int) ($settings['min_items'] ?? 2))) {
             $reasons = array_values(array_unique([self::TOO_FEW, ...$reasons]));
-            $this->usage->recordRejection(self::CHANNEL, $reasons);
-            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
 
-            return [null, $reasons];
+            if (! $last || $keys === []) {
+                $this->usage->recordRejection(self::CHANNEL, $reasons);
+                $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+
+                return [null, $reasons];
+            }
+
+            $aired[] = self::TOO_FEW;
         }
 
-        // The commentary, clearly set apart; without one that passes, the news stand alone. A timid sentence leaves it.
+        // The commentary, clearly set apart. A timid sentence leaves it; a comment the checks turn down airs all the same,
+        // counted, and only what never goes on air leaves it (ScriptGuard::airable()).
         $comment = self::withoutTimid(self::withoutGoodbyes($this->repair($parsed['markus'], $commentMax, $maxWords)));
+        $commentReasons = $comment === '' ? [] : $this->free($comment, $maxWords, $cutOff);
+        $comment = $commentReasons === [] ? $comment : ScriptGuard::airable($comment)[0];
 
-        // Asked for `commentary_sentences.min`, one sentence that passes is enough (real Haiku 2026-10-12: one long
-        // comment sentence, the rest of the bulletin fine).
-        if ($comment !== '' && $this->free($comment, $maxWords, $cutOff) === []) {
+        // Asked for `commentary_sentences.min`, one sentence is enough (real Haiku 2026-10-12: one long comment
+        // sentence, the rest of the bulletin fine).
+        if ($comment !== '') {
+            array_push($aired, ...$commentReasons);
             $lines[] = self::SEPARATORS[intdiv($slot['key'], 1800) % count(self::SEPARATORS)];
             $speakers[] = DuetDirector::MARKUS;
 
@@ -544,8 +563,11 @@ class NewsBulletin
             }
 
             $line = $sirius ? self::withoutGoodbyes($this->repair($parsed['sirius'], 1, $maxWords)) : '';
+            $lineReasons = $line === '' ? [] : $this->free($line, $maxWords, $cutOff);
+            $line = $lineReasons === [] ? $line : str_replace("\n", ' ', ScriptGuard::airable($line)[0]);
 
-            if ($line !== '' && $this->free($line, $maxWords, $cutOff) === []) {
+            if ($line !== '') {
+                array_push($aired, ...$lineReasons);
                 $lines[] = $line;
                 $speakers[] = DuetDirector::SIRIUS;
             }
@@ -557,6 +579,10 @@ class NewsBulletin
         foreach (ScriptGuard::lines($preview) as $line) {
             $lines[] = $line;
             $speakers[] = DuetDirector::MARKUS;
+        }
+
+        if ($aired !== []) {
+            $this->usage->recordRejection(self::CHANNEL, array_values(array_unique($aired)));
         }
 
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');

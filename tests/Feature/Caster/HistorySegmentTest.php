@@ -65,7 +65,9 @@ function casterHistoryKnownLines(): array
  */
 function historyRejectedDrafts(): array
 {
-    $draft = ['text' => "Die ganze Geschichte steht unter https://example.com in aller Ausführlichkeit für euch bereit.\nLest sie dort nach, sie lohnt sich wirklich sehr.", 'canon_id' => null, 'mood' => 'hype'];
+    // Nothing but a link: a second draft that breaks a rule airs all the same (user 2026-10-18: "Nie mehr verwerfen"),
+    // so only a draft that keeps no word without its link still gives nothing.
+    $draft = ['text' => 'Die ganze Geschichte steht unter https://example.com in aller Ausführlichkeit für euch bereit.', 'canon_id' => null, 'mood' => 'hype'];
 
     return [$draft, $draft];
 }

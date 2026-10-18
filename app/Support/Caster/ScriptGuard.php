@@ -2,6 +2,8 @@
 
 namespace App\Support\Caster;
 
+use App\Support\Voice\VoiceGuard;
+
 /**
  * The spoken-text rules of a commentary script, on top of the league voice's
  * own checks (VoiceHygiene, VoiceGuard): one sentence per line, the number
@@ -691,5 +693,64 @@ final class ScriptGuard
     public static function accented(string $sentence): bool
     {
         return preg_match('/[!?:]\s*$|\[[a-z-]+\]/u', trim($sentence)) === 1;
+    }
+
+    /**
+     * The last draft of a writer as it airs although the checks turned it down (user 2026-10-18: "Nie mehr
+     * verwerfen"): only what must never be said goes, sentence by sentence (unsafe()), and a hashtag is spoken out
+     * (CasterVoice::withoutHashtags()). A line left without a word goes with its speaker (`$speakers`, one per
+     * line; null stays null). An empty text when nothing with words is left: then there is nothing to air.
+     *
+     * @param  array<array-key, mixed>  $facts  the facts of the draft: a link one of them carries may be said
+     * @param  list<string>|null  $speakers
+     * @return array{0: string, 1: list<string>|null}
+     */
+    public static function airable(string $text, ?array $speakers = null, array $facts = []): array
+    {
+        $factText = mb_strtolower(implode("\n", VoiceGuard::factStrings($facts)));
+        $blocklist = array_values(array_filter(array_map(fn (mixed $word): string => mb_strtolower((string) $word), (array) config('esports.voice.blocklist', []))));
+        [$lines, $kept] = [[], []];
+
+        foreach (self::lines(CasterVoice::withoutHashtags($text)) as $index => $line) {
+            $safe = implode(' ', array_filter(self::runs($line), fn (string $run): bool => ! self::unsafe($run, $factText, $blocklist)));
+
+            if (preg_match('/\p{L}/u', self::withoutMarkers($safe)) === 1) {
+                $lines[] = $safe;
+                $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
+            }
+        }
+
+        return [implode("\n", $lines), $speakers === null ? null : $kept];
+    }
+
+    /**
+     * Whether a sentence carries what never goes on air, checked or not: a link no fact has, an email or Lightning
+     * address, a Nostr key or event id, or a blocklisted word.
+     *
+     * @param  list<string>  $blocklist  lower case
+     */
+    public static function unsafe(string $sentence, string $factText = '', array $blocklist = []): bool
+    {
+        $lower = mb_strtolower($sentence);
+
+        if (preg_match('/[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+\.[\p{L}]{2,}/u', $sentence) === 1
+            || preg_match('/\b(?:npub|nsec|nprofile|nevent|naddr|note|lnurl)1[0-9a-z]{6,}|\bnostr:|(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])/iu', $sentence) === 1) {
+            return true;
+        }
+
+        preg_match_all('~(?:https?://|www\.)\S+|\b[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:[a-z]{2,}/\S*|(?:com|de|org|net|io|space|at|ch|eu|info|me|tv|app|dev|xyz|news|social)\b)~iu', $sentence, $urls);
+        foreach ($urls[0] as $url) {
+            if (! str_contains($factText, mb_strtolower(rtrim($url, '.,;:!?)»“”"\'')))) {
+                return true;
+            }
+        }
+
+        foreach ($blocklist as $word) {
+            if (preg_match('/(?<![\p{L}\p{N}])'.preg_quote($word, '/').'(?![\p{L}\p{N}])/u', $lower) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -266,15 +266,17 @@ it('never speaks a stored headline the widened filter now turns down', function 
     VoiceAgent::assertNeverPrompted();
 });
 
-it('speaks a pattern reaction instead when the segment breaks a house rule, after one model call', function (string $draft, string $reason) {
+it('airs a segment that breaks a house rule without the sentence that breaks it, after one model call', function (string $draft, string $reason) {
     casterNewsHeadline('Bundesregierung plant neue Zuckersteuer');
     VoiceAgent::fake([casterNewsDraft($draft)]);
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
+    // The segment airs all the same (user 2026-10-18: "Nie mehr verwerfen"); the link never does.
     $script = CasterScript::query()->sole();
-    expect($script->source)->toBe(CasterScript::SOURCE_PATTERN)
-        ->and(implode("\n", array_slice($script->sentences(), 2)))->toBeIn(NewsScripts::data()['reactions']['germany'])
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->text)->not->toContain('example.com')
+        ->and($script->text)->toContain('Der Staat findet immer irgendetwas zum Abkassieren')
         ->and(DB::table('voice_rejections')->where('channel', CasterVoice::NEWS_CHANNEL)->where('reason', $reason)->value('count'))->toBe(1);
     VoiceAgent::assertPromptedTimes(1);
 })->with([

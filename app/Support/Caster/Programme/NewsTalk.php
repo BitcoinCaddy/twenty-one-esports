@@ -60,6 +60,9 @@ class NewsTalk
 
     public const TURNS = 'news_talk_turns';
 
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
+    private ?array $draft = null;
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly DuetScripts $duets,
@@ -100,7 +103,7 @@ class NewsTalk
     }
 
     /**
-     * The talk after the bulletin of `$slot` airing at `$airsAt`, or null (off, too few items, capped, both tries turned down).
+     * The talk after the bulletin of `$slot` airing at `$airsAt`, or null (off, too few items, capped, no word left in the second draft, which airs whatever the checks found).
      *
      * @param  Slot  $slot
      * @param  list<BulletinItem>  $items
@@ -135,6 +138,13 @@ class NewsTalk
                 $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
                 [$talk, $rejected] = $this->evaluate($raw, $entries, $response->steps->last()?->finishReason === FinishReason::Length);
 
+                // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only
+                // what never goes on air leaves it (ScriptGuard::airable()).
+                if ($talk === null && $try === 1 && $this->draft !== null && ($safe = ScriptGuard::airable($this->draft['text'], $this->draft['speakers']))[0] !== '') {
+                    $this->usage->recordRejection(self::CHANNEL, $rejected);
+                    $talk = ['text' => $safe[0], 'speakers' => $safe[1] ?? []];
+                }
+
                 if ($talk !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
@@ -162,6 +172,7 @@ class NewsTalk
      */
     public function evaluate(string $raw, array $entries, bool $cutOff = false): array
     {
+        $this->draft = null;
         $settings = (array) config('tv.commentary.programme.news_talk', []);
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
         $clean = $this->hygiene->clean($raw, true, 'de');
@@ -192,9 +203,12 @@ class NewsTalk
             }
         }
 
-        if (! in_array(DuetDirector::SIRIUS, $speakers, true) || ! in_array(DuetDirector::MARKUS, $speakers, true)) {
+        if ($lines === []) {
             return [null, [self::TURNS]];
         }
+
+        // One voice alone is turned down, and its second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen").
+        $turns = ! in_array(DuetDirector::SIRIUS, $speakers, true) || ! in_array(DuetDirector::MARKUS, $speakers, true) ? [self::TURNS] : [];
 
         $maxSeconds = (float) ($settings['seconds']['max'] ?? 360);
         $maxSentences = max(2, (int) ($settings['sentences']['max'] ?? 44));
@@ -213,10 +227,7 @@ class NewsTalk
             $violations[] = self::SHORT;
         }
 
-        if ($violations !== []) {
-            return [null, array_values(array_unique($violations))];
-        }
-
+        $violations = [...$turns, ...$violations];
         $teaser = $entries === [] ? '' : $this->announcements()->accept(Announcements::parse(implode("\n", $teaserLines)), $entries, BroadcastClock::NEWS, false, 2, $cutOff);
 
         foreach (ScriptGuard::lines($teaser) as $line) {
@@ -224,7 +235,10 @@ class NewsTalk
             $speakers[] = DuetDirector::MARKUS;
         }
 
-        return [['text' => implode("\n", $lines), 'speakers' => $speakers], []];
+        // The draft, turned down or not, for the second try that airs it all the same (write()).
+        $this->draft = ['text' => implode("\n", $lines), 'speakers' => $speakers];
+
+        return $violations === [] ? [$this->draft, []] : [null, array_values(array_unique($violations))];
     }
 
     /**

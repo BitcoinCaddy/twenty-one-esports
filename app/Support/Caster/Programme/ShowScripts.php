@@ -36,7 +36,8 @@ use Throwable;
  * Bitcoin common ground, COMMON_NUMBERS) and no spoken year
  * ("zweitausendneun") that is not in it, and no `foreign` name (a chatter
  * not on trial, a gamer tag, a city without a date, another dead coin).
- * Two tries, the second with the reasons; `shows.daily_cap` and the monthly
+ * Two tries, the second with the reasons, which airs whatever the checks
+ * found (user 2026-10-18); `shows.daily_cap` and the monthly
  * budget. The hotline looks its questions up first (Shows::withLookups()):
  * nothing found, no hotline.
  *
@@ -96,6 +97,9 @@ class ShowScripts
      */
     public array $rejectedDrafts = [];
 
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
+    private ?array $draft = null;
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly DuetScripts $duets,
@@ -107,7 +111,7 @@ class ShowScripts
     ) {}
 
     /**
-     * The format `$id` for `$slot` from `$material`, or null (off, capped, nothing looked up, both tries turned down).
+     * The format `$id` for `$slot` from `$material`, or null (off, capped, nothing looked up, no word left in the second draft, which airs whatever the checks found).
      *
      * @param  Slot  $slot
      * @param  ShowMaterial  $material
@@ -184,8 +188,20 @@ class ShowScripts
             }
 
             $this->usage->recordRejection(self::CHANNEL, $rejected);
-            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
             $this->rejectedDrafts[] = ['segment' => $segment['number'] ?? 0, 'reasons' => $rejected, 'raw' => $raw];
+
+            // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"); only what never goes on air leaves it.
+            if ($try === 1 && $this->draft !== null) {
+                [$text, $speakers] = ScriptGuard::airable($this->draft['text'], $this->draft['speakers']);
+
+                if ($text !== '' && $speakers !== null) {
+                    $this->usage->recordOutcome(self::CHANNEL, 'accepted');
+
+                    return ['text' => $text, 'speakers' => $speakers];
+                }
+            }
+
+            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
         }
 
         return null;
@@ -197,7 +213,7 @@ class ShowScripts
      * format's usual length, each with everything aired so far, until the show reaches its window less
      * `slot_margin_seconds` on air (ScriptQueue::estimateSeconds()) or `max_segments`; the opener is the code's line in
      * front of the first, the back-announce ends only the last. A middle segment that fails ends the show with its
-     * closing segment; under `min_share` of the window, or no closing segment: null (SHORT recorded).
+     * closing segment; under `min_share` of the window, or no closing segment, it airs all the same (SHORT recorded).
      *
      * @param  ShowMaterial  $material
      * @param  array{next: string|null, earlier: list<string>, energy: string}  $context
@@ -234,9 +250,13 @@ class ShowScripts
             array_push($speakers, ...$closing['speakers']);
         }
 
+        // Short of `min_share`, or without its closing segment, what was written airs all the same (user 2026-10-18: "Nie
+        // mehr verwerfen"), counted as SHORT; null only when no segment was written at all.
         if ($closing === null || ScriptQueue::estimateSeconds(implode("\n", $lines)) < (float) ($settings['min_share'] ?? 0.75) * 60 * $minutes) {
             $this->usage->recordRejection(self::CHANNEL, [self::SHORT]);
+        }
 
+        if ($lines === []) {
             return null;
         }
 
@@ -256,6 +276,7 @@ class ShowScripts
      */
     public function evaluate(string $id, array $material, string $raw, bool $cutOff = false, array $previous = [], bool $segment = false, bool $final = true, array $previousOpeners = []): array
     {
+        $this->draft = null;
         $settings = Shows::settings($id);
         $cast = Shows::cast($id);
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
@@ -326,6 +347,9 @@ class ShowScripts
                 break;
             }
         }
+
+        // The draft turned down, for the second try that airs it all the same (call()).
+        $this->draft = ['text' => $text, 'speakers' => $speakers];
 
         return $violations === [] ? [['text' => $text, 'speakers' => $speakers], []] : [null, array_values(array_unique($violations))];
     }

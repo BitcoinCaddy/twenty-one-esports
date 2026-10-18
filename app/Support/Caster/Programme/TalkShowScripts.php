@@ -46,11 +46,12 @@ use Throwable;
  *   year or foreign name outside the data), the quote guard
  *   (TalkShow::quoteViolations()) and LABEL;
  * - repeats (SpokenMemory): a first draft that repeats the station is said
- *   anew; on the last try it passes only when what airs before its first
- *   repeat (ScriptQueue::enqueue() ends it there) is still `seconds.min` long.
+ *   anew.
  *
- * Two tries, the second with the reasons; its own usage channel and
- * `daily_cap`, and the monthly budget.
+ * Two tries, the second with the reasons; the last draft airs whatever the
+ * checks found (user 2026-10-18: "Nie mehr verwerfen"), counted, and only
+ * what never goes on air leaves it (ScriptGuard::airable()). Its own usage
+ * channel and `daily_cap`, and the monthly budget.
  *
  * @phpstan-import-type Slot from BroadcastClock
  * @phpstan-import-type ShowMaterial from Shows
@@ -104,6 +105,9 @@ class TalkShowScripts
 
     /** @var list<string> the repeated sentences of the last draft turned down for CasterVoice::SPOKEN_REPEAT */
     private array $repeated = [];
+
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
+    private ?array $draft = null;
 
     public function __construct(
         private readonly CasterVoice $voice,
@@ -178,7 +182,7 @@ class TalkShowScripts
      * part for the closing round; every part gets the last lines before it and the host's questions so far, a fresh
      * sample of host moves, and may not repeat a line of an earlier part. Before the closing round, while the talk
      * would stay under the minimum, parts of `extra_act` follow (at most `max_extra_acts`). Over the maximum, whole
-     * turns leave from the middle; still under the minimum: null.
+     * turns leave from the middle; still under the minimum, it airs all the same (counted as SHORT).
      *
      * @param  ShowMaterial  $material
      * @return array{text: string, speakers: list<string>}|null
@@ -235,10 +239,9 @@ class TalkShowScripts
 
         [$lines, $speakers] = self::withinLength($lines, $speakers, $maxSeconds, PHP_INT_MAX, fn (array $kept, array $by): float => TalkShow::airSeconds($kept, $by));
 
+        // Short of the slot's minimum it airs all the same (user 2026-10-18: "Nie mehr verwerfen"), counted.
         if (TalkShow::airSeconds($lines, $speakers) < $minSeconds) {
             $this->usage->recordRejection(self::CHANNEL, [ShowScripts::SHORT]);
-
-            return null;
         }
 
         return ['text' => implode("\n", $lines), 'speakers' => $speakers];
@@ -260,7 +263,9 @@ class TalkShowScripts
         $moves = TalkShow::hostMoves($now, max(1, (int) ($settings['host_moves'] ?? 10)));
 
         // The closing round gets a third try: it is the one part a failed episode cannot do without.
-        for ($try = 0; $try < (($act['final'] ?? false) === true ? 3 : 2); $try++) {
+        $tries = ($act['final'] ?? false) === true ? 3 : 2;
+
+        for ($try = 0; $try < $tries; $try++) {
             if ($this->usage->attemptsToday(self::CHANNEL) >= (int) ($settings['daily_cap'] ?? 0)
                 || $this->usage->monthCost() >= (float) config('esports.voice.monthly_budget_usd', 0)) {
                 return null;
@@ -283,6 +288,18 @@ class TalkShowScripts
             }
 
             $this->usage->recordRejection(self::CHANNEL, $rejected);
+
+            // The last draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"); only what never goes on air leaves it.
+            if ($try === $tries - 1 && $this->draft !== null) {
+                [$text, $speakers] = ScriptGuard::airable($this->draft['text'], $this->draft['speakers']);
+
+                if ($text !== '' && $speakers !== null) {
+                    $this->usage->recordOutcome(self::CHANNEL, 'accepted');
+
+                    return ['text' => $text, 'speakers' => $speakers];
+                }
+            }
+
             $this->usage->recordOutcome(self::CHANNEL, 'rejected');
         }
 
@@ -303,6 +320,7 @@ class TalkShowScripts
      */
     public function evaluate(array $material, string $raw, bool $cutOff = false, bool $evergreen = false, bool $last = true, ?CarbonImmutable $now = null, ?array $act = null): array
     {
+        $this->draft = null;
         $settings = TalkShow::settings();
         $cast = Shows::cast(Shows::STAMMTISCH);
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
@@ -343,13 +361,9 @@ class TalkShowScripts
         // it was shown once more before it continues (first real runs, 2026-10-13), so such lines leave, the rest stays.
         // A near copy counts too (P20 run 4: "Gießkanne für alle, bezahlt mit Geld, das morgen weniger wert ist" in three parts).
         $earlier = array_values(array_filter((array) ($act['previous'] ?? []), 'is_string'));
-        // On the last try a line with the briefing's words leaves (with its question or answer) instead of the whole part,
-        // and in an act so does a line the station said within the repeat window: measured 2026-10-13 (real Sonnet run),
-        // one repeated host move turned the opening act down as SHORT (the whole talk's `seconds.min` against the act
-        // cut at its first repeat), and with it the whole episode.
-        $spokenBefore = $last && $act !== null ? self::repeatedLines(implode("\n", $lines), $now ?? CarbonImmutable::now()) : [];
-        $drop = fn (string $line): bool => preg_match(self::META_WORDS, ScriptGuard::withoutMarkers($line)) === 1 || ($evergreen && preg_match(self::HEADLINE_WORDS, $line) === 1)
-            || array_filter($spokenBefore, fn (string $sentence): bool => $sentence !== '' && str_contains($line, $sentence)) !== [];
+        // On the last try a line with the briefing's words leaves (with its question or answer) instead of the whole part.
+        // A line the station said within the repeat window stays (user 2026-10-18: "Nie mehr verwerfen").
+        $drop = fn (string $line): bool => preg_match(self::META_WORDS, ScriptGuard::withoutMarkers($line)) === 1 || ($evergreen && preg_match(self::HEADLINE_WORDS, $line) === 1);
         [$lines, $speakers] = self::withoutEchoes($lines, $speakers, $earlier, $last ? $drop : null);
 
         if ($lines === []) {
@@ -424,11 +438,11 @@ class TalkShowScripts
             if ($repeated !== [] && ! $last) {
                 $this->repeated = $repeated;
                 $violations[] = CasterVoice::SPOKEN_REPEAT;
-            } elseif ($repeated !== [] && ScriptQueue::estimateSeconds((new SpokenMemory)->coherent($text, $now ?? CarbonImmutable::now())) < $minSeconds) {
-                // The queue ends the talk before its first repeat: what would air is too short.
-                $violations[] = ShowScripts::SHORT;
             }
         }
+
+        // The draft turned down, for the last try that airs it all the same (call()).
+        $this->draft = ['text' => $text, 'speakers' => $speakers];
 
         return $violations === [] ? [['text' => $text, 'speakers' => $speakers], []] : [null, array_values(array_unique($violations))];
     }

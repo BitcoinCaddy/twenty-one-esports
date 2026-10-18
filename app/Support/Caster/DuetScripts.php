@@ -51,6 +51,9 @@ final class DuetScripts
     /** @var list<string> the repeated sentences of the last draft turned down for CasterVoice::SPOKEN_REPEAT */
     private array $repeated = [];
 
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked (lastDraft()) */
+    private ?array $draft = null;
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly VoiceUsage $usage,
@@ -63,7 +66,7 @@ final class DuetScripts
      * @param  array<array-key, mixed>  $facts  public facts of the scene
      * @param  list<string>  $topics
      * @param  list<array{speaker: string, text: string}>  $previous  the last turns of the duet before (DuetDirector::lastTurns())
-     * @return array{text: string, speakers: list<string>}|null null: off, capped, failed, or both tries turned down
+     * @return array{text: string, speakers: list<string>}|null null: off, capped, failed, or no word left in the second draft (it airs whatever the checks found)
      */
     public function write(array $sequence, string $phase, array $facts, array $topics = [], array $previous = []): ?array
     {
@@ -109,7 +112,7 @@ final class DuetScripts
      * @param  list<string>  $topics
      * @param  list<array{speaker: string, text: string}>  $previous
      * @param  list<string>  $rejected
-     * @param  bool  $last  the last try: a repeated line no longer turns it down (the queue ends the duet before it)
+     * @param  bool  $last  the last try: it airs whatever the checks found, only what never goes on air leaves it (ScriptGuard::airable())
      * @return array{0: array{text: string, speakers: list<string>}|null, 1: list<string>}
      */
     private function draft(array $sequence, string $phase, array $facts, array $topics, array $previous, array $rejected, bool $last = true): array
@@ -124,16 +127,25 @@ final class DuetScripts
         $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
         [$duet, $violations] = $this->evaluate($raw, $facts, $response->steps->last()?->finishReason === FinishReason::Length);
 
-        // A first draft that repeats the station is said anew once (P8): the queue would end the duet at that line.
+        // A first draft that repeats the station is said anew once (P8).
         if ($duet !== null && $violations === [] && ! $last && ($this->repeated = self::repeatedLines($duet['text'])) !== []) {
             $violations = [CasterVoice::SPOKEN_REPEAT];
         }
 
         if ($violations !== []) {
             $this->usage->recordRejection(self::CHANNEL, $violations);
-            $this->usage->recordOutcome(self::CHANNEL, 'rejected');
 
-            return [null, $violations];
+            // The last draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"); only what never goes on air leaves it.
+            $draft = $last ? $this->lastDraft() : null;
+            [$text, $speakers] = $draft === null ? ['', null] : ScriptGuard::airable($draft['text'], $draft['speakers'], $facts);
+
+            if ($text === '' || $speakers === null) {
+                $this->usage->recordOutcome(self::CHANNEL, 'rejected');
+
+                return [null, $violations];
+            }
+
+            $duet = ['text' => $text, 'speakers' => $speakers];
         }
 
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');
@@ -154,7 +166,10 @@ final class DuetScripts
      */
     public function evaluate(string $raw, array $facts, bool $cutOff = false, ?int $maxTurns = null, ?int $maxSentences = null): array
     {
-        $duet = $this->repair(self::parse($this->hygiene->clean($raw, true, 'de')), $maxTurns, $maxSentences);
+        $turns = self::parse($this->hygiene->clean($raw, true, 'de'));
+        $duet = $this->repair($turns, $maxTurns, $maxSentences);
+        // What airs when the checks turn it down on the last try (lastDraft()): the repaired duet, or the turns as written.
+        $this->draft = $duet ?? self::asWritten($turns);
 
         if ($duet === null) {
             return [null, [self::TURNS]];
@@ -213,6 +228,37 @@ final class DuetScripts
         }
 
         return ['text' => implode("\n", $lines), 'speakers' => $speakers];
+    }
+
+    /**
+     * The duet of the last answer evaluate() checked, turned down or not (null: none had a word): what a writer airs on
+     * its last try all the same (user 2026-10-18: "Nie mehr verwerfen").
+     *
+     * @return array{text: string, speakers: list<string>}|null
+     */
+    public function lastDraft(): ?array
+    {
+        return $this->draft;
+    }
+
+    /**
+     * Parsed turns as they were written, one sentence per line with its speaker; null without a line.
+     *
+     * @param  list<array{speaker: string, text: string}>  $turns
+     * @return array{text: string, speakers: list<string>}|null
+     */
+    private static function asWritten(array $turns): ?array
+    {
+        [$lines, $speakers] = [[], []];
+
+        foreach ($turns as $turn) {
+            foreach (ScriptGuard::lines(ScriptGuard::sentenceLines(CasterVoice::withoutHashtags($turn['text']))) as $line) {
+                $lines[] = $line;
+                $speakers[] = $turn['speaker'];
+            }
+        }
+
+        return $lines === [] ? null : ['text' => implode("\n", $lines), 'speakers' => $speakers];
     }
 
     /**

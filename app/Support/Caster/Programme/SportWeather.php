@@ -79,6 +79,9 @@ class SportWeather
         'Für die Nachteulen gibt es auf TWENTY ONE TV jetzt noch kurz das Wetter.',
     ];
 
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
+    private ?array $draft = null;
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly DuetScripts $duets,
@@ -158,7 +161,7 @@ class SportWeather
     }
 
     /**
-     * The segment for the bulletin of `$slot`, or null (off, no data, capped, both tries turned down).
+     * The segment for the bulletin of `$slot`, or null (off, no data, capped, no word left in the second draft, which airs whatever the checks found).
      *
      * @param  Slot  $slot
      * @return array{text: string, speakers: list<string>}|null
@@ -199,6 +202,13 @@ class SportWeather
                 $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
                 [$content, $rejected] = $this->evaluate($material, $raw, $sirius, $quiet, $response->steps->last()?->finishReason === FinishReason::Length);
 
+                // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only
+                // what never goes on air leaves it (ScriptGuard::airable()).
+                if ($content === null && $try === 1 && $this->draft !== null && ($safe = ScriptGuard::airable($this->draft['text'], $this->draft['speakers']))[0] !== '') {
+                    $this->usage->recordRejection(self::CHANNEL, $rejected);
+                    $content = ['text' => $safe[0], 'speakers' => $safe[1] ?? []];
+                }
+
                 if ($content !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
                     $openers = $quiet ? self::QUIET_OPENERS : self::OPENERS;
@@ -229,6 +239,7 @@ class SportWeather
      */
     public function evaluate(array $material, string $raw, bool $sirius, bool $quiet = false, bool $cutOff = false): array
     {
+        $this->draft = null;
         $settings = (array) config('tv.commentary.programme.sport_weather', []);
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
         $sentences = (array) ($settings[$quiet ? 'quiet_sentences' : 'sentences'] ?? []);
@@ -271,6 +282,9 @@ class SportWeather
         if (ScriptQueue::estimateSeconds($text) < (float) ($seconds['min'] ?? 60)) {
             $violations[] = self::SHORT;
         }
+
+        // The draft turned down, for the second try that airs it all the same (write()).
+        $this->draft = ['text' => $text, 'speakers' => $speakers];
 
         return $violations === [] ? [['text' => $text, 'speakers' => $speakers], []] : [null, array_values(array_unique($violations))];
     }

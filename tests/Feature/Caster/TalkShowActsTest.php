@@ -8,6 +8,7 @@ use App\Support\Caster\ClipSpool;
 use App\Support\Caster\DuetScripts;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\Shows;
+use App\Support\Caster\Programme\ShowScripts;
 use App\Support\Caster\Programme\TalkShow;
 use App\Support\Caster\Programme\TalkShowScripts;
 use App\Support\Caster\WorldMemory;
@@ -15,6 +16,7 @@ use App\Support\TwentyOne\Stream\ProgrammeSlides;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Events\AgentPrompted;
@@ -200,7 +202,7 @@ it('writes the talk in acts that continue each other, the guest opening the firs
         ->and($talk['text'])->toContain('pleitegehen')->toContain('Druckerpresse nichts wert')->toContain('genau so mögen wir es');
 });
 
-it('writes another act before the closing round while the talk is short, and gives up when it stays short', function () {
+it('writes another act before the closing round while the talk is short, and airs it counted when it stays short', function () {
     actsHeadline();
     config(['tv.commentary.programme.shows.formats.stammtisch.slot_minutes' => 6, 'tv.commentary.programme.shows.formats.stammtisch.slot_margin_seconds' => 10,
         'tv.commentary.programme.shows.formats.stammtisch.max_extra_acts' => 1]);
@@ -209,12 +211,14 @@ it('writes another act before the closing round while the talk is short, and giv
 
     $talk = app(TalkShowScripts::class)->evergreen(app(TalkShow::class)->evergreen(CarbonImmutable::now()));
 
-    // Opening, middle, the extra round, the closing round: still far under six minutes, so nothing airs.
+    // Opening, middle, the extra round, the closing round: still far under six minutes, and it airs all the same
+    // (user 2026-10-18: "Nie mehr verwerfen"), counted as SHORT.
     expect($prompts)->toHaveCount(4)
         ->and($prompts[2])->toContain('Zusatzrunde')
         ->and($prompts[3])->toContain('Letzter Akt')
         ->and(actsSeconds('opening', 'middle', 'extra', 'closing'))->toBeLessThan(350.0)
-        ->and($talk)->toBeNull();
+        ->and($talk['text'] ?? '')->toContain('genau so mögen wir es')
+        ->and(DB::table('voice_rejections')->where('channel', TalkShowScripts::CHANNEL)->where('reason', ShowScripts::SHORT)->value('count'))->toBe(1);
 });
 
 it('cuts whole turns from the middle when the acts run over the window', function () {

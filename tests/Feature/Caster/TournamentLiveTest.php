@@ -17,7 +17,9 @@ use App\Support\Tournaments\GameProfile;
 use App\Support\Tournaments\TournamentBrackets;
 use App\Support\Tournaments\TournamentRunner;
 use App\Support\Voice\VoiceAgent;
+use App\Support\Voice\VoiceGuard;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\BlockliOn;
 
@@ -107,4 +109,21 @@ it('writes no new comment while the last one waits voiced in the spool, and none
     // Aired (a played clip leaves the spool): the next one comes.
     CasterClip::query()->delete();
     expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(41)))->toBe(1);
+});
+
+it('airs its one draft when the checks turn it down, without the link, counted, instead of the standby duet (user 2026-10-18)', function () {
+    $tournament = Tournament::factory()->create(['name' => 'Blockli Cup #1', 'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::TwoStage,
+        'options' => FormatOptions::defaults(GameProfile::for('blockli', 'correspondence'))->toArray(), 'status' => TournamentStatus::Running,
+        'results_mode' => TournamentResultsMode::Players, 'starts_at' => now()->subMinutes(5)]);
+    $user = User::factory()->create();
+    TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => 'Satoshi', 'rating' => 1500, 'group' => 1, 'members' => [$user->id]]);
+    VoiceAgent::fake([['text' => "Markus: Breaking aus dem Blockli Cup, alles live unter https://example.com/cup zu sehen.\nSirius: Die Bretter glühen heute richtig, und Satoshi schwitzt.", 'canon_id' => null, 'mood' => 'hype']]);
+
+    expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), CarbonImmutable::now()))->toBe(1);
+
+    $script = CasterScript::query()->where('topic', TournamentLive::TOPIC)->sole();
+    expect($script->text)->toBe('Die Bretter glühen heute richtig, und Satoshi schwitzt.')
+        ->and($script->speakers)->toBe(['sirius'])
+        ->and(DB::table('voice_rejections')->where('channel', TournamentLive::CHANNEL)->where('reason', VoiceGuard::URL)->value('count'))->toBe(1)
+        ->and(DB::table('voice_usage')->where('channel', TournamentLive::CHANNEL)->value('accepted'))->toBe(1);
 });

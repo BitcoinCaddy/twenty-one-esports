@@ -28,6 +28,7 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -258,7 +259,7 @@ it('turns down a short draft, drops a league sentence with two players and a Sir
     }
 });
 
-it('tries a rejected rubric once more with the reason, then gives up', function () {
+it('tries a rejected rubric once more with the reason, then airs the second draft and counts what it broke', function () {
     rubricsDesk();
     $calls = 0;
     VoiceAgent::fake(function () use (&$calls): array {
@@ -268,8 +269,14 @@ it('tries a rejected rubric once more with the reason, then gives up', function 
     });
 
     $material = app(Rubrics::class)->material(Rubrics::LIGA, CarbonImmutable::now());
-    expect(app(RubricScripts::class)->write(rubricsSlot(), Rubrics::LIGA, $material, CarbonImmutable::now()))->toBeNull()
-        ->and($calls)->toBe(2);
+    $rubric = app(RubricScripts::class)->write(rubricsSlot(), Rubrics::LIGA, $material, CarbonImmutable::now());
+
+    // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): the opener and the short draft.
+    expect($rubric['text'] ?? null)->toEndWith(rubricsSentences()[0])
+        ->and($rubric['speakers'] ?? null)->toBe(['markus', 'markus'])
+        ->and($calls)->toBe(2)
+        ->and(DB::table('voice_rejections')->where('channel', RubricScripts::CHANNEL)->where('reason', RubricScripts::SHORT)->value('count'))->toBe(2)
+        ->and(DB::table('voice_usage')->where('channel', RubricScripts::CHANNEL)->value('accepted'))->toBe(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Er war zu kurz'));
 });
 

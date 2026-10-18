@@ -54,6 +54,9 @@ class RoastScripts
     /** @var array<string, string> */
     private const NAMES = [DuetDirector::MARKUS => 'Markus', DuetDirector::SIRIUS => 'Sirius'];
 
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
+    private ?array $draft = null;
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly DuetScripts $duets,
@@ -76,7 +79,7 @@ class RoastScripts
     }
 
     /**
-     * The format `$id` for `$slot` from `$material`, or null (off, capped, both tries turned down).
+     * The format `$id` for `$slot` from `$material`, or null (off, capped, no word left in the second draft, which airs whatever the checks found).
      *
      * @param  Slot  $slot
      * @param  RubricMaterial  $material
@@ -110,6 +113,13 @@ class RoastScripts
                 $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
                 [$content, $rejected] = $this->evaluate($id, $material, $raw, $response->steps->last()?->finishReason === FinishReason::Length);
 
+                // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only
+                // what never goes on air leaves it (ScriptGuard::airable()).
+                if ($content === null && $try === 1 && $this->draft !== null && ($safe = ScriptGuard::airable($this->draft['text'], $this->draft['speakers']))[0] !== '') {
+                    $this->usage->recordRejection(self::CHANNEL, $rejected);
+                    $content = ['text' => $safe[0], 'speakers' => $safe[1] ?? []];
+                }
+
                 if ($content !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
@@ -139,6 +149,7 @@ class RoastScripts
      */
     public function evaluate(string $id, array $material, string $raw, bool $cutOff = false): array
     {
+        $this->draft = null;
         $settings = (array) config('tv.commentary.programme.roasts', []);
         $maxWords = (int) config('tv.commentary.scripts.max_words_per_sentence', 32);
         $maxSentences = max(1, (int) ($settings['sentences']['max'] ?? 30));
@@ -190,6 +201,9 @@ class RoastScripts
         if (array_filter($material['sources'], fn (string $source): bool => ! str_contains($squash($text), $squash($source))) !== []) {
             $violations[] = self::SOURCES;
         }
+
+        // The draft turned down, for the second try that airs it all the same (write()).
+        $this->draft = ['text' => $text, 'speakers' => $voices];
 
         return $violations === [] ? [['text' => $text, 'speakers' => $voices], []] : [null, array_values(array_unique($violations))];
     }

@@ -67,6 +67,9 @@ class PodcastScripts
 
     private const CLOCK_WORDS = '/(?<![\p{L}])(?:uhr|halb|viertel|stunden?|minuten?|morgen|übermorgen|heute\s+abend|heute\s+nacht|mittag|nachmittag|abend|vormittag)(?![\p{L}])/iu';
 
+    /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
+    private ?array $draft = null;
+
     public function __construct(
         private readonly CasterVoice $voice,
         private readonly DuetScripts $duets,
@@ -109,6 +112,13 @@ class PodcastScripts
                 $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
                 $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
                 [$content, $rejected] = $this->evaluate($what, $material, $raw, $response->steps->last()?->finishReason === FinishReason::Length);
+
+                // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"): what it broke is counted, only
+                // what never goes on air leaves it (ScriptGuard::airable()).
+                if ($content === null && $try === 1 && $this->draft !== null && ($safe = ScriptGuard::airable($this->draft['text'], $this->draft['speakers']))[0] !== '') {
+                    $this->usage->recordRejection(self::CHANNEL, $rejected);
+                    $content = ['text' => $safe[0], 'speakers' => $safe[1] ?? []];
+                }
 
                 if ($content !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
@@ -172,6 +182,7 @@ class PodcastScripts
      */
     public function evaluate(string $what, array $material, string $raw, bool $cutOff = false): array
     {
+        $this->draft = null;
         $cast = $what === self::BACK ? [DuetDirector::MARKUS] : [DuetDirector::MARKUS, DuetDirector::SIRIUS];
         [$minSentences, $maxSentences] = self::LENGTHS[$what]['sentences'];
         [$minSeconds, $maxSeconds] = self::LENGTHS[$what]['seconds'];
@@ -222,6 +233,9 @@ class PodcastScripts
         if ($what !== self::BACK && count(array_unique($speakers)) < 2) {
             $violations[] = self::TURNS;
         }
+
+        // The draft turned down, for the second try that airs it all the same (write()).
+        $this->draft = ['text' => $text, 'speakers' => $speakers];
 
         return $violations === [] ? [['text' => $text, 'speakers' => $speakers], []] : [null, array_values(array_unique($violations))];
     }

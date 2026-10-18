@@ -283,7 +283,7 @@ it('queues a duet scene with one speaker per line, through its parts and the cla
         ->and((new DuetDirector)->lastOpener())->toBe('markus');
 });
 
-it('ends a duet before its first repeated or farewell line, so nobody answers a line that never aired', function () {
+it('keeps every line of a duet, a repeated and a farewell line included, each with its speaker', function () {
     $queue = app(ScriptQueue::class);
     $said = 'Kaffee um diese Uhrzeit ist ja fast schon Verrat, denn bei mir steht längst ein Altbier auf dem Tisch.';
     $queue->enqueue(CasterScript::LIVE, ScenePhase::BREAK, $said, 'a', 0, CarbonImmutable::now());
@@ -295,16 +295,20 @@ it('ends a duet before its first repeated or farewell line, so nobody answers a 
         'Du bist halt ein echter Diplomat, und genau deshalb lassen wir dich heute auch moderieren.',
     ]), 'b', 0, CarbonImmutable::now(), speakers: ['markus', 'sirius', 'sirius', 'markus']);
 
-    // Before P8 Markus' "Du bist halt ein echter Diplomat" answered Sirius' two dropped lines on air.
-    expect($script->speakers)->toBe(['markus'])
-        ->and($script->sentences())->toHaveCount(1)
-        ->and($script->sentences()[0])->toStartWith('Die Liga läuft heute');
+    // Nothing a writer produced is cut any more (user 2026-10-18: "Nie mehr verwerfen"): the repeat and the goodbye air.
+    expect($script->speakers)->toBe(['markus', 'sirius', 'sirius', 'markus'])
+        ->and($script->sentences())->toHaveCount(4)
+        ->and($script->sentences()[1])->toBe($said)
+        ->and($script->sentences()[2])->toContain('ciao');
 
-    // A scene duet left with one speaker is no duet: not queued.
-    expect($queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [
+    // A scene duet whose second speaker only repeats is queued as written too (user 2026-10-18).
+    $scene = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [
         'Heute Abend sitzen erstaunlich viele Leute in der Lobby, und das an einem ganz normalen Montag.',
         $said,
-    ]), 'c', 0, CarbonImmutable::now(), speakers: ['markus', 'sirius']))->toBeNull();
+    ]), 'c', 0, CarbonImmutable::now(), speakers: ['markus', 'sirius']);
+
+    expect($scene?->speakers)->toBe(['markus', 'sirius'])
+        ->and($scene?->sentences())->toHaveCount(2);
 });
 
 it('voices every line with its speaker profile and breathes on a speaker change', function () {

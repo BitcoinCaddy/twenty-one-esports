@@ -23,6 +23,7 @@ use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -416,7 +417,7 @@ it('writes an evergreen talk for the night stock at most stock_per_day times a d
         ->and(TalkShow::turnGap('liga'))->toBeNull();
 });
 
-it('leaves the night stock to the next format when the talk show draft does not pass', function () {
+it('airs the second talk show draft in the night stock although it does not pass', function () {
     config(['tv.commentary.blocks.stock.formats' => ['stammtisch', 'liga'], 'tv.commentary.blocks.stock.turns' => ['min' => 2, 'max' => 10]]);
     // A two-voice answer: no talk show of three, but a fine league talk.
     VoiceAgent::fake(fn (string $prompt): array => ['text' => implode("\n", [
@@ -429,7 +430,9 @@ it('leaves the night stock to the next format when the talk show draft does not 
 
     $talk = app(StockScripts::class)->write();
 
-    expect($talk['format'] ?? null)->toBe('liga');
+    // The second draft airs all the same (user 2026-10-18: "Nie mehr verwerfen"); what it broke is counted.
+    expect($talk['format'] ?? null)->toBe('stammtisch')
+        ->and(DB::table('voice_rejections')->where('channel', TalkShowScripts::CHANNEL)->pluck('reason')->all())->toContain(ShowScripts::TURNS);
 });
 
 it('offers ten host moves per episode from every group, rotating, and never one said on air within the repeat window', function () {
@@ -553,7 +556,7 @@ it('keeps the briefing off the air: "laut Positionsliste" or "im Material" turns
         ->not->toContain('Schlagzeile noch einmal vor')->not->toContain('liest die Schlagzeile vor')->not->toContain('aus der Positionsliste')->toContain('Was genau meinen Sie damit');
 });
 
-it('drops a line the station already said from an act on its last try instead of turning the act (and the episode) down', function () {
+it('keeps a line the station already said in an act on its last try, and asks for a new draft only on the first', function () {
     $writer = app(TalkShowScripts::class);
     talkHeadline();
     $material = app(TalkShow::class)->material(CarbonImmutable::now());
@@ -564,10 +567,10 @@ it('drops a line the station already said from an act on its last try instead of
     $act = ['id' => 'opening', 'brief' => 'Akt eins.', 'min_turns' => 3, 'number' => 1, 'of' => 5, 'part' => 1, 'first' => true, 'final' => false, 'factcheck' => false, 'previous' => [], 'previous_speakers' => [], 'seconds' => 40.0];
     $answer = talkAnswer([6 => 'Sirius: '.$said])['text'];
 
-    // The first try asks for a new draft; the last try keeps the act without that line (and the answer to it).
+    // The first try asks for a new draft; the last try keeps the line (user 2026-10-18: "Nie mehr verwerfen").
     expect($writer->evaluate($material, $answer, last: false, act: $act)[1])->toBe([CasterVoice::SPOKEN_REPEAT]);
     [$content, $rejected] = $writer->evaluate($material, $answer, last: true, act: $act);
-    expect($rejected)->toBe([])->and($content['text'])->not->toContain('letztes Wort')->not->toContain('Ja, und zwar weil der Staat');
+    expect($rejected)->toBe([])->and($content['text'])->toContain('letztes Wort')->toContain('Ja, und zwar weil der Staat');
 });
 
 it('drops a repeated question together with its answer, and a question whose whole answer repeats, never one without the other', function () {
