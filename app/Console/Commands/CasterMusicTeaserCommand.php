@@ -30,7 +30,7 @@ class CasterMusicTeaserCommand extends Command
 
         $written = $queue->fillMusicTeaser(CarbonImmutable::now());
 
-        if ($written > 0 && $this->output?->isVerbose()) {
+        if ($written > 0 && $this->output->isVerbose()) {
             $this->line('music announcement written: '.$written);
         }
 
