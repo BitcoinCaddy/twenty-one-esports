@@ -13,6 +13,7 @@ use App\Support\Caster\ClipSpool;
 use App\Support\Caster\CommentaryTimeline;
 use App\Support\Caster\DuetDirector;
 use App\Support\Caster\HistoryScripts;
+use App\Support\Caster\Imaging;
 use App\Support\Caster\NewsFeeds;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Programme\BroadcastClock;
@@ -388,3 +389,27 @@ it('drops Sport und Wetter that missed its slot by more than late_seconds, but a
     'Sport und Wetter, bound to the news' => [SportWeather::TOPIC, false],
     'a show, late is fine' => [Shows::TRIBUNAL, true],
 ]);
+
+it('airs a due show while the track-change jingle watches the calm air (prod 2026-10-18: the 20:03 show never aired)', function () {
+    $slot = CarbonImmutable::parse('2026-10-12 20:03:00', 'Europe/Berlin');
+    $this->travelTo($slot->addHours(4));
+    rubricsFakeDecoding();
+    $rubric = rubricsClip(CasterScript::RUBRIC, 60, $slot);
+    $rubric->script->update(['topic' => Shows::TRIBUNAL]);
+    $rubric->update(['expires_at' => now()->addYears(9)]);
+    $dir = sys_get_temp_dir().'/opencode/imaging-'.bin2hex(random_bytes(4));
+    @mkdir($dir, 0775, true);
+    file_put_contents($dir.'/manifest.json', json_encode(['items' => []]));
+    $clock = BroadcastClock::fromConfig();
+    $planner = new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
+    $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), ['gap_seconds' => ['min' => 0, 'max' => 0], 'rubric_late_seconds' => 180],
+        clock: $clock, imaging: new Imaging(['dir' => $dir], 24000, fn (): float => 0.0, $clock), musicTracks: fn (float $from, float $to): array => []);
+    $played = false;
+
+    for ($t = (float) now()->getTimestamp(); $t <= now()->getTimestamp() + 10; $t += 0.25) {
+        $director->tick($planner, $planner->at($t, []), $t);
+        $played = $played || $director->clip()?->id === $rubric->id;
+    }
+
+    expect($played)->toBeTrue();
+});

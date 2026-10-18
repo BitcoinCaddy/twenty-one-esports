@@ -196,6 +196,12 @@ final class SceneDirector
     private int $rubricAskedAt = 0;
 
     /**
+     * What the spool answered then: every caller within that second gets the same rubric (prod 2026-10-18: the
+     * track-change jingle asked first, the play path got null for the rest of the second, and no show aired after 20:03).
+     */
+    private ?CasterClip $rubricDue = null;
+
+    /**
      * The stinger the stream has to play (P4): the slot type, when it was asked for, and when the voice starts.
      *
      * @var array{slot: string, at: float, voice_at: float}|null
@@ -1159,13 +1165,17 @@ final class SceneDirector
         $bulletin = BroadcastClock::isBulletin($slot['type']) && $now - $slot['key'] <= (float) ($this->settings['bulletin_late_seconds'] ?? 120) ? $this->spool->bulletin($at) : null;
 
         // A rubric from its own `airs_at` on (its slot, or the end of the bulletin for the news talk), at most `rubric_late_seconds` late.
-        if ($bulletin !== null || $this->rubricAskedAt === $at->getTimestamp()) {
+        if ($bulletin !== null) {
             return $bulletin;
         }
 
-        $this->rubricAskedAt = $at->getTimestamp();
+        if ($this->rubricAskedAt !== $at->getTimestamp()) {
+            $this->rubricAskedAt = $at->getTimestamp();
+            $this->rubricDue = $this->spool->rubric($at, (int) ($this->settings['rubric_late_seconds'] ?? 180));
+        }
 
-        return $this->spool->rubric($at, (int) ($this->settings['rubric_late_seconds'] ?? 180));
+        // The rubric that started within this second is on air, no longer due.
+        return $this->rubricDue !== null && $this->rubricDue->id !== $this->clip?->id ? $this->rubricDue : null;
     }
 
     /**
