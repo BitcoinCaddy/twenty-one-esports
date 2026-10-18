@@ -15,6 +15,9 @@
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Blocks\AutoPilot;
+use App\Support\Caster\Blocks\StockFeeder;
+use App\Support\Caster\ClipSpool;
 use App\Support\Caster\PodcastLibrary;
 use App\Support\Caster\Programme\Shows;
 use App\Support\Caster\ScenePhase;
@@ -25,6 +28,7 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\TwentyOne\Stream\SceneRenderer;
 use App\Support\TwentyOne\Stream\SceneSource;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
@@ -41,6 +45,9 @@ beforeEach(function () {
     ]);
     // A Tuesday afternoon in Berlin (CEST, UTC+2): 14:18.
     $this->travelTo(CarbonImmutable::parse('2026-10-13 14:18:00', 'Europe/Berlin'));
+    // The workstation voices (the fixed news slot needs it); seen far enough ahead for every travel below.
+    config(['tv.commentary.fetch.online_seconds' => 86400 * 7]);
+    Cache::put(ClipSpool::FETCHER_SEEN, now()->getTimestamp(), 86400 * 7);
 });
 
 /**
@@ -154,6 +161,32 @@ test('the next bulletin slot always stands, ready or not; a rubric in parts is o
 
     expect(array_column(programmeNow()['upcoming'], 'title'))->toBe(['Presseschau']);
 });
+
+test('without a voice the fixed news slot and the news sentence leave; the autopilot hour shows as the station ID, never in the spotlight', function (string $gone) {
+    config(['tv.commentary.news.enabled' => true]);
+    match ($gone) {
+        'workstation' => Cache::forget(ClipSpool::FETCHER_SEEN),
+        'voicestudio' => Cache::put(AutoPilot::VOICE_DOWN, now()->getTimestamp(), 3600),
+    };
+    programmeClip(CasterScript::RUBRIC, StockFeeder::HOUR_TOPIC, programmeBerlin('14:19'), 20);
+
+    $slides = new ProgrammeSlides(app(PodcastLibrary::class));
+    $p = $slides->programme(CarbonImmutable::now());
+
+    expect(array_map(fn (array $item): string => ProgrammeSlides::time($item['at']).' '.$item['title'], $p['upcoming']))->toBe(['14:19 Stationsansage'])
+        ->and($p['newsLine'])->toBeNull()
+        ->and($slides->entries(CarbonImmutable::now())['soon'])->toBeNull()
+        ->and($p['voice'])->toBeFalse();
+
+    foreach (ProgrammeSlides::SCENES as $scene) {
+        expect(programmeSlide($scene)[0])->toContain('Markus und Sirius suchen das Kabel für den Neustart')->not->toContain('live on air');
+    }
+
+    Cache::put(ClipSpool::FETCHER_SEEN, now()->getTimestamp(), 3600);
+    Cache::forget(AutoPilot::VOICE_DOWN);
+
+    expect(programmeSlide(ProgrammeSlides::RUNDOWN)[0])->toContain('Markus und Sirius sind live on air')->not->toContain('Kabel');
+})->with(['workstation', 'voicestudio']);
 
 test('a podcast airing shows its episode and part on air; a stored daytime episode shows at its slot, an unstored one never', function () {
     config(['tv.commentary.podcast_replay.enabled' => true, 'tv.commentary.podcast_replay.sources.einundzwanzig.enabled' => true,
@@ -298,6 +331,7 @@ test('every programme slide renders at 1280 x 720 with every text inside the fra
         ],
         'talkshow' => programmeClip(CasterScript::RUBRIC, ProgrammeSlides::TALKSHOW, programmeBerlin('14:31'), 1500),
         'empty' => null,
+        'offline' => Cache::forget(ClipSpool::FETCHER_SEEN),
     };
 
     foreach (ProgrammeSlides::SCENES as $scene) {
@@ -332,7 +366,7 @@ test('every programme slide renders at 1280 x 720 with every text inside the fra
             }
         }
     }
-})->with(['afternoon', 'long', 'talkshow', 'empty']);
+})->with(['afternoon', 'long', 'talkshow', 'empty', 'offline']);
 
 test('at night the programme slide shows the loop: the episode on air and the stored ones still to come tonight', function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-14 02:20:00', 'Europe/Berlin'));

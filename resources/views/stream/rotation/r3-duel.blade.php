@@ -23,7 +23,7 @@
 @include('stream.rotation.partials.defs')
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.86])
-@include('stream.rotation.partials.r-chrome', ['section' => 'Die Talkshow'])
+@include('stream.rotation.partials.r-chrome', ['section' => 'Die Talkshow', 'voice' => $p['voice'] ?? null])
 <g data-unit="title" data-box="40 112 1016 216">
 @include('stream.rotation.partials.r-glyph', ['family' => PS::SHOW, 'gx' => 40, 'gy' => 116, 'gs' => 48])
 <text x="104" y="158" font-family="Unbounded" font-weight="800" font-size="48" fill="#FFFFFF">Turm und Genossin</text>

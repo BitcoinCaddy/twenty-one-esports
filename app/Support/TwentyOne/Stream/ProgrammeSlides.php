@@ -4,7 +4,10 @@ namespace App\Support\TwentyOne\Stream;
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Blocks\AutoPilot;
+use App\Support\Caster\Blocks\StockFeeder;
 use App\Support\Caster\Blocks\StockScripts;
+use App\Support\Caster\ClipSpool;
 use App\Support\Caster\PodcastLibrary;
 use App\Support\Caster\PodcastNight;
 use App\Support\Caster\PodcastReplay;
@@ -33,7 +36,9 @@ use Carbon\CarbonImmutable;
  * - the daytime podcast replay of a source whose episode is stored in the library (the audio is there) and has not
  *   aired today, at its slot;
  * - the fixed line: the next bulletin slot of the broadcast clock, ready or not (the news at :00 and :30 always run),
- *   and the sentence about the news and Sport und Wetter;
+ *   and the sentence about the news and Sport und Wetter; only while the workstation can voice them (voiceOnline():
+ *   prod 2026-10-18, VoiceStudio down from 11:27 to 15:00, every bulletin from 12:30 on expired unvoiced while the
+ *   slide promised "15:00 Nachrichten");
  * - at night (PodcastNight's window): the loop's stored episodes still to come tonight, in order;
  * - between the slots: the unanchored ready material (talk and stock blocks, news and history segments) as counts.
  *
@@ -43,11 +48,15 @@ use Carbon\CarbonImmutable;
  * of a show that starts within SOON_SECONDS (its spotlight comes next, once). Read from the database at most every
  * MEMO_SECONDS per instance (the daemon polls every second).
  *
+ * The header tells whether the hosts can speak (`voice`, user 2026-10-18: "einen Indicator auf den Slides …, wenn
+ * VoiceStudio da ist -> Markus und Sirius sind Live on air oder wenn mein Laptop und VoiceStudio nicht da sind ->
+ * Markus und Sirius suchen das Kabel für den Neustart").
+ *
  * Copy is German (the radio is German), roast tone, every tagline true to what its format does (Rubrics::all()).
  *
  * @phpstan-type Item array{key: string, family: string, title: string, tagline: string, at: int|null, seconds: float, ready: bool, format: string|null, part: string|null, left: int|null}
  * @phpstan-type Stock array{family: string, label: string, seconds: float}
- * @phpstan-type Programme array{onAir: Item|null, upcoming: list<Item>, loop: list<Item>, stock: list<Stock>, newsLine: string|null, night: bool, now: int}
+ * @phpstan-type Programme array{onAir: Item|null, upcoming: list<Item>, loop: list<Item>, stock: list<Stock>, newsLine: string|null, night: bool, voice: bool, now: int}
  */
 class ProgrammeSlides
 {
@@ -104,6 +113,7 @@ class ProgrammeSlides
         Roasts::PHRASEN => 'Phrasendrescher der Woche', Roasts::NOSTR => 'Nostr-Fundbüro', Roasts::STACKER => 'Corporate-Stacker-Watch', Roasts::INFLATION => 'Inflationsbeichte',
         Rubrics::LIGA => 'Liga-Rubrik', Rubrics::PRESS => 'Presseschau', Rubrics::PODCAST => 'Podcast-Ecke', Rubrics::HISTORY => 'Geschichtsstunde', Rubrics::CHAT => 'Chat-Stunde',
         SportWeather::TOPIC => 'Sport und Wetter', NewsTalk::TOPIC => 'Nachrichten mit Meinung', ProgrammePreview::TOPIC => 'Programmvorschau',
+        StockFeeder::HOUR_TOPIC => 'Stationsansage',
     ];
 
     /**
@@ -135,6 +145,7 @@ class ProgrammeSlides
         SportWeather::TOPIC => 'Ergebnisse und ob du nass wirst. Sport und Wetter nach den Nachrichten.',
         NewsTalk::TOPIC => 'Die Meldungen, jetzt mit Meinung.',
         ProgrammePreview::TOPIC => 'Was heute noch läuft, vorgelesen.',
+        StockFeeder::HOUR_TOPIC => 'Zur vollen Stunde. Danach Musik und Wiederholungen.',
     ];
 
     /** The stock formats (StockScripts::FORMATS) as the slides count them. */
@@ -186,7 +197,7 @@ class ProgrammeSlides
         foreach ($p['upcoming'] as $item) {
             $in = ($item['at'] ?? 0) - $now->getTimestamp();
 
-            if ($item['family'] !== self::NEWS && $item['ready'] && $in > 0 && $in <= self::SOON_SECONDS) {
+            if ($item['family'] !== self::NEWS && $item['format'] !== StockFeeder::HOUR_TOPIC && $item['ready'] && $in > 0 && $in <= self::SOON_SECONDS) {
                 $soon = $item['key'];
                 $soonScene = $item['format'] === self::TALKSHOW && in_array(self::DUEL, $scenes, true) ? self::DUEL : self::SPOTLIGHT;
                 break;
@@ -302,7 +313,8 @@ class ProgrammeSlides
         $upcoming = [...$upcoming, ...$this->storedReplays($now, $until, $upcoming, $onAir)];
 
         $clock = BroadcastClock::fromConfig();
-        $news = config('tv.commentary.news.enabled') === true && $clock->enabled();
+        $voice = self::voiceOnline($now);
+        $news = config('tv.commentary.news.enabled') === true && $clock->enabled() && $voice;
         $bulletin = $news ? $clock->nextBulletin($now) : null;
 
         // The fixed line: the next bulletin slot always runs, ready or not.
@@ -325,8 +337,15 @@ class ProgrammeSlides
             'stock' => array_values($stock),
             'newsLine' => $news ? self::newsLine($clock, $now) : null,
             'night' => $night || QuietHours::active($now),
+            'voice' => $voice,
             'now' => $ts,
         ];
+    }
+
+    /** Whether a bulletin can be voiced: the workstation claims and its VoiceStudio answers (else the autopilot runs). */
+    private static function voiceOnline(CarbonImmutable $now): bool
+    {
+        return app(ClipSpool::class)->fetcherOnline($now) && ! AutoPilot::voiceDown($now);
     }
 
     /**
