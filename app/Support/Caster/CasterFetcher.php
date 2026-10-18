@@ -114,15 +114,13 @@ class CasterFetcher
     }
 
     /**
-     * Whether VoiceStudio can be used: true until a call found it unreachable (every try a connection error: not
-     * started yet after a boot, crashed); from then on GET /profiles must answer within three seconds again.
+     * Whether VoiceStudio can be used: GET /profiles answers within three seconds, asked on every run. It used to be
+     * assumed up until a voicing call failed, so an idle fetcher started without VoiceStudio (or one that lost it while
+     * idle) told the server "up" on every claim, and the stream showed the hosts ON AIR with VoiceStudio off (user
+     * 2026-10-18: "Da steht on air für Markus und Sirius immer noch, obwohl mein VoiceStudio aus ist").
      */
     public function voiceStudioUp(): bool
     {
-        if (! $this->voiceDown) {
-            return true;
-        }
-
         try {
             $this->voiceDown = ! Http::connectTimeout(2)->timeout(3)->get(rtrim((string) $this->settings()['url'], '/').'/profiles')->successful();
         } catch (ConnectionException) {

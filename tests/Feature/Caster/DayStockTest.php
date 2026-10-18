@@ -258,6 +258,7 @@ it('renders a stock block at night when nothing is to voice, without a time jing
             str_contains($request->url(), '/api/caster/claim') => Http::response(['script' => null, 'full' => false, 'spool_seconds' => 300, 'pronunciation' => []]),
             str_ends_with($request->url(), '/generate') => Http::response(Pcm::toWav(str_repeat(pack('v', 2000), 24000), 24000)),
             str_ends_with($request->url(), '/api/caster/stock/stored') => Http::response(['stored' => 1]),
+            str_ends_with($request->url(), '/profiles') => Http::response([['id' => 'p']]),
             default => Http::response([], 404),
         };
     });
@@ -283,6 +284,7 @@ it('uploads a stock block by day below the upload mark, moves it to the archive 
     Http::fake(fn (Request $request) => match (true) {
         str_contains($request->url(), '/api/caster/claim') => Http::response(['script' => null, 'full' => false, 'spool_seconds' => 400, 'pronunciation' => []]),
         str_ends_with($request->url(), '/api/caster/stock/blocks') => Http::response(['clip' => 1], 201),
+        str_ends_with($request->url(), '/profiles') => Http::response([['id' => 'p']]),
         default => Http::response([], 404),
     });
 

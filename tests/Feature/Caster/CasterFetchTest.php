@@ -136,6 +136,7 @@ function casterFakeWorld(array $voiceStudio, int $uploadStatus = 201): void
         'https://tv.test/api/caster/claim' => Http::response(['script' => ['id' => 7, 'kind' => 'scene', 'sentences' => ['Hey!', 'Hier ist Blockli.', 'Läuft.']], 'full' => false, 'pronunciation' => ['Blockli' => 'Block-li']]),
         'https://tv.test/api/caster/scripts/7/clip' => Http::response(['clip' => 1], $uploadStatus),
         'https://tv.test/api/caster/scripts/7/release' => Http::response(['released' => true]),
+        'http://voicestudio.test/profiles' => Http::response([['id' => 'p']]),
         'http://voicestudio.test/generate' => $generate,
         'http://voicestudio.test/history/*' => Http::response(['deleted' => true]),
     ]);
@@ -170,7 +171,8 @@ it('voices the script in chunks, deletes each history entry, and uploads one cli
     foreach (['aaaa1111', 'bbbb2222'] as $id) {
         Http::assertSent(fn (Request $request): bool => $request->method() === 'DELETE' && $request->url() === "http://voicestudio.test/history/{$id}");
     }
-    Http::assertSentCount(2 + 2 + 2);
+    // The VoiceStudio check, the claim, two /generate, two deletes, the upload.
+    Http::assertSentCount(1 + 2 + 2 + 2);
 
     Http::assertSent(function (Request $request): bool {
         if ($request->url() !== 'https://tv.test/api/caster/scripts/7/clip') {
@@ -232,11 +234,11 @@ it('leaves no file behind on the workstation', function () {
         ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
 
-it('says the server is unreachable without touching VoiceStudio', function () {
+it('says the server is unreachable without voicing anything', function () {
     Http::fake(['https://tv.test/*' => Http::response('', 502), '*' => Http::response('', 500)]);
 
     expect((new CasterFetcher(fn () => null))->runOnce())->toBe(CasterFetcher::OFFLINE);
-    Http::assertNotSent(fn (Request $request): bool => str_starts_with($request->url(), 'http://voicestudio.test'));
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === 'http://voicestudio.test/generate');
 });
 
 it('chunks a script into one thought per call, a marker always at a chunk edge', function (array $sentences, array $chunks) {

@@ -110,6 +110,7 @@ function stockCoherenceRender(array $claims): array
             str_ends_with($request->url(), '/generate') => Http::response(Pcm::toWav(str_repeat(pack('v', 2000), 24000), 24000)),
             str_ends_with($request->url(), '/release') => Http::response(['released' => true]),
             str_ends_with($request->url(), '/api/caster/stock/stored') => Http::response(['stored' => 1]),
+            str_ends_with($request->url(), '/profiles') => Http::response([['id' => 'p']]),
             default => Http::response([], 404),
         };
     });

@@ -603,22 +603,23 @@ it('waits for VoiceStudio at boot with growing pauses, reports it down to the se
         };
     });
 
-    // The first run finds VoiceStudio unreachable: the script goes back.
-    expect($fetcher->runOnce())->toBe(CasterFetcher::RELEASED);
-    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/api/caster/scripts/9/release'));
-
-    // From then on: a heartbeat with VoiceStudio down, no claim.
+    // The very first run already asks VoiceStudio: down, so a heartbeat says so and nothing is claimed (it never
+    // reports "up" for a VoiceStudio nobody asked).
     $claims = fn (): int => collect(Http::recorded())->filter(fn ($pair): bool => str_contains($pair[0]->url(), '/api/caster/claim'))->count();
-    $before = $claims();
     expect($fetcher->runOnce())->toBe(CasterFetcher::VOICE_DOWN)
-        ->and($claims())->toBe($before);
+        ->and($claims())->toBe(0);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/api/caster/heartbeat') && $request->header(AutoPilot::HEADER)[0] === 'down');
 
-    // VoiceStudio is up: the next run claims again, telling the server.
+    // VoiceStudio is up: the next run claims, telling the server.
     $profiles = true;
     $fetcher->runOnce();
-    expect($claims())->toBe($before + 1);
+    expect($claims())->toBe(1);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/api/caster/claim') && $request->header(AutoPilot::HEADER)[0] === 'up');
+
+    // VoiceStudio goes away while the fetcher idles: the next run reports it down again instead of claiming.
+    $profiles = false;
+    expect($fetcher->runOnce())->toBe(CasterFetcher::VOICE_DOWN)
+        ->and($claims())->toBe(1);
 
     expect(array_map(fn (int $runs): int => CasterFetchCommand::voiceDownWait($runs, 10), [1, 2, 3, 4, 5, 9]))->toBe([10, 20, 40, 80, 120, 120]);
 });

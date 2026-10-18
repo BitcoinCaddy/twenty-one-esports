@@ -210,6 +210,7 @@ function replayArchiveServer(int $status = 201): void
     Http::fake(fn (Request $request) => match (true) {
         str_ends_with($request->url(), '/api/caster/claim') => Http::response(['script' => null, 'full' => false, 'spool_seconds' => 0, 'pronunciation' => []]),
         str_ends_with($request->url(), '/api/caster/replays') => Http::response(['clip' => 1], $status),
+        str_ends_with($request->url(), '/profiles') => Http::response([['id' => 'p']]),
         default => Http::response([], 404),
     });
     Process::fake(fn ($process) => Process::result(output: in_array('libopus', $process->command, true) ? casterOpus() : str_repeat(pack('v', 3), 24000 * 3)));
@@ -224,7 +225,8 @@ it('uploads an evergreen block of the day behind the replay jingle at night when
     expect($fetcher->runOnce())->toBe(CasterFetcher::VOICED);
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://tv.test/api/caster/replays'
         && (float) $request->header('X-Caster-Boundaries')[0] > 3.2 && (float) $request->header('X-Caster-Duration')[0] > 3.0);
-    Http::assertNotSent(fn (Request $request): bool => str_starts_with($request->url(), 'http://voicestudio.test'));
+    // Nothing voiced: the replay needs no GPU (only the VoiceStudio check is asked).
+    Http::assertNotSent(fn (Request $request): bool => $request->url() === 'http://voicestudio.test/generate');
 
     expect($archive->entries()['20261012-150000-1']['replayed_at'])->toBe(now()->getTimestamp())
         ->and($fetcher->runOnce())->toBe(CasterFetcher::IDLE);

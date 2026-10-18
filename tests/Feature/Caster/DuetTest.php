@@ -335,6 +335,7 @@ it('voices every line with its speaker profile and breathes on a speaker change'
             'sentences' => ['Markus eins.', 'Markus zwei.', 'Sirius eins.', 'Sirius zwei.', 'Markus drei.'],
             'speakers' => ['markus', 'markus', 'sirius', 'sirius', 'markus']], 'full' => false, 'pronunciation' => []]),
         'https://tv.test/api/caster/scripts/9/clip' => Http::response(['clip' => 1], 201),
+        'http://voicestudio.test/profiles' => Http::response([['id' => 'p']]),
         'http://voicestudio.test/generate' => Http::response($wav(), 200, ['Content-Type' => 'audio/wav']),
     ]);
     Process::fake(['*' => Process::result(output: 'OggS-fake')]);
