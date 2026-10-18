@@ -2,12 +2,15 @@
 
 use App\Models\CasterScript;
 use App\Models\YouTubeChatLine;
+use App\Support\Caster\Blocks\AutoPilot;
+use App\Support\Caster\ClipSpool;
 use App\Support\Caster\YouTubeChat;
 use App\Support\Caster\YouTubeChatSummary;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\WebLookupAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -397,4 +400,15 @@ it('reads and summarises from the scheduled command', function () {
     $this->travelTo($this->now);
 
     $this->artisan('caster:youtube-chat')->expectsOutputToContain('3 new message(s), 1 summary queued')->assertSuccessful();
+});
+
+it('summarises nothing while the autopilot runs: nobody could voice it', function () {
+    youtubeLines(5);
+    VoiceAgent::fake();
+    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => true, 'tv.commentary.blocks.autopilot.enabled' => true]);
+    Cache::put(ClipSpool::FETCHER_SEEN, $this->now->getTimestamp(), 3600);
+    Cache::put(AutoPilot::VOICE_DOWN, $this->now->getTimestamp(), 3600);
+
+    expect(app(YouTubeChatSummary::class)->summarise($this->now))->toBe(0);
+    VoiceAgent::assertNeverPrompted();
 });

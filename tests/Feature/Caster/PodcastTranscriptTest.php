@@ -2,7 +2,9 @@
 
 use App\Console\Commands\CasterFetchCommand;
 use App\Models\CasterPodcastTranscript;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\CasterVoice;
+use App\Support\Caster\ClipSpool;
 use App\Support\Caster\PodcastFeed;
 use App\Support\Caster\PodcastTranscriber;
 use App\Support\Caster\PodcastTranscripts;
@@ -53,7 +55,7 @@ beforeEach(function () {
 /** A feed whose newest item is episode 335 with an mp3 enclosure. */
 function podcastTranscriptFeed(): string
 {
-    return '<?xml version="1.0"?><rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel>'
+    return '<?xml version="1.0"?><rss xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"><channel><title>Der EINUNDZWANZIG Podcast</title>'
         .'<item><title>#335 - 51% Attacke auf Deutschland</title><guid>ep-335</guid><pubDate>Sat, 10 Oct 2026 08:00:00 +0000</pubDate>'
         .'<enclosure url="https://cdn.test/335.mp3" type="audio/mpeg" length="1000"/></item>'
         .'<item><title>#334 - Alt gegen Kölsch</title><guid>ep-334</guid><pubDate>Sat, 03 Oct 2026 08:00:00 +0000</pubDate>'
@@ -186,7 +188,7 @@ it('transcribes a new episode in pieces, uploads the text and leaves no audio be
     Process::assertRan(fn (PendingProcess $process): bool => ((array) $process->command)[0] === 'nice' && in_array('-segment_time', (array) $process->command, true));
     Http::assertSent(fn (Request $request): bool => $request->url() === 'https://tv.test/api/caster/podcast-transcript'
         && $request->hasHeader('Authorization', 'Bearer '.PODCAST_TRANSCRIPT_TOKEN)
-        && $request->data() === ['guid' => 'ep-335', 'title' => '#335 - 51% Attacke auf Deutschland', 'episode_number' => 335, 'published_at' => CarbonImmutable::parse('2026-10-10 08:00:00 UTC')->getTimestamp(), 'transcript' => "Erster Teil der Folge.\nZweiter Teil der Folge."]);
+        && $request->data() === ['guid' => 'ep-335', 'title' => '#335 - 51% Attacke auf Deutschland', 'podcast' => 'Der EINUNDZWANZIG Podcast', 'episode_number' => 335, 'published_at' => CarbonImmutable::parse('2026-10-10 08:00:00 UTC')->getTimestamp(), 'transcript' => "Erster Teil der Folge.\nZweiter Teil der Folge."]);
 });
 
 it('reports Whisper down as unavailable and still deletes the audio', function () {
@@ -225,4 +227,21 @@ it('waits until the next day after a failed try, and the fetch loop checks at mo
     Cache::flush();
     expect(CasterFetchCommand::podcastDue(CarbonImmutable::now(), true))->toBeFalse()
         ->and(CasterFetchCommand::podcastDue(CarbonImmutable::parse('2026-10-13 04:00', 'Europe/Berlin'), false))->toBeFalse();
+});
+
+it('writes the digest through its own command lane, and the autopilot keeps that lane off', function () {
+    // Prod 2026-10-17/18: the command imported a class that does not exist (App\Support\Caster\AutoPilot), 286 failed runs.
+    app(PodcastTranscripts::class)->store(['guid' => 'ep-335', 'title' => '#335 - 51% Attacke auf Deutschland', 'episode_number' => 335, 'published_at' => 1_791_100_000, 'transcript' => 'Heute reden wir über die Attacke auf Deutschland.']);
+    PodcastDigestAgent::fake(['Themen: Bier']);
+    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => true, 'tv.commentary.blocks.autopilot.enabled' => true]);
+    Cache::put(ClipSpool::FETCHER_SEEN, now()->getTimestamp(), 600);
+    Cache::put(AutoPilot::VOICE_DOWN, now()->getTimestamp(), 600);
+
+    $this->artisan('caster:podcast-digest')->assertSuccessful();
+    PodcastDigestAgent::assertNeverPrompted();
+
+    Cache::forget(AutoPilot::VOICE_DOWN);
+
+    $this->artisan('caster:podcast-digest')->expectsOutput('Wrote the digest of the latest podcast episode.')->assertSuccessful();
+    PodcastDigestAgent::assertPromptedTimes(1);
 });

@@ -3,6 +3,7 @@
 use App\Models\CasterClip;
 use App\Models\CasterNews;
 use App\Models\CasterScript;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\CommentaryTimeline;
 use App\Support\Caster\NewsFeeds;
@@ -444,4 +445,22 @@ it('drops a bulletin that missed its slot by more than late_seconds instead of n
         ->and(app(ClipSpool::class)->bulletin($slot->subSecond()))->toBeNull()
         ->and(app(ClipSpool::class)->next(ScenePhase::BREAK, $slot)['clip'])->toBeNull()
         ->and(app(ClipSpool::class)->readySeconds())->toBe(0.0);
+});
+
+it('writes no bulletin while the autopilot runs: nobody could voice it (prod 2026-10-18, five bulletins expired unvoiced)', function () {
+    radioClockAwake();
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 13:46:00', 'Europe/Berlin'));
+    radioHeadlines(3);
+    VoiceAgent::fake(fn (string $prompt): array => radioBulletinAnswer($prompt));
+    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => true, 'tv.commentary.blocks.autopilot.enabled' => true]);
+    Cache::put(ClipSpool::FETCHER_SEEN, CarbonImmutable::now()->getTimestamp(), 3600);
+    Cache::put(AutoPilot::VOICE_DOWN, CarbonImmutable::now()->getTimestamp(), 3600);
+
+    $this->artisan('caster:bulletin')->assertSuccessful();
+    expect(CasterScript::query()->where('kind', CasterScript::BULLETIN)->count())->toBe(0);
+    VoiceAgent::assertNeverPrompted();
+
+    Cache::forget(AutoPilot::VOICE_DOWN);
+    $this->artisan('caster:bulletin')->assertSuccessful();
+    expect(CasterScript::query()->where('kind', CasterScript::BULLETIN)->count())->toBe(1);
 });

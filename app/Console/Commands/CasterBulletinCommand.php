@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\ScriptQueue;
 use Carbon\CarbonImmutable;
@@ -26,6 +27,13 @@ class CasterBulletinCommand extends Command
         if (! CasterVoice::enabled()) {
             $this->line('TV commentary is off (TV_COMMENTARY).');
 
+            return self::SUCCESS;
+        }
+
+        // The autopilot runs (the workstation is gone or its VoiceStudio down): nobody could voice the bulletin. The lane
+        // split of 2026-10-16 left this out of caster:script's guard; prod 2026-10-18, VoiceStudio down from 11:27 to
+        // 15:00 Berlin, five bulletins were written and expired unvoiced while the slides promised them.
+        if (AutoPilot::active(CarbonImmutable::now())) {
             return self::SUCCESS;
         }
 

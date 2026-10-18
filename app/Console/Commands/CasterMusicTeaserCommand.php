@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\Programme\MusicTeasers;
 use App\Support\Caster\ScriptQueue;
 use Carbon\CarbonImmutable;
@@ -22,7 +23,8 @@ class CasterMusicTeaserCommand extends Command
 {
     public function handle(ScriptQueue $queue): int
     {
-        if (! ScriptQueue::aiEnabled() || ! MusicTeasers::enabled()) {
+        // Nothing written in the autopilot: nobody could voice it (as caster:script and caster:bulletin).
+        if (! ScriptQueue::aiEnabled() || ! MusicTeasers::enabled() || AutoPilot::active(CarbonImmutable::now())) {
             return self::SUCCESS;
         }
 

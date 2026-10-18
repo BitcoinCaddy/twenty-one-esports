@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Support\Caster\AutoPilot;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\CasterVoice;
 use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\ScriptQueue;

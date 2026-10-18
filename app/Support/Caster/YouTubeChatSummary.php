@@ -4,6 +4,7 @@ namespace App\Support\Caster;
 
 use App\Models\CasterScript;
 use App\Models\YouTubeChatLine;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Voice\TextModel;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
@@ -65,7 +66,8 @@ class YouTubeChatSummary
      */
     public function summarise(CarbonImmutable $now, bool $force = false): int
     {
-        if (! YouTubeChat::enabled() || ! CasterVoice::enabled() || ! ScriptQueue::aiEnabled()) {
+        // Nothing written in the autopilot: nobody could voice it (the Nostr chat reactions stop the same way).
+        if (! YouTubeChat::enabled() || ! CasterVoice::enabled() || ! ScriptQueue::aiEnabled() || AutoPilot::active($now)) {
             return 0;
         }
 

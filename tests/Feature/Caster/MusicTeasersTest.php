@@ -2,6 +2,7 @@
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Blocks\AutoPilot;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\CommentaryTimeline;
 use App\Support\Caster\DuetDirector;
@@ -318,4 +319,16 @@ it('reads the artist\'s last note relay by relay, newest wins, and a nothing is 
     Cache::put('caster:music_teaser:note:'.substr(sha1($pubkeyTwo), 0, 12), false, now()->addMinutes(360));
     expect($teasers->lastNote($second, $this->now))->toBeNull()
         ->and($reader->calls)->toBe(0);
+});
+
+it('writes no music announcement while the autopilot runs: nobody could voice it', function () {
+    VoiceAgent::fake(fn (): array => ['text' => 'Gleich in der Musik: Ainsley Costello.']);
+    config(['tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => true, 'tv.commentary.blocks.autopilot.enabled' => true]);
+    Cache::put(ClipSpool::FETCHER_SEEN, $this->now->getTimestamp(), 3600);
+    Cache::put(AutoPilot::VOICE_DOWN, $this->now->getTimestamp(), 3600);
+
+    $this->artisan('caster:music-teaser')->assertSuccessful();
+
+    expect(CasterScript::query()->where('kind', CasterScript::MUSIC_TEASER)->count())->toBe(0);
+    VoiceAgent::assertNeverPrompted();
 });
