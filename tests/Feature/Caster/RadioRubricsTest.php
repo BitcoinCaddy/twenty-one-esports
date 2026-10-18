@@ -18,6 +18,8 @@ use App\Support\Caster\PodcastTranscripts;
 use App\Support\Caster\Programme\BroadcastClock;
 use App\Support\Caster\Programme\Rubrics;
 use App\Support\Caster\Programme\RubricScripts;
+use App\Support\Caster\Programme\Shows;
+use App\Support\Caster\Programme\SportWeather;
 use App\Support\Caster\SceneDirector;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
@@ -359,11 +361,12 @@ it('starts the rubric at its slot, never before, the scene on air cut at the end
         ->and($director->bulletinOnAir())->toBeNull();
 });
 
-it('drops a rubric that missed its slot by more than late_seconds', function () {
+it('drops Sport und Wetter that missed its slot by more than late_seconds, but airs a late show (user 2026-10-18)', function (string $topic, bool $airs) {
     $slot = CarbonImmutable::parse('2026-10-12 14:15:00', 'Europe/Berlin');
     $this->travelTo($slot->addSeconds(200));
     rubricsFakeDecoding();
     $rubric = rubricsClip(CasterScript::RUBRIC, 60, $slot);
+    $rubric->script->update(['topic' => $topic]);
     $planner = new RotationPlanner(teaserSeconds: 12, loopSeconds: 5);
     $director = new SceneDirector(app(ClipSpool::class), new CommentaryTimeline(24000), ['gap_seconds' => ['min' => 0, 'max' => 0], 'rubric_late_seconds' => 180], clock: BroadcastClock::fromConfig());
     $played = false;
@@ -373,5 +376,8 @@ it('drops a rubric that missed its slot by more than late_seconds', function () 
         $played = $played || $director->clip()?->id === $rubric->id;
     }
 
-    expect($played)->toBeFalse();
-});
+    expect($played)->toBe($airs);
+})->with([
+    'Sport und Wetter, bound to the news' => [SportWeather::TOPIC, false],
+    'a show, late is fine' => [Shows::TRIBUNAL, true],
+]);

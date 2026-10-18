@@ -5,6 +5,7 @@ namespace App\Support\Caster\Programme;
 use App\Enums\BoardGameStatus;
 use App\Enums\TournamentStatus;
 use App\Models\BoardGame;
+use App\Models\CasterClip;
 use App\Models\CasterScript;
 use App\Models\Tournament;
 use App\Models\TournamentParticipant;
@@ -69,6 +70,15 @@ final class TournamentLive
             : $query->whereNotNull('created_by_id')->whereNull('cup_series')->where('opened_by_league', false)->orderByDesc('starts_at')->first();
     }
 
+    /** Whether a comment waits: queued or being voiced, or voiced and ready in the spool, not aired yet. */
+    public static function waiting(CarbonImmutable $now): bool
+    {
+        $scripts = CasterScript::query()->where('topic', self::TOPIC)->where('expires_at', '>', $now);
+
+        return (clone $scripts)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->exists()
+            || CasterClip::query()->where('status', CasterClip::READY)->whereIn('caster_script_id', (clone $scripts)->select('id'))->exists();
+    }
+
     /**
      * Writes and queues the next comment when one is due; returns the scripts written (0 or 1).
      */
@@ -85,9 +95,10 @@ final class TournamentLive
         // texts cost nothing to write, the interval gate is the only clock, and a cap silently muted the stream
         // for the rest of the day once the morning's minute-tactic had spent it.
         if ((is_int($last) && $now->getTimestamp() - $last < $every)
-            // One waits at most behind the one being voiced, so a comment a minute keeps coming without piling up.
-            || CasterScript::query()->where('topic', self::TOPIC)->whereIn('status', [CasterScript::QUEUED, CasterScript::CLAIMED])->where('expires_at', '>', $now)
-                ->where(fn ($query) => $query->whereNull('part_index')->orWhere('part_index', 1))->count() >= 2
+            // The next only once the last one aired (user 2026-10-18: "Es darf nur nicht ein Stau passieren und lauter
+            // Breakings fürs Turnier auf einmal hintereinander kommen"): none waits unvoiced, and none voiced but unaired
+            // in the spool. Nothing expires any more, so this alone keeps the comments from piling up.
+            || self::waiting($now)
         ) {
             return 0;
         }
@@ -120,7 +131,7 @@ final class TournamentLive
             // nothing retries in a minute.
             $talk = ['text' => self::STANDBY[array_rand(self::STANDBY)], 'speakers' => [DuetDirector::MARKUS, DuetDirector::SIRIUS]];
             $queued = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':standby:'.$now->getTimestamp()), 74, $now,
-                topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']);
+                topic: self::TOPIC, speakers: $talk['speakers']);
             Cache::put(self::LAST, $queued !== null ? $now->getTimestamp() : $now->getTimestamp() - $every + 60, 6 * 3600);
 
             return $queued !== null ? 1 : 0;
@@ -131,13 +142,13 @@ final class TournamentLive
         Cache::put(self::TOLD.':'.$tournament->id, array_values(array_unique([...$told, ...$finishedIds])), 24 * 3600);
 
         $queued = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $talk['text'], sha1('tlive:'.$tournament->id.':'.$now->getTimestamp()), 74, $now,
-            topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: $talk['speakers']);
+            topic: self::TOPIC, speakers: $talk['speakers']);
 
         if ($queued === null) {
             // The duet passed the guard but the queue's coherence emptied it (everything in it was said before):
             // the standby duet carries the interval anyway - a comment comes every interval, by force (user 2026-10-15).
             $queued = $queue->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, self::STANDBY[array_rand(self::STANDBY)], sha1('tlive:'.$tournament->id.':standby:'.$now->getTimestamp()), 74, $now,
-                topic: self::TOPIC, maxAgeMinutes: (int) config('tv.commentary.tournament_live.max_age_minutes', 30), speakers: [DuetDirector::MARKUS, DuetDirector::SIRIUS]);
+                topic: self::TOPIC, speakers: [DuetDirector::MARKUS, DuetDirector::SIRIUS]);
         }
 
         Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);

@@ -247,9 +247,8 @@ it('writes the segment: intro with the display name, then the league voice\'s re
         ->and($script->source)->toBe(CasterScript::SOURCE_AI)
         ->and($script->priority)->toBe(0)
         ->and($script->facts_hash)->toBe('followed:'.$note->id)
-        // Nothing expires unused by default (user 2026-10-15), but a kind that passes its own max age expires with it
-        // again: 5bc1aa89 ("a kind that passes its own maxAgeMinutes ... expires with it again").
-        ->and($script->expires_at->getTimestamp() - CarbonImmutable::now()->getTimestamp())->toBe((int) config('tv.commentary.followed.max_age_minutes') * 60)
+        // A followed note does not expire (user 2026-10-18: only the news, Sport und Wetter are bound to their time).
+        ->and($script->expires_at->greaterThan(CarbonImmutable::now()->addYears(9)))->toBeTrue()
         ->and($note->reacted_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "<<<post\nDieses Halloween verkleide ich mich als Deutscher\npost>>>") && str_contains($prompt->prompt, 'SKIP'));

@@ -4,6 +4,10 @@ namespace App\Support\Caster;
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\Blocks\StockFeeder;
+use App\Support\Caster\Programme\NewsTalk;
+use App\Support\Caster\Programme\ProgrammePreview;
+use App\Support\Caster\Programme\SportWeather;
 use App\Support\TwentyOne\Stream\ChildEnvironment;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -357,12 +361,21 @@ class ClipSpool
     {
         $now = $now->utc();
 
+        // `$lateSeconds` binds only what is bound to its time (TIMED_RUBRICS); a show or rubric that missed its slot airs
+        // late (user 2026-10-18: "Wenn etwas nicht pünktlich gespielt werden kann, dann ist das halt so").
         return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::RUBRIC)->where('expires_at', '>', $now)
             ->whereNotIn('caster_script_id', self::continuations())
             ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)
-                ->when($lateSeconds !== null, fn ($query) => $query->where('airs_at', '>=', $now->subSeconds((int) $lateSeconds)))->select('id'))
-            ->orderBy('id')->first();
+                ->when($lateSeconds !== null, fn ($query) => $query->where(fn ($late) => $late->where('airs_at', '>=', $now->subSeconds((int) $lateSeconds))
+                    ->orWhereNotIn('topic', self::TIMED_RUBRICS)->orWhereNull('topic')))->select('id'))
+            ->orderBy('airs_at')->orderBy('id')->first();
     }
+
+    /**
+     * The anchored formats bound to their time: they air within the late window of their slot or not at all (Sport und
+     * Wetter and the news talk follow the news; the programme preview and the station ID name the hour).
+     */
+    public const TIMED_RUBRICS = [SportWeather::TOPIC, NewsTalk::TOPIC, ProgrammePreview::TOPIC, StockFeeder::HOUR_TOPIC];
 
     /**
      * The programme teaser due now (`airs_at` at or before `$now`, not
@@ -528,7 +541,7 @@ class ClipSpool
     public function overdueLive(CarbonImmutable $now, float $maxHoldSeconds): ?CasterClip
     {
         $live = $this->nextLive($now);
-        $ready = $live?->created_at ?? $live?->script?->created_at;
+        $ready = $live->created_at ?? $live?->script?->created_at;
 
         return $ready !== null && $now->getTimestamp() - $ready->getTimestamp() >= $maxHoldSeconds ? $live : null;
     }

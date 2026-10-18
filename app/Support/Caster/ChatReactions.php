@@ -367,8 +367,8 @@ class ChatReactions
             $ack = ScriptQueue::aiEnabled() ? $this->voice->chatReply($message, $name, [...$hints, 'gleich_danach' => self::WISH_TEASERS[$wish['type']] ?? 'du erfüllst den Wunsch'], $data) : null;
             $spoken = $ack ?? $this->lines->wish($wish['type'], $name);
             $this->queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $spoken, SceneFacts::hash($facts), $live, $now, source: $ack === null ? CasterScript::SOURCE_PATTERN : CasterScript::SOURCE_AI);
-            $this->queue->enqueue($wish['kind'], ScenePhase::BREAK, $wish['text'], $wish['facts_hash'], $live, $now, scene: ChatWishes::SCENE, source: $wish['source'], topic: $wish['topic'],
-                maxAgeMinutes: (int) config('tv.commentary.chat.wishes_max_age_minutes', 30));
+            // A wish does not expire (user 2026-10-18): it airs, late if need be.
+            $this->queue->enqueue($wish['kind'], ScenePhase::BREAK, $wish['text'], $wish['facts_hash'], $live, $now, scene: ChatWishes::SCENE, source: $wish['source'], topic: $wish['topic']);
             $profile->last_reaction_at = Carbon::instance($now);
             $profile->save();
             $this->cache->rememberExchange($event->pubkey, implode(', ', $keywords));

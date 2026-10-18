@@ -70,6 +70,9 @@ final class CasterVoice
     /** The usage channel of the web lookups before a chat reply to a question (lookup()): calls and their tokens. */
     public const WEB_LOOKUP_CHANNEL = 'caster_web_lookup';
 
+    /** What an ungated chat reply broke and aired anyway (`chat.gate` off): counted, never dropped. */
+    public const UNGATED_CHANNEL = 'caster_chat_ungated';
+
     /** The usage channel counting the web searches those lookups ran: `attempts` is the number of searches. */
     public const WEB_SEARCH_CHANNEL = 'caster_web_search';
 
@@ -822,6 +825,12 @@ final class CasterVoice
         if ($duet) {
             $lines = self::chatDuetLines(DuetScripts::parse($this->hygiene->clean($raw, true, 'de')), $max);
 
+            // Ungated (`chat.gate` off): a duet whose turns do not fit airs as Markus' reply alone.
+            if ($lines === null && ! self::chatGated() && ($solo = self::spokenLines($this->hygiene->clean($raw, true, 'de'))) !== '') {
+                $lines = [[DuetDirector::MARKUS, $solo]];
+                $this->usage->recordRejection(self::UNGATED_CHANNEL, [DuetScripts::TURNS]);
+            }
+
             if ($lines === null) {
                 $this->usage->recordRejection(self::CHANNEL, [DuetScripts::TURNS]);
                 $this->usage->recordOutcome(self::CHANNEL, 'rejected');
@@ -875,8 +884,14 @@ final class CasterVoice
             $speakers = $speakers === null ? null : [DuetDirector::MARKUS, ...$speakers];
         }
 
-        if ($violations === [] && ! $last && ($this->repeated = $this->repeatedSentences($text)) !== []) {
+        if ($violations === [] && ! $last && self::chatGated() && ($this->repeated = $this->repeatedSentences($text)) !== []) {
             $violations = [self::SPOKEN_REPEAT];
+        }
+
+        // Ungated (`chat.gate` off): only a draft without words is no answer; whatever else it broke is counted, not dropped.
+        if ($violations !== [] && ! self::chatGated() && trim($spoken) !== '') {
+            $this->usage->recordRejection(self::UNGATED_CHANNEL, array_values(array_unique($violations)));
+            $violations = [];
         }
 
         if ($violations !== []) {
@@ -891,6 +906,18 @@ final class CasterVoice
         $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
         return [['text' => $text, 'speakers' => $speakers], []];
+    }
+
+    /** Whether a chat reply's draft is checked (`chat.gate`, off since 2026-10-18: every draft with words airs). */
+    public static function chatGated(): bool
+    {
+        return config('tv.commentary.chat.gate', false) === true;
+    }
+
+    /** A duet draft's lines without their speakers, for an ungated reply that airs as Markus alone. */
+    private static function spokenLines(string $clean): string
+    {
+        return trim(implode("\n", array_filter(array_map(fn (array $turn): string => trim($turn['text']), DuetScripts::parse($clean)))));
     }
 
     /**

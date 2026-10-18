@@ -359,3 +359,15 @@ it('drops the sentences of a web finding that carry a blocked word, so the paid 
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'Der Ledger-Vorfall traf Käufer eines Resellers in Indonesien.')
         && ! str_contains($prompt->prompt, 'Gebühren im Mempool'));
 });
+
+it('airs a chat reply that breaks a house rule while the gate is off, and only counts what it broke (user 2026-10-18)', function () {
+    $english = ['text' => "Ada, this is a completely English answer about the match today.\nAnd it keeps going in English for another sentence.", 'canon_id' => null, 'mood' => 'call'];
+    VoiceAgent::fake([$english, $english, $english, $english]);
+
+    config(['tv.commentary.chat.gate' => true]);
+    expect(app(CasterVoice::class)->chatReply('Wie lief das Spiel heute?', 'Ada'))->toBeNull();
+
+    config(['tv.commentary.chat.gate' => false]);
+    expect(app(CasterVoice::class)->chatReply('Wie lief das Spiel heute?', 'Ada'))->toContain('English answer')
+        ->and(DB::table('voice_rejections')->where('channel', CasterVoice::UNGATED_CHANNEL)->sum('count'))->toBeGreaterThan(0);
+});

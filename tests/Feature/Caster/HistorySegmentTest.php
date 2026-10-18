@@ -137,9 +137,8 @@ it('writes the pattern episode when the voice gives nothing: three to five facts
         ->and(array_diff(casterWholeSentences($script), casterHistoryKnownLines()))->toBe([])
         ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
         ->and(count($spokenFacts))->toBeGreaterThanOrEqual(6)
-        // Nothing expires unused by default (user 2026-10-15), but a kind that passes its own max age expires with it
-        // again: 5bc1aa89 ("a kind that passes its own maxAgeMinutes ... expires with it again").
-        ->and($script->expires_at->getTimestamp() - CarbonImmutable::now()->getTimestamp())->toBe((int) config('tv.commentary.history.max_age_minutes') * 60);
+        // A history episode does not expire (user 2026-10-18: only the news, Sport und Wetter are bound to their time).
+        ->and($script->expires_at->greaterThan(CarbonImmutable::now()->addYears(9)))->toBeTrue();
 });
 
 it('tells a fragment take as it comes: no style verdict refuses it any more, the pattern episode does not stand in (user 2026-10-15)', function () {

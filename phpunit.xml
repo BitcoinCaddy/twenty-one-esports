@@ -74,6 +74,8 @@
         <env name="TV_COMMENTARY_TALKSHOW_DAILY_CAP" value="60" force="true"/>
         <env name="TV_COMMENTARY_SERVER" value="https://esports.einundzwanzig.space" force="true"/>
         <env name="TV_COMMENTARY_TOKEN" value="(null)" force="true"/>
+        <!-- The chat reply gate stays on in the suite: its tests check what it drops; prod runs it off (2026-10-18). -->
+        <env name="TV_COMMENTARY_CHAT_GATE" value="true" force="true"/>
         <env name="TV_VOICESTUDIO_URL" value="http://127.0.0.1:3900" force="true"/>
         <env name="TV_VOICESTUDIO_PROFILE" value="ee7a2a18" force="true"/>
         <env name="TV_VOICESTUDIO_PROFILE_SIRIUS" value="446d98e1" force="true"/>

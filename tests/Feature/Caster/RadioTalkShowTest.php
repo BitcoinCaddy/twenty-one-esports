@@ -370,7 +370,7 @@ it('writes the live talk into the 18:15 slot: the host reads the opener, three v
 });
 
 it('writes an evergreen talk for the night stock at most stock_per_day times a day, without a headline and without a time of day', function () {
-    config(['tv.commentary.blocks.stock.formats' => ['stammtisch'], 'tv.commentary.blocks.stock.max_age_minutes' => 600,
+    config(['tv.commentary.blocks.stock.formats' => ['stammtisch'],
         'tv.commentary.programme.shows.formats.stammtisch.stock_per_day' => 2,
         // The scheduler writes the stock only while the stock is on and the window is open (DayPlanner::writeStockAhead()).
         'tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => false,

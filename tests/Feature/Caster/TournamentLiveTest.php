@@ -5,6 +5,7 @@ use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
 use App\Models\BoardGame;
+use App\Models\CasterClip;
 use App\Models\CasterScript;
 use App\Models\Tournament;
 use App\Models\TournamentParticipant;
@@ -84,4 +85,26 @@ it('tells a finished game once: later comments see it only in the standings', fu
 
     expect(TournamentLive::material($tournament, CarbonImmutable::now()))->toContain('- Fertig: ')->toContain('Siege bisher: '.$winner.' 1')
         ->and(TournamentLive::material($tournament, CarbonImmutable::now(), [], null, [$game->id]))->not->toContain('- Fertig:')->toContain('NEUE Ergebnisse seit dem letzten Einwurf: keine')->toContain('Siege bisher: '.$winner.' 1');
+});
+
+it('writes no new comment while the last one waits voiced in the spool, and none expires (user 2026-10-18: no pile of breakings)', function () {
+    Tournament::factory()->create(['name' => 'Blockli Cup #2', 'game' => 'blockli', 'mode' => 'correspondence', 'format' => TournamentFormat::TwoStage,
+        'options' => FormatOptions::defaults(GameProfile::for('blockli', 'correspondence'))->toArray(), 'status' => TournamentStatus::Running,
+        'results_mode' => TournamentResultsMode::Players, 'starts_at' => now()->subMinutes(5)]);
+    VoiceAgent::fake(fn (): array => ['text' => "Markus: Breaking aus dem Blockli Cup!\nSirius: Die Bretter glühen.", 'canon_id' => null, 'mood' => 'hype']);
+    $now = CarbonImmutable::now();
+
+    expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now))->toBe(1);
+    $script = CasterScript::query()->where('topic', TournamentLive::TOPIC)->sole();
+    expect($script->expires_at->greaterThan($now->addYears(9)))->toBeTrue();
+
+    // Voiced, waiting in the spool for its air: still no second one, long after the interval.
+    $script->update(['status' => CasterScript::VOICED]);
+    CasterClip::query()->create(['caster_script_id' => $script->id, 'phase' => 'break', 'kind' => CasterScript::RUBRIC, 'path' => 'caster/spool/'.$script->id.'.opus',
+        'duration_seconds' => 20, 'bytes' => 10, 'sentence_ends' => [20.0], 'status' => CasterClip::READY, 'expires_at' => $script->expires_at]);
+    expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(40)))->toBe(0);
+
+    // Aired (a played clip leaves the spool): the next one comes.
+    CasterClip::query()->delete();
+    expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(41)))->toBe(1);
 });

@@ -391,7 +391,7 @@ class ScriptQueue
 
         // The facts hash carries the subject (P18): the claim hands it to the workstation for the library's topic memory.
         return $talk === null ? null : $this->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $talk['text'], $talk['subject'], 0, $now,
-            scene: StockScripts::SCENE, topic: StockScripts::TOPIC_PREFIX.$talk['format'], maxAgeMinutes: (int) config('tv.commentary.blocks.stock.max_age_minutes', 180), speakers: $talk['speakers']);
+            scene: StockScripts::SCENE, topic: StockScripts::TOPIC_PREFIX.$talk['format'], speakers: $talk['speakers']);
     }
 
     /**
@@ -523,8 +523,9 @@ class ScriptQueue
 
         if ($material === null || $rubric === null
             || $this->enqueue(CasterScript::RUBRIC, ScenePhase::BREAK, $rubric['text'], Rubrics::hashFor($id, $material, $slot['key']), (int) ($settings['priority'] ?? 70), $now,
-                source: CasterScript::SOURCE_AI, topic: $id, speakers: $rubric['speakers'], airsAt: $slot['starts_at'],
-                expiresAt: $slot['starts_at']->addSeconds((int) ($settings['late_seconds'] ?? 180) + 600)) === null) {
+                // No expiry (user 2026-10-18: "Wenn etwas nicht pünktlich gespielt werden kann, dann ist das halt so, außer
+                // News, Sport und Wetter"): a show or rubric that misses its slot airs late (ClipSpool::rubric()).
+                source: CasterScript::SOURCE_AI, topic: $id, speakers: $rubric['speakers'], airsAt: $slot['starts_at']) === null) {
             return 0;
         }
 
@@ -814,7 +815,7 @@ class ScriptQueue
             $segment = $this->history->write($now, $long);
 
             if ($segment !== null && $this->enqueue(CasterScript::HISTORY, ScenePhase::BREAK, $segment['text'], HistoryScripts::HASH_PREFIX.$segment['episode'], 0, $now,
-                source: $segment['source'], maxAgeMinutes: (int) config('tv.commentary.history.max_age_minutes', 120)) !== null) {
+                source: $segment['source']) !== null) {
                 LengthMix::written(LengthMix::HISTORY, $long);
                 $written++;
             }
@@ -842,7 +843,7 @@ class ScriptQueue
             $segment = $note === null ? null : $this->followed->write($note, $now, self::aiEnabled());
 
             if ($note !== null && $segment !== null && $this->enqueue(CasterScript::FOLLOWED, ScenePhase::BREAK, $segment['text'], 'followed:'.$note->id, 0, $now,
-                source: $segment['source'], maxAgeMinutes: (int) config('tv.commentary.followed.max_age_minutes', 30)) !== null) {
+                source: $segment['source']) !== null) {
                 $written++;
             }
         }
@@ -1029,10 +1030,11 @@ class ScriptQueue
                     'status' => CasterScript::QUEUED,
                     'estimated_seconds' => self::estimateSeconds($part),
                     // Nothing expires unused by default (user 2026-10-15: "verfallen soll nichts mehr, wir liefern
-                    // das aus, was generiert wurde") — but a kind that carries its own explicit lifetime
-                    // (`$maxAgeMinutes`, a live tournament comment, a stock talk) stays time-critical: its news is
-                    // only news for that long, and a backlog of it plays en bloc instead of in its interval
-                    // (live 2026-10-15). The config default does not count as one.
+                    // das aus, was generiert wurde"; 2026-10-18: "außer News, Sport und Wetter"). Only a kind whose
+                    // content is bound to its time passes a lifetime: the news segment (`$maxAgeMinutes`), the
+                    // bulletin, Sport und Wetter, the news talk, the programme preview, a teaser and a music
+                    // announcement (`$expiresAt`). A live tournament comment does not expire; TournamentLive::fill()
+                    // writes the next only once the last one aired, so none pile up. The config default does not count.
                     'expires_at' => $expiresAt?->utc() ?? ($maxAgeMinutes !== null ? $now->addMinutes($maxAgeMinutes) : $now->addYears(10)),
                     'airs_at' => $airsAt?->utc(),
                     'part_group' => $group,

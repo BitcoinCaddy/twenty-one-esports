@@ -461,8 +461,7 @@ return [
             'tournaments' => array_values(array_filter(array_map('intval', explode(',', (string) env('TV_COMMENTARY_TOURNAMENT_LIVE_IDS', ''))))),
             'every_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MINUTES', 8),
             // No daily cap any more (user 2026-10-15: opencode texts cost nothing to write; the interval is the only clock).
-            // The voicing budget admits a live tier only with room behind what waits (measured 2026-10-14: 20 min refused, 30 admitted).
-            'max_age_minutes' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_MAX_AGE', 30),
+            // No expiry either (user 2026-10-18): the next comment is written only once the last one aired.
             // The music after a comment before the next voice item, instead of a whole track (music first).
             'gap_seconds' => (int) env('TV_COMMENTARY_TOURNAMENT_LIVE_GAP', 60),
             // Where the players' bios and newest posts are read, besides the knowledge relays and `esports.relays` (merged,
@@ -600,9 +599,7 @@ return [
                     'max_tokens' => 1500,
                 ],
                 'sentences_per_turn' => 4,
-                // An unvoiced stock script expires this long after it was written; an uploaded stock block keeps
-                // `spool_hours` in the server's spool.
-                'max_age_minutes' => 180,
+                // An uploaded stock block keeps `spool_hours` in the server's spool; an unvoiced stock script never expires.
                 'spool_hours' => 3,
                 // Who talks (VoiceStudio profiles under voicestudio.profiles); a list, so a talk show of three or four
                 // needs only their profiles (and their names in DuetScripts::parse()).
@@ -1214,7 +1211,6 @@ return [
             'min_words' => 5,
             // Replies (NIP-10 `e` tags other than a mention) are left out unless this is on.
             'replies' => false,
-            'max_age_minutes' => 30,
             // Markus' retelling of the note (one or two sentences) plus his reaction (two to five).
             'sentences' => ['min' => 3, 'max' => 7],
             // The quote the pattern stand-in reads out, in words.
@@ -1227,7 +1223,6 @@ return [
             'enabled' => (bool) env('TV_COMMENTARY_HISTORY', true),
             'every_minutes' => ['min' => 45, 'max' => 90],
             'repeat_hours' => 24,
-            'max_age_minutes' => 120,
             'sentences' => ['min' => 6, 'max' => 12],
         ],
 
@@ -1328,6 +1323,11 @@ return [
             // pushes it, not up to a poll interval later.
             'live' => (bool) env('TV_COMMENTARY_CHAT_LIVE', true),
             'live_seconds' => (int) env('TV_COMMENTARY_CHAT_LIVE_SECONDS', 270),
+            // Whether a chat reply's draft is checked at all (user 2026-10-18: "Ich will es mal ohne Gate versuchen"; on
+            // prod a draft that failed both tries left the message without any reaction, about one in two, because the
+            // pattern fallback is off). Off: every draft that has words airs; the violations are only counted
+            // (voice_rejections, channel caster_chat_ungated).
+            'gate' => (bool) env('TV_COMMENTARY_CHAT_GATE', false),
             'per_person_minutes' => (int) env('TV_COMMENTARY_CHAT_PERSON_MINUTES', 2),
             'per_hour' => (int) env('TV_COMMENTARY_CHAT_PER_HOUR', 20),
             // A reaction (a chat reply, a wish, a zap thank-you) waits at most this long after it is ready (user
@@ -1390,7 +1390,6 @@ return [
             'wishes_person_minutes' => (int) env('TV_COMMENTARY_WISH_PERSON_MINUTES', 5),
             'wishes_per_hour' => (int) env('TV_COMMENTARY_WISHES_PER_HOUR', 6),
             'wishes_history_repeat_minutes' => (int) env('TV_COMMENTARY_HISTORY_REPEAT_MINUTES', 60),
-            'wishes_max_age_minutes' => 30,
             // `caster:chat` runs every minute and reads the chat and zaps this often within it (one read of the eight relays
             // takes about 3.5 s, measured 2026-10-14). The reactions are written on the `caster-chat` queue
             // (ReactToChatMessage), so the reads never wait for one; `background` false writes them inline.
