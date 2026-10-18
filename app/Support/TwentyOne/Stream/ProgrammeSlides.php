@@ -48,15 +48,11 @@ use Carbon\CarbonImmutable;
  * of a show that starts within SOON_SECONDS (its spotlight comes next, once). Read from the database at most every
  * MEMO_SECONDS per instance (the daemon polls every second).
  *
- * The header tells whether the hosts can speak (`voice`, user 2026-10-18: "einen Indicator auf den Slides …, wenn
- * VoiceStudio da ist -> Markus und Sirius sind Live on air oder wenn mein Laptop und VoiceStudio nicht da sind ->
- * Markus und Sirius suchen das Kabel für den Neustart").
- *
  * Copy is German (the radio is German), roast tone, every tagline true to what its format does (Rubrics::all()).
  *
  * @phpstan-type Item array{key: string, family: string, title: string, tagline: string, at: int|null, seconds: float, ready: bool, format: string|null, part: string|null, left: int|null}
  * @phpstan-type Stock array{family: string, label: string, seconds: float}
- * @phpstan-type Programme array{onAir: Item|null, upcoming: list<Item>, loop: list<Item>, stock: list<Stock>, newsLine: string|null, night: bool, voice: bool, now: int}
+ * @phpstan-type Programme array{onAir: Item|null, upcoming: list<Item>, loop: list<Item>, stock: list<Stock>, newsLine: string|null, night: bool, now: int}
  */
 class ProgrammeSlides
 {
@@ -313,8 +309,7 @@ class ProgrammeSlides
         $upcoming = [...$upcoming, ...$this->storedReplays($now, $until, $upcoming, $onAir)];
 
         $clock = BroadcastClock::fromConfig();
-        $voice = self::voiceOnline($now);
-        $news = config('tv.commentary.news.enabled') === true && $clock->enabled() && $voice;
+        $news = config('tv.commentary.news.enabled') === true && $clock->enabled() && self::voiceOnline($now);
         $bulletin = $news ? $clock->nextBulletin($now) : null;
 
         // The fixed line: the next bulletin slot always runs, ready or not.
@@ -337,13 +332,15 @@ class ProgrammeSlides
             'stock' => array_values($stock),
             'newsLine' => $news ? self::newsLine($clock, $now) : null,
             'night' => $night || QuietHours::active($now),
-            'voice' => $voice,
             'now' => $ts,
         ];
     }
 
-    /** Whether a bulletin can be voiced: the workstation claims and its VoiceStudio answers (else the autopilot runs). */
-    private static function voiceOnline(CarbonImmutable $now): bool
+    /**
+     * Whether the hosts can speak: the workstation claims and its VoiceStudio answers (else the autopilot runs). Also the
+     * on-air light of the now-playing column (TwentyOneStreamCommand).
+     */
+    public static function voiceOnline(CarbonImmutable $now): bool
     {
         return app(ClipSpool::class)->fetcherOnline($now) && ! AutoPilot::voiceDown($now);
     }

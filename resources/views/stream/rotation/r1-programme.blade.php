@@ -11,7 +11,7 @@
 
     Data contract (ProgrammeSlides::scene()):
       $programme  array{onAir: ?Item, upcoming: list<Item>, loop: list<Item>, stock: list<array{family, label, seconds}>,
-                    newsLine: ?string, night: bool, voice: bool, now: int}
+                    newsLine: ?string, night: bool, now: int}
                   Item array{key, family, title, tagline, at: ?int, seconds: float, ready: bool, format: ?string,
                     part: ?string, left: ?int}
       $backdrop   ?string, the brand cover
@@ -48,7 +48,7 @@
 @include('stream.rotation.partials.defs')
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.86])
-@include('stream.rotation.partials.r-chrome', ['section' => $p['night'] ? 'Die Nachtschleife' : 'Das Programm', 'voice' => $p['voice'] ?? null])
+@include('stream.rotation.partials.r-chrome', ['section' => $p['night'] ? 'Die Nachtschleife' : 'Das Programm'])
 {{-- The hour clock. --}}
 <g data-unit="dial" data-box="48 136 352 544">
 <circle cx="200" cy="340" r="112" fill="none" stroke="#26262C" stroke-width="28"/>

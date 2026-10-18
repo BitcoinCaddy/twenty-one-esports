@@ -542,6 +542,7 @@ class TwentyOneStreamCommand extends Command
 
                     if ($frame !== null && $this->director !== null) {
                         $frame['data']['voice_caption'] = $caption;
+                        $frame['data']['voice_on_air'] = $this->voiceOnAir($now);
                     }
 
                     if ($frame !== null) {
@@ -1087,6 +1088,26 @@ class TwentyOneStreamCommand extends Command
             return null;
         }
     }
+
+    /** Whether Markus and Sirius can speak (the column's on-air light), asked every PODCAST_CHECK_SECONDS; off on a failure. */
+    private function voiceOnAir(float $now): bool
+    {
+        if ($now - $this->voiceCheckedAt >= self::PODCAST_CHECK_SECONDS) {
+            $this->voiceCheckedAt = $now;
+
+            try {
+                $this->voiceOnAir = ProgrammeSlides::voiceOnline(CarbonImmutable::createFromTimestamp((int) $now));
+            } catch (Throwable) {
+                $this->voiceOnAir = false;
+            }
+        }
+
+        return $this->voiceOnAir;
+    }
+
+    private float $voiceCheckedAt = 0.0;
+
+    private bool $voiceOnAir = false;
 
     /** How often the now-playing card asks whether a podcast replay is on air. */
     private const PODCAST_CHECK_SECONDS = 10;

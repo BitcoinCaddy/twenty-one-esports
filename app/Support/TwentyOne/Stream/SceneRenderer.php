@@ -81,7 +81,8 @@ final class SceneRenderer
             $np = $scene['now_playing'] ?? null;
             $np = is_array($np) && is_string($np['artist'] ?? null) && is_string($np['qr'] ?? null) ? $np : null;
             $viewers = $scene['viewers'] ?? null;
-            $column = view('stream.rotation.partials.now-playing-column', ['np' => $np, 'viewers' => is_int($viewers) ? $viewers : null, 'siteQr' => $this->siteQr()])->render();
+            $voice = $scene['voice_on_air'] ?? null;
+            $column = view('stream.rotation.partials.now-playing-column', ['np' => $np, 'viewers' => is_int($viewers) ? $viewers : null, 'siteQr' => $this->siteQr(), 'voice' => is_bool($voice) ? $voice : null])->render();
             $svg = substr($svg, 0, $end).$column.substr($svg, $end);
         }
 

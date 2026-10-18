@@ -142,3 +142,32 @@ test('the column is opaque on a real slide: nothing of the slide shows in x 1040
     expect($other)->toBe(0)
         ->and(imagecolorat($image, 1041, 400))->toBe(0xF7931A);
 });
+
+test('the column shows whether Markus and Sirius are on air, in its top band, within its 200 px, the top 32 px kept calm', function (bool $voice) {
+    $renderer = SceneRenderer::fromConfig();
+    $svg = $renderer->svg(['stats' => [], 'viewers' => 7, 'voice_on_air' => $voice], 'stream.rotation.a4-join');
+    preg_match('#<g data-unit="voice-status"[^>]*>(.*?)</g>#s', $svg, $status);
+    preg_match_all('#<text x="([\d.]+)" y="([\d.]+)"[^>]*font-size="(\d+)"[^>]*>([^<]+)</text>#', $status[1] ?? '', $texts, PREG_SET_ORDER);
+
+    expect(html_entity_decode(implode(' / ', array_column($texts, 4))))->toBe($voice
+        ? 'ON AIR / Markus und Sirius / sind live on air'
+        : 'OFF AIR / Markus und Sirius suchen / das Kabel für den Neustart');
+
+    foreach ($texts as [, $x, $y, $size, $text]) {
+        expect(RotationKit::width(html_entity_decode($text), RotationKit::MONO, (float) $size))->toBeLessThanOrEqual(200.0, $text)
+            ->and((float) $y)->toBeGreaterThan(36.0)->toBeLessThan(112.0);
+    }
+
+    // Without the light (commentary off) the top stays empty; with it, the band above y 32 still does.
+    expect($renderer->svg(['stats' => [], 'viewers' => 7], 'stream.rotation.a4-join'))->not->toContain('voice-status');
+
+    $png = $renderer->png(['stats' => [], 'viewers' => 7, 'voice_on_air' => $voice], 'stream.rotation.a4-join');
+    $image = imagecreatefromstring($png);
+    $other = 0;
+    for ($x = 1046; $x < 1280; $x += 3) {
+        for ($y = 0; $y < 32; $y += 3) {
+            $other += imagecolorat($image, $x, $y) === 0x121215 ? 0 : 1;
+        }
+    }
+    expect($other)->toBe(0);
+})->with(['on air' => true, 'off air' => false]);

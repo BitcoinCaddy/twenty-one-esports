@@ -176,16 +176,12 @@ test('without a voice the fixed news slot and the news sentence leave; the autop
     expect(array_map(fn (array $item): string => ProgrammeSlides::time($item['at']).' '.$item['title'], $p['upcoming']))->toBe(['14:19 Stationsansage'])
         ->and($p['newsLine'])->toBeNull()
         ->and($slides->entries(CarbonImmutable::now())['soon'])->toBeNull()
-        ->and($p['voice'])->toBeFalse();
-
-    foreach (ProgrammeSlides::SCENES as $scene) {
-        expect(programmeSlide($scene)[0])->toContain('Markus und Sirius suchen das Kabel für den Neustart')->not->toContain('live on air');
-    }
+        ->and(ProgrammeSlides::voiceOnline(CarbonImmutable::now()))->toBeFalse();
 
     Cache::put(ClipSpool::FETCHER_SEEN, now()->getTimestamp(), 3600);
     Cache::forget(AutoPilot::VOICE_DOWN);
 
-    expect(programmeSlide(ProgrammeSlides::RUNDOWN)[0])->toContain('Markus und Sirius sind live on air')->not->toContain('Kabel');
+    expect(ProgrammeSlides::voiceOnline(CarbonImmutable::now()))->toBeTrue();
 })->with(['workstation', 'voicestudio']);
 
 test('a podcast airing shows its episode and part on air; a stored daytime episode shows at its slot, an unstored one never', function () {

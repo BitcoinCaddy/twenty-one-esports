@@ -18,6 +18,9 @@
     $np: NowPlaying::card() or null — array{artist: string, title?: ?string, avatar: ?string (data URI), qr: string (trusted SVG), kind: 'lud16'|'njump'|'youtube'|'wavlake'}.
     $viewers: ?int, the scene's live viewer count (no count, no row).
     $siteQr: string, the site's code (resources/stream/qr/site.svg) for the column without a card.
+    $voice: ?bool, the hosts' on-air light (ProgrammeSlides::voiceOnline(); null while the commentary is off, nothing
+            drawn): y 36..100 (user 2026-10-18, "da oben wäre doch noch Platz"; the band above y 32 stays calm for a
+            player's LIVE badge), a green "ON AIR" while the workstation voices, a red "OFF AIR" while it or VoiceStudio is gone.
     One <g data-unit> so the pixel sonde measures the column as one piece.
 --}}
 @use('App\Support\TwentyOne\Stream\RotationKit', 'K')
@@ -84,10 +87,28 @@
     // The viewer row, centred: viewerBadge() sets it right-aligned, so it moves by half its width.
     $vb = K::viewerBadge($viewers ?? null, 1248, 670, K::DISPLAY, 14, 12);
     $vbShift = $vb === null ? 0 : round($cx - ($vb['x0'] + 1248) / 2, 1);
+    $voice = is_bool($voice ?? null) ? $voice : null;
+    if ($voice !== null) {
+        $voiceInk = $voice ? '#4ADE80' : '#F87171';
+        $voiceLabel = $voice ? 'ON AIR' : 'OFF AIR';
+        $voiceLines = $voice ? ['Markus und Sirius', 'sind live on air'] : ['Markus und Sirius suchen', 'das Kabel für den Neustart'];
+        // Dot (10 px and a 8 px gap) and label centred together; letter-spacing 1 adds a pixel per character.
+        $voiceW = 18 + K::width($voiceLabel, K::MONO, 13) + mb_strlen($voiceLabel);
+        $voiceX = round($cx - $voiceW / 2, 1);
+    }
 @endphp
 <g data-unit="now-playing-column" data-box="{{ $colX }} 0 1280 720">
 <rect x="{{ $colX }}" y="0" width="{{ 1280 - $colX }}" height="720" fill="#121215"/>
 <rect x="{{ $colX }}" y="0" width="4" height="720" fill="#F7931A"/>
+@if ($voice !== null)
+<g data-unit="voice-status" data-box="{{ $cx - $textW / 2 }} 36 {{ $cx + $textW / 2 }} 100">
+    <circle cx="{{ $voiceX + 5 }}" cy="48" r="5" fill="{{ $voiceInk }}"/>
+    <text x="{{ $voiceX + 18 }}" y="53" font-family="JetBrains Mono" font-weight="700" font-size="13" fill="{{ $voiceInk }}" letter-spacing="1">{{ $voiceLabel }}</text>
+    @foreach ($voiceLines as $i => $line)
+    <text x="{{ $cx }}" y="{{ 74 + $i * 18 }}" font-family="JetBrains Mono" font-weight="700" font-size="12" fill="#ADADB0" text-anchor="middle">{{ $line }}</text>
+    @endforeach
+</g>
+@endif
 @if ($np !== null)
 <g data-unit="now-playing">
     <text x="{{ $cx }}" y="130" font-family="JetBrains Mono" font-weight="700" font-size="13" fill="#F9B25F" letter-spacing="1" text-anchor="middle">JETZT LÄUFT</text>

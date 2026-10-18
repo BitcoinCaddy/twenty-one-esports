@@ -42,7 +42,7 @@
 @include('stream.rotation.partials.defs')
 <rect width="1280" height="720" fill="#0A0A0B"/>
 @include('stream.rotation.partials.backdrop', ['uri' => $backdrop ?? null, 'bdDim' => 0.86])
-@include('stream.rotation.partials.r-chrome', ['section' => 'Gleich auf Sendung', 'voice' => $p['voice'] ?? null])
+@include('stream.rotation.partials.r-chrome', ['section' => 'Gleich auf Sendung'])
 @if ($show !== null)
 <g data-unit="family" data-box="40 112 680 168">
 @include('stream.rotation.partials.r-glyph', ['family' => $family, 'gx' => 40, 'gy' => 112, 'gs' => 56])
