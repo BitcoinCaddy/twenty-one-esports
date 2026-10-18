@@ -128,9 +128,9 @@ it('queues a long segment, scene or wished segment as parts with one group, one 
         ->and(array_map(fn (CasterScript $part): int => (int) $part->part_index, $parts))->toBe([1, 2, 3])
         ->and(array_unique(array_map(fn (CasterScript $part): string => $part->kind.$part->phase.$part->facts_hash.$part->priority.$part->source.$part->expires_at->toIso8601String(), $parts)))->toHaveCount(1)
         ->and($parts[0]->sentences()[0])->toBe('[laughter] Intro.')
-        // Nothing expires unused any more (user 2026-10-15): the group shares one far-future expiry instead of
-        // the max age that was passed.
-        ->and($parts[0]->expires_at->getTimestamp())->toBeGreaterThan($now->addYears(9)->getTimestamp())
+        // Nothing expires unused by default (user 2026-10-15), but a kind that passes its own max age expires with it
+        // again, the whole group on the one expiry: 5bc1aa89 ("a kind that passes its own maxAgeMinutes ... expires with it again").
+        ->and($parts[0]->expires_at->getTimestamp() - $now->getTimestamp())->toBe(120 * 60)
         // Each part is estimated on its own text, so the airtime of the group is the airtime of the script.
         ->and($parts[0]->estimated_seconds)->toBe(ScriptQueue::estimateSeconds($parts[0]->text));
 

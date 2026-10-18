@@ -177,8 +177,9 @@ it('writes a news segment in the model\'s own words: its lead-in, the headline w
         ->and($script->source)->toBe(CasterScript::SOURCE_AI)
         ->and($script->topic)->toBe(CasterNews::GERMANY)
         ->and($script->priority)->toBe(0)
-        // Nothing expires unused any more (user 2026-10-15): the segment keeps a far-future expiry.
-        ->and($script->expires_at->getTimestamp())->toBeGreaterThan(CarbonImmutable::now()->addYears(9)->getTimestamp())
+        // Nothing expires unused by default (user 2026-10-15), but a kind that passes its own max age expires with it
+        // again: 5bc1aa89 ("a kind that passes its own maxAgeMinutes ... expires with it again").
+        ->and($script->expires_at->getTimestamp() - CarbonImmutable::now()->getTimestamp())->toBe((int) config('tv.commentary.news.max_age_minutes') * 60)
         ->and($news->fresh()->used_at)->not->toBeNull();
     VoiceAgent::assertPromptedTimes(1);
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "Quelle: tagesschau\nSchlagzeile: Bundesregierung plant neue Zuckersteuer") && str_contains($prompt->prompt, 'SKIP')

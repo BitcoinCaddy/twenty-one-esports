@@ -49,7 +49,17 @@ beforeEach(function () {
         'tv.commentary.spool.quiet_hours' => ['from' => '01:00', 'to' => '09:00', 'timezone' => 'Europe/Berlin', 'every_minutes' => 10, 'ahead_seconds' => 90],
         'tv.commentary.blocks.stock.window' => ['from' => '01:00', 'to' => '09:00'],
         'tv.commentary.blocks.stock.formats' => ['tutorial'],
+        // A stock talk is a whole 40-80 turn programme since 692f9a9b ("One programme, one continuous text: the writer
+        // writes it long"); these drafts are ten turns, and what is under test here is coherence, not length.
+        'tv.commentary.blocks.stock.turns' => ['min' => 6, 'max' => 16],
         'esports.voice.monthly_budget_usd' => 100,
+    ]);
+
+    // The tutorial lives on the real discover feed since a83fb67e ("The timeless programmes live on real data"):
+    // one article and its page, the same fixture DayStockTest uses; without them the tutorial has no material.
+    Http::fake([
+        'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title><item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
+        'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud.</p></article></body></html>'),
     ]);
 });
 

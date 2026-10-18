@@ -56,6 +56,20 @@ function casterHistoryKnownLines(): array
     return $lines;
 }
 
+/**
+ * Two drafts the voice turns down, so it "gives nothing" and the pattern episode may stand in. A fragment no longer
+ * does: since 3b76ec2c ("No style verdict refuses a text any more") only what breaks the medium is refused, here a link
+ * the voice would read out literally (VoiceGuard::URL).
+ *
+ * @return list<array{text: string, canon_id: null, mood: string}>
+ */
+function historyRejectedDrafts(): array
+{
+    $draft = ['text' => "Die ganze Geschichte steht unter https://example.com in aller Ausführlichkeit für euch bereit.\nLest sie dort nach, sie lohnt sich wirklich sehr.", 'canon_id' => null, 'mood' => 'hype'];
+
+    return [$draft, $draft];
+}
+
 it('gives every fact a source and keeps every pattern episode within the spoken limits, 6 to 12 sentences and 50 to 120 seconds', function () {
     $data = HistoryScripts::data();
     $guard = new ScriptGuard;
@@ -108,7 +122,7 @@ it('lets the league voice narrate the episode freely from its facts, sources as 
 });
 
 it('writes the pattern episode when the voice gives nothing: three to five facts in order and a twist, nothing fixed around it', function () {
-    VoiceAgent::fake([['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'], ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype']]);
+    VoiceAgent::fake(historyRejectedDrafts());
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
 
@@ -123,13 +137,25 @@ it('writes the pattern episode when the voice gives nothing: three to five facts
         ->and(array_diff(casterWholeSentences($script), casterHistoryKnownLines()))->toBe([])
         ->and($spokenFacts)->toBe(array_slice($factLines, 0, count($spokenFacts)))
         ->and(count($spokenFacts))->toBeGreaterThanOrEqual(6)
-        // Nothing expires unused any more (user 2026-10-15): the segment keeps a far-future expiry.
-        ->and($script->expires_at->getTimestamp())->toBeGreaterThan(CarbonImmutable::now()->addYears(9)->getTimestamp());
+        // Nothing expires unused by default (user 2026-10-15), but a kind that passes its own max age expires with it
+        // again: 5bc1aa89 ("a kind that passes its own maxAgeMinutes ... expires with it again").
+        ->and($script->expires_at->getTimestamp() - CarbonImmutable::now()->getTimestamp())->toBe((int) config('tv.commentary.history.max_age_minutes') * 60);
+});
+
+it('tells a fragment take as it comes: no style verdict refuses it any more, the pattern episode does not stand in (user 2026-10-15)', function () {
+    VoiceAgent::fake([['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype']]);
+
+    expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(1);
+
+    $script = CasterScript::query()->whole()->where('kind', CasterScript::HISTORY)->sole();
+    expect($script->source)->toBe(CasterScript::SOURCE_AI)
+        ->and($script->text)->toBe("Hey!\nLäuft.");
+    VoiceAgent::assertPromptedTimes(1);
 });
 
 it('queues no pattern episode while the pattern fallback is off (the default): the music plays', function () {
     config(['tv.commentary.patterns.enabled' => false]);
-    VoiceAgent::fake([['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype'], ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype']]);
+    VoiceAgent::fake(historyRejectedDrafts());
 
     expect(app(ScriptQueue::class)->fillSegments(CarbonImmutable::now()))->toBe(0)
         ->and(CasterScript::query()->count())->toBe(0);

@@ -3,6 +3,7 @@
 use App\Models\CasterNews;
 use App\Models\CasterScript;
 use App\Support\Caster\Blocks\BlockRenderer;
+use App\Support\Caster\Blocks\DayStock;
 use App\Support\Caster\Blocks\JingleLibrary;
 use App\Support\Caster\Blocks\StockScripts;
 use App\Support\Caster\CasterFetcher;
@@ -370,7 +371,10 @@ it('writes the live talk into the 18:15 slot: the host reads the opener, three v
 
 it('writes an evergreen talk for the night stock at most stock_per_day times a day, without a headline and without a time of day', function () {
     config(['tv.commentary.blocks.stock.formats' => ['stammtisch'], 'tv.commentary.blocks.stock.max_age_minutes' => 600,
-        'tv.commentary.programme.shows.formats.stammtisch.stock_per_day' => 2]);
+        'tv.commentary.programme.shows.formats.stammtisch.stock_per_day' => 2,
+        // The scheduler writes the stock only while the stock is on and the window is open (DayPlanner::writeStockAhead()).
+        'tv.commentary.blocks.enabled' => true, 'tv.commentary.blocks.stock.enabled' => true, 'tv.commentary.blocks.stock.library.enabled' => false,
+        'tv.commentary.blocks.stock.window' => ['from' => '01:00', 'to' => '09:00']]);
     $prompts = [];
     VoiceAgent::fake(function (string $prompt) use (&$prompts): array {
         $prompts[] = $prompt;
@@ -380,12 +384,25 @@ it('writes an evergreen talk for the night stock at most stock_per_day times a d
     $this->travelTo(CarbonImmutable::parse('2026-10-13 03:00:00', 'Europe/Berlin'));
     $queue = app(ScriptQueue::class);
 
-    // Claim every part of every talk the stock writes: after the second talk of the day nothing new comes.
-    $claimed = 0;
-    while ($claimed < 60 && $queue->claimStock(CarbonImmutable::now()) !== null) {
-        $claimed++;
+    // The scheduler writes the stock, the claim only hands it out (e0705113: "The scheduler writes the stock, the claim
+    // only hands it out"): the workstation reports room, fillStock() writes one talk, the claim takes every part of it;
+    // after the second talk of the day nothing new comes. The hourly write cap is lifted so that only stock_per_day limits.
+    config(['tv.commentary.blocks.stock.writes_per_hour' => 10]);
+    [$written, $claimed] = [0, 0];
+    while ($written < 10) {
+        DayStock::rememberReport('100.0;0', CarbonImmutable::now());
+
+        if ($queue->fillStock(CarbonImmutable::now()) === 0) {
+            break;
+        }
+
+        $written++;
+
+        while ($claimed < 60 && $queue->claimStock(CarbonImmutable::now()) !== null) {
+            $claimed++;
+        }
     }
-    expect($claimed)->toBeLessThan(60)->and(count($prompts))->toBe(2);
+    expect($written)->toBe(2)->and($claimed)->toBeLessThan(60)->and(count($prompts))->toBe(2);
 
     $talks = CasterScript::query()->where('topic', StockScripts::TOPIC_PREFIX.Shows::STAMMTISCH)->orderBy('id')->get();
     $text = $talks->pluck('text')->implode("\n");

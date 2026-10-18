@@ -221,7 +221,13 @@ it('gives a trusted reply the card and the three newest notes, sanitised, and a 
     VoiceAgent::assertNotPrompted(fn (AgentPrompt $prompt): bool => str_contains(mb_strtolower($prompt->prompt), 'benrocket')
         || str_contains($prompt->prompt, 'evil.test') || str_contains($prompt->prompt, 'Arzt')
         || (str_contains($prompt->prompt, '<<<chat') && str_contains($prompt->prompt, '2–1')));
-    VoiceAgent::assertNotPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, 'hallo zusammen') && str_contains($prompt->prompt, '<<<notizen'));
+    // Since 75a3ddd0 ("Skip nothing: no cooldown, no hourly cap in the code any more") a stranger is answered too, and his
+    // greeting then stands in the trusted chatter's chat memory ("Hintergrund: was die anderen im Chat zuletzt
+    // geschrieben haben"). So the stranger's own reply prompt is the one with his message as the message under
+    // reply: it is written (positive control) and carries no notes.
+    $strangerPrompt = fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "<<<chat\nhallo zusammen\nchat>>>");
+    VoiceAgent::assertPrompted($strangerPrompt);
+    VoiceAgent::assertNotPrompted(fn (AgentPrompt $prompt): bool => $strangerPrompt($prompt) && (str_contains($prompt->prompt, '<<<notizen') || str_contains($prompt->prompt, CasterVoice::NOTES_HINT)));
     expect(app(ChatterCache::class)->promptNotes($stranger->pubkey, CarbonImmutable::now()))->toBe([]);
 });
 

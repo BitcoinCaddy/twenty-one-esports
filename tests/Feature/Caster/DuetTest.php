@@ -100,7 +100,9 @@ it('draws only sequences the grammar allows over 10 000 seeded draws', function 
 });
 
 it('ignores a configured pattern that breaks the run or turn limits', function () {
-    config(['tv.commentary.duet.patterns' => ['MSSS' => 100, 'MMMS' => 100, 'MSMSMSM' => 100, 'M' => 100, 'MS' => 1]]);
+    // The turn cap defaults to 100 since 692f9a9b ("the duet cap rises to 100 turns so the repair pass no longer cuts a
+    // long programme short"); this test is about the limit being honoured, so it sets the six turns it has always meant.
+    config(['tv.commentary.duet.turns.max' => 6, 'tv.commentary.duet.patterns' => ['MSSS' => 100, 'MMMS' => 100, 'MSMSMSM' => 100, 'M' => 100, 'MS' => 1]]);
 
     expect(array_keys((new DuetDirector)->weights(null, null)))->toBe(['MS']);
 });
@@ -383,6 +385,8 @@ it('reads a duet the model wrote on one line, every speaker tag after a sentence
 
 it('turns down a duet only when one of the two never speaks, and keeps at most the configured turns', function () {
     $line = fn (string $speaker, string $words): array => ['speaker' => $speaker, 'text' => "Das ist {$words} von {$speaker}, und er redet hier ganz normal und in einem vollständigen Satz."];
+    // Pinned: the default cap is 100 turns since 692f9a9b, this test is about the cap being honoured.
+    config(['tv.commentary.duet.turns.max' => 6]);
     $duets = app(DuetScripts::class);
 
     expect($duets->repair([$line('markus', 'eins')]))->toBeNull()
