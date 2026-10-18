@@ -417,24 +417,25 @@ it('keeps the weather of "Sport und Wetter" although the same sentence aired an 
     expect($second?->text)->toContain('vierzehn Grad');
 });
 
-it('queues a chat reply as written while the chat gate is off, a repeated or goodbye line included (prod 2026-10-18, ":pepeJAM:")', function () {
+it('queues a chat reply as written, a repeated line included, only its goodbye sentence out (prod 2026-10-18, ":pepeJAM:")', function () {
     config(['tv.commentary.enabled' => true]);
     $queue = app(ScriptQueue::class);
     $now = CarbonImmutable::now();
     $reply = "Ben, tanz ruhig weiter, der Beat gehört dir.\nBis gleich im Chat!";
+    $aired = 'Ben, tanz ruhig weiter, der Beat gehört dir.';
 
     config(['tv.commentary.chat.gate' => true]);
     expect($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:a', 50, $now))->not->toBeNull()
         // The same reply again: the queue has no repeat filter any more, gate or not (user 2026-10-18: "Nie mehr verwerfen").
-        ->and($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:b', 50, $now)?->text)->toBe($reply);
+        ->and($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:b', 50, $now)?->text)->toBe($aired);
 
     config(['tv.commentary.chat.gate' => false]);
     $script = $queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:c', 50, $now);
     expect($script)->not->toBeNull()
-        ->and($script->text)->toBe($reply);
+        ->and($script->text)->toBe($aired);
 });
 
-it('queues a scene and a scene duet as written, a repeated line and a goodbye in the middle included (user 2026-10-18)', function () {
+it('queues a scene and a scene duet as written, a repeated line included and only the goodbye sentence out, never a cut (user 2026-10-18)', function () {
     config(['tv.commentary.repeat_hours' => 24]);
     $now = CarbonImmutable::now();
     $queue = app(ScriptQueue::class);
@@ -443,14 +444,14 @@ it('queues a scene and a scene duet as written, a repeated line and a goodbye in
     $after = 'Aber vorher schauen wir noch auf das Brett, auf dem es gerade richtig brennt.';
     $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, $said, 'a', 0, $now);
 
-    // "Nie mehr verwerfen": no repeat filter and no cut at a goodbye, for a solo scene ...
+    // "Nie mehr verwerfen": no repeat filter and no cut at a goodbye (what follows it airs), for a solo scene ...
     $solo = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [$said, $goodbye, $after]), 'b', 0, $now);
-    expect($solo?->sentences())->toBe([$said, $goodbye, $after]);
+    expect($solo?->sentences())->toBe([$said, $after]);
 
     // ... and for a scene duet, each line with its speaker.
     $duet = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [$after, $said, $goodbye]), 'c', 0, $now, speakers: ['markus', 'sirius', 'sirius']);
-    expect($duet?->sentences())->toBe([$after, $said, $goodbye])
-        ->and($duet?->speakers)->toBe(['markus', 'sirius', 'sirius']);
+    expect($duet?->sentences())->toBe([$after, $said])
+        ->and($duet?->speakers)->toBe(['markus', 'sirius']);
 });
 
 it('airs a last draft without the sentences that must never go on air, each kept line with its speaker', function () {
@@ -471,4 +472,17 @@ it('airs a last draft without the sentences that must never go on air, each kept
     // A link one of the facts carries may be said, as the guard allows it; nothing left is nothing to air.
     expect(ScriptGuard::airable('Mehr steht auf einundzwanzig.space, wie immer.', null, ['site' => 'einundzwanzig.space'])[0])->toBe('Mehr steht auf einundzwanzig.space, wie immer.')
         ->and(ScriptGuard::airable('Alles unter https://example.com.'))->toBe(['', null]);
+});
+
+it('takes a goodbye sentence out wherever it stands and airs the rest, a duet keeping its speakers (user 2026-10-11 and 2026-10-18)', function () {
+    config(['tv.commentary.enabled' => true]);
+    $queue = app(ScriptQueue::class);
+    $now = CarbonImmutable::now();
+
+    $scene = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, "Die Partie kippt gerade. Macht's gut, Leute!\nDer Turm steht plötzlich offen.", 'goodbye:a', 0, $now);
+    $duet = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, "Was für ein Zug.\nBis gleich!\nUnd der König läuft.", 'goodbye:b', 0, $now, speakers: ['markus', 'sirius', 'markus']);
+
+    expect($scene->text)->toBe("Die Partie kippt gerade.\nDer Turm steht plötzlich offen.")
+        ->and($duet->text)->toBe("Was für ein Zug.\nUnd der König läuft.")
+        ->and($duet->speakers)->toBe(['markus', 'markus']);
 });

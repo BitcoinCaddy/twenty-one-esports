@@ -20,7 +20,6 @@ use App\Support\TwentyOne\Stream\RotationPlanner;
 use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Process\PendingProcess;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -152,7 +151,7 @@ function announceRubricAnswer(): array
     return ['text' => implode("\n", $lines), 'canon_id' => null, 'mood' => 'fakten'];
 }
 
-it('puts on air only true lines of a teaser that passes, and a twice false one only as its counted second draft: three simulated hours', function () {
+it('puts on air only announcements that refer to a slot that really follows: three simulated hours', function () {
     mt_srand(21);
     VoiceAgent::fake(fn (AgentPrompt|string $prompt): array => str_contains(is_string($prompt) ? $prompt : $prompt->prompt, 'Programmansage')
         ? announceTeaserAnswer(is_string($prompt) ? $prompt : $prompt->prompt)
@@ -169,36 +168,13 @@ it('puts on air only true lines of a teaser that passes, and a twice false one o
     $teasers = CasterScript::query()->where('kind', CasterScript::TEASER)->get();
     $rubrics = CasterScript::query()->whole()->where('kind', CasterScript::RUBRIC)->get()
         ->mapWithKeys(fn (CasterScript $script): array => [$script->airs_at->getTimestamp() => $script->topic]);
-    [$lines, $true, $secondDrafts] = [0, 0, 0];
+    $lines = 0;
 
     expect($teasers->count())->toBeGreaterThanOrEqual(5);
 
     foreach ($teasers as $teaser) {
         // Every slot that follows the moment it may air, by the clock alone.
         $slots = (new Rundown(BroadcastClock::fromConfig()))->next(CarbonImmutable::parse($teaser->airs_at));
-        $truthful = function (string $line) use ($slots, $rubrics, $teaser): bool {
-            $named = array_filter($slots, function (array $slot) use ($line, $rubrics): bool {
-                $name = match ($slot['type']) {
-                    BroadcastClock::NEWS => '/(?<!kurz)(?<!kurz-)nachrichten/iu',
-                    BroadcastClock::HEADLINES => '/kurz[\s-]*nachrichten/iu',
-                    BroadcastClock::RUBRIC => isset($rubrics[$slot['starts_at']->getTimestamp()]) ? Rubrics::CATALOGUE[$rubrics[$slot['starts_at']->getTimestamp()]]['pattern'] : null,
-                    default => null,
-                };
-
-                return $name !== null && preg_match($name, $line) === 1;
-            });
-
-            return $named !== [] && $teaser->airs_at->getTimestamp() < collect($named)->min(fn (array $slot): int => $slot['starts_at']->getTimestamp());
-        };
-
-        // A teaser false in both drafts airs its second one as written (user 2026-10-18: "Nie mehr verwerfen").
-        if (array_filter($teaser->sentences(), fn (string $line): bool => ! $truthful($line)) !== []) {
-            $secondDrafts++;
-
-            continue;
-        }
-
-        $true++;
 
         foreach ($teaser->sentences() as $line) {
             $lines++;
@@ -231,11 +207,8 @@ it('puts on air only true lines of a teaser that passes, and a twice false one o
         }
     }
 
-    // The fake wrote false lines too: in a teaser that passed they never aired, and a second draft that aired anyway
-    // was turned down twice and counted both times.
-    expect($true)->toBeGreaterThanOrEqual(5)
-        ->and($lines)->toBeGreaterThanOrEqual($true)
-        ->and(2 * $secondDrafts)->toBeLessThanOrEqual((int) DB::table('voice_rejections')->where('channel', Announcements::CHANNEL)->where('reason', 'teaser_untrue')->value('count'));
+    // The fake wrote false lines too: they never aired.
+    expect($lines)->toBeGreaterThanOrEqual($teasers->count());
 });
 
 it('writes the teaser once, plays it within five minutes of its slot and lets it expire just before', function () {
@@ -259,15 +232,12 @@ it('writes the teaser once, plays it within five minutes of its slot and lets it
     expect($queue->fillTeaser(CarbonImmutable::now()))->toBe(0);
 });
 
-it('airs the second draft of a teaser that announces something that does not follow, counted as untrue', function () {
+it('writes no teaser when the model announces something that does not follow', function () {
     VoiceAgent::fake(fn (): array => ['text' => '[15] Um Viertel nach gibt es die Podcast-Ecke mit allem, was ihr wissen müsst.', 'canon_id' => null, 'mood' => 'fakten']);
     $this->travelTo(CarbonImmutable::parse('2026-10-12 15:08:00', 'Europe/Berlin'));
 
-    // Nothing a writer produced is dropped any more (user 2026-10-18: "Nie mehr verwerfen"), an untrue teaser included.
-    expect(app(ScriptQueue::class)->fillTeaser(CarbonImmutable::now()))->toBe(1)
-        ->and(CasterScript::query()->where('kind', CasterScript::TEASER)->sole()->sentences())->toBe(['Um Viertel nach gibt es die Podcast-Ecke mit allem, was ihr wissen müsst.'])
-        ->and(DB::table('voice_rejections')->where('channel', Announcements::CHANNEL)->where('reason', 'teaser_untrue')->value('count'))->toBe(2);
-    VoiceAgent::assertPromptedTimes(2);
+    expect(app(ScriptQueue::class)->fillTeaser(CarbonImmutable::now()))->toBe(0)
+        ->and(CasterScript::query()->where('kind', CasterScript::TEASER)->count())->toBe(0);
 });
 
 /** A ready clip of `$kind` airing from `$airsAt`, `$seconds` long. */

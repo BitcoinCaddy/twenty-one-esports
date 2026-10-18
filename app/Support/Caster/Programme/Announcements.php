@@ -275,7 +275,7 @@ class Announcements
 
     /**
      * The teaser before `$target` (aired from `$airsAt` on, so the rundown is counted from there): one or two
-     * sentences by Markus, or null (off, capped, no word left in the second draft, which airs whatever the checks found).
+     * sentences by Markus, or null (off, capped, nothing true written in two tries).
      *
      * @param  ProgrammeEntry  $target
      */
@@ -306,8 +306,7 @@ class Announcements
 
                 $answer = $response instanceof StructuredAgentResponse ? $response->toArray() : json_decode($response->text, true);
                 $raw = is_array($answer) && is_string($answer['text'] ?? null) ? $answer['text'] : '';
-                $parsed = self::parse($this->hygiene->clean($raw, true, 'de'));
-                $text = $this->accept($parsed, $entries, null, false, 2, $response->steps->last()?->finishReason === FinishReason::Length);
+                $text = $this->accept(self::parse($this->hygiene->clean($raw, true, 'de')), $entries, null, false, 2, $response->steps->last()?->finishReason === FinishReason::Length);
 
                 // The first line has to announce the slot this teaser is for.
                 if ($text !== '' && self::verify(ScriptGuard::lines($text)[0], $target['minute'], $entries)) {
@@ -317,17 +316,6 @@ class Announcements
                 }
 
                 $this->usage->recordRejection(self::CHANNEL, ['teaser_untrue']);
-
-                // The second draft airs all the same, its lines as written (user 2026-10-18: "Nie mehr verwerfen"); only
-                // what never goes on air leaves it (ScriptGuard::airable()).
-                $draft = implode("\n", array_map(fn (array $line): string => ScriptGuard::sentenceLines(CasterVoice::withoutHashtags($line['text'])), $parsed));
-
-                if ($try === 1 && ($draft = ScriptGuard::airable($draft)[0]) !== '') {
-                    $this->usage->recordOutcome(self::CHANNEL, 'accepted');
-
-                    return $draft;
-                }
-
                 $this->usage->recordOutcome(self::CHANNEL, 'rejected');
             }
         } catch (Throwable $exception) {

@@ -283,7 +283,7 @@ it('queues a duet scene with one speaker per line, through its parts and the cla
         ->and((new DuetDirector)->lastOpener())->toBe('markus');
 });
 
-it('keeps every line of a duet, a repeated and a farewell line included, each with its speaker', function () {
+it('keeps every line of a duet, a repeated one included, only the farewell line out, each with its speaker', function () {
     $queue = app(ScriptQueue::class);
     $said = 'Kaffee um diese Uhrzeit ist ja fast schon Verrat, denn bei mir steht längst ein Altbier auf dem Tisch.';
     $queue->enqueue(CasterScript::LIVE, ScenePhase::BREAK, $said, 'a', 0, CarbonImmutable::now());
@@ -295,11 +295,12 @@ it('keeps every line of a duet, a repeated and a farewell line included, each wi
         'Du bist halt ein echter Diplomat, und genau deshalb lassen wir dich heute auch moderieren.',
     ]), 'b', 0, CarbonImmutable::now(), speakers: ['markus', 'sirius', 'sirius', 'markus']);
 
-    // Nothing a writer produced is cut any more (user 2026-10-18: "Nie mehr verwerfen"): the repeat and the goodbye air.
-    expect($script->speakers)->toBe(['markus', 'sirius', 'sirius', 'markus'])
-        ->and($script->sentences())->toHaveCount(4)
+    // Nothing a writer produced is cut any more (user 2026-10-18: "Nie mehr verwerfen"): the repeat airs and so does
+    // what follows the goodbye; only the goodbye sentence itself leaves (user 2026-10-11: never say goodbye).
+    expect($script->speakers)->toBe(['markus', 'sirius', 'markus'])
+        ->and($script->sentences())->toHaveCount(3)
         ->and($script->sentences()[1])->toBe($said)
-        ->and($script->sentences()[2])->toContain('ciao');
+        ->and(implode(' ', $script->sentences()))->not->toContain('ciao');
 
     // A scene duet whose second speaker only repeats is queued as written too (user 2026-10-18).
     $scene = $queue->enqueue(CasterScript::SCENE, ScenePhase::BREAK, implode("\n", [

@@ -941,10 +941,17 @@ class ScriptQueue
         // Every script airs as it was written (user 2026-10-18: "Nie mehr verwerfen"): no repeat filter, no cut at a
         // goodbye, no duet ending before a repeated line, the way a bulletin always aired. Only a line without a word
         // leaves, with its speaker; the lines are remembered, so the writers' prompts still know what was said.
+        // One exception, a sentence and not a cut: a goodbye sentence leaves wherever it stands, the rest of the script
+        // airs (user 2026-10-11: "er soll sich nie wieder verabschieden"; 2026-10-18: nothing is cut off any more).
+        // A bulletin keeps its ritual lines.
+        $farewellFree = $kind !== CasterScript::BULLETIN;
+
         if ($speakers !== null) {
             [$lines, $kept] = [[], []];
 
             foreach (ScriptGuard::lines($text) as $index => $line) {
+                $line = $farewellFree ? self::withoutSignOffs($line, emptyWhenAll: true) : $line;
+
                 if (trim(ScriptGuard::withoutMarkers($line)) !== '') {
                     $lines[] = $line;
                     $kept[] = $speakers[$index] ?? DuetDirector::MARKUS;
@@ -952,6 +959,10 @@ class ScriptQueue
             }
 
             [$text, $speakers] = [implode("\n", $lines), $kept];
+        }
+
+        if ($speakers === null && $farewellFree) {
+            $text = self::withoutSignOffs($text, emptyWhenAll: true);
         }
 
         $this->memory ??= new SpokenMemory;
@@ -1335,8 +1346,9 @@ class ScriptQueue
     /**
      * The TV voice never says goodbye (user 2026-10-11: "er soll sich nie wieder verabschieden!"): every sentence
      * with a farewell leaves the script, whichever source it came from (the canon has dozens of podcast outros).
+     * Nothing but farewells: the text itself, or '' with `$emptyWhenAll` (a line of a script that airs without it).
      */
-    public static function withoutSignOffs(string $text): string
+    public static function withoutSignOffs(string $text, bool $emptyWhenAll = false): string
     {
         $lines = [];
 
@@ -1350,6 +1362,6 @@ class ScriptQueue
             }
         }
 
-        return $lines === [] ? $text : implode("\n", $lines);
+        return $lines === [] ? ($emptyWhenAll ? '' : $text) : implode("\n", $lines);
     }
 }

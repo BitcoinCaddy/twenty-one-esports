@@ -509,14 +509,16 @@ class NewsBulletin
             }
 
             $text = $this->repair($parsed['items'][$number + 1] ?? '', $itemMax, $maxWords);
-            $violations = $text === '' ? [self::MISSING] : [...$this->free($text, $maxWords, $cutOff), ...self::factual($text, $item)];
+            $untrue = $text === '' ? [] : self::factual($text, $item);
+            $violations = $text === '' ? [self::MISSING] : [...$this->free($text, $maxWords, $cutOff), ...$untrue];
 
             if ($violations !== []) {
                 array_push($reasons, ...$violations);
 
                 // On the last try a story the checks turned down is read all the same; only what never goes on air
-                // leaves it (ScriptGuard::airable()).
-                if (! $last || $text === '' || ($text = ScriptGuard::airable($text)[0]) === '') {
+                // leaves it (ScriptGuard::airable()), and a story with a number or name its source does not carry: the
+                // news stay true (user 2026-10-18: nothing is thrown away "außer News").
+                if (! $last || $text === '' || $untrue !== [] || ($text = ScriptGuard::airable($text)[0]) === '') {
                     continue;
                 }
 
