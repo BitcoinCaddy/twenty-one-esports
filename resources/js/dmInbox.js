@@ -11,6 +11,14 @@
  * also publish each wrap to its recipient's 10050 relays. The league's chat
  * relays stay in both: the room keeps working for a player without a 10050.
  *
+ * Without a 10050 Amethyst does not fall back to anything of ours: it sends
+ * the wrap to the recipient's NIP-65 read relays (BroadcastRelayPlanner.
+ * computeRelayListForLinkedUser: `inboxRelays()`, else relay hints). A
+ * desk message of tournament 27 (2026-10-18, 26dd050c…) went to 22
+ * players, 9 of them without a 10050, and one of those reads on none of
+ * the chat relays. So a player without a 10050 counts with the read relays
+ * of their 10002 (`r` without marker or `read`) instead, both ways.
+ *
  * A 10050 is signed by a member of the room, not by the league, so what it
  * may make the browser connect to is bounded: secure websockets (`wss://`)
  * on a public host name, or a relay the league configured itself (the
@@ -72,7 +80,9 @@ export function inboxRelaysOf(list, trusted = []) {
 /**
  * The newest valid 10050 of each pubkey, read from `relays` (signature
  * checked, newest wins: resources/js/relayRead.js), as the relays the
- * browser may use. A pubkey without one maps to [].
+ * browser may use; without a 10050 that names a relay, the read relays of
+ * the newest 10002 (Amethyst's fallback, above). A pubkey with neither maps
+ * to [].
  *
  * @returns {Promise<Map<string, string[]>>}
  */
@@ -83,18 +93,27 @@ export async function lookupInboxes(pubkeys, relays, { trusted = relays, ...opti
 
     if (authors.length === 0 || asked.length === 0) return new Map(authors.map((p) => [p, []]));
 
-    const results = await readRelays(asked, [{ kinds: [10050], authors }], { timeoutMs: INBOX_LOOKUP_MS, ...options });
+    const results = await readRelays(asked, [{ kinds: [10050, 10002], authors }], { timeoutMs: INBOX_LOOKUP_MS, ...options });
     const events = results.flatMap((result) => result.events);
 
-    return new Map(authors.map((p) => [p, inboxRelaysOf(newest(events, p, 10050), trusted)]));
+    return new Map(authors.map((p) => [p, dmRelaysOf(newest(events, p, 10050), newest(events, p, 10002), trusted)]));
 }
 
-/** Where a wrap to `target` goes: the chat relays and the target's 10050 relays. */
+/** A 10050 that names a relay wins (as in Amethyst, before trimming); else the 10002's read relays, trimmed the same way. */
+export function dmRelaysOf(dmList, relayList, trusted = []) {
+    if ((dmList?.tags ?? []).some((tag) => tag[0] === 'relay')) return inboxRelaysOf(dmList, trusted);
+
+    const read = (relayList?.tags ?? []).filter((tag) => tag[0] === 'r' && (tag[2] === undefined || tag[2] === 'read'));
+
+    return inboxRelaysOf({ tags: read.map((tag) => ['relay', tag[1]]) }, trusted);
+}
+
+/** Where a wrap to `target` goes: the chat relays and the target's DM relays (lookupInboxes()). */
 export function relaysFor(target, chatRelays, inboxes) {
     return normalizedRelays([...(chatRelays ?? []), ...(inboxes?.get(target) ?? [])]);
 }
 
-/** My 10050 relays that the chat does not read already: the second subscription. */
+/** My DM relays (lookupInboxes()) that the chat does not read already: the second subscription. */
 export function extraInboxRelays(me, chatRelays, inboxes) {
     const reading = new Set(normalizedRelays(chatRelays));
 

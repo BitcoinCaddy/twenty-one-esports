@@ -284,6 +284,34 @@ test('a 10050 is trimmed: only wss relays on public hosts (or configured ones), 
     assert.deepEqual(opp.relays.sort(), ['wss://a.one/', 'wss://b.one/', 'wss://c.one/', 'wss://chat.one/', 'wss://chat.two/', 'wss://d.one/', 'wss://e.one/']);
 });
 
+const relayList = (who, tags, at = NOW - 60) => finalizeEvent({ kind: 10002, created_at: at, tags, content: '' }, keys[who]);
+
+test('without a 10050 the read relays of the 10002 count, both ways, as Amethyst sends there (tournament 27, 2026-10-18)', async () => {
+    fakeRelays({
+        'wss://index.one': [
+            relayList('me', [['r', 'wss://my.read', 'read'], ['r', 'wss://my.write', 'write'], ['r', 'wss://my.both']]),
+            relayList('opp', [['r', 'wss://opp.read', 'read']]),
+            // A 10050 wins over the 10002, as in Amethyst.
+            inbox('opp2', ['wss://opp2.inbox']),
+            relayList('opp2', [['r', 'wss://opp2.read', 'read']]),
+        ],
+        'wss://chat.one': [],
+        'wss://chat.two': [],
+    });
+    const { comp, subs, published } = room();
+    await settle();
+
+    const reading = subs.flatMap((s) => s.relays);
+    assert.ok(reading.includes('wss://my.read/') && reading.includes('wss://my.both/'), 'my read relays are read: ' + JSON.stringify(subs));
+    assert.ok(!reading.includes('wss://my.write/'), 'a write-only relay is not');
+
+    comp.input = 'gl hf';
+    await comp.send();
+    const to = (who) => published.find((p) => p.event.tags.some((t) => t[0] === 'p' && t[1] === pk[who]));
+    assert.deepEqual(to('opp').relays.sort(), ['wss://chat.one/', 'wss://chat.two/', 'wss://opp.read/']);
+    assert.deepEqual(to('opp2').relays.sort(), ['wss://chat.one/', 'wss://chat.two/', 'wss://opp2.inbox/']);
+});
+
 test('the game chat reads on my 10050 relays and sends the opponent\'s wrap to theirs', async () => {
     fakeRelays({
         'wss://index.one': [inbox('opp', ['wss://opp.inbox']), inbox('me', ['wss://my.inbox'])],
