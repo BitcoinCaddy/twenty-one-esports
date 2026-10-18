@@ -949,7 +949,9 @@ class ScriptQueue
             return null;
         }
 
-        if ($kind === CasterScript::BULLETIN) {
+        if ($kind === CasterScript::BULLETIN || ($kind === CasterScript::CHAT && ! CasterVoice::chatGated())) {
+            // A chat reply with the gate off (user 2026-10-18) airs as written, like a bulletin: the repeat and sign-off
+            // filters below emptied short replies (prod 16:16 UTC, ":pepeJAM:" answered but never queued).
             $this->memory ??= new SpokenMemory;
             $this->memory->remember($text, $now);
         } elseif ($topic === SportWeather::TOPIC) {

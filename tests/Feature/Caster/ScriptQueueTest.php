@@ -401,3 +401,20 @@ it('keeps the weather of "Sport und Wetter" although the same sentence aired an 
 
     expect($second?->text)->toContain('vierzehn Grad');
 });
+
+it('queues a chat reply as written while the chat gate is off, a repeated or goodbye line included (prod 2026-10-18, ":pepeJAM:")', function () {
+    config(['tv.commentary.enabled' => true]);
+    $queue = app(ScriptQueue::class);
+    $now = CarbonImmutable::now();
+    $reply = "Ben, tanz ruhig weiter, der Beat gehört dir.\nBis gleich im Chat!";
+
+    config(['tv.commentary.chat.gate' => true]);
+    expect($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:a', 50, $now))->not->toBeNull()
+        // The same reply again: with the gate on, the repeat filter leaves nothing.
+        ->and($queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:b', 50, $now))->toBeNull();
+
+    config(['tv.commentary.chat.gate' => false]);
+    $script = $queue->enqueue(CasterScript::CHAT, ScenePhase::BREAK, $reply, 'chat:c', 50, $now);
+    expect($script)->not->toBeNull()
+        ->and($script->text)->toBe($reply);
+});
