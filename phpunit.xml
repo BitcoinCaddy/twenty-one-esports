@@ -60,6 +60,26 @@
         <env name="TV_COMMENTARY" value="false" force="true"/>
         <!-- The text provider the tests assume (a workstation .env says opencode; 2026-10-18 it turned TalkShowActsTest red). -->
         <env name="ESPORTS_VOICE_PROVIDER" value="anthropic" force="true"/>
+        <!-- The radio's other workstation switches at their config defaults (2026-10-18: a local .env with its own quiet hours,
+             stock model and judge turned QuietHoursTest, StockCoherenceTest and others red on every machine but prod). -->
+        <env name="TV_COMMENTARY_AI" value="true" force="true"/>
+        <env name="TV_COMMENTARY_QUIET_FROM" value="01:00" force="true"/>
+        <env name="TV_COMMENTARY_QUIET_TO" value="09:00" force="true"/>
+        <env name="TV_COMMENTARY_STOCK_FROM" value="01:00" force="true"/>
+        <env name="TV_COMMENTARY_STOCK_TO" value="09:00" force="true"/>
+        <env name="TV_COMMENTARY_STOCK_MODEL" value="claude-sonnet-5-5" force="true"/>
+        <env name="TV_COMMENTARY_STOCK_JUDGE" value="true" force="true"/>
+        <env name="TV_COMMENTARY_STOCK_DAILY_CAP" value="220" force="true"/>
+        <env name="TV_COMMENTARY_SHOWS_DAILY_CAP" value="120" force="true"/>
+        <env name="TV_COMMENTARY_TALKSHOW_DAILY_CAP" value="60" force="true"/>
+        <env name="TV_COMMENTARY_SERVER" value="https://esports.einundzwanzig.space" force="true"/>
+        <env name="TV_COMMENTARY_TOKEN" value="(null)" force="true"/>
+        <env name="TV_VOICESTUDIO_URL" value="http://127.0.0.1:3900" force="true"/>
+        <env name="TV_VOICESTUDIO_PROFILE" value="ee7a2a18" force="true"/>
+        <env name="TV_VOICESTUDIO_PROFILE_SIRIUS" value="446d98e1" force="true"/>
+        <env name="TV_VOICESTUDIO_SPEED" value="1.0" force="true"/>
+        <env name="TV_VOICESTUDIO_SPEED_SIRIUS" value="0.92" force="true"/>
+        <env name="ESPORTS_VOICE_OPENCODE_SSH" value="" force="true"/>
         <!-- The night's Wavlake overlay catalog (storage/app/stream/music-sync) stays out of every test: a sync run on a dev machine would otherwise change what the music tests read. Tests that need it set config(). -->
         <env name="TWENTYONE_STREAM_MUSIC_OVERLAY" value="" force="true"/>
         <env name="TV_COMMENTARY_NEWS" value="false" force="true"/>
