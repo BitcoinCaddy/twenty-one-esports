@@ -71,7 +71,7 @@
 
     <form x-show="status === 'live'" x-on:submit.prevent="send()" class="flex shrink-0 gap-2 border-t border-hairline px-4 pt-3 pb-4 lg:px-5" data-test="desk-form">
         <label for="deskchat" class="sr-only">{{ __('Message to the tournament desk') }}</label>
-        <input id="deskchat" x-ref="input" x-model="input" placeholder="{{ __('Message') }}" autocomplete="off" maxlength="500" class="h-11 min-w-0 grow rounded-lg border border-edge bg-ground px-3.5 text-sm text-ink placeholder:text-ink-3">
+        <input id="deskchat" x-ref="input" x-model="input" placeholder="{{ __('Message') }}" autocomplete="off" class="h-11 min-w-0 grow rounded-lg border border-edge bg-ground px-3.5 text-sm text-ink placeholder:text-ink-3">
         <button type="submit" aria-label="{{ __('Send message') }}" :disabled="sending" class="btn-w inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-line bg-well text-ink disabled:opacity-50" data-test="desk-send"><x-icon name="send" :size="16" /></button>
     </form>
 </section>
