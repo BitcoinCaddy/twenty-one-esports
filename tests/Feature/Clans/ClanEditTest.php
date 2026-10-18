@@ -383,3 +383,13 @@ test('the manage page survives a Livewire roundtrip with the edit card open and 
         ->assertOk()
         ->assertSee('Preview of the new logo');
 });
+
+test('a refused prepare step shows its reason instead of failing the request: the owner leaving without another captain', function () {
+    ['clan' => $clan, 'owner' => $owner] = editableClan();
+
+    // Prod 2026-10-18 07:33: attempt() returned false into prepareLeave(): ?array, a TypeError (500) instead of the message.
+    Livewire::actingAs($owner)->test('pages::clans.manage', ['clan' => $clan])
+        ->call('prepareLeave')
+        ->assertReturned(null)
+        ->assertHasErrors(['clan' => __('Make another player captain of :clan before you leave.', ['clan' => $clan->name])]);
+});

@@ -469,7 +469,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
             return null;
         }
 
-        return $this->attempt(fn () => $clans->prepareInvite($this->user(), $this->clan, $invitee), 'player');
+        return $this->prepared(fn () => $clans->prepareInvite($this->user(), $this->clan, $invitee), 'player');
     }
 
     public function invite(string $signed, ClanService $clans): void
@@ -618,7 +618,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
     {
         $seats = $this->pickedSeats();
 
-        return $seats === null ? null : $this->attempt(fn () => $clans->prepareLineup($this->user(), $this->clan, (string) $this->editingGame, (string) $this->editing, $seats), 'lineup');
+        return $seats === null ? null : $this->prepared(fn () => $clans->prepareLineup($this->user(), $this->clan, (string) $this->editingGame, (string) $this->editing, $seats), 'lineup');
     }
 
     public function saveLineup(string $signed, ClanService $clans): void
@@ -671,7 +671,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
      */
     public function prepareMakeCaptain(int $userId, ClanService $clans): ?array
     {
-        return $this->attempt(fn () => $clans->prepareMakeCaptain($this->user(), $this->clan, $this->member($userId)));
+        return $this->prepared(fn () => $clans->prepareMakeCaptain($this->user(), $this->clan, $this->member($userId)));
     }
 
     public function makeCaptain(int $userId, string $signed, ClanService $clans): void
@@ -695,7 +695,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
      */
     public function prepareRemove(int $userId, ClanService $clans): ?array
     {
-        return $this->attempt(fn () => $clans->prepareRemove($this->user(), $this->clan, $this->member($userId)));
+        return $this->prepared(fn () => $clans->prepareRemove($this->user(), $this->clan, $this->member($userId)));
     }
 
     public function remove(int $userId, string $signed, ClanService $clans): void
@@ -710,7 +710,7 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
      */
     public function prepareLeave(ClanService $clans): ?array
     {
-        return $this->attempt(fn () => $clans->prepareLeave($this->user()));
+        return $this->prepared(fn () => $clans->prepareLeave($this->user()));
     }
 
     public function leave(string $signed, ClanService $clans): void
@@ -797,6 +797,19 @@ new #[Layout('layouts::app', ['section' => 'clans'])] class extends Component
      * @param  callable(): T  $action
      * @return T|false|null
      */
+    /**
+     * A prepare step for nostrSign's run(): the templates, or null once a refusal set its message (attempt() says false,
+     * which a `?array` method cannot return: prod 2026-10-18, a TypeError 500 instead of the message).
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    private function prepared(callable $action, string $field = 'clan'): ?array
+    {
+        $templates = $this->attempt($action, $field);
+
+        return is_array($templates) ? $templates : null;
+    }
+
     private function attempt(callable $action, string $field = 'clan'): mixed
     {
         try {
