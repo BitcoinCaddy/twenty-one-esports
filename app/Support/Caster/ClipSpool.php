@@ -368,7 +368,8 @@ class ClipSpool
             ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)
                 ->when($lateSeconds !== null, fn ($query) => $query->where(fn ($late) => $late->where('airs_at', '>=', $now->subSeconds((int) $lateSeconds))
                     ->orWhereNotIn('topic', self::TIMED_RUBRICS)->orWhereNull('topic')))->select('id'))
-            ->orderBy('airs_at')->orderBy('id')->first();
+            // The slot lives on the script; the clips have no `airs_at` (ordering by it broke every tick on Postgres, 2026-10-18).
+            ->orderBy(CasterScript::query()->select('airs_at')->whereColumn('caster_scripts.id', 'caster_clips.caster_script_id'))->orderBy('id')->first();
     }
 
     /**

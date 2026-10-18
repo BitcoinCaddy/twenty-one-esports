@@ -390,6 +390,17 @@ it('drops Sport und Wetter that missed its slot by more than late_seconds, but a
     'a show, late is fine' => [Shows::TRIBUNAL, true],
 ]);
 
+it('hands out the due rubric with the earliest slot first, by its script\'s airs_at (prod 2026-10-18: ordering by a column the clips lack broke every tick on Postgres)', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-12 15:00:00', 'Europe/Berlin'));
+    rubricsFakeDecoding();
+    $later = rubricsClip(CasterScript::RUBRIC, 30, CarbonImmutable::parse('2026-10-12 14:45:00', 'Europe/Berlin'));
+    $earlier = rubricsClip(CasterScript::RUBRIC, 30, CarbonImmutable::parse('2026-10-12 14:15:00', 'Europe/Berlin'));
+    collect([$later, $earlier])->each(fn (CasterClip $clip) => $clip->script->update(['topic' => Shows::TRIBUNAL, 'expires_at' => now()->addYears(9)]));
+    collect([$later, $earlier])->each(fn (CasterClip $clip) => $clip->update(['expires_at' => now()->addYears(9)]));
+
+    expect(app(ClipSpool::class)->rubric(CarbonImmutable::now(), 180)?->id)->toBe($earlier->id);
+});
+
 it('airs a due show while the track-change jingle watches the calm air (prod 2026-10-18: the 20:03 show never aired)', function () {
     $slot = CarbonImmutable::parse('2026-10-12 20:03:00', 'Europe/Berlin');
     $this->travelTo($slot->addHours(4));
