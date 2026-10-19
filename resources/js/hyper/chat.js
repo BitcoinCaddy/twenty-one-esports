@@ -16,7 +16,7 @@
 import { SimplePool } from 'nostr-tools/pool';
 import { npubEncode } from 'nostr-tools/nip19';
 import { KIND_HIDE, KIND_MESSAGE, KIND_MUTE, isChannelMessage, messageTemplate, moderation } from '../channelChat.js';
-import { chatTime } from '../chatTime.js';
+import { chatTime, onChatDay } from '../chatTime.js';
 import { ensureSigner } from '../nostrSign.js';
 import { signerMessage, signTemplate } from '../signing.js';
 import { sendBlocker, tokenize } from '../streamChat.js';
@@ -284,6 +284,8 @@ export function startChat(config, { seats = [], onUnread = () => {} } = {}) {
         caughtUp.timer = setTimeout(caughtUp, 6500);
     }
     renderAll();
+    // A page left open overnight: yesterday's "20:24" becomes "Mo 20:24" (chatTime.js), the list stays where it is.
+    onChatDay(() => list.querySelectorAll('.cm-time').forEach((time) => { time.textContent = chatTime(Date.parse(time.dateTime), { locale: config.locale ?? undefined }); }));
 
     return {
         open() { drawer.hidden = false; docked(true); unread = 0; onUnread(0); list.dataset.follow = '1'; renderAll(); if (me && !off) input.focus({ preventScroll: true }); },
