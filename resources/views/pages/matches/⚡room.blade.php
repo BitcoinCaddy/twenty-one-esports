@@ -1275,7 +1275,7 @@ new #[Title('Match room')] #[Layout('layouts::app', ['section' => 'matches', 'sc
                     <template x-for="m in visible" :key="m.id">
                         <li class="flex max-w-[85%] flex-col gap-1 rounded-md px-3 py-2" :class="[m.from === 'me' ? 'self-end bg-btc-press' : 'self-start bg-well', m.card && ! m.mutedCard && m.card.state === 'open' ? 'w-[260px] shadow-[inset_0_0_0_1px_#B9640A]' : '']" :data-from="m.from">
                             <span class="flex items-center gap-2 text-[11px]" :class="m.from === 'me' ? 'text-btc-hi' : 'text-ink-2'">
-                                <span x-text="m.name + ', ' + time(m.at)"></span>
+                                <span><span x-text="m.name + ', '"></span><span class="whitespace-nowrap" x-text="time(m.at)"></span></span>
                                 <span x-show="m.viaDm" class="text-ink-3" data-test="via-dm" x-text="t.viaDm"></span>
                                 <button type="button" x-show="m.from !== 'me'" x-on:click="toggleMute(m.pubkey)" class="btn-w inline-flex h-6 cursor-pointer items-center rounded-sm border border-line bg-transparent px-2 text-[10px] text-ink-2" x-text="isMuted(m.pubkey) ? t.muted : t.mute"></button>
                             </span>

@@ -43,7 +43,7 @@
             <template x-for="m in visible" :key="m.id">
                 <li class="flex max-w-[85%] flex-col gap-1 rounded-md px-3 py-2" :class="[m.from === 'me' ? 'self-end bg-btc-press' : 'self-start bg-well', m.manager ? 'shadow-[inset_0_0_0_1px_var(--color-btc)]' : '']" :data-from="m.from" :data-manager="m.manager ? '1' : '0'">
                     <span class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]" :class="m.from === 'me' ? 'text-btc-hi' : 'text-ink-2'">
-                        <span x-text="m.name + ', ' + time(m.at)"></span>
+                        <span><span x-text="m.name + ', '"></span><span class="whitespace-nowrap" x-text="time(m.at)"></span></span>
                         <span x-show="m.manager" class="inline-flex h-5 items-center gap-1 rounded-xs bg-btc-chip px-1.5 font-bold text-btc-hi" data-test="desk-direction"><x-icon name="shield-check" :size="12" /><span x-text="t.direction"></span></span>
                         {{-- Written in another Nostr client into a slightly different group: shown, never lost, but marked. --}}
                         <span x-show="m.otherRoom" class="inline-flex h-5 items-center rounded-xs bg-raised px-1.5 text-ink-3" data-test="desk-other-room" x-text="t.otherRoom"></span>
