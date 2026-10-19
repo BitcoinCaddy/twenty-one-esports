@@ -39,6 +39,7 @@ use App\Support\Series\SeriesService;
 use App\Support\Tournaments\Engine\Advancement;
 use App\Support\Tournaments\Engine\MatchResult;
 use App\Support\Tournaments\Engine\Swiss;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -768,32 +769,64 @@ final class TournamentRunner
     }
 
     /**
-     * Whether this match plays two legs: a two-leg board game ({@see playsTwoLegs()}), unless the organizer chose one
-     * game per pairing for a round-robin table (FormatOptions::$legs; DerCaddy, 2026-10-18: "das sollte man vorher
-     * einstellen können"). A knockout and a Swiss stage always play two.
+     * Whether the organizer chooses one game per pairing or two (FormatOptions::$legs) for a stage of this format: the
+     * round-robin table of a two-leg board game (the round robin, or the groups of a two-stage tournament). The one
+     * rule the runner, the tournament page and the tournament editor read.
      */
-    public static function twoLegs(TournamentMatch $match, Tournament $tournament): bool
+    public static function choosesLegs(string $slug, TournamentFormat $stage): bool
     {
-        if (! self::playsTwoLegs((string) $tournament->game)) {
-            return false;
-        }
+        return $stage === TournamentFormat::RoundRobin && self::playsTwoLegs($slug);
+    }
 
-        return $tournament->formatOptions()->legs === 2 || $match->loadMissing('round.stage')->round?->stage?->format !== TournamentFormat::RoundRobin;
+    /**
+     * Whether a tournament of this game and format has a table whose games per pairing the organizer chooses
+     * ({@see choosesLegs()}): a round robin, or the round-robin groups of a two-stage tournament.
+     */
+    public static function tableChoosesLegs(string $slug, TournamentFormat $format, FormatOptions $options): bool
+    {
+        return self::choosesLegs($slug, $format === TournamentFormat::TwoStage ? TournamentFormat::from($options->groupStage) : $format);
+    }
+
+    /**
+     * Whether the pairings of a stage play two legs: a two-leg board game ({@see playsTwoLegs()}), unless the organizer
+     * chose one game per pairing for its round-robin table ({@see choosesLegs()}; DerCaddy, 2026-10-18: "das sollte man
+     * vorher einstellen können"). A knockout and a Swiss stage always play two. `$stage` is the stage's format, or a
+     * closure that reads it: asked only when the organizer chose one game, so a tournament of two never loads a stage.
+     *
+     * @param  TournamentFormat|Closure(): TournamentFormat  $stage
+     */
+    public static function stagePlaysTwoLegs(Tournament $tournament, TournamentFormat|Closure $stage): bool
+    {
+        $slug = (string) $tournament->game;
+
+        return self::playsTwoLegs($slug)
+            && ($tournament->formatOptions()->legs === 2 || ! self::choosesLegs($slug, $stage instanceof Closure ? $stage() : $stage));
+    }
+
+    /**
+     * Whether this match plays two legs ({@see stagePlaysTwoLegs()}). A caller that holds the match's stage passes it;
+     * else it is loaded, and only for a tournament of one game per pairing.
+     */
+    public static function twoLegs(TournamentMatch $match, Tournament $tournament, ?TournamentStage $stage = null): bool
+    {
+        return self::stagePlaysTwoLegs($tournament, fn (): TournamentFormat => ($stage ?? $match->loadMissing('round.stage')->round->stage)->format);
     }
 
     /**
      * The points per slot of each finished leg of a two-leg pairing, in the order played (the two legs, never a
      * decider): what twoLegsFinished() adds up, and what a table that counts game by game reads (Standings::perLeg()).
+     * A caller that already read the match's finished games ({@see finishedBoardGames()}) passes them.
      *
+     * @param  Collection<int, BoardGame>|null  $games
      * @return list<array{0: float, 1: float}>
      */
-    public static function legPoints(TournamentMatch $match): array
+    public static function legPoints(TournamentMatch $match, ?Collection $games = null): array
     {
         // The views load matches without their participants (lazy loading is off): one query for them here.
         $members = $match->loadMissing('slots.participant')->slots->firstWhere('slot', 0)?->participant?->memberIds() ?? [];
         $legs = [];
 
-        foreach (self::finishedBoardGames($match)->take(2) as $leg) {
+        foreach (($games ?? self::finishedBoardGames($match))->take(2) as $leg) {
             [$white, $black] = match ($leg->result) {
                 '1-0' => [1.0, 0.0],
                 '0-1' => [0.0, 1.0],
@@ -837,13 +870,14 @@ final class TournamentRunner
      *
      * @return array{points: array{0: float, 1: float}, label: string, game: int, legs: list<array{0: float, 1: float}>}|null
      */
-    public static function legsSoFar(TournamentMatch $match, Tournament $tournament): ?array
+    public static function legsSoFar(TournamentMatch $match, Tournament $tournament, ?TournamentStage $stage = null): ?array
     {
-        if ($match->result !== null || ! self::twoLegs($match, $tournament)) {
+        if ($match->result !== null || ! self::twoLegs($match, $tournament, $stage)) {
             return null;
         }
 
-        $legs = self::legPoints($match);
+        $games = self::finishedBoardGames($match);
+        $legs = self::legPoints($match, $games);
 
         if ($legs === []) {
             return null;
@@ -851,7 +885,7 @@ final class TournamentRunner
 
         $points = [array_sum(array_column($legs, 0)), array_sum(array_column($legs, 1))];
 
-        return ['points' => $points, 'label' => self::points($points[0]).'–'.self::points($points[1]), 'game' => self::finishedBoardGames($match)->count() + 1, 'legs' => $legs];
+        return ['points' => $points, 'label' => self::points($points[0]).'–'.self::points($points[1]), 'game' => $games->count() + 1, 'legs' => $legs];
     }
 
     /**
@@ -872,7 +906,7 @@ final class TournamentRunner
         }
 
         // Each leg's points stay with the result: a table that counts game by game reads them (FormatOptions::$legPoints).
-        $legs = self::legPoints($match);
+        $legs = self::legPoints($match, $games);
         $points = [array_sum(array_column($legs, 0)), array_sum(array_column($legs, 1))];
 
         $label = fn (array $score): string => self::points($score[0]).'–'.self::points($score[1]);
