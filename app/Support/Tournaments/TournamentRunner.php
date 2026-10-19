@@ -317,9 +317,13 @@ final class TournamentRunner
      */
     public static function allowsDraw(TournamentMatch $match): bool
     {
-        $format = $match->round->stage->format;
+        return self::stageAllowsDraw($match->round->stage->format);
+    }
 
-        return $format === TournamentFormat::Swiss || $format === TournamentFormat::RoundRobin;
+    /** Whether a stage of this format takes a draw as a result ({@see allowsDraw()}): Swiss and round robin. */
+    public static function stageAllowsDraw(TournamentFormat $stage): bool
+    {
+        return $stage === TournamentFormat::Swiss || $stage === TournamentFormat::RoundRobin;
     }
 
     /**
