@@ -25,6 +25,7 @@ use App\Support\Hyper\HyperTournamentTeams;
 use App\Support\Payouts\TournamentPlacements;
 use App\Support\Series\CasualMatches;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -33,7 +34,11 @@ use Illuminate\Support\Facades\Route;
  * Spielen, in Lobby gehen."). Exactly one state per viewer, with one
  * primary action:
  *
- * - play: the viewer's game is live, "Go to your game";
+ * - play: the viewer's game is live and the viewer is to move, "Go to your game" (with the running clock,
+ *   the window for the first move or the correspondence deadline);
+ * - their-move: the viewer's game is live and the opponent is to move: it says so, and that the viewer's
+ *   clock stands (DerCaddy, 2026-10-16: "Da steht, dass meine Uhr tickt, obwohl ich nicht an der Reihe
+ *   bin"); the page's poll turns it into "play" once the move comes, with the hero's flip and chime;
  * - busy: the opponent (or the viewer) is in another live game, so the
  *   game waits; it says so and switches by itself once the game exists;
  * - ready / start / invited: a casual cup game still to be started
@@ -62,7 +67,7 @@ final class TournamentNow
     public const ACTIVE = ['play', 'ready', 'start', 'schedule', 'room', 'lobby', 'match', 'lineup'];
 
     /** The states that wait on somebody else: the hero says why and switches by itself. */
-    public const WAITING = ['busy', 'invited', 'starting', 'wait', 'bye', 'done'];
+    public const WAITING = ['busy', 'invited', 'starting', 'wait', 'bye', 'done', 'their-move'];
 
     /** How many live boards a spectator gets as links. */
     public const BOARDS = 4;
@@ -108,11 +113,17 @@ final class TournamentNow
             return ['state' => 'lobby', 'title' => (string) __('Join your lobby'), 'context' => (string) __('Lobby :number', ['number' => $lobby->position]), 'me' => $viewer];
         }
 
-        // The match with a live game first (a round robin keeps every round open at once), else the earliest round.
+        // The match with a live game first (a round robin keeps every round open at once), of those the one where the
+        // viewer is to move, else the earliest round: several correspondence games at once, and the hero points at
+        // the one that waits on the viewer.
         $match = $cup['match'] ?? TournamentMatch::query()->where('tournament_id', $tournament->id)->where('status', 'ready')->whereNull('result')->whereNull('lobby')
             ->where('bracket', '!=', 'bye')->whereHas('slots', fn ($query) => $query->where('tournament_participant_id', $participant->id))
             ->with(['round', 'slots.participant', 'chessGame', 'boardGame', 'seriesMatch', 'hyperMatch', 'pongMatch'])->get()
-            ->sortBy(fn (TournamentMatch $open): array => [self::liveGame($tournament, $open) === null ? 1 : 0, $open->round->number, $open->id])->first();
+            ->sortBy(function (TournamentMatch $open) use ($tournament, $participant): array {
+                $game = self::liveGame($tournament, $open);
+
+                return [$game === null ? 1 : 0, ($game instanceof ChessGame || $game instanceof BoardGame) && self::side($game, $participant) !== self::turn($game) ? 1 : 0, $open->round->number, $open->id];
+            })->first();
 
         if ($match instanceof TournamentMatch) {
             return [...self::open($tournament, $match, $participant, $cup, $viewer), 'me' => $viewer];
@@ -197,7 +208,7 @@ final class TournamentNow
         if ($game !== null) {
             $url = $game instanceof BoardGame ? route('board.show', $game) : route('games.show', ['game' => $game]);
 
-            return [...$face, 'state' => 'play', 'title' => (string) __('Play now'), 'context' => $context, 'line' => (string) __('Your game is live and your clock runs.'),
+            return [...$face, ...self::liveTurn($game, $participant, $name, $viewer), 'context' => $context,
                 'action' => ['label' => (string) __('Go to your game'), 'href' => $url, 'icon' => 'pawn']];
         }
 
@@ -551,6 +562,62 @@ final class TournamentNow
     private static function watchUrl(Tournament $tournament): string
     {
         return route('tournaments.show', $tournament).'#bracket';
+    }
+
+    /**
+     * A live chess or board game of the viewer's match: who is to move. The viewer's move is "Play now", with
+     * the running clock, the window for the first move (Ben's no-show rule: a first move missed twice loses the
+     * pairing) or the correspondence deadline; the opponent's move waits, and says that the viewer's clock
+     * stands (DerCaddy, 2026-10-16).
+     *
+     * @return array{state: string, title: string, line: string}
+     */
+    private static function liveTurn(ChessGame|BoardGame $game, TournamentParticipant $participant, string $opponent, ?User $viewer): array
+    {
+        $side = self::side($game, $participant);
+        $deadline = $game->deadline_ms === null ? null : Carbon::createFromTimestampMs($game->deadline_ms)->setTimezone(self::zone($viewer));
+        $until = $deadline?->translatedFormat('D j M, H:i');
+
+        if ($side === null) {
+            return ['state' => 'play', 'title' => (string) __('Play now'), 'line' => (string) __('Your game is live.')];
+        }
+
+        if ($side === self::turn($game)) {
+            $line = match (true) {
+                $game->isCorrespondence() && $until !== null => __('Your move, until :time.', ['time' => $until]),
+                ! $game->clocksRunning() && $deadline !== null => __('Your move: your first move has to come by :time.', ['time' => $deadline->translatedFormat('H:i')]),
+                default => __('Your move. Your clock runs.'),
+            };
+
+            return ['state' => 'play', 'title' => (string) __('Play now'), 'line' => (string) $line];
+        }
+
+        $line = $game->isCorrespondence() && $until !== null
+            ? __(':name is to move, until :time.', ['name' => $opponent, 'time' => $until])
+            : __(':name is to move. Your clock stands.', ['name' => $opponent]);
+
+        return ['state' => 'their-move', 'title' => (string) __('Your game is on'), 'line' => (string) $line];
+    }
+
+    /**
+     * The participant's colour in the game ('w' or 'b'), by its members: a team's member may watch the board a
+     * teammate plays. Null when neither side is theirs.
+     */
+    private static function side(ChessGame|BoardGame $game, TournamentParticipant $participant): ?string
+    {
+        $members = $participant->memberIds();
+
+        return match (true) {
+            in_array((int) $game->white_id, $members, true) => 'w',
+            in_array((int) $game->black_id, $members, true) => 'b',
+            default => null,
+        };
+    }
+
+    /** Who is to move: 'w' or 'b'. */
+    private static function turn(ChessGame|BoardGame $game): string
+    {
+        return $game instanceof ChessGame ? $game->turn() : ((string) $game->turn === 'b' ? 'b' : 'w');
     }
 
     private static function zone(?User $viewer): string
