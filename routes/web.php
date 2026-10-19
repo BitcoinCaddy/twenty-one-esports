@@ -190,6 +190,8 @@ Route::get('broadcast/{token}/snapshot.json', [BroadcastOverlayController::class
 Route::middleware('auth')->group(function () {
     Route::livewire('chess/challenge', 'pages::chess.challenge')->name('chess.challenge');
     Route::livewire('me/correspondence', 'pages::me.correspondence')->name('me.correspondence');
+    // "Your chats" (DerCaddy, 2026-10-18): the player's desks, game chats and match rooms in one list (App\Support\Chat\ChatInbox).
+    Route::livewire('me/chats', 'pages::me.chats')->name('me.chats');
 });
 
 /*

@@ -15,7 +15,8 @@ globalThis.window = { addEventListener() {}, removeEventListener() {} };
 globalThis.document = { addEventListener() {}, querySelector: () => null, visibilityState: 'visible' };
 
 const { makeRumor } = await import('../../resources/js/nostrChat.js');
-const { gameChat, READ_KEY } = await import('../../resources/js/gameChat.js');
+const { gameChat } = await import('../../resources/js/gameChat.js');
+const { READ_KEY } = await import('../../resources/js/chatRead.js');
 
 const ME = 'a'.repeat(64);
 const THEM = 'b'.repeat(64);

@@ -132,8 +132,9 @@ test('the account menu opens with Enter, Space and the arrows, moves with the ar
     $page->locator(':focus')->press('Home');
     $home = $focus();
     $page->locator(':focus')->press('End');
-    // The groups of Profile.dc.html (P7): Play first, its daily games under the name.
-    expect($second)->toBe('Your daily games')
+    // The groups of Profile.dc.html (P7): Play first, under the name; its first entry "Your chats" (DerCaddy,
+    // 2026-10-18), below "Your matches and events" when there are any.
+    expect($second)->toBe('account-chats')
         ->and($wrapped)->toBe('Log out')
         ->and($home)->toBe('account-page')
         ->and($focus())->toBe('Log out');

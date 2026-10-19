@@ -16,6 +16,7 @@ use App\Support\Series\CasualChallenges;
 use App\Support\Series\CasualInvites;
 use App\Support\Series\CasualLobby;
 use App\Support\Series\CasualMatches;
+use App\Support\Series\RoomMembers;
 use App\Support\Series\SeriesPresenter;
 use App\Support\Series\SeriesRuleViolation;
 use App\Support\Series\SeriesService;
@@ -602,18 +603,8 @@ new #[Title('Match room')] #[Layout('layouts::app', ['section' => 'matches', 'sc
     public function chatConfig(): array
     {
         $match = $this->room['match'];
-        $members = [];
-
-        foreach (SeriesMatch::SIDES as $side) {
-            foreach ($match->lineup($side)?->activeSeats() ?? [] as $seat) {
-                $members[$seat->user->pubkey] = ['pubkey' => $seat->user->pubkey, 'name' => $seat->user->displayName(), 'side' => $side];
-            }
-
-            // A tournament's roster side (mix team, RL 1v1 player) has no lineup (P8b).
-            foreach (\App\Models\User::query()->whereIn('id', $match->rosterSide($side))->get() as $player) {
-                $members[$player->pubkey] = ['pubkey' => $player->pubkey, 'name' => $player->displayName(), 'side' => $side];
-            }
-        }
+        // The room's members with their side, as "Your chats" reads them too (RoomMembers).
+        $members = RoomMembers::of($match);
 
         $casual = $this->casualState();
 
@@ -634,7 +625,7 @@ new #[Title('Match room')] #[Layout('layouts::app', ['section' => 'matches', 'sc
 
         return [
             'me' => $this->user()->pubkey,
-            'members' => array_values($members),
+            'members' => $members,
             'casual' => $casual,
             'match' => $match->number,
             // A series runs for days: the chat reads back to the challenge (gameChat.js does the same per game).
