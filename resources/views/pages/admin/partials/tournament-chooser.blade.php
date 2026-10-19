@@ -518,6 +518,38 @@
                         </div>
                     @endif
 
+                    @if (\App\Support\Tournaments\TournamentRunner::playsTwoLegs($profile->game) && ($format === TournamentFormat::RoundRobin || ($format === TournamentFormat::TwoStage && $options->groupStage === 'round-robin')))
+                        {{-- A two-leg game (Blockli) in a round-robin table (DerCaddy, 2026-10-18: "das sollte man vorher einstellen können",
+                             "sollte man dann auch zwei Punkte bekommen können"): one game or two per pairing, points per pairing or per game.
+                             A knockout keeps its two legs and decider. --}}
+                        <div class="{{ $optionRow }}" data-test="legs-option">
+                            <span class="flex flex-col items-start gap-2">
+                                <span id="legs-l" class="text-[13px] font-bold">{{ __('Games per pairing') }}</span>
+                                <span role="radiogroup" aria-labelledby="legs-l" class="flex gap-1 rounded-md border border-edge bg-ground p-[3px]">
+                                    @foreach ([[2, __('Two games')], [1, __('One game')]] as [$value, $label])
+                                        <button type="button" role="radio" aria-checked="{{ $options->legs === $value ? 'true' : 'false' }}" wire:click="option('legs', {{ $value }})" wire:key="legs-{{ $value }}" data-test="legs-{{ $value }}"
+                                                @class(['min-h-[38px] cursor-pointer rounded-sm border-0 px-3 text-[13px] font-bold whitespace-nowrap', 'bg-raised text-btc' => $options->legs === $value, 'bg-transparent text-ink-2' => $options->legs !== $value])>{{ $label }}</button>
+                                    @endforeach
+                                </span>
+                            </span>
+                            <span class="{{ $help }}">{{ __('Two games with the colours swapped are fairer: everyone starts once. One game per pairing halves the games; the colours even out over the rounds.') }}</span>
+                        </div>
+                        @if ($options->legs === 2)
+                            <div class="{{ $optionRow }}" data-test="leg-points-option">
+                                <span class="flex flex-col items-start gap-2">
+                                    <span id="legp-l" class="text-[13px] font-bold">{{ __('Points in the table') }}</span>
+                                    <span role="radiogroup" aria-labelledby="legp-l" class="flex gap-1 rounded-md border border-edge bg-ground p-[3px]">
+                                        @foreach ([[false, __('Per pairing')], [true, __('Per game')]] as [$value, $label])
+                                            <button type="button" role="radio" aria-checked="{{ $options->legPoints === $value ? 'true' : 'false' }}" wire:click="option('legPoints', {{ $value ? 'true' : 'false' }})" wire:key="legp-{{ $value ? 1 : 0 }}" data-test="leg-points-{{ $value ? 'game' : 'pairing' }}"
+                                                    @class(['min-h-[38px] cursor-pointer rounded-sm border-0 px-3 text-[13px] font-bold whitespace-nowrap', 'bg-raised text-btc' => $options->legPoints === $value, 'bg-transparent text-ink-2' => $options->legPoints !== $value])>{{ $label }}</button>
+                                        @endforeach
+                                    </span>
+                                </span>
+                                <span class="{{ $help }}">{{ __('Per game: every game counts, a win 1 and a draw ½, so up to 2 points per pairing, and each game is in the table once it ends. Per pairing: the pairing counts once, 1 for winning it, ½ when each wins a game.') }}</span>
+                            </div>
+                        @endif
+                    @endif
+
                     @if ($lobbyFormat)
                         <div class="flex flex-col gap-2 border-t border-hairline py-3" data-test="lobby-options">
                             <span class="text-[13px] font-bold">{{ __('Lobbies') }}</span>

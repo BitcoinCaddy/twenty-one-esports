@@ -78,8 +78,10 @@ final class TournamentView
                 'rounds' => $rounds,
                 // A two-leg game (Blockli) ranks pairings, and a pairing enters the table only after both legs: the table
                 // says so and lists the pairings under way with their standing (Nidan21 2026-10-17: a won and a lost
-                // game showed as one draw, a lost first leg nowhere).
-                'two_legs' => TournamentRunner::playsTwoLegs((string) $this->tournament->game),
+                // game showed as one draw, a lost first leg nowhere). Unless the organizer chose one game per pairing,
+                // or points per game: then every game is in the table once it ends (FormatOptions::$legs, $legPoints).
+                'two_legs' => $this->twoLegs($stage),
+                'per_leg' => $this->perLeg($stage),
                 'open' => array_values(array_map(fn (array $box): array => [
                     'a' => $box['sides'][0]['name'] ?? '?',
                     'b' => $box['sides'][1]['name'] ?? '?',
@@ -138,6 +140,19 @@ final class TournamentView
         };
     }
 
+    /** Whether this stage's pairings play two legs: a two-leg game, unless a round-robin table plays one game each. */
+    private function twoLegs(TournamentStage $stage): bool
+    {
+        return TournamentRunner::playsTwoLegs((string) $this->tournament->game)
+            && ($this->tournament->formatOptions()->legs === 2 || $stage->format !== TournamentFormat::RoundRobin);
+    }
+
+    /** Whether this stage's table counts the two legs game by game (FormatOptions::$legPoints, round-robin tables only). */
+    private function perLeg(TournamentStage $stage): bool
+    {
+        return $stage->format === TournamentFormat::RoundRobin && $this->twoLegs($stage) && $this->tournament->formatOptions()->perLeg();
+    }
+
     /**
      * The table of a Swiss stage, a round robin or one group.
      *
@@ -164,6 +179,19 @@ final class TournamentView
             }
         }
 
+        // Game by game: the legs already played of a pairing under way count at once (DerCaddy, 2026-10-18).
+        $perLeg = $this->perLeg($stage);
+
+        foreach ($perLeg ? $matches->where('status', 'ready')->whereNull('result') : [] as $match) {
+            $a = $match->slots[0]->tournament_participant_id ?? null;
+            $b = $match->slots[1]->tournament_participant_id ?? null;
+            $legs = $a !== null && $b !== null ? TournamentRunner::legPoints($match) : [];
+
+            if ($legs !== []) {
+                $games[] = [(int) $a, (int) $b, new Engine\MatchResult(null, legs: $legs)];
+            }
+        }
+
         $swiss = $stage->format === TournamentFormat::Swiss;
         $custom = $options->rankBy === 'custom';
         $rows = Standings::table(
@@ -174,6 +202,7 @@ final class TournamentView
             $swiss ? $options->pointsBye : 0.0,
             $swiss ? 'points' : $options->rankBy,
             $swiss ? $options->swissTieBreaks : $options->roundRobinTieBreaks,
+            $perLeg,
         );
 
         return array_map(function ($row): array {
@@ -207,7 +236,7 @@ final class TournamentView
         // One game per match (chess, the board games of plan "Mühle und Dame", P5, Proof of Pong, plan "Proof of Pong", P4): 1, ½, 0.
         $chess = $this->tournament->profile()->isChess() || $this->tournament->profile()->isBoard() || $this->tournament->profile()->isPong();
         // A two-leg pairing under way (Blockli): the legs so far stand in the box until the match is decided.
-        $legs = $result === null && $match->status === 'ready' ? TournamentRunner::legsSoFar($match, (string) $this->tournament->game) : null;
+        $legs = $result === null && $match->status === 'ready' ? TournamentRunner::legsSoFar($match, $this->tournament) : null;
         $sides = [];
 
         foreach ($match->slots as $slot) {

@@ -113,7 +113,7 @@ final class TournamentGameEnd
             'tournament' => $tournament->title(),
             'round' => (string) __('Round :number', ['number' => $match->round->number]),
             'step' => $pair->count() > 1 && $index !== false ? (string) __('Game :n of :total', ['n' => $index + 1, 'total' => $pair->count()])
-                : self::legsStep($match, (string) $tournament->game),
+                : self::legsStep($match, $tournament),
             'stake' => $cup ? (string) __('Cup game — counts for the tournament') : (string) __('Tournament game — counts for the tournament'),
             'url' => route('tournaments.show', $tournament),
             'cup' => $cup,
@@ -126,9 +126,9 @@ final class TournamentGameEnd
      * The banner's step of a two-leg pairing under way (Blockli): who leads after the finished legs, from the
      * leader's side, or that it is level, and the game on now; null before the first leg ended.
      */
-    private static function legsStep(TournamentMatch $match, string $slug): ?string
+    private static function legsStep(TournamentMatch $match, Tournament $tournament): ?string
     {
-        $legs = TournamentRunner::legsSoFar($match, $slug);
+        $legs = TournamentRunner::legsSoFar($match, $tournament);
 
         if ($legs === null) {
             return null;

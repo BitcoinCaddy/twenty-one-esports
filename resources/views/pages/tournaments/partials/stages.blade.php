@@ -83,8 +83,11 @@
                             </table>
                         </div>
                         @if ($part['two_legs'] ?? false)
-                            {{-- Blockli: the table ranks pairings of two legs (Nidan21 2026-10-17: a won and a lost game read as a wrong draw). --}}
-                            <p class="m-0 text-xs leading-snug text-ink-3" data-test="standings-legs-note">{{ __('W D L counts pairings: first and second leg together. A pairing enters the table once both legs are over.') }}</p>
+                            {{-- Blockli: the table ranks pairings of two legs (Nidan21 2026-10-17: a won and a lost game read as a wrong draw), or
+                                 each game where the organizer chose points per game (DerCaddy, 2026-10-18), every game in the table once it ends. --}}
+                            <p class="m-0 text-xs leading-snug text-ink-3" data-test="standings-legs-note">{{ ($part['per_leg'] ?? false)
+                                ? __('Every game counts: a win 1 point, a draw ½, up to 2 points per pairing. W D L counts games; a game enters the table once it is over.')
+                                : __('W D L counts pairings: first and second leg together. A pairing enters the table once both legs are over.') }}</p>
                             @if ($part['open'] !== [])
                                 <div class="flex flex-col gap-1" data-test="standings-open">
                                     <span class="text-xs text-ink-3">{{ __('Pairings under way') }}</span>

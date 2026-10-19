@@ -495,7 +495,7 @@ final class TournamentRunner
             return;
         }
 
-        if (self::playsTwoLegs($game->game)) {
+        if (self::twoLegs($match, $match->tournament)) {
             $this->twoLegsFinished($match);
             $this->sync($match->tournament);
 
@@ -768,6 +768,44 @@ final class TournamentRunner
     }
 
     /**
+     * Whether this match plays two legs: a two-leg board game ({@see playsTwoLegs()}), unless the organizer chose one
+     * game per pairing for a round-robin table (FormatOptions::$legs; DerCaddy, 2026-10-18: "das sollte man vorher
+     * einstellen können"). A knockout and a Swiss stage always play two.
+     */
+    public static function twoLegs(TournamentMatch $match, Tournament $tournament): bool
+    {
+        if (! self::playsTwoLegs((string) $tournament->game)) {
+            return false;
+        }
+
+        return $tournament->formatOptions()->legs === 2 || $match->loadMissing('round.stage')->round?->stage?->format !== TournamentFormat::RoundRobin;
+    }
+
+    /**
+     * The points per slot of each finished leg of a two-leg pairing, in the order played (the two legs, never a
+     * decider): what twoLegsFinished() adds up, and what a table that counts game by game reads (Standings::perLeg()).
+     *
+     * @return list<array{0: float, 1: float}>
+     */
+    public static function legPoints(TournamentMatch $match): array
+    {
+        // The views load matches without their participants (lazy loading is off): one query for them here.
+        $members = $match->loadMissing('slots.participant')->slots->firstWhere('slot', 0)?->participant?->memberIds() ?? [];
+        $legs = [];
+
+        foreach (self::finishedBoardGames($match)->take(2) as $leg) {
+            [$white, $black] = match ($leg->result) {
+                '1-0' => [1.0, 0.0],
+                '0-1' => [0.0, 1.0],
+                default => [0.5, 0.5],
+            };
+            $legs[] = in_array((int) $leg->white_id, $members, true) ? [$white, $black] : [$black, $white];
+        }
+
+        return $legs;
+    }
+
+    /**
      * Whether a drawn deciding game of this game can go to the race standing (draw_decider `standing`): a two-leg
      * board game whose rules count a race (RaceStanding, Blockli).
      */
@@ -797,36 +835,23 @@ final class TournamentRunner
      * twoLegsFinished() counts them, its label, and the number of the game on now; null for a decided match, any
      * other game, or before the first leg ended.
      *
-     * @return array{points: array{0: float, 1: float}, label: string, game: int}|null
+     * @return array{points: array{0: float, 1: float}, label: string, game: int, legs: list<array{0: float, 1: float}>}|null
      */
-    public static function legsSoFar(TournamentMatch $match, string $slug): ?array
+    public static function legsSoFar(TournamentMatch $match, Tournament $tournament): ?array
     {
-        if ($match->result !== null || ! self::playsTwoLegs($slug)) {
+        if ($match->result !== null || ! self::twoLegs($match, $tournament)) {
             return null;
         }
 
-        $games = self::finishedBoardGames($match);
+        $legs = self::legPoints($match);
 
-        if ($games->isEmpty()) {
+        if ($legs === []) {
             return null;
         }
 
-        $points = [0.0, 0.0];
-        // The views load matches without their participants (lazy loading is off): one query for them here.
-        $members = $match->loadMissing('slots.participant')->slots->firstWhere('slot', 0)?->participant?->memberIds() ?? [];
+        $points = [array_sum(array_column($legs, 0)), array_sum(array_column($legs, 1))];
 
-        foreach ($games->take(2) as $leg) {
-            $whiteSlot = in_array((int) $leg->white_id, $members, true) ? 0 : 1;
-            [$white, $black] = match ($leg->result) {
-                '1-0' => [1.0, 0.0],
-                '0-1' => [0.0, 1.0],
-                default => [0.5, 0.5],
-            };
-            $points[$whiteSlot] += $white;
-            $points[1 - $whiteSlot] += $black;
-        }
-
-        return ['points' => $points, 'label' => self::points($points[0]).'–'.self::points($points[1]), 'game' => $games->count() + 1];
+        return ['points' => $points, 'label' => self::points($points[0]).'–'.self::points($points[1]), 'game' => self::finishedBoardGames($match)->count() + 1, 'legs' => $legs];
     }
 
     /**
@@ -846,24 +871,15 @@ final class TournamentRunner
             return;
         }
 
-        $points = [0.0, 0.0];
-
-        foreach ($games->take(2) as $leg) {
-            $whiteSlot = in_array((int) $leg->white_id, $match->slots[0]->participant?->memberIds() ?? [], true) ? 0 : 1;
-            [$white, $black] = match ($leg->result) {
-                '1-0' => [1.0, 0.0],
-                '0-1' => [0.0, 1.0],
-                default => [0.5, 0.5],
-            };
-            $points[$whiteSlot] += $white;
-            $points[1 - $whiteSlot] += $black;
-        }
+        // Each leg's points stay with the result: a table that counts game by game reads them (FormatOptions::$legPoints).
+        $legs = self::legPoints($match);
+        $points = [array_sum(array_column($legs, 0)), array_sum(array_column($legs, 1))];
 
         $label = fn (array $score): string => self::points($score[0]).'–'.self::points($score[1]);
 
         if ($points[0] !== $points[1] || self::allowsDraw($match)) {
             $winner = $points[0] === $points[1] ? null : ($points[0] > $points[1] ? 0 : 1);
-            $this->store($match, ['winner' => $winner, 'games_won' => $points, 'points' => [], 'forfeit' => false, 'decided' => 'legs', 'label' => $label($points), 'by' => 'players']);
+            $this->store($match, ['winner' => $winner, 'games_won' => $points, 'points' => [], 'forfeit' => false, 'decided' => 'legs', 'label' => $label($points), 'by' => 'players', 'legs' => $legs]);
 
             return;
         }

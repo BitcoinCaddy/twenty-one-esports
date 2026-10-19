@@ -14,6 +14,9 @@ namespace App\Support\Tournaments\Engine;
  * Median Buchholz: the sum of the opponents' points without the best and the
  * worst of them (with fewer than three opponents, the plain sum). A bye is
  * no opponent and adds nothing.
+ *
+ * `$perLeg` (FormatOptions::$legPoints): the games of a two-leg pairing count
+ * one by one, as results of their own ({@see perLeg()}).
  */
 final class Standings
 {
@@ -24,8 +27,12 @@ final class Standings
      * @param  list<string>  $tieBreaks
      * @return list<StandingRow> first place first
      */
-    public static function table(array $entrants, array $games, float $win = 1.0, float $tie = 0.5, float $bye = 1.0, string $rankBy = 'points', array $tieBreaks = []): array
+    public static function table(array $entrants, array $games, float $win = 1.0, float $tie = 0.5, float $bye = 1.0, string $rankBy = 'points', array $tieBreaks = [], bool $perLeg = false): array
     {
+        if ($perLeg) {
+            $games = self::perLeg($games);
+        }
+
         /** @var array<int, StandingRow> $rows */
         $rows = [];
 
@@ -89,6 +96,45 @@ final class Standings
         }
 
         return $ordered;
+    }
+
+    /**
+     * Each game of a two-leg pairing as a result of its own (DerCaddy, 2026-10-18: "Wenn man zwei Spiele
+     * gegeneinander spielt, sollte man dann auch zwei Punkte bekommen können"): a win 1 and a draw ½ per game, so
+     * up to two points per pairing; wins, draws, losses, head-to-head and Buchholz count games. A pairing decided
+     * without its games (a no-show, a forfeit, a result the directors entered) counts for both of them; a bye
+     * stays a bye.
+     *
+     * @param  list<array{0: int, 1: int|null, 2: MatchResult}>  $games
+     * @return list<array{0: int, 1: int|null, 2: MatchResult}>
+     */
+    public static function perLeg(array $games): array
+    {
+        $out = [];
+
+        foreach ($games as [$a, $b, $result]) {
+            if ($b === null) {
+                $out[] = [$a, $b, $result];
+
+                continue;
+            }
+
+            if ($result->legs === []) {
+                array_push($out, [$a, $b, $result], [$a, $b, $result]);
+
+                continue;
+            }
+
+            foreach ($result->legs as [$first, $second]) {
+                $out[] = [$a, $b, match (true) {
+                    $first > $second => MatchResult::win(0, [$first, $second]),
+                    $second > $first => MatchResult::win(1, [$first, $second]),
+                    default => MatchResult::draw([$first, $second]),
+                }];
+            }
+        }
+
+        return $out;
     }
 
     /**

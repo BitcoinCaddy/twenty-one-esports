@@ -129,7 +129,8 @@ final class Advancement
             $win = $options->rankBy === 'custom' ? $options->pointsWin : 1.0;
             $tie = $options->rankBy === 'custom' ? $options->pointsTie : 0.5;
 
-            return array_column(Standings::table($members, $games, $win, $tie, 0.0, $options->rankBy, $options->roundRobinTieBreaks), 'entrant');
+            // The two legs of a Blockli pairing count game by game where the organizer chose so (FormatOptions::$legPoints).
+            return array_column(Standings::table($members, $games, $win, $tie, 0.0, $options->rankBy, $options->roundRobinTieBreaks, $options->perLeg()), 'entrant');
         }
 
         $losses = array_fill_keys($members, 0);
