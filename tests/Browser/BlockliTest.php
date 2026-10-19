@@ -129,7 +129,7 @@ test('two players play Blockli to a win with every way to set a block: groove ta
 
     // Each player sees the board from its own side: a1 bottom left for White, top right for Black.
     $corner = '() => { const b = document.querySelector("[data-test=board]").getBoundingClientRect(); const a = document.querySelector("[data-test=board] [data-point=a1]").getBoundingClientRect(); return [a.left + a.width / 2 < b.left + b.width / 2 ? "left" : "right", a.top + a.height / 2 > b.top + b.height / 2 ? "bottom" : "top"]; }';
-    // The square names stand on the edge as on a chessboard (Markus, 2026-10-11): files along each player's bottom row from
+    // The square names stand on the edge as on a chessboard (Ben, 2026-10-11): files along each player's bottom row from
     // the left, ranks up the left column; on Black's turned board they read upright, i and 9 at its bottom left.
     $names = '() => { const b = document.querySelector("[data-test=board]").getBoundingClientRect(); const at = (t) => { const r = document.querySelector(`[data-test=board] [data-coordinate="${t}"]`).getBoundingClientRect(); return [r.left + r.width / 2 < b.left + b.width / 2 ? "left" : "right", r.top + r.height / 2 > b.top + b.height / 2 ? "bottom" : "top"]; }; return { count: document.querySelectorAll("[data-test=board] [data-coordinate]").length, a: at("a"), i: at("i"), one: at("1"), nine: at("9") }; }';
     expect($white->evaluate($corner))->toBe(['left', 'bottom'])
