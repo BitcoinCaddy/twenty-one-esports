@@ -16,6 +16,7 @@
 import { SimplePool } from 'nostr-tools/pool';
 import { npubEncode } from 'nostr-tools/nip19';
 import { KIND_HIDE, KIND_MESSAGE, KIND_MUTE, isChannelMessage, messageTemplate, moderation } from '../channelChat.js';
+import { chatTime } from '../chatTime.js';
 import { ensureSigner } from '../nostrSign.js';
 import { signerMessage, signTemplate } from '../signing.js';
 import { sendBlocker, tokenize } from '../streamChat.js';
@@ -167,7 +168,7 @@ export function startChat(config, { seats = [], onUnread = () => {} } = {}) {
         const img = li.querySelector('.cm-av'); img.src = avatarOf(item.pubkey); img.onerror = () => { img.onerror = null; img.src = (config.avatarUrl ?? '').replace(config.avatarPlaceholder ?? '0'.repeat(64), item.pubkey); };
         li.querySelector('.cm-name').textContent = nameOf(item.pubkey);
         const time = li.querySelector('.cm-time'); time.dateTime = new Date(item.created_at * 1000).toISOString();
-        time.textContent = new Date(item.created_at * 1000).toLocaleTimeString(config.locale ?? undefined, { hour: '2-digit', minute: '2-digit' });
+        time.textContent = chatTime(item.created_at * 1000, { locale: config.locale ?? undefined });
         tokensHtml(item.tokens, li);
         reactionsHtml(li, item.id);
 

@@ -31,6 +31,7 @@ import { npubEncode } from 'nostr-tools/nip19';
 import { KIND_HIDE, KIND_MESSAGE, KIND_MUTE, KIND_POLL, KIND_VOTE, addVote, fileSize, isChannelMessage, isClosed, messageTemplate, moderation, parsePoll, parseRoomFile, parseVote, pollBlocker, pollTemplate, tally, timeLeft, voteTemplate } from './channelChat.js';
 import { knownCustomEmojis, loadUserCustomEmojis, pushRecentEmoji } from './emoji.js';
 import { emojiPicker, emojiPopover } from './emojiPicker.js';
+import { chatDay, chatTime } from './chatTime.js';
 import { ensureSigner } from './nostrSign.js';
 import { signerMessage, signTemplate } from './signing.js';
 import { NJUMP, botMark, displayRows, insertSorted, length, sendBlocker, tokenize } from './streamChat.js';
@@ -722,8 +723,11 @@ export function gameChannel(config) {
             return this.unseen === 1 ? t.newMessage : t.newMessages.replace(':count', this.unseen);
         },
 
+        /** "20:24" today, "Fr 20:24" this week, "12.10., 20:24" before (chatTime.js). */
         time(seconds) {
-            return new Date(seconds * 1000).toLocaleTimeString(config.locale ?? undefined, { hour: '2-digit', minute: '2-digit' });
+            chatDay();
+
+            return chatTime(seconds * 1000, { locale: config.locale ?? undefined });
         },
 
         shortNpub(pubkey) {

@@ -12,7 +12,8 @@
     @php($opponentName = $chat['opponent']['name'] ?? '')
 
     {{-- Desktop panel --}}
-    <section aria-labelledby="chat-h" class="hidden flex-col rounded-lg bg-card lg:flex {{ $panelClass ?? 'min-h-[420px] lg:order-none lg:col-span-2 min-[87.5rem]:col-span-1 min-[87.5rem]:col-start-3 min-[87.5rem]:row-span-4 min-[87.5rem]:row-start-1 min-[87.5rem]:mt-4 min-[87.5rem]:h-[640px]' }}" data-test="chat-panel">
+    {{-- On screen from lg: whatever comes in while the panel shows in the front tab is read (gameChat.markRead()). --}}
+    <section aria-labelledby="chat-h" x-effect="wide && messages.length && markRead(true)" x-on:visibilitychange.document="wide && markRead(true)" class="hidden flex-col rounded-lg bg-card lg:flex {{ $panelClass ?? 'min-h-[420px] lg:order-none lg:col-span-2 min-[87.5rem]:col-span-1 min-[87.5rem]:col-start-3 min-[87.5rem]:row-span-4 min-[87.5rem]:row-start-1 min-[87.5rem]:mt-4 min-[87.5rem]:h-[640px]' }}" data-test="chat-panel">
         <div class="flex flex-col gap-1 border-b border-hairline px-4 py-2.5">
             <span class="flex items-center justify-between gap-2">
                 <span id="chat-h" class="text-[15px] font-bold">{{ __('Chat') }}</span>
@@ -39,7 +40,7 @@
     @if ($chat['opponent'])
         {{-- The chat sheet and the match dock's sheet close each other (P5f). The closed bar offers its row to the dock's tab
              (data-dock-row, resources/js/matchDock.js): the tab sits at its left end, beside the chat (DerCaddy, 2026-10-10). --}}
-        <div class="lg:hidden" x-data="{ open: false, seen: 0 }" x-effect="open && (seen = messages.length)"
+        <div class="lg:hidden" x-data="{ open: false }" x-effect="open && messages.length && markRead()"
              x-init="$watch('open', (value) => window.dispatchEvent(new CustomEvent('chat-sheet-toggle', { detail: value })))" x-on:dock-toggle.window="$event.detail && (open = false)">
             <div x-show="open" x-cloak aria-hidden="true" class="fixed inset-0 z-30 bg-[rgba(10,10,11,.6)]" x-on:click="open = false"></div>
             <section role="dialog" :aria-modal="open ? 'true' : 'false'" aria-labelledby="sheet-h" data-page-bar
@@ -53,8 +54,8 @@
                         <span id="sheet-h" class="text-sm font-bold">{{ __('Chat') }}</span>
                         <template x-if="! open">
                             <span class="flex min-w-0 grow items-center gap-2.5 overflow-hidden">
-                                <span x-show="messages.filter((m) => m.from === 'them').length > seen" class="inline-flex h-5 shrink-0 items-center rounded-[10px] bg-btc px-[7px] text-[11px] font-bold whitespace-nowrap text-on-btc"
-                                      x-text="t.unread.replace(':count', Math.max(0, messages.filter((m) => m.from === 'them').length - seen))"></span>
+                                <span x-show="unread > 0" class="inline-flex h-5 shrink-0 items-center rounded-[10px] bg-btc px-[7px] text-[11px] font-bold whitespace-nowrap text-on-btc"
+                                      x-text="t.unread.replace(':count', unread)" data-test="chat-unread"></span>
                                 <span class="min-w-0 grow truncate text-xs text-ink-2" x-text="opponentMuted ? t.mutedPeek : (messages.length ? messages[messages.length - 1].name + ': ' + messages[messages.length - 1].text : '')"></span>
                             </span>
                         </template>

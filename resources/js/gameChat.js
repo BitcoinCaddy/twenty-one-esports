@@ -25,6 +25,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
+import { chatDay, chatTime } from './chatTime.js';
 import { isExpired } from './lobbyCards.js';
 import { extraInboxRelays, lookupInboxes, relaysFor } from './dmInbox.js';
 import { canEncrypt, chatSince, gameMessages, isUntagged, unwrapMessage, wrapMessage } from './nostrChat.js';
@@ -32,12 +33,36 @@ import { awaitSigner, ensureSigner } from './nostrSign.js';
 
 const MUTES_KEY = 'esports.chat.mutes';
 
+/**
+ * Per chat (`<me>:<match>`) the newest message read on this device, in ms (DerCaddy, 2026-10-18: "Die letzte
+ * Nachricht ist von mir, trotzdem steht da neu"). The sheet counted from zero on every page load, so the
+ * opponent's old messages came back as new until it was opened. The newest READ_KEEP chats are kept.
+ */
+export const READ_KEY = 'esports.chat.read';
+const READ_KEEP = 300;
+
 function writeJson(key, value) {
     try {
         localStorage.setItem(key, JSON.stringify(value));
     } catch {
         // private mode or full storage: the chat still works, it just forgets
     }
+}
+
+function readMarkers() {
+    try {
+        const markers = JSON.parse(localStorage.getItem(READ_KEY) ?? '{}');
+
+        return markers !== null && typeof markers === 'object' && !Array.isArray(markers) ? markers : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveReadMarker(chat, at) {
+    const markers = { ...readMarkers(), [chat]: at };
+    const newest = Object.keys(markers).sort((a, b) => markers[b] - markers[a]).slice(0, READ_KEEP);
+    writeJson(READ_KEY, Object.fromEntries(newest.map((key) => [key, markers[key]])));
 }
 
 export function gameChat(config) {
@@ -57,10 +82,18 @@ export function gameChat(config) {
         inboxes: null,
         closed: false,
         t: config.labels,
+        // The newest message read on this device (ms), and whether the desktop panel (lg and up) is the chat on screen.
+        readAt: 0,
+        wide: false,
 
         init() {
             this.muted = [...new Set(config.muted ?? [])];
             writeJson(MUTES_KEY, this.muted);
+            this.readAt = Number(readMarkers()[this.readKey]) || 0;
+            this.wideQuery = window.matchMedia?.('(min-width: 64rem)') ?? null;
+            this.wide = this.wideQuery?.matches ?? false;
+            this.onWide = (event) => (this.wide = event.matches);
+            this.wideQuery?.addEventListener?.('change', this.onWide);
 
             this.onNotice = (event) => this.notices.push(event.detail);
             window.addEventListener('chess-chat-notice', this.onNotice);
@@ -94,6 +127,7 @@ export function gameChat(config) {
 
         destroy() {
             window.removeEventListener('chess-chat-notice', this.onNotice);
+            this.wideQuery?.removeEventListener?.('change', this.onWide);
             this.closed = true;
             this.sub?.close();
             this.inboxSub?.close();
@@ -190,10 +224,39 @@ export function gameChat(config) {
             return [...own, ...notices].sort((a, b) => a.at - b.at);
         },
 
-        time(ms) {
-            const d = new Date(ms);
+        get readKey() {
+            return `${config.me}:${config.match}`;
+        },
 
-            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        /**
+         * The opponent's messages since the chat was last read on this device. A message of one's own reads
+         * everything before it, also one sent from another device: whoever answers has read.
+         */
+        get unread() {
+            const messages = this.messages;
+            const mine = Math.max(0, ...messages.filter((m) => m.from === 'me').map((m) => m.at));
+            const read = Math.max(this.readAt, mine);
+
+            return messages.filter((m) => m.from === 'them' && m.at > read).length;
+        },
+
+        /**
+         * Everything in the chat is read: while the sheet is open, or while the desktop panel shows in the front
+         * tab (`visibleOnly`: a panel in a tab in the background reads nothing).
+         */
+        markRead(visibleOnly = false) {
+            if (visibleOnly && document.visibilityState === 'hidden') return;
+            const newest = Math.max(0, ...this.messages.map((m) => m.at));
+            if (newest <= this.readAt) return;
+            this.readAt = newest;
+            saveReadMarker(this.readKey, newest);
+        },
+
+        /** "20:24" today, "Fr 20:24" this week, "12.10., 20:24" before (chatTime.js). */
+        time(ms) {
+            chatDay();
+
+            return chatTime(ms, { hourCycle: 'h23' });
         },
 
         async send() {

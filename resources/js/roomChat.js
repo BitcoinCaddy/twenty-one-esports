@@ -40,6 +40,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
+import { chatDay, chatTime } from './chatTime.js';
 import { ACCOUNT_CARDS, ACCOUNT_SERVICES, HOST_CARD, accountTags, cardContent, casualExpiration, isExpired, lobbyTags, openCardIds, parseCard, pinnedLobbyCard, randomPassword } from './lobbyCards.js';
 import { extraInboxRelays, lookupInboxes, relaysFor } from './dmInbox.js';
 import { UnwrapError, canEncrypt, chatSince, isUntagged, roomMessages, unwrapMessage, wrapGroupMessage } from './nostrChat.js';
@@ -462,10 +463,11 @@ export function roomChat(config) {
             this.checkSeen();
         },
 
+        /** "20:24" today, "Fr 20:24" this week, "12.10., 20:24" before (chatTime.js). */
         time(ms) {
-            const d = new Date(ms);
+            chatDay();
 
-            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            return chatTime(ms, { hourCycle: 'h23' });
         },
 
         /** NIP-40 time of every message in this room, null outside a casual 1v1. */
