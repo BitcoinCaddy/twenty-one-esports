@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Process;
-
 /*
  * The time beside a chat message, one rule for every chat (resources/js/chatTime.js; DerCaddy, 2026-10-17: "bei
  * älteren Nachrichten nicht den Wochentag bzw bei Nachrichten die älter als eine Woche sind, das Datum"): the
@@ -10,7 +8,7 @@ use Illuminate\Support\Facades\Process;
  */
 
 test('a chat message shows the time today, the weekday this week and the date before', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', '--test-reporter=spec', 'tests/js/chatTime.test.mjs']);
+    $run = nodeTest('tests/js/chatTime.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 5')->toContain('ℹ skipped 0');

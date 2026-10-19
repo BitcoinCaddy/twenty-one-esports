@@ -12,17 +12,15 @@
 |
 */
 
-use Illuminate\Support\Facades\Process;
-
 test('the snippet library has its files and every occasion of Pong draws without repeats (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/snips.test.mjs']);
+    $run = nodeTest('tests/js/snips.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ fail 0');
 });
 
 test('the music is the shuffled MIDI playlist without a track twice in a row, and ducks under a snippet (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/pongMusic.test.mjs']);
+    $run = nodeTest('tests/js/pongMusic.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 3')->toContain('ℹ fail 0');

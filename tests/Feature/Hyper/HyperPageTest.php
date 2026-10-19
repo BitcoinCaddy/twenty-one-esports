@@ -5,7 +5,6 @@ use App\Models\User;
 use App\Support\GameChat\GameChannels;
 use App\Support\Hyper\HyperTexts;
 use App\Support\Nostr\PlayerProfile;
-use Illuminate\Support\Facades\Process;
 use Tests\Support\HyperOn;
 use Tests\Support\TestSigner;
 
@@ -127,7 +126,7 @@ test('every text of the game page is a key the scripts use and has a German tran
 });
 
 test('the page script keeps every ply once, mirrors the server’s events and counts reactions (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/hyperClient.test.mjs']);
+    $run = nodeTest('tests/js/hyperClient.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 5')->toContain('ℹ skipped 0');

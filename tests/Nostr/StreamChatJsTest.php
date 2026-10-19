@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Process;
-
 /*
  * The rules of the /live stream chat (P24, resources/js/streamChat.js and the
  * pure half of resources/js/emoji.js) run where they live:
@@ -9,9 +7,7 @@ use Illuminate\Support\Facades\Process;
  * is skipped.
  */
 test('stream chat: messages, zaps, emoji tags, NIP-27 references, send rules and muted runs', function () {
-    $run = Process::path(base_path())
-        ->timeout(60)
-        ->run(['node', '--test', 'tests/js/streamChat.test.mjs']);
+    $run = nodeTest('tests/js/streamChat.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 25')->toContain('ℹ skipped 0');

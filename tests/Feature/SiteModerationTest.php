@@ -24,7 +24,6 @@ use App\Support\Tournaments\TournamentSignups;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Support\ScoreDemoOn;
@@ -53,7 +52,7 @@ beforeEach(function () {
 });
 
 test('the client filter holds: clean list, no own key, push applied, items left out', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/siteHidden.test.mjs']);
+    $run = nodeTest('tests/js/siteHidden.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 4')->toContain('ℹ fail 0');

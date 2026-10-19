@@ -2,7 +2,6 @@
 
 use App\Models\User;
 use App\Support\Board\BoardGameService;
-use Illuminate\Support\Facades\Process;
 use Tests\Support\BlockliOn;
 
 /*
@@ -13,7 +12,7 @@ use Tests\Support\BlockliOn;
  */
 
 test('the badge counts the opponent\'s messages since the chat was last read here, none before one\'s own', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', '--test-reporter=spec', 'tests/js/gameChatUnread.test.mjs']);
+    $run = nodeTest('tests/js/gameChatUnread.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 4')->toContain('ℹ skipped 0');

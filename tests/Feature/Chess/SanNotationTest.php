@@ -2,14 +2,13 @@
 
 use App\Models\ChessGame;
 use App\Support\Chess\SanNotation;
-use Illuminate\Support\Facades\Process;
 
 /*
  * German readers see K D T L S (`Lg2` for `Bg2`); stored moves stay English SAN.
  * The client twin is resources/js/sanNotation.js: tests/js/sanNotation.test.mjs under Node.
  */
 test('the client shows German piece letters and reads moves typed in either language', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/sanNotation.test.mjs']);
+    $run = nodeTest('tests/js/sanNotation.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 2')->toContain('ℹ skipped 0');

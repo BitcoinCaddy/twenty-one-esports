@@ -12,7 +12,7 @@ use Illuminate\Process\Factory;
  * replay viewer's seek (P5, replay-player.test.mjs), 11 for the cheat hints (P5, hints.test.mjs), 7 for the week rules (rules.test.mjs).
  */
 test('the Blockfill engine replays its reference runs and keeps its rules', function () {
-    $run = (new Factory)->path(dirname(__DIR__, 2))->timeout(60)->run(['node', '--test', 'tests/js/stacker']);
+    $run = nodeTest('tests/js/stacker');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 105')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');

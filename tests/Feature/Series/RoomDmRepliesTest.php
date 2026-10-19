@@ -3,7 +3,6 @@
 use App\Models\ChessGame;
 use App\Models\Lineup;
 use App\Models\SeriesMatch;
-use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 
 /*
@@ -16,7 +15,7 @@ use Livewire\Livewire;
  */
 
 test('replies from other NIP-17 clients reach the room and the game chat, and unrelated DMs stay out', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/dmReplies.test.mjs']);
+    $run = nodeTest('tests/js/dmReplies.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         // 12 since 3476bec7 ("... show Amethyst messages to players without DM relays") added the 10002 read-relay case.

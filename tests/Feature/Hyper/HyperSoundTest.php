@@ -19,7 +19,6 @@ use App\Support\Hyper\HyperEmotes;
 use App\Support\Nostr\NostrKeys;
 use App\Support\Settings\LeagueSettings;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Process;
 use Tests\Support\HyperOn;
 
 beforeEach(function () {
@@ -28,21 +27,21 @@ beforeEach(function () {
 });
 
 test('every sound mapping, the bot-turn rule, the switches and the stored settings hold (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/hyperSounds.test.mjs']);
+    $run = nodeTest('tests/js/hyperSounds.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');
 });
 
 test('every soundboard pool draws from the snippet library without repeats, bot turns stay without clips (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/hyperVoices.test.mjs']);
+    $run = nodeTest('tests/js/hyperVoices.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ fail 0');
 });
 
 test('who a moment waits for: a multiplayer table never waits for a click, a battle without a human runs without animation (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/hyperPace.test.mjs']);
+    $run = nodeTest('tests/js/hyperPace.test.mjs');
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
         ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ fail 0');

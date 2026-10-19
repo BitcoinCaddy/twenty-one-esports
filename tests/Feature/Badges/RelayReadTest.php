@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Process;
-
 /*
  * The browser's relay reader for "Show on my Nostr profile" (P11 security
  * gate F1): tests/js/relayRead.test.mjs under Node, against fake relays. A
@@ -10,7 +8,7 @@ use Illuminate\Support\Facades\Process;
  * of the player's relay list must answer.
  */
 test('the relay reader counts EOSE only, verifies before it deduplicates, and takes the newest valid list', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/relayRead.test.mjs']);
+    $run = nodeTest('tests/js/relayRead.test.mjs');
 
     expect($run->exitCode())->toBe(0, $run->output().$run->errorOutput())
         ->and($run->output())->toContain('pass 17')->toContain('fail 0');

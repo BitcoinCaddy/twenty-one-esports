@@ -60,6 +60,7 @@ require_once __DIR__.'/Support/scores.php';
 require_once __DIR__.'/Support/tmnf.php';
 require_once __DIR__.'/Support/league_weeks.php';
 require_once __DIR__.'/Support/hyper.php';
+require_once __DIR__.'/Support/node.php';
 require_once __DIR__.'/Support/caster.php';
 require_once __DIR__.'/Integration/Support/helpers.php';
 
