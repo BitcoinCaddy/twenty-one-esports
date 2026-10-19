@@ -665,9 +665,26 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
 
         // A two-leg race game (Blockli): how a 1:1 and a drawn third game are settled (draw_decider, user 2026-10-11).
         if (\App\Support\Tournaments\TournamentRunner::canDecideByStanding($tournament->game)) {
-            array_splice($chips, 1, 0, [['award', __('Pairings'), $tournament->decidesDrawByStanding()
+            $knockoutPairings = $tournament->decidesDrawByStanding()
                 ? __('two games with the colours swapped; at 1:1 a third game decides, and if it is drawn the race standing of its final position decides (a block counts :rate steps); a level standing is replayed', ['rate' => app()->getLocale() === 'de' ? str_replace('.', ',', (string) \App\Support\Board\BlockliRules::BLOCK_STEPS) : (string) \App\Support\Board\BlockliRules::BLOCK_STEPS])
-                : trans_choice('two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through', \App\Support\Tournaments\TournamentRunner::drawnReplays($tournament)), 'pairings']]);
+                : trans_choice('two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through', \App\Support\Tournaments\TournamentRunner::drawnReplays($tournament));
+            $pairings = $knockoutPairings;
+
+            // A round-robin table plays what the organizer chose (FormatOptions::$legs, $legPoints; DerCaddy, 2026-10-18), and
+            // never a third game: 1:1 there is a draw. Round-robin groups say both, the groups' and the final stage's.
+            if (\App\Support\Tournaments\TournamentRunner::tableChoosesLegs($tournament->game, $tournament->format, $tournament->formatOptions())) {
+                $legOptions = $tournament->formatOptions();
+                $tablePairings = match (true) {
+                    $legOptions->legs === 1 => __('one game per pairing; the colours even out over the rounds'),
+                    $legOptions->legPoints => __('two games with the colours swapped, counted game by game: a win 1, a draw ½ each'),
+                    default => __('two games with the colours swapped, counted as one pairing: 1:1 is a draw'),
+                };
+                $pairings = $tournament->format === \App\Enums\TournamentFormat::TwoStage
+                    ? __('groups: :groups. Final stage: :final', ['groups' => $tablePairings, 'final' => $knockoutPairings])
+                    : $tablePairings;
+            }
+
+            array_splice($chips, 1, 0, [['award', __('Pairings'), $pairings, 'pairings']]);
         }
 
         $proof = array_values(array_filter([

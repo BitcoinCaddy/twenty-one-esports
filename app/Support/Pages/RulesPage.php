@@ -829,7 +829,7 @@ final class RulesPage
                 ...(NoShowDisqualifier::threshold() > 0 ? [__('An entry that loses :count matches of a tournament by not showing up is disqualified by the league; its open matches go to the opponents.', ['count' => NoShowDisqualifier::threshold()])] : []),
                 __('A drawn knockout chess game is replayed with the colours swapped, at most :count times; then the higher seed advances.', ['count' => (int) $t['drawn_replays']]),
                 __('A Blockli pairing plays two games with the colours swapped; at 1:1 a third game decides. If that one is drawn too, the tournament page says what follows: the race standing of its final position, or replays as for chess.'),
-                __('In a round robin or a round-robin group the organizer chooses one game per pairing or two, and whether the two count as one pairing (1:1 is a draw) or game by game (a win 1, a draw ½ each); the tournament page says which.'),
+                __('In a Blockli round robin or round-robin group the organizer chooses one game per pairing or two, and whether the two count as one pairing (1:1 is a draw, no third game) or game by game (a win 1, a draw ½ each); the tournament page names both under Pairings.'),
                 __('A report or a no-show claim the other side does not answer in time is decided by the league.'),
                 __('Players get reminders :list minutes before the league decides a waiting match.', ['list' => implode(', ', (array) $t['reminders'])]),
                 __('In a tournament run by its directors, the directors enter every result; players report nothing.'),
