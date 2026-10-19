@@ -361,6 +361,8 @@ final class TournamentMatchMaker
      * ({@see needsGame()}): none yet, a knockout draw (replayed with the
      * colours swapped, at most `drawn_replays` times), or a game aborted
      * because White missed the first move (restarted `first_move_restarts` times).
+     * Every app caller passes the tournament it holds; the match's own relation
+     * is read only for a caller without one (tests), once a finished game asks.
      */
     public static function needsBoardGame(TournamentMatch $match, ?Tournament $tournament = null): bool
     {
@@ -371,7 +373,7 @@ final class TournamentMatchMaker
             $game->status === BoardGameStatus::Aborted => TournamentRunner::abortedBoardGames($match) <= TournamentRunner::firstMoveRestarts(),
             // Two legs (plan "Blockli", P4): a finished game of an undecided match calls the next leg or the decider.
             $game->status === BoardGameStatus::Finished && TournamentRunner::twoLegs($match, $tournament ?? $match->tournament) => $match->result === null,
-            $game->status === BoardGameStatus::Finished && $game->result === '1/2-1/2' && ! TournamentRunner::allowsDraw($match) => TournamentRunner::drawnBoardGames($match) <= TournamentRunner::drawnReplays($match->tournament),
+            $game->status === BoardGameStatus::Finished && $game->result === '1/2-1/2' && ! TournamentRunner::allowsDraw($match) => TournamentRunner::drawnBoardGames($match) <= TournamentRunner::drawnReplays($tournament ?? $match->tournament),
             default => false,
         };
     }
