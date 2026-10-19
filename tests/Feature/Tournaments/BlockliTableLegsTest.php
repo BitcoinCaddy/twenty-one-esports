@@ -164,8 +164,8 @@ test('the editor offers both settings for Blockli in round-robin groups and stor
 
     Livewire::actingAs($admin)->test('pages::admin.tournament-edit', ['tournament' => $tournament])
         ->assertSeeHtml('data-test="legs-option"')->assertSeeHtml('data-test="leg-points-option"')
-        ->assertSeeHtml('wire:click="option(\'legPoints\', true)" wire:key="legp-1" data-test="leg-points-game"')
-        ->assertSeeHtml('aria-checked="true" wire:click="option(\'legPoints\', true)"');
+        ->assertSeeHtml('aria-checked="true" wire:key="seg-pickLegPoints-1"')
+        ->assertSeeHtml('wire:click="pickLegPoints(true)"');
 
     $tournament->forceFill(['options' => [...$tournament->options, 'legs' => 1]])->save();
     Livewire::actingAs($admin)->test('pages::admin.tournament-edit', ['tournament' => $tournament->refresh()])
