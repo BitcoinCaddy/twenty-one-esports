@@ -73,6 +73,12 @@ final readonly class FormatOptions
         return $this->legs === 2 && $this->legPoints;
     }
 
+    /** What options stored before the choice of legs existed mean ({@see $legs}): two games per pairing. */
+    private const STORED_LEGS = 2;
+
+    /** What options stored before the choice of leg points existed mean ({@see $legPoints}): the pairing counts once. */
+    private const STORED_LEG_POINTS = false;
+
     /** The players per side of a Hyperbitcoinization tournament (P5b): players alone, or a clan 2v2 or 3v3. */
     public const HYPER_TEAM_SIZES = [1, 2, 3];
 
@@ -149,9 +155,10 @@ final readonly class FormatOptions
             lobbyMinutes: $defaults->lobbyMinutes === 0 ? 0 : ($forced ? $defaults->lobbyMinutes : $int('lobbyMinutes', 0, 0, 10_000)),
             teamSize: $profile->isHyper() ? self::hyperTeamSize($values) : 1,
             // Only a game that plays two legs has them to choose (TournamentRunner::playsTwoLegs()): any other keeps one
-            // result per match, whatever a draft stored before its game changed.
-            legs: $twoLegs ? $int('legs', $defaults->legs, 1, 2) : $defaults->legs,
-            legPoints: $twoLegs && (bool) ($values['legPoints'] ?? $defaults->legPoints),
+            // result per match, whatever a draft stored before its game changed. Options stored without the keys predate
+            // the choice: they keep two games counted per pairing, as they were drawn, whatever the defaults become.
+            legs: $twoLegs ? $int('legs', self::STORED_LEGS, 1, 2) : self::STORED_LEGS,
+            legPoints: $twoLegs && (bool) ($values['legPoints'] ?? self::STORED_LEG_POINTS),
         );
     }
 
