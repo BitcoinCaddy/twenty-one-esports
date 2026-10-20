@@ -126,6 +126,10 @@ function podcastReplayDirector(float $maxHold = 600, ?Imaging $imaging = null): 
         'long_max_hold_seconds' => ['scene' => 135, 'bulletin' => 430, 'rubric' => 140],
         'feed_lead_seconds' => 1.0, 'gap_seconds' => ['min' => 8, 'max' => 8], 'bulletin_late_seconds' => 120, 'rubric_late_seconds' => 240,
         'parts' => ['breath_seconds' => 0.0, 'wait_seconds' => 120],
+        // Pinned: the director draws run sizes, breaths and music breaks at random (SceneDirector::random() runs on
+        // an unseeded mt_rand), which made these simulations flake from run to run — a podcast replay asserts none
+        // of that, so both stay off here and the simulations run deterministically.
+        'runs' => ['enabled' => false], 'music_breaks' => ['enabled' => false],
         'blocks' => ['join_seconds' => ['min' => 0.4, 'max' => 0.4], 'reaction_wait_seconds' => 90, 'hold_seconds' => 30, 'resume_within_seconds' => 600],
         'reaction_max_hold_seconds' => $maxHold,
         'podcast' => ['pause_window_seconds' => 20, 'resume_within_seconds' => 1800],
@@ -278,7 +282,7 @@ it('stops the podcast at the slot when no pause lies within the window, rather t
         ->and(podcastReplaySecondsOf($air, 21))->toBe(400.0);
 });
 
-it('lets an overdue reply cut in at the next pause after max_hold_seconds, and the episode resumes from there', function () {
+it('never lets an overdue reply cut into a podcast replay: it follows the episode (user 2026-10-15)', function () {
     podcastReplayDecodes();
     $this->travelTo(CarbonImmutable::parse('2026-10-12 14:40', 'Europe/Berlin'));
     $start = CarbonImmutable::now();
@@ -288,12 +292,12 @@ it('lets an overdue reply cut in at the next pause after max_hold_seconds, and t
         10 => fn () => podcastReplayClip(CasterScript::CHAT, 5.0, 5),
     ]);
     $runs = collect($air['runs']);
-    $cut = $runs->firstWhere('value', 21)['seconds'];
 
-    // Overdue at 40 s: the next pause is 50 s into the chunk (51.05 on the clock), never mid-sentence.
-    expect(podcastReplayOrder($air))->toBe([21, 5, 21])
-        ->and($cut)->toBe(50.0)
-        ->and(podcastReplaySecondsOf($air, 21))->toBe(240.0);
+    // The reply is overdue at 40 s (max hold 30), but the episode is a rendered programme (user 2026-10-15):
+    // no cut at the pause 50 s into the chunk, the episode plays its 240 s whole and the reply follows its end.
+    expect(podcastReplayOrder($air))->toBe([21, 5])
+        ->and($runs->firstWhere('value', 21)['seconds'])->toBe(240.0)
+        ->and($runs->firstWhere('value', 5)['from'])->toBeGreaterThanOrEqual(240.0);
 });
 
 it('opens with the podcast opener of its source and closes with its back-announce, with nothing in between', function () {
