@@ -166,20 +166,43 @@ test('picking a leg setting changes nothing in the database until the editor sav
     'one game per pairing' => ['pickLegs', 1, 'legs'],
 ]);
 
-test('the Pairings chip names, per stage, how a pairing is played and decided', function (TournamentFormat $format, array $options, string|array $says) {
+test('the Pairings fact names, per stage, how a pairing is played and decided', function (TournamentFormat $format, array $options, array $facts) {
     $tournament = blockliTournament($format, $options, 4);
 
-    $this->get(route('tournaments.show', $tournament))->assertOk()->assertSeeInOrder((array) $says, false);
+    $html = $this->get(route('tournaments.show', $tournament))->assertOk()->getContent();
+
+    expect(pairingFacts($html))->toHaveKeys(array_keys($facts))->toHaveCount(count($facts));
+    foreach ($facts as $key => [$term, $says]) {
+        expect(pairingFacts($html)[$key])->toStartWith($term.' ')->toContain($says);
+    }
 })->with([
-    'knockout: a third game decides 1:1' => [TournamentFormat::SingleElimination, [], 'at 1:1 a third game decides'],
-    'Swiss: 1:1 is a draw' => [TournamentFormat::Swiss, [], 'counted as one pairing: 1:1 is a draw'],
-    'round robin, points per game' => [TournamentFormat::RoundRobin, ['legPoints' => true], 'counted game by game: a win 1, a draw ½ each'],
-    'round robin, one game' => [TournamentFormat::RoundRobin, ['legs' => 1], 'one game per pairing; the colours even out over the rounds'],
-    'two stages: groups and final named apart' => [TournamentFormat::TwoStage, ['groupSize' => 4, 'advance' => 2, 'legs' => 1], [
-        'data-fact="pairings-groups"', 'Group stage', 'one game per pairing; the colours even out over the rounds',
-        'data-fact="pairings-final"', 'Final stage', 'two games with the colours swapped; at 1:1 a third game decides',
+    'knockout: a third game decides 1:1' => [TournamentFormat::SingleElimination, [], ['pairings' => ['Pairings', 'at 1:1 a third game decides']]],
+    'Swiss: 1:1 is a draw' => [TournamentFormat::Swiss, [], ['pairings' => ['Pairings', 'counted as one pairing: 1:1 is a draw']]],
+    'round robin, points per game' => [TournamentFormat::RoundRobin, ['legPoints' => true], ['pairings' => ['Pairings', 'counted game by game: a win 1, a draw ½ each']]],
+    'round robin, one game' => [TournamentFormat::RoundRobin, ['legs' => 1], ['pairings' => ['Pairings', 'one game per pairing; the colours even out over the rounds']]],
+    'two stages that play differently: groups and final named apart' => [TournamentFormat::TwoStage, ['groupSize' => 4, 'advance' => 2, 'legs' => 1], [
+        'pairings-groups' => ['Group stage', 'one game per pairing; the colours even out over the rounds'],
+        'pairings-final' => ['Final stage', 'two games with the colours swapped; at 1:1 a third game decides'],
     ]],
+    'two knockout stages: one fact' => [TournamentFormat::TwoStage, ['groupSize' => 4, 'advance' => 2, 'groupStage' => 'single-elimination'], ['pairings' => ['Pairings', 'at 1:1 a third game decides']]],
 ]);
+
+/**
+ * The tournament page's pairing facts, keyed by data-fact, as "term value" text.
+ *
+ * @return array<string, string>
+ */
+function pairingFacts(string $html): array
+{
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+    $facts = [];
+    foreach ((new DOMXPath($dom))->query('//*[starts-with(@data-fact, "pairings")]') as $fact) {
+        $facts[$fact->getAttribute('data-fact')] = trim((string) preg_replace('/\s+/u', ' ', $fact->textContent));
+    }
+
+    return $facts;
+}
 
 test('a per-game table adds no database reads to the tournament page, and a pairing under way costs it two at most', function () {
     $queries = function (bool $legPoints, int $n): int {
