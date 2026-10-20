@@ -685,15 +685,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                     : trans_choice('two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count time, then the higher seed goes through|two games with the colours swapped; at 1:1 a third game decides, a drawn one is replayed up to :count times, then the higher seed goes through', \App\Support\Tournaments\TournamentRunner::drawnReplays($tournament));
             };
 
-            if ($tournament->format === \App\Enums\TournamentFormat::TwoStage) {
-                $groups = $stagePairings(\App\Enums\TournamentFormat::from($legOptions->groupStage));
-                $final = $stagePairings(\App\Enums\TournamentFormat::from($legOptions->finalStage));
-                $pairings = $groups === $final ? $final : __('groups: :groups. Final stage: :final', ['groups' => $groups, 'final' => $final]);
-            } else {
-                $pairings = $stagePairings($tournament->format);
-            }
+            // Two stages that play apart get a fact each: one card holding both squeezed to 18 lines at 1280 (design-lead).
+            $groups = $tournament->format === \App\Enums\TournamentFormat::TwoStage ? $stagePairings(\App\Enums\TournamentFormat::from($legOptions->groupStage)) : null;
+            $final = $tournament->format === \App\Enums\TournamentFormat::TwoStage ? $stagePairings(\App\Enums\TournamentFormat::from($legOptions->finalStage)) : $stagePairings($tournament->format);
 
-            array_splice($chips, 1, 0, [['award', __('Pairings'), $pairings, 'pairings']]);
+            array_splice($chips, 1, 0, $groups !== null && $groups !== $final
+                ? [['award', __('Group stage'), $groups, 'pairings-groups'], ['award', __('Final stage'), $final, 'pairings-final']]
+                : [['award', __('Pairings'), $final, 'pairings']]);
         }
 
         $proof = array_values(array_filter([
@@ -1414,7 +1412,8 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                     <h2 class="rv-h3">{{ __('The facts') }}</h2>
                     <dl class="m-0 grid gap-2 sm:grid-cols-2" data-test="facts">
                         @foreach ($chips as [$icon, $term, $value, $key])
-                            <div class="flex gap-3 rounded-[4px] bg-card px-3.5 py-3" data-fact="{{ $key }}">
+                            {{-- The pairing rules are a sentence, not a value: they take the full width (design-lead, 141 px cards at 1024–1600). --}}
+                            <div @class(['flex gap-3 rounded-[4px] bg-card px-3.5 py-3', 'sm:col-span-2' => str_starts_with($key, 'pairings')]) data-fact="{{ $key }}">
                                 <x-icon :name="$icon" :size="18" class="mt-0.5 shrink-0 text-btc" />
                                 <span class="flex min-w-0 flex-col gap-0.5">
                                     <dt class="text-xs text-ink-3">{{ $term }}</dt>

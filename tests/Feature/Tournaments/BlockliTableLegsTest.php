@@ -166,16 +166,19 @@ test('picking a leg setting changes nothing in the database until the editor sav
     'one game per pairing' => ['pickLegs', 1, 'legs'],
 ]);
 
-test('the Pairings chip names, per stage, how a pairing is played and decided', function (TournamentFormat $format, array $options, string $says) {
+test('the Pairings chip names, per stage, how a pairing is played and decided', function (TournamentFormat $format, array $options, string|array $says) {
     $tournament = blockliTournament($format, $options, 4);
 
-    $this->get(route('tournaments.show', $tournament))->assertOk()->assertSee($says, false);
+    $this->get(route('tournaments.show', $tournament))->assertOk()->assertSeeInOrder((array) $says, false);
 })->with([
     'knockout: a third game decides 1:1' => [TournamentFormat::SingleElimination, [], 'at 1:1 a third game decides'],
     'Swiss: 1:1 is a draw' => [TournamentFormat::Swiss, [], 'counted as one pairing: 1:1 is a draw'],
     'round robin, points per game' => [TournamentFormat::RoundRobin, ['legPoints' => true], 'counted game by game: a win 1, a draw ½ each'],
     'round robin, one game' => [TournamentFormat::RoundRobin, ['legs' => 1], 'one game per pairing; the colours even out over the rounds'],
-    'two stages: groups and final named apart' => [TournamentFormat::TwoStage, ['groupSize' => 4, 'advance' => 2, 'legs' => 1], 'groups: one game per pairing; the colours even out over the rounds. Final stage: two games with the colours swapped; at 1:1 a third game decides'],
+    'two stages: groups and final named apart' => [TournamentFormat::TwoStage, ['groupSize' => 4, 'advance' => 2, 'legs' => 1], [
+        'data-fact="pairings-groups"', 'Group stage', 'one game per pairing; the colours even out over the rounds',
+        'data-fact="pairings-final"', 'Final stage', 'two games with the colours swapped; at 1:1 a third game decides',
+    ]],
 ]);
 
 test('a per-game table adds no database reads to the tournament page, and a pairing under way costs it two at most', function () {

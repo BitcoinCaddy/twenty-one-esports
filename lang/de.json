@@ -8538,7 +8538,6 @@
     "one game per pairing; the colours even out over the rounds": "eine Partie je Paarung; die Farben gleichen sich über die Runden aus",
     "two games with the colours swapped, counted game by game: a win 1, a draw ½ each": "zwei Partien mit getauschten Farben, gezählt Partie für Partie: Sieg 1, Remis ½ je Partie",
     "two games with the colours swapped, counted as one pairing: 1:1 is a draw": "zwei Partien mit getauschten Farben, gezählt als eine Paarung: 1:1 ist Remis",
-    "groups: :groups. Final stage: :final": "Gruppen: :groups. Finalrunde: :final",
     "This game decides the pairing. If it is drawn, the race standing of the final position decides; a level standing is replayed.": "Diese Partie entscheidet die Paarung. Endet sie remis, entscheidet der Rennstand der Schlussstellung; bei Gleichstand wird nachgespielt.",
     ":clocks live against Bitcoiners. The server checks every move.": ":clocks live gegen Bitcoiner. Der Server prüft jeden Zug.",
     "Play :game live against Bitcoiners (:clocks) or one move a day: find an opponent, invite a player and climb the ladder. The server checks every move.": ":game live gegen Bitcoiner (:clocks) oder ein Zug pro Tag: Gegner finden, Spieler einladen und in der Ladder aufsteigen. Der Server prüft jeden Zug.",
