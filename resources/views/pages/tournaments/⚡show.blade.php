@@ -1417,7 +1417,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                                 <x-icon :name="$icon" :size="18" class="mt-0.5 shrink-0 text-btc" />
                                 <span class="flex min-w-0 flex-col gap-0.5">
                                     <dt class="text-xs text-ink-3">{{ $term }}</dt>
-                                    <dd class="m-0 text-[13px] leading-normal">{{ $value }}</dd>
+                                    <dd class="m-0 max-w-[68ch] text-[13px] leading-normal">{{ $value }}</dd>
                                 </span>
                             </div>
                         @endforeach
