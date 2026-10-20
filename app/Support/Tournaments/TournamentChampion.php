@@ -134,6 +134,8 @@ final class TournamentChampion
             $swiss ? $options->pointsBye : 0.0,
             $swiss ? 'points' : $options->rankBy,
             $swiss ? $options->swissTieBreaks : $options->roundRobinTieBreaks,
+            // A round robin's two legs game by game where the organizer chose so (FormatOptions::$legPoints).
+            ! $swiss && $options->perLeg(),
         );
 
         $leaders = array_values(array_filter($rows, fn ($row): bool => $row->rank === 1));

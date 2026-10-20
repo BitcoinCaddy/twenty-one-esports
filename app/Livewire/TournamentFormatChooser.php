@@ -367,6 +367,18 @@ abstract class TournamentFormatChooser extends Component
         $this->option('finalStage', $stage);
     }
 
+    /** One game per pairing or two in a two-leg game's round-robin table (FormatOptions::$legs); stored only on save. */
+    public function pickLegs(int $legs): void
+    {
+        $this->option('legs', $legs);
+    }
+
+    /** The two legs count per pairing or game by game (FormatOptions::$legPoints); stored only on save. */
+    public function pickLegPoints(bool $perGame): void
+    {
+        $this->option('legPoints', $perGame);
+    }
+
     public function pickBestOf(int $bestOf): void
     {
         $this->option('bestOf', $bestOf);

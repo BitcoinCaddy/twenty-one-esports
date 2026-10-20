@@ -10,7 +10,6 @@ use App\Support\Tournaments\TournamentLanding;
 use App\Support\Tournaments\TournamentPublisher;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\Support\TestSigner;
@@ -183,11 +182,8 @@ test('the browser twin of the preview builds the same strings as the server, acr
 
     $fixture = tempnam(sys_get_temp_dir(), 'league-time-');
     file_put_contents($fixture, json_encode(['now' => (int) now()->getTimestampMs(), 'sets' => $sets]));
-    $run = Process::path(base_path())->env(['LEAGUE_TIME_FIXTURE' => $fixture])->timeout(60)->run(['node', '--test', 'tests/js/leagueTime.test.mjs']);
+    nodeTest('tests/js/leagueTime.test.mjs', 4, env: ['LEAGUE_TIME_FIXTURE' => $fixture]);
     unlink($fixture);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 4')->toContain('ℹ fail 0');
 });
 
 test('the calendar file is public, in UTC and folded, and a draft has none', function () {

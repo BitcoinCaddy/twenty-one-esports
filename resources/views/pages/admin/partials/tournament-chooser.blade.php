@@ -178,7 +178,10 @@
         'points-scored' => __('Points scored'),
         'points-difference' => __('Points difference'),
     ];
-    $optionRow = 'grid gap-2 border-t border-hairline py-3 lg:grid-cols-[minmax(0,1fr)_200px] lg:gap-4';
+    // Control and help side by side only where the options section is wide enough for both (a container query: the
+    // section's width decides, not the viewport's); narrower, the help sits under its control. 280 px for the help:
+    // at 200 it ran 8–10 lines (design-lead, 601–628 px sections at 1024 and 1920).
+    $optionRow = 'grid gap-2 border-t border-hairline py-3 @[560px]:grid-cols-[minmax(0,1fr)_280px] @[560px]:gap-4';
     $help = 'text-xs leading-normal text-ink-2';
 @endphp
 
@@ -370,7 +373,7 @@
 
             <div class="flex flex-col gap-4">
                 {{-- Options of the selected format, each with its help --}}
-                <section aria-labelledby="opt-h" class="flex flex-col rounded-lg border border-hairline bg-ground px-4 py-3 lg:px-5">
+                <section aria-labelledby="opt-h" class="@container flex flex-col rounded-lg border border-hairline bg-ground px-4 py-3 lg:px-5">
                     <h3 id="opt-h" class="m-0 pb-2 text-[13px] font-bold">{{ __('Options for :format', ['format' => $format->label()]) }}</h3>
 
                     @if ($profile->isHyper() && in_array($format, [TournamentFormat::SingleElimination, TournamentFormat::FreeForAll], true))
@@ -516,6 +519,30 @@
                             </span>
                             <span class="{{ $help }}">{{ __('Double Elimination gives everyone in the final stage a second chance.') }}</span>
                         </div>
+                    @endif
+
+                    @if (\App\Support\Tournaments\TournamentRunner::tableChoosesLegs($profile->game, $format, $options))
+                        {{-- A two-leg game (Blockli) in a round-robin table (DerCaddy, 2026-10-18: "das sollte man vorher einstellen können",
+                             "sollte man dann auch zwei Punkte bekommen können"): one game or two per pairing, points per pairing or per game.
+                             A knockout keeps its two legs and decider. --}}
+                        <div class="{{ $optionRow }}" data-test="legs-option">
+                            <span class="flex flex-col items-start gap-2">
+                                <span id="legs-l" class="text-[13px] font-bold">{{ __('Games per pairing') }}</span>
+                                <x-tournaments.segmented labelledby="legs-l" method="pickLegs" :current="$options->legs" :grow="false" data-test="legs"
+                                    :options="[[2, __('Two games')], [1, __('One game')]]" />
+                            </span>
+                            <span class="{{ $help }}">{{ __('Two games with the colours swapped are fairer: everyone starts once. One game per pairing halves the games; the colours even out over the rounds.') }}</span>
+                        </div>
+                        @if ($options->legs === 2)
+                            <div class="{{ $optionRow }}" data-test="leg-points-option">
+                                <span class="flex flex-col items-start gap-2">
+                                    <span id="legp-l" class="text-[13px] font-bold">{{ __('Points in the table') }}</span>
+                                    <x-tournaments.segmented labelledby="legp-l" method="pickLegPoints" :current="$options->legPoints" :grow="false" data-test="leg-points"
+                                        :options="[[false, __('Per pairing')], [true, __('Per game')]]" />
+                                </span>
+                                <span class="{{ $help }}">{{ __('Per game: every game counts, a win 1 and a draw ½, so up to 2 points per pairing, and each game is in the table once it ends. Per pairing: the pairing counts once, 1 for winning it, ½ when each wins a game.') }}</span>
+                            </div>
+                        @endif
                     @endif
 
                     @if ($lobbyFormat)

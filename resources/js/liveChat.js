@@ -44,6 +44,7 @@ import { npubEncode } from 'nostr-tools/nip19';
 import { knownCustomEmojis, loadUserCustomEmojis, pushRecentEmoji } from './emoji.js';
 import { emojiPicker, emojiPopover } from './emojiPicker.js';
 import { proxiedAvatar } from './imageProxy.js';
+import { chatDay, chatTime } from './chatTime.js';
 import { ensureSigner } from './nostrSign.js';
 import { newest, publicRelay, readOwnWriteRelays, readProfiles, readRelays } from './relayRead.js';
 import { signerMessage, signTemplate } from './signing.js';
@@ -667,8 +668,11 @@ export function liveChat(config) {
             }
         },
 
+        /** "20:24" today, "Fr 20:24" this week, "12.10., 20:24" before (chatTime.js). */
         time(seconds) {
-            return new Date(seconds * 1000).toLocaleTimeString(config.locale ?? undefined, { hour: '2-digit', minute: '2-digit' });
+            chatDay();
+
+            return chatTime(seconds * 1000, { locale: config.locale ?? undefined });
         },
 
         sats(amount) {

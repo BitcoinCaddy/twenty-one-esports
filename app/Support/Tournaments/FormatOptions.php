@@ -33,6 +33,13 @@ final readonly class FormatOptions
      *                             planned at this many minutes; 0 = heats whose best move on
      * @param  int  $teamSize  Hyperbitcoinization only (plan "Hyperbitcoinization", P5b): 1 = players enter, 2 or 3 =
      *                         clans enter and play a 2v2 or 3v3 knockout ({@see HYPER_TEAM_SIZES}); 1 for every other game
+     * @param  int  $legs  A two-leg board game (Blockli, TournamentRunner::playsTwoLegs()) in a round-robin table (the round
+     *                     robin, or round-robin groups): 2 games per pairing with the colours swapped, or 1 (DerCaddy,
+     *                     2026-10-18: "das sollte man vorher einstellen können"); a knockout always plays two
+     * @param  bool  $legPoints  Two legs in a round-robin table count game by game: a win 1, a draw ½ per game, up to 2 points
+     *                           per pairing, each game in the table once it ends (DerCaddy, 2026-10-18: "Wenn man zwei Spiele
+     *                           gegeneinander spielt, sollte man dann auch zwei Punkte bekommen können"); false: the pairing
+     *                           counts once, as before
      */
     public function __construct(
         public int $bestOf = 1,
@@ -56,7 +63,21 @@ final readonly class FormatOptions
         public int $heatAdvance = 2,
         public int $lobbyMinutes = 0,
         public int $teamSize = 1,
+        public int $legs = 2,
+        public bool $legPoints = false,
     ) {}
+
+    /** Whether the games of a two-leg pairing count one by one in a round-robin table ({@see $legPoints}). */
+    public function perLeg(): bool
+    {
+        return $this->legs === 2 && $this->legPoints;
+    }
+
+    /** What options stored before the choice of legs existed mean ({@see $legs}): two games per pairing. */
+    private const STORED_LEGS = 2;
+
+    /** What options stored before the choice of leg points existed mean ({@see $legPoints}): the pairing counts once. */
+    private const STORED_LEG_POINTS = false;
 
     /** The players per side of a Hyperbitcoinization tournament (P5b): players alone, or a clan 2v2 or 3v3. */
     public const HYPER_TEAM_SIZES = [1, 2, 3];
@@ -94,6 +115,7 @@ final readonly class FormatOptions
         $float = fn (string $key, float $default): float => is_numeric($values[$key] ?? null) && (float) $values[$key] >= 0 && (float) $values[$key] <= 10 ? (float) $values[$key] : $default;
         $pick = fn (string $key, string $default, array $allowed): string => in_array($values[$key] ?? null, $allowed, true) ? (string) $values[$key] : $default;
 
+        $twoLegs = TournamentRunner::playsTwoLegs($profile->game);
         $bestOf = in_array((int) ($values['bestOf'] ?? 0), $profile->bestOfOptions, true) ? (int) $values['bestOf'] : $defaults->bestOf;
         $finalBestOf = in_array((int) ($values['finalBestOf'] ?? 0), $profile->bestOfOptions, true) ? (int) $values['finalBestOf'] : $defaults->finalBestOf;
 
@@ -132,6 +154,11 @@ final readonly class FormatOptions
             // A game that plays no lobbies never has lobby minutes, whatever is stored (re-audit P10, R9b).
             lobbyMinutes: $defaults->lobbyMinutes === 0 ? 0 : ($forced ? $defaults->lobbyMinutes : $int('lobbyMinutes', 0, 0, 10_000)),
             teamSize: $profile->isHyper() ? self::hyperTeamSize($values) : 1,
+            // Only a game that plays two legs has them to choose (TournamentRunner::playsTwoLegs()): any other keeps one
+            // result per match, whatever a draft stored before its game changed. Options stored without the keys predate
+            // the choice: they keep two games counted per pairing, as they were drawn, whatever the defaults become.
+            legs: $twoLegs ? $int('legs', self::STORED_LEGS, 1, 2) : self::STORED_LEGS,
+            legPoints: $twoLegs && (bool) ($values['legPoints'] ?? self::STORED_LEG_POINTS),
         );
     }
 
@@ -183,7 +210,8 @@ final readonly class FormatOptions
     {
         return new self($this->bestOf, $this->finalBestOf, $this->thirdPlace, $this->grandFinal, $this->split, $this->iterations,
             $this->rankBy, $rounds, $this->pointsWin, $this->pointsTie, $this->pointsBye, $this->swissTieBreaks, $this->roundRobinTieBreaks,
-            $this->groupSize, $this->advance, $this->groupStage, $this->finalStage, $this->heatSize, $this->heatAdvance, $this->lobbyMinutes, $this->teamSize);
+            $this->groupSize, $this->advance, $this->groupStage, $this->finalStage, $this->heatSize, $this->heatAdvance, $this->lobbyMinutes, $this->teamSize,
+            $this->legs, $this->legPoints);
     }
 
     /**
@@ -195,7 +223,7 @@ final readonly class FormatOptions
     }
 
     /**
-     * @return array{bestOf: int, finalBestOf: int, thirdPlace: bool, grandFinal: string, split: bool, iterations: int, rankBy: string, swissRounds: int|null, pointsWin: float, pointsTie: float, pointsBye: float, swissTieBreaks: list<string>, roundRobinTieBreaks: list<string>, groupSize: int, advance: int, groupStage: string, finalStage: string, heatSize: int, heatAdvance: int, lobbyMinutes: int}
+     * @return array{bestOf: int, finalBestOf: int, thirdPlace: bool, grandFinal: string, split: bool, iterations: int, rankBy: string, swissRounds: int|null, pointsWin: float, pointsTie: float, pointsBye: float, swissTieBreaks: list<string>, roundRobinTieBreaks: list<string>, groupSize: int, advance: int, groupStage: string, finalStage: string, heatSize: int, heatAdvance: int, lobbyMinutes: int, teamSize: int, legs: int, legPoints: bool}
      */
     public function toArray(): array
     {
@@ -221,6 +249,8 @@ final readonly class FormatOptions
             'heatAdvance' => $this->heatAdvance,
             'lobbyMinutes' => $this->lobbyMinutes,
             'teamSize' => $this->teamSize,
+            'legs' => $this->legs,
+            'legPoints' => $this->legPoints,
         ];
     }
 }

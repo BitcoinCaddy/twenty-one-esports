@@ -466,7 +466,7 @@ registerAlpine(() => {
         },
 
         /**
-         * The squares' names on the edge squares, as on a chessboard (Markus, 2026-10-11: "spart das ständige Abzählen,
+         * The squares' names on the edge squares, as on a chessboard (Ben, 2026-10-11: "spart das ständige Abzählen,
          * wenn man alte Züge nachvollziehen will"): the file in the bottom right corner of the bottom row, the rank in the
          * top left corner of the left column, both as the player sees the board. Only for a full grid of cells whose
          * squares are named like a chessboard's (a1, e9); under the pieces, and never in the way of a click.

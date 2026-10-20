@@ -2,19 +2,14 @@
 
 use App\Enums\BoardGameStatus;
 use App\Enums\TournamentFormat;
-use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
 use App\Models\BoardGame;
 use App\Models\Tournament;
-use App\Models\TournamentMatch;
-use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Board\BoardGameService;
 use App\Support\Board\BoardInvites;
 use App\Support\Tournaments\CasualCups;
-use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
-use App\Support\Tournaments\TournamentBrackets;
 use App\Support\Tournaments\TournamentGameEnd;
 use App\Support\Tournaments\TournamentMatchMaker;
 use App\Support\Tournaments\TournamentRunner;
@@ -46,53 +41,6 @@ beforeEach(function () {
 afterEach(function () {
     Lottery::determineResultNormally();
 });
-
-function blockliTournament(TournamentFormat $format = TournamentFormat::SingleElimination): Tournament
-{
-    $tournament = Tournament::factory()->create([
-        'game' => 'blockli', 'mode' => 'correspondence', 'format' => $format,
-        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
-        'capacity' => 2, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running,
-        'slug' => 'blockli-legs-'.fake()->unique()->numberBetween(1, 1_000_000),
-    ]);
-
-    foreach (range(1, 2) as $index) {
-        $user = User::factory()->create();
-        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => "Player {$index}", 'rating' => 1500 - 10 * $index, 'members' => [$user->id]]);
-    }
-
-    app(TournamentBrackets::class)->generate($tournament, str_repeat('cd', 32));
-    app(TournamentRunner::class)->sync($tournament);
-
-    return $tournament->refresh();
-}
-
-function blockliLive(Tournament $tournament): BoardGame
-{
-    return BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Active)->sole();
-}
-
-function blockliMatch(Tournament $tournament): TournamentMatch
-{
-    return TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', '!=', 'bye')
-        ->with('slots.participant', 'round.stage', 'boardGame', 'tournament')->sole();
-}
-
-/** The user in a slot of the match (0 = the higher seed). */
-function blockliSlotUser(Tournament $tournament, int $slot): int
-{
-    return (int) blockliMatch($tournament)->slots[$slot]->participant->memberIds()[0];
-}
-
-/** The live game ends: the player of `$loserSlot` resigns. */
-function blockliLose(Tournament $tournament, int $loserSlot): BoardGame
-{
-    $game = blockliLive($tournament);
-    $loser = User::query()->findOrFail(blockliSlotUser($tournament, $loserSlot));
-    app(BoardGameService::class)->resign($game, $loser);
-
-    return $game->refresh();
-}
 
 test('a knockout pairing plays two games with the colours swapped; 2–0 decides without a third game', function () {
     $tournament = blockliTournament();
@@ -161,13 +109,18 @@ test('a drawn leg counts half a point each: ½ + 1 decides 1½–½ without a de
 test('in a round robin 1:1 is a draw: no decider', function () {
     $tournament = blockliTournament(TournamentFormat::RoundRobin);
     blockliLose($tournament, 1);
+
+    // Points per pairing, the default: the pairing is not in the table before its second game.
+    expect(blockliTable($tournament))->toBe([['Player 1' => ['0', 0, 0, 0], 'Player 2' => ['0', 0, 0, 0]], true, false]);
+
     blockliLose($tournament, 0);
     $match = blockliMatch($tournament);
 
     expect(BoardGame::query()->count())->toBe(2)
         ->and(BoardGame::query()->where('status', BoardGameStatus::Active)->count())->toBe(0)
         ->and($match->result['winner'])->toBeNull()
-        ->and($match->result['games_won'])->toEqual([1.0, 1.0]);
+        ->and($match->result['games_won'])->toEqual([1.0, 1.0])
+        ->and(blockliTable($tournament))->toBe([['Player 1' => ['½', 0, 1, 0], 'Player 2' => ['½', 0, 1, 0]], true, false]);
 });
 
 test('the board games run no casual cup (correspondence only, user 2026-10-07), even listed in ESPORTS_CASUAL_CUP_GAMES', function () {

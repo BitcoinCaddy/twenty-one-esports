@@ -15,6 +15,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { extraInboxRelays, lookupInboxes, relaysFor } from '../dmInbox.js';
+import { chatTime, onChatDay } from '../chatTime.js';
 import { canEncrypt, chatSince, isRumor, unwrapMessage, wrapGroupMessage } from '../nostrChat.js';
 import { ensureSigner } from '../nostrSign.js';
 import { sendBlocker } from '../streamChat.js';
@@ -89,7 +90,7 @@ export function startTeamChat(config, { http, onUnread = () => {} } = {}) {
             li.querySelector('.cm-name').textContent = who?.name ?? t('Someone');
             const time = li.querySelector('.cm-time');
             time.dateTime = new Date(rumor.created_at * 1000).toISOString();
-            time.textContent = new Date(rumor.created_at * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            time.textContent = chatTime(rumor.created_at * 1000);
             li.querySelector('.cm-text').textContent = rumor.content;
             list.appendChild(li);
         }
@@ -165,6 +166,8 @@ export function startTeamChat(config, { http, onUnread = () => {} } = {}) {
     pane.dataset.status = 'idle';
     form.hidden = true;
     render();
+    // A page left open overnight: yesterday's "20:24" becomes "Mo 20:24" (chatTime.js), the list stays where it is.
+    onChatDay(() => list.querySelectorAll('.cm-time').forEach((time) => { time.textContent = chatTime(Date.parse(time.dateTime)); }));
 
     return {
         show() { visible = true; pane.hidden = false; unread = 0; onUnread(0); start(); if (pane.dataset.status === 'live') input.focus({ preventScroll: true }); },

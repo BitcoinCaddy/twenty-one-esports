@@ -13,7 +13,6 @@
 */
 
 use App\Support\Pong\PongRules;
-use Illuminate\Support\Facades\Process;
 use Tests\Support\PongGolden;
 
 test('the server computes the golden rallies, events and games of the fixture', function () {
@@ -34,8 +33,5 @@ test('the server computes the golden rallies, events and games of the fixture', 
 });
 
 test('the browser\'s physics plays the same 50 golden rallies, events and games tick for tick (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/pongPhysics.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 8')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/pongPhysics.test.mjs', 8);
 });

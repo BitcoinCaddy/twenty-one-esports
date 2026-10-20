@@ -287,7 +287,7 @@ final class TournamentMatchMaker
         // A board game other than chess (plan "Mühle und Dame", P5): one game on the board game core,
         // started as a chess game is; in director mode played elsewhere, with the result entered.
         if ($tournament->profile()->isBoard()) {
-            if (! $tournament->isDirectorMode() && self::needsBoardGame($match)) {
+            if (! $tournament->isDirectorMode() && self::needsBoardGame($match, $tournament)) {
                 return $this->startBoardGame($tournament, $match, $a, $b, $acceptedBy) !== null;
             }
 
@@ -361,8 +361,10 @@ final class TournamentMatchMaker
      * ({@see needsGame()}): none yet, a knockout draw (replayed with the
      * colours swapped, at most `drawn_replays` times), or a game aborted
      * because White missed the first move (restarted `first_move_restarts` times).
+     * Every app caller passes the tournament it holds; the match's own relation
+     * is read only for a caller without one (tests), once a finished game asks.
      */
-    public static function needsBoardGame(TournamentMatch $match): bool
+    public static function needsBoardGame(TournamentMatch $match, ?Tournament $tournament = null): bool
     {
         $game = $match->boardGame;
 
@@ -370,8 +372,8 @@ final class TournamentMatchMaker
             $game === null, $match->isReplaced($game->id) => true,
             $game->status === BoardGameStatus::Aborted => TournamentRunner::abortedBoardGames($match) <= TournamentRunner::firstMoveRestarts(),
             // Two legs (plan "Blockli", P4): a finished game of an undecided match calls the next leg or the decider.
-            $game->status === BoardGameStatus::Finished && TournamentRunner::playsTwoLegs($game->game) => $match->result === null,
-            $game->status === BoardGameStatus::Finished && $game->result === '1/2-1/2' && ! TournamentRunner::allowsDraw($match) => TournamentRunner::drawnBoardGames($match) <= TournamentRunner::drawnReplays($match->tournament),
+            $game->status === BoardGameStatus::Finished && TournamentRunner::twoLegs($match, $tournament ?? $match->tournament) => $match->result === null,
+            $game->status === BoardGameStatus::Finished && $game->result === '1/2-1/2' && ! TournamentRunner::allowsDraw($match) => TournamentRunner::drawnBoardGames($match) <= TournamentRunner::drawnReplays($tournament ?? $match->tournament),
             default => false,
         };
     }
@@ -507,7 +509,7 @@ final class TournamentMatchMaker
         $swap = $last !== null && ($last->status === BoardGameStatus::Aborted ? $last->white_id !== $first->id : $last->white_id === $first->id);
         $mode = $tournament->mode;
 
-        $finished = TournamentRunner::playsTwoLegs($tournament->game) ? TournamentRunner::finishedBoardGames($match)->count() : 0;
+        $finished = TournamentRunner::twoLegs($match, $tournament) ? TournamentRunner::finishedBoardGames($match)->count() : 0;
 
         if ($finished >= 2) {
             $swap = $last?->status === BoardGameStatus::Finished && $finished === 2

@@ -8,7 +8,9 @@ namespace App\Support\Tournaments\Engine;
  * single game, ½ each for a draw), `points` scored (goals), and for a heat or
  * a leaderboard the places (1 = best). `winner` is the winning slot, null for
  * a draw. `doubleLoss` (P18): nobody won and both sides lose, a double
- * no-show in a Swiss or round-robin match (no points for either).
+ * no-show in a Swiss or round-robin match (no points for either). `legs`:
+ * the points per slot of each game of a two-leg pairing (Blockli), for a
+ * round-robin table that counts game by game (FormatOptions::$legPoints).
  */
 final readonly class MatchResult
 {
@@ -16,6 +18,7 @@ final readonly class MatchResult
      * @param  list<float>  $games
      * @param  list<float>  $points
      * @param  list<int>|null  $ranks
+     * @param  list<array{0: float, 1: float}>  $legs
      */
     public function __construct(
         public ?int $winner,
@@ -23,6 +26,7 @@ final readonly class MatchResult
         public array $points = [],
         public ?array $ranks = null,
         public bool $doubleLoss = false,
+        public array $legs = [],
     ) {}
 
     /**

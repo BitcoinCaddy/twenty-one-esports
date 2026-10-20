@@ -9,7 +9,6 @@ use App\Support\Hyper\HyperMatches;
 use App\Support\Hyper\HyperRng;
 use App\Support\Hyper\HyperStats;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Process;
 use Tests\Support\HyperOn;
 
 /*
@@ -301,8 +300,5 @@ test('the endpoint answers for a finished match only, from the cache once comput
 });
 
 test('no statistics page turns without input, Next finishes an animation first, and Skip all ends it (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/hyperStats.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 5')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/hyperStats.test.mjs', 5);
 });

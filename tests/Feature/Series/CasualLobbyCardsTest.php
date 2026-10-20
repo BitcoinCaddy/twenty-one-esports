@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Support\LobbyWords;
 use App\Support\Series\CasualChallenges;
 use App\Support\Series\CasualMatches;
-use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 
 /*
@@ -22,10 +21,7 @@ use Livewire\Livewire;
 beforeEach(fn () => $this->freezeTime());
 
 test('the card rules hold in the client: build, parse, validation, newest wins, expiration, cache stubs', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/lobbyCards.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 14')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/lobbyCards.test.mjs', 14);
 });
 
 /*
@@ -157,10 +153,7 @@ test('Age of Empires II account card: each player gets only their own Steam and 
 });
 
 test('the room chat and the game chat keep separate caches, and neither holds a card or breaks on the other\'s entries', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/chatCache.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/chatCache.test.mjs', 7);
 });
 
 test('the guest\'s "seen" needs the host\'s "shared" first, and only a player of the match sets either', function () {

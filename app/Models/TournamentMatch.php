@@ -154,6 +154,7 @@ class TournamentMatch extends Model
             array_values(array_map(floatval(...), (array) ($result['points'] ?? []))),
             isset($result['ranks']) ? array_values(array_map(intval(...), (array) $result['ranks'])) : null,
             (bool) ($result['double_loss'] ?? false),
+            array_values(array_map(fn ($leg): array => [(float) ($leg[0] ?? 0), (float) ($leg[1] ?? 0)], array_filter((array) ($result['legs'] ?? []), is_array(...)))),
         );
     }
 

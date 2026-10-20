@@ -13,23 +13,16 @@
 */
 
 use App\Support\Pages\RulesPage;
-use Illuminate\Support\Facades\Process;
 use Tests\Support\BlockfillOn;
 use Tests\Support\HyperOn;
 use Tests\Support\PongOn;
 
 test('the MIDI reader parses the ten tracks, the fixtures and hand-built files, broken ones throw, every note has a voice (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/midiParse.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/midiParse.test.mjs', 7);
 });
 
 test('the playlist plays every track once per cycle, never twice in a row, and the player schedules and stops (Node)', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/midiPlaylist.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/midiPlaylist.test.mjs', 6);
 });
 
 test('every track the manifest lists is a file next to it, and LICENSES.md carries its credits', function () {

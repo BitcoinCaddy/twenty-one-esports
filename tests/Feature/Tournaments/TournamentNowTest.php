@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\BoardGameStatus;
 use App\Enums\SeriesStatus;
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
+use App\Models\BoardGame;
 use App\Models\ChessGame;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
@@ -16,7 +18,9 @@ use App\Support\Tournaments\CupSchedules;
 use App\Support\Tournaments\TournamentRunner;
 use App\Support\Tournaments\TournamentWaits;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
+use Tests\Support\BlockliOn;
 use Tests\Support\TestSigner;
 
 /*
@@ -304,4 +308,68 @@ test('a match the directors enter can be played now: "Play your match", the dire
 
     expect(nowHero(nowPage($tournament, $white)))->toContain('data-state="match"')->toContain('Play your match')
         ->toContain('The tournament directors enter the result.');
+});
+
+test('the hero says whose move it is: the opponent\'s move waits and the clock stands, the own move is "Play now" (DerCaddy, 2026-10-16)', function () {
+    // "Da steht, dass meine Uhr tickt, obwohl ich nicht an der Reihe bin."
+    $tournament = runningChess(TournamentFormat::SingleElimination, 2, TournamentResultsMode::Players);
+    [$game, $white, $black] = nowFirstGame($tournament);
+    $whiteName = $tournament->participants()->where('user_id', $white->id)->value('name');
+
+    expect(nowHero(nowPage($tournament, $white)))->toContain('data-state="play"')->toContain('data-tone="act"')->toContain('Play now')
+        ->toContain('Your move: your first move has to come by')
+        ->not->toContain('Your clock stands');
+
+    expect(nowHero(nowPage($tournament, $black)))->toContain('data-state="their-move"')->toContain('data-tone="wait"')->toContain('Your game is on')
+        ->toContain($whiteName.' is to move. Your clock stands.')
+        ->toContain('Go to your game')->toContain('href="'.route('games.show', $game).'"')
+        ->not->toContain('Play now');
+
+    $chess = app(ChessGameService::class);
+    $chess->move($game->refresh(), $white, 'e2e4');
+    $chess->move($game->refresh(), $black, 'e7e5');
+
+    expect(nowHero(nowPage($tournament, $white)))->toContain('data-state="play"')->toContain('Your move. Your clock runs.')
+        ->and(nowHero(nowPage($tournament, $black)))->toContain('data-state="their-move"');
+});
+
+/** A running Blockli tournament (correspondence, the only mode its tournaments play): every round's games run at once. */
+function nowBlockli(TournamentFormat $format, int $n): Tournament
+{
+    Queue::fake();
+    BlockliOn::play();
+
+    return blockliTournament($format, [], $n, ['timezone' => 'Europe/Berlin']);
+}
+
+test('in a correspondence game the hero names the deadline of the side to move, in the viewer\'s time zone', function () {
+    $tournament = nowBlockli(TournamentFormat::SingleElimination, 2);
+    $game = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Active)->sole();
+    $until = Carbon::createFromTimestampMs($game->deadline_ms)->setTimezone('Europe/Berlin')->translatedFormat('D j M, H:i');
+    $whiteName = $tournament->participants()->where('user_id', $game->white_id)->value('name');
+
+    expect(nowHero(nowPage($tournament, $game->white)))->toContain('data-state="play"')->toContain('Your move, until '.$until.'.')
+        ->toContain('href="'.route('board.show', $game).'"')
+        ->and(nowHero(nowPage($tournament, $game->black)))->toContain('data-state="their-move"')->toContain($whiteName.' is to move, until '.$until.'.');
+});
+
+test('with several live games at once the hero points at one where the viewer is to move', function () {
+    // A Blockli group of four: all three rounds run at once, so a player waits in one game and moves in another.
+    $tournament = nowBlockli(TournamentFormat::RoundRobin, 4);
+    $games = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Active)->with(['tournamentMatch.round', 'white', 'black'])->get();
+    $round = fn (BoardGame $game): int => $game->tournamentMatch->round->number;
+
+    // A player who waits in an earlier round than one where they move: the earliest round alone would point at the wait.
+    $viewer = $games->flatMap(fn (BoardGame $game) => [$game->white, $game->black])->unique('id')->first(function (User $user) use ($games, $round): bool {
+        $theirs = $games->filter(fn (BoardGame $game) => $game->colorOf($user) !== null);
+        $moves = $theirs->filter(fn (BoardGame $game) => $game->colorOf($user) === $game->turn)->min($round);
+        $waits = $theirs->filter(fn (BoardGame $game) => $game->colorOf($user) !== $game->turn)->min($round);
+
+        return $moves !== null && $waits !== null && $waits < $moves;
+    });
+    expect($viewer)->not->toBeNull();
+
+    $move = $games->filter(fn (BoardGame $game) => $game->colorOf($viewer) === $game->turn)->sortBy(fn (BoardGame $game) => [$round($game), $game->tournament_match_id])->first();
+
+    expect(nowHero(nowPage($tournament, $viewer)))->toContain('data-state="play"')->toContain('href="'.route('board.show', $move).'"');
 });

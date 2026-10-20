@@ -35,17 +35,11 @@ use Tests\Support\WaitForPort;
  */
 
 test('the chat rules hold in the client: messages, polls, one vote per pubkey, closed polls, moderation, bounds', function () {
-    $run = Process::path(base_path())->timeout(60)->run(['node', '--test', 'tests/js/channelChat.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 11')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/channelChat.test.mjs', 11);
 });
 
 test('the component stays cheap under a flood: no redraw for votes nobody counts, polls shown only once their author counts, lookups by priority and pace', function () {
-    $run = Process::path(base_path())->timeout(90)->run(['node', '--test', 'tests/js/gameChannel.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/gameChannel.test.mjs', 7, timeout: 90);
 });
 
 test('each game has its own channel, fixed by the creator, and the league key signs exactly that id', function () {

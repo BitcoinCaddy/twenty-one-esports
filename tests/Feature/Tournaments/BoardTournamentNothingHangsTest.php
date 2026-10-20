@@ -127,6 +127,24 @@ test('knockout board game: once the drawn replays are used up the higher seed ad
         ->and($tournament->refresh()->status)->toBe(TournamentStatus::Finished);
 })->with(['two draws (one replay)' => 1, 'three draws (the default two replays)' => 2]);
 
+test('asking whether a drawn knockout game gets its replay reads the tournament the caller holds, not the match\'s relation', function () {
+    $tournament = hangsBoardTournament(NineMensMorris::SLUG);
+    $game = hangsBoardGame($tournament);
+    app(BoardGameService::class)->offerDraw($game, $game->white);
+    app(BoardGameService::class)->acceptDraw($game->refresh(), $game->black);
+
+    // A run that sees the drawn game before the replay is started (the replay the draw already started is taken away).
+    BoardGame::query()->where('status', BoardGameStatus::Active)->delete();
+
+    // The league's runs hold the tournament and load matches without it (lazy loading is off in production and throws here).
+    $match = TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', '!=', 'bye')->with('round.stage', 'boardGame')->sole();
+    // A model out of a list may not lazy-load (Laravel arms that for results of more than one model).
+    $match->preventsLazyLoading = true;
+
+    expect($match->relationLoaded('tournament'))->toBeFalse()
+        ->and(TournamentMatchMaker::needsBoardGame($match, $tournament))->toBeTrue('one drawn game of the default two replays: the next game is due');
+});
+
 /* ---------- Both sides missing ------------------------------------------------------------------------------ */
 
 test('White misses the first move: the board game restarts once with the same colours, then White loses the pairing by forfeit', function (TournamentFormat $format, Closure $check) {

@@ -2,7 +2,6 @@
 
 use App\Support\Nostr\NostrKeys;
 use App\Support\Notifications\NotificationDm;
-use Illuminate\Support\Facades\Process;
 use swentel\nostr\Key\Key;
 
 /*
@@ -30,11 +29,5 @@ test('the chat module wraps, unwraps, checks the sender, hides muted senders, an
         'neventParts' => ['id' => $eventId, 'author' => $recipient, 'kind' => 64],
     ];
 
-    $run = Process::path(base_path())
-        ->env(['NIP17_PHP' => json_encode($php, JSON_UNESCAPED_SLASHES)])
-        ->timeout(60)
-        ->run(['node', '--test', 'tests/js/nip17.test.mjs']);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/nip17.test.mjs', 7, env: ['NIP17_PHP' => json_encode($php, JSON_UNESCAPED_SLASHES)]);
 });
