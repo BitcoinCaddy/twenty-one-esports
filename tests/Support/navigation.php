@@ -50,6 +50,8 @@ const NAV_PAGES = [
     'chess.lobby' => ['roles' => NAV_ROLES, 'max' => 1],
     'chess.challenge' => ['roles' => NAV_LOGGED_IN, 'max' => 1],
     'me.correspondence' => ['roles' => NAV_LOGGED_IN, 'max' => 1],
+    // "Your chats", in the account menu below the matches (DerCaddy, 2026-10-18).
+    'me.chats' => ['roles' => NAV_LOGGED_IN, 'max' => 1],
     'dashboard' => ['roles' => NAV_LOGGED_IN, 'max' => 1],
     'games.index' => ['roles' => NAV_ROLES, 'max' => 1],
     'live' => ['roles' => NAV_ROLES, 'max' => 1],

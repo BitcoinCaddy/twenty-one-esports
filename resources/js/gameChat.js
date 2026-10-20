@@ -25,6 +25,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
+import { readMarkers, saveReadMarker } from './chatRead.js';
 import { chatDay, chatTime } from './chatTime.js';
 import { isExpired } from './lobbyCards.js';
 import { extraInboxRelays, lookupInboxes, relaysFor } from './dmInbox.js';
@@ -33,36 +34,12 @@ import { awaitSigner, ensureSigner } from './nostrSign.js';
 
 const MUTES_KEY = 'esports.chat.mutes';
 
-/**
- * Per chat (`<me>:<match>`) the newest message read on this device, in ms (DerCaddy, 2026-10-18: "Die letzte
- * Nachricht ist von mir, trotzdem steht da neu"). The sheet counted from zero on every page load, so the
- * opponent's old messages came back as new until it was opened. The newest READ_KEEP chats are kept.
- */
-export const READ_KEY = 'esports.chat.read';
-const READ_KEEP = 300;
-
 function writeJson(key, value) {
     try {
         localStorage.setItem(key, JSON.stringify(value));
     } catch {
         // private mode or full storage: the chat still works, it just forgets
     }
-}
-
-function readMarkers() {
-    try {
-        const markers = JSON.parse(localStorage.getItem(READ_KEY) ?? '{}');
-
-        return markers !== null && typeof markers === 'object' && !Array.isArray(markers) ? markers : {};
-    } catch {
-        return {};
-    }
-}
-
-function saveReadMarker(chat, at) {
-    const markers = { ...readMarkers(), [chat]: at };
-    const newest = Object.keys(markers).sort((a, b) => markers[b] - markers[a]).slice(0, READ_KEEP);
-    writeJson(READ_KEY, Object.fromEntries(newest.map((key) => [key, markers[key]])));
 }
 
 export function gameChat(config) {

@@ -173,7 +173,7 @@
                     @php
                         $page = collect($account)->firstWhere('key', 'page');
                         $groups = [
-                            'play' => [__('Play'), ['upcoming', 'daily', 'tournaments']],
+                            'play' => [__('Play'), ['upcoming', 'chats', 'daily', 'tournaments']],
                             'community' => [__('Community'), ['clan', 'invite', 'invite-friend', 'badges']],
                             'account' => [__('Account'), ['settings', 'notifications', 'chess-settings']],
                         ];

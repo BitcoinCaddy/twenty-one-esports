@@ -18,6 +18,7 @@ export default defineConfig({
                 'resources/js/tournamentDesk.js',
                 'resources/js/liveChat.js',
                 'resources/js/gameChannel.js',
+                'resources/js/chatInbox.js',
                 'resources/js/stacker/page.js',
                 'resources/js/tournamentTv.js',
                 // Hyperbitcoinization's full-screen match page (plan "Hyperbitcoinization", P2): its own stylesheet and script.

@@ -437,6 +437,8 @@ final class ShellNavigation
             // The own hub (P30); the public player page is one click from there.
             self::link('page', route('dashboard'), __('Your page'), 'user', 'account-page', 'mobile-page'),
             $this->upcoming($user),
+            // The player's desks, game chats and match rooms in one list (DerCaddy, 2026-10-18), right below their matches.
+            filled($user->pubkey) ? self::link('chats', route('me.chats'), __('Your chats'), 'chat-sheet', 'account-chats', 'mobile-chats') : null,
             match (true) {
                 $clan !== null => self::link('clan', route('clans.show', $clan), __('Your clan'), 'clans', 'account-clan', 'mobile-clan'),
                 $invite !== null => self::link('invite', route('invites.show', $invite), __('Clan invite from :clan', ['clan' => $invite->clan->name]), 'clans', 'account-clan-invite', 'mobile-clan-invite'),
