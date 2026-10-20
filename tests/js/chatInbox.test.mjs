@@ -1,8 +1,8 @@
 /**
  * "Your chats" (resources/js/chatInbox.js, App\Support\Chat\ChatInbox; DerCaddy, 2026-10-18): every chat the
  * league names, with its newest message and how many of the others' messages are new, from the messages this
- * device knows. A game reads its game chat's marker, a desk the desk's, a match room the one this list sets; one's
- * own message reads everything before it.
+ * device knows. A game reads its game chat's marker, a desk the desk's, a match room the one its chat (or this list)
+ * sets; one's own message reads everything before it.
  *
  * Run by tests/Feature/ChatInboxTest.php; runnable alone with `node --test`.
  */
@@ -38,6 +38,7 @@ globalThis.WebSocket = class {
 const { makeGroupRumor, makeRumor, wrapMessage } = await import('../../resources/js/nostrChat.js');
 const { READ_KEY } = await import('../../resources/js/chatRead.js');
 const { chatInbox, deskReadKey, inboxRows, readKeyOf } = await import('../../resources/js/chatInbox.js');
+const { roomChat } = await import('../../resources/js/roomChat.js');
 
 const ME = 'a'.repeat(64);
 const ANNA = 'b'.repeat(64);
@@ -100,11 +101,25 @@ test('the page starts from what this device opened in any chat, and opening a ro
     assert.deepEqual(page.rows.map((r) => [r.key, r.last?.preview, r.unread]), [['room:12', 'Carla: aus dem Raum', 1], ['desk:3', 'Ben: aus dem Desk', 0], ['board:7', 'Anna: aus dem Partie-Chat', 1], ['board:8', undefined, 0]]);
     // The list holds the chats somebody wrote in; the silent game folds below it.
     assert.deepEqual([page.active.map((r) => r.key), page.quiet.map((r) => r.key)], [['room:12', 'desk:3', 'board:7'], ['board:8']]);
-    assert.equal(page.unreadTotal, 2);
+    assert.equal(page.rows.reduce((sum, r) => sum + r.unread, 0), 2);
 
     page.open(page.rows[0]);
     assert.equal(page.rows.find((r) => r.key === 'room:12').unread, 0);
     assert.equal(JSON.parse(store.get(READ_KEY))[`${ME}:room:12`], 4_000_000);
+});
+
+test('the match room\'s own chat marks what it showed read, so the list counts nothing new; a tab in the background reads nothing', () => {
+    const rumors = [roomMsg(CARLA, 4000, 'Lobby steht')];
+    const chat = roomChat({ me: ME, match: '12', members: [], relays: [] });
+
+    document.visibilityState = 'hidden';
+    chat.markRead({ at: 4000 * 1000 });
+    assert.equal(rows(rumors, { markers: JSON.parse(store.get(READ_KEY) ?? '{}') }).find((r) => r.key === 'room:12').unread, 1);
+
+    document.visibilityState = 'visible';
+    chat.markRead({ at: 4000 * 1000 });
+    assert.equal(JSON.parse(store.get(READ_KEY))[readKeyOf(room)], 4_000_000);
+    assert.equal(rows(rumors, { markers: JSON.parse(store.get(READ_KEY)) }).find((r) => r.key === 'room:12').unread, 0);
 });
 
 function keySigner(secret) {

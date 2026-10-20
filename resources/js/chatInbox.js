@@ -10,15 +10,15 @@
  * cache, where every chat page finds it again.
  *
  * New: the others' messages after the chat's read marker and after one's own last message (whoever answers has
- * read). The game chat keeps its marker per game (chatRead.js), the desk its own (deskChat.js); a match room keeps
- * none, so opening it from here marks what this list showed of it.
+ * read). The game chat and the match room keep their marker per chat (chatRead.js), the desk its own (deskChat.js);
+ * opening a room from here also marks what this list showed of it.
  *
  * The list shows the chats somebody wrote in; those without a message stay folded below it (the league names every
  * chat of a game, most stay silent).
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
-import { readMarkers, saveReadMarker } from './chatRead.js';
+import { readMarkers, roomReadKey, saveReadMarker } from './chatRead.js';
 import { chatDay, chatTime } from './chatTime.js';
 import { extraInboxRelays, lookupInboxes } from './dmInbox.js';
 import { isExpired } from './lobbyCards.js';
@@ -39,7 +39,7 @@ export const deskReadKey = (me, desk) => `esports.desk.read.${me}.${desk}`;
 
 /** The marker of a chat in chatRead.js: a game by its `match` tag, a match room by its number. */
 export function readKeyOf(chat) {
-    return chat.kind === 'room' ? `${chat.me}:room:${chat.match}` : `${chat.me}:${chat.match}`;
+    return chat.kind === 'room' ? roomReadKey(chat.me, chat.match) : `${chat.me}:${chat.match}`;
 }
 
 /** One chat's messages in the inbox, oldest first, as its own page reads them (nostrChat.js). */
@@ -265,17 +265,13 @@ export function chatInbox(config) {
             return this.rows.filter((row) => row.last === null);
         },
 
-        get unreadTotal() {
-            return this.rows.reduce((sum, row) => sum + row.unread, 0);
-        },
-
         time(ms) {
             chatDay();
 
             return chatTime(ms, { hourCycle: 'h23' });
         },
 
-        /** A row opens its chat: a match room keeps no marker of its own, so what this list showed of it is read. */
+        /** A row opens its chat: what this list showed of a room is read before the room's chat draws it. */
         open(row) {
             if (row.kind === 'room' && row.last !== null) saveReadMarker(readKeyOf(row), row.last.at);
             this.readTick++;

@@ -1,10 +1,13 @@
 /**
  * What was read in a chat, per chat (`<me>:<chat>`): the newest message read on this device, in ms (DerCaddy,
  * 2026-10-18: "Die letzte Nachricht ist von mir, trotzdem steht da neu"). The game chat keeps its games here
- * (`<me>:<match>`, gameChat.js), "Your chats" its match rooms (`<me>:room:<number>`, chatInbox.js); the tournament
+ * (`<me>:<match>`, gameChat.js), the match rooms theirs (`<me>:room:<number>`, roomChat.js and chatInbox.js); the tournament
  * desk keeps its own marker (deskChat.js). The newest READ_KEEP chats are kept.
  */
 export const READ_KEY = 'esports.chat.read';
+
+/** A match room's marker: written by the room's chat (roomChat.js) and by "Your chats" when it opens the room. */
+export const roomReadKey = (me, match) => `${me}:room:${match}`;
 const READ_KEEP = 300;
 
 export function readMarkers() {

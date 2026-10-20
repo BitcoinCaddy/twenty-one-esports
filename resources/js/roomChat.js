@@ -40,6 +40,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
+import { roomReadKey, saveReadMarker } from './chatRead.js';
 import { chatDay, chatTime } from './chatTime.js';
 import { ACCOUNT_CARDS, ACCOUNT_SERVICES, HOST_CARD, accountTags, cardContent, casualExpiration, isExpired, lobbyTags, openCardIds, parseCard, pinnedLobbyCard, randomPassword } from './lobbyCards.js';
 import { extraInboxRelays, lookupInboxes, relaysFor } from './dmInbox.js';
@@ -409,6 +410,7 @@ export function roomChat(config) {
 
             if (this.atBottom || (newLast && last.from === 'me')) {
                 this.$nextTick(() => this.toBottom());
+                this.markRead(last);
             } else if (newLast) {
                 this.unseen += 1;
             }
@@ -418,8 +420,20 @@ export function roomChat(config) {
             const list = this.$refs.list;
             if (!list) return;
             this.atBottom = list.scrollHeight - list.scrollTop - list.clientHeight <= EDGE;
-            if (this.atBottom) this.unseen = 0;
+            if (this.atBottom) {
+                this.unseen = 0;
+                this.markRead(this.messages.at(-1) ?? null);
+            }
             if (list.scrollTop <= EDGE && this.hasOlder) this.loadOlder();
+        },
+
+        /**
+         * Read up to this message, for "Your chats" (chatRead.js): the list sits at the bottom in the front tab. A
+         * tab in the background reads nothing.
+         */
+        markRead(message) {
+            if (message === null || document.visibilityState === 'hidden') return;
+            saveReadMarker(roomReadKey(config.me, config.match), message.at);
         },
 
         /** PAGE more at the top, with the text on screen kept in place (the box grows above it). */
