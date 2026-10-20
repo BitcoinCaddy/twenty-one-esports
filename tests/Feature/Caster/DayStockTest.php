@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Tests\Support\DayStockSimulator;
 
 /*
@@ -167,7 +168,7 @@ it('hands out stock scripts only to a stock claim, written by the scheduler, and
     // The fixture ends on the tutorial's back-announce (StockScripts::BACK_ANNOUNCE); the programme length
     // (user 2026-10-16: one pass, 40-80 turns) is a config value - under test is the flow, so the turns match
     // the eight-turn fixture.
-    config(['tv.commentary.blocks.stock.formats' => ['tutorial'], 'tv.commentary.blocks.stock.turns' => ['min' => 2, 'max' => 10], 'tv.commentary.blocks.stock.judge.enabled' => false]);
+    config(['tv.commentary.blocks.stock.formats' => ['tutorial'], 'tv.commentary.blocks.stock.turns' => ['min' => 2, 'max' => 10], 'tv.commentary.blocks.stock.judge.enabled' => false, 'tv.commentary.blocks.stock.programme_minutes' => 35]);
     Http::fake([
         'discover.einundzwanzig.space/*' => Http::response('<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>E</title><item><title>Deine Seed-Phrase sicher aufbewahren</title><link>https://media.einundzwanzig.space/seed</link><pubDate>Mon, 12 Oct 2026 10:00:00 +0000</pubDate><dc:creator>pleb</dc:creator><description>Volltext folgt</description></item></channel></rss>'),
         'media.einundzwanzig.space/*' => Http::response('<html><body><article><p>Die Seed-Phrase gehort aufs Papier oder auf Metall, nie als Foto in die Cloud.</p></article></body></html>'),
@@ -179,6 +180,8 @@ it('hands out stock scripts only to a stock claim, written by the scheduler, and
     // with the workstation reporting room, one programme lands in the queue for the claim to hand out.
     DayStock::rememberReport('100.0;0', CarbonImmutable::now());
     expect(app(ScriptQueue::class)->fillStock(CarbonImmutable::now()))->toBe(1);
+    // A whole programme is a long write: the writer waits `stock.timeout_seconds`, not a post's 15 s.
+    VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => $prompt->agent->timeout() === 600 && $prompt->contains('35 Minuten Hörzeit'));
 
     $claim = dayStockClaim('?only=stock')->assertOk();
     $id = $claim->json('script.id');

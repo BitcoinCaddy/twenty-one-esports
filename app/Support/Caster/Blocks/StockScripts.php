@@ -163,8 +163,6 @@ final class StockScripts
 
     private const LAST_FORMATS = 'caster:stock:last_formats';
 
-    private const LAST_PICKS = 'caster:stock:last_picks';
-
     private const USED_CANON = 'caster:stock:used_canon';
 
     /**
@@ -341,7 +339,7 @@ final class StockScripts
         $temperature = config('tv.commentary.scripts.temperature');
         // Its own writer model (`stock.model`, Sonnet like prod) and the system prompt without the running gags (P21).
         $model = config('tv.commentary.blocks.stock.model');
-        $response = (new VoiceAgent($this->duets->systemPrompt(gags: false), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000), cacheTtl: CasterVoice::staticCacheTtl(), modelOverride: is_string($model) && $model !== '' ? $model : null))
+        $response = (new VoiceAgent($this->duets->systemPrompt(gags: false), is_numeric($temperature) ? (float) $temperature : null, (int) config('tv.commentary.blocks.stock.max_output_tokens', 3000), timeoutOverride: max(15, (int) config('tv.commentary.blocks.stock.timeout_seconds', 600)), cacheTtl: CasterVoice::staticCacheTtl(), modelOverride: is_string($model) && $model !== '' ? $model : null))
             ->prompt(self::prompt($format, $material, $rejected, $this->hint));
         $this->usage->recordTokens(self::CHANNEL, $response->usage->inputTokens, $response->usage->outputTokens, (int) $response->usage->cacheReadInputTokens, (int) $response->usage->cacheWriteInputTokens);
 
@@ -538,29 +536,6 @@ final class StockScripts
     }
 
     /**
-     * The entry of `$items` with the fewest blocks in the stock library (`$subjects`, P18), then the one used longest
-     * ago (never used first, shuffled among equals), remembered as used.
-     *
-     * @param  array<array-key, mixed>  $items
-     * @param  array<string, int>  $subjects
-     */
-    private function pick(array $items, string $format = '', array $subjects = []): ?string
-    {
-        $items = array_values(array_filter($items, fn (mixed $item): bool => is_string($item) && trim($item) !== ''));
-        shuffle($items);
-        $ordered = self::byLastUse($items, self::LAST_PICKS);
-        $position = array_flip($ordered);
-        usort($ordered, fn (string $a, string $b): int => [$subjects[self::subjectKey($format, $a)] ?? 0, $position[$a]] <=> [$subjects[self::subjectKey($format, $b)] ?? 0, $position[$b]]);
-        $item = $ordered[0] ?? null;
-
-        if ($item !== null) {
-            $this->remember(self::LAST_PICKS, $item);
-        }
-
-        return $item;
-    }
-
-    /**
      * `$items` ordered by their last use in the cached list `$key` (never used first).
      *
      * @param  list<string>  $items
@@ -647,7 +622,7 @@ final class StockScripts
         $parts = [
             "Auftrag\n\nEine eigene, in sich geschlossene Sendung für den Programmvorrat von TWENTY ONE ESPORTS RADIO: {$show}, {$what}"
                 ."\n\n".(int) ($turns['min'] ?? 40).' bis '.(int) ($turns['max'] ?? 80).' Wortmeldungen im Wechsel zwischen '.implode(', ', $names).", {$lead} beginnt, jede Wortmeldung ein bis ".(int) ($settings['sentences_per_turn'] ?? 4).' Sätze, jede spätere greift die davor auf, und jeder kommt zu Wort.'
-                .' Das ist eine LANGES Programm: '.round((float) env('TV_COMMENTARY_STOCK_PROGRAMME_MINUTES', 20)).' Minuten Hörzeit, ein einziger durchgehender Gesprächsbogen mit einem roten Faden, der sich über die ganze Sendung zieht - kein Häppchen, kein Themensprung ohne Überleitung, kein Anfang-Ende-Rhythmus alle zwei Minuten. Schreibe die Sendung in einem Guss zu Ende.'
+                .' Das ist eine LANGES Programm: '.round((float) ($settings['programme_minutes'] ?? 20)).' Minuten Hörzeit, ein einziger durchgehender Gesprächsbogen mit einem roten Faden, der sich über die ganze Sendung zieht - kein Häppchen, kein Themensprung ohne Überleitung, kein Anfang-Ende-Rhythmus alle zwei Minuten. Schreibe die Sendung in einem Guss zu Ende.'
                 .' Jeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt („'.$lead.': …“). Gesprochen auf Deutsch. '.CasterVoice::SENTENCE_STYLE
                 ."\nZEITLOS: Der Beitrag läuft an einem späteren Tag zu einer unbekannten Uhrzeit. Nenne nie eine Uhrzeit, eine Tageszeit, einen Wochentag oder ein Datum von heute, nie „heute“, „gestern“, „morgen“, „gerade eben“, „vorhin“, „guten Morgen“ oder „gute Nacht“, nichts Aktuelles aus den Nachrichten und keine Ergebnisse. Geschichtliche Jahreszahlen sind erlaubt."
                 ."\nLustig, aber mit Sinn: konkrete Geschichten, Gründe und Beispiele, kein Geschwafel über nichts. Keine Begrüßung wie „Hallo“ und kein Abschied, keine Spielernamen, Laut-Marker nur, wo der Inhalt sie trägt, etwa einer auf zwei bis drei Sätze.",

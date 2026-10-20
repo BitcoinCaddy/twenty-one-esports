@@ -575,6 +575,9 @@ return [
                 // The writer: one model call per script, `turns` turns of up to `sentences_per_turn` sentences.
                 'daily_cap' => (int) env('TV_COMMENTARY_STOCK_DAILY_CAP', 220),
                 'max_output_tokens' => (int) env('TV_COMMENTARY_STOCK_MAX_OUTPUT_TOKENS', 24000),
+                // A whole programme of up to `max_output_tokens` takes minutes to write: far longer than
+                // `esports.voice.timeout_seconds` allows a post (the shows and the talk show have their own too).
+                'timeout_seconds' => (int) env('TV_COMMENTARY_STOCK_TIMEOUT', 600),
                 // The stock's writer (P21): Sonnet like prod's ESPORTS_VOICE_MODEL, whatever the local default is.
                 'model' => env('TV_COMMENTARY_STOCK_MODEL', 'claude-sonnet-5-5'),
                 // At most this many whole-programme writes an hour (live 2026-10-16): one such write holds the
@@ -586,6 +589,7 @@ return [
                 // Programmtexte schreiben"), so a talk carries the whole programme's length: one continuous
                 // conversation over many acts (programme_minutes, default 20).
                 'turns' => ['min' => 40, 'max' => 80],
+                'programme_minutes' => (float) env('TV_COMMENTARY_STOCK_PROGRAMME_MINUTES', 20),
                 // The coherence gate before a draft is queued (StockCoherenceJudge, P21): premise, through-line, payoff,
                 // fit and liveliness 1 to 5; below `min_score` on any, written once more with the judge's hint, then dropped.
                 'judge' => [
