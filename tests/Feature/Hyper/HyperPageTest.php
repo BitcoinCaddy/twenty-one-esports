@@ -126,8 +126,5 @@ test('every text of the game page is a key the scripts use and has a German tran
 });
 
 test('the page script keeps every ply once, mirrors the server’s events and counts reactions (Node)', function () {
-    $run = nodeTest('tests/js/hyperClient.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 5')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/hyperClient.test.mjs', 5);
 });

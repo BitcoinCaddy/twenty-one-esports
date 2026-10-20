@@ -7,15 +7,9 @@
  * Node. Each fails if any Node test fails or is skipped.
  */
 test('the follow list is read partial-tolerant and split in list order; names come from signed profiles', function () {
-    $run = nodeTest('tests/js/followsHere.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/followsHere.test.mjs', 6);
 });
 
 test('an invite DM is sent only on the click, NIP-17 where it can, NIP-04 only after a yes for that recipient', function () {
-    $run = nodeTest('tests/js/inviteDm.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 4')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/inviteDm.test.mjs', 4);
 });

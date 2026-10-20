@@ -27,24 +27,15 @@ beforeEach(function () {
 });
 
 test('every sound mapping, the bot-turn rule, the switches and the stored settings hold (Node)', function () {
-    $run = nodeTest('tests/js/hyperSounds.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 7')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/hyperSounds.test.mjs', 7);
 });
 
 test('every soundboard pool draws from the snippet library without repeats, bot turns stay without clips (Node)', function () {
-    $run = nodeTest('tests/js/hyperVoices.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ fail 0');
+    nodeTest('tests/js/hyperVoices.test.mjs', 6);
 });
 
 test('who a moment waits for: a multiplayer table never waits for a click, a battle without a human runs without animation (Node)', function () {
-    $run = nodeTest('tests/js/hyperPace.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ fail 0');
+    nodeTest('tests/js/hyperPace.test.mjs', 6);
 });
 
 test('soundboard emotes muted league-wide: no table offers a clip, the server sends none, stickers stay', function () {

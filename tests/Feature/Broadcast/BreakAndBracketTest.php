@@ -166,8 +166,5 @@ test('the tournament page offers 3D beside the drawn bracket without loading thr
 });
 
 test('a remembered 3D that cannot run (no WebGL, three.js not loading) is stored back as 2D, so the next visit does not retry it', function () {
-    $run = nodeTest('tests/js/bracketView.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 3')->toContain('ℹ fail 0');
+    nodeTest('tests/js/bracketView.test.mjs', 3);
 });

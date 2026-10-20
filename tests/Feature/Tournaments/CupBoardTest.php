@@ -125,10 +125,7 @@ test('home lists the cups in this week\'s list with a link to all tournaments, a
 });
 
 test('the browser rewrites a start to a real zone of its own, never to a spoofed UTC one', function () {
-    $run = nodeTest('tests/js/cupBoard.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 5')->toContain('ℹ fail 0');
+    nodeTest('tests/js/cupBoard.test.mjs', 5);
 });
 
 /*

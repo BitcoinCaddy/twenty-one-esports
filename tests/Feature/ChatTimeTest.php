@@ -7,13 +7,10 @@
  * (chatTime.test.mjs), the new day at midnight (chatDay.test.mjs), and what each chat does with it
  * (chatTimeWiring.test.mjs).
  */
-test('a chat message shows the time today, the weekday this week and the date before', function (string $file) {
-    $run = nodeTest($file);
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ fail 0')->toContain('ℹ skipped 0')->not->toContain('ℹ pass 0');
+test('a chat message shows the time today, the weekday this week and the date before', function (string $file, int $cases) {
+    nodeTest($file, $cases);
 })->with([
-    'the rule' => 'tests/js/chatTime.test.mjs',
-    'the new day' => 'tests/js/chatDay.test.mjs',
-    'each chat' => 'tests/js/chatTimeWiring.test.mjs',
+    'the rule' => ['tests/js/chatTime.test.mjs', 5],
+    'the new day' => ['tests/js/chatDay.test.mjs', 3],
+    'each chat' => ['tests/js/chatTimeWiring.test.mjs', 2],
 ]);

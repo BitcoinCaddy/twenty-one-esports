@@ -7,8 +7,5 @@
  * is skipped.
  */
 test('stream chat: messages, zaps, emoji tags, NIP-27 references, send rules and muted runs', function () {
-    $run = nodeTest('tests/js/streamChat.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 25')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/streamChat.test.mjs', 25);
 });

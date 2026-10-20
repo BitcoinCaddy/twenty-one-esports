@@ -15,11 +15,8 @@ use Livewire\Livewire;
  */
 
 test('replies from other NIP-17 clients reach the room and the game chat, and unrelated DMs stay out', function () {
-    $run = nodeTest('tests/js/dmReplies.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        // 12 since 3476bec7 ("... show Amethyst messages to players without DM relays") added the 10002 read-relay case.
-        ->and($run->output())->toContain('ℹ pass 12')->toContain('ℹ fail 0')->toContain('ℹ skipped 0');
+    // 12 since 3476bec7 ("... show Amethyst messages to players without DM relays") added the 10002 read-relay case.
+    nodeTest('tests/js/dmReplies.test.mjs', 12);
 });
 
 test('the room and the game chat get the window\'s end and the relays to look up DM relay lists on', function () {

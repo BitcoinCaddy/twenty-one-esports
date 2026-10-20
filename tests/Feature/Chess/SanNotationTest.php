@@ -8,10 +8,7 @@ use App\Support\Chess\SanNotation;
  * The client twin is resources/js/sanNotation.js: tests/js/sanNotation.test.mjs under Node.
  */
 test('the client shows German piece letters and reads moves typed in either language', function () {
-    $run = nodeTest('tests/js/sanNotation.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 2')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/sanNotation.test.mjs', 2);
 });
 
 test('a move is shown with the piece letters of the reader\'s language', function (string $san, string $locale, string $shown) {

@@ -52,10 +52,7 @@ beforeEach(function () {
 });
 
 test('the client filter holds: clean list, no own key, push applied, items left out', function () {
-    $run = nodeTest('tests/js/siteHidden.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 4')->toContain('ℹ fail 0');
+    nodeTest('tests/js/siteHidden.test.mjs', 4);
 });
 
 test('only admins moderate: the endpoint, the page and the service refuse everyone else', function () {

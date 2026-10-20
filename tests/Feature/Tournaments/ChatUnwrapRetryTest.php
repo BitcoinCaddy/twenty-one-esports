@@ -10,8 +10,5 @@
  */
 
 test('a wrap the signer could not open is retried and never cached as unreadable', function () {
-    $run = nodeTest('tests/js/chatUnwrapRetry.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 4')->toContain('ℹ skipped 0')->toContain('ℹ fail 0');
+    nodeTest('tests/js/chatUnwrapRetry.test.mjs', 4);
 });

@@ -6,8 +6,5 @@
  * relays and throwaway keys. It fails if any Node test fails or is skipped.
  */
 test('following refuses a list it could not read, keeps every follow, and checks the signed list', function () {
-    $run = nodeTest('tests/js/follow.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 17')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/follow.test.mjs', 17);
 });

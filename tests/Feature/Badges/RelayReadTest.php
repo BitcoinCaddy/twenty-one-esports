@@ -8,8 +8,5 @@
  * of the player's relay list must answer.
  */
 test('the relay reader counts EOSE only, verifies before it deduplicates, and takes the newest valid list', function () {
-    $run = nodeTest('tests/js/relayRead.test.mjs');
-
-    expect($run->exitCode())->toBe(0, $run->output().$run->errorOutput())
-        ->and($run->output())->toContain('pass 17')->toContain('fail 0');
+    nodeTest('tests/js/relayRead.test.mjs', 17);
 });

@@ -6,8 +6,5 @@
  * under Node. The room passes the server time (CasualPlayTest).
  */
 test('the casual room countdown corrects the device clock by the server offset', function () {
-    $run = nodeTest('tests/js/casualClock.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ fail 0');
+    nodeTest('tests/js/casualClock.test.mjs', 6);
 });

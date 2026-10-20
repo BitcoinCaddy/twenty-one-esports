@@ -8,10 +8,7 @@ use App\Support\Nostr\SignerMessages;
  * skipped.
  */
 test('signing hands the signer a plain copy, tells declined, unreachable, wrong key and other failures apart, and signs a preview only unchanged', function () {
-    $run = nodeTest('tests/js/signing.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/signing.test.mjs', 6);
 });
 
 test('every signer message is translated, and the reason placeholder survives translation', function () {

@@ -8,8 +8,5 @@
  */
 
 test('the badge counts the opponent\'s messages since the chat was last read here, none before one\'s own', function () {
-    $run = nodeTest('tests/js/gameChatUnread.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ fail 0')->toContain('ℹ skipped 0')->not->toContain('ℹ pass 0');
+    nodeTest('tests/js/gameChatUnread.test.mjs', 4);
 });

@@ -7,10 +7,7 @@ use App\Models\ChessGame;
  * the position: tests/js/captured.test.mjs under Node.
  */
 test('the captured pieces of each side are read from the position, promotions not counted as captures', function () {
-    $run = nodeTest('tests/js/captured.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 3')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/captured.test.mjs', 3);
 });
 
 test('every chess game view shows each side\'s captured pieces', function (string $state) {

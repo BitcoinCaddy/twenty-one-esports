@@ -7,8 +7,5 @@
  */
 
 test('a desk message from another Nostr client shows when its room is the desk', function () {
-    $run = nodeTest('tests/js/deskForeignClients.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ fail 0')->not->toContain('ℹ pass 0');
+    nodeTest('tests/js/deskForeignClients.test.mjs', 2);
 });

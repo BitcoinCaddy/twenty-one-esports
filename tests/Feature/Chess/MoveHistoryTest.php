@@ -7,8 +7,5 @@
  * and tests/Browser/ChessCorrespondenceQuietTest.php.
  */
 test('a board steps back through the moves, stays there while the game goes on, and follows it again at the newest move', function () {
-    $run = nodeTest('tests/js/moveHistory.test.mjs');
-
-    expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ skipped 0');
+    nodeTest('tests/js/moveHistory.test.mjs', 6);
 });
