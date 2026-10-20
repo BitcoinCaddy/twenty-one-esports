@@ -68,6 +68,8 @@ return [
     'matches/⚡room.blade.php' => ['T3', 'MatchRoom-2c-LobbyGeteilt › MatchRoom-2c-LobbyGeteilt'],
     'matches/⚡show.blade.php' => ['T3 (fertig)', 'MatchShow › MatchShow'],
     'me/⚡correspondence.blade.php' => ['T14', 'Correspondence › Correspondence'],
+    // "Your chats" (DerCaddy, 2026-10-18): no canvas board yet (NEU, Scope), built as a T14 list like the correspondence list.
+    'me/⚡chats.blade.php' => ['T14 (NEU, Scope)', 'Correspondence › Correspondence'],
     'me/⚡hub.blade.php' => ['T7', 'Profile › Profile'],
     'notifications/dm-off.blade.php' => ['System', 'SystemPages › DMs abbestellt'],
     'play.blade.php' => ['Navigation', 'PlayPage › PlayPage'],
