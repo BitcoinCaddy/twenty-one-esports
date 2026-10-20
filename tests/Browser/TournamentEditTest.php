@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TournamentFormat;
 use App\Enums\TournamentStatus;
 use App\Models\Admin;
 use App\Models\Tournament;
@@ -380,4 +381,46 @@ test('an admin publishes a draft from its orange button on the tournaments list,
     expect(implode("\n", $state()['errors']))->toContain('positive control')->toContain('__missing-positive-control.png');
 
     fwrite(STDERR, "\n[publish-cta] ".json_encode($measured)."\n");
+});
+
+test('the grand final choices of a double elimination are one-line radios with their sentence under them, at 390 and 1280 in German; picking one checks it', function () {
+    // V4 (2026-10-20): title and sentence inside each radio ran to 4-6 lines (R11) and squeezed the sentence into 236 px at 390.
+    $admin = User::factory()->create(['name' => 'satsjaeger', 'locale' => 'de']);
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+    $tournament = Tournament::factory()->create(['format' => TournamentFormat::DoubleElimination, 'capacity' => 8, 'created_by_id' => $admin->id]);
+    $measure = <<<'JS'
+        () => [...document.querySelectorAll('[role=radio][data-test^=grand-final-]')].map((radio) => {
+            // The sentence by its aria-describedby; a radio that carries it inside is measured on that inner line.
+            const r = radio.getBoundingClientRect(), help = document.getElementById(radio.getAttribute('aria-describedby')) ?? radio.querySelector('span span:last-child');
+            const title = radio.querySelector('span'), h = help.getBoundingClientRect();
+            return { value: radio.dataset.test, h: Math.round(r.height), titleLines: Math.round(title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight)), titleWhole: title.scrollWidth <= title.clientWidth + 1 && title.getBoundingClientRect().right <= r.right, helpW: Math.round(h.width), checked: radio.getAttribute('aria-checked') };
+        })
+        JS;
+
+    $page = visit(BrowserLogin::url($admin))->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1280, 800]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('admin.tournaments.edit', $tournament)));
+        BrowserWait::until($page, '() => document.readyState === "complete" && !! window.Alpine && document.querySelector("[data-test=grand-final-reset]") !== null', 10_000);
+        $rows = $measured[$width] = $page->evaluate($measure);
+
+        expect(array_column($rows, 'value'))->toBe(['grand-final-reset', 'grand-final-single', 'grand-final-skip']);
+        foreach ($rows as $row) {
+            expect($row['h'])->toBe(48, "{$width} {$row['value']}: the radio is not one 48 px row")
+                ->and($row['titleLines'])->toBe(1)
+                ->and($row['titleWhole'])->toBeTrue()
+                ->and($row['helpW'])->toBeGreaterThanOrEqual(270, "{$width} {$row['value']}: the sentence is squeezed");
+        }
+    }
+
+    $page->locator('[data-test=grand-final-single]')->click();
+    BrowserWait::until($page, '() => document.querySelector("[data-test=grand-final-single]").getAttribute("aria-checked") === "true"', 5_000);
+    expect($page->evaluate('() => document.querySelector("[data-test=grand-final-reset]").getAttribute("aria-checked")'))->toBe('false')
+        ->and($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([])
+        ->and($page->evaluate('() => document.documentElement.lang'))->toBe('de');
+    fwrite(STDERR, "\n[grand-final] ".json_encode($measured)."\n");
 });

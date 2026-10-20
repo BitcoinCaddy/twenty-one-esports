@@ -402,16 +402,24 @@
                     @if ($format === TournamentFormat::DoubleElimination)
                         <div class="flex flex-col gap-2 border-t border-hairline py-3">
                             <span class="text-[13px] font-bold" id="gf-l">{{ __('Grand final') }}</span>
-                            <div role="radiogroup" aria-labelledby="gf-l" class="flex flex-col gap-2">
+                            {{--
+                                Each choice is a one-line radio (rule R11: a control never wraps its text); what it does stands
+                                under it as its description, outside the control. Title and sentence inside the radio ran to
+                                6 lines at 390 and squeezed the sentence into 236 px (V4).
+                            --}}
+                            <div role="radiogroup" aria-labelledby="gf-l" class="flex flex-col gap-3" data-test="grand-final">
                             @foreach ([
-                                ['reset', __('Grand final: lower-bracket winner must win twice'), __('Fair: the upper-bracket winner has not lost yet, so they get a second chance too. Adds a match only if needed.')],
-                                ['single', __('Grand final: one match'), __('Shorter. The upper-bracket winner loses the advantage of being unbeaten.')],
+                                ['reset', __('Bracket reset'), __('The lower-bracket winner must win twice. Fair: the upper-bracket winner has not lost yet, so they get a second chance too. Adds a match only if needed.')],
+                                ['single', __('One match'), __('Shorter. The upper-bracket winner loses the advantage of being unbeaten.')],
                                 ['skip', __('No grand final'), __('The upper-bracket winner wins the tournament, the lower-bracket winner is 2nd. They never play each other.')],
                             ] as [$value, $label, $text])
-                                <button type="button" role="radio" wire:key="gf-{{ $value }}" class="rv-opt items-start!" aria-checked="{{ $options->grandFinal === $value ? 'true' : 'false' }}" wire:click="option('grandFinal', '{{ $value }}')" data-test="grand-final-{{ $value }}">
-                                    <i aria-hidden="true" class="mt-0.5"></i>
-                                    <span class="flex flex-col gap-1"><span class="text-[13px] font-bold">{{ $label }}</span><span class="{{ $help }}">{{ $text }}</span></span>
-                                </button>
+                                <div class="flex flex-col gap-1" wire:key="gf-{{ $value }}">
+                                    <button type="button" role="radio" class="rv-opt" aria-checked="{{ $options->grandFinal === $value ? 'true' : 'false' }}" aria-describedby="gf-{{ $value }}-d" wire:click="option('grandFinal', '{{ $value }}')" data-test="grand-final-{{ $value }}">
+                                        <i aria-hidden="true"></i>
+                                        <span class="text-[13px] font-bold whitespace-nowrap">{{ $label }}</span>
+                                    </button>
+                                    <p id="gf-{{ $value }}-d" class="m-0 px-3 {{ $help }}" data-test="grand-final-{{ $value }}-help">{{ $text }}</p>
+                                </div>
                             @endforeach
                             </div>
                         </div>
