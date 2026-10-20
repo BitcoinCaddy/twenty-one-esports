@@ -11,14 +11,10 @@ use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Models\TournamentMatchSlot;
-use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Chess\ChessGameService;
 use App\Support\Chess\ChessInvites;
 use App\Support\Tournaments\CupSchedules;
-use App\Support\Tournaments\FormatOptions;
-use App\Support\Tournaments\GameProfile;
-use App\Support\Tournaments\TournamentBrackets;
 use App\Support\Tournaments\TournamentRunner;
 use App\Support\Tournaments\TournamentWaits;
 use Carbon\CarbonImmutable;
@@ -342,22 +338,8 @@ function nowBlockli(TournamentFormat $format, int $n): Tournament
 {
     Queue::fake();
     BlockliOn::play();
-    $tournament = Tournament::factory()->create([
-        'game' => 'blockli', 'mode' => 'correspondence', 'format' => $format,
-        'options' => FormatOptions::fromArray([], GameProfile::for('blockli', 'correspondence'))->toArray(),
-        'capacity' => $n, 'results_mode' => TournamentResultsMode::Players, 'status' => TournamentStatus::Running,
-        'slug' => 'now-blockli-'.fake()->unique()->numberBetween(1, 1_000_000),
-    ]);
 
-    foreach (range(1, $n) as $index) {
-        $user = User::factory()->create(['timezone' => 'Europe/Berlin']);
-        TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $user->id, 'name' => "Player {$index}", 'rating' => 1500 - 10 * $index, 'members' => [$user->id]]);
-    }
-
-    app(TournamentBrackets::class)->generate($tournament, str_repeat('cd', 32));
-    app(TournamentRunner::class)->sync($tournament);
-
-    return $tournament->refresh();
+    return blockliTournament($format, [], $n, ['timezone' => 'Europe/Berlin']);
 }
 
 test('in a correspondence game the hero names the deadline of the side to move, in the viewer\'s time zone', function () {
