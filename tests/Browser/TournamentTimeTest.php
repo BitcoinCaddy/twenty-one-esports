@@ -213,16 +213,21 @@ test('the admin preview follows the typed start live, names MEZ or MESZ, refuses
     $page->context()->addInitScript(BrowserConsole::COLLECTOR);
     $measured = [];
 
-    foreach ([[375, 812], [1440, 900]] as [$width, $height]) {
+    foreach ([[375, 812], [1440, 900], [1920, 1080]] as [$width, $height]) {
         $page->setViewportSize($width, $height);
         $page->goto(ComputeUrl::from($url));
         BrowserWait::until($page, '() => document.querySelector("[data-test=edit-starts-at] [data-preview]") !== null && window.Alpine !== undefined', 10_000);
         $state = $page->evaluate(PREVIEW_STATE);
         $measured[$width] = [...$state['box'], 'tops' => $state['tops']];
 
-        // At 1440 name, start and sign-up close sit in one row: their inputs share one top edge.
-        if ($width === 1440) {
+        // The editor switches on the width of the admin column, not the viewport (bc7c3880): name, start and sign-up close
+        // share one row from 1400 px of that column (1920 px viewport). At 1440 the 240 px sidebar leaves 1136 px, so the
+        // name has its own row and the two dates sit side by side under it.
+        [$nameTop, $startTop, $closeTop] = $state['tops'];
+        if ($width === 1920) {
             expect(array_unique($state['tops']))->toHaveCount(1);
+        } elseif ($width === 1440) {
+            expect($startTop)->toBe($closeTop)->and($nameTop)->toBeLessThan($startTop);
         }
 
         // The browser's first frame is the server's, word for word.
@@ -232,6 +237,8 @@ test('the admin preview follows the typed start live, names MEZ or MESZ, refuses
             ->and($state['zone'])->toBe(LeagueTime::zoneLabel($state['value']))
             ->and([$width, $state['overflow'], $state['errors']])->toBe([$width, 0, []]);
     }
+
+    fwrite(STDERR, "\n[admin-preview] ".json_encode($measured)."\n");
 
     // Typing changes the preview without a round trip: count Livewire requests around it.
     $page->evaluate('() => { window.__requests = 0; const f = window.fetch; window.fetch = (...a) => { window.__requests++; return f(...a); }; }');
