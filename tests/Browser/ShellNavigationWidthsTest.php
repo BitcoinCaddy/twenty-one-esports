@@ -1,6 +1,10 @@
 <?php
 
 use App\Enums\SeriesStatus;
+use App\Enums\TournamentFormat;
+use App\Enums\TournamentResultsMode;
+use App\Models\Admin;
+use App\Models\ChessGame;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Support\Navigation\ShellNavigation;
@@ -9,6 +13,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Pest\Browser\Support\ComputeUrl;
+use Tests\Support\BrowserWait;
+use Tests\Support\TestSigner;
 
 pest()->group('browser');
 
@@ -84,13 +90,20 @@ test('row 1 and row 2 fit 1024, 1280 and 1440 px and the phone bars fit 320, 375
     expect($failures)->toBe([])->and($problems)->toBe([]);
 });
 
-test('row 1 fits its widest real state: Tournaments with its sign-up count, a four-digit mempool count, 12 open cases on Admin and the LIVE badge with a three-digit count, at 1024, 1280, 1440, 1600, 1680 and 1920 px, in English and German, for a guest and an admin', function () {
+test('row 1 fits its widest real state: Tournaments with its sign-up count, a four-digit mempool count, 12 open cases on Admin, the LIVE badge with a three-digit count and the admin\'s live tournament game (cup badge and urgent Actions), at 1024, 1280, 1440, 1600, 1680 and 1920 px, in English and German, for a guest and an admin', function () {
     Tournament::factory()->signup()->count(2)->create(['signup_closes_at' => now()->addDays(2)]);
     // The widest counts row 1 must hold (plan "Mempool-Streifen", P4): four digits in the mempool, cached as the header
     // reads it, and two on Admin (12 disputed series). Without the cases an admin's row 1 looked 35 px roomier than it is.
     Cache::put(ShellNavigation::MEMPOOL_KEY, 1234, 3600);
     SeriesMatch::factory()->accepted()->count(12)->create(['status' => SeriesStatus::Disputed]);
-    $admin = shellAdmin();
+    // The admin plays a live tournament game (V1, 2026-10-20): the cup badge and Actions' urgent state ("Play now") stand
+    // in row 1 beside Admin and the account. With both labels row 1 ran 141 px past 1024 and 144 px past 1280 in German.
+    config(['esports.league.nsec' => (new TestSigner)->secret]);
+    $cup = runningChess(TournamentFormat::SingleElimination, 4, TournamentResultsMode::Players);
+    $cup->forceFill(['published_at' => now()])->save();
+    $admin = ChessGame::query()->with('white')->whereIn('tournament_match_id', $cup->matches()->select('id'))->orderBy('id')->firstOrFail()->white;
+    $admin->forceFill(['name' => 'Ada Admin'])->save();
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
     $problems = [];
     $failures = [];
     $sizes = [];
@@ -113,6 +126,10 @@ test('row 1 fits its widest real state: Tournaments with its sign-up count, a fo
                 $page = shellPage($user, $width, $height);
                 $page->goto(ComputeUrl::from(route('locale.switch', $locale, false)));
                 shellOpen($page, '/rules', $problems);
+                if ($user !== null) {
+                    // The live game's two marks are on screen before row 1 is measured: the guard holds them, not an empty row.
+                    BrowserWait::until($page, '() => !! document.querySelector("[data-test=cup-badge]")?.checkVisibility() && !! document.querySelector("[data-test=actions-urgent]")?.checkVisibility()', 8_000);
+                }
                 $m = $page->evaluate(SHELL_MEASURE);
                 $row = $page->evaluate(SHELL_ROW1);
                 $live = $page->evaluate($liveBadge);

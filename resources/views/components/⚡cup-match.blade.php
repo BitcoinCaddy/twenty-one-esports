@@ -56,13 +56,14 @@ new class extends Component {
     @if ($cup && $variant === 'badge')
         <a href="{{ $cup['href'] }}" title="{{ $cup['label'] }} · {{ $cup['tournament'] }}"
            @class([
-               'relative flex h-11 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-bold whitespace-nowrap',
+               'relative flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 text-[13px] font-bold whitespace-nowrap',
                'bg-btc text-on-btc hover:text-on-btc' => $cup['state'] === 'live',
                'bg-btc-chip text-btc-hi shadow-[inset_0_0_0_1px_var(--color-btc)] hover:text-btc-hi' => $cup['state'] !== 'live',
            ])
            data-test="cup-badge" data-state="{{ $cup['state'] }}" wire:key="cup-badge-{{ $cup['key'] }}">
             <x-icon name="trophy" :size="18" />
-            <span class="max-sm:sr-only">{{ $cup['short'] }}</span>
+            {{-- Phones keep the trophy alone; in row 1 the word waits for 90rem, where it fits beside Actions, Admin and the account (V1: 1024–1440 ran 29–144 px wide). --}}
+            <span class="max-sm:sr-only lg:max-[90rem]:sr-only" data-test="cup-badge-label">{{ $cup['short'] }}</span>
             <span class="sr-only">: {{ $cup['label'] }}, {{ $cup['tournament'] }}</span>
             @if ($cup['state'] === 'live')
                 {{-- The pulse says "now"; the colour is not the only sign: the word and the icon say it too. --}}

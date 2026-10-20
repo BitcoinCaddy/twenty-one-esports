@@ -118,13 +118,14 @@
             {{-- Aktionen: the match dock's entries (its own count, components/⚡match-dock), the dock opens on click; empty, the player's page. --}}
             {{-- An entry under its limit turns it red with its label and time (ActionDock.dc.html "Zu, Frist unter 15 Min"). --}}
             {{-- The board's 36 px button inside a 44 px target (the header row is 56 px; WCAG 2.5.8 and the house 44 px rule). --}}
-            <a href="{{ route('dashboard') }}" class="hidden h-11 shrink-0 items-center lg:inline-flex" x-data="dockCount" x-on:click="openDock($event)"
+            <a href="{{ route('dashboard') }}" class="hidden h-11 shrink-0 items-center lg:inline-flex" x-data="dockCount" x-on:click="openDock($event)" x-bind:title="urgentLabel || null"
                x-bind:aria-label="dockOpen > 0 ? @js(__('Actions')).concat(', ', dockOpen, ' ', @js(__('open'))) : @js(__('Actions'))" data-test="nav-actions">
                 <span class="rv-act" x-bind:class="urgentLabel && 'is-hot'">
                     <x-icon name="bolt" :size="14" class="text-btc" x-show="! urgentLabel" />
                     <span class="rv-live h-5 w-6 justify-center px-0" x-show="urgentLabel" x-cloak aria-hidden="true"><i></i></span>
                     <span class="max-xl:hidden" x-show="! urgentLabel">{{ __('Actions') }}</span>
-                    <span class="whitespace-nowrap" x-show="urgentLabel" x-cloak data-test="actions-urgent"><span x-text="urgentLabel"></span> <b class="tabular-nums" x-text="urgentTime"></b></span>
+                    {{-- The urgent label shows from 2xl; below, the red edge, the live mark and the time say it (the label stays for screen readers and as the title): with a live cup match its badge stands beside, and the two labels pushed row 1 144 px past 1280 (V1, measured as an admin in German). --}}
+                    <span class="whitespace-nowrap" x-show="urgentLabel" x-cloak data-test="actions-urgent"><span class="max-2xl:sr-only" x-text="urgentLabel" data-test="actions-urgent-label"></span> <b class="tabular-nums" x-text="urgentTime"></b></span>
                     <span class="rv-n is-o" x-show="dockOpen > 0" x-text="dockOpen" x-cloak data-test="actions-count"></span>
                 </span>
             </a>
@@ -137,7 +138,8 @@
             @if ($admin)
                 <a href="{{ $admin['href'] }}" @navigate($admin['href']) @if ($section === 'admin') aria-current="page" @endif class="rv-nv hidden h-11 lg:inline-flex" title="{{ __('Admin') }}" data-test="account-admin">
                     <x-icon name="shield-check" :size="14" />
-                    <span class="max-xl:sr-only">{{ __('Admin') }}</span>
+                    {{-- The word from 90rem: at 1280 its 60 px were the search field's (V1, with a live cup match the field shrank to its icon). --}}
+                    <span class="max-[90rem]:sr-only">{{ __('Admin') }}</span>
                     @if ($admin['count'] > 0)
                         <span class="rv-n is-r" data-test="admin-count"><span class="sr-only">, </span>{{ $admin['count'] }}<span class="sr-only"> {{ trans_choice('open case|open cases', $admin['count']) }}</span></span>
                     @endif
@@ -158,7 +160,8 @@
                         {{-- Open match rooms and registered tournaments (UpcomingEvents), listed first in the menu. --}}
                         <span class="rv-n" data-test="upcoming-count"><span class="sr-only">, </span>{{ $upcoming['count'] }}<span class="sr-only"> {{ trans_choice('upcoming match or event|upcoming matches and events', $upcoming['count']) }}</span></span>
                     @endif
-                    <x-icon name="chevron-down" :size="14" />
+                    {{-- Below 80rem the avatar alone opens the menu (aria-haspopup says so): its chevron's 22 px keep the search usable beside a live cup match at 1024 (V1). --}}
+                    <x-icon name="chevron-down" :size="14" class="max-xl:hidden" />
                 </button>
 
                 <div id="account-menu" role="menu" aria-label="{{ __('Account') }}" tabindex="-1" x-ref="accountMenu" x-show="account" x-cloak data-nav-panel

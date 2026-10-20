@@ -131,6 +131,14 @@
         background: var(--color-live-tint);
     }
 
+    /* Actions gives up padding below 80rem like the nav links (V1): with a live cup match beside it row 1 needs these 8 px at
+       1024. After the base rule, so the source order lets it win. */
+    @media (width < 80rem) {
+        .rv-act {
+            padding: 0 8px;
+        }
+    }
+
     .rv-ib {
         position: relative;
         display: inline-grid;
