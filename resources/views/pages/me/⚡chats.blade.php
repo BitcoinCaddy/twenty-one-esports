@@ -104,7 +104,7 @@ new #[Title('Your chats')] #[Layout('layouts::app', ['scripts' => ['resources/js
                                 <span x-show="row.kind === 'game'"><x-icon name="pawn" :size="15" /></span>
                                 <span x-show="row.kind === 'room'"><x-icon name="matches" :size="15" /></span>
                             </span>
-                            <span class="min-w-0 truncate text-[13px] font-bold" x-text="row.title"></span>
+                            <span class="max-w-[60%] shrink-0 truncate text-[13px] font-bold" x-text="row.title" data-test="chat-row-quiet-title"></span>
                             <span class="min-w-0 grow truncate text-xs text-ink-3" x-text="row.subtitle"></span>
                         </a>
                     </li>
