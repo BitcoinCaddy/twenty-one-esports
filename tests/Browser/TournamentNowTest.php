@@ -300,6 +300,11 @@ test('with the stream on air the floating "Watch live" tab never covers the hero
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     }
 
+    // Positive control: a throw and a missing image reach the same collector.
+    $page->evaluate('() => { setTimeout(() => { throw new Error("live tab positive control") }, 0); const img = new Image(); img.src = "/__missing-live-tab-control.png"; document.body.append(img); return null; }');
+    BrowserWait::until($page, '() => window.__errors.length >= 2', 5_000);
+    expect(implode("\n", $page->evaluate('() => window.__errors')))->toContain('live tab positive control')->toContain('__missing-live-tab-control.png');
+
     fwrite(STDERR, "\n[now-live-tab] ".json_encode($measured)."\n");
     File::deleteDirectory($hls);
 });

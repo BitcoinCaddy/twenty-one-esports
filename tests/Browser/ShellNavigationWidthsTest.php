@@ -87,6 +87,7 @@ test('row 1 and row 2 fit 1024, 1280 and 1440 px and the phone bars fit 320, 375
         // The footer's nine items, each on one line: at 1024 in German every one of them ran on two (E2, 2026-10-20).
         $footer = $page->evaluate(SHELL_FOOTER);
         fwrite(STDERR, "\n[shell] admin de @{$width}: ".json_encode($m + ['footer' => $footer]));
+        expect($footer)->toBeArray("@{$width}: the desktop footer row [data-test=footer-row] is missing or hidden");
         expect($m['lang'])->toBe('de')
             ->and($m['scroll'])->toBeLessThanOrEqual($m['client'])
             ->and($m['squeezed'])->toBe([])
