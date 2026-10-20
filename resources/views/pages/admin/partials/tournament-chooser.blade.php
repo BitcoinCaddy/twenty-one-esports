@@ -418,7 +418,7 @@
                                         <i aria-hidden="true"></i>
                                         <span class="text-[13px] font-bold whitespace-nowrap">{{ $label }}</span>
                                     </button>
-                                    <p id="gf-{{ $value }}-d" class="m-0 px-3 {{ $help }}" data-test="grand-final-{{ $value }}-help">{{ $text }}</p>
+                                    <p id="gf-{{ $value }}-d" class="m-0 cursor-pointer px-3 {{ $help }}" wire:click="option('grandFinal', '{{ $value }}')" data-test="grand-final-{{ $value }}-help">{{ $text }}</p>
                                 </div>
                             @endforeach
                             </div>

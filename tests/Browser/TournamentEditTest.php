@@ -422,5 +422,9 @@ test('the grand final choices of a double elimination are one-line radios with t
         ->and($page->evaluate('() => window.__errors'))->toBe([])
         ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([])
         ->and($page->evaluate('() => document.documentElement.lang'))->toBe('de');
+
+    // The explanation selects its choice too, as it did inside the old card.
+    $page->locator('[data-test=grand-final-skip-help]')->click();
+    BrowserWait::until($page, '() => document.querySelector("[data-test=grand-final-skip]").getAttribute("aria-checked") === "true"', 5_000);
     fwrite(STDERR, "\n[grand-final] ".json_encode($measured)."\n");
 });
