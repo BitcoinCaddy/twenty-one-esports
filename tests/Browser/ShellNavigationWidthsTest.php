@@ -76,15 +76,23 @@ test('row 1 and row 2 fit 1024, 1280 and 1440 px and the phone bars fit 320, 375
     }
 
     // German labels run longer ("Einstellungen", "Herausfordern"): the tightest desktop widths once more, as the admin.
+    // The footer's counts at a grown league's size (HomeBoard::stats, cached as it reads them): with them every footer item
+    // ran on two lines at 1024 in German (E2).
+    Cache::putMany(['footer.stats' => ['players' => 12345, 'clans' => 1234, 'games' => 123456], 'illuminate:cache:flexible:created:footer.stats' => now()->getTimestamp()], 3600);
     foreach ([1024 => 768, 1280 => 800, 1440 => 900] as $width => $height) {
         $page = shellPage($users['admin'], $width, $height);
         $page->goto(ComputeUrl::from(route('locale.switch', 'de', false)));
         shellOpen($page, '/rules', $problems);
         $m = $page->evaluate(SHELL_MEASURE);
-        fwrite(STDERR, "\n[shell] admin de @{$width}: ".json_encode($m));
+        // The footer's nine items, each on one line: at 1024 in German every one of them ran on two (E2, 2026-10-20).
+        $footer = $page->evaluate(SHELL_FOOTER);
+        fwrite(STDERR, "\n[shell] admin de @{$width}: ".json_encode($m + ['footer' => $footer]));
         expect($m['lang'])->toBe('de')
             ->and($m['scroll'])->toBeLessThanOrEqual($m['client'])
-            ->and($m['squeezed'])->toBe([]);
+            ->and($m['squeezed'])->toBe([])
+            ->and($footer['items'])->toBe(9)
+            ->and($footer['wrapped'])->toBe([], "@{$width}: footer ".json_encode($footer))
+            ->and($footer['right'])->toBeLessThanOrEqual($width);
     }
 
     expect($failures)->toBe([])->and($problems)->toBe([]);

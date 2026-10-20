@@ -128,6 +128,18 @@ const SHELL_ROW1 = <<<'JS'
     }
     JS;
 
+/** The desktop footer's counts and links (E2): each on one line, none past the window. */
+const SHELL_FOOTER = <<<'JS'
+    () => {
+        const row = document.querySelector('[data-test=footer-row]');
+        if (!row || !row.checkVisibility()) return null;
+        const lines = (el) => { const tops = new Set(); const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = walk.nextNode())) { if (!n.textContent.trim()) continue; const r = document.createRange(); r.selectNodeContents(n); for (const q of r.getClientRects()) if (q.width > 1) tops.add(Math.round(q.top)); } return tops.size; };
+        const items = [...row.querySelectorAll('span:has(> b), a, nav > b')].filter((el) => el.checkVisibility());
+        return { wrapped: items.filter((el) => lines(el) > 1).map((el) => `${el.textContent.trim().replace(/\s+/g, ' ')} ${lines(el)} lines`), items: items.length,
+            right: Math.round(Math.max(...items.map((el) => el.getBoundingClientRect().right))), height: Math.round(row.getBoundingClientRect().height) };
+    }
+    JS;
+
 /** Every finite animation finished (a sheet measured mid-rise is 24 px off), then two frames. */
 const SHELL_SETTLE = '() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => null))).then(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)))))';
 
