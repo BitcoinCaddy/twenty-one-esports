@@ -28,6 +28,8 @@ use App\Support\Tournaments\TournamentDesk;
  * browser needs to find their messages in the player's inbox (resources/js/chatInbox.js): the desk of every
  * tournament whose desk is open to the player, the chat of every own game and the room of every own series that
  * runs or ended within DAYS days. The browser shows each one's newest message, its time and what is new.
+ *
+ * @phpstan-type Chat array{kind: 'desk'|'game'|'room', key: string, title: string, subtitle: string, href: string, at: int, since: int|null, settled: int|null, me: string, match: string|null, desk: int|null, opponent: string|null, members: list<string>, opponents: list<string>, managers: list<string>, names: array<string, string>}
  */
 final class ChatInbox
 {
@@ -38,7 +40,7 @@ final class ChatInbox
     public const LIMIT = 40;
 
     /**
-     * @return list<array{kind: 'desk'|'game'|'room', key: string, title: string, subtitle: string, href: string, at: int, since: int|null, settled: int|null, me: string, match: string|null, desk: int|null, opponent: string|null, members: list<string>, opponents: list<string>, managers: list<string>, names: array<string, string>}>
+     * @return list<Chat>
      */
     public static function for(User $user): array
     {
@@ -71,7 +73,7 @@ final class ChatInbox
         ];
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<Chat> */
     private static function desks(User $user): array
     {
         $signedUp = TournamentSignup::query()->active()->where(fn ($query) => $query->where('user_id', $user->id)->orWhereJsonContains('members', $user->id))->pluck('tournament_id');
@@ -108,7 +110,7 @@ final class ChatInbox
         return $desks;
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<Chat> */
     private static function games(User $user): array
     {
         $since = now()->subDays(self::DAYS);
@@ -140,7 +142,7 @@ final class ChatInbox
         return $games;
     }
 
-    /** @return array<string, mixed> */
+    /** @return Chat */
     private static function game(User $user, User $opponent, string $key, string $match, string $name, bool $live, string $href, ChessGame|BoardGame $game): array
     {
         return self::chat('game', $key, $user, [
@@ -157,12 +159,14 @@ final class ChatInbox
         ]);
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<Chat> */
     private static function rooms(User $user): array
     {
         $running = array_map(fn (SeriesStatus $status): string => $status->value, array_filter(SeriesStatus::cases(), fn (SeriesStatus $status): bool => $status->isRunning()));
         $series = OpenMatches::involving(SeriesMatch::query(), $user, OpenMatches::lineupsOf($user))
             ->where(fn ($query) => $query->whereIn('status', $running)->orWhere('finished_at', '>=', now()->subDays(self::DAYS)))
+            // RoomMembers reads both lineups' seats per series: loaded here at once, not once per room.
+            ->with(['challengerLineup.seats.user.clanMember', 'challengedLineup.seats.user.clanMember'])
             ->latest('id')->limit(10)->get();
         $rooms = [];
 
@@ -195,8 +199,8 @@ final class ChatInbox
 
     /**
      * @param  'desk'|'game'|'room'  $kind
-     * @param  array<string, mixed>  $fields
-     * @return array<string, mixed>
+     * @param  array{title: string, subtitle: string, href: string, at: int, since?: int|null, settled?: int|null, match?: string|null, desk?: int|null, opponent?: string|null, members?: list<string>, opponents?: list<string>, managers?: list<string>, names?: array<string, string>}  $fields
+     * @return Chat
      */
     private static function chat(string $kind, string $key, User $user, array $fields): array
     {

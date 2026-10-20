@@ -25,7 +25,9 @@ final class RoomMembers
             }
 
             // A tournament's roster side (mix team, RL 1v1 player) has no lineup (P8b).
-            foreach (User::query()->whereIn('id', $match->rosterSide($side))->get() as $player) {
+            $roster = $match->rosterSide($side);
+
+            foreach ($roster === [] ? [] : User::query()->whereIn('id', $roster)->get() as $player) {
                 $members[$player->pubkey] = ['pubkey' => $player->pubkey, 'name' => $player->displayName(), 'side' => $side];
             }
         }

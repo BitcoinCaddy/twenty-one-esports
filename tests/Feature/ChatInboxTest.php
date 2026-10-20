@@ -12,6 +12,7 @@ use App\Support\Board\BoardGameService;
 use App\Support\Chat\ChatInbox;
 use App\Support\Series\RoomMembers;
 use App\Support\Tournaments\TournamentDesk;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 use Tests\Support\BlockliOn;
@@ -97,6 +98,34 @@ test('the room of a running series with its members, its sides and the opponents
         ->assertSeeInOrder(['data-test="mobile-upcoming"', 'data-test="mobile-chats"'], false);
 });
 
+test('several rooms, desks and games load their members at once, and the page answers a roundtrip', function () {
+    $lineup = Lineup::factory()->mode('2v2')->ready()->create();
+    $player = $lineup->activeSeats()[0]->user;
+    $room = fn () => SeriesMatch::factory()->accepted()->create(['challenger_lineup_id' => $lineup->id, 'challenged_lineup_id' => Lineup::factory()->mode('2v2')->ready()->create()->id]);
+    $queries = function () use ($player): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        ChatInbox::for($player);
+
+        return count(DB::getQueryLog());
+    };
+    $room();
+    $room();
+    foreach (User::factory()->count(3)->create() as $opponent) {
+        app(BoardGameService::class)->start('blockli', $player, $opponent);
+    }
+
+    // More than one room: their lineups come eager-loaded (lazy loading throws outside production), so one more
+    // room costs no query.
+    $two = $queries();
+    $room();
+
+    expect($queries())->toBe($two)
+        ->and(collect(ChatInbox::for($player))->countBy('kind')->all())->toEqual(['room' => 3, 'game' => 3]);
+
+    Livewire::actingAs($player)->test('pages::me.chats')->call('$refresh')->assertOk();
+});
+
 test('the page hands the browser the chats and the relays, and the account menu leads there below the matches', function () {
     [$me, $anna] = User::factory()->count(2)->create();
     $board = app(BoardGameService::class)->start('blockli', $me, $anna);
@@ -125,5 +154,5 @@ test('the browser finds each chat\'s newest message and what is new', function (
     $run = Process::path(base_path())->timeout(60)->run(['node', '--test', '--test-reporter=spec', 'tests/js/chatInbox.test.mjs']);
 
     expect($run->successful())->toBeTrue($run->output().$run->errorOutput())
-        ->and($run->output())->toContain('ℹ pass 5')->toContain('ℹ skipped 0');
+        ->and($run->output())->toContain('ℹ pass 6')->toContain('ℹ skipped 0');
 });
