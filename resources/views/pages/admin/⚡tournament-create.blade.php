@@ -191,7 +191,8 @@ new #[Title('New tournament')] #[Layout('layouts::app', ['section' => 'admin'])]
 
     @include('pages.admin.partials.prize-pot', ['potTournament' => null, 'potSave' => null])
 
-    <div class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5">
+    {{-- Summary and button in one row from 900 px of the admin column (the admin page's container); "Turnier anlegen" wrapped at 1024 and 1280 (E1). --}}
+    <div class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-4 lg:px-6 lg:py-5 @min-[900px]/admin:flex-row @min-[900px]/admin:items-center @min-[900px]/admin:gap-4">
         @island(name: 'summary')
             @php
                 $summaryRow = $this->evaluation->row($this->format);
@@ -204,8 +205,8 @@ new #[Title('New tournament')] #[Layout('layouts::app', ['section' => 'admin'])]
                 <span class="text-xs text-ink-2">{{ __('Next: sign-up and sponsors on the tournament page. The format can change until sign-up closes.') }}</span>
             </span>
         @endisland
-        <span class="hidden grow lg:block"></span>
+        <span class="hidden grow @min-[900px]/admin:block"></span>
         @error('format')<span class="text-[13px] text-loss" role="alert">{{ $message }}</span>@enderror
-        <x-button wire:click="create" data-test="tournament-create-button">{{ __('Create tournament') }}</x-button>
+        <x-button wire:click="create" class="shrink-0 self-start whitespace-nowrap @min-[900px]/admin:self-auto" data-test="tournament-create-button">{{ __('Create tournament') }}</x-button>
     </div>
 </x-admin.page>

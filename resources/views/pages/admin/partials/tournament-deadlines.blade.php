@@ -47,7 +47,9 @@
             ]) }}</span>
         @endif
     </span>
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
+    {{-- Four fields side by side only where each keeps about 340 px for its label and help (the admin column from 1400 px); at
+         1024 the four columns were 156 px and the help ran 4 to 8 lines (E1). --}}
+    <div class="grid grid-cols-1 gap-3 @min-[480px]/admin:grid-cols-2 @min-[480px]/admin:gap-4 @min-[1400px]/admin:grid-cols-4">
         @foreach ($deadlines as [$property, $column, $label, $hint])
             <label class="flex min-w-0 flex-col text-xs text-ink-2" wire:key="deadline-{{ $column }}">
                 <span class="rv-lb">{{ $label }}</span>
@@ -73,8 +75,9 @@
     @endphp
     {{-- The night pause in the board's section (`sec`) and switch row (`srow` + `sw`), the times as plain fields: no native control. --}}
     <section aria-labelledby="night-pause-h" class="rv-sec" data-test="tournament-night-pause">
-        <div class="flex items-start gap-4">
-            <span class="flex min-w-0 grow flex-col gap-1">
+        {{-- State and switch go under the text where both do not fit beside it (the text ran 12 lines in 140 px at 390). --}}
+        <div class="flex flex-wrap items-start gap-x-4 gap-y-3">
+            <span class="flex min-w-0 grow basis-[18rem] flex-col gap-1">
                 <h2 id="night-pause-h" class="rv-h3">{{ __('Night pause') }}</h2>
                 <span class="max-w-[80ch] text-xs leading-normal text-ink-2">{{ __('From :until to :resume (Berlin) no new match starts and no deadline runs. A match under way may be played to its end; its deadlines stop and go on at :resume.', [
                     'until' => \App\Support\Tournaments\NightPause::untilLabel($nightTimes['until']), 'resume' => $nightTimes['resume'],

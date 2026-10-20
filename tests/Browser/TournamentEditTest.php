@@ -428,3 +428,87 @@ test('the grand final choices of a double elimination are one-line radios with t
     BrowserWait::until($page, '() => document.querySelector("[data-test=grand-final-skip]").getAttribute("aria-checked") === "true"', 5_000);
     fwrite(STDERR, "\n[grand-final] ".json_encode($measured)."\n");
 });
+
+test('the tournament editor lays out by the width its column has: no control, figure or system description wraps, no help runs in a narrow column, at 390, 1024, 1280 and 1920 in German on create and edit', function () {
+    // E1 (2026-10-20, measured as an admin in German): beside the 240 px sidebar the `lg:`/`xl:` layout gave the facts 53 px
+    // ("30 oder 31" on 3 lines), the deadline help 156 px (4 to 8 lines), the results cards
+    // 277 px (7 lines), and "Turnier anlegen" broke in two. The editor now switches on its column (the `admin` container).
+    $admin = User::factory()->create(['name' => 'satsjaeger', 'locale' => 'de']);
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+    $edit = Tournament::factory()->create(['format' => TournamentFormat::DoubleElimination, 'capacity' => 16, 'created_by_id' => $admin->id,
+        'status' => TournamentStatus::Signup, 'signup_closes_at' => now()->addDays(3), 'published_at' => now()]);
+    $measure = <<<'JS'
+        () => {
+            const root = document.querySelector('[data-test=tournament-create], [data-test=tournament-edit]');
+            const vis = (el) => el.checkVisibility({ checkVisibilityCSS: true }) && el.getBoundingClientRect().width > 1;
+            const lines = (el, deep = true) => { const tops = new Set(); const nodes = deep ? (() => { const out = [], w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) out.push(n); return out; })() : [...el.childNodes].filter((n) => n.nodeType === 3);
+                for (const n of nodes) { if (!n.textContent.trim() || !vis(n.parentElement)) continue; const r = document.createRange(); r.selectNodeContents(n); for (const q of r.getClientRects()) if (q.width > 1) tops.add(Math.round(q.top)); } return tops.size; };
+            const say = (el) => (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
+            const problems = [];
+            // Rule R11: a control never wraps its text (each text node on one line).
+            // The "who enters results" cards carry their sentence inside the radio (a known R11 exception, see below).
+            for (const el of root.querySelectorAll('button, a, [role=radio]')) {
+                if (!vis(el) || el.closest('svg') || el.matches('[data-test^=results-]')) continue;
+                const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
+                while ((n = w.nextNode())) { if (!n.textContent.trim() || !vis(n.parentElement)) continue; const r = document.createRange(); r.selectNodeContents(n); const t = new Set([...r.getClientRects()].filter((q) => q.width > 1).map((q) => Math.round(q.top))); if (t.size > 1) { problems.push(`control "${say(el)}" on ${t.size} lines`); break; } }
+            }
+            // The facts on one line each, and from 1024 every system's short description too (a phone's card may give it two).
+            for (const el of root.querySelectorAll(innerWidth >= 1024 ? '[data-test=facts] dt, [data-test=facts] dd, [data-test=format-rows] [role=radio] .text-ink-3' : '[data-test=facts] dt, [data-test=facts] dd')) if (vis(el) && lines(el) > 1) problems.push(`"${say(el)}" on ${lines(el)} lines`);
+            // A game's name on at most two lines.
+            for (const el of root.querySelectorAll('[data-test^=game-row-] > span:first-child')) if (vis(el) && lines(el) > 2) problems.push(`game "${say(el)}" on ${lines(el)} lines`);
+            // No help in a narrow column: more than 6 words in a box under 240 px over 3 lines (the review's squeeze rule).
+            for (const el of root.querySelectorAll('*')) {
+                if (!vis(el) || el.closest('svg')) continue;
+                const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').trim();
+                if (own.split(/\s+/).filter(Boolean).length > 6 && el.getBoundingClientRect().width < 240 && lines(el, false) >= 3) problems.push(`"${own.slice(0, 40)}" in ${Math.round(el.getBoundingClientRect().width)} px, ${lines(el, false)} lines`);
+            }
+            // The results cards: full width up to 900 px of the column, two from there; their sentence at most 3 lines from 1024
+            // (7 lines in 277 px before).
+            if (innerWidth >= 1024) for (const el of root.querySelectorAll('[data-test^=results-][role=radio] span span:last-child')) if (vis(el) && lines(el) > 3) problems.push(`results "${say(el)}" on ${lines(el)} lines in ${Math.round(el.getBoundingClientRect().width)} px`);
+            // Every system's time bar keeps room to read (its tick labels ran into each other at 1280 before).
+            for (const el of root.querySelectorAll('[data-test=format-rows] button[role=radio] > span[aria-hidden=true]')) if (vis(el) && el.getBoundingClientRect().width < 160) problems.push(`time bar ${Math.round(el.getBoundingClientRect().width)} px`);
+            // The preview's labels stay inside its figure.
+            const figure = document.querySelector('[data-test=preview]');
+            if (figure) for (const el of figure.querySelectorAll('[data-test=preview-heads] span, svg text')) if (vis(el) && el.getBoundingClientRect().right > figure.getBoundingClientRect().right + 1) problems.push(`preview label "${say(el)}" past the figure`);
+            return { problems, overflow: document.documentElement.scrollWidth - innerWidth, lang: document.documentElement.lang };
+        }
+        JS;
+
+    $page = visit(BrowserLogin::url($admin))->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+    $check = function (string $key) use ($page, $measure, &$measured): void {
+        $m = $measured[$key] = $page->evaluate($measure);
+        // Console and network per page (every goto is a fresh collector), so a failure names the page it came from.
+        expect($page->evaluate('() => window.__errors'))->toBe([], "{$key}: console")
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "{$key}: responses")
+            ->and($m['lang'])->toBe('de')
+            ->and($m['overflow'])->toBe(0, "{$key}: sideways scroll")
+            ->and($m['problems'])->toBe([], "{$key}: ".json_encode($m['problems']));
+    };
+
+    foreach ([[1024, 768], [1280, 800], [390, 844], [1920, 1080]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('admin.tournaments.create')));
+        BrowserWait::until($page, '() => document.readyState === "complete" && !! window.Alpine && !! document.querySelector("[data-test=row-two-stage]")', 10_000);
+        foreach (['row-two-stage', 'row-double-elimination', 'row-swiss'] as $row) {
+            $page->locator("[data-test={$row}]")->click();
+            BrowserWait::until($page, "() => document.querySelector('[data-test={$row}]').getAttribute('aria-checked') === 'true'", 5_000);
+            $check("create {$width} {$row}");
+        }
+        $page->locator('[data-test=results-director]')->click();
+        BrowserWait::until($page, '() => !! document.querySelector("[data-test=directors]")', 5_000);
+        $check("create {$width} director");
+
+        $page->goto(ComputeUrl::from(route('admin.tournaments.edit', $edit)));
+        BrowserWait::until($page, '() => document.readyState === "complete" && !! window.Alpine && !! document.querySelector("[data-test=edit-save]")', 10_000);
+        $check("edit {$width}");
+        editShot($page, "edit-layout-de-{$width}");
+    }
+
+    // Positive control: a throw and a missing image reach the same collector.
+    $page->evaluate('() => { setTimeout(() => { throw new Error("editor positive control") }, 0); const img = new Image(); img.src = "/__missing-editor-control.png"; document.body.append(img); return null; }');
+    BrowserWait::until($page, '() => window.__errors.length >= 2', 5_000);
+    expect(implode("\n", $page->evaluate('() => window.__errors')))->toContain('editor positive control')->toContain('__missing-editor-control.png');
+    fwrite(STDERR, "\n[editor-layout] ".json_encode($measured)."\n");
+});

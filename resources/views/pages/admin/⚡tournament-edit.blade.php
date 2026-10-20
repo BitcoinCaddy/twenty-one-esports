@@ -475,6 +475,8 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
         'result' => __('Result'), 'elo' => __('Elo'), 'voided' => __('Voided and paired again'), 'held' => __('On hold'), 'forfeited' => __('Lost by forfeit'),
         'pot_sats' => __('Sats in the league wallet'),
     ];
+    // The start (and, in sign-up, the close) beside each other from 640 px of the admin column, beside the name from 1400 (E1).
+    $datesClass = $tournament->status === TournamentStatus::Signup ? 'col-span-2 @min-[640px]/admin:col-span-1' : 'col-span-2 @min-[1400px]/admin:col-span-1';
 @endphp
 
 <x-admin.page active="tournaments" :title="__('Edit :name', ['name' => $tournament->name])" :crumbs="[[__('Tournaments'), route('admin.tournaments')], [$tournament->name, route('tournaments.show', $tournament)]]" :notice="$notice" notice-test="edit-notice" :error="$error" error-test="edit-error" data-test="tournament-edit">
@@ -501,17 +503,19 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
     @if ($ended)
         <p class="m-0 rounded border border-hairline bg-card px-4 py-4 text-[13px] text-ink-2" data-test="edit-ended">{{ __('This tournament has ended; it can no longer be changed.') }}</p>
     @else
-        <section aria-label="{{ __('Basics') }}" class="grid grid-cols-2 gap-3 rounded border border-hairline bg-card p-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.5fr)] lg:gap-4 lg:px-6 lg:py-5">
-            <label class="col-span-2 flex min-w-0 flex-col gap-1.5 text-xs text-ink-2 lg:col-span-1">
+        {{-- Name, start and sign-up close in one row from 1400 px of the admin column, where each date keeps the 330 px its line
+             "= Fri, 23 Oct 2026, 2:08 PM CEST · 12:08 UTC" needs; below, the name on its own row and the dates under it (E1). --}}
+        <section aria-label="{{ __('Basics') }}" class="grid grid-cols-2 gap-3 rounded border border-hairline bg-card p-4 lg:gap-4 lg:px-6 lg:py-5 @min-[1400px]/admin:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,1.5fr)]">
+            <label class="col-span-2 flex min-w-0 flex-col gap-1.5 text-xs text-ink-2 @min-[1400px]/admin:col-span-1">
                 {{ __('Name') }}
                 <input wire:model="name" maxlength="80" data-test="edit-name" class="{{ $field }}">
                 @error('name')<span class="text-loss" role="alert">{{ $message }}</span>@enderror
             </label>
-            <x-berlin-datetime-input model="startsAt" :label="__('Starts')" :value="$startsAt" test="edit-starts-at" class="col-span-2 lg:col-span-1" />
+            <x-berlin-datetime-input model="startsAt" :label="__('Starts')" :value="$startsAt" test="edit-starts-at" :class="$datesClass" />
             @if ($tournament->status === TournamentStatus::Signup)
-                <x-berlin-datetime-input model="closesAt" :label="__('Sign-up closes')" :value="$closesAt" test="edit-closes-at" class="col-span-2 lg:col-span-1" />
+                <x-berlin-datetime-input model="closesAt" :label="__('Sign-up closes')" :value="$closesAt" test="edit-closes-at" :class="$datesClass" />
             @endif
-            <label class="col-span-2 flex min-w-0 flex-col gap-1.5 text-xs text-ink-2 lg:col-span-3">
+            <label class="col-span-2 flex min-w-0 flex-col gap-1.5 text-xs text-ink-2 @min-[1400px]/admin:col-span-3">
                 {{ __('Description (optional)') }}
                 <textarea wire:model="description" maxlength="1000" rows="3" data-test="edit-description"
                           class="min-h-24 w-full rounded-md border border-edge bg-ground px-3 py-2.5 text-[13px] leading-normal text-ink"></textarea>
@@ -556,7 +560,8 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
             @include('pages.admin.partials.tournament-deadlines')
         @endisland
 
-        <div class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-4 lg:flex-row lg:items-center lg:gap-4 lg:px-6 lg:py-5">
+        {{-- Summary and buttons in one row from 900 px of the admin column; at 1024 the buttons left the summary 144 px (E1). --}}
+        <div class="flex flex-col gap-3 rounded border border-hairline bg-card px-4 py-4 lg:px-6 lg:py-5 @min-[900px]/admin:flex-row @min-[900px]/admin:items-center @min-[900px]/admin:gap-4">
             @island(name: 'summary')
                 {{-- An island renders in its own scope: nothing from the @php block above reaches it. --}}
                 <span class="flex min-w-0 flex-col gap-2" data-test="edit-summary">
@@ -574,12 +579,12 @@ new #[Layout('layouts::app', ['section' => 'admin'])] class extends TournamentFo
                     @endif
                 </span>
             @endisland
-            <span class="hidden grow lg:block"></span>
+            <span class="hidden grow @min-[900px]/admin:block"></span>
             <span class="flex shrink-0 flex-wrap gap-3">
-                <x-button wire:click="save" class="shrink-0" data-test="edit-save">{{ __('Save changes') }}</x-button>
+                <x-button wire:click="save" class="shrink-0 whitespace-nowrap" data-test="edit-save">{{ __('Save changes') }}</x-button>
                 {{-- A draft's next step beside its save (user, 2026-10-01): it saves first, then opens the publish form; the top of the page has it too. --}}
                 @if ($tournament->status === TournamentStatus::Draft)
-                    <x-button variant="secondary" wire:click="saveAndPublish" icon="send" class="shrink-0" data-test="edit-publish">{{ __('Save and publish') }}</x-button>
+                    <x-button variant="secondary" wire:click="saveAndPublish" icon="send" class="shrink-0 whitespace-nowrap" data-test="edit-publish">{{ __('Save and publish') }}</x-button>
                 @endif
             </span>
         </div>
