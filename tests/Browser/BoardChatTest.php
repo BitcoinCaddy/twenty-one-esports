@@ -59,6 +59,12 @@ function boardChatSees(string $from, string $text): string
     return '() => [...document.querySelectorAll("section[aria-labelledby=chat-h] [data-test=chat-messages] li[data-from='.$from.']")].some((li) => li.innerText.includes('.json_encode($text).'))';
 }
 
+/** In the page: everything the chat shows is read (no badge) and this device's marker holds its newest message. */
+function boardChatRead(): string
+{
+    return '() => { const chat = Alpine.$data(document.querySelector("[data-test=chat]")); const marker = JSON.parse(localStorage.getItem("esports.chat.read") ?? "{}")[chat.readKey]; return chat.messages.length > 0 && chat.unread === 0 && marker === Math.max(...chat.messages.map((m) => m.at)); }';
+}
+
 function boardChatSend(Page $page, string $text): void
 {
     $page->locator('#chatin')->fill($text);
@@ -91,6 +97,8 @@ test('two Blockli players chat through a relay without a click, even with a late
 
         boardChatSend($pageA, 'gl hf');
         BrowserWait::until($pageB, boardChatSees('them', 'gl hf'), 10_000);
+        // The desktop panel shows in the front tab: what came in is read at once (gameChat.markRead(true) in chat.blade.php).
+        BrowserWait::until($pageB, boardChatRead(), 5_000);
         boardChatSend($pageB, 'you too');
         BrowserWait::until($pageA, boardChatSees('them', 'you too'), 10_000);
 
@@ -104,6 +112,14 @@ test('two Blockli players chat through a relay without a click, even with a late
         BrowserWait::until($pageA, '() => document.querySelector("[data-test=chat-sheet-toggle]")?.getBoundingClientRect().height > 0', 5_000);
         $pageA->locator('[data-test=chat-sheet-toggle]')->click();
         BrowserWait::until($pageA, '() => [...document.querySelectorAll("#sheet-body [data-test=chat-messages] li[data-from=them]")].some((li) => li.offsetParent !== null && li.innerText.includes("you too"))', 5_000);
+
+        // A message that arrives while the sheet is open is read at once: no badge, the marker moves (markRead() in chat.blade.php).
+        // Narrow (the panel's twin is off), and a full second past the newest message: messages carry whole seconds, one sent
+        // in the same second would not count as new against the marker.
+        BrowserWait::until($pageA, '() => { const chat = Alpine.$data(document.querySelector("[data-test=chat]")); return chat.wide === false && Date.now() >= Math.max(...chat.messages.map((m) => m.at)) + 1000; }', 5_000);
+        boardChatSend($pageB, 'one more');
+        BrowserWait::until($pageA, '() => [...document.querySelectorAll("#sheet-body [data-test=chat-messages] li[data-from=them]")].some((li) => li.innerText.includes("one more"))', 10_000);
+        BrowserWait::until($pageA, boardChatRead(), 5_000);
 
         expect(array_values(array_unique($tags)))->toBe(['board:'.$game->id])
             ->and(ChatMute::query()->where('user_id', $bert->id)->pluck('muted_pubkey')->all())->toBe([$anna->pubkey])
