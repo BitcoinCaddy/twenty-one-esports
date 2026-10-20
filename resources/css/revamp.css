@@ -103,6 +103,11 @@
         opacity: 1;
     }
 
+    /* A placeholder that would be cut is not shown (shellHeader.watchSearchFit, E3): never half a word. */
+    .rv-srch.is-tight input::placeholder {
+        color: transparent;
+    }
+
     .rv-act {
         display: inline-flex;
         flex: none;

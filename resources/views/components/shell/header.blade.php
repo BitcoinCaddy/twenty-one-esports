@@ -101,7 +101,9 @@
 
         <span class="grow"></span>
 
-        {{-- The site search (P16, SearchController): from lg a field in the row, on phones a button that opens the field under it. "/" focuses it. --}}
+        {{-- The site search (P16, SearchController): from lg a field in the row, on phones a button that opens the field under it. "/" focuses it.
+             Row 1 leaves the field what it does not need (21 px of text at 1024 in English, on air with a live cup game): a placeholder
+             that does not fit whole is not shown, rather than cut to "Searc" (E3, shellHeader.watchSearchFit). --}}
         <form method="GET" action="{{ route('search') }}" role="search" class="rv-srch mr-2 hidden lg:flex" data-test="search-inline">
             <x-icon name="search" :size="14" class="shrink-0" />
             <label for="site-search-inline" class="sr-only">{{ $searchLabel }}</label>

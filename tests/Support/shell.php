@@ -118,6 +118,14 @@ const SHELL_ROW1 = <<<'JS'
             previous = [name(el), right];
             return `${name(el)} ${left}-${right}`;
         });
+        // The search field's placeholder is whole or not shown, never cut ("Searc" at 1024 in English on air with a live cup game, E3).
+        const field = document.querySelector('#site-search-inline');
+        if (field && vis(field) && field.placeholder) {
+            const style = getComputedStyle(field), context = document.createElement('canvas').getContext('2d');
+            context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+            const need = context.measureText(field.placeholder).width, room = field.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            if (getComputedStyle(field, '::placeholder').color !== 'rgba(0, 0, 0, 0)' && need > room + 0.5) problems.push(`search placeholder cut ${Math.round(need)}>${Math.round(room)}`);
+        }
         const text = (sel) => { const el = document.querySelector(sel); return el && vis(el) ? el.innerText.trim() : null; };
         // Any two items overlapping, not only neighbours (the LIVE badge ran under the search button once).
         const rects = items.map((el) => [name(el), el.getBoundingClientRect()]);

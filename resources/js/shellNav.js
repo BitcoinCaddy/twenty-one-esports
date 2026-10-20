@@ -49,10 +49,34 @@ export function shellHeader() {
             window.addEventListener('hub-toggle', (event) => this.toggleHub(event.detail), { signal });
             window.addEventListener('more-state', (event) => { this.more = event.detail; }, { signal });
             this.$nextTick(() => this.revealActiveChip());
+            this.watchSearchFit();
         },
 
         destroy() {
             this.teardown?.abort();
+            this.searchFit?.disconnect();
+        },
+
+        /**
+         * Row 1's search field takes what the row leaves it: 21 px of text at 1024 and 36 at 1280 in English with the stream on air
+         * and a live cup game, where its placeholder showed as "Searc" (E3, 2026-10-20). A placeholder that does not fit whole is
+         * not shown (`is-tight`); the magnifier stays, and the field keeps its label and title.
+         */
+        watchSearchFit() {
+            const input = this.$refs.searchInline;
+            if (!input || typeof ResizeObserver === 'undefined') return;
+            const context = document.createElement('canvas').getContext('2d');
+            const fit = () => {
+                if (!context || input.clientWidth === 0) return;
+                const style = getComputedStyle(input);
+                context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+                const room = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+                input.parentElement.classList.toggle('is-tight', context.measureText(input.placeholder).width > room);
+            };
+            this.searchFit = new ResizeObserver(fit);
+            this.searchFit.observe(input);
+            // Webfonts change the measure once they arrive.
+            document.fonts?.ready.then(fit);
         },
 
         hotkey(event) {
