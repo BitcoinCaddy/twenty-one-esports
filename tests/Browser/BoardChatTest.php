@@ -133,3 +133,52 @@ test('two Blockli players chat through a relay without a click, even with a late
         $relay->stop(1);
     }
 });
+
+test('a 39-character opponent name keeps the chat on the page: the mute button wraps under the sentence and truncates only the name, at 390 and 1440, in German', function () {
+    // V3 (2026-10-20): the nowrap button squeezed "Nur du und … sehen diesen Chat." to 0 px (165 px tall) at 390 and ran
+    // 67 px past the page at 1440.
+    [$anna, $bert] = User::factory()->count(2)->create(['locale' => 'de']);
+    $bert->forceFill(['name' => 'Bertholdine von Hashrate-Zweiundzwanzig'])->save();
+    TestSigner::forBrowser($anna);
+    $game = app(BoardGameService::class)->start('blockli', $anna, $bert);
+    $page = boardChatPage($anna, route('board.show', $game, false));
+    $measure = <<<'JS'
+        (scope) => {
+            const root = document.querySelector(scope);
+            const box = (el) => { const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height) }; };
+            const button = [...root.querySelectorAll('button[aria-pressed]')].find((el) => el.checkVisibility());
+            const label = [...button.querySelectorAll('[data-test^=mute-label-]')].find((el) => el.checkVisibility());
+            const verb = label ? [...label.children].filter((el) => el.dataset.test !== 'mute-name').map((el) => el.textContent).join('').trim() : null;
+            const note = [...root.querySelectorAll('span')].find((el) => el.checkVisibility() && el.textContent.trim().startsWith('Nur du und'));
+            return {
+                section: box(button.closest('section')), button: box(button), note: box(note), verb,
+                verbWhole: !! label && [...label.children].every((el) => el.dataset.test === 'mute-name' || el.scrollWidth <= el.clientWidth + 1),
+                overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            };
+        }
+        JS;
+    $measured = [];
+
+    foreach ([[390, 844, '#sheet-body'], [1440, 900, '[data-test=chat-panel]']] as [$width, $height, $scope]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('board.show', $game, false)));
+        BrowserWait::until($page, '() => document.readyState === "complete" && !! window.Alpine', 10_000);
+        if ($width < 1024) {
+            $page->locator('[data-test=chat-sheet-toggle]')->click();
+            BrowserWait::until($page, '() => document.querySelector("#sheet-body").checkVisibility()', 3_000);
+        }
+        $m = $measured[$width] = $page->evaluate($measure, $scope);
+
+        expect($m['overflow'])->toBe(0, "{$width}: page overflow")
+            ->and($m['button']['right'])->toBeLessThanOrEqual($m['section']['right'], "{$width}: button outside its chat")
+            // The sentence is a line of words, not a column of one word each.
+            ->and($m['note']['w'])->toBeGreaterThanOrEqual(240, "{$width}: the sentence is squeezed")
+            ->and($m['button']['h'])->toBe(44)
+            ->and($m['verb'])->toBe('stummschalten')
+            ->and($m['verbWhole'])->toBeTrue();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    fwrite(STDERR, "\n[chat-long-name] ".json_encode($measured)."\n");
+});

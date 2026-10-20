@@ -15,13 +15,14 @@
     {{-- On screen from lg: whatever comes in while the panel shows in the front tab is read (gameChat.markRead()). --}}
     <section aria-labelledby="chat-h" x-effect="wide && messages.length && markRead(true)" x-on:visibilitychange.document="wide && markRead(true)" class="hidden flex-col rounded-lg bg-card lg:flex {{ $panelClass ?? 'min-h-[420px] lg:order-none lg:col-span-2 min-[87.5rem]:col-span-1 min-[87.5rem]:col-start-3 min-[87.5rem]:row-span-4 min-[87.5rem]:row-start-1 min-[87.5rem]:mt-4 min-[87.5rem]:h-[640px]' }}" data-test="chat-panel">
         <div class="flex flex-col gap-1 border-b border-hairline px-4 py-2.5">
-            <span class="flex items-center justify-between gap-2">
+            {{-- The button moves under the heading when the row is short, and only a name wider than the panel truncates (chat-mute-label). --}}
+            <span class="flex flex-wrap items-center justify-between gap-2">
                 <span id="chat-h" class="text-[15px] font-bold">{{ __('Chat') }}</span>
                 @if ($chat['opponent'])
-                    <button type="button" x-on:click="toggleMute()" :aria-pressed="opponentMuted ? 'true' : 'false'" data-test="mute"
-                            class="btn-w inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-3 text-xs whitespace-nowrap text-ink">
+                    <button type="button" x-on:click="toggleMute()" :aria-pressed="opponentMuted ? 'true' : 'false'" :title="opponentMuted ? t.muted : t.mute" data-test="mute"
+                            class="btn-w inline-flex h-11 max-w-full min-w-0 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-3 text-xs whitespace-nowrap text-ink">
                         <x-icon name="mute" :size="16" class="shrink-0" />
-                        <span x-text="opponentMuted ? t.muted : t.mute"></span>
+                        @include('pages.games.partials.chat-mute-label', ['labels' => $chat['labels'] ?? [], 'name' => $opponentName])
                     </button>
                 @endif
             </span>
@@ -64,11 +65,13 @@
                     </span>
                 </button>
                 <div id="sheet-body" x-show="open" x-cloak class="flex min-h-0 grow flex-col border-t border-hairline">
-                    <span class="flex items-center gap-2 px-4 pt-2">
-                        <span class="min-w-0 grow text-[11px] leading-normal text-ink-3">{{ __('Only you and :name see this chat.', ['name' => $opponentName]) }}</span>
-                        <button type="button" x-on:click="toggleMute()" :aria-pressed="opponentMuted ? 'true' : 'false'"
-                                class="btn-w inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-3 text-xs whitespace-nowrap text-ink">
-                            <x-icon name="mute" :size="16" class="shrink-0" /><span x-text="opponentMuted ? t.muted : t.mute"></span>
+                    {{-- The sentence keeps its line and the button wraps under it when both do not fit (V3: the sentence was squeezed to 0 px, one word per line). --}}
+                    <span class="flex flex-wrap items-center gap-2 px-4 pt-2">
+                        <span class="min-w-0 grow text-[11px] leading-normal text-ink-3 [overflow-wrap:anywhere]" data-test="chat-note">{{ __('Only you and :name see this chat.', ['name' => $opponentName]) }}</span>
+                        <button type="button" x-on:click="toggleMute()" :aria-pressed="opponentMuted ? 'true' : 'false'" :title="opponentMuted ? t.muted : t.mute" data-test="mute-sheet"
+                                class="btn-w inline-flex h-11 max-w-full min-w-0 cursor-pointer items-center gap-2 rounded-md border border-line bg-well px-3 text-xs whitespace-nowrap text-ink">
+                            <x-icon name="mute" :size="16" class="shrink-0" />
+                            @include('pages.games.partials.chat-mute-label', ['labels' => $chat['labels'] ?? [], 'name' => $opponentName])
                         </button>
                     </span>
                     @include('pages.games.partials.chat-body', ['inputId' => 'mchat'])
