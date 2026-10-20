@@ -446,9 +446,8 @@ test('the tournament editor lays out by the width its column has: no control, fi
             const say = (el) => (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40);
             const problems = [];
             // Rule R11: a control never wraps its text (each text node on one line).
-            // The "who enters results" cards carry their sentence inside the radio (a known R11 exception, see below).
             for (const el of root.querySelectorAll('button, a, [role=radio]')) {
-                if (!vis(el) || el.closest('svg') || el.matches('[data-test^=results-]')) continue;
+                if (!vis(el) || el.closest('svg')) continue;
                 const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
                 while ((n = w.nextNode())) { if (!n.textContent.trim() || !vis(n.parentElement)) continue; const r = document.createRange(); r.selectNodeContents(n); const t = new Set([...r.getClientRects()].filter((q) => q.width > 1).map((q) => Math.round(q.top))); if (t.size > 1) { problems.push(`control "${say(el)}" on ${t.size} lines`); break; } }
             }
@@ -462,9 +461,10 @@ test('the tournament editor lays out by the width its column has: no control, fi
                 const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').trim();
                 if (own.split(/\s+/).filter(Boolean).length > 6 && el.getBoundingClientRect().width < 240 && lines(el, false) >= 3) problems.push(`"${own.slice(0, 40)}" in ${Math.round(el.getBoundingClientRect().width)} px, ${lines(el, false)} lines`);
             }
-            // The results cards: full width up to 900 px of the column, two from there; their sentence at most 3 lines from 1024
-            // (7 lines in 277 px before).
-            if (innerWidth >= 1024) for (const el of root.querySelectorAll('[data-test^=results-][role=radio] span span:last-child')) if (vis(el) && lines(el) > 3) problems.push(`results "${say(el)}" on ${lines(el)} lines in ${Math.round(el.getBoundingClientRect().width)} px`);
+            // "Who enters results": one 48 px radio per mode (its title on one line, checked above), the sentence under it, at most
+            // 3 lines from 1024 (title and sentence inside the radio ran 7 lines in 277 px before).
+            for (const el of root.querySelectorAll('[data-test^=results-][role=radio]')) if (vis(el) && Math.round(el.getBoundingClientRect().height) !== 48) problems.push(`results radio "${say(el)}" ${Math.round(el.getBoundingClientRect().height)} px high`);
+            if (innerWidth >= 1024) for (const el of root.querySelectorAll('[data-test^=results-][data-test$=-help]')) if (vis(el) && lines(el) > 3) problems.push(`results "${say(el)}" on ${lines(el)} lines in ${Math.round(el.getBoundingClientRect().width)} px`);
             // Every system's time bar keeps room to read (its tick labels ran into each other at 1280 before).
             for (const el of root.querySelectorAll('[data-test=format-rows] button[role=radio] > span[aria-hidden=true]')) if (vis(el) && el.getBoundingClientRect().width < 160) problems.push(`time bar ${Math.round(el.getBoundingClientRect().width)} px`);
             // The preview's labels stay inside its figure.
@@ -499,6 +499,9 @@ test('the tournament editor lays out by the width its column has: no control, fi
         $page->locator('[data-test=results-director]')->click();
         BrowserWait::until($page, '() => !! document.querySelector("[data-test=directors]")', 5_000);
         $check("create {$width} director");
+        // The sentence under a mode picks it, as the grand final's do.
+        $page->locator('[data-test=results-players-help]')->click();
+        BrowserWait::until($page, '() => document.querySelector("[data-test=results-players]").getAttribute("aria-checked") === "true" && ! document.querySelector("[data-test=directors]")', 5_000);
 
         $page->goto(ComputeUrl::from(route('admin.tournaments.edit', $edit)));
         BrowserWait::until($page, '() => document.readyState === "complete" && !! window.Alpine && !! document.querySelector("[data-test=edit-save]")', 10_000);

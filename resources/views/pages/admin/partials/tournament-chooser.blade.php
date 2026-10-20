@@ -679,12 +679,19 @@
         <h2 id="res-h" class="m-0 font-display text-lg font-bold">{{ __('Who enters results') }}</h2>
         {{-- One card per row up to 1400 px of the admin column: side by side at 1280 the director's sentence ran 5 lines in 405 px,
              at 1024 7 lines in 277 (E1). --}}
-        <div role="radiogroup" aria-labelledby="res-h" class="grid gap-2 @min-[1400px]/admin:grid-cols-2">
+        {{--
+            Each mode is a one-line radio (rule R11) with its short title (choice()); what it means stands under it, outside the
+            control, and picks it too, as the grand final choices do. Title and sentence inside the radio ran 7 lines in 277 px.
+        --}}
+        <div role="radiogroup" aria-labelledby="res-h" class="grid gap-3 @min-[1400px]/admin:grid-cols-2 @min-[1400px]/admin:gap-x-4">
             @foreach (TournamentResultsMode::cases() as $mode)
-                <button type="button" role="radio" wire:key="mode-{{ $mode->value }}" class="rv-opt items-start!" aria-checked="{{ $this->resultsMode === $mode->value ? 'true' : 'false' }}" wire:click="pickResultsMode('{{ $mode->value }}')" data-test="results-{{ $mode->value }}">
-                    <i aria-hidden="true" class="mt-0.5"></i>
-                    <span class="flex flex-col gap-1"><span class="text-[13px] font-bold">{{ $mode->label() }}</span><span class="text-xs leading-normal text-ink-2">{{ $mode->help() }}</span></span>
-                </button>
+                <div class="flex flex-col gap-1" wire:key="mode-{{ $mode->value }}">
+                    <button type="button" role="radio" class="rv-opt" aria-checked="{{ $this->resultsMode === $mode->value ? 'true' : 'false' }}" aria-describedby="res-{{ $mode->value }}-d" wire:click="pickResultsMode('{{ $mode->value }}')" data-test="results-{{ $mode->value }}">
+                        <i aria-hidden="true"></i>
+                        <span class="text-[13px] font-bold whitespace-nowrap">{{ $mode->choice() }}</span>
+                    </button>
+                    <p id="res-{{ $mode->value }}-d" class="m-0 cursor-pointer px-3 text-xs leading-normal text-ink-2" wire:click="pickResultsMode('{{ $mode->value }}')" data-test="results-{{ $mode->value }}-help">{{ $mode->help() }}</p>
+                </div>
             @endforeach
         </div>
 
