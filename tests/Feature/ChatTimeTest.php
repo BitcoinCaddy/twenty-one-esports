@@ -11,6 +11,6 @@ test('a chat message shows the time today, the weekday this week and the date be
     nodeTest($file, $cases);
 })->with([
     'the rule' => ['tests/js/chatTime.test.mjs', 5],
-    'the new day' => ['tests/js/chatDay.test.mjs', 3],
+    'the new day' => ['tests/js/chatDay.test.mjs', 5],
     'each chat' => ['tests/js/chatTimeWiring.test.mjs', 2],
 ]);
