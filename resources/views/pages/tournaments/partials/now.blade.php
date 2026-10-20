@@ -95,8 +95,11 @@
 
     @if ($action !== null || ($desk ?? null))
         {{-- data-live-clear (resources/js/livePlayer.js): the folded "Watch live" tab steps aside while it would cover the primary
-             action; at 1280 x 800 on air it covered its lower 15 px, at 390 x 844 its left 173 px (E4, 2026-10-20). --}}
-        <div class="flex min-w-0 flex-col gap-2 @min-[52rem]:col-start-2 @min-[52rem]:row-span-2 @min-[52rem]:row-start-1 @min-[52rem]:items-end @min-[52rem]:self-end" data-live-clear>
+             action; at 1280 x 800 on air it covered its lower 15 px, at 390 x 844 its left 173 px (E4, 2026-10-20).
+             Without an action of its own (the desk button alone), the page's primary action is in the details (a clan
+             captain's "Confirm team"): narrow, the desk button goes after them, or it pushed "Confirm team" from y 771-819
+             to 839-887 of an 844 px phone (rule R3). Wide, this column stands beside them as before. --}}
+        <div @class(['flex min-w-0 flex-col gap-2 @min-[52rem]:col-start-2 @min-[52rem]:row-span-2 @min-[52rem]:row-start-1 @min-[52rem]:items-end @min-[52rem]:self-end', 'order-last' => $action === null]) data-live-clear>
             @if (isset($action['href']))
                 <a href="{{ $action['href'] }}" @if (isset($action['target'])) target="{{ $action['target'] }}" rel="noopener" @endif class="btn-p inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-md bg-btc px-8 text-lg font-bold text-on-btc hover:text-on-btc @min-[52rem]:min-w-[300px]" data-test="now-action">
                     <x-icon :name="$action['icon']" :size="22" />{{ $action['label'] }}
