@@ -179,8 +179,9 @@
         'points-difference' => __('Points difference'),
     ];
     // Control and help side by side only where the options section is wide enough for both (a container query: the
-    // section is a narrow column of the page at 1024–1440); narrower, the help sits under its control.
-    $optionRow = 'grid gap-2 border-t border-hairline py-3 @[560px]:grid-cols-[minmax(0,1fr)_200px] @[560px]:gap-4';
+    // section's width decides, not the viewport's); narrower, the help sits under its control. 280 px for the help:
+    // at 200 it ran 8–10 lines (design-lead, 601–628 px sections at 1024 and 1920).
+    $optionRow = 'grid gap-2 border-t border-hairline py-3 @[560px]:grid-cols-[minmax(0,1fr)_280px] @[560px]:gap-4';
     $help = 'text-xs leading-normal text-ink-2';
 @endphp
 
