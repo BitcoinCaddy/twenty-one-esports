@@ -1408,12 +1408,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                     @endif
                 </div>
 
-                <div class="flex flex-col gap-4">
+                {{-- Two fact columns only where the column holds them (40rem): beside the chat rail at 1280 a half card kept 141 px and "nein: vor Block 0 veröffentlicht …" ran 78 px high (V5). --}}
+                <div class="@container flex flex-col gap-4">
                     <h2 class="rv-h3">{{ __('The facts') }}</h2>
-                    <dl class="m-0 grid gap-2 sm:grid-cols-2" data-test="facts">
+                    <dl class="m-0 grid gap-2 @min-[40rem]:grid-cols-2" data-test="facts">
                         @foreach ($chips as [$icon, $term, $value, $key])
                             {{-- The pairing rules are a sentence, not a value: they take the full width (design-lead, 141 px cards at 1024–1600). --}}
-                            <div @class(['flex gap-3 rounded-[4px] bg-card px-3.5 py-3', 'sm:col-span-2' => str_starts_with($key, 'pairings')]) data-fact="{{ $key }}">
+                            <div @class(['flex gap-3 rounded-[4px] bg-card px-3.5 py-3', '@min-[40rem]:col-span-2' => str_starts_with($key, 'pairings')]) data-fact="{{ $key }}">
                                 <x-icon :name="$icon" :size="18" class="mt-0.5 shrink-0 text-btc" />
                                 <span class="flex min-w-0 flex-col gap-0.5">
                                     <dt class="text-xs text-ink-3">{{ $term }}</dt>

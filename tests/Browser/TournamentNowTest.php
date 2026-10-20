@@ -2,13 +2,18 @@
 
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
+use App\Models\Admin;
+use App\Models\BoardGame;
 use App\Models\ChessGame;
 use App\Models\TournamentMatch;
+use App\Models\User;
 use App\Support\Chess\ChessGameService;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Pest\Browser\Playwright\Page;
 use Pest\Browser\Support\ComputeUrl;
+use Tests\Support\BlockliOn;
 use Tests\Support\BrowserLogin;
 use Tests\Support\BrowserWait;
 use Tests\Support\TestSigner;
@@ -195,4 +200,51 @@ test('a waiting player sees the hero right under the tournament\'s, above the ta
     expect(implode(' | ', $page->evaluate('() => window.__errors')))->toContain('probe');
 
     fwrite(STDERR, "\n[now] ".json_encode(array_map(fn (array $row): array => array_diff_key($row, ['text' => 1]), $measured))."\n");
+});
+
+test('beside the chat rail at 1280 x 800 "Play now" of a round-robin table stands right under its one-line title, above the fold, and the facts keep one column; on a phone the action comes before the details; clean console', function () {
+    // V2 and V5 (2026-10-20, measured as an admin in German): the hero's text column kept 328 px beside its action, the
+    // 44 px title broke in two and the action sank to y 922; a half fact card kept 141 px, "nein: vor Block 0 …" 78 px high.
+    Queue::fake();
+    BlockliOn::play();
+    $tournament = blockliTournament(TournamentFormat::RoundRobin, [], 4);
+    $tournament->forceFill(['name' => 'Blockli Runde', 'published_at' => now(), 'ladder_address' => null])->save();
+    $game = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->orderBy('id')->firstOrFail();
+    $player = User::query()->findOrFail($game->turn === 'w' ? $game->white_id : $game->black_id);
+    $player->forceFill(['name' => 'Satoshi Nakamotos Erbe', 'locale' => 'de'])->save();
+    Admin::query()->create(['pubkey' => $player->pubkey]);
+    $facts = '() => [...document.querySelectorAll("[data-fact]")].filter((el) => el.checkVisibility()).map((el) => { const card = el.getBoundingClientRect(), dd = el.querySelector("dd").getBoundingClientRect(); return [el.dataset.fact, Math.round(card.width), Math.round(dd.height)]; })';
+
+    $page = visit(BrowserLogin::url($player))->page();
+    $page->context()->addInitScript(NOW_COLLECTOR);
+    $measured = [];
+
+    foreach ([[1280, 800], [390, 844]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=now-hero]") !== null && document.readyState === "complete"', 8_000);
+        $m = $page->evaluate(NOW_MEASURE);
+        $title = $page->evaluate('() => { const t = document.querySelector("[data-test=now-title]"); return Math.round(t.getBoundingClientRect().height / parseFloat(getComputedStyle(t).lineHeight)); }');
+        // The action follows the head (title and line) and stands before the details (deadline, decisions).
+        $order = $page->evaluate('() => { const hero = document.querySelector("[data-test=now-hero]"), a = hero.querySelector("[data-test=now-action]").getBoundingClientRect(); const bottoms = [...hero.querySelectorAll("[data-test=now-title], [data-test=now-line]")].map((el) => el.getBoundingClientRect().bottom); const tops = [...hero.querySelectorAll("[data-test=now-until], [data-test=now-others], [data-test=my-wait], [data-test=now-boards]")].filter((el) => el.checkVisibility()).map((el) => el.getBoundingClientRect().top); return { afterHead: a.top >= Math.max(...bottoms), beforeDetails: tops.every((top) => a.bottom <= top) }; }');
+        $measured[$width] = ['action' => $m['action'], 'title' => $title, 'order' => $order, 'facts' => $page->evaluate($facts), 'overflow' => $m['overflow']];
+        nowShot($page, "now-rr-de-{$width}");
+
+        expect($m['state'])->toBe('play')
+            ->and($m['action']['bottom'])->toBeLessThanOrEqual($height, "{$width}: the action ends below the fold")
+            ->and($title)->toBe(1, "{$width}: the title breaks")
+            ->and($order)->toBe(['afterHead' => true, 'beforeDetails' => true])
+            ->and($m['overflow'])->toBe(0)
+            ->and($m['errors'])->toBe([]);
+
+        // The facts: one column beside the rail, so no value runs in a 141 px card (R2: a value line, not a word column).
+        if ($width === 1280) {
+            foreach ($measured[$width]['facts'] as [$key, $cardWidth, $ddHeight]) {
+                expect($cardWidth)->toBeGreaterThanOrEqual(340, "fact {$key}'s card is {$cardWidth} px wide")
+                    ->and($ddHeight)->toBeLessThanOrEqual(40, "fact {$key} runs {$ddHeight} px high");
+            }
+        }
+    }
+
+    fwrite(STDERR, "\n[now-rr] ".json_encode($measured)."\n");
 });

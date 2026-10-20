@@ -34,7 +34,7 @@
 <section aria-labelledby="now-h" wire:key="now-{{ $state }}"
          x-data="tournamentNow({ id: {{ $tournament->id }}, state: @js($state) })" :class="flipped && 'tn-flip'"
          @class([
-             'relative isolate flex flex-col overflow-hidden rounded-[4px] border-2',
+             '@container relative isolate flex flex-col overflow-hidden rounded-[4px] border-2',
              'border-btc bg-btc-tint' => $tone === 'act',
              'border-proof-ring bg-proof-fill' => $tone === 'wait',
              'border-win bg-win-tint' => $tone === 'won',
@@ -62,8 +62,14 @@
         @endif
     </div>
 
-    <div class="flex flex-col gap-4 px-4 pt-3 pb-5 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-x-12 lg:px-8 lg:pb-7">
-    <div class="flex min-w-0 flex-col gap-2">
+    {{--
+        Wide (the hero 52rem and more): the state and its details on the left, the action beside them at the bottom, as before.
+        Narrower, the action follows the title and its line, before the details (deadline, decisions, boards): beside the
+        chat rail at 1280 the text column kept 328 px, the 44 px title broke in two and "Play now" sank to y 922 of an 800 px
+        screen, and under the details it still stood at 883 (V2, rule R3: the primary action without scrolling).
+    --}}
+    <div class="flex flex-col gap-4 px-4 pt-3 pb-5 lg:px-8 lg:pb-7 @min-[52rem]:grid @min-[52rem]:grid-cols-[minmax(0,1fr)_auto] @min-[52rem]:gap-x-12 @min-[52rem]:gap-y-0">
+    <div class="flex min-w-0 flex-col gap-2 @min-[52rem]:col-start-1" data-test="now-head">
         @if ($now['context'])
             <p class="m-0 flex min-w-0 items-center gap-2 text-[13px] text-ink-2" data-test="now-context">
                 <span @class(['size-2 shrink-0 rounded-full', 'animate-live bg-btc' => $tone === 'act', 'animate-live bg-proof' => $tone === 'wait', 'bg-win' => $tone === 'won', 'animate-live bg-live' => $tone === 'watch', 'bg-ink-3' => $tone === 'over']) aria-hidden="true"></span>
@@ -85,7 +91,26 @@
         @if ($now['line'])
             <p class="m-0 max-w-[60ch] text-base leading-normal text-ink-2" data-test="now-line">{{ $now['line'] }}</p>
         @endif
+    </div>
 
+    @if ($action !== null || ($desk ?? null))
+        <div class="flex min-w-0 flex-col gap-2 @min-[52rem]:col-start-2 @min-[52rem]:row-span-2 @min-[52rem]:row-start-1 @min-[52rem]:items-end @min-[52rem]:self-end">
+            @if (isset($action['href']))
+                <a href="{{ $action['href'] }}" @if (isset($action['target'])) target="{{ $action['target'] }}" rel="noopener" @endif class="btn-p inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-md bg-btc px-8 text-lg font-bold text-on-btc hover:text-on-btc @min-[52rem]:min-w-[300px]" data-test="now-action">
+                    <x-icon :name="$action['icon']" :size="22" />{{ $action['label'] }}
+                </a>
+            @elseif ($action !== null)
+                <button type="button" wire:click="{{ $action['wire'] }}" wire:loading.attr="disabled" class="btn-p inline-flex min-h-16 w-full cursor-pointer items-center justify-center gap-3 rounded-md bg-btc px-8 text-lg font-bold text-on-btc hover:text-on-btc disabled:opacity-60 @min-[52rem]:min-w-[300px]" data-test="now-action">
+                    <x-icon :name="$action['icon']" :size="22" />{{ $action['label'] }}
+                </button>
+            @endif
+            {{-- The tournament desk (TournamentDesk): open right below (from xl beside), this button brings it into view. --}}
+            <x-tournaments.desk-button :desk="$desk ?? null" on-page class="w-full @min-[52rem]:w-auto" />
+        </div>
+    @endif
+
+    {{-- Hidden when nothing below applies; wide, its 8 px step to the head is its own padding, so an empty row adds nothing. --}}
+    <div class="flex min-w-0 flex-col gap-2 @min-[52rem]:col-start-1 @min-[52rem]:pt-2 [&:not(:has(*))]:hidden" data-test="now-details">
         @if ($now['lineup'] ?? null)
             {{-- A Hyperbitcoinization clan bracket (P5b): the captain names who plays this match; nothing moves on by itself. --}}
             @php $pick = $now['lineup']; @endphp
@@ -176,21 +201,5 @@
             </ul>
         @endif
     </div>
-
-    @if ($action !== null || ($desk ?? null))
-        <div class="flex min-w-0 flex-col gap-2 lg:items-end">
-            @if (isset($action['href']))
-                <a href="{{ $action['href'] }}" @if (isset($action['target'])) target="{{ $action['target'] }}" rel="noopener" @endif class="btn-p inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-md bg-btc px-8 text-lg font-bold text-on-btc hover:text-on-btc lg:min-w-[300px]" data-test="now-action">
-                    <x-icon :name="$action['icon']" :size="22" />{{ $action['label'] }}
-                </a>
-            @elseif ($action !== null)
-                <button type="button" wire:click="{{ $action['wire'] }}" wire:loading.attr="disabled" class="btn-p inline-flex min-h-16 w-full cursor-pointer items-center justify-center gap-3 rounded-md bg-btc px-8 text-lg font-bold text-on-btc hover:text-on-btc disabled:opacity-60 lg:min-w-[300px]" data-test="now-action">
-                    <x-icon :name="$action['icon']" :size="22" />{{ $action['label'] }}
-                </button>
-            @endif
-            {{-- The tournament desk (TournamentDesk): open right below (from xl beside), this button brings it into view. --}}
-            <x-tournaments.desk-button :desk="$desk ?? null" on-page class="w-full lg:w-auto" />
-        </div>
-    @endif
     </div>
 </section>
