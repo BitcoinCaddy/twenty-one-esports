@@ -120,6 +120,15 @@ test('the match room\'s own chat marks what it showed read, so the list counts n
     chat.markRead({ at: 4000 * 1000 });
     assert.equal(JSON.parse(store.get(READ_KEY))[readKeyOf(room)], 4_000_000);
     assert.equal(rows(rumors, { markers: JSON.parse(store.get(READ_KEY)) }).find((r) => r.key === 'room:12').unread, 0);
+
+    // The room's list draws a newer message: at the bottom it is read, scrolled up it is not, back at the bottom it is.
+    store.clear();
+    Object.assign(chat, { $nextTick: () => {}, $refs: {}, atBottom: false });
+    chat.arrived([{ id: 'x', at: 5000 * 1000, from: 'them' }]);
+    assert.equal(store.get(READ_KEY), undefined);
+    chat.atBottom = true;
+    chat.arrived([{ id: 'y', at: 6000 * 1000, from: 'them' }]);
+    assert.equal(JSON.parse(store.get(READ_KEY))[readKeyOf(room)], 6_000_000);
 });
 
 function keySigner(secret) {

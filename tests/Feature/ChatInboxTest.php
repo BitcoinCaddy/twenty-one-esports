@@ -98,7 +98,7 @@ test('the room of a running series with its members, its sides and the opponents
         ->assertSeeInOrder(['data-test="mobile-upcoming"', 'data-test="mobile-chats"'], false);
 });
 
-test('several rooms, desks and games load their members at once, and the page answers a roundtrip', function () {
+test('several rooms and games load their members at once, and the page answers a roundtrip', function () {
     $lineup = Lineup::factory()->mode('2v2')->ready()->create();
     $player = $lineup->activeSeats()[0]->user;
     $room = fn () => SeriesMatch::factory()->accepted()->create(['challenger_lineup_id' => $lineup->id, 'challenged_lineup_id' => Lineup::factory()->mode('2v2')->ready()->create()->id]);
