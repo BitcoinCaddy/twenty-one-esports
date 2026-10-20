@@ -8,12 +8,15 @@ use App\Models\ChessGame;
 use App\Models\TournamentMatch;
 use App\Models\User;
 use App\Support\Chess\ChessGameService;
+use App\Support\TwentyOne\LiveStatus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Pest\Browser\Playwright\Page;
 use Pest\Browser\Support\ComputeUrl;
 use Tests\Support\BlockliOn;
+use Tests\Support\BrowserConsole;
 use Tests\Support\BrowserLogin;
 use Tests\Support\BrowserWait;
 use Tests\Support\TestSigner;
@@ -247,4 +250,56 @@ test('beside the chat rail at 1280 x 800 "Play now" of a round-robin table stand
     }
 
     fwrite(STDERR, "\n[now-rr] ".json_encode($measured)."\n");
+});
+
+test('with the stream on air the floating "Watch live" tab never covers the hero\'s action: it steps aside at 1280 x 800, 1280 x 720 and 390 x 844 and is back once the action scrolled away; clean console and responses', function () {
+    // E4 (2026-10-20, measured as an admin in German): the folded tab (from y 728) covered the lower 15 px of "Play now"
+    // (to 743) at 1280 x 800 and its left 173 px at 390 x 844. The action carries data-live-clear (resources/js/livePlayer.js).
+    Queue::fake();
+    $chess = runningChess(TournamentFormat::SingleElimination, 4, TournamentResultsMode::Players);
+    $chess->forceFill(['name' => 'Halving Blitz Cup', 'published_at' => now()])->save();
+    $player = ChessGame::query()->with('white')->whereIn('tournament_match_id', $chess->matches()->select('id'))->orderBy('id')->firstOrFail()->white;
+    $player->forceFill(['locale' => 'de'])->save();
+    Admin::query()->create(['pubkey' => $player->pubkey]);
+    $hls = sys_get_temp_dir().'/esports-now-live-'.getmypid().'-'.bin2hex(random_bytes(3));
+    File::ensureDirectoryExists($hls);
+    config(['twentyone.stream.hls_dir' => $hls, 'twentyone.stream.public_url' => '/__test/live/stream.m3u8']);
+    Cache::put(LiveStatus::ANNOUNCED_KEY, ['viewers' => 128], 3600);
+    $cover = <<<'JS'
+        () => {
+            const tab = document.querySelector('[data-test=live-tab]'), action = document.querySelector('[data-test=now-action]');
+            const shown = !! tab?.checkVisibility(), a = action.getBoundingClientRect();
+            const t = shown ? tab.closest('section').getBoundingClientRect() : null;
+            const x = t ? Math.min(t.right, a.right) - Math.max(t.left, a.left) : 0, y = t ? Math.min(t.bottom, a.bottom) - Math.max(t.top, a.top) : 0;
+            return { shown, tab: t && [Math.round(t.left), Math.round(t.top), Math.round(t.right), Math.round(t.bottom)], action: [Math.round(a.left), Math.round(a.top), Math.round(a.right), Math.round(a.bottom)], covered: x > 0 && y > 0 ? [Math.round(x), Math.round(y)] : null };
+        }
+        JS;
+
+    $page = visit(BrowserLogin::url($player))->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach ([[1280, 800], [1280, 720], [390, 844]] as [$width, $height]) {
+        file_put_contents($hls.'/stream.m3u8', "#EXTM3U\n");
+        Cache::forget(LiveStatus::CACHE_KEY);
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.show', $chess)));
+        BrowserWait::until($page, '() => document.readyState === "complete" && !! document.querySelector("[data-test=now-action]") && !! document.querySelector("[data-test=live-player]")', 8_000);
+        // The player measures once a second: two rounds of it.
+        $page->evaluate('() => new Promise((ok) => setTimeout(ok, 2200))');
+        $top = $page->evaluate($cover);
+        // Scrolled to the end, the action is gone and the tab is back where it was.
+        $page->evaluate('() => { scrollTo(0, document.scrollingElement.scrollHeight); return new Promise((ok) => setTimeout(ok, 1500)); }');
+        $end = $page->evaluate($cover);
+        $measured["{$width}x{$height}"] = ['top' => $top, 'end' => $end];
+
+        expect($top['covered'])->toBeNull("{$width}x{$height}: the tab covers the action ".json_encode($top))
+            ->and($end['shown'])->toBeTrue("{$width}x{$height}: the tab stays away after the action left the screen")
+            ->and($end['covered'])->toBeNull()
+            ->and($page->evaluate('() => window.__errors'))->toBe([])
+            ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    }
+
+    fwrite(STDERR, "\n[now-live-tab] ".json_encode($measured)."\n");
+    File::deleteDirectory($hls);
 });

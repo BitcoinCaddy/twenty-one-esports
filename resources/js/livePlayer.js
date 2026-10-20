@@ -16,7 +16,7 @@ import { StreamPlayer } from './streamPlayer.js';
  * second, on resize, on scroll and after a click. It steps aside while a
  * sheet of the shell or the dock is open (a button with aria-haspopup="dialog"
  * expanded) or the on-screen keyboard is up, and the folded tab while a game
- * board (`data-live-clear`) lies where it would stand.
+ * board or a page's primary action (`data-live-clear`) lies where it would stand.
  *
  * `liveStage`: the big player of /live, with the browser's own controls; it
  * starts when the page's live feed says the stream came on air.
@@ -224,7 +224,7 @@ export function livePlayer(config) {
         },
 
         /**
-         * Whether a game board (`data-live-clear`) lies where the folded tab stands, or would stand while it is aside: over a
+         * Whether a game board or a primary action (`data-live-clear`; the tournament hero's, E4) lies where the folded tab stands, or would stand while it is aside: over a
          * board's lower left corner it hid squares and took their clicks (DerCaddy, 2026-10-14, a laptop at 150 %, where the
          * board reaches down to the window's bottom). The open player stays where the viewer opened it.
          */
