@@ -14,7 +14,13 @@ use Illuminate\Http\UploadedFile;
  * dies on `$tmpPath[0]` (measured: 500 on /livewire-…/update). PHP's own
  * multipart parsing is what this stands in for: it reads the raw
  * multipart/form-data body into the request's fields and files, and leaves
- * any request that already carries files alone.
+ * any request that already carries properly nested files alone.
+ *
+ * pest-plugin-browser 5.1 parses the body itself, but files under a list name
+ * (`files[]`, what Livewire sends) arrive keyed with the literal brackets
+ * (`"files[]"`) instead of nested under `files`, so `$request->file('files')`
+ * is null and the upload dies on `$tmpPath[0]` as before (measured with
+ * 5.1.2, not with 5.0.1). Such a request is parsed again from the raw body.
  *
  * Registered per test as a global middleware (tests/Browser/ClanEditTest.php).
  */
@@ -24,11 +30,30 @@ final class ParseMultipartBody
     {
         $contentType = (string) $request->headers->get('content-type');
 
-        if ($request->files->count() === 0 && preg_match('/^multipart\/form-data;.*boundary="?([^";]+)"?/i', $contentType, $match) === 1) {
+        if (preg_match('/^multipart\/form-data;.*boundary="?([^";]+)"?/i', $contentType, $match) === 1 && $this->needsParsing($request)) {
+            // Start from nothing: the fields the server already read would be listed twice otherwise.
+            $request->files->replace();
+            $request->request->replace();
+
             $this->parse($request, (string) $request->getContent(), $match[1]);
         }
 
         return $next($request);
+    }
+
+    private function needsParsing(Request $request): bool
+    {
+        if ($request->files->count() === 0) {
+            return true;
+        }
+
+        foreach (array_keys($request->files->all()) as $key) {
+            if (str_contains((string) $key, '[')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function parse(Request $request, string $body, string $boundary): void

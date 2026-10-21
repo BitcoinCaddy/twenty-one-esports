@@ -520,7 +520,8 @@ test('a message from another client into a slightly different group shows marked
         foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
             $page = deskPage($anna, route('tournaments.show', $tournament, false).'?lang=de', $width, $height);
             $page->evaluate('(r) => Alpine.$data(document.querySelector("[data-test=desk-chat]")).rumors.push(...r)', [$near, $intruder]);
-            BrowserWait::until($page, '() => !!document.querySelector("[data-test=desk-other-room]")?.checkVisibility()', 10_000);
+            // Both: Alpine shows the marked message and the note in separate steps, and the note can come a poll later (measured with the 2026-10 npm update: note null, then shown).
+            BrowserWait::until($page, '() => !!document.querySelector("[data-test=desk-other-room]")?.checkVisibility() && !!document.querySelector("[data-test=desk-hidden]")?.checkVisibility()', 10_000);
             $m = $page->evaluate('() => { const mark = document.querySelector("[data-test=desk-other-room]"), note = document.querySelector("[data-test=desk-hidden]"), li = mark.closest("li"), list = document.querySelector("[data-test=desk-messages]").getBoundingClientRect(); const r = li.getBoundingClientRect(); return { mark: mark.innerText.trim(), text: li.innerText.includes("Eine Minute"), note: note.checkVisibility() ? note.innerText.trim() : null, inside: r.left >= list.left - 0.5 && r.right <= list.right + 0.5, markH: Math.round(mark.getBoundingClientRect().height), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, intruderShown: [...document.querySelectorAll("[data-test=desk-messages] li")].filter((el) => el.innerText.includes("Eine Minute")).length }; }');
             fwrite(STDERR, PHP_EOL."[desk foreign {$width}] ".json_encode($m, JSON_UNESCAPED_UNICODE).PHP_EOL);
 

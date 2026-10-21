@@ -51,3 +51,4 @@ plans/
 docker/tmnf/prod/.env
 docker/tmnf/prod/config/
 /tools/hbsim/target/
+.vitest/
