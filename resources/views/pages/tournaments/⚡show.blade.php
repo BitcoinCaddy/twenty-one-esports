@@ -921,7 +921,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             <span class="rv-m">{{ __('Prize pot in sats') }}</span>
                             <b class="font-display text-[26px] leading-tight font-bold whitespace-nowrap text-btc tabular-nums lg:text-[32px]"><span data-test="pool-sats">{{ \App\Support\Cards\ShareCard::sats($poolSats) }}</span> Sats</b>
                             @if ($poolZaps > 0)
-                                <span class="rv-m">{{ __(':base + :zaps from zaps', ['base' => \App\Support\Cards\ShareCard::sats($poolBase), 'zaps' => \App\Support\Cards\ShareCard::sats($poolZaps)]) }}</span>
+                                <span class="rv-m">{{ __(':base + :zaps on top', ['base' => \App\Support\Cards\ShareCard::sats($poolBase), 'zaps' => \App\Support\Cards\ShareCard::sats($poolZaps)]) }}</span>
                             @endif
                         </span>
                     @endif

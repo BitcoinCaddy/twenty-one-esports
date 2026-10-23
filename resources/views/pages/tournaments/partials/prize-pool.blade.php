@@ -5,7 +5,7 @@
     it (less only what was paid out, never the wallet balance), what each
     place wins as a podium, the paid sponsors with their logos, and the zap
     sponsors with their Nostr pictures and zapped sums, the biggest first;
-    their sats are on top of the pot (user, 2026-10-02). Rendered
+    their sats are on top of the pot (user, 2026-10-02), the anonymous top-ups too (user, 2026-10-23). Rendered
     only when the tournament has a pot (App\Support\Tournaments\
     TournamentPrizePool), so every number here is the pot's own.
 
@@ -38,7 +38,7 @@
         <h2 id="pool-h" class="rv-h3">{{ __('Prize pool') }}</h2>
         <span class="font-display text-[30px] leading-tight font-bold text-btc tabular-nums lg:text-[36px]"><span data-test="pool-sats-card">{{ $sats($pool['sats']) }}</span> Sats</span>
         <span class="text-xs leading-normal text-ink-2" data-test="pool-left">
-            {{ __(':left of :total sats still to be won', ['left' => $sats($poolLeft), 'total' => $sats($pool['sats'])]) }}@if ($zapped > 0); <span data-test="pool-zaps-on-top">{{ __('+:sats sats from zaps on top', ['sats' => $sats($zapped)]) }}</span>@endif
+            {{ __(':left of :total sats still to be won', ['left' => $sats($poolLeft), 'total' => $sats($pool['sats'])]) }}@if ($zapped > 0); <span data-test="pool-zaps-on-top">{{ __('+:sats sats on top from zaps and top-ups', ['sats' => $sats($zapped)]) }}</span>@endif
         </span>
     </div>
 

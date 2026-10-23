@@ -13,8 +13,9 @@ use App\Support\Tournaments\TournamentPrizePool;
  * 2026-09-28). The prizes are the percents of that pot (less the fee
  * reserve) or the fixed amounts; what came in only feeds the funding bar.
  * The sponsors are the ones who paid, by invoice or outside the wallet (a
- * pledge alone shows nothing); the zappers are on their own wall, their
- * sats on top of the pot ({@see ZapSponsors}).
+ * pledge alone shows nothing); the zappers are on their own wall and the
+ * anonymous top-ups listed below it, both on top of the pot
+ * ({@see ZapSponsors::onTopSats()}, user 2026-10-23).
  */
 final class WalletPrizePool implements TournamentPrizePool
 {
@@ -41,8 +42,8 @@ final class WalletPrizePool implements TournamentPrizePool
         // Anonymous top-ups (the "fill the pot" invoice, no Nostr key): shown too, so whoever paid sees their sats arrived
         // (user, 2026-10-04: "anonyme Einzahlungen auch anzeigen, damit er es sehen kann").
         $deposits = $this->zaps->deposits($tournament);
-        // The pot shows as the pot as set plus the zaps on top (without a target: what else came in, plus the zaps).
-        $zapped = min($sats, array_sum(array_column($zappers, 'sats')));
+        // The pot shows as the pot as set plus the zaps and top-ups on top (without a target: what else came in, them included).
+        $zapped = min($sats, $this->zaps->onTopSats($tournament));
 
         return [
             'sats' => $sats,

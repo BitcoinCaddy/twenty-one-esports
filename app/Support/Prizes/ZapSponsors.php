@@ -65,6 +65,15 @@ final class ZapSponsors
     }
 
     /**
+     * Everything paid in on top of the pot: the verified zaps and the anonymous top-ups (user, 2026-10-23: an anonymous
+     * 2 100 sats top-up of tournament 36 did not add to the pot, and its organizer had to raise the target by hand).
+     */
+    public function onTopSats(Tournament $tournament): int
+    {
+        return $this->zapSats($tournament) + array_sum(array_column($this->deposits($tournament), 'sats'));
+    }
+
+    /**
      * The sponsors' wall: one entry per zapper, the biggest sum first (then
      * the earliest zap): their key, npub, sum, number of zaps, and their
      * account when they play here (for the picture the league already has).
@@ -109,7 +118,7 @@ final class ZapSponsors
             ->where('late', false)
             ->where(fn ($query) => $query->where(fn ($zap) => $zap->where('source', 'zap')->where('zap_verified', true)
                 ->where('pot', $tournament->potAccount())->whereNotNull('payer_pubkey'))
-                ->orWhere(fn ($topUp) => $topUp->where('source', 'topup')->whereNull('payer_pubkey')))
+                ->orWhere(fn ($topUp) => $topUp->where('source', 'topup')->where('pot', $tournament->potAccount())->whereNull('payer_pubkey')))
             ->orderBy('settled_at')->get(['source', 'payer_pubkey', 'amount_sats', 'settled_at']);
 
         $this->deposits[$tournament->id] = array_values($payments->where('source', 'topup')

@@ -22,8 +22,9 @@ use Illuminate\Support\Facades\RateLimiter;
  * wo aus ausgezahlt werden kann"), recorded with its payment hash and its
  * pot `tournament:<id>` before anyone sees it, and booked into that
  * tournament's account of the league ledger once the wallet reports it paid
- * ({@see IncomingPayments}). A plain top-up is part of the pot as announced
- * ("included").
+ * ({@see IncomingPayments}). A plain top-up adds on top of the pot as
+ * announced, like a zap, and is listed anonymously (user, 2026-10-23: an
+ * anonymous top-up that did not add made an organizer raise his target by hand).
  *
  * Only while the pot is open and the league wallet can make invoices;
  * otherwise the page says top-ups are not enabled. The limits of security

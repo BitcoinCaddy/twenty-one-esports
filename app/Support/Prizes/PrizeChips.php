@@ -92,10 +92,11 @@ final class PrizeChips
         /** @var array<int, int> $paid */
         $paid = TournamentPayout::query()->whereIn('tournament_id', $ids)->where('status', PayoutStatus::Paid)
             ->groupBy('tournament_id')->selectRaw('tournament_id, sum(amount_sats) as sats')->pluck('sats', 'tournament_id')->map(fn (mixed $sats): int => (int) $sats)->all();
-        // ZapSponsors::zapSats(): verified, settled, on-time zaps with a payer, booked into the pot's account.
+        // ZapSponsors::onTopSats(): settled, on-time verified zaps with a payer and anonymous top-ups, booked into the pot's account.
         /** @var array<int, int> $zaps */
-        $zaps = IncomingPayment::query()->whereIn('tournament_id', $ids)->whereIn('pot', $accounts)->where('zap_verified', true)
-            ->where('source', 'zap')->where('status', IncomingPaymentStatus::Settled)->where('late', false)->whereNotNull('payer_pubkey')
+        $zaps = IncomingPayment::query()->whereIn('tournament_id', $ids)->whereIn('pot', $accounts)->where('status', IncomingPaymentStatus::Settled)->where('late', false)
+            ->where(fn ($query) => $query->where(fn ($zap) => $zap->where('source', 'zap')->where('zap_verified', true)->whereNotNull('payer_pubkey'))
+                ->orWhere(fn ($topUp) => $topUp->where('source', 'topup')->whereNull('payer_pubkey')))
             ->groupBy('tournament_id', 'pot')->selectRaw('tournament_id, pot, sum(amount_sats) as sats')->get()
             ->filter(fn (IncomingPayment $row): bool => $row->pot === 'tournament:'.$row->tournament_id)
             ->mapWithKeys(fn (IncomingPayment $row): array => [(int) $row->tournament_id => (int) $row->getAttribute('sats')])->all();
@@ -107,7 +108,7 @@ final class PrizeChips
             ->selectRaw('tournament_id, sum(paid_outside_sats) as sats')->pluck('sats', 'tournament_id')->map(fn (mixed $sats): int => (int) $sats)->all();
 
         foreach ($pots as $id => $tournament) {
-            // Zaps count toward the pot only in the league wallet (ZapSponsors::wall()).
+            // Zaps and top-ups count on top only in the league wallet (ZapSponsors::wall()).
             $zapped = $tournament->hasLeaguePot() ? ($zaps[$id] ?? 0) : 0;
             $funded = $tournament->hasOwnWallet() ? (int) $tournament->pot_balance_sats : ($credited[$tournament->potAccount()] ?? 0);
 

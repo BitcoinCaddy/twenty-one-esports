@@ -164,9 +164,10 @@ function publishForPool(Tournament $tournament, ?FakeNwcWallet $pot = null): Tou
 
 /**
  * `$sats` into the tournament's pot in the league wallet `$pot`. By default
- * a settled top-up row is booked and the wallet's balance grows (fast: no
- * invoice); with `$topUp` the real path, a top-up invoice the league wallet
- * makes and settles.
+ * a settled sponsor row is booked (the organizer funding the pot as set; a
+ * top-up adds on top since 2026-10-23) and the wallet's balance grows (fast:
+ * no invoice); with `$topUp` the real path, a top-up invoice the league
+ * wallet makes and settles.
  */
 function fundPool(FakeNwcWallet $pot, Tournament $tournament, int $sats, bool $topUp = false): void
 {
@@ -185,7 +186,7 @@ function fundPool(FakeNwcWallet $pot, Tournament $tournament, int $sats, bool $t
     }
 
     $payment = IncomingPayment::query()->create([
-        'pot' => $tournament->potAccount(), 'tournament_id' => $tournament->id, 'source' => 'topup',
+        'pot' => $tournament->potAccount(), 'tournament_id' => $tournament->id, 'source' => 'sponsor',
         'payment_hash' => bin2hex(random_bytes(32)), 'bolt11' => 'lnbcrt-fake', 'amount_sats' => $sats,
         'status' => IncomingPaymentStatus::Settled, 'expires_at' => now()->addMinutes(15), 'settled_at' => now(),
     ]);

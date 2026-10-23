@@ -207,7 +207,7 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
     $prizePool = app(PrizePool::class);
     $fixedMode = $tournament?->prizeMode() === Tournament::PRIZES_FIXED;
     $funded = $tournament ? $prizePool->fundedSats($tournament) : 0;
-    $zaps = $tournament ? $prizePool->zapSats($tournament) : 0;
+    $zaps = $tournament ? $prizePool->onTopSats($tournament) : 0;
     $pool = $tournament ? $prizePool->payoutPotSats($tournament) : null;
     $payouts = $this->payouts;
     $pending = $payouts->where('status', PayoutStatus::Pending);

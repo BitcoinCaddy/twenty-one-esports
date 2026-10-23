@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\IncomingPaymentStatus;
 use App\Enums\TournamentFormat;
 use App\Enums\TournamentResultsMode;
 use App\Models\ChessGame;
@@ -409,7 +410,7 @@ test('the prize pot: top-ups by QR code, sponsors, payouts, fixed prizes and the
         $received = $page->evaluate(TOURNAMENT_STATE);
         tournamentShot($page, "p9-topup-received-{$width}");
 
-        // The zap sponsors' wall with "+N sats from zaps on top", then the zap panel with the pot's LNURL QR code.
+        // The zap sponsors' wall with "+N sats on top from zaps and top-ups", then the zap panel with the pot's LNURL QR code.
         $page->goto(ComputeUrl::from(route('tournaments.show', $open)));
         BrowserWait::until($page, '() => document.querySelector("[data-test=pool-zappers]") !== null', 8_000);
         $page->evaluate('() => document.querySelector("[data-test=prize-pool]").scrollIntoView()');
@@ -418,6 +419,8 @@ test('the prize pot: top-ups by QR code, sponsors, payouts, fixed prizes and the
         $wall['list'] = $page->evaluate('() => { const ol = document.querySelector("[data-test=pool-zappers] ol"); const r = ol.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), scrollWidth: ol.scrollWidth, clientWidth: ol.clientWidth }; }');
         $wall['onTop'] = $page->evaluate('() => document.querySelector("[data-test=pool-zaps-on-top]")?.innerText ?? null');
         $wall['pot'] = $page->evaluate('() => document.querySelector("[data-test=pool-sats]").innerText');
+        // The zaps (21 000 + 5 000) and every settled top-up so far are on top of the 100 000 set (user, 2026-10-23).
+        $wall['expectOnTop'] = 26_000 + (int) IncomingPayment::query()->where('tournament_id', $open->id)->where('source', 'topup')->where('status', IncomingPaymentStatus::Settled)->sum('amount_sats');
         tournamentShot($page, "p9-zap-wall-{$width}");
         // One card fills the pot (user, 2026-10-03): one set of amounts, "Zap with Nostr" first, "Pay without Nostr" beside it.
         $page->evaluate('() => document.querySelector("#pot-fill").scrollIntoView()');
@@ -435,7 +438,9 @@ test('the prize pot: top-ups by QR code, sponsors, payouts, fixed prizes and the
             ->and($wall['entries'][0]['text'])->toContain('21')->and($wall['entries'][1]['text'])->toContain('satoshi_stacker')
             ->and(collect($wall['entries'])->every(fn (array $e): bool => $e['avatar'] >= 32 && $e['height'] >= 44))->toBeTrue()
             ->and($wall['list']['left'])->toBeGreaterThanOrEqual(0)->and($wall['list']['right'])->toBeLessThanOrEqual($width)
-            ->and($wall['onTop'])->toContain('26')->and($wall['pot'])->toContain('126')
+            ->and($wall['expectOnTop'])->toBeGreaterThan(26_000)
+            ->and(preg_replace('/\D/', '', (string) $wall['onTop']))->toBe((string) $wall['expectOnTop'])
+            ->and(preg_replace('/\D/', '', (string) $wall['pot']))->toBe((string) (100_000 + $wall['expectOnTop']))
             ->and($zapPanel['errors'])->toBe([])->and($zapPanel['overflow'])->toBeLessThanOrEqual(0)
             ->and($zapPanel['afterPay']['errors'])->toBe([])
             ->and($zapPanel['cards'])->toBe(1)

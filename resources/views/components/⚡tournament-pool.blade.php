@@ -38,8 +38,8 @@ use Livewire\Component;
  *   resources/js/zapWinner.js); with its receipt it goes on the sponsors'
  *   wall and on top of the pot. A guest logs in first.
  * - "Pay without Nostr": the league wallet makes a plain invoice for the
- *   amount picked, booked for this tournament's pot as announced
- *   (App\Support\Prizes\PotTopUps), shown as a QR code (never as text)
+ *   amount picked, booked for this tournament's pot and on top of it like a
+ *   zap, listed anonymously (App\Support\Prizes\PotTopUps, user 2026-10-23), shown as a QR code (never as text)
  *   with "open in wallet". The organizer's and the admin's top-up is the
  *   same. When the league wallet cannot make invoices, the card says top-ups
  *   are not enabled.
@@ -341,8 +341,8 @@ new class extends Component {
         {{--
             Fill the pot (user, 2026-10-03: one card instead of "Zap the pot" and "Add to the pot"): one set of
             amounts for both ways in. "Zap with Nostr" first: on top of the pot and on the sponsors' wall. Beside it
-            "Pay without Nostr": an invoice of the league wallet for the amount picked, part of the pot as announced,
-            not on the wall; the organizer's and the admin's top-up as well. Never an address as text.
+            "Pay without Nostr": an invoice of the league wallet for the amount picked, on top of the pot as well, listed
+            anonymously, not on the wall (user, 2026-10-23); the organizer's and the admin's top-up as well. Never an address as text.
         --}}
         <div id="pot-fill" class="flex scroll-mt-24 flex-col gap-3 rounded-card bg-card p-4 sm:p-6" data-test="pot-fill"
              x-data="zapWinner({ pubkey: @js($zapper), amounts: @js(PotZaps::AMOUNTS), sats: @js(is_numeric($this->amount) ? (int) $this->amount : PotZaps::AMOUNTS[2]), messages: @js([...SignerMessages::labels(), 'failed' => __('That did not work. Please try again.'), 'changed' => __('The zap request changed. Check it again, then sign.')]) })"
@@ -380,7 +380,7 @@ new class extends Component {
                     @if ($zapOpen)
                         <span class="block">{{ __('Zaps add on top, on the sponsors’ wall.') }}</span>
                     @endif
-                    <span class="block">{{ __('Without Nostr: part of the pot, no wall.') }}</span>
+                    <span class="block">{{ __('Without Nostr: on top as well, listed anonymously.') }}</span>
                 </p>
                 <fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
                     <legend class="mb-1 text-xs text-ink-2">{{ __('Amount in sats') }}</legend>

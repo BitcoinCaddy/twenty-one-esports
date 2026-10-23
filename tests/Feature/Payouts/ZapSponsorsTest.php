@@ -86,7 +86,7 @@ test('a zap to the tournament’s event lands in its pot, is receipted by the le
 
     $this->get(route('tournaments.show', $tournament))->assertOk()
         ->assertSeeHtml('data-test="pool-sats">'.ShareCard::sats(129_000).'<')
-        ->assertSeeHtml('data-test="pool-zaps-on-top"')->assertSee(__('+:sats sats from zaps on top', ['sats' => ShareCard::sats(29_000)]))
+        ->assertSeeHtml('data-test="pool-zaps-on-top"')->assertSee(__('+:sats sats on top from zaps and top-ups', ['sats' => ShareCard::sats(29_000)]))
         ->assertSeeHtml('data-test="pool-zappers"')
         ->assertSeeHtml('data-pubkey="'.$alice->pubkey.'"')->assertSeeHtml('data-zapper-avatar="'.$alice->pubkey.'"')
         ->assertSeeHtml('data-avatar="'.$bob->pubkey.'"')->assertSee('bob_hodl')
@@ -153,7 +153,7 @@ test('pot math: a sponsor is part of the pot as announced, zaps are on top, and 
     expect($bonus)->toBe([6_666, 3_333])
         ->and($pool->potSats($fixed->refresh()))->toBe(100_000)
         ->and(array_column($pool->projection($fixed), 'sats'))->toBe([66_666, 33_333])
-        ->and(PrizePool::shortfall($fixed, $pool->fundedSats($fixed), $pool->zapSats($fixed)))->toBe(0);
+        ->and(PrizePool::shortfall($fixed, $pool->fundedSats($fixed), $pool->onTopSats($fixed)))->toBe(0);
 
     app(PayoutApproval::class)->approve($fixed, anAdmin());
 
@@ -169,7 +169,7 @@ test('pot math: a sponsor is part of the pot as announced, zaps are on top, and 
     $short = finishedPoolTournament($league, 0, 2, fixed: [60_000, 30_000]);
     $short->forceFill(['pool_closed_at' => null])->save();
     paidPotZap($league, new TestSigner, $short, 95_000);
-    expect(PrizePool::shortfall($short->refresh(), $pool->fundedSats($short), $pool->zapSats($short)))->toBe(90_900);
+    expect(PrizePool::shortfall($short->refresh(), $pool->fundedSats($short), $pool->onTopSats($short)))->toBe(90_900);
 });
 
 test('a zap paid after the payout check goes to the league reserve and is not on top', function () {

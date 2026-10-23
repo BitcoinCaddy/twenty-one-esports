@@ -128,7 +128,7 @@ final class PayoutApproval
                 return $locked;
             }
 
-            $zaps = $this->pool->zapSats($locked);
+            $zaps = $this->pool->onTopSats($locked);
             $plan = $this->plan->compute($locked, $this->pool->payoutPotSats($locked), $zaps) ?? throw new TournamentRuleViolation('no_places', __('The final places of this tournament cannot be read from its bracket.'));
 
             $locked->forceFill(['pool_closed_at' => now(), 'payouts_approved_at' => now(), 'payouts_approved_by_id' => $admin->id])->save();
