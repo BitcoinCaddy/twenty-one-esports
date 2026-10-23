@@ -94,6 +94,8 @@ it('refuses template text and fillers while the pattern fallback is off, and see
 it('writes no pattern scene while the fallback is off: when the voice gives nothing, the music plays', function () {
     config(['tv.commentary.patterns.enabled' => false, 'tv.commentary.scripts.ahead_seconds' => 60]);
     VoiceAgent::fake(fn () => ['text' => "Hey!\nLäuft.", 'canon_id' => null, 'mood' => 'hype']);
+    // A fixed afternoon: at 21:00 the schedule airs the programme preview, a rubric the voice fills (red at 21:09 on 2026-10-23).
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-21 14:10', 'Europe/Berlin'));
 
     app(ScriptQueue::class)->fill(CarbonImmutable::now());
 
