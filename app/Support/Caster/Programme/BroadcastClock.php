@@ -44,6 +44,9 @@ final class BroadcastClock
     /** The slot types that are a news bulletin (NewsBulletin). */
     public const BULLETINS = [self::NEWS, self::HEADLINES];
 
+    /** An hour: the longest a show window lasts, and the most a clock change moves its start (see windowAt()). */
+    private const WINDOW_REACH = 3600;
+
     private const HOURS = ['null', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun', 'zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn', 'fünfzehn', 'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn', 'zwanzig', 'einundzwanzig', 'zweiundzwanzig', 'dreiundzwanzig'];
 
     private const UNITS = ['', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'];
@@ -54,6 +57,14 @@ final class BroadcastClock
 
     /** @var list<array{minute: int, type: string, label: string, stinger: bool, quiet: bool}> */
     private array $slots;
+
+    /**
+     * The show windows with what does not depend on the moment asked about: the local start's hour and minute, the
+     * window's minutes, the clock's slot at that minute and the start as seconds of the local day.
+     *
+     * @var list<array{hour: int, minute: int, minutes: int, slot: array{minute: int, type: string, label: string, stinger: bool, quiet: bool}, seconds: int}>
+     */
+    private array $windowStarts = [];
 
     /**
      * @param  array<array-key, mixed>  $slots  `tv.commentary.programme.slots`
@@ -79,6 +90,21 @@ final class BroadcastClock
         ksort($clean);
         // No slot at all: the whole hour is talk.
         $this->slots = $clean === [] ? [['minute' => 0, 'type' => self::TALK, 'label' => 'Talk', 'stinger' => false, 'quiet' => true]] : array_values($clean);
+
+        foreach ($windows as $time => $minutes) {
+            if (preg_match('/^(\d{2}):(\d{2})$/', (string) $time, $match) !== 1) {
+                continue;
+            }
+
+            $index = array_search((int) $match[2], array_column($this->slots, 'minute'), true);
+
+            // A long show also starts on a talk slot (P21, user 2026-10-13: right after the news at :03).
+            if ($index === false || ! in_array($this->slots[$index]['type'], [self::RUBRIC, self::TALK], true)) {
+                continue;
+            }
+
+            $this->windowStarts[] = ['hour' => (int) $match[1], 'minute' => (int) $match[2], 'minutes' => $minutes, 'slot' => $this->slots[$index], 'seconds' => (int) $match[1] * 3600 + (int) $match[2] * 60];
+        }
     }
 
     public static function fromConfig(): self
@@ -147,28 +173,38 @@ final class BroadcastClock
      */
     private function windowAt(CarbonImmutable $at): ?array
     {
-        $local = $at->setTimezone($this->timezone);
+        if ($this->windowStarts === []) {
+            return null;
+        }
 
-        foreach ($this->windows as $time => $minutes) {
-            if (preg_match('/^(\d{2}):(\d{2})$/', (string) $time, $match) !== 1) {
+        $local = $at->setTimezone($this->timezone);
+        // upcoming() asks this for every minute of the next two hours on every poll of the stream, so the Carbon
+        // arithmetic below runs only for a window whose start lies within reach of `$at` in wall-clock seconds: a window
+        // lasts an hour at the most (it ends at the next full hour), and a clock change moves a start by an hour either
+        // way, so the wall clock is at most an hour before the start and two hours after it. Whatever this lets through
+        // is decided by the exact code below.
+        $now = (int) $local->format('G') * 3600 + (int) $local->format('i') * 60 + (int) $local->format('s');
+
+        foreach ($this->windowStarts as $window) {
+            $since = $now - $window['seconds'];
+
+            if (($since < -self::WINDOW_REACH || $since > self::WINDOW_REACH * 2) && ($since + 86400 < -self::WINDOW_REACH || $since + 86400 > self::WINDOW_REACH * 2)) {
                 continue;
             }
 
             foreach ([$local, $local->subDay()] as $day) {
-                $startLocal = $day->setTime((int) $match[1], (int) $match[2]);
+                $startLocal = $day->setTime($window['hour'], $window['minute']);
                 // Never past the next full hour: the news at :00 stays.
-                $end = min($startLocal->addMinutes(max(1, $minutes))->getTimestamp(), $startLocal->startOfHour()->addHour()->getTimestamp());
-                $index = array_search((int) $match[2], array_column($this->slots, 'minute'), true);
-                $slot = $index === false ? null : $this->slots[$index];
+                $end = min($startLocal->addMinutes(max(1, $window['minutes']))->getTimestamp(), $startLocal->startOfHour()->addHour()->getTimestamp());
 
-                // A long show also starts on a talk slot (P21, user 2026-10-13: right after the news at :03).
-                if ($slot === null || ! in_array($slot['type'], [self::RUBRIC, self::TALK], true) || $at->getTimestamp() < $startLocal->getTimestamp() || $at->getTimestamp() >= $end || QuietHours::active($startLocal)) {
+                if ($at->getTimestamp() < $startLocal->getTimestamp() || $at->getTimestamp() >= $end || QuietHours::active($startLocal)) {
                     continue;
                 }
 
+                $slot = $window['slot'];
                 $start = CarbonImmutable::createFromTimestamp($startLocal->getTimestamp());
 
-                return ['type' => self::RUBRIC, 'minute' => (int) $match[2], 'label' => $slot['type'] === self::RUBRIC ? $slot['label'] : 'die Sendung', 'stinger' => $slot['stinger'], 'starts_at' => $start, 'key' => $start->getTimestamp()];
+                return ['type' => self::RUBRIC, 'minute' => $window['minute'], 'label' => $slot['type'] === self::RUBRIC ? $slot['label'] : 'die Sendung', 'stinger' => $slot['stinger'], 'starts_at' => $start, 'key' => $start->getTimestamp()];
             }
         }
 
