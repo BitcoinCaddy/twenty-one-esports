@@ -380,7 +380,7 @@ new class extends Component {
                     @if ($zapOpen)
                         <span class="block">{{ __('Zaps add on top, on the sponsors’ wall.') }}</span>
                     @endif
-                    <span class="block">{{ __('Without Nostr: on top as well, listed anonymously.') }}</span>
+                    <span class="block">{{ __('Without Nostr: on top too, anonymous.') }}</span>
                 </p>
                 <fieldset class="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
                     <legend class="mb-1 text-xs text-ink-2">{{ __('Amount in sats') }}</legend>

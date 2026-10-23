@@ -146,6 +146,11 @@ final class IncomingPayments
             $payment->refresh();
             $this->ledger->contribution($payment, $late ? Ledger::RESERVE : $payment->pot);
 
+            // A settled top-up is on top of the pot as well: the remembered wall and deposits are stale now.
+            if ($tournament !== null) {
+                app(ZapSponsors::class)->forget($tournament->id);
+            }
+
             if ($payment->zap_request !== null) {
                 $receipt = $this->receipt($payment);
 
