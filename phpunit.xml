@@ -5,6 +5,29 @@
          colors="true"
 >
     <testsuites>
+        <!--
+            The slowest files first. Paratest hands the files to its workers in suite order, and the order of the
+            directory scan puts TwentyOneStream*Test (each ~40 s of wall clock: the daemon runs its stop-after seconds
+            for real) near the end, so four workers ran on alone for 30 s after the other twenty had finished
+            (measured 2026-10-23: 24 workers, the last four ended at 118 s, the rest at 80 s). A file listed here
+            is loaded once, here, and not again from its directory. Re-order when scripts/test-profile.php shows a
+            worker far behind the others.
+        -->
+        <testsuite name="Heavy">
+            <file>tests/Feature/TwentyOneStreamPart2Test.php</file>
+            <file>tests/Feature/TwentyOneStreamTest.php</file>
+            <file>tests/Feature/TwentyOneStreamPart4Test.php</file>
+            <file>tests/Feature/TwentyOneStreamPart3Test.php</file>
+            <file>tests/Feature/Seo/PageCardsTest.php</file>
+            <file>tests/Feature/Caster/PodcastReplayTest.php</file>
+            <file>tests/Feature/StreamBot/ProfileVarietyTest.php</file>
+            <file>tests/Feature/SeasonChain/TrustJobTest.php</file>
+            <file>tests/Feature/Caster/PatternScriptsTest.php</file>
+            <file>tests/Feature/Caster/MusicFirstTest.php</file>
+            <file>tests/Feature/Caster/ChatWishesTest.php</file>
+            <file>tests/Feature/Payouts/PotReleaseTest.php</file>
+            <file>tests/Feature/Payouts/TournamentPayoutTest.php</file>
+        </testsuite>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
