@@ -46,7 +46,8 @@ function readMarker(me, desk) {
 }
 
 export function deskChat(config) {
-    const chat = roomChat({ ...config, match: null, casual: null, cacheName: 'desk', tags: [['desk', String(config.desk)]] });
+    const deskKey = config.deskKey ?? null;
+    const chat = roomChat({ ...config, match: null, casual: null, cacheName: 'desk', tags: [['desk', String(config.desk)]], extraRecipients: deskKey ? [deskKey] : [] });
     const baseInit = chat.init;
     const baseDestroy = chat.destroy;
     const managers = new Set(config.members.filter((m) => m.manager).map((m) => m.pubkey));
@@ -94,7 +95,7 @@ export function deskChat(config) {
 
         get thread() {
             return {
-                rumors: deskMessages(this.rumors, { me: config.me, members: config.members.map((m) => m.pubkey), desk: config.desk, muted: this.muted.filter((p) => !managers.has(p)) }),
+                rumors: deskMessages(this.rumors, { me: config.me, members: config.members.map((m) => m.pubkey), desk: config.desk, deskKey, muted: this.muted.filter((p) => !managers.has(p)) }),
                 entries: [],
             };
         },
@@ -111,7 +112,7 @@ export function deskChat(config) {
                 text: rumor.content,
                 manager: managers.has(rumor.pubkey),
                 // Written in another Nostr client into a group that is not quite the desk (deskPlacement() `near`): shown, marked.
-                otherRoom: deskPlacement(rumor, { me: config.me, members, desk: config.desk }) === 'near',
+                otherRoom: deskPlacement(rumor, { me: config.me, members, desk: config.desk, deskKey }) === 'near',
                 viaDm: false,
                 card: null,
                 mutedCard: false,
@@ -120,7 +121,7 @@ export function deskChat(config) {
 
         /** Messages tagged for this desk by someone who is no member: hidden, but the desk says how many. */
         get hidden() {
-            return deskHidden(this.rumors, { me: config.me, members: config.members.map((m) => m.pubkey), desk: config.desk });
+            return deskHidden(this.rumors, { me: config.me, members: config.members.map((m) => m.pubkey), desk: config.desk, deskKey });
         },
 
         /** Messages of the others since the desk was last read. */

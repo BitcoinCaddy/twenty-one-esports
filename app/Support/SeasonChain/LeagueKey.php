@@ -85,6 +85,21 @@ final class LeagueKey
     }
 
     /**
+     * The desk key of one tournament (user, 2026-10-23: messages of one tournament's desk showed in the desks of
+     * others): a fixed member of every desk message's `p` set, so the NIP-17 conversation itself names the tournament.
+     * Other clients (Amethyst, 0xchat) drop the league's `desk` tag in a reply but must keep the room's recipients,
+     * or the reply reaches nobody (Amethyst ChatNewMessageViewModel: `ChatMessageEvent.build(message,
+     * room.users.map { … toPTag() })`). Derived from the league secret, so it never has to be stored; it signs only
+     * its own profile (0) and DM relay list (10050). Null without a league key.
+     */
+    public static function desk(int $tournamentId): ?self
+    {
+        $league = NostrKeys::secretToHex(is_string($secret = config('esports.league.nsec')) ? $secret : null);
+
+        return $league === null ? null : self::fromSecret(hash_hmac('sha256', 'tournament-desk:'.$tournamentId, (string) hex2bin($league)));
+    }
+
+    /**
      * A fresh key for one anonymous zap request (NIP "Who pays how": a
      * visitor without Nostr pays an invoice whose zap request was signed with
      * a throwaway key). Its secret is dropped with the object.

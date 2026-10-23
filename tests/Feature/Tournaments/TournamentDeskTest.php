@@ -5,10 +5,12 @@ use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
 use App\Models\Admin;
 use App\Models\ChessGame;
+use App\Models\NostrEvent;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Models\TournamentParticipant;
 use App\Models\User;
+use App\Support\SeasonChain\LeagueKey;
 use App\Support\Tournaments\TournamentDesk;
 use App\Support\Tournaments\TournamentDraws;
 use App\Support\Tournaments\TournamentSignups;
@@ -304,4 +306,25 @@ test('the desk chat is drawn open for a member, under the hero or under the sign
         ->assertDontSee('data-test="desk-rail"', false)
         ->assertDontSee('id="desk"', false)
         ->assertSee('data-test="game-rail"', false);
+});
+
+test('every desk has its own fixed key in the conversation, its profile and DM relays published once by the scheduled run', function () {
+    // 2026-10-23: a reply from Amethyst carries no `desk` tag but keeps the room's recipients; the key names the tournament.
+    $tournament = openTournament();
+    $other = openTournament();
+    $creator = $tournament->creator;
+    $desk = TournamentDesk::for($tournament, $creator);
+    $events = fn (string $pubkey, int $kind) => NostrEvent::query()->where('pubkey', $pubkey)->where('kind', $kind)->count();
+
+    expect($events($desk['deskKey'], 0))->toBe(0, 'never published while a page renders');
+    $this->artisan('esports:desk-profiles')->assertSuccessful();
+    $this->artisan('esports:desk-profiles')->assertSuccessful();
+
+    expect($desk['deskKey'])->toMatch('/^[0-9a-f]{64}$/')
+        ->and($desk['deskKey'])->toBe(LeagueKey::desk($tournament->id)?->pubkey())
+        ->and($desk['deskKey'])->not->toBe(TournamentDesk::deskKey($other))
+        ->and($desk['deskKey'])->not->toBe(LeagueKey::fromConfig()?->pubkey())
+        ->and($events($desk['deskKey'], 0))->toBe(1)
+        ->and($events($desk['deskKey'], 10050))->toBe(1)
+        ->and(json_decode((string) (NostrEvent::query()->where('pubkey', $desk['deskKey'])->where('kind', 0)->sole()->payload()['content'] ?? ''), true)['name'] ?? null)->toBe('Tournament desk: '.$tournament->name);
 });

@@ -369,7 +369,9 @@ const NEAR_ROOM_SHARE = 0.5;
  * Nachrichten angezeigt werden"; DerCaddy, tournament 27): the inbox holds every NIP-17 message to my key (private
  * DMs, match rooms, other desks), so the desk picks its own:
  *
- *   - `desk`: our own `desk` tag of this tournament, written by a member; or a group message from another client
+ *   - `desk`: a conversation that holds this tournament's desk key (TournamentDesk::deskKey(), user 2026-10-23: exact
+ *     in every client, which must keep a room's recipients), or one with our own `desk` tag of this tournament,
+ *     written by a member; or (before the key) a group message from another client
  *     (Amethyst, 0xchat carry no `desk` tag) by a member whose room is the desk: all members in a small group of
  *     three or four, at least DESK_ROOM_SHARE of a wider one (a reply in an older room keeps a player who withdrew
  *     during sign-up, and was lost here while everyone in Amethyst read it);
@@ -380,7 +382,7 @@ const NEAR_ROOM_SHARE = 0.5;
  *
  * @returns {'desk'|'near'|'stranger'|null}
  */
-export function deskPlacement(rumor, { me, members, desk }) {
+export function deskPlacement(rumor, { me, members, desk, deskKey = null }) {
     if (!isRumor(rumor)) return null;
     const memberSet = members instanceof Set ? members : new Set(members);
     const recipients = rumor.tags.filter((t) => t[0] === 'p').map((t) => t[1]);
@@ -388,6 +390,13 @@ export function deskPlacement(rumor, { me, members, desk }) {
     const toMe = rumor.pubkey === me || recipients.includes(me);
 
     if (!toMe || recipients.length === 0) return null;
+
+    // The desk's own key in the conversation (TournamentDesk::deskKey()): this tournament's desk in every client, exactly.
+    if (deskKey && recipients.includes(deskKey)) {
+        if (deskTags.length > 0 && !deskTags.some((t) => t[1] === String(desk))) return null;
+
+        return memberSet.has(rumor.pubkey) ? 'desk' : 'stranger';
+    }
 
     if (deskTags.length > 0) {
         if (!deskTags.some((t) => t[1] === String(desk))) return null;
@@ -405,16 +414,64 @@ export function deskPlacement(rumor, { me, members, desk }) {
     return share >= NEAR_ROOM_SHARE ? 'near' : null;
 }
 
-export function deskMessages(rumors, { me, members, desk, muted = [] }) {
+export function deskMessages(rumors, { me, members, desk, deskKey = null, muted = [] }) {
     const memberSet = new Set(members);
-    const tagged = rumors.filter((rumor) => ['desk', 'near'].includes(deskPlacement(rumor, { me, members: memberSet, desk })));
+    const anchorOf = deskAnchors(rumors);
+    const keyed = (rumor) => Boolean(deskKey) && rumor.tags.some((t) => t[0] === 'p' && t[1] === deskKey);
+    // An untagged message needs the desk key in its conversation, or (written before the key) an anchor.
+    const shown = rumors.filter((rumor) => ['desk', 'near'].includes(deskPlacement(rumor, { me, members: memberSet, desk, deskKey }))
+        && (hasDeskTag(rumor) || keyed(rumor) || anchorOf(rumor) === String(desk)));
 
-    return withReplies(tagged, [], muted);
+    return withReplies(shown, [], muted);
+}
+
+function hasDeskTag(rumor) {
+    return rumor.tags.some((t) => t[0] === 'desk');
+}
+
+/** A NIP-17 conversation's key: its author and `p` set, sorted. */
+function roomKey(rumor) {
+    return [...participants(rumor)].sort().join(',');
+}
+
+/**
+ * Which desk an untagged message from another client (Amethyst, 0xchat) answers, or null (user, 2026-10-23: messages
+ * of one tournament's desk showed in the desks of others). The group share alone cannot tell two tournaments with the
+ * same players apart (the Blockli dailies), so an untagged message needs an anchor, like a match room's reply
+ * (dmReplies() rule 4): the tagged desk message it answers (`e`), else the newest tagged desk message of the same
+ * conversation (author + `p` set) written before it. A message in a new group without any desk message is no desk's.
+ * Trade-off, kept on purpose: a reply typed into a conversation after another desk's message of the same players lands
+ * in that desk.
+ *
+ * @returns {(rumor: object) => string|null}
+ */
+function deskAnchors(rumors) {
+    const tagged = rumors.filter((rumor) => isRumor(rumor) && hasDeskTag(rumor));
+    const byId = new Map(tagged.map((rumor) => [rumor.id, rumor]));
+    const byRoom = new Map();
+
+    for (const rumor of tagged) {
+        const key = roomKey(rumor);
+        byRoom.set(key, [...(byRoom.get(key) ?? []), rumor]);
+    }
+
+    const deskOf = (rumor) => rumor?.tags.find((t) => t[0] === 'desk')?.[1] ?? null;
+
+    return (rumor) => {
+        const answered = rumor.tags.filter((t) => t[0] === 'e').map((t) => byId.get(t[1])).find(Boolean);
+        if (answered) return deskOf(answered);
+
+        const anchor = (byRoom.get(roomKey(rumor)) ?? [])
+            .filter((t) => t.created_at <= rumor.created_at && t.id !== rumor.id)
+            .reduce((latest, t) => (latest === null || t.created_at > latest.created_at ? t : latest), null);
+
+        return deskOf(anchor);
+    };
 }
 
 /** How many messages the desk hid because their sender is no member (deskPlacement() `stranger`), each once. */
-export function deskHidden(rumors, { me, members, desk }) {
+export function deskHidden(rumors, { me, members, desk, deskKey = null }) {
     const memberSet = new Set(members);
 
-    return new Set(rumors.filter((rumor) => deskPlacement(rumor, { me, members: memberSet, desk }) === 'stranger').map((rumor) => rumor.id)).size;
+    return new Set(rumors.filter((rumor) => deskPlacement(rumor, { me, members: memberSet, desk, deskKey }) === 'stranger').map((rumor) => rumor.id)).size;
 }

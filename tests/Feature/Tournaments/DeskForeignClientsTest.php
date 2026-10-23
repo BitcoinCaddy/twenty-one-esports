@@ -7,5 +7,5 @@
  */
 
 test('a desk message from another Nostr client shows when its room is the desk', function () {
-    nodeTest('tests/js/deskForeignClients.test.mjs', 2);
+    nodeTest('tests/js/deskForeignClients.test.mjs', 4);
 });

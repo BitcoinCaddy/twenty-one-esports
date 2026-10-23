@@ -53,7 +53,7 @@ export function messagesOf(chat, rumors, { me, muted = [] }) {
             return roomMessages(rumors, { me, members: chat.members, match: chat.match, muted, dm: { ...dm, opponents: chat.opponents ?? [] } });
         case 'desk':
             // The direction is never muted at its desk (deskChat.js): its announcements reach everybody.
-            return deskMessages(rumors, { me, members: chat.members, desk: chat.desk, muted: muted.filter((pubkey) => !(chat.managers ?? []).includes(pubkey)) });
+            return deskMessages(rumors, { me, members: chat.members, desk: chat.desk, deskKey: chat.deskKey ?? null, muted: muted.filter((pubkey) => !(chat.managers ?? []).includes(pubkey)) });
         default:
             return [];
     }

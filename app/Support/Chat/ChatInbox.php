@@ -100,6 +100,7 @@ final class ChatInbox
                 'at' => ($tournament->updated_at ?? $tournament->created_at)?->getTimestamp() ?? 0,
                 'since' => $desk['since'],
                 'desk' => $tournament->id,
+                'deskKey' => $desk['deskKey'],
                 'members' => array_column($desk['members'], 'pubkey'),
                 // The direction is never muted at its desk (deskChat.js): the browser keeps its messages.
                 'managers' => array_column(array_filter($desk['members'], fn (array $member): bool => $member['manager']), 'pubkey'),
@@ -206,7 +207,7 @@ final class ChatInbox
     {
         return [
             'kind' => $kind, 'key' => $key, 'title' => '', 'subtitle' => '', 'href' => '', 'at' => 0, 'since' => null, 'settled' => null,
-            'me' => (string) $user->pubkey, 'match' => null, 'desk' => null, 'opponent' => null, 'members' => [], 'opponents' => [], 'managers' => [], 'names' => [],
+            'me' => (string) $user->pubkey, 'match' => null, 'desk' => null, 'deskKey' => null, 'opponent' => null, 'members' => [], 'opponents' => [], 'managers' => [], 'names' => [],
             ...$fields,
         ];
     }

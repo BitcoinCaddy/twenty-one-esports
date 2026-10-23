@@ -5,6 +5,7 @@ use App\Enums\TournamentResultsMode;
 use App\Models\ChessGame;
 use App\Models\NostrEvent;
 use App\Models\User;
+use App\Support\Tournaments\TournamentDesk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -204,6 +205,9 @@ test('the desk is open without a click: a player and the direction talk there, t
         $pageA->locator('#deskchat')->fill('My clock froze in round 1');
         $pageA->locator('[data-test=desk-send]')->click();
         BrowserWait::until($pageA, deskSees('me', 'My clock froze in round 1', false), 10_000);
+        // The tournament's desk key is one of the recipients (2026-10-23): another client keeps it in every reply.
+        $sentTo = $pageA->evaluate('() => Alpine.$data(document.querySelector("[data-test=desk-chat]")).rumors.filter((r) => r.content === "My clock froze in round 1").flatMap((r) => r.tags.filter((t) => t[0] === "p").map((t) => t[1]))');
+        expect($sentTo)->toContain(TournamentDesk::deskKey($tournament));
 
         // The direction reads it where it is, without opening anything, and answers.
         BrowserWait::until($pageD, deskSees('them', 'My clock froze in round 1', false), 10_000);
@@ -512,17 +516,19 @@ test('a message from another client into a slightly different group shows marked
         $outsiders = array_map(fn (int $i): string => str_repeat(dechex($i), 64), [10, 11, 12, 13]);
         $rumor = fn (string $id, string $from, array $to, array $extra = []): array => ['id' => str_repeat($id, 64), 'kind' => 14, 'pubkey' => $from, 'created_at' => now()->getTimestamp() - 60,
             'content' => 'Eine Minute Bedenkzeit fände ich gut', 'tags' => [...array_map(fn (string $p): array => ['p', $p], $to), ...$extra], 'sig' => ''];
-        // A member answers from another client into a room of four members and four outsiders: shown, marked.
+        // A member answers from another client into a room of four members and four outsiders: shown, marked. Written
+        // before the desk key, it belongs here through the desk message of the same room before it (deskAnchors()).
+        $anchor = [...$rumor('c', $anna->pubkey, [$members[1], $members[2], $members[3], ...$outsiders], [['desk', (string) $tournament->id]]), 'content' => 'Wie lange ist die Bedenkzeit?', 'created_at' => now()->getTimestamp() - 120];
         $near = $rumor('a', $members[1], [$anna->pubkey, $members[2], $members[3], ...$outsiders]);
         // Someone outside the tournament tags this desk: hidden, counted.
         $intruder = $rumor('b', str_repeat('e', 64), [$anna->pubkey, $members[1]], [['desk', (string) $tournament->id]]);
 
         foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
             $page = deskPage($anna, route('tournaments.show', $tournament, false).'?lang=de', $width, $height);
-            $page->evaluate('(r) => Alpine.$data(document.querySelector("[data-test=desk-chat]")).rumors.push(...r)', [$near, $intruder]);
+            $page->evaluate('(r) => Alpine.$data(document.querySelector("[data-test=desk-chat]")).rumors.push(...r)', [$anchor, $near, $intruder]);
             // Both: Alpine shows the marked message and the note in separate steps, and the note can come a poll later (measured with the 2026-10 npm update: note null, then shown).
-            BrowserWait::until($page, '() => !!document.querySelector("[data-test=desk-other-room]")?.checkVisibility() && !!document.querySelector("[data-test=desk-hidden]")?.checkVisibility()', 10_000);
-            $m = $page->evaluate('() => { const mark = document.querySelector("[data-test=desk-other-room]"), note = document.querySelector("[data-test=desk-hidden]"), li = mark.closest("li"), list = document.querySelector("[data-test=desk-messages]").getBoundingClientRect(); const r = li.getBoundingClientRect(); return { mark: mark.innerText.trim(), text: li.innerText.includes("Eine Minute"), note: note.checkVisibility() ? note.innerText.trim() : null, inside: r.left >= list.left - 0.5 && r.right <= list.right + 0.5, markH: Math.round(mark.getBoundingClientRect().height), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, intruderShown: [...document.querySelectorAll("[data-test=desk-messages] li")].filter((el) => el.innerText.includes("Eine Minute")).length }; }');
+            BrowserWait::until($page, '() => [...document.querySelectorAll("[data-test=desk-other-room]")].some((el) => el.checkVisibility()) && !!document.querySelector("[data-test=desk-hidden]")?.checkVisibility()', 10_000);
+            $m = $page->evaluate('() => { const mark = [...document.querySelectorAll("[data-test=desk-other-room]")].find((el) => el.checkVisibility()), note = document.querySelector("[data-test=desk-hidden]"), li = mark.closest("li"), list = document.querySelector("[data-test=desk-messages]").getBoundingClientRect(); const r = li.getBoundingClientRect(); return { mark: mark.innerText.trim(), text: li.innerText.includes("Eine Minute"), note: note.checkVisibility() ? note.innerText.trim() : null, inside: r.left >= list.left - 0.5 && r.right <= list.right + 0.5, markH: Math.round(mark.getBoundingClientRect().height), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, intruderShown: [...document.querySelectorAll("[data-test=desk-messages] li")].filter((el) => el.innerText.includes("Eine Minute")).length }; }');
             fwrite(STDERR, PHP_EOL."[desk foreign {$width}] ".json_encode($m, JSON_UNESCAPED_UNICODE).PHP_EOL);
 
             expect($m)->toMatchArray(['mark' => 'aus einer anderen Gruppe', 'text' => true, 'note' => '1 Nachricht von jemandem außerhalb des Turniers wurde ausgeblendet.', 'inside' => true, 'intruderShown' => 1])

@@ -237,6 +237,9 @@ Artisan::command('board:daily-reminders', function (BoardNotifications $notifica
 
 Schedule::command('board:daily-reminders')->everyFiveMinutes()->withoutOverlapping();
 
+// The tournament desks' keys get their profile and DM relays (TournamentDesk::publishProfile(), user 2026-10-23).
+Schedule::command('esports:desk-profiles')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+
 /*
  * Daily chess deadline reminders (ChessSettings "Remind me when … are left").
  * Each turn gets at most one: the game's `reminded_ply` is claimed with a

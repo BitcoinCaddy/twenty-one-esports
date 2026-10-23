@@ -200,7 +200,7 @@ export function roomChat(config) {
 
             // NIP-17: other clients send to my DM relays (10050), so read there too, same filter.
             const lookup = [...(config.lookupRelays ?? []), ...config.relays];
-            this.inboxes = lookupInboxes(config.members.map((m) => m.pubkey), lookup, { trusted: lookup }).catch(() => new Map());
+            this.inboxes = lookupInboxes([...config.members.map((m) => m.pubkey), ...(config.extraRecipients ?? [])], lookup, { trusted: lookup }).catch(() => new Map());
             this.inboxes.then((inboxes) => {
                 const extra = extraInboxRelays(config.me, config.relays, inboxes);
                 if (!this.closed && extra.length > 0) this.inboxSub = this.pool.subscribe(extra, filter, handlers);
@@ -498,7 +498,8 @@ export function roomChat(config) {
         async deliver({ content, tags = [], needOpponent = false, now = nowSeconds() }) {
             const { rumor, wraps, targets } = await wrapGroupMessage(window.nostr, {
                 sender: config.me,
-                recipients: config.members.map((m) => m.pubkey),
+                // The tournament desk adds its own key (TournamentDesk::deskKey()): the conversation then names the tournament.
+                recipients: [...config.members.map((m) => m.pubkey), ...(config.extraRecipients ?? [])],
                 content,
                 match: config.match,
                 // The chat's own tags (the tournament desk's `desk`) before a message's (a card).

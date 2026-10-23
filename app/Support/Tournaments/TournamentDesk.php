@@ -10,8 +10,10 @@ use App\Models\TournamentSignup;
 use App\Models\User;
 use App\Support\Board;
 use App\Support\Notifications\DmRelays;
+use App\Support\SeasonChain\LeagueKey;
 use App\Support\TwentyOne\Stream\TournamentLiveSlides;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * The tournament desk (user, 2026-10-03: "pro Turnier einen Turnierleiter-Chat
@@ -124,6 +126,8 @@ final class TournamentDesk
         return [
             'me' => $viewer->pubkey,
             'desk' => $tournament->id,
+            // The tournament's own recipient in every desk message (LeagueKey::desk()): the conversation names the tournament.
+            'deskKey' => self::deskKey($tournament),
             'url' => route('tournaments.show', $tournament).'#desk',
             'members' => array_map(fn (array $member): array => ['pubkey' => $member['pubkey'], 'name' => $member['name'], 'manager' => $member['manager']], $members),
             'manager' => in_array($viewer->pubkey, $managers, true),
@@ -183,5 +187,37 @@ final class TournamentDesk
             ->flatMap(fn (TournamentParticipant $entry): array => $entry->memberIds())->all();
 
         return array_values(array_unique(array_map(intval(...), [...$signedUp, ...$drawn])));
+    }
+
+    /** The desk key's pubkey (LeagueKey::desk()), null without a league key. Never signs or publishes here: it runs per render. */
+    public static function deskKey(Tournament $tournament): ?string
+    {
+        return LeagueKey::desk($tournament->id)?->pubkey();
+    }
+
+    /**
+     * Publish the desk key's profile ("Tournament desk: <name>", the group's extra member in other clients) and its DM
+     * relay list (10050: where other clients send its copy), once per name (`esports:desk-profiles`). The desk works
+     * without them: the key in the recipients names the tournament. Returns whether it published.
+     */
+    public static function publishProfile(Tournament $tournament): bool
+    {
+        $key = LeagueKey::desk($tournament->id);
+        $flag = 'desk-profile:'.$tournament->id.':'.md5($tournament->name);
+
+        if ($key === null || Cache::has($flag)) {
+            return false;
+        }
+
+        $now = now()->getTimestamp();
+        $key->publish(0, [], (string) json_encode([
+            // English, as everything the league publishes: other players' clients show it.
+            'name' => mb_substr('Tournament desk: '.$tournament->name, 0, 80),
+            'about' => 'The private desk of this tournament: messages here go to its players and its tournament direction. '.route('tournaments.show', $tournament),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $now);
+        $key->publish(10050, array_map(fn (string $relay): array => ['relay', $relay], array_values(config('esports.chat.relays', []))), '', $now);
+        Cache::forever($flag, true);
+
+        return true;
     }
 }
