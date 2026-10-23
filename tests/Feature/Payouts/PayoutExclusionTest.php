@@ -58,3 +58,19 @@ test('an entry that lost as a no-show wins nothing', function () {
     expect(PayoutPlan::excluded($tournament))->toHaveKey($third)
         ->and(collect(app(PayoutPlan::class)->compute($tournament, 99_000)['rows'])->pluck('participant.id')->all())->not->toContain($third);
 });
+
+test('the side that showed up and won against a no-show keeps its place and prize', function () {
+    fakeWallet();
+    $tournament = finishedPoolTournament(ownPotWallet(0), 100_000);
+    $champion = app(TournamentPlacements::class)->of($tournament)[0]['participants'][0];
+    // Tournament 36 (2026-10-23): the champion's win against a no-show (`noshow` names the absent slot) cut the champion.
+    $match = TournamentMatch::query()->where('tournament_id', $tournament->id)->whereHas('slots', fn ($q) => $q->where('tournament_participant_id', $champion))
+        ->whereNotNull('result')->orderBy('id')->with('slots')->firstOrFail();
+    $winner = (int) $match->result['winner'];
+    $absent = $match->slots->firstWhere('slot', 1 - $winner)->tournament_participant_id;
+    $match->forceFill(['result' => [...$match->result, 'forfeit' => true, 'decided' => 'noshow', 'noshow' => [1 - $winner]]])->save();
+
+    $excluded = PayoutPlan::excluded($tournament);
+    expect($excluded)->not->toHaveKey($champion)->and($excluded)->toHaveKey($absent)
+        ->and(collect(app(PayoutPlan::class)->compute($tournament, 99_000)['rows'])->firstWhere('place', 1)['participant']->id)->toBe($champion);
+});

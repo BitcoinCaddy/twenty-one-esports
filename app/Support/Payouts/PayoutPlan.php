@@ -117,7 +117,8 @@ final class PayoutPlan
 
     /**
      * The entries that win nothing: disqualified ones, both sides of a match decided as a double no-show, the side
-     * that lost by a no-show (reported and unanswered, or not checked in) or as withdrawn.
+     * that did not show (its slot in the result's `noshow`), the side that lost by a no-show (reported and
+     * unanswered, or not checked in) or as withdrawn.
      *
      * @return array<int, true> participant id => true
      */
@@ -131,8 +132,15 @@ final class PayoutPlan
             $sides = $match->slots->pluck('tournament_participant_id')->all();
 
             if (($result['decided'] ?? null) === 'noshow') {
-                foreach (array_filter($sides) as $id) {
-                    $excluded[(int) $id] = true;
+                // Only the slots that did not show (`noshow`); the side that showed up and won keeps its place (tournament
+                // 36, 2026-10-23: the champion was cut from the payout for winning against a no-show). Without the list
+                // it is a double no-show decided by seed or lot: both sides.
+                $slots = isset($result['noshow']) && is_array($result['noshow']) ? array_map(intval(...), $result['noshow']) : [0, 1];
+
+                foreach ($slots as $slot) {
+                    if (($sides[$slot] ?? null) !== null) {
+                        $excluded[(int) $sides[$slot]] = true;
+                    }
                 }
 
                 continue;
