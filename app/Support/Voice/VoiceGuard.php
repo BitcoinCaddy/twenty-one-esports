@@ -96,6 +96,16 @@ final class VoiceGuard
     private ?array $detectable = null;
 
     /**
+     * The word sets of englishWords() and vocabulary() by the hash of the text they are made of, for the whole process:
+     * a guard is built per CasterVoice/LeagueVoice, and every one split the 800 KB interface file and the canon into
+     * words again (0.3 s a guard, 5 s of a test that writes sixteen scripts). The key is the text itself, so a changed
+     * canon, guide or interface file makes its own entry.
+     *
+     * @var array<string, array<string, true>>
+     */
+    private static array $wordSets = [];
+
+    /**
      * @param  list<string>  $blocklist  words that never go out (insults, fees, wording the project rules forbid)
      * @param  list<string>  $persons  real people of the community: named only as the speaker of their own canon entry
      */
@@ -491,8 +501,18 @@ final class VoiceGuard
         $texts[] = implode(' ', array_keys($this->englishWords()));
         $texts[] = implode(' ', self::wordList('german-words.txt'));
 
+        $text = implode(' ', $texts);
+
+        return $this->vocabulary = self::$wordSets['vocabulary:'.md5($text)] ??= self::vocabularyOf($text);
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private static function vocabularyOf(string $text): array
+    {
         $vocabulary = [];
-        foreach (self::words(implode(' ', $texts)) as $word) {
+        foreach (self::words($text) as $word) {
             $word = mb_strtolower($word);
             $vocabulary[$word] = true;
 
@@ -501,7 +521,7 @@ final class VoiceGuard
             }
         }
 
-        return $this->vocabulary = $vocabulary;
+        return $vocabulary;
     }
 
     /**
@@ -543,14 +563,26 @@ final class VoiceGuard
             return $this->english;
         }
 
-        $texts = [];
         $interface = $this->interfacePath !== '' ? $this->interfacePath : lang_path('de.json');
+        $lines = self::wordList('english-words.txt');
+        $key = 'english:'.(is_file($interface) ? md5_file($interface) : '-').':'.md5(implode("\n", $lines));
+
+        return $this->english = self::$wordSets[$key] ??= self::englishWordsOf($interface, $lines);
+    }
+
+    /**
+     * @param  list<string>  $lines  the lines of english-words.txt
+     * @return array<string, true>
+     */
+    private static function englishWordsOf(string $interface, array $lines): array
+    {
+        $texts = [];
         $strings = is_file($interface) ? json_decode((string) file_get_contents($interface), true) : null;
         foreach (is_array($strings) ? array_keys($strings) : [] as $source) {
             $texts[] = (string) preg_replace('/:[a-z_]+/u', ' ', (string) $source);
         }
 
-        foreach (self::wordList('english-words.txt') as $line) {
+        foreach ($lines as $line) {
             $texts[] = $line;
         }
 
@@ -559,7 +591,7 @@ final class VoiceGuard
             $english[mb_strtolower($word)] = true;
         }
 
-        return $this->english = $english;
+        return $english;
     }
 
     /**

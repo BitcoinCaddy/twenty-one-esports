@@ -13,6 +13,7 @@ use App\Support\Caster\YouTubeChatSummary;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 
 /*
 |--------------------------------------------------------------------------
@@ -207,6 +208,9 @@ it('keeps every call-out line speakable: one short sentence, no names, no fees, 
 });
 
 it('keeps the cadence from the minute schedule of caster:chat', function () {
+    // caster:chat paces its reads through the minute with Sleep (poll_seconds): 55 s of wall clock in this one test.
+    Sleep::fake();
+
     $this->artisan('caster:chat')->expectsOutputToContain('Chat cadence: queued a callout chat item.')->assertSuccessful();
 
     expect(CasterScript::query()->where('topic', ChatCadence::CALLOUT_TOPIC)->count())->toBe(1);
