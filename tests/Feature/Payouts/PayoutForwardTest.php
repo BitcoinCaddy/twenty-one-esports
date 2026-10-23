@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\PayoutStatus;
+use App\Support\Cards\ShareCard;
 use App\Support\Payouts\PayoutApproval;
+use App\Support\Prizes\PrizePool;
 use App\Support\Wallet\Ledger;
 use Livewire\Livewire;
 
@@ -42,4 +44,25 @@ test('every ledger booking reason fits the reason column (varchar 24 on PostgreS
     foreach ([...$reasons[1], ...$constants[1]] as $reason) {
         expect(strlen($reason))->toBeLessThanOrEqual(24, "ledger reason {$reason} is longer than the column");
     }
+});
+
+test('a prize the champion passed on shows by the pot and in the hero, and is no longer to be won', function () {
+    fakeWallet();
+    $wallet = ownPotWallet(0);
+    fakeLightningAddresses($wallet);
+    $tournament = finishedPoolTournament($wallet, 100_000);
+    $admin = anAdmin();
+    app(PayoutApproval::class)->approve($tournament, $admin);
+    $first = $tournament->payouts()->where('place', 1)->sole();
+    $left = app(PrizePool::class)->remainingSats($tournament->refresh());
+
+    // Tournament 36 (2026-10-23): the champion passed the pot on, the page still said all of it was to be won.
+    Livewire::actingAs($admin)->test('pages::admin.payouts', ['tournamentId' => $tournament->id])->call('forward', $first->id);
+
+    expect(app(PrizePool::class)->remainingSats($tournament->refresh()))->toBe($left - $first->amount_sats);
+    $this->get(route('tournaments.show', $tournament))->assertOk()
+        ->assertSeeHtml('data-test="pool-forwarded"')
+        ->assertSee(__(':name passed :sats sats on to the next pot.', ['name' => $first->refresh()->publicName(), 'sats' => ShareCard::sats($first->amount_sats)]))
+        ->assertSeeHtml('data-test="pool-forwarded-hero"')
+        ->assertSeeHtml('data-test="champion-forwarded"');
 });

@@ -2,7 +2,9 @@
 
 namespace App\Support\Prizes;
 
+use App\Enums\PayoutStatus;
 use App\Models\Tournament;
+use App\Models\TournamentPayout;
 use App\Support\Tournaments\TournamentPrizePool;
 
 /**
@@ -51,6 +53,9 @@ final class WalletPrizePool implements TournamentPrizePool
             'zaps' => $zapped,
             'zappers' => $zappers,
             'deposits' => $deposits,
+            // Prizes their winner passed on to the next pot, shown with the results and in the hero (user, 2026-10-23).
+            'forwarded' => $tournament->payouts()->where('status', PayoutStatus::Forwarded)->with('participant')->orderBy('place')->get()
+                ->map(fn (TournamentPayout $payout): array => ['place' => $payout->place, 'name' => $payout->publicName(), 'pubkey' => $payout->pubkey, 'sats' => $payout->amount_sats])->all(),
             'left' => (int) $this->pool->remainingSats($tournament),
             'mode' => $tournament->prizeMode(),
             'split' => $this->pool->projection($tournament),

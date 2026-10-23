@@ -6924,6 +6924,8 @@
     "Payment of :sats sats to :name started. The status updates here by itself.": "Zahlung von :sats Sats an :name gestartet. Der Status aktualisiert sich hier von selbst.",
     "This prize can no longer be passed on.": "Dieser Preis kann nicht mehr weitergereicht werden.",
     ":name passed :sats sats on to the next pot.": ":name hat :sats Sats an den nächsten Topf weitergereicht.",
+    ":sats passed on": ":sats weitergereicht",
+    "Prize passed on": "Preis weitergereicht",
     "Starting…": "Startet…",
     ":name passes :sats sats on to the next pot? They are not paid out, the tournament page shows it.": ":name reicht :sats Sats an den nächsten Topf weiter? Sie werden nicht ausgezahlt, die Turnierseite zeigt es an.",
     "Pass on": "Weiterreichen",

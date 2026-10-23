@@ -54,6 +54,18 @@
         </ol>
     @endif
 
+    @if (($pool['forwarded'] ?? []) !== [])
+        {{-- A prize its winner passed on to the next pot: said where the pot is, not only in the payouts list (user, 2026-10-23). --}}
+        <ul class="m-0 flex list-none flex-col gap-1.5 p-0" data-test="pool-forwarded">
+            @foreach ($pool['forwarded'] as $forward)
+                <li class="flex items-start gap-2 rounded-md bg-ground px-3 py-2 text-[13px] leading-normal shadow-ring-hairline">
+                    <x-icon name="bolt" :size="14" class="mt-0.5 shrink-0 text-btc" />
+                    <span>{{ __(':name passed :sats sats on to the next pot.', ['name' => $forward['name'], 'sats' => $sats($forward['sats'])]) }}</span>
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
     @if ($results !== [])
         {{-- The final places by the names the bracket shows (rule: one public name per player). --}}
         <div class="flex flex-col gap-2" data-test="champion-podium">

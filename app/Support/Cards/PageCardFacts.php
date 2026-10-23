@@ -163,7 +163,7 @@ final class PageCardFacts
             'teams' => $tournament->profile()->entersTeams(),
             'cover' => ($cover = app(GameRegistry::class)->coverPath($tournament->game)) === null ? null : basename($cover),
             'pot' => $pot,
-            'left' => $pot === null ? null : max(0, $pot - PrizePool::paidSats($tournament)),
+            'left' => $pot === null ? null : max(0, $pot - PrizePool::settledSats($tournament)),
             'podium' => $tournament->status === TournamentStatus::Finished ? self::podium($tournament) : [],
             // `ms` or `points` on a score leaderboard, else null.
             'score_unit' => $unit,

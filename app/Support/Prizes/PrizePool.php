@@ -171,7 +171,16 @@ final class PrizePool
     }
 
     /**
-     * What is still to be won: the pot as set less the prizes paid so far
+     * The prizes settled so far: paid out, or passed on to the next pot by their winner (user, 2026-10-23: a passed-on
+     * pot still read „16 800 von 16 800 sats noch zu gewinnen").
+     */
+    public static function settledSats(Tournament $tournament): int
+    {
+        return (int) $tournament->payouts()->whereIn('status', [PayoutStatus::Paid, PayoutStatus::Forwarded])->sum('amount_sats');
+    }
+
+    /**
+     * What is still to be won: the pot as set less the prizes settled so far
      * (user, 2026-09-28: „Keine Abhängigkeit zur Wallet Balance. Nur zu dem
      * was bisher ausgezahlt wurde“); null without a pot.
      */
@@ -179,7 +188,7 @@ final class PrizePool
     {
         $pot = $this->potSats($tournament);
 
-        return $pot === null ? null : max(0, $pot - self::paidSats($tournament));
+        return $pot === null ? null : max(0, $pot - self::settledSats($tournament));
     }
 
     /** The routing-fee reserve on an amount of sats. */

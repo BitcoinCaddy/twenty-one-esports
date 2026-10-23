@@ -90,7 +90,7 @@ final class PrizeChips
         $accounts = array_map(fn (Tournament $tournament): string => $tournament->potAccount(), array_values($pots));
 
         /** @var array<int, int> $paid */
-        $paid = TournamentPayout::query()->whereIn('tournament_id', $ids)->where('status', PayoutStatus::Paid)
+        $paid = TournamentPayout::query()->whereIn('tournament_id', $ids)->whereIn('status', [PayoutStatus::Paid, PayoutStatus::Forwarded])
             ->groupBy('tournament_id')->selectRaw('tournament_id, sum(amount_sats) as sats')->pluck('sats', 'tournament_id')->map(fn (mixed $sats): int => (int) $sats)->all();
         // ZapSponsors::onTopSats(): settled, on-time verified zaps with a payer and anonymous top-ups, booked into the pot's account.
         /** @var array<int, int> $zaps */

@@ -820,6 +820,8 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
     $poolSats = $hasPool ? (int) $this->pool['sats'] : null;
     $poolZaps = $hasPool ? (int) ($this->pool['zaps'] ?? 0) : 0;
     $poolBase = $hasPool ? (int) ($this->pool['base'] ?? $poolSats) : null;
+    $poolForwarded = $hasPool ? array_sum(array_column($this->pool['forwarded'] ?? [], 'sats')) : 0;
+    $forwardedKeys = $hasPool ? array_column($this->pool['forwarded'] ?? [], 'pubkey') : [];
     $heroChampion = $championMoment['champions'][0] ?? null;
     $heroChampionUser = $heroChampion['users'][0] ?? null;
     $statusTag = match ($status) {
@@ -923,6 +925,9 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             @if ($poolZaps > 0)
                                 <span class="rv-m">{{ __(':base + :zaps on top', ['base' => \App\Support\Cards\ShareCard::sats($poolBase), 'zaps' => \App\Support\Cards\ShareCard::sats($poolZaps)]) }}</span>
                             @endif
+                            @if ($poolForwarded > 0)
+                                <span class="rv-m text-btc-hi" data-test="pool-forwarded-hero">{{ __(':sats passed on', ['sats' => \App\Support\Cards\ShareCard::sats($poolForwarded)]) }}</span>
+                            @endif
                         </span>
                     @endif
                     @if ($heroChampion !== null)
@@ -938,6 +943,9 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                                 @endif
                                 <b class="text-lg [overflow-wrap:anywhere]" data-test="champion-name">{{ implode(', ', array_column($championMoment['champions'], 'name')) }}</b>
                             </span>
+                            @if ($heroChampionUser && in_array($heroChampionUser->pubkey, $forwardedKeys, true))
+                                <span class="rv-m" data-test="champion-forwarded">{{ __('Prize passed on') }}</span>
+                            @endif
                         </span>
                         </span>
                     @endif
