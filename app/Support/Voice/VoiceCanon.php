@@ -71,6 +71,15 @@ final class VoiceCanon
     /** @var array<string, list<Example>>|null */
     private ?array $examples = null;
 
+    /**
+     * What the data files parse to, by the hash of the file, for the whole process: the canon is 1.4 MB of JSON and
+     * `app(VoiceCanon::class)` is a new instance on every call, each of which parsed and sorted it again (25 ms; a test
+     * that asked for 300 entries one by one took 29 s). A changed file is a new key.
+     *
+     * @var array<string, array<mixed>>
+     */
+    private static array $parsed = [];
+
     public function __construct(
         private readonly string $canonPath = '',
         private readonly string $examplesPath = '',
@@ -85,10 +94,23 @@ final class VoiceCanon
             return $this->entries;
         }
 
+        [$entries, $byContext] = self::remember('canon', $this->canonPath !== '' ? $this->canonPath : resource_path('data/voice/meme-canon.json'), fn (array $rows): array => self::parseEntries($rows));
+
+        $this->byContext = $byContext;
+
+        return $this->entries = $entries;
+    }
+
+    /**
+     * @param  array<mixed>  $rows
+     * @return array{0: array<string, CanonEntry>, 1: array<string, list<string>>}
+     */
+    private static function parseEntries(array $rows): array
+    {
         $entries = [];
         $byContext = [];
 
-        foreach ($this->readJson($this->canonPath !== '' ? $this->canonPath : resource_path('data/voice/meme-canon.json')) as $row) {
+        foreach ($rows as $row) {
             if (! is_array($row) || ! is_string($row['id'] ?? null) || ! is_string($row['wording'] ?? null) || trim($row['wording']) === '') {
                 continue;
             }
@@ -113,9 +135,23 @@ final class VoiceCanon
             }
         }
 
-        $this->byContext = $byContext;
+        return [$entries, $byContext];
+    }
 
-        return $this->entries = $entries;
+    /**
+     * What `$parse` makes of the rows of a data file, parsed once per process and file content.
+     *
+     * @param  callable(array<mixed>): array<mixed>  $parse
+     * @return array<mixed>
+     */
+    private static function remember(string $kind, string $path, callable $parse): array
+    {
+        // An unreadable file has no hash: readJson() says why.
+        if (! is_file($path)) {
+            return $parse(self::readJson($path));
+        }
+
+        return self::$parsed[$kind.':'.md5_file($path)] ??= $parse(self::readJson($path));
     }
 
     /**
@@ -245,9 +281,18 @@ final class VoiceCanon
             return $this->examples;
         }
 
+        return $this->examples = self::remember('examples', $this->examplesPath !== '' ? $this->examplesPath : resource_path('data/voice/examples.json'), fn (array $sections): array => self::parseExamples($sections));
+    }
+
+    /**
+     * @param  array<mixed>  $sections
+     * @return array<string, list<Example>>
+     */
+    private static function parseExamples(array $sections): array
+    {
         $examples = [];
 
-        foreach ($this->readJson($this->examplesPath !== '' ? $this->examplesPath : resource_path('data/voice/examples.json')) as $section => $rows) {
+        foreach ($sections as $section => $rows) {
             foreach ((array) $rows as $row) {
                 if (is_array($row) && is_string($row['line'] ?? null)) {
                     $examples[(string) $section][] = [
@@ -259,13 +304,13 @@ final class VoiceCanon
             }
         }
 
-        return $this->examples = $examples;
+        return $examples;
     }
 
     /**
      * @return array<mixed>
      */
-    private function readJson(string $path): array
+    private static function readJson(string $path): array
     {
         $raw = is_file($path) ? file_get_contents($path) : false;
         $data = $raw === false ? null : json_decode($raw, true);

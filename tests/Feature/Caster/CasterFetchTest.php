@@ -225,7 +225,9 @@ it('releases the script and backs off when the spool is full', function () {
 it('leaves no file behind on the workstation', function () {
     casterFakeWorld([casterWavResponse('aaaa1111'), casterWavResponse('bbbb2222'), casterWavResponse('cccc3333')]);
     Process::fake(['*' => Process::result(output: casterOpus())]);
-    $listing = fn (): array => iterator_to_array(Finder::create()->files()->in(sys_get_temp_dir())->depth('< 2')->ignoreUnreadableDirs()->sortByName()->getIterator(), false);
+    // /tmp/opencode is the shared work dir of the text gateway and the stream's state files: other processes (parallel
+    // tests, the running stream) write there while this one looks, which is not the fetcher leaving something behind.
+    $listing = fn (): array => iterator_to_array(Finder::create()->files()->in(sys_get_temp_dir())->depth('< 2')->exclude('opencode')->ignoreUnreadableDirs()->sortByName()->getIterator(), false);
     $before = array_map(fn ($file): string => $file->getPathname(), $listing());
 
     (new CasterFetcher(fn () => null))->runOnce();

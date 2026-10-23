@@ -21,6 +21,7 @@ use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Laravel\Ai\Prompts\AgentPrompt;
 
@@ -42,7 +43,9 @@ const AINSLEY = "wavlake/Can't Say I'm Not Trying - Ainsley Costello__v1.m4a";
 /** Writes a music timeline state file the way the stream daemon keeps it. */
 function musicTimeline(array $entries, float $anchor): string
 {
-    $path = sys_get_temp_dir().'/opencode/music-timeline-'.bin2hex(random_bytes(4)).'.json';
+    // Under the checkout's testing storage, never the shared /tmp: a file left there by every run (nothing removed it)
+    // also failed CasterFetchTest's "leaves no file behind" whenever it was written while that test looked.
+    $path = storage_path('framework/testing/music-teasers-'.getmypid().'/music-timeline-'.bin2hex(random_bytes(4)).'.json');
     @mkdir(dirname($path), 0775, true);
     file_put_contents($path, json_encode(['anchor' => $anchor, 'entries' => array_map(
         fn (array $entry): array => [$entry[0], $entry[1], 0.0, null], $entries)], JSON_UNESCAPED_SLASHES));
@@ -70,6 +73,10 @@ beforeEach(function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-17 14:20:00', 'Europe/Berlin'));
     $this->now = CarbonImmutable::now();
     config(['twentyone.stream.music.timeline_file' => defaultTimeline($this->now->getTimestamp())]);
+});
+
+afterEach(function () {
+    File::deleteDirectory(storage_path('framework/testing/music-teasers-'.getmypid()));
 });
 
 it('writes a music announcement in a calm gap, from the timeline\'s real next track and the artist\'s data', function () {

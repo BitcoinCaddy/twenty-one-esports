@@ -219,7 +219,10 @@ test('a slot whose moment lies before the tournament was published is left to th
 });
 
 test('at most per_run notes per run across all tournaments, the soonest close first', function () {
-    $tournaments = collect([5, 3, 4, 1, 2])->map(fn (int $hours): Tournament => placesTournament(CarbonImmutable::now()->addHours(24 + $hours)));
+    // Fixed names: the factory's random ones made two notes of the same shape near copies (SpamGate::nearCopy(), 80 %)
+    // on some runs, so the gate held one back and the order below lost an entry (seen once in a parallel full run).
+    $names = [5 => 'Aurora Open', 3 => 'Zephyr Showdown', 4 => 'Mammoth Rumble', 1 => 'Quartz Gambit', 2 => 'Lunar Classic'];
+    $tournaments = collect([5, 3, 4, 1, 2])->map(fn (int $hours): Tournament => placesTournament(CarbonImmutable::now()->addHours(24 + $hours), ['name' => $names[$hours]]));
 
     $this->travelTo(CarbonImmutable::now()->addHours(7));
     runFreePlaces();

@@ -30,6 +30,7 @@ use App\Support\Voice\VoiceAgent;
 use Carbon\CarbonImmutable;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Prompts\AgentPrompt;
@@ -408,7 +409,7 @@ it('airs a due show while the track-change jingle watches the calm air (prod 202
     $rubric = rubricsClip(CasterScript::RUBRIC, 60, $slot);
     $rubric->script->update(['topic' => Shows::TRIBUNAL]);
     $rubric->update(['expires_at' => now()->addYears(9)]);
-    $dir = sys_get_temp_dir().'/opencode/imaging-'.bin2hex(random_bytes(4));
+    $dir = storage_path('framework/testing/rubrics-imaging-'.getmypid().'-'.bin2hex(random_bytes(4)));
     @mkdir($dir, 0775, true);
     file_put_contents($dir.'/manifest.json', json_encode(['items' => []]));
     $clock = BroadcastClock::fromConfig();
@@ -421,6 +422,8 @@ it('airs a due show while the track-change jingle watches the calm air (prod 202
         $director->tick($planner, $planner->at($t, []), $t);
         $played = $played || $director->clip()?->id === $rubric->id;
     }
+
+    File::deleteDirectory($dir);
 
     expect($played)->toBeTrue();
 });
