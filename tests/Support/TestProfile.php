@@ -9,7 +9,9 @@
 | php scripts/test-profile.php /tmp/profile.jsonl
 |
 | appends one JSON line per finished test: the end time, the worker's pid, the
-| class and the test name. Without the variable this file does nothing.
+| class and the test name, and `s`, when that process started (so the first test
+| of a worker, which has no predecessor, counts its boot and browser start too).
+| Without the variable this file does nothing.
 |
 | Why not --profile or --log-junit: --profile does not run with --parallel, and
 | the junit log of the whole suite cannot be merged (a test puts the character
@@ -25,7 +27,7 @@ if (getenv('TEST_PROFILE_FILE') && ! isset($GLOBALS['__test_profile'])) {
     pest()->afterEach(function (): void {
         file_put_contents(
             (string) getenv('TEST_PROFILE_FILE'),
-            json_encode(['e' => microtime(true), 'p' => getmypid(), 'f' => $this::class, 'n' => $this->name()], JSON_INVALID_UTF8_SUBSTITUTE)."\n",
+            json_encode(['e' => microtime(true), 's' => (float) ($_SERVER['REQUEST_TIME_FLOAT'] ?? 0), 'p' => getmypid(), 'f' => $this::class, 'n' => $this->name()], JSON_INVALID_UTF8_SUBSTITUTE)."\n",
             FILE_APPEND | LOCK_EX,
         );
     });

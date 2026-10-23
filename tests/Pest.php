@@ -15,11 +15,13 @@ use App\Support\Voice\VoiceFactCheck;
 use App\Support\Voice\WebLookupAgent;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Carbon\CarbonInterval;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Sleep;
 use Pest\Evals\Drivers\LaravelAiJudge;
 use Tests\Integration\Support\Stack;
 use Tests\Support\BrowserAssets;
@@ -40,6 +42,8 @@ use Tests\TestCase;
 
 pest()->tia()->defaultBranch('master');
 
+// Before anything can ask for the temp directory: see the header of PrivateTempDir.php.
+require_once __DIR__.'/Support/PrivateTempDir.php';
 // Before anything can autoload swentel\nostr\Sign\Sign: see the header of FastSign.php.
 require_once __DIR__.'/Support/FastSign.php';
 // Per-test timings, only when TEST_PROFILE_FILE is set: see scripts/test-profile.php.
@@ -76,6 +80,17 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function (): void {
         Http::preventStrayRequests();
+        // A sleep on a frozen clock (travelTo, setTestNow) moves nothing but the wall clock of the test: the daily
+        // caps of ProfileVarietyTest waited a second per published tournament (TournamentPublisher::publishCalendar()
+        // sleeps until the next second), caster:chat 55 s in one test. Skipped when Carbon has a test now; on the real
+        // clock a sleep still sleeps, because there it is what lets the next signature be dated later. A test that
+        // asserts on its sleeps fakes Sleep itself, which replaces this.
+        Sleep::fake();
+        Sleep::whenFakingSleep(function (CarbonInterval $duration): void {
+            if (! Carbon::hasTestNow()) {
+                usleep((int) $duration->totalMicroseconds);
+            }
+        });
         // The league voice's fact check is a model call: cleared by default, the voice tests fake their own answers.
         VoiceFactCheck::fake(fn (): array => ['claims' => []]);
         ChatFactCheck::fake(fn (): array => ['claims' => []]);

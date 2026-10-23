@@ -7,8 +7,9 @@
 |   php scripts/test-profile.php /tmp/profile.jsonl [top=30]
 |
 | A test's seconds are the gap since the previous test of the same worker ended, so
-| setUp and tearDown are in. The first test of a worker has no predecessor and counts
-| as 0. The last block reports when each worker finished: one worker far behind the
+| setUp and tearDown are in. The first test of a worker has no predecessor: it counts
+| from the start of its process (the `s` of the line, boot and browser start in it), or
+| as 0 in a profile written before that field existed. The last block reports when each worker finished: one worker far behind the
 | rest is a file that should be split (the runner hands out whole files).
 */
 
@@ -42,7 +43,7 @@ foreach ($byWorker as $pid => $rows) {
     $previous = null;
 
     foreach ($rows as $row) {
-        $seconds = $previous === null ? 0.0 : $row['e'] - $previous;
+        $seconds = $previous === null ? (isset($row['s']) && $row['s'] > 0 ? $row['e'] - $row['s'] : 0.0) : $row['e'] - $previous;
         $previous = $row['e'];
         $first = min($first, $row['e']);
         $name = str_replace('__pest_evaluable_', '', $row['n']);
