@@ -20,7 +20,9 @@
 | inside a test process. The output is a real BIP-340 signature: the app's own
 | SignedEvent::fromInput() still verifies it, and
 | tests/Unit/FastSignTest.php checks it against the official test vector and
-| against the vendor verifier. The real stack (tests/Integration, a separate
+| against the vendor verifier. The same goes for verifying: Mdanter\Ecc\Crypto\Signature\SchnorrSignature, the class
+| Event::verify() constructs, is replaced below by one that verifies with elliptic-php (tests/Unit/FastSignTest.php
+| holds it against the vendor SchnorrSigner for valid, changed and malformed input). The real stack (tests/Integration, a separate
 | app server process) keeps the vendor signer.
 */
 
@@ -31,6 +33,8 @@ namespace Tests\Support {
     final class FastSchnorr
     {
         private const ORDER = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141';
+
+        private const PRIME = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F';
 
         private static ?EC $curve = null;
 
@@ -70,6 +74,42 @@ namespace Tests\Support {
             return $rx.self::pad(gmp_mod(gmp_add($k, gmp_mul($e, $d)), $n));
         }
 
+        /**
+         * BIP-340 verification of a 64-hex message (an event id): false for anything that does not verify, null for an
+         * input the fast path does not take (the caller asks the vendor verifier then).
+         */
+        public static function verify(string $publicKeyHex, string $signatureHex, string $messageHex): ?bool
+        {
+            if (strlen($publicKeyHex) !== 64 || strlen($signatureHex) !== 128 || strlen($messageHex) !== 64
+                || ! ctype_xdigit($publicKeyHex) || ! ctype_xdigit($signatureHex) || ! ctype_xdigit($messageHex)) {
+                return null;
+            }
+
+            self::$curve ??= new EC('secp256k1');
+            $n = gmp_init(self::ORDER, 16);
+            $r = gmp_init(substr($signatureHex, 0, 64), 16);
+            $s = gmp_init(substr($signatureHex, 64, 64), 16);
+
+            if (gmp_cmp($r, gmp_init(self::PRIME, 16)) >= 0 || gmp_cmp($s, $n) >= 0 || gmp_cmp(gmp_init($publicKeyHex, 16), gmp_init(self::PRIME, 16)) >= 0) {
+                return false;
+            }
+
+            try {
+                $point = self::$curve->curve->pointFromX(new BN($publicKeyHex, 16), false);
+            } catch (\Throwable) {
+                return null;
+            }
+
+            $e = gmp_mod(gmp_init(self::tagged('BIP0340/challenge', hex2bin(strtolower(substr($signatureHex, 0, 64))).hex2bin($publicKeyHex).hex2bin($messageHex)), 16), $n);
+            $result = self::$curve->g->mul(new BN(gmp_strval($s, 16), 16))->add($point->mul(new BN(gmp_strval(gmp_sub($n, $e), 16), 16)));
+
+            if ($result->isInfinity()) {
+                return false;
+            }
+
+            return ! $result->getY()->isOdd() && gmp_cmp(gmp_init($result->getX()->toString(16), 16), $r) === 0;
+        }
+
         private static function tagged(string $tag, string $data): string
         {
             $hash = hash('sha256', $tag, true);
@@ -80,6 +120,21 @@ namespace Tests\Support {
         private static function pad(\GMP $number): string
         {
             return str_pad(gmp_strval($number, 16), 64, '0', STR_PAD_LEFT);
+        }
+    }
+}
+
+namespace Mdanter\Ecc\Crypto\Signature {
+    use Tests\Support\FastSchnorr;
+
+    // Event::verify() (SignedEvent::hasValidSignature(), ZapReceipts, every inbound event of a test) asks this class;
+    // the vendor verifier does two pure-PHP point multiplications (~70 ms, 30 zaps took 32 s in one test). An id and
+    // signature it cannot take in the fast path, or a point it cannot lift, go to the vendor verifier unchanged.
+    final class SchnorrSignature extends SchnorrSigner
+    {
+        public function verify(string $publicKey, string $signature, string $message): bool
+        {
+            return FastSchnorr::verify($publicKey, $signature, $message) ?? parent::verify($publicKey, $signature, $message);
         }
     }
 }
