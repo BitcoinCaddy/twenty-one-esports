@@ -3,6 +3,7 @@
 use App\Games\GameRegistry;
 use App\Support\Board\BlockliPractice;
 use App\Support\Board\BlockliRules;
+use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Livewire;
 use Tests\Support\BlockliOn;
 
@@ -37,7 +38,12 @@ test('a guest finds the practice in the lobby and gets the lessons and the bots'
 
     $this->get(route('board.practice', 'blockli'))->assertOk()
         ->assertSee('Blockli · Practice')->assertSee('blockliPractice(', false)->assertSee('boardGame(boardConfig())', false)
-        ->assertSee('Move your pawn')->assertSee('Count the race')->assertSee('Hodler')->assertSee('Miner')->assertSee('Whale');
+        ->assertSee('Move your pawn')->assertSee('Count the race')->assertSee('Hodler')->assertSee('Miner')->assertSee('Whale')
+        // From lg the game's context bar, as on its lobby and its games (R5).
+        ->assertSee('data-test="context-bar" data-game="blockli"', false);
+
+    // The page's config is drawn into the page once; it is no endpoint the browser can call.
+    expect(fn () => practiceCall('config'))->toThrow(MethodNotFoundException::class);
 });
 
 test('only Blockli has bots: another game\'s practice and a Blockli switched off are not found', function () {
