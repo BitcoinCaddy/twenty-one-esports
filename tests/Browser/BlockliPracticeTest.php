@@ -34,6 +34,16 @@ const PRACTICE_AT = <<<'JS'
     }
     JS;
 
+/** Buttons under 44 px (R16, BlockliTest's BLOCKLI_MEASURE `low`): label and height. */
+const PRACTICE_LOW = <<<'JS'
+    () => [...document.querySelectorAll('main button, main a.btn-p, main a.btn-s, main a.btn-w')]
+        .filter((el) => el.checkVisibility() && el.getBoundingClientRect().height < 44)
+        .map((el) => (el.dataset.test ?? el.tagName) + ' ' + el.getBoundingClientRect().height.toFixed(1))
+    JS;
+
+/** Whether an element lies on the first screen: [its bottom at the page's top, the viewport's height]. */
+const PRACTICE_FOLD = '(selector) => { const y = scrollY; scrollTo(0, 0); const bottom = document.querySelector(selector).getBoundingClientRect().bottom; scrollTo(0, y); return [Math.round(bottom), innerHeight]; }';
+
 /** The board's Alpine data, for a condition on it. */
 const PRACTICE_BOARD = 'Alpine.$data(document.querySelector("[data-test=board-game]"))';
 
@@ -89,16 +99,23 @@ test('a guest learns on the league\'s board and plays the Hodler: lesson, block,
     practiceTap($page, $touch, 'e1/f2', -45);
     practiceTap($page, $touch, 'e1/f2', -45);
     BrowserWait::until($page, '() => document.querySelector("[data-test=lesson-note]")?.textContent.includes("two steps instead of one")', 5_000);
-    expect($page->evaluate('() => '.PRACTICE_BOARD.'.state.moves.map((m) => m.notation)'))->toBe(['e1h']);
+    expect($page->evaluate('() => '.PRACTICE_BOARD.'.state.moves.map((m) => m.notation)'))->toBe(['e1h'])
+        ->and($page->evaluate(PRACTICE_LOW))->toBe([], 'lesson: buttons under 44 px');
 
     // The Hodler answers the first move; the tip button says what kind of move fits; the move is taken back.
     practicePress($page, $touch, '[data-test=tab-bots]');
+    // The chooser's primary action is on the first screen, on a phone too (a bar fixed at the bottom there).
+    [$bottom, $viewport] = $page->evaluate(PRACTICE_FOLD, '[data-test=bot-play]');
+    expect($bottom)->toBeLessThanOrEqual($viewport, 'pick: Play below the fold')
+        ->and($page->evaluate(PRACTICE_LOW))->toBe([], 'pick: buttons under 44 px');
     practicePress($page, $touch, '[data-test=bot-play]');
     practiceMyMove($page);
     practiceTap($page, $touch, 'e2');
     BrowserWait::until($page, '() => '.PRACTICE_BOARD.'.state.ply === 2 && '.PRACTICE_BOARD.'.canMove', 8_000);
-    practicePress($page, $touch, '[data-test=ask-tip]');
+    // A phone asks in the row above the board, in view with it; a desktop in the tips card.
+    practicePress($page, $touch, $touch ? '[data-test=ask-tip-phone]' : '[data-test=ask-tip]');
     BrowserWait::until($page, '() => /shortest way|block|side/.test(document.querySelector("[data-test=tip]").textContent)', 8_000);
+    expect($page->evaluate(PRACTICE_LOW))->toBe([], 'game: buttons under 44 px');
     practicePress($page, $touch, '[data-test=undo]');
     BrowserWait::until($page, '() => '.PRACTICE_BOARD.'.state.ply === 0', 5_000);
 
