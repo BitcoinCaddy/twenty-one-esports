@@ -20,7 +20,10 @@ use Illuminate\Support\Facades\Cache;
  * auch als ephemeral Chat Nostr-Gruppe, damit alle Spieler mit der
  * Turnierleitung chatten können"): one private NIP-17 group per tournament,
  * run in the browser by resources/js/deskChat.js like the match room chat,
- * never through the league server, which cannot read it and stores nothing.
+ * never through the league server, which stores nothing. Each desk message is
+ * also sealed to the desk key (deskKey(), 2026-10-23), which is derived from
+ * the league key: whoever holds the league key could open those copies, though
+ * nothing on the server reads them.
  *
  * Members, read on every page load (NIP-17 sends to the `p` list of the
  * moment):
