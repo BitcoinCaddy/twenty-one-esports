@@ -72,7 +72,7 @@ final class BroadcastClock
      */
     public function __construct(array $slots, private readonly string $timezone = 'Europe/Berlin', private readonly bool $enabled = true, private readonly array $windows = [])
     {
-        $clean = [];
+        $entries = [];
 
         foreach ($slots as $slot) {
             if (! is_array($slot) || ! is_numeric($slot['minute'] ?? null) || ! is_string($slot['type'] ?? null)) {
@@ -84,12 +84,15 @@ final class BroadcastClock
                 continue;
             }
 
-            $clean[$minute] = ['minute' => $minute, 'type' => $slot['type'], 'label' => (string) ($slot['label'] ?? $slot['type']), 'stinger' => ($slot['stinger'] ?? false) === true, 'quiet' => ($slot['quiet'] ?? false) === true];
+            $entries[] = self::slot($minute, $slot);
         }
 
+        // One slot per minute, the last entry for a minute winning, in minute order.
+        $clean = array_column($entries, null, 'minute');
         ksort($clean);
+        $ordered = array_values($clean);
         // No slot at all: the whole hour is talk.
-        $this->slots = $clean === [] ? [['minute' => 0, 'type' => self::TALK, 'label' => 'Talk', 'stinger' => false, 'quiet' => true]] : array_values($clean);
+        $this->slots = $ordered === [] ? [['minute' => 0, 'type' => self::TALK, 'label' => 'Talk', 'stinger' => false, 'quiet' => true]] : $ordered;
 
         foreach ($windows as $time => $minutes) {
             if (preg_match('/^(\d{2}):(\d{2})$/', (string) $time, $match) !== 1) {
@@ -105,6 +108,20 @@ final class BroadcastClock
 
             $this->windowStarts[] = ['hour' => (int) $match[1], 'minute' => (int) $match[2], 'minutes' => $minutes, 'slot' => $this->slots[$index], 'seconds' => (int) $match[1] * 3600 + (int) $match[2] * 60];
         }
+    }
+
+    /**
+     * One programme slot from its config entry, at a valid minute.
+     *
+     * @param  array<array-key, mixed>  $slot
+     * @return array{minute: int, type: string, label: string, stinger: bool, quiet: bool}
+     */
+    private static function slot(int $minute, array $slot): array
+    {
+        $type = (string) $slot['type'];
+        $label = $slot['label'] ?? null;
+
+        return ['minute' => $minute, 'type' => $type, 'label' => is_scalar($label) ? (string) $label : $type, 'stinger' => ($slot['stinger'] ?? false) === true, 'quiet' => ($slot['quiet'] ?? false) === true];
     }
 
     public static function fromConfig(): self
