@@ -32,7 +32,7 @@ final class BlockliPractice
      * has to do there (`goal`: `win` the game; set a `block` that makes Black's way at least `steps` longer; `jump` over
      * Black), who answers the player's moves (`reply`: the Hodler, who only runs, or nobody, so the lesson ends with the
      * one move), and its words. `closing` is the block the fence lesson asks for first, which the rules refuse because
-     * it would leave Black without a way (tests/Feature/Board/BlockliPracticeTest.php holds every lesson to its goal).
+     * it would leave Black without a way (tests/Feature/BlockliPracticeTest.php holds every lesson to its goal).
      *
      * @var list<Lesson>
      */
@@ -72,7 +72,7 @@ final class BlockliPractice
         [
             'id' => 'fence', 'position' => 'e3 i9 9 10 w h8vw 0', 'goal' => 'block', 'steps' => 2, 'closing' => 'h7h', 'reply' => null,
             'title' => 'Never lock anyone in',
-            'text' => 'Every pawn must always keep a way to its goal. Your block on the right already fences in the corner where Black stands. One more block under h8 and i8 would lock him in completely, so the board shows it red and you cannot set it.',
+            'text' => 'Every pawn must keep a way to its goal. A block that would lock Black in shows red.',
             'task' => 'Try the block under h8 and i8. Then set a block that makes Black\'s way at least two steps longer.',
             'done' => 'A block may make a way long, never impossible. That rule also protects you.',
             'retry' => 'That did not make his way two steps longer. Try a block across his way further down the i file.',
