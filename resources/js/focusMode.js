@@ -30,11 +30,26 @@ function setFocus(on) {
     // board ignores a height-only resize (the address bar), so the page listens for this event of its own.
     // Once the bars have slid (200 ms, none with reduced motion): first `resize`, so the action dock re-measures where
     // its tab sits on the page's bar (matchDock.js measure()), then, a frame later, the board fits to the new edge.
+    // The 220 ms is a guess at the slide (200 ms): on a busy phone the first frame of the slide can come later than that, and a
+    // board that fitted then read the bars half-way down and stayed 12 px short for good. So the event waits for the slide itself.
     const slide = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220;
-    setTimeout(() => {
+    setTimeout(async () => {
+        await slideDone();
         window.dispatchEvent(new Event('resize'));
         requestAnimationFrame(() => requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-mode', { detail: { hidden: on } }))));
     }, slide);
+}
+
+/** The slide of the bars still running (their CSS transitions on `translate`, revamp-league.css). */
+function sliding() {
+    return (document.getAnimations?.() ?? []).filter((animation) => animation.transitionProperty === 'translate' && animation.playState === 'running');
+}
+
+/** Resolves once no bar slides any more: a fit reads the bars' place, which is final only then. A cancelled slide counts as over. */
+async function slideDone() {
+    for (let running = sliding(); running.length > 0; running = sliding()) {
+        await Promise.allSettled(running.map((animation) => animation.finished));
+    }
 }
 
 let teardown = null;

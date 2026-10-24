@@ -38,7 +38,7 @@ beforeEach(function () {
     BlockliOn::play();
 });
 
-test('a tournament Blockli board is as large on a phone as a casual one, its banner one line above it in the title row, then a chip in the header once scrolled', function (int $width, int $height, bool $onAir = false) {
+test('a tournament Blockli board is as large on a phone as a casual one, its banner one line above it in the title row, then a chip in the header once scrolled', function (int $width, int $height, bool $onAir = false, int $slideMs = 200) {
     // On air the header's LIVE mark takes room beside the chip: the narrowest header.
     $hls = sys_get_temp_dir().'/esports-chip-'.getmypid().'-'.bin2hex(random_bytes(3));
     File::ensureDirectoryExists($hls);
@@ -86,20 +86,31 @@ test('a tournament Blockli board is as large on a phone as a casual one, its ban
         }
         JS;
     // The board is sized twice on a phone too short for its 200 px floor (an iPhone SE in Safari, 553 px high): fitBoard sets
-    // the floor, slides the tab bar away (focus mode) and 220 ms later, on the `focus-mode` event, fits again in the room the
-    // bar gave up (212 px here). A plain "the animations are done" wait can fall between the two: one page read 200, the
-    // other 212, and which one swapped from run to run (measured 2026-10-24 in one run: 200 px at t=300 ms, 212 px at 395 ms,
-    // the casual page read at 615 ms before its own second fit, the tournament page after it). Both pages are read once
-    // their own second fit has run.
-    $page->context()->addInitScript(<<<'JS'
+    // the floor, slides the tab bar away (focus mode) and, on the `focus-mode` event, fits again in the room the bar gave up
+    // (212 px here). That event used to come 220 ms after the slide began, ended or not: when the slide's first frame came
+    // late (a host with no idle CPU, 16 shards, 2026-10-24) the fit read the bars half-way down and the board stayed at
+    // 200 px for good, one page of the pair 12 px short of the other. focusMode.js now waits for the slide itself. A slide of
+    // `$slideMs` = 600 outlasts the 220 ms every time: that late frame, made deterministic. Both pages are read once their
+    // second fit has run, and only if a fit on the settled page would change nothing.
+    $page->context()->addInitScript(<<<JS
         window.__lastFocusModeHidden = null;
         addEventListener('focus-mode', (event) => { window.__lastFocusModeHidden = event.detail.hidden; });
+        if ({$slideMs} !== 200) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const style = document.createElement('style');
+                style.textContent = '[data-test=tab-bar], [data-page-bar] { transition-duration: {$slideMs}ms !important; }';
+                document.head.append(style);
+            });
+        }
         JS);
     $settle = function () use ($page): void {
         BrowserWait::until($page, '() => window.Alpine && !!document.querySelector("[data-test=board]")', 10_000);
         // Fitted at all, and, with the tab bar sliding away, fitted again after the slide.
         BrowserWait::until($page, '() => document.querySelector("[data-board-box]")?.style.maxWidth !== "" && (!document.documentElement.classList.contains("is-focus") || window.__lastFocusModeHidden === true)', 10_000);
         BrowserWait::until($page, '() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity)', 5_000);
+        $fitted = $page->evaluate('() => document.querySelector("[data-board-box]").style.maxWidth');
+        $page->evaluate('() => window.dispatchEvent(new CustomEvent("focus-mode", { detail: { hidden: document.documentElement.classList.contains("is-focus") } }))');
+        expect($page->evaluate('() => document.querySelector("[data-board-box]").style.maxWidth'))->toBe($fitted, 'the board was fitted after the bars had finished sliding');
     };
     $page->goto(ComputeUrl::from(route('board.show', $casual, false)));
     $settle();
@@ -151,6 +162,7 @@ test('a tournament Blockli board is as large on a phone as a casual one, its ban
     'phone 390' => [390, 844],
     'phone 360' => [360, 740],
     'iPhone SE in Safari' => [375, 553],
+    'iPhone SE in Safari, the bars slide slowly' => [375, 553, false, 600],
 ]);
 
 /** A running single-elimination Blockli cup of two, and its one active game. */
