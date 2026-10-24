@@ -80,6 +80,11 @@ function blockliPage(User $user, string $to, int $width, int $height, bool $touc
     $visit = visit(BrowserLogin::url($user));
     $page = ($touch ? $visit->on()->mobile() : $visit)->page();
     $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    // The last `focus-mode` event (focusMode.js), from the first moment: the board refits on it (BlockliTournamentPhoneTest).
+    $page->context()->addInitScript(<<<'JS'
+        window.__lastFocusModeHidden = null;
+        addEventListener('focus-mode', (event) => { window.__lastFocusModeHidden = event.detail.hidden; });
+        JS);
     $page->setViewportSize($width, $height);
     $page->goto(ComputeUrl::from($to));
 
@@ -314,7 +319,8 @@ test('nothing of the block input stands over the board: the hint and, with a blo
     // board also starts focus mode (focusMode.js): the tab bar and the page's bars slide down, then the board refits.
     if ($touch) {
         // On an iPhone SE focus mode is on from the start (boardGame.js fitBoard, PR #9: the board is too short for its floor otherwise).
-        $white->evaluate('() => { window.__focusSettled = document.documentElement.dataset.focus === "hidden"; addEventListener("focus-mode", () => { window.__focusSettled = true; }, { once: true }); }');
+        // Settled only once its `focus-mode` event came: `data-focus` is set 220 ms before the board refits (2026-10-24).
+        $white->evaluate('() => { window.__focusSettled = window.__lastFocusModeHidden === true; addEventListener("focus-mode", () => { window.__focusSettled = true; }, { once: true }); }');
     }
     $touch ? blockliTap($white, true, 'c8/d9', -30) : blockliHover($white, 'c8/d9', -30);
     if ($touch) {
