@@ -25,6 +25,9 @@ const STORE = 'blockli-practice';
 const ADVICE_MS = 2000;
 const HERE_MS = 500;
 
+/** How long a tip about the player's own move stays before an urgent one about the bot's answer replaces it (R17: texts at least 3 s). */
+const TIP_HOLD_MS = 3000;
+
 function load() {
     try {
         const saved = JSON.parse(localStorage.getItem(STORE) ?? 'null');
@@ -116,6 +119,17 @@ export function blockliPractice(config) {
             boardSources.set(SOURCE, source);
             try {
                 worker = new Worker(new URL('./engineWorker.js', import.meta.url), { type: 'module' });
+                // A worker that fails (its script not loaded, an error inside it) answers nothing: from then on the engine
+                // runs here, and what waited for the worker is answered here too, so the bot still moves.
+                worker.addEventListener('error', (event) => {
+                    event.preventDefault?.();
+                    worker?.terminate();
+                    worker = null;
+                    for (const [id, pending] of requests) {
+                        requests.delete(id);
+                        Promise.resolve().then(() => answerHere(pending.request)).then(pending.resolve, pending.reject);
+                    }
+                });
                 worker.addEventListener('message', ({ data }) => {
                     const request = requests.get(data.id);
                     if (!request) return;
@@ -273,7 +287,7 @@ export function blockliPractice(config) {
             const id = nextRequest++;
 
             return new Promise((resolve, reject) => {
-                requests.set(id, { resolve, reject });
+                requests.set(id, { resolve, reject, request });
                 worker.postMessage({ id, ...request });
             });
         },
@@ -554,7 +568,18 @@ export function blockliPractice(config) {
             if (by === 'bot' && this.tip?.by === 'me' && !['hit', 'danger'].includes(found.key)) return;
             this.shown = { ...this.shown, [found.key]: (this.shown[found.key] ?? 0) + 1 };
             const values = { name: this.botName, steps: this.count(found.steps), mine: this.count(found.mine), theirs: this.count(found.theirs) };
-            this.tip = { key: found.key, auto: true, by, text: fill(this.cfg.labels.tips[found.key], values) };
+            const tip = { key: found.key, auto: true, by, at: Date.now(), text: fill(this.cfg.labels.tips[found.key], values) };
+            // The player's own tip stays its 3 s; the urgent one follows then, unless the player has moved meanwhile.
+            const wait = by === 'bot' && this.tip?.by === 'me' ? TIP_HOLD_MS - (Date.now() - this.tip.at) : 0;
+            if (wait <= 0) {
+                this.tip = tip;
+
+                return;
+            }
+            const [token, shownAt] = [this.token, this.tip.at];
+            setTimeout(() => {
+                if (token === this.token && this.tip?.at === shownAt) this.tip = tip;
+            }, wait);
         },
 
         get canAsk() {
