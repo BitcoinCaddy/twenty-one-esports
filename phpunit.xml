@@ -10,7 +10,7 @@
             directory scan puts TwentyOneStream*Test (each ~40 s of wall clock: the daemon runs its stop-after seconds
             for real) near the end, so four workers ran on alone for 30 s after the other twenty had finished
             (measured 2026-10-23: 24 workers, the last four ended at 118 s, the rest at 80 s). A file listed here
-            is loaded once, here, and not again from its directory. Re-order when scripts/test-profile.php shows a
+            is excluded from its directory's suite below (else PHPUnit warns and the run exits 1). Re-order when scripts/test-profile.php shows a
             worker far behind the others.
         -->
         <testsuite name="Heavy">
@@ -33,6 +33,20 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <!-- In the Heavy suite above: listed twice, PHPUnit warns and the run exits 1 with every test green. -->
+            <exclude>tests/Feature/TwentyOneStreamPart2Test.php</exclude>
+            <exclude>tests/Feature/TwentyOneStreamTest.php</exclude>
+            <exclude>tests/Feature/TwentyOneStreamPart4Test.php</exclude>
+            <exclude>tests/Feature/TwentyOneStreamPart3Test.php</exclude>
+            <exclude>tests/Feature/Seo/PageCardsTest.php</exclude>
+            <exclude>tests/Feature/Caster/PodcastReplayTest.php</exclude>
+            <exclude>tests/Feature/StreamBot/ProfileVarietyTest.php</exclude>
+            <exclude>tests/Feature/SeasonChain/TrustJobTest.php</exclude>
+            <exclude>tests/Feature/Caster/PatternScriptsTest.php</exclude>
+            <exclude>tests/Feature/Caster/MusicFirstTest.php</exclude>
+            <exclude>tests/Feature/Caster/ChatWishesTest.php</exclude>
+            <exclude>tests/Feature/Payouts/PotReleaseTest.php</exclude>
+            <exclude>tests/Feature/Payouts/TournamentPayoutTest.php</exclude>
         </testsuite>
         <testsuite name="Nostr">
             <directory>tests/Nostr</directory>
