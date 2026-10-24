@@ -85,8 +85,20 @@ test('a tournament Blockli board is as large on a phone as a casual one, its ban
             };
         }
         JS;
+    // The board is sized twice on a phone too short for its 200 px floor (an iPhone SE in Safari, 553 px high): fitBoard sets
+    // the floor, slides the tab bar away (focus mode) and 220 ms later, on the `focus-mode` event, fits again in the room the
+    // bar gave up (212 px here). A plain "the animations are done" wait can fall between the two: one page read 200, the
+    // other 212, and which one swapped from run to run (measured 2026-10-24 in one run: 200 px at t=300 ms, 212 px at 395 ms,
+    // the casual page read at 615 ms before its own second fit, the tournament page after it). Both pages are read once
+    // their own second fit has run.
+    $page->context()->addInitScript(<<<'JS'
+        window.__lastFocusModeHidden = null;
+        addEventListener('focus-mode', (event) => { window.__lastFocusModeHidden = event.detail.hidden; });
+        JS);
     $settle = function () use ($page): void {
         BrowserWait::until($page, '() => window.Alpine && !!document.querySelector("[data-test=board]")', 10_000);
+        // Fitted at all, and, with the tab bar sliding away, fitted again after the slide.
+        BrowserWait::until($page, '() => document.querySelector("[data-board-box]")?.style.maxWidth !== "" && (!document.documentElement.classList.contains("is-focus") || window.__lastFocusModeHidden === true)', 10_000);
         BrowserWait::until($page, '() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity)', 5_000);
     };
     $page->goto(ComputeUrl::from(route('board.show', $casual, false)));
