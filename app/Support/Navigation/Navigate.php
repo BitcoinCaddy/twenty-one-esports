@@ -54,6 +54,7 @@ final class Navigate
         'settings.badges',
         'settings.opponents',
         'settings.nip05',
+        'settings.profile',
     ];
 
     public static function enabled(): bool

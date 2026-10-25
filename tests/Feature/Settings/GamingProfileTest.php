@@ -162,7 +162,7 @@ test('deleting the account removes our data and logs out', function () {
     $this->assertGuest();
 });
 
-test('every settings page shows the same seven tabs, its own one active and named in the heading', function (string $route, string $heading) {
+test('every settings page shows the same eight tabs, its own one active and named in the heading', function (string $route, string $heading) {
     $html = $this->actingAs(User::factory()->create())->get(route($route))->assertOk()->getContent();
 
     preg_match('/<nav aria-label="Settings sections".*?<\/nav>/s', $html, $nav);
@@ -172,12 +172,12 @@ test('every settings page shows the same seven tabs, its own one active and name
     $active[1] = strip_tags($active[1] ?? '');
     preg_match('/<h1[^>]*data-test="settings-heading"[^>]*>([^<]+)<\/h1>/', $html, $h1);
 
-    expect($tabs[1])->toBe(['settings-account-tab', 'settings-gamer-tags-tab', 'settings-chess-tab', 'settings-notifications-tab', 'settings-opponents-tab', 'settings-badges-tab', 'settings-nostr-address-tab'])
+    expect($tabs[1])->toBe(['settings-account-tab', 'settings-profile-tab', 'settings-gamer-tags-tab', 'settings-chess-tab', 'settings-notifications-tab', 'settings-opponents-tab', 'settings-badges-tab', 'settings-nostr-address-tab'])
         ->and(substr_count($nav[0], 'aria-current="page"'))->toBe(1)
         ->and(html_entity_decode(trim($active[1] ?? '')))->toBe($heading)
         ->and(html_entity_decode(trim($h1[1] ?? '')))->toBe($heading)
         // The tabs switch with wire:navigate (P6b, App\Support\Navigation\Navigate).
-        ->and(substr_count($nav[0], 'wire:navigate'))->toBe(7);
+        ->and(substr_count($nav[0], 'wire:navigate'))->toBe(8);
 })->with([
     ['gaming.edit', 'Gamer tags'],
     ['settings.account', 'Account'],
@@ -186,4 +186,5 @@ test('every settings page shows the same seven tabs, its own one active and name
     ['settings.opponents', 'Opponents'],
     ['settings.badges', 'Badges and sharing'],
     ['settings.nip05', 'Nostr address'],
+    ['settings.profile', 'Name and Lightning'],
 ]);

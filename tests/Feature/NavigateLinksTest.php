@@ -65,6 +65,8 @@ const NAVIGATE_SAFE_COMPONENTS = [
     'nostrBar', 'profileBadge', 'nostrAction', 'pushToggle',
     // The login buttons of the start page's "Mitspielen" (resources/js/nostrLogin.js): no init, nothing outside the element.
     'nostrLogin',
+    // The profile page (user 2026-10-25): reads the relays once in init(), each socket closed on its answer or timeout.
+    'profileEditor',
 ];
 
 /** Inline x-data objects with one of these start something outside their element that nobody takes off again. */
