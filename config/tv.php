@@ -93,7 +93,8 @@ return [
             'words_per_second' => 2.4,
             'sentences' => ['min' => (int) env('TV_COMMENTARY_AI_SENTENCES_MIN', 2), 'max' => (int) env('TV_COMMENTARY_AI_SENTENCES_MAX', 8)],
             'live_sentences' => ['min' => 1, 'max' => 3],
-            'chat_sentences' => ['min' => 1, 'max' => 8, 'ask' => 4],
+            // Short (user 2026-10-25: replies of 60 s were too long).
+            'chat_sentences' => ['min' => 1, 'max' => 3, 'ask' => 2],
             // Long, complete sentences (user 2026-10-12: "Wenn die Sätze länger sind, dann hören sich die Audios viel besser
             // an" and "komplette Sätze ab jetzt nur noch"): OmniVoice intones a fragment or a two-word sentence badly, so
             // every spoken sentence of a non-chat script has at least `min_words_per_sentence` words (markers not counted).
@@ -1348,8 +1349,8 @@ return [
             'reaction_voicing_minutes' => 20,
             // The share of trusted chat replies that are a short duet: Markus answers, Sirius adds his take (user 2026-10-12).
             'duet_share' => (float) env('TV_COMMENTARY_CHAT_DUET_SHARE', 0.5),
-            // Sirius' one turn in a chat duet keeps three to six sentences (P17 shortened the scene duets' turns, not this one).
-            'duet_sirius_sentences' => ['min' => 3, 'max' => 6],
+            // Sirius' one turn in a chat duet (user 2026-10-25: shorter).
+            'duet_sirius_sentences' => ['min' => 1, 'max' => 2],
             'notes_per_person' => 50,
             // Ninety days, not thirty (prod 2026-10-12): two of the six chatters who post at all had one note in thirty days.
             'notes_days' => 90,

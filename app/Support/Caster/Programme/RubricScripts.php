@@ -55,11 +55,7 @@ class RubricScripts
     public const EMPTY = 'rubric_empty';
 
     /** The opening line, by slot (each at least seven words, like every spoken sentence). */
-    /**
-     * Without the hour (user, 2026-10-25: a hotline written for 18 Oct, 21:03 aired a week later at 20:42 saying "um
-     * einundzwanzig Uhr drei"): a show that misses its slot airs late (fillRubric(), user 2026-10-18), so what is
-     * rendered ahead never names the time it was meant for.
-     */
+    /** No clock time: a show may air later than its slot. */
     private const OPENERS = [
         'Ihr hört TWENTY ONE TV, und jetzt ist Zeit für %s.',
         'Hier ist TWENTY ONE TV, und jetzt kommt %s.',
@@ -227,8 +223,7 @@ class RubricScripts
     }
 
     /**
-     * A show as it is queued: the opener read by `$host`, then the content without any line that names a clock time
-     * (CLOCK_TIME), each line keeping its speaker.
+     * The opener read by `$host`, then the content without lines naming a clock time.
      *
      * @param  array{text: string, speakers: list<string>}  $content
      * @return array{text: string, speakers: list<string>}

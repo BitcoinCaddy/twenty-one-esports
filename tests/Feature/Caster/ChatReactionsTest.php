@@ -695,7 +695,7 @@ it('answers a trusted chatter as a duet at the duet share: Markus first, then Si
     // The same chat prompt (message as data, free rules) plus the duet block, under the duets' system prompt with Sirius' persona.
     VoiceAgent::assertPrompted(fn (AgentPrompt $prompt): bool => str_contains($prompt->prompt, "<<<chat\nMusst du nicht arbeiten?\nchat>>>")
         && str_contains($prompt->prompt, "Duett\n\nDiesmal antwortet ihr zu zweit")
-        && str_contains($prompt->prompt, 'genau einer Wortmeldung von 3 bis 6 Sätzen')
+        && str_contains($prompt->prompt, 'genau einer Wortmeldung von 1 bis 2 Sätzen')
         && str_contains($prompt->agent->instructions(), CasterPersonas::sirius()));
 });
 

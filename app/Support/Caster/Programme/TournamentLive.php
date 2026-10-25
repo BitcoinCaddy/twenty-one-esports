@@ -66,11 +66,7 @@ final class TournamentLive
         return config('tv.commentary.tournament_live.enabled') === true && CasterVoice::enabled();
     }
 
-    /**
-     * The tournament the next comment is about: the configured ids that run take turns, one comment each (user,
-     * 2026-10-25: Blitz chess and Blockli Cup #1 live at once, "Das muss sich abwechseln können"); without ids the
-     * running organizer tournament that started last.
-     */
+    /** The next tournament to comment on: configured running ids take turns; else the latest organizer tournament. */
     public static function tournament(): ?Tournament
     {
         $ids = array_values(array_filter(array_map('intval', (array) config('tv.commentary.tournament_live.tournaments', []))));
@@ -206,7 +202,6 @@ final class TournamentLive
             $user->about = $bios[$user->pubkey] ?? $user->about;
         }
         $name = fn (?int $id): string => $id !== null && $users->has($id) ? $users[$id]->displayName() : 'unbekannt';
-        // Only an entry with a group: a Swiss or knockout field has none, and "(Gruppe )" stood in its lines.
         $groupOf = $participants->filter(fn ($p) => $p->user_id !== null && $p->group !== null)->mapWithKeys(fn ($p) => [$p->user_id => $p->group]);
         $options = (array) $tournament->options;
 
@@ -298,9 +293,7 @@ final class TournamentLive
     }
 
     /**
-     * The tournament's games as plain rows, whatever the game: Blockli's boards (BoardGame) or chess games (ChessGame,
-     * user 2026-10-25: the Blitz tournament had no material, the comments read Blockli boards only). An aborted game
-     * is left out; the side to move of a chess game is read from its FEN.
+     * The tournament's games as plain rows: Blockli boards or chess games (side to move from the FEN), aborted ones left out.
      *
      * @return Collection<int, array{id: int, white_id: int|null, black_id: int|null, finished: bool, result: string, ply: int, to_move: int|null, ended_at: int}>
      */

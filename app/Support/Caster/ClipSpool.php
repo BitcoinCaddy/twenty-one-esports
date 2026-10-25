@@ -365,7 +365,8 @@ class ClipSpool
         // late (user 2026-10-18: "Wenn etwas nicht pünktlich gespielt werden kann, dann ist das halt so").
         return CasterClip::query()->where('status', CasterClip::READY)->where('kind', CasterScript::RUBRIC)->where('expires_at', '>', $now)
             ->whereNotIn('caster_script_id', self::continuations())
-            ->whereIn('caster_script_id', CasterScript::query()->where('airs_at', '<=', $now)
+            // No slot (a live tournament comment voiced alone) is due at once.
+            ->whereIn('caster_script_id', CasterScript::query()->where(fn ($due) => $due->where('airs_at', '<=', $now)->orWhereNull('airs_at'))
                 ->when($lateSeconds !== null, fn ($query) => $query->where(fn ($late) => $late->where('airs_at', '>=', $now->subSeconds((int) $lateSeconds))
                     ->orWhereNotIn('topic', self::TIMED_RUBRICS)->orWhereNull('topic')))->select('id'))
             // The slot lives on the script; the clips have no `airs_at` (ordering by it broke every tick on Postgres, 2026-10-18).
