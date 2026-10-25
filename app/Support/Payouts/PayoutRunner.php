@@ -117,7 +117,7 @@ final class PayoutRunner
                 // The wallet refused the last attempt outright: an expired invoice may be replaced.
                 $refused = $payout->status === PayoutStatus::Failed && in_array($payout->reason, self::REFUSALS, true);
                 $claimed = $payout::query()->whereKey($payout->id)->whereIn('status', [PayoutStatus::Pending, PayoutStatus::Failed])
-                    ->update(['status' => PayoutStatus::Paying, 'attempts' => $payout->attempts + 1, 'last_attempt_at' => now(), 'reason' => null]);
+                    ->update(['status' => PayoutStatus::Paying, 'attempts' => $payout->attempts + 1, 'last_attempt_at' => now(), 'reason' => null, 'debug' => null]);
 
                 if ($claimed !== 1) {
                     return;
@@ -294,7 +294,7 @@ final class PayoutRunner
             $invoice = $this->addresses->invoice($lud16, $payout->amount_sats);
         } catch (LightningAddressFailure $failure) {
             $payout::query()->whereKey($payout->id)->where('status', PayoutStatus::Paying)
-                ->update(['status' => PayoutStatus::Failed, 'reason' => $failure->reason]);
+                ->update(['status' => PayoutStatus::Failed, 'reason' => $failure->reason, 'debug' => json_encode([...$failure->debug, 'at' => now()->utc()->toIso8601String()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)]);
 
             return;
         }
@@ -365,6 +365,7 @@ final class PayoutRunner
                     'QUOTA_EXCEEDED' => 'budget_exceeded',
                     default => 'wallet_error',
                 },
+                'debug' => json_encode(['wallet_code' => $error->errorCode, 'wallet_message' => mb_substr($error->getMessage(), 0, 600), 'bolt11' => $bolt11, 'at' => now()->utc()->toIso8601String()], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
             ]);
 
             return;

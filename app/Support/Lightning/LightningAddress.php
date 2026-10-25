@@ -49,44 +49,86 @@ class LightningAddress
      */
     public function invoice(string $lud16, int $amountSats): Bolt11
     {
-        $target = self::target($lud16) ?? throw new LightningAddressFailure('lnurl_invalid', 'not a Lightning address');
+        // What a failure carries to the payouts page (user 2026-10-25: "invoice_mismatch" alone told nobody why).
+        $debug = ['lud16' => $lud16, 'amount_msats' => $amountSats * 1000];
+        $fail = function (string $reason, string $message) use (&$debug): LightningAddressFailure {
+            return new LightningAddressFailure($reason, $message, [...$debug, 'step' => $message]);
+        };
+
+        $target = self::target($lud16) ?? throw $fail('lnurl_invalid', 'not a Lightning address');
         $deadline = microtime(true) + (float) config('esports.wallet.lnurl_budget_seconds', self::BUDGET_SECONDS);
-        $document = $this->getJson($this->base($target).'/.well-known/lnurlp/'.$target['name'], $deadline);
+        $debug['lnurlp_url'] = $this->base($target).'/.well-known/lnurlp/'.$target['name'];
+        $document = $this->getJsonTraced($debug['lnurlp_url'], $deadline, $debug, 'lnurlp');
 
         $callback = $document['callback'] ?? null;
         $metadata = $document['metadata'] ?? null;
         $min = $document['minSendable'] ?? null;
         $max = $document['maxSendable'] ?? null;
+        $debug += ['tag' => $document['tag'] ?? null, 'callback' => $callback, 'min_sendable' => $min, 'max_sendable' => $max,
+            'metadata' => is_string($metadata) ? mb_substr($metadata, 0, 600) : $metadata, 'metadata_sha256' => is_string($metadata) ? hash('sha256', $metadata) : null];
 
         if (($document['tag'] ?? null) !== 'payRequest' || ! is_string($callback) || ! is_string($metadata) || ! is_int($min) || ! is_int($max)) {
-            throw new LightningAddressFailure('lnurl_invalid', 'not a payRequest');
+            throw $fail('lnurl_invalid', 'not a payRequest');
         }
 
         $msats = $amountSats * 1000;
 
         if ($msats < $min || $msats > $max) {
-            throw new LightningAddressFailure('amount_out_of_range', 'amount outside minSendable..maxSendable');
+            throw $fail('amount_out_of_range', 'amount outside minSendable..maxSendable');
         }
 
         $separator = str_contains($callback, '?') ? '&' : '?';
-        $answer = $this->getJson($callback.$separator.http_build_query(['amount' => $msats]), $deadline);
+        $debug['callback_url'] = $callback.$separator.http_build_query(['amount' => $msats]);
+        $answer = $this->getJsonTraced($debug['callback_url'], $deadline, $debug, 'callback');
 
         if (($answer['status'] ?? null) === 'ERROR' || ! is_string($answer['pr'] ?? null)) {
-            throw new LightningAddressFailure('lnurl_invalid', 'the callback returned no invoice');
+            $debug['callback_answer'] = mb_substr((string) json_encode($answer, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), 0, 600);
+
+            throw $fail('lnurl_invalid', 'the callback returned no invoice');
         }
 
+        $debug['bolt11'] = $answer['pr'];
         $invoice = Bolt11::decode($answer['pr']);
 
-        if ($invoice === null
-            || ! in_array($invoice->network, (array) config('esports.wallet.invoice_networks', ['bc']), true)
-            || $invoice->amountMsats !== $msats
-            || $invoice->descriptionHash !== hash('sha256', $metadata)
-            || $invoice->expiresAt() < time() + 60
-        ) {
-            throw new LightningAddressFailure('invoice_mismatch', 'the invoice does not match the request');
+        if ($invoice === null) {
+            throw $fail('invoice_mismatch', 'the invoice does not decode');
+        }
+
+        $networks = (array) config('esports.wallet.invoice_networks', ['bc']);
+        $debug += ['invoice_network' => $invoice->network, 'invoice_amount_msats' => $invoice->amountMsats, 'invoice_description_hash' => $invoice->descriptionHash,
+            'invoice_description' => $invoice->description === null ? null : mb_substr($invoice->description, 0, 600),
+            'invoice_payment_hash' => $invoice->paymentHash, 'invoice_expires_at' => gmdate('Y-m-d H:i:s', $invoice->expiresAt()).' UTC'];
+        $failed = array_keys(array_filter([
+            'network '.$invoice->network.' not in ['.implode(', ', $networks).']' => ! in_array($invoice->network, $networks, true),
+            'amount '.var_export($invoice->amountMsats, true).' msat != '.$msats.' msat asked' => $invoice->amountMsats !== $msats,
+            'description_hash != sha256(metadata) (LUD-06)' => $invoice->descriptionHash !== hash('sha256', $metadata),
+            'expires in '.($invoice->expiresAt() - time()).' s, under 60 s' => $invoice->expiresAt() < time() + 60,
+        ]));
+
+        if ($failed !== []) {
+            $debug['failed_checks'] = $failed;
+
+            throw $fail('invoice_mismatch', 'the invoice does not match the request');
         }
 
         return $invoice;
+    }
+
+    /**
+     * getJson() with the URL's failure carried into the debug trace.
+     *
+     * @param  array<string, mixed>  $debug
+     * @return array<string, mixed>
+     *
+     * @throws LightningAddressFailure
+     */
+    private function getJsonTraced(string $url, float $deadline, array $debug, string $step): array
+    {
+        try {
+            return $this->getJson($url, $deadline);
+        } catch (LightningAddressFailure $failure) {
+            throw new LightningAddressFailure($failure->reason, $failure->getMessage(), [...$debug, 'step' => $step.': '.$failure->getMessage()]);
+        }
     }
 
     /**

@@ -11,7 +11,11 @@ use RuntimeException;
  */
 final class LightningAddressFailure extends RuntimeException
 {
-    public function __construct(public readonly string $reason, string $message)
+    /**
+     * @param  array<string, mixed>  $debug  what the request saw up to the failure (URLs, LNURL fields, the decoded
+     *                                       invoice, the failed checks), for the admin's debug view
+     */
+    public function __construct(public readonly string $reason, string $message, public readonly array $debug = [])
     {
         parent::__construct($message);
     }

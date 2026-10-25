@@ -388,6 +388,23 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                                     <td>
                                         <span @class(['rv-tag', 'is-ok' => $payout->status === PayoutStatus::Paid, 'is-bad' => $payout->status === PayoutStatus::Failed, 'is-btc' => ! in_array($payout->status, [PayoutStatus::Paid, PayoutStatus::Failed], true)])>@if ($payout->status === PayoutStatus::Paid)<x-icon name="check" :size="12" />@endif{{ $payout->status->label() }}</span>
                                         @if ($payout->reasonText())<span class="mt-1 block max-w-[280px] text-xs text-ink-2" data-test="payout-reason">{{ $payout->reasonText() }}</span>@endif
+                                        @if (is_array($payout->debug) && $payout->debug !== [])
+                                            {{-- The raw trace of the last failed attempt (user 2026-10-25: admins are devs and bitcoiners, show them why). --}}
+                                            <details class="mt-1 max-w-[420px]" data-test="payout-debug" x-data="{ copied: false }">
+                                                <summary class="min-h-11 cursor-pointer py-2 text-xs text-btc-hi">{{ __('Debug details') }}{{ ($payout->reason ? ' · '.$payout->reason : '') }}</summary>
+                                                <dl class="m-0 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-well p-2 font-mono text-xs leading-snug">
+                                                    @foreach ($payout->debug as $key => $value)
+                                                        <dt @class(['text-ink-3', 'text-loss' => in_array($key, ['failed_checks', 'step', 'wallet_code'], true)])>{{ $key }}</dt>
+                                                        <dd class="m-0 [overflow-wrap:anywhere] {{ in_array($key, ['failed_checks', 'step', 'wallet_code'], true) ? 'text-loss' : 'text-ink-2' }}">{{ is_scalar($value) || $value === null ? var_export($value, true) : json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</dd>
+                                                    @endforeach
+                                                </dl>
+                                                <button type="button" class="mt-1 min-h-11 cursor-pointer text-xs text-ink-2 underline underline-offset-4 hover:text-ink" data-test="payout-debug-copy"
+                                                        x-on:click="navigator.clipboard.writeText(@js(json_encode($payout->debug, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE))).then(() => { copied = true; setTimeout(() => copied = false, 1500) }).catch(() => { copied = 'failed' })">
+                                                    <span x-show="! copied">{{ __('Copy as JSON') }}</span>
+                                                    <span role="status" aria-live="polite"><span x-show="copied === true" x-cloak>{{ __('Copied') }}</span><span x-show="copied === 'failed'" x-cloak>{{ __('Copy failed, select the text above.') }}</span></span>
+                                                </button>
+                                            </details>
+                                        @endif
                                         @if ($payout->event)<span class="mt-1 block truncate font-mono text-[11px] text-proof" title="{{ $payout->event->event_id }}">2157, {{ \Illuminate\Support\Str::limit($payout->event->event_id, 16, '…') }}</span>@endif
                                     </td>
                                     <td class="text-[13px] text-ink-2" data-test="payout-address-state">{{ $payout->lud16 !== null ? __('checked') : '–' }}</td>

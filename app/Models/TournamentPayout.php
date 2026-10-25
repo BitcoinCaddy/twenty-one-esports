@@ -34,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $lud16
  * @property PayoutStatus $status
  * @property string|null $reason
+ * @property array<string, mixed>|null $debug what the last failed attempt saw (LNURL, invoice, failed checks, wallet error)
  * @property string|null $bolt11
  * @property string|null $payment_hash
  * @property Carbon|null $invoice_expires_at
@@ -62,6 +63,7 @@ class TournamentPayout extends Model
             'amount_sats' => 'integer',
             'status' => PayoutStatus::class,
             'invoice_expires_at' => 'datetime',
+            'debug' => 'array',
             'fees_msats' => 'integer',
             'attempts' => 'integer',
             'lease_until' => 'datetime',
