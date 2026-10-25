@@ -2,6 +2,7 @@
 
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Support\Caster\AirLog;
 use App\Support\Caster\ClipSpool;
 use App\Support\Caster\InvalidClip;
 use App\Support\Caster\ScenePhase;
@@ -207,4 +208,21 @@ it('releases a clip a stream restart left playing once its own length plus a mar
     expect(casterSpool()->releaseStale($now))->toBe(1)
         ->and(CasterClip::query()->find($cut->id))->toBeNull()
         ->and(CasterClip::query()->find($running->id)?->status)->toBe(CasterClip::PLAYING);
+});
+
+it('lets a waiting block go before the next live clip after three live clips in a row (user 2026-10-25)', function () {
+    $now = CarbonImmutable::now();
+    $block = casterSpool()->store(casterScript(CasterScript::SCENE, ScenePhase::BREAK), casterOpus(), 30, [], $now);
+    $block->forceFill(['kind' => CasterClip::BLOCK])->save();
+    $live = casterSpool()->store(casterScript(CasterScript::CHAT, ScenePhase::BREAK), casterOpus(), 5, [], $now);
+
+    AirLog::record(['clip' => 1, 'kind' => CasterScript::CHAT, 'block' => false, 'start' => 1.0, 'end' => 2.0]);
+    AirLog::record(['clip' => 2, 'kind' => CasterScript::CHAT, 'block' => false, 'start' => 3.0, 'end' => 4.0]);
+
+    expect(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($live->id);
+
+    AirLog::record(['clip' => 3, 'kind' => CasterScript::CHAT, 'block' => false, 'start' => 5.0, 'end' => 6.0]);
+
+    expect(casterSpool()->next(ScenePhase::BREAK, $now))->toMatchArray(['source' => 'block'])
+        ->and(casterSpool()->next(ScenePhase::BREAK, $now)['clip']?->id)->toBe($block->id);
 });

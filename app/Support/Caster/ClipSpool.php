@@ -426,6 +426,16 @@ class ClipSpool
         };
     }
 
+    /** Whether the last `spool.live_streak` clips on air were all live (chat replies, live moments). */
+    public static function liveStreak(): bool
+    {
+        $streak = (int) config('tv.commentary.spool.live_streak', 3);
+        $last = array_slice(AirLog::entries(), -$streak);
+
+        return $streak > 0 && count($last) === $streak
+            && array_filter($last, fn (array $piece): bool => $piece['block'] || ! in_array($piece['kind'], self::LIVE_KINDS, true)) === [];
+    }
+
     /**
      * What the stream says over a new slot of `$phase` showing `$topic`.
      *
@@ -437,6 +447,13 @@ class ClipSpool
 
         $ready = CasterClip::query()->where('status', CasterClip::READY)->where('expires_at', '>', $now)
             ->whereNotIn('caster_script_id', self::continuations());
+
+        // After `live_streak` live clips in a row a waiting block goes first (user 2026-10-25: chat replies back to
+        // back kept the tournament comments off air).
+        $block = self::liveStreak() ? $this->nextBlock($now) : null;
+        if ($block !== null) {
+            return ['clip' => $block, 'caption' => null, 'source' => 'block'];
+        }
 
         $live = $this->nextLive($now);
         if ($live !== null) {

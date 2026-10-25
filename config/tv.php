@@ -215,6 +215,8 @@ return [
             'max_clip_seconds' => (int) env('TV_COMMENTARY_MAX_CLIP_SECONDS', 300),
             // A clip of these kinds may be this long (the long variants, tv.commentary.length): a long scene runs 60 to
             // 100 s spoken, a long news segment up to two minutes, a long Bauernkrieg segment two to four minutes.
+            // Live clips in a row before a waiting block goes first (ClipSpool::next()).
+            'live_streak' => 3,
             'long_clip_seconds' => ['scene' => 360, 'news' => 360, 'history' => 420, 'bulletin' => 600, 'rubric' => 420, 'chat' => 300, 'live' => 300],
             // At most one news or history segment on air within this many minutes.
             'segment_spacing_minutes' => 5,
