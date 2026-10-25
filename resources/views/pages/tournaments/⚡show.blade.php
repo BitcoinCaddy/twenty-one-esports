@@ -824,7 +824,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
     $forwardedKeys = $hasPool ? array_column($this->pool['forwarded'] ?? [], 'pubkey') : [];
     $heroChampion = $championMoment['champions'][0] ?? null;
     $heroChampionUser = $heroChampion['users'][0] ?? null;
-    $statusTag = match ($status) {
+    // Drawn at the sign-up close, it runs before its start but nothing plays yet (user, 2026-10-25: "Läuft" and "Live
+    // zuschauen" stood there 90 minutes before 21:00 with no game running).
+    $beforeStart = $status === TournamentStatus::Running && ($countdown['kind'] ?? null) === 'start';
+    $statusTag = $beforeStart ? ['rv-tag', 'clock'] : match ($status) {
         TournamentStatus::Finished => ['rv-tag is-ok', 'check'],
         TournamentStatus::Cancelled => ['rv-tag is-bad', 'close'],
         TournamentStatus::Running => ['rv-tag is-ok', null],
@@ -901,7 +904,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
 
             <div @class(['relative mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-4 pt-4 lg:pr-[40%] lg:pl-12', 'pb-6 lg:pt-8 lg:pb-10' => ! $compactHero, 'pb-4 lg:pt-5 lg:pb-5' => $compactHero])>
                 <span class="flex flex-wrap items-center gap-2">
-                    <span class="{{ $statusTag[0] }}" data-test="tournament-status">@if ($statusTag[1])<x-icon :name="$statusTag[1]" :size="12" />@elseif (in_array($cta, ['open', 'live'], true))<span class="rv-live is-ok" aria-hidden="true"><i></i></span>@endif{{ $status->label() }}</span>
+                    <span class="{{ $statusTag[0] }}" data-test="tournament-status">@if ($statusTag[1])<x-icon :name="$statusTag[1]" :size="12" />@elseif (in_array($cta, ['open', 'live'], true))<span class="rv-live is-ok" aria-hidden="true"><i></i></span>@endif{{ $beforeStart ? __('Drawn') : $status->label() }}</span>
                     @if ($tournament->isCasualCup())
                         <span class="rv-tag" data-test="casual-marker">{{ __('Casual') }}</span>
                     @elseif (! $week)
@@ -967,9 +970,10 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             </time>
                         </span>
                     @endif
-                    @if ($countdown)
+                    {{-- With "What to do now" the start counts down there; the hero keeps its clock alone. --}}
+                    @if ($countdown && ! ($compactHero && $countdown['kind'] === 'start'))
                         {{-- The one countdown of the page: sign-up close while it is open, else the start. --}}
-                        <span class="{{ $compactHero && ($countdown['kind'] ?? null) === 'start' ? 'max-lg:!hidden ' : '' }}flex flex-col gap-1" data-test="tournament-countdown">
+                        <span class="flex flex-col gap-1" data-test="tournament-countdown">
                             <span class="rv-m">{{ $countdown['label'] }}</span>
                             <x-ui.countdown :at="\Illuminate\Support\Carbon::createFromTimestampMs($countdown['ms'])" size="sm" :label="$countdown['label']" />
                         </span>
@@ -991,7 +995,11 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                                         <a href="{{ route('tournaments.signup', $tournament) }}" class="rv-b2 h-12 border-win-ring px-6 text-win" data-test="to-signup"><x-icon name="check" :size="18" />{{ __('You’re in') }}</a>
                                         @break
                                     @case('live')
-                                        <a href="{{ $score ? '#leaderboard' : '#bracket' }}" class="rv-b h-12 px-6" data-test="to-bracket"><x-icon name="eye" :size="18" />{{ $score ? __('See the leaderboard') : __('Watch live') }}</a>
+                                        @if ($beforeStart)
+                                            <a href="{{ $score ? '#leaderboard' : '#bracket' }}" class="rv-b h-12 px-6" data-test="to-bracket"><x-icon name="trophy" :size="18" />{{ __('See the draw') }}</a>
+                                        @else
+                                            <a href="{{ $score ? '#leaderboard' : '#bracket' }}" class="rv-b h-12 px-6" data-test="to-bracket"><x-icon name="eye" :size="18" />{{ $score ? __('See the leaderboard') : __('Watch live') }}</a>
+                                        @endif
                                         @break
                                     @case('finished')
                                         @if ($heroChampion !== null && ! $week)

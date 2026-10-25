@@ -2803,6 +2803,8 @@
     "director": "Turnierleiter",
     "Add director": "Turnierleiter hinzufügen",
     "The draw": "Die Auslosung",
+    "Drawn": "Ausgelost",
+    "See the draw": "Zur Auslosung",
     "Block": "Block",
     "chosen when registration closes": "wird bei Anmeldeschluss festgelegt",
     "Block hash": "Block-Hash",

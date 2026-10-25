@@ -392,7 +392,9 @@ test('before the start a drawn player sees the start big, in their own zone, at 
         ->toContain('data-test="now-starts-countdown">01:30:00</b>')
         // The page's own hero names the start too, above "What to do now".
         ->and($html)->toContain('data-test="tournament-start-clock">22:00</b>')
-        ->and(strpos($html, 'data-test="tournament-start"'))->toBeLessThan(strpos($html, 'data-test="now-hero"'));
+        ->and(strpos($html, 'data-test="tournament-start"'))->toBeLessThan(strpos($html, 'data-test="now-hero"'))
+        // Nothing plays yet: "Drawn" and "See the draw", not "Running" and "Watch live".
+        ->and($html)->toMatch('/data-test="tournament-status">(?:(?!data-test=).)*?Drawn<\/span>/s')->toMatch('/data-test="to-bracket">(?:(?!data-test=).)*?See the draw<\/a>/s');
 
     // A guest gets the league's zone.
     auth()->logout();
@@ -400,5 +402,6 @@ test('before the start a drawn player sees the start big, in their own zone, at 
 
     $this->travelTo(CarbonImmutable::parse('2026-10-25 20:00:01', 'UTC'));
 
-    expect(nowPage($tournament, $viewer))->not->toContain('data-test="now-starts"')->not->toContain('data-test="tournament-start"');
+    expect(nowPage($tournament, $viewer))->not->toContain('data-test="now-starts"')->not->toContain('data-test="tournament-start"')
+        ->toMatch('/data-test="tournament-status">(?:(?!data-test=).)*?Running<\/span>/s')->toMatch('/data-test="to-bracket">(?:(?!data-test=).)*?Watch live<\/a>/s')->not->toContain('See the draw');
 });
