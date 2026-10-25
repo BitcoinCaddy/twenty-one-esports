@@ -4,6 +4,9 @@ use App\Jobs\VerifyNip05;
 use App\Models\ChessGame;
 use App\Models\Clan;
 use App\Models\ClanMember;
+use App\Models\Tournament;
+use App\Models\TournamentParticipant;
+use App\Models\TournamentSignup;
 use App\Models\User;
 use App\Support\Nostr\Blockpile;
 use App\Support\Nostr\ProfileCache;
@@ -404,4 +407,29 @@ test('only players whose profile was not confirmed within the TTL are asked for 
     expect($marked($fresh))->toBeFalse()
         ->and($marked($stale))->toBeTrue()
         ->and($marked($never))->toBeTrue();
+});
+
+test('a cached profile renames the solo tournament entries that still carry the npub or the old name, not a lineup or another name (user, 2026-10-25)', function () {
+    Queue::fake();
+    [$player, $signer] = knownPlayer();
+    $placeholder = $player->displayName();
+    $tournament = Tournament::factory()->create();
+    $signup = TournamentSignup::query()->create(['tournament_id' => $tournament->id, 'user_id' => $player->id, 'name' => $placeholder, 'members' => [$player->id]]);
+    $seed = TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $player->id, 'name' => $placeholder, 'members' => [$player->id], 'tournament_signup_id' => $signup->id]);
+    $other = TournamentParticipant::query()->create(['tournament_id' => $tournament->id, 'user_id' => $player->id, 'name' => 'Team Mempool', 'members' => [$player->id]]);
+
+    handIn([kindZero($signer, ['name' => 'Naz'], now()->subHour()->getTimestamp())])->assertOk();
+
+    expect($signup->refresh()->name)->toBe('Naz')
+        ->and($seed->refresh()->name)->toBe('Naz')
+        ->and($other->refresh()->name)->toBe('Team Mempool');
+
+    // A newer profile renames again; an entry stored before the fix heals when the same version comes in once more.
+    handIn([kindZero($signer, ['name' => 'Naz21'], now()->getTimestamp())])->assertOk();
+    $seed->forceFill(['name' => $placeholder])->save();
+    handIn([kindZero($signer, ['name' => 'Naz21'], now()->getTimestamp())])->assertOk();
+
+    expect($signup->refresh()->name)->toBe('Naz21')
+        ->and($seed->refresh()->name)->toBe('Naz21')
+        ->and($other->refresh()->name)->toBe('Team Mempool');
 });

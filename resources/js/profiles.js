@@ -19,6 +19,7 @@
  *    The card is an HTML fragment from GET /players/{npub}/card.
  */
 import { proxiedAvatar } from './imageProxy.js';
+import { readProfiles as readProfilesOutbox } from './relayRead.js';
 
 const LOCAL_TTL_MS = 30 * 60 * 1000;
 const STORAGE_KEY = 'twentyone.profiles.asked';
@@ -157,7 +158,7 @@ export function profileStore() {
         },
 
         async load(pubkeys) {
-            const { relays = [], url, waitMs = 2500 } = config();
+            const { relays = [], indexers = [], url, waitMs = 2500 } = config();
 
             if (relays.length === 0 || ! url) {
                 return;
@@ -175,6 +176,19 @@ export function profileStore() {
                     result = await readProfiles(relays, chunk, waitMs);
                 } catch {
                     // treated as unreachable below
+                }
+
+                // Whoever the profile relays lack: their relay list from the indexers, then kind 0 from their write
+                // relays (user, 2026-10-25: three seeds of tournament 43 stayed "npub1…" here while their profile page,
+                // which reads the outbox way, showed the names).
+                const missing = chunk.filter((pubkey) => ! result.events.some((event) => event.pubkey === pubkey));
+                if (missing.length > 0 && indexers.length > 0) {
+                    try {
+                        const outbox = await readProfilesOutbox(missing, { indexers }, { timeoutMs: waitMs });
+                        result.events.push(...outbox.events.filter((event) => event.kind === 0 && missing.includes(event.pubkey)));
+                    } catch {
+                        // the profile relays' answer stands
+                    }
                 }
 
                 let updated = {};

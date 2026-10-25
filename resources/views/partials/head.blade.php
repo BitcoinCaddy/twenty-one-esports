@@ -83,6 +83,8 @@
 {{-- Profiles of the players on the page and the player card (P10a, resources/js/profiles.js). --}}
 <meta name="profile-loader" content="{{ json_encode([
     'relays' => array_values(config('esports.profile_relays', [])),
+    // Where a player's relay list (10002) is looked up when the profile relays lack the profile (the outbox way).
+    'indexers' => array_values(config('esports.stream_chat.indexer_relays', [])),
     'url' => route('profiles.store', absolute: false),
     'waitMs' => (int) config('esports.profiles.wait_ms'),
     'labels' => ['profile' => __(':name profile')],

@@ -3,6 +3,8 @@
 namespace App\Support\Nostr;
 
 use App\Jobs\VerifyNip05;
+use App\Models\TournamentParticipant;
+use App\Models\TournamentSignup;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -129,10 +131,12 @@ final class ProfileCache
             // did, so a check that failed on a briefly unreachable domain, or passed before the domain gave the name to
             // another key, stood until the player republished the profile.
             self::verifyNip05WhenDue($user);
+            self::renameEntries($user, $user->displayName());
 
             return $lud16 !== null;
         }
 
+        $previousName = $user->displayName();
         $nip05 = self::nip05($metadata['nip05'] ?? null);
         $nip05Changed = $nip05 !== $user->nip05;
         $lud16 = self::lud16($metadata['lud16'] ?? null);
@@ -156,8 +160,28 @@ final class ProfileCache
 
         // A changed address has no check time any more, so it is due at once.
         self::verifyNip05WhenDue($user);
+        self::renameEntries($user, $previousName);
 
         return true;
+    }
+
+    /**
+     * A solo tournament entry keeps the name the player had at sign-up, and the draw copies it to the participant:
+     * an npub until the profile was cached (user, 2026-10-25: three seeds of tournament 43 stayed "npub1…" although
+     * their profiles load). Every entry that still carries the shortened npub or the previous name takes the
+     * current one, at each hand-in, so rows stored before this fix heal too.
+     */
+    private static function renameEntries(User $user, string $previousName): void
+    {
+        $current = $user->displayName();
+        $stale = array_values(array_unique(array_diff([Str::limit((string) $user->npub, 12, '…'), $previousName], [$current])));
+
+        if ($stale === [] || ! filled($user->name)) {
+            return;
+        }
+
+        TournamentSignup::query()->where('user_id', $user->id)->whereNull('lineup_id')->whereIn('name', $stale)->update(['name' => mb_substr($current, 0, 80)]);
+        TournamentParticipant::query()->where('user_id', $user->id)->whereNull('lineup_id')->whereIn('name', $stale)->update(['name' => mb_substr($current, 0, 80)]);
     }
 
     /**
