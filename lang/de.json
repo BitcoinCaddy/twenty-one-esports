@@ -8287,6 +8287,8 @@
     "Next no-show disqualifies": "Nächster No-Show disqualifiziert",
     "No-shows so far": "No-Shows bisher",
     "Disqualified": "Disqualifiziert",
+    ":white against :black, move :move": ":white gegen :black, Zug :move",
+    "The running games are over at the latest in about": "Die laufenden Partien sind spätestens vorbei in etwa",
     "Your match starts at": "Euer Match startet um",
     ":city time": "Ortszeit :city",
     "The tournament directors open it after round :number.": "Die Turnierleitung gibt es nach Runde :number frei.",

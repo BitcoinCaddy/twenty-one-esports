@@ -74,7 +74,7 @@ final class TournamentNow
 
     /** Every key of the hero, so each state names only what it says. */
     private const DEFAULTS = ['context' => null, 'line' => null, 'action' => null, 'until' => null, 'round' => null, 'others' => null,
-        'paused' => false, 'boards' => [], 'lobby' => null, 'live' => 0, 'me' => null, 'opponent' => null, 'lineup' => null, 'starts' => null];
+        'paused' => false, 'boards' => [], 'lobby' => null, 'live' => 0, 'me' => null, 'opponent' => null, 'lineup' => null, 'starts' => null, 'eta' => null];
 
     /**
      * @param  array<string, mixed>|null  $cup  the show page's cupMatch()
@@ -446,9 +446,12 @@ final class TournamentNow
             ->whereHas('slots', fn ($query) => $query->where('tournament_participant_id', $participant->id))->pluck('bracket');
         $bye = $current !== null && ($inRound->contains('bye') || ($inRound->isEmpty() && $ahead));
 
+        // What the viewer waits on: the round's running games and when they are over at the latest (user 2026-10-25: time for a break).
+        $waiting = $live !== null && $live['playing'] > 0 ? self::waitingOn($tournament, $current) : ['boards' => [], 'eta' => null];
+
         if ($bye) {
             return ['state' => 'bye', 'title' => (string) __('Bye this round'), 'context' => $live === null ? null : self::roundLine($live),
-                'line' => (string) __('No game for you this round: you move on.').' '.$waitLine, 'until' => $deadline, 'round' => $live];
+                'line' => (string) __('No game for you this round: you move on.').' '.$waitLine, 'until' => $deadline, 'round' => $live, ...$waiting];
         }
 
         if ($last === null) {
@@ -468,12 +471,12 @@ final class TournamentNow
             $title = $last->round->stage->format === TournamentFormat::RoundRobin ? __('Your games are done') : __('Your matches are done — waiting for the others');
 
             return ['state' => 'done', 'title' => (string) $title, 'context' => $live === null ? null : self::roundLine($live),
-                'line' => (string) __('The final standings come when the last games end.'), 'action' => ['label' => (string) __('Watch the rest'), 'href' => self::watchUrl($tournament), 'icon' => 'eye'], 'round' => $live];
+                'line' => (string) __('The final standings come when the last games end.'), 'action' => ['label' => (string) __('Watch the rest'), 'href' => self::watchUrl($tournament), 'icon' => 'eye'], 'round' => $live, ...$waiting];
         }
 
         return ['state' => 'wait', 'title' => (string) __('Wait for the next round'), 'context' => $live === null ? null : self::roundLine($live),
             'line' => ($live !== null && $live['playing'] > 0 ? $waitLine : (string) $line).' '.$flip, 'until' => $deadline, 'round' => $live,
-            'others' => $live === null ? TournamentGameEnd::others($tournament, collect([$last])) : null];
+            'others' => $live === null ? TournamentGameEnd::others($tournament, collect([$last])) : null, ...$waiting];
     }
 
     /**
@@ -494,6 +497,36 @@ final class TournamentNow
 
         return [...$base, 'state' => 'over', 'title' => $place === null ? ($cup ? (string) __('The cup is over') : (string) __('The tournament is over')) : (string) __('You finished in place :place', ['place' => $place]),
             'line' => (string) __('Thanks for playing!')];
+    }
+
+    /**
+     * The running chess games of `$round` as board links with their move, and when the last one is over at the latest:
+     * both clocks of the slowest game, the running side's time counted down (the increment left out, so "about").
+     *
+     * @return array{boards: list<array{label: string, url: string}>, eta: CarbonInterface|null}
+     */
+    private static function waitingOn(Tournament $tournament, ?TournamentRound $round): array
+    {
+        if ($round === null || ! $tournament->profile()->isChess()) {
+            return ['boards' => [], 'eta' => null];
+        }
+
+        $games = ChessGame::query()->whereIn('tournament_match_id', TournamentMatch::query()->where('tournament_round_id', $round->id)->whereNull('result')->select('id'))
+            ->where('status', ChessGameStatus::Active)->with(['white', 'black'])->orderBy('id')->get();
+        $nowMs = (int) (microtime(true) * 1000);
+        $latest = 0;
+        $boards = [];
+
+        foreach ($games as $game) {
+            $whiteToMove = (explode(' ', (string) $game->fen)[1] ?? 'w') === 'w';
+            $elapsed = max(0, $nowMs - (int) $game->turn_started_ms);
+            $left = max(0, (int) $game->white_ms - ($whiteToMove ? $elapsed : 0)) + max(0, (int) $game->black_ms - ($whiteToMove ? 0 : $elapsed));
+            $latest = max($latest, $left);
+            $boards[] = ['label' => (string) __(':white against :black, move :move', ['white' => $game->white?->displayName() ?? '?', 'black' => $game->black?->displayName() ?? '?', 'move' => intdiv((int) $game->ply, 2) + 1]),
+                'url' => route('games.show', ['game' => $game])];
+        }
+
+        return ['boards' => $boards, 'eta' => $games->isEmpty() ? null : now()->addMilliseconds($latest)];
     }
 
     /**

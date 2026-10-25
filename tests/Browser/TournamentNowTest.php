@@ -363,3 +363,41 @@ test('before the start a drawn player finds the start time big in the page hero 
 
     fwrite(STDERR, "\n[starts] ".json_encode($measured)."\n");
 });
+
+test('a player with a bye sees the running games and the countdown to their latest end, inside the hero at 390 and 1440 (user, 2026-10-25); clean console', function () {
+    $tournament = runningChess(TournamentFormat::Swiss, 3, TournamentResultsMode::Players);
+    $tournament->forceFill(['published_at' => now()])->save();
+    $bye = TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', 'bye')->with('slots.participant.user')->firstOrFail();
+    $viewer = $bye->slots[0]->participant->user;
+    $viewer->forceFill(['locale' => 'de'])->save();
+    ChessGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->update(['white_ms' => 300_000, 'black_ms' => 300_000, 'turn_started_ms' => (int) (microtime(true) * 1000)]);
+
+    $page = visit(BrowserLogin::url($viewer))->page();
+    $page->context()->addInitScript(NOW_COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=now-eta]") !== null && document.readyState === "complete"', 8_000);
+        usleep(1_200_000);
+        $m = $page->evaluate(NOW_MEASURE) + $page->evaluate('() => { const box = (s) => { const r = document.querySelector(s).getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom + scrollY) }; };
+            return { eta: box("[data-test=now-eta]"), board: box("[data-test=now-board]"), countdown: document.querySelector("[data-test=now-eta-countdown]").innerText }; }');
+        nowShot($page, "now-bye-eta-{$width}");
+        $measured[$width] = array_diff_key($m, ['text' => 1]);
+
+        expect($m['state'])->toBe('bye')
+            ->and($m['overflow'])->toBeLessThanOrEqual(0)
+            ->and($m['eta']['right'])->toBeLessThanOrEqual($m['right'])
+            ->and($m['board']['right'])->toBeLessThanOrEqual($m['right'])
+            ->and($m['countdown'])->toMatch('/^00:09:\d\d$/')
+            ->and($m['text'])->toContain('Zug 1')->toContain('spätestens vorbei')
+            ->and($m['errors'])->toBe([]);
+    }
+
+    $page->evaluate('() => { setTimeout(() => { throw new Error("probe"); }, 0); }');
+    BrowserWait::until($page, '() => window.__errors.length > 0', 5_000);
+    expect(implode(' | ', $page->evaluate('() => window.__errors')))->toContain('probe');
+
+    fwrite(STDERR, "\n[bye-eta] ".json_encode($measured)."\n");
+});

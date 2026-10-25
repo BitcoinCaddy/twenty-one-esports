@@ -161,6 +161,14 @@
             </p>
         @endif
 
+        @if ($now['eta'] ?? null)
+            {{-- When the round's games are over at the latest (both clocks of the slowest game): time for a break. --}}
+            <p class="m-0 flex flex-wrap items-baseline gap-x-2 text-[13px] text-ink-2" data-test="now-eta">
+                <span>{{ __('The running games are over at the latest in about') }}</span>
+                <b class="font-display text-xl font-bold text-ink tabular-nums" role="timer" x-data="countdown({ at: {{ (int) $now['eta']->getTimestampMs() }}, days: @js(__(':count day|:count days')) })" x-text="text" data-test="now-eta-countdown">{{ sprintf('%02d:%02d:%02d', intdiv($etaLeft = max(0, (int) now()->diffInSeconds($now['eta'])), 3600), intdiv($etaLeft % 3600, 60), $etaLeft % 60) }}</b>
+            </p>
+        @endif
+
         @if ($now['others'])
             <p class="m-0 text-[13px] text-ink-2" data-test="now-others">{{ $now['others'] }}</p>
         @endif

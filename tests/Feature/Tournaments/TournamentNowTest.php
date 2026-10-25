@@ -405,3 +405,21 @@ test('before the start a drawn player sees the start big, in their own zone, at 
     expect(nowPage($tournament, $viewer))->not->toContain('data-test="now-starts"')->not->toContain('data-test="tournament-start"')
         ->toMatch('/data-test="tournament-status">(?:(?!data-test=).)*?Running<\/span>/s')->toMatch('/data-test="to-bracket">(?:(?!data-test=).)*?Watch live<\/a>/s')->not->toContain('See the draw');
 });
+
+test('a player with a bye sees the round\'s running games with their move and when they are over at the latest (user, 2026-10-25)', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-25 21:00:00', 'UTC'));
+    $tournament = runningChess(TournamentFormat::Swiss, 3, TournamentResultsMode::Players);
+    $bye = TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', 'bye')->with('slots.participant.user')->firstOrFail();
+    $viewer = $bye->slots[0]->participant->user;
+    $game = ChessGame::query()->with(['white', 'black'])->whereIn('tournament_match_id', $tournament->matches()->select('id'))->firstOrFail();
+    // Both clocks full (5+3 blitz): the game is over in ten minutes at the latest.
+    $game->forceFill(['white_ms' => 300_000, 'black_ms' => 300_000, 'turn_started_ms' => (int) (microtime(true) * 1000)])->save();
+
+    $hero = nowHero(nowPage($tournament, $viewer));
+
+    expect($hero)->toContain('data-state="bye"')
+        ->toContain('data-test="now-board"')
+        ->toContain($game->white->displayName().' against '.$game->black->displayName().', move 1')
+        ->toContain('data-test="now-eta"')
+        ->toMatch('/data-test="now-eta-countdown">00:(09|10):\d\d<\/b>/');
+});
