@@ -8,7 +8,6 @@ use App\Support\Caster\DuetDirector;
 use App\Support\Caster\Idents;
 use App\Support\Caster\Pcm;
 use App\Support\Caster\Programme\TalkShow;
-use App\Support\Caster\ScriptGuard;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Facades\Cache;
@@ -85,7 +84,7 @@ final class BlockRenderer
         foreach ($scripts as $index => $script) {
             ['sentences' => $sentences, 'speakers' => $speakers, 'duet' => $duet] = CasterFetcher::lines($script);
 
-            foreach ($this->fetcher->plannedChunks($sentences, $duet ? $speakers : null) as [$speaker, $lines]) {
+            foreach ($this->fetcher->plannedChunks($sentences, $duet ? $speakers : null, $script['kind'] ?? null) as [$speaker, $lines]) {
                 $chunks[] = ['script' => $index, 'speaker' => $speaker, 'lines' => $lines];
             }
         }
@@ -341,7 +340,7 @@ final class BlockRenderer
 
                 $gap = $this->within(TalkShow::gapFor($topic, $kind) ?? $speakerPause, 0.45, 0.7);
             } else {
-                $base = ScriptGuard::accented((string) end($chunks[$key]['lines'])) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
+                $base = CasterFetcher::sentencePause((string) end($chunks[$key]['lines']), $pause, $script['kind'] ?? null);
                 $gap = max(0.1, $base + (float) ($pause['jitter'] ?? 0.0) * (2 * ($this->random)() - 1));
             }
 

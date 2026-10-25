@@ -360,7 +360,7 @@ class CasterFetcher
         $id = (int) $script['id'];
         ['sentences' => $sentences, 'speakers' => $speakers, 'duet' => $duet] = self::lines($script);
 
-        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $duet ? $speakers : null, TalkShow::turnGap($script['topic'] ?? null));
+        $voiced = $sentences === [] ? null : $this->voice($sentences, $terms, $duet ? $speakers : null, TalkShow::turnGap($script['topic'] ?? null), $script['kind'] ?? null);
         $opus = $voiced === null ? null : $this->encode($voiced['pcm'], $voiced['rate']);
 
         if ($voiced === null || $opus === null) {
@@ -457,12 +457,12 @@ class CasterFetcher
      * @param  array{min: float, max: float}|null  $turnGap
      * @return array{pcm: string, rate: int, ends: list<float>}|null null when VoiceStudio failed past its retries
      */
-    public function voice(array $sentences, array $terms = [], ?array $speakers = null, ?array $turnGap = null): ?array
+    public function voice(array $sentences, array $terms = [], ?array $speakers = null, ?array $turnGap = null, ?string $kind = null): ?array
     {
         $settings = $this->settings();
         $pause = (array) $settings['pause'];
         $speakerPause = $turnGap ?? (array) ($settings['speaker_pause'] ?? []);
-        $chunks = $this->plannedChunks($sentences, $speakers);
+        $chunks = $this->plannedChunks($sentences, $speakers, $kind);
         $pcm = '';
         $rate = null;
         $ends = [];
@@ -483,7 +483,7 @@ class CasterFetcher
                 $min = (float) ($speakerPause['min'] ?? 0.45);
                 $pcm .= Pcm::silence(max(0.1, $min + max(0.0, (float) ($speakerPause['max'] ?? 0.7) - $min) * (mt_rand(0, 1000) / 1000)), $rate);
             } elseif ($index < count($chunks) - 1) {
-                $base = ScriptGuard::accented($sentence) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
+                $base = self::sentencePause($sentence, $pause, $kind);
                 $jitter = (float) ($pause['jitter'] ?? 0.0);
                 $pcm .= Pcm::silence(max(0.1, $base + $jitter * (mt_rand(-1000, 1000) / 1000)), $rate);
             }
@@ -531,9 +531,10 @@ class CasterFetcher
      * @param  list<string>|null  $speakers  null: Markus alone
      * @return list<array{0: string, 1: list<string>}> speaker and lines of each chunk
      */
-    public function plannedChunks(array $sentences, ?array $speakers = null): array
+    public function plannedChunks(array $sentences, ?array $speakers = null, ?string $kind = null): array
     {
         $chunk = (array) ($this->settings()['chunk'] ?? []);
+        $maxSentences = self::readsSentenceBySentence($kind) ? 1 : max(1, (int) ($chunk['max_sentences'] ?? 3));
         $runs = [];
 
         foreach ($sentences as $index => $sentence) {
@@ -550,12 +551,32 @@ class CasterFetcher
         $chunks = [];
 
         foreach ($runs as [$speaker, $lines]) {
-            foreach (self::chunks($lines, max(1, (int) ($chunk['max_sentences'] ?? 3)), max(1, (int) ($chunk['max_words'] ?? 25))) as $part) {
+            foreach (self::chunks($lines, $maxSentences, max(1, (int) ($chunk['max_words'] ?? 25))) as $part) {
                 $chunks[] = [$speaker, $part];
             }
         }
 
         return $chunks;
+    }
+
+    /** Whether a script kind is voiced one sentence per call, so every sentence gets its own pause (the news). */
+    public static function readsSentenceBySentence(?string $kind): bool
+    {
+        return $kind !== null && in_array($kind, (array) config('tv.commentary.voicestudio.chunk.one_sentence_kinds', []), true);
+    }
+
+    /**
+     * The pause after a sentence of one speaker: the news' own, else longer after ! ? : than after a full stop.
+     *
+     * @param  array<string, mixed>  $pause  `voicestudio.pause`
+     */
+    public static function sentencePause(string $sentence, array $pause, ?string $kind): float
+    {
+        if (self::readsSentenceBySentence($kind)) {
+            return (float) ($pause['news'] ?? 0.55);
+        }
+
+        return ScriptGuard::accented($sentence) ? (float) ($pause['accent'] ?? 0.35) : (float) ($pause['sentence'] ?? 0.2);
     }
 
     /**

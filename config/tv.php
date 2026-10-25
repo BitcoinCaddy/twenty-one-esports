@@ -281,8 +281,9 @@ return [
             'retry_seconds' => 5,
             // Pauses between chunks only; a chunk is one /generate call of up to `max_sentences` and `max_words`
             // (user 2026-10-11: "Und er spricht zu abgehackt"; one call per sentence put a pause after each).
-            'pause' => ['sentence' => 0.2, 'accent' => 0.35, 'scene' => [1.0, 1.5], 'jitter' => 0.08],
-            'chunk' => ['max_sentences' => 3, 'max_words' => 25],
+            // `news`: the news read sentence by sentence with a clear pause (user 2026-10-25: items ran together).
+            'pause' => ['sentence' => 0.2, 'accent' => 0.35, 'news' => 0.55, 'scene' => [1.0, 1.5], 'jitter' => 0.08],
+            'chunk' => ['max_sentences' => 3, 'max_words' => 25, 'one_sentence_kinds' => ['bulletin', 'news']],
             // Each chunk is trimmed to its speech with at least `pad_ms` of quiet at both ends, the kept tail faded out
             // over `fade_ms` (Pcm::trimEdges()). Measured 2026-10-12: VoiceStudio leaves about 100 ms before the onset
             // and 110 to 160 ms after the last word, its noise floor peaks near 50.

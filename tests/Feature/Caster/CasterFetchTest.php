@@ -364,3 +364,13 @@ it('keeps a local listening copy of every uploaded clip when a directory is set'
     array_map('unlink', glob($dir.'/*'));
     rmdir($dir);
 });
+
+it('voices the news sentence by sentence with the news pause, other kinds in chunks (user 2026-10-25: items ran together)', function () {
+    $fetcher = app(CasterFetcher::class);
+    $sentences = ['Erste Meldung.', 'Zweite Meldung.', 'Dritte Meldung.'];
+
+    expect($fetcher->plannedChunks($sentences, null, 'bulletin'))->toHaveCount(3)
+        ->and($fetcher->plannedChunks($sentences, null, 'scene'))->toHaveCount(1)
+        ->and(CasterFetcher::sentencePause('Erste Meldung.', ['sentence' => 0.2, 'news' => 0.55], 'news'))->toBe(0.55)
+        ->and(CasterFetcher::sentencePause('Erste Meldung.', ['sentence' => 0.2, 'news' => 0.55], 'scene'))->toBe(0.2);
+});
