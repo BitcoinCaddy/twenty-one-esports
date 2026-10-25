@@ -180,10 +180,10 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
         $locale = $user->locale ?? (string) config('app.locale');
         $channels = $notifier->send($user, \App\Enums\NotificationKind::TournamentNews, new \App\Support\Notifications\Notice(
             __('Your prize from :tournament is waiting', ['tournament' => $payout->tournament->name], $locale),
-            __('Add a Lightning address (lud16) to your Nostr profile so the league can pay you :sats sats.', ['sats' => PreSeason::formatSats($payout->amount_sats)], $locale),
-            route('tournaments.show', $payout->tournament),
+            __('Add a Lightning address to your profile so the league can pay you :sats sats. It takes two minutes, and the page shows free wallets that give you one.', ['sats' => PreSeason::formatSats($payout->amount_sats)], $locale),
+            route('settings.profile'),
             null,
-            __('Open tournament', [], $locale),
+            __('Add my Lightning address', [], $locale),
         ), immediate: true);
 
         $this->notice = in_array('dm', $channels, true) ? __(':name was reminded by DM and in the bell.', ['name' => $payout->name]) : __(':name was reminded in the bell (no DM: switched off by the player).', ['name' => $payout->name]);

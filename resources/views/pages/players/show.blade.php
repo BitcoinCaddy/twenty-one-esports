@@ -55,6 +55,10 @@
                 <div class="flex min-w-0 flex-col gap-1.5">
                     <span class="flex flex-wrap items-center gap-3">
                         <h1 id="ph-name" class="rv-h1 [overflow-wrap:anywhere] max-lg:text-[26px]">{{ $name }}</h1>
+                        @if ($isMe && (! filled($user->name) || $user->lud16 === null))
+                            {{-- Google sign-ins start without a profile (user 2026-10-25): the way to a name and a prize address. --}}
+                            <a href="{{ route('settings.profile') }}" class="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-bold text-btc-hi" data-test="player-profile-missing"><x-icon name="bolt" :size="14" />{{ ! filled($user->name) ? __('Add your name and Lightning address') : __('Add a Lightning address for prizes') }}</a>
+                        @endif
                         @if ($profile->isMember())
                             <x-member-badge solid class="max-lg:hidden" />
                         @endif

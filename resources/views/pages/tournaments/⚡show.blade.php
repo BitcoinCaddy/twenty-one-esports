@@ -1051,6 +1051,14 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                 @elseif (($championMoment['viewer']['state'] ?? null) === 'placed')
                     <p class="m-0 text-[13px] text-ink-2" data-test="champion-you">{{ __('You finished in place :place', ['place' => $championMoment['viewer']['place']]) }}. {{ __('Thanks for playing!') }}</p>
                 @endif
+                @php($youPlaced = $championMoment['viewer']['place'] ?? null)
+                @if ($youPlaced !== null && $tournament->hasPot() && $youPlaced <= count($tournament->prizeSplit()) && auth()->user()?->lud16 === null)
+                    {{-- A prize that waits for a Lightning address (user 2026-10-25: Google sign-ins had none). --}}
+                    <div class="flex max-w-[640px] flex-col gap-2 rounded-md border border-btc bg-btc-tint px-4 py-3" data-test="prize-needs-address">
+                        <p class="m-0 text-[13px] leading-normal">{{ __('Your prize waits: add a Lightning address to your profile, and the league pays it. Free wallets that give you one are on that page.') }}</p>
+                        <a href="{{ route('settings.profile') }}" class="rv-b h-11 self-start px-5"><x-icon name="bolt" :size="16" />{{ __('Add my Lightning address') }}</a>
+                    </div>
+                @endif
                 @if ($championMoment !== null && $championMoment['prize'] !== null)
                     <span class="sr-only" data-test="champion-prize">{{ number_format($championMoment['prize']) }} {{ __('sats prize') }}</span>
                 @endif

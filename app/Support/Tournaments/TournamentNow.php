@@ -489,11 +489,15 @@ final class TournamentNow
         $cup = $tournament->isCasualCup();
         $base = ['action' => ['label' => (string) __('See the final standings'), 'href' => route('tournaments.show', $tournament).'#bracket', 'icon' => 'tournaments']];
 
+        $place = collect(app(TournamentPlacements::class)->of($tournament) ?? [])->first(fn (array $row): bool => in_array($participant->id, $row['participants'], true))['place'] ?? null;
+        // A prize that waits for a Lightning address (user 2026-10-25: Google sign-ins had none): the way there first.
+        $waits = $place !== null && $tournament->hasPot() && $place <= count($tournament->prizeSplit()) && $participant->user_id !== null && User::query()->whereKey($participant->user_id)->value('lud16') === null;
+        $base = $waits ? ['action' => ['label' => (string) __('Add my Lightning address'), 'href' => route('settings.profile'), 'icon' => 'bolt'],
+            'others' => (string) __('Your prize waits: add a Lightning address to your profile, and the league pays it. Free wallets that give you one are on that page.')] : $base;
+
         if (app(TournamentChampion::class)->of($tournament)?->id === $participant->id) {
             return [...$base, 'state' => 'won', 'title' => $cup ? (string) __('You won the cup') : (string) __('You won the tournament'), 'line' => (string) __('Congratulations, champion!')];
         }
-
-        $place = collect(app(TournamentPlacements::class)->of($tournament) ?? [])->first(fn (array $row): bool => in_array($participant->id, $row['participants'], true))['place'] ?? null;
 
         return [...$base, 'state' => 'over', 'title' => $place === null ? ($cup ? (string) __('The cup is over') : (string) __('The tournament is over')) : (string) __('You finished in place :place', ['place' => $place]),
             'line' => (string) __('Thanks for playing!')];

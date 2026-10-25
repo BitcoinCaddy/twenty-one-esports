@@ -1,0 +1,60 @@
+<?php
+
+use App\Models\User;
+use App\Support\Tournaments\TournamentChampion;
+use Pest\Browser\Support\ComputeUrl;
+use Tests\Support\BrowserConsole;
+use Tests\Support\BrowserLogin;
+use Tests\Support\BrowserWait;
+
+pest()->group('browser');
+
+/*
+| The player's own profile page and the prize hint (user 2026-10-25), measured at 390 and 1440 in German; console,
+| uncaught errors and failed responses collected, with a positive control.
+*/
+
+test('the profile page and the prize hint stay inside the screen at 390 and 1440 in German; clean console', function () {
+    fakeLightningAddresses(fakeWallet());
+    $tournament = finishedPoolTournament(fakeWallet(), withoutAddress: [1]);
+    $tournament->forceFill(['published_at' => now()])->save();
+    $champion = app(TournamentChampion::class)->of($tournament);
+    $user = User::query()->findOrFail($champion->user_id);
+    $user->forceFill(['lud16' => null, 'locale' => 'de'])->save();
+
+    $webpage = visit(BrowserLogin::url($user));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $box = '(s) => { const el = document.querySelector(s); if (! el) return null; const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top + scrollY), bottom: Math.round(r.bottom + scrollY) }; }';
+    $measured = [];
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('settings.profile')));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=profile-save]") !== null && ! document.querySelector("[data-test=profile-name]").disabled', 10_000);
+        $profile = $page->evaluate("() => ({ scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], editor: ({$box})('[data-test=profile-editor]'), help: ({$box})('[data-test=profile-help]'), save: ({$box})('[data-test=profile-save]'), text: document.body.innerText })");
+        tournamentLiveShot($page, "profile-{$width}");
+
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=prize-needs-address]") !== null && document.readyState === "complete"', 10_000);
+        $hint = $page->evaluate("() => ({ scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], hint: ({$box})('[data-test=prize-needs-address]') })");
+        $page->evaluate('() => document.querySelector("[data-test=prize-needs-address]").scrollIntoView({ block: "center" })');
+        tournamentLiveShot($page, "prize-hint-{$width}");
+        $measured[$width] = ['profile' => array_diff_key($profile, ['text' => 1]), 'hint' => $hint];
+
+        expect($profile['scroll'][0])->toBeLessThanOrEqual($profile['scroll'][1])
+            ->and($profile['editor']['right'])->toBeLessThanOrEqual($width)
+            ->and($profile['help']['right'])->toBeLessThanOrEqual($width)
+            ->and($profile['text'])->toContain('Noch keine Lightning-Adresse?')->toContain('Coinos')
+            ->and($hint['scroll'][0])->toBeLessThanOrEqual($hint['scroll'][1])
+            ->and($hint['hint']['right'])->toBeLessThanOrEqual($width);
+        $webpage->assertNoJavaScriptErrors();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([])->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    $page->evaluate('() => { setTimeout(() => { throw new Error("positive control"); }); }');
+    BrowserWait::until($page, '() => window.__errors.length >= 1', 10_000);
+    expect(implode("\n", $page->evaluate('() => window.__errors')))->toContain('positive control');
+
+    fwrite(STDERR, "\n[profile] ".json_encode($measured)."\n");
+});

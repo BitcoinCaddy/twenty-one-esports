@@ -24,6 +24,7 @@
     // Settings.dc.html (P7, template T-Settings): Account first, the order of the board's rail.
     $tabs = [
         'account' => [route('settings.account'), __('Account'), 'settings-account-tab', 'user'],
+        'profile' => [route('settings.profile'), __('Name and Lightning'), 'settings-profile-tab', 'bolt'],
         'gaming' => [route('gaming.edit'), __('Gamer tags'), 'settings-gamer-tags-tab', 'home'],
         'chess' => [route('settings.chess'), __('Chess'), 'settings-chess-tab', 'settings'],
         'notifications' => [route('settings.notifications'), __('Notifications'), 'settings-notifications-tab', 'bell'],

@@ -29,6 +29,7 @@ import { liveStore, readSeed, startLiveFeed } from './liveFeed.js';
 import './nostrSign.js';
 import './casualPlay.js';
 import './badgeShare.js';
+import './profileEditor.js';
 import './nostrBar.js';
 import './zapWinner.js';
 import './potZappers.js';

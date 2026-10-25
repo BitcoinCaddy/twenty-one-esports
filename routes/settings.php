@@ -13,4 +13,5 @@ Route::middleware(['auth'])->group(function () {
     Route::livewire('settings/badges', 'pages::settings.badges')->name('settings.badges');
     // P47: an optional NIP-05 name on the league's domain.
     Route::livewire('settings/nostr-address', 'pages::settings.nip05')->name('settings.nip05');
+    Route::livewire('settings/profile', 'pages::settings.profile')->name('settings.profile');
 });
