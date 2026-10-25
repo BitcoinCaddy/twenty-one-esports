@@ -71,9 +71,9 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($part['rows'] as $row)
-                                        <tr class="border-t border-hairline">
+                                        <tr @class(['border-t border-hairline', 'text-ink-3' => $row['out'] ?? false]) @if ($row['out'] ?? false) data-out @endif>
                                             <td class="py-2 pr-2 text-ink-3">{{ $row['rank'] }}</td>
-                                            <td class="py-2 pr-2"><span class="flex items-center gap-2"><x-clan-tag :clan="$row['clan']" :tag="$row['tag']" size="sm" /><span class="truncate">{{ $row['name'] }}</span></span></td>
+                                            <td class="w-full max-w-0 py-2 pr-2"><span class="flex min-w-0 items-center gap-2"><x-clan-tag :clan="$row['clan']" :tag="$row['tag']" size="sm" /><span class="min-w-0 truncate">{{ $row['name'] }}</span>@if ($row['out'] ?? false)<span class="rv-tag is-bad shrink-0" title="{{ __('Disqualified') }}" data-test="standings-out"><span class="sm:hidden">{{ __('DQ') }}</span><span class="max-sm:hidden">{{ __('Disqualified') }}</span></span>@endif</span></td>
                                             <td class="py-2 pr-2 text-right font-bold tabular-nums">{{ $row['points'] }}</td>
                                             <td class="py-2 pr-2 text-right whitespace-nowrap tabular-nums text-ink-2">{{ $row['wins'] }} {{ $row['ties'] }} {{ $row['losses'] }}</td>
                                             <td class="py-2 text-right tabular-nums text-ink-2">{{ $stage['format'] === \App\Enums\TournamentFormat::Swiss ? $row['buchholz'] : $row['games'] }}</td>

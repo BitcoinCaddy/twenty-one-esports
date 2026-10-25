@@ -210,6 +210,8 @@ final class TournamentPlacements
             // A round robin's two legs game by game where the organizer chose so (FormatOptions::$legPoints).
             ! $swiss && $options->perLeg(),
         );
+        // A disqualified entry places below everyone who stayed in, never on a prize place ahead of them.
+        $rows = Standings::outLast($rows, TournamentParticipant::query()->whereKey(array_keys($members))->whereNotNull('disqualified_at')->pluck('id')->map(intval(...))->all());
 
         $groups = [];
 

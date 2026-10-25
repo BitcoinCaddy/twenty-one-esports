@@ -99,6 +99,25 @@ final class Standings
     }
 
     /**
+     * The table with the entries in `$out` (disqualified) below all others, each part in its order, ranks renumbered
+     * (user 2026-10-25: a disqualified entry stood above players who kept playing).
+     *
+     * @param  list<StandingRow>  $rows
+     * @param  list<int>  $out
+     * @return list<StandingRow>
+     */
+    public static function outLast(array $rows, array $out): array
+    {
+        $ordered = [...array_filter($rows, fn (StandingRow $row): bool => ! in_array($row->entrant, $out, true)), ...array_filter($rows, fn (StandingRow $row): bool => in_array($row->entrant, $out, true))];
+
+        foreach (array_values($ordered) as $index => $row) {
+            $row->rank = $index + 1;
+        }
+
+        return array_values($ordered);
+    }
+
+    /**
      * Each game of a two-leg pairing as a result of its own (DerCaddy, 2026-10-18: "Wenn man zwei Spiele
      * gegeneinander spielt, sollte man dann auch zwei Punkte bekommen können"): a win 1 and a draw ½ per game, so
      * up to two points per pairing; wins, draws, losses, head-to-head and Buchholz count games. A pairing decided

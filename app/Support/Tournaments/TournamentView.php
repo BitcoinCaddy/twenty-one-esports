@@ -206,6 +206,7 @@ final class TournamentView
             $swiss ? $options->swissTieBreaks : $options->roundRobinTieBreaks,
             $perLeg,
         );
+        $rows = Standings::outLast($rows, $this->participants->whereNotNull('disqualified_at')->keys()->map(intval(...))->values()->all());
 
         return array_map(function ($row): array {
             $participant = $this->participants->get($row->entrant);
@@ -222,6 +223,7 @@ final class TournamentView
                 'losses' => $row->losses,
                 'games' => self::number($row->gameWins).':'.self::number($row->gameLosses),
                 'buchholz' => self::number($row->medianBuchholz),
+                'out' => $participant?->disqualified_at !== null,
             ];
         }, $rows);
     }

@@ -455,3 +455,42 @@ test('the no-show counter on the live page stays inside its cards at 390 and 144
 
     fwrite(STDERR, "\n[noshows] ".json_encode($measured)."\n");
 });
+
+test('a disqualified entry\'s row stays inside the standings table at 390 and 1440 px; clean console (user, 2026-10-25)', function () {
+    $tournament = runningChess(TournamentFormat::Swiss, 8, TournamentResultsMode::Players);
+    $tournament->forceFill(['published_at' => now()])->save();
+    TournamentParticipant::query()->where('tournament_id', $tournament->id)->orderBy('seed')->firstOrFail()
+        ->forceFill(['disqualified_at' => now(), 'name' => 'Ein sehr langer Spielername mit vierzig Zeichen'])->save();
+    $viewer = User::factory()->create(['locale' => 'de']);
+
+    $webpage = visit(BrowserLogin::url($viewer));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=standings-out]") !== null && document.readyState === "complete"', 10_000);
+        $probe = $page->evaluate('() => { const tag = document.querySelector("[data-test=standings-out]"), row = tag.closest("tr"), table = row.closest("table"), box = (el) => el.getBoundingClientRect();
+            return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], tag: Math.round(box(tag).width), tagRight: Math.round(box(tag).right), rowRight: Math.round(box(row).right), tableRight: Math.round(box(table).right), last: row === table.querySelector("tbody tr:last-child"), text: row.innerText }; }');
+        $page->evaluate('() => document.querySelector("[data-test=standings-out]").scrollIntoView({ block: "center" })');
+        tournamentLiveShot($page, "standings-out-{$width}");
+        $measured[$width] = array_diff_key($probe, ['text' => 1]);
+
+        expect($probe['last'])->toBeTrue()
+            ->and($probe['scroll'][0])->toBeLessThanOrEqual($probe['scroll'][1])
+            ->and($probe['tagRight'])->toBeLessThanOrEqual($probe['tableRight'])
+            ->and($probe['tableRight'])->toBeLessThanOrEqual($width)
+            ->and($probe['tag'])->toBeGreaterThan(20)
+            ->and($probe['text'])->toContain($width < 640 ? 'DQ' : 'Disqualifiziert');
+        $webpage->assertNoJavaScriptErrors();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([])->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    $page->evaluate('() => { setTimeout(() => { throw new Error("positive control"); }); }');
+    BrowserWait::until($page, '() => window.__errors.length >= 1', 10_000);
+    expect(implode("\n", $page->evaluate('() => window.__errors')))->toContain('positive control');
+
+    fwrite(STDERR, "\n[standings-out] ".json_encode($measured)."\n");
+});
