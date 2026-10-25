@@ -529,7 +529,7 @@ new #[Layout('layouts::app', ['section' => 'tournaments'])] class extends Compon
     @endif
 
     @if ($this->corrections->isNotEmpty())
-        <details class="group rounded-card bg-card" data-test="score-log">
+        <details wire:ignore.self class="group rounded-card bg-card" data-test="score-log">
             <summary class="flex min-h-12 cursor-pointer items-center gap-3 px-4 lg:px-6">
                 <h2 class="m-0 text-[15px] font-bold">{{ __('Director log') }}</h2>
                 <span class="grow text-xs text-ink-3">{{ __('public, newest first') }}</span>

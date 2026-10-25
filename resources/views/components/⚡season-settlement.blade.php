@@ -256,7 +256,7 @@ new class extends Component {
                                 @if ($row['heights'] === [])
                                     {{ $row['blocks'] }}
                                 @else
-                                    <details><summary class="cursor-pointer">{{ $row['blocks'] }}</summary><span class="text-xs text-ink-2">{{ collect($row['heights'])->map(fn ($h) => '#'.$h)->implode(' ') }}</span></details>
+                                    <details wire:ignore.self><summary class="cursor-pointer">{{ $row['blocks'] }}</summary><span class="text-xs text-ink-2">{{ collect($row['heights'])->map(fn ($h) => '#'.$h)->implode(' ') }}</span></details>
                                 @endif
                             </td>
                             <td class="py-2.5 pr-3 text-right whitespace-nowrap">{{ $sats($row['mined']) }}</td>

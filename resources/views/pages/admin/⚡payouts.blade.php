@@ -390,7 +390,8 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                                         @if ($payout->reasonText())<span class="mt-1 block max-w-[280px] text-xs text-ink-2" data-test="payout-reason">{{ $payout->reasonText() }}</span>@endif
                                         @if (is_array($payout->debug) && $payout->debug !== [])
                                             {{-- The raw trace of the last failed attempt (user 2026-10-25: admins are devs and bitcoiners, show them why). --}}
-                                            <details class="mt-1 max-w-[420px]" data-test="payout-debug" x-data="{ copied: false }">
+                                            {{-- wire:ignore.self: the polls morph the row, and its `open` (closed on the server) snapped the details shut (user 2026-10-26). --}}
+                                            <details wire:ignore.self wire:key="payout-debug-{{ $payout->id }}" class="mt-1 max-w-[420px]" data-test="payout-debug" x-data="{ copied: false }">
                                                 <summary class="min-h-11 cursor-pointer py-2 text-xs text-btc-hi">{{ __('Debug details') }}{{ ($payout->reason ? ' · '.$payout->reason : '') }}</summary>
                                                 <dl class="m-0 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-well p-2 font-mono text-xs leading-snug">
                                                     @foreach ($payout->debug as $key => $value)

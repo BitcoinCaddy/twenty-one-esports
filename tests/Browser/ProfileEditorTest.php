@@ -197,3 +197,28 @@ test('the four first steps and the prize hint on a tournament fit 390, 1024 and 
     expect($page->evaluate('() => window.__errors'))->toBe([])->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     fwrite(STDERR, "\n[reach] ".json_encode($measured)."\n");
 });
+
+test('the payout debug details stay open while the payouts page re-renders (user 2026-10-26: the poll snapped them shut); clean console', function () {
+    $admin = anAdmin();
+    $admin->forceFill(['locale' => 'de', 'profile_event_at' => now()])->save();
+    fakeLightningAddresses($league = fakeWallet());
+    $tournament = finishedPoolTournament($league, 10_000, 2);
+    app(App\Support\Payouts\PayoutApproval::class)->approve($tournament, $admin);
+    $tournament->payouts()->where('place', 1)->sole()->forceFill(['status' => App\Enums\PayoutStatus::Failed, 'reason' => 'invoice_mismatch',
+        'debug' => ['lud16' => 'p@wallet.example', 'failed_checks' => ['description_hash != sha256(metadata) (LUD-06)']]])->save();
+
+    $webpage = visit(BrowserLogin::url($admin));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $page->goto(ComputeUrl::from(route('admin.payouts')));
+    BrowserWait::until($page, '() => document.querySelector("[data-test=payout-debug] summary") !== null && window.Livewire !== undefined', 10_000);
+    $page->evaluate('() => document.querySelector("[data-test=payout-debug] summary").click()');
+    expect($page->evaluate('() => document.querySelector("[data-test=payout-debug]").open'))->toBeTrue();
+
+    // Five re-renders, as five polls would bring them.
+    $page->evaluate('async () => { const wire = Livewire.find(document.querySelector("[data-test=payout-debug]").closest("[wire\\\\:id]").getAttribute("wire:id")); for (let i = 0; i < 5; i++) { await wire.$refresh(); } }');
+
+    expect($page->evaluate('() => document.querySelector("[data-test=payout-debug]").open'))->toBeTrue()
+        ->and($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+});
