@@ -27,7 +27,7 @@
         $seconds = (int) $show['at'] - $now;
         $minutes = (int) ceil(max(0, $seconds) / 60);
         $countdown = PS::countdown((int) $show['at'], $now);
-        $at = PS::time((int) $show['at']);
+        $at = PS::at((int) $show['at'], $now);
         // What follows the show (the next item after it in the programme).
         $after = null;
         foreach ($p['upcoming'] as $item) {
@@ -60,7 +60,10 @@
 {{-- The countdown block. --}}
 <g data-unit="countdown" data-box="728 120 1016 520">
 <rect x="728" y="120" width="288" height="400" rx="4" fill="{{ $ink }}"/>
-@if ($countdown === 'jetzt')
+@if ($countdown === 'gleich')
+{{-- Past its slot and still waiting (the spool airs it late): no stale clock time. --}}
+<text x="872" y="340" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="66" fill="#0A0A0B">gleich</text>
+@elseif ($countdown === 'jetzt')
 <text x="872" y="326" text-anchor="middle" font-family="Unbounded" font-weight="800" font-size="72" fill="#0A0A0B">jetzt</text>
 <text x="872" y="400" text-anchor="middle" font-family="JetBrains Mono" font-weight="700" font-size="26" fill="#0A0A0B">um {{ $at }}</text>
 @elseif ($minutes < 60)

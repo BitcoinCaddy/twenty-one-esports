@@ -622,10 +622,23 @@ class ProgrammeSlides
         return CarbonImmutable::createFromTimestamp($at)->setTimezone((string) config('tv.commentary.programme.timezone', 'Europe/Berlin'))->format('H:i');
     }
 
-    /** "jetzt", "in 1 min", "in 12 min", "in 2 Std", "in 1 Std 5 min". */
+    /**
+     * The clock time of an item, or '' once it has passed: an item still waiting after its slot (the spool airs it
+     * late) showed its old time, "22:15" at 23:28 (user 2026-10-25), and read as a wrong clock.
+     */
+    public static function at(int $at, int $now): string
+    {
+        return $at < $now - 60 ? '' : self::time($at);
+    }
+
+    /** "jetzt", "gleich" (past its slot, still waiting), "in 1 min", "in 12 min", "in 2 Std", "in 1 Std 5 min". */
     public static function countdown(int $at, int $now): string
     {
         $seconds = $at - $now;
+
+        if ($seconds < -60) {
+            return 'gleich';
+        }
 
         if ($seconds <= 30) {
             return 'jetzt';
@@ -673,7 +686,7 @@ class ProgrammeSlides
         $rest = $p['night'] ? 'Danach' : 'Heute noch';
 
         foreach ($p['upcoming'] as $item) {
-            $out[] = ['order' => (int) $item['at'], 'label' => '', 'item' => $item, 'when' => self::time((int) $item['at']), 'right' => self::countdown((int) $item['at'], $p['now'])];
+            $out[] = ['order' => (int) $item['at'], 'label' => '', 'item' => $item, 'when' => self::at((int) $item['at'], $p['now']), 'right' => self::countdown((int) $item['at'], $p['now'])];
         }
 
         // The loop's episodes follow one another after the one on air: they sort in by that estimate (a bulletin cuts

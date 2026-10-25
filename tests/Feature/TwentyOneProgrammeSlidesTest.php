@@ -308,6 +308,10 @@ test('the rows say "Gleich" for the next and "Heute noch" for the rest, at night
     expect(array_map(fn (array $row): string => trim($row['label'].' '.$row['when'].' '.$row['right']), ProgrammeSlides::rows($p, 4)))
         ->toBe(['Gleich 14:30 in 12 min', 'Heute noch 14:45 in 27 min', '15:15 in 57 min'])
         ->and(ProgrammeSlides::countdown(1000, 990))->toBe('jetzt')
+        // Past its slot and still waiting (user 2026-10-25: "22:15" at 23:28): "gleich", and no clock time.
+        ->and(ProgrammeSlides::countdown(1000, 1000 + 4380))->toBe('gleich')
+        ->and(ProgrammeSlides::at(1000, 1000 + 4380))->toBe('')
+        ->and(ProgrammeSlides::at(1000, 990))->toBe(ProgrammeSlides::time(1000))
         ->and(ProgrammeSlides::countdown(4000, 0))->toBe('in 1 Std 7 min')
         ->and(ProgrammeSlides::countdown(7200, 0))->toBe('in 2 Std')
         ->and(ProgrammeSlides::remaining(30))->toBe('gleich vorbei')

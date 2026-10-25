@@ -14,7 +14,7 @@
     $now = (int) $p['now'];
     $show = PS::duel($p);
     $onAir = $show !== null && ($p['onAir']['key'] ?? null) === $show['key'];
-    $when = $show === null ? '' : ($onAir ? 'Läuft jetzt, '.PS::remaining((int) ($show['left'] ?? 0)) : 'Heute um '.PS::time((int) $show['at']).', '.PS::countdown((int) $show['at'], $now));
+    $when = $show === null ? '' : ($onAir ? 'Läuft jetzt, '.PS::remaining((int) ($show['left'] ?? 0)) : (PS::at((int) $show['at'], $now) === '' ? 'Gleich im Programm' : 'Heute um '.PS::time((int) $show['at']).', '.PS::countdown((int) $show['at'], $now)));
     // Two corners of 408 px over x 40..1016, "gegen" on the centre line x 528 between them.
     $left = K::headline('Markus Turm', [44, 38, 32, 28], 344, 1);
     $right = K::headline('Genossin Gisela', [44, 38, 32, 28], 344, 1);
