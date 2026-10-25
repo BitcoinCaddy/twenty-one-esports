@@ -95,13 +95,14 @@ class LightningAddress
         }
 
         $networks = (array) config('esports.wallet.invoice_networks', ['bc']);
+        $lenient = in_array($target['host'], (array) config('esports.wallet.description_hash_lenient_hosts', []), true);
         $debug += ['invoice_network' => $invoice->network, 'invoice_amount_msats' => $invoice->amountMsats, 'invoice_description_hash' => $invoice->descriptionHash,
             'invoice_description' => $invoice->description === null ? null : mb_substr($invoice->description, 0, 600),
             'invoice_payment_hash' => $invoice->paymentHash, 'invoice_expires_at' => gmdate('Y-m-d H:i:s', $invoice->expiresAt()).' UTC'];
         $failed = array_keys(array_filter([
             'network '.$invoice->network.' not in ['.implode(', ', $networks).']' => ! in_array($invoice->network, $networks, true),
             'amount '.var_export($invoice->amountMsats, true).' msat != '.$msats.' msat asked' => $invoice->amountMsats !== $msats,
-            'description_hash != sha256(metadata) (LUD-06)' => $invoice->descriptionHash !== hash('sha256', $metadata),
+            'description_hash != sha256(metadata) (LUD-06)' => $invoice->descriptionHash !== hash('sha256', $metadata) && ! $lenient,
             'expires in '.($invoice->expiresAt() - time()).' s, under 60 s' => $invoice->expiresAt() < time() + 60,
         ]));
 
@@ -109,6 +110,11 @@ class LightningAddress
             $debug['failed_checks'] = $failed;
 
             throw $fail('invoice_mismatch', 'the invoice does not match the request');
+        }
+
+        if ($invoice->descriptionHash !== hash('sha256', $metadata)) {
+            Log::info('Payout invoice with a foreign description hash taken (lenient host)', ['host' => $target['host'], 'msats' => $msats,
+                'description_hash' => $invoice->descriptionHash, 'metadata_sha256' => hash('sha256', $metadata)]);
         }
 
         return $invoice;

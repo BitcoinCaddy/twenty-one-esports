@@ -1023,6 +1023,10 @@ return [
         'min_sats' => 1,
         'max_sats' => 10_000_000,
         'invoice_expiry_seconds' => 900,
+        // LNURL hosts whose payout invoices may carry a description hash other than sha256(metadata) (user decision
+        // 2026-10-26): Primal hashes "sats for <name>" while its metadata says "sats for <name>@primal.net". Amount,
+        // network and expiry are still checked; a mismatch is logged and kept in the payout's debug trace.
+        'description_hash_lenient_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('ESPORTS_DESCRIPTION_HASH_LENIENT_HOSTS', 'primal.net'))))),
         'invoice_networks' => array_values(array_filter(array_map('trim', explode(',', (string) env('ESPORTS_INVOICE_NETWORKS', 'bc'))))),
         'lnurl_insecure_hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('ESPORTS_LNURL_INSECURE_HOSTS', ''))))),
         'lnurl_request_seconds' => 8,
