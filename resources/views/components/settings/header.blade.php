@@ -53,7 +53,7 @@
         @endif
         <nav aria-label="{{ __('Settings sections') }}" data-test="settings-tabs"
              x-data x-init="const active = $el.querySelector('[aria-current=page]'); if (active && $el.scrollWidth > $el.clientWidth) { $el.scrollLeft = active.offsetLeft - ($el.clientWidth - active.offsetWidth) / 2 }"
-             class="relative flex max-w-full overflow-x-auto border-b border-hairline [scrollbar-width:thin] xl:flex-col xl:gap-1 xl:overflow-visible xl:border-0">
+             class="relative flex max-w-full scroll-px-12 overflow-x-auto border-b border-hairline [scrollbar-width:thin] max-xl:pr-8 max-xl:[mask-image:linear-gradient(90deg,#000_calc(100%-40px),transparent)] xl:flex-col xl:gap-1 xl:overflow-visible xl:border-0">
             @foreach ($tabs as $key => [$href, $label, $test, $icon])
                 <a href="{{ $href }}" @navigate($href) data-test="{{ $test }}" @if ($key === $current) aria-current="page" @endif
                    @class([

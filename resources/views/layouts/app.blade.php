@@ -32,9 +32,10 @@
         <a href="#content" class="sr-only z-50 rounded-lg bg-btc px-4 py-3 text-sm font-bold text-on-btc focus:not-sr-only focus:fixed focus:top-2 focus:left-2">{{ __('Skip to content') }}</a>
 
         <x-shell.header :section="$section" />
+        {{-- Outside <main>: heroes pull up over main's top padding (-mt-page-top) and covered it inside. --}}
+        <x-shell.profile-welcome />
 
         <main id="content" @class(['flex min-w-0 grow flex-col', 'pt-page-top lg:pt-page-top-lg' => ! $flush])>
-            <x-shell.profile-welcome />
             {{ $slot }}
         </main>
 

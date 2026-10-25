@@ -128,7 +128,7 @@ new #[Title('Opponents')] class extends Component {
         <p class="m-0 max-w-[68ch] text-ink-3">{{ __('Your list is public on Nostr: anyone can see whom you listed. Every change is signed by you and published through the league.') }}</p>
     </section>
 
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section id="requests" aria-labelledby="or-h" class="flex scroll-mt-20 flex-col gap-3 self-start rounded-lg bg-card px-4 py-5 lg:px-6" data-test="opponent-requests">
             <span class="flex flex-wrap items-baseline justify-between gap-3">
                 <h2 id="or-h" class="m-0 text-[15px] font-bold">{{ __('Opponent requests') }}</h2>

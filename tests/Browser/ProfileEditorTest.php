@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TournamentFormat;
 use App\Models\User;
 use App\Support\Tournaments\TournamentChampion;
 use Pest\Browser\Support\ComputeUrl;
@@ -88,15 +89,16 @@ test('a shared moment keeps its text readable beside or under the card at 390, 1
     fwrite(STDERR, "\n[badges] ".json_encode($measured)."\n");
 });
 
-test('every settings page uses the width at 1440 and 1920 and fits 390 (user 2026-10-25: forms stood as narrow tubes); clean console', function () {
-    $user = User::factory()->create(['locale' => 'de']);
+test('every settings page uses the width, fits 390 and squeezes no text at 390 to 1920, as an admin in German (user 2026-10-25); clean console', function () {
+    $user = anAdmin();
+    $user->forceFill(['locale' => 'de'])->save();
     $webpage = visit(BrowserLogin::url($user));
     $page = $webpage->page();
     $page->context()->addInitScript(BrowserConsole::COLLECTOR);
     $measured = [];
 
     foreach (['settings.account', 'settings.profile', 'gaming.edit', 'settings.chess', 'settings.notifications', 'settings.opponents', 'settings.badges', 'settings.nip05'] as $route) {
-        foreach ([[390, 844], [1440, 900], [1920, 1080]] as [$width, $height]) {
+        foreach ([[390, 844], [1024, 800], [1280, 800], [1440, 900], [1920, 1080]] as [$width, $height]) {
             $page->setViewportSize($width, $height);
             $page->goto(ComputeUrl::from(route($route)));
             BrowserWait::until($page, '() => document.readyState === "complete" && document.querySelector("main section, main form") !== null', 10_000);
@@ -104,11 +106,18 @@ test('every settings page uses the width at 1440 and 1920 and fits 390 (user 202
                 const right = Math.max(...cards.map((el) => el.getBoundingClientRect().right)), left = Math.min(...cards.map((el) => el.getBoundingClientRect().left));
                 return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], left: Math.round(left), right: Math.round(right), mainRight: Math.round(main.getBoundingClientRect().right) }; }');
             $measured["{$route}-{$width}"] = $m;
-            if ($width !== 390 && in_array($route, ['settings.account', 'settings.profile', 'settings.nip05'], true)) {
+            // The squeeze detector (user 2026-10-25, chess tab: a ~200 px column broke every line into single words):
+            // no visible text of more than 25 characters in a box narrower than 120 px.
+            $squeezed = $page->evaluate('() => [...document.querySelectorAll("main p, main span, main dt, main dd, main label, main h2, main h3, main li, main b")]
+                .filter((el) => { const r = el.getBoundingClientRect(), own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(" ");
+                    return r.width > 0 && r.height > 0 && r.width < 120 && own.length > 25 && getComputedStyle(el).whiteSpace !== "nowrap"; })
+                .map((el) => Math.round(el.getBoundingClientRect().width) + "px: " + el.textContent.trim().slice(0, 40))');
+            if ($width !== 390) {
                 tournamentLiveShot($page, str_replace('.', '-', $route)."-{$width}");
             }
 
-            expect($m['scroll'][0])->toBeLessThanOrEqual($m['scroll'][1]);
+            expect($m['scroll'][0])->toBeLessThanOrEqual($m['scroll'][1])
+                ->and($squeezed)->toBe([], "{$route} at {$width}");
             $webpage->assertNoJavaScriptErrors();
         }
     }
@@ -127,7 +136,7 @@ test('the welcome banner for a fresh Google sign-in fits 390 and 1440 and leads 
 
     foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
         $page->setViewportSize($width, $height);
-        $page->goto(ComputeUrl::from(route('dashboard')));
+        $page->goto(ComputeUrl::from(route('tournaments.index')));
         BrowserWait::until($page, '() => document.querySelector("[data-test=profile-welcome]") !== null && document.readyState === "complete"', 10_000);
         $banner = $page->evaluate("() => ({ scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], banner: ({$box})('[data-test=profile-welcome]'), link: ({$box})('[data-test=profile-welcome-link]'), header: ({$box})('header') })");
         tournamentLiveShot($page, "welcome-{$width}");
@@ -154,7 +163,7 @@ test('the welcome banner for a fresh Google sign-in fits 390 and 1440 and leads 
 
 test('the four first steps and the prize hint on a tournament fit 390, 1024 and 1440 (user 2026-10-25); clean console', function () {
     $player = User::factory()->create(['profile_event_at' => null, 'lud16' => null, 'locale' => 'de']);
-    $tournament = publishForPool(runningChess(App\Enums\TournamentFormat::SingleElimination, 4), fakeWallet());
+    $tournament = publishForPool(runningChess(TournamentFormat::SingleElimination, 4), fakeWallet());
     $webpage = visit(BrowserLogin::url($player));
     $page = $webpage->page();
     $page->context()->addInitScript(BrowserConsole::COLLECTOR);
@@ -169,7 +178,7 @@ test('the four first steps and the prize hint on a tournament fit 390, 1024 and 
 
         $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
         BrowserWait::until($page, '() => document.querySelector("[data-test=prize-address-ahead]") !== null && document.readyState === "complete"', 10_000);
-        $hint = $page->evaluate('() => { const el = document.querySelector("[data-test=prize-address-ahead]"), r = el.getBoundingClientRect(); return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height) }; }');
+        $hint = $page->evaluate('() => { const el = document.querySelector("[data-test=prize-address-ahead]"), r = el.getBoundingClientRect(), banner = document.querySelector("[data-test=profile-welcome]").getBoundingClientRect(), main = document.querySelector("main").getBoundingClientRect(); return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height), bannerBottom: Math.round(banner.bottom), mainTop: Math.round(main.top) }; }');
         $page->evaluate('() => document.querySelector("[data-test=prize-address-ahead]").scrollIntoView({ block: "center" })');
         tournamentLiveShot($page, "prize-ahead-{$width}");
         $measured[$width] = ['steps' => $steps, 'hint' => $hint];
@@ -179,7 +188,9 @@ test('the four first steps and the prize hint on a tournament fit 390, 1024 and 
             ->and(max(array_column($steps['steps'], 'right')))->toBeLessThanOrEqual($width)
             ->and(max(array_column($steps['steps'], 'lines')))->toBeLessThanOrEqual(3)
             ->and($hint['scroll'][0])->toBeLessThanOrEqual($hint['scroll'][1])
-            ->and($hint['right'])->toBeLessThanOrEqual($width);
+            ->and($hint['right'])->toBeLessThanOrEqual($width)
+            // The hero pulls up over main's padding; the banner sits above main, so nothing covers it (design review 2026-10-25).
+            ->and($hint['mainTop'])->toBeGreaterThanOrEqual($hint['bannerBottom']);
         $webpage->assertNoJavaScriptErrors();
     }
 

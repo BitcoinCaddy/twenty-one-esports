@@ -95,9 +95,10 @@ new #[Title('Chess settings')] #[Layout('layouts::app', ['scripts' => ['resource
         <span role="status" class="flex items-center gap-1.5 text-[13px] text-win" x-data x-show="$wire.saved" x-cloak data-test="settings-saved"><x-icon name="check" :size="16" />{{ __('Saved, applies from your next move') }}</span>
     </x-settings.header>
 
-    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[400px_452px_minmax(0,1fr)]">
-        {{-- Preview + keyboard --}}
-        <div class="flex flex-col gap-5">
+    {{-- Two stacks on one edge (user 2026-10-25: a third column of ~200 px broke every line into single words; a second
+         grid underneath moved the gutter): left the preview, daily chess and the keys, right the board and the game. --}}
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
+        <div class="flex min-w-0 flex-col gap-5">
             <section aria-labelledby="pv-h" class="flex flex-col gap-3.5 rounded-lg bg-card px-6 py-5">
                 <span class="flex items-baseline justify-between"><h2 id="pv-h" class="m-0 text-[15px] font-bold">{{ __('Preview') }}</h2><span class="text-xs text-ink-2">{{ $theme[0] }}</span></span>
                 <div class="pt-4 pr-4" wire:key="preview-{{ $settings->board }}-{{ $settings->coordinates ? 1 : 0 }}" x-data="{ cells: window.chessBoardCells?.('r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3', { last: ['b8', 'c6'], theme: @js($settings->board), noCoords: @js(! $settings->coordinates), coords: true }) ?? [], boardLabel: @js(__('Preview of the :name board', ['name' => $theme[0]])) }">
@@ -105,6 +106,13 @@ new #[Title('Chess settings')] #[Layout('layouts::app', ['scripts' => ['resource
                 </div>
                 <span class="text-[13px] leading-normal text-ink-2">{{ __('Last move in orange, also marked in the move list.') }}</span>
                 <span class="border-t border-hairline pt-3 text-xs leading-normal text-ink-3">{{ __('Saved to your account, on every device you log in with.') }}</span>
+            </section>
+
+            <section aria-labelledby="dc-h" class="flex flex-col rounded-lg bg-card px-6 py-5">
+                <h2 id="dc-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Daily chess') }}</h2>
+                @include('pages.settings.partials.switch', ['label' => __('Double-check daily moves'), 'hint' => __('one extra tap before a move is final'), 'on' => $settings->doubleCheck, 'action' => "toggle('doubleCheck')", 'test' => 'double-check'])
+                <a href="{{ route('settings.notifications') }}" class="inline-flex min-h-11 items-center self-start text-[13px] text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink" data-test="chess-to-notifications">{{ __('Reminders before your move is due: Notifications') }}</a>
+
             </section>
 
             <section aria-labelledby="kb-h" class="flex flex-col gap-2 rounded-lg bg-card px-6 py-5">
@@ -115,44 +123,42 @@ new #[Title('Chess settings')] #[Layout('layouts::app', ['scripts' => ['resource
             </section>
         </div>
 
-        {{-- Board --}}
-        <section aria-labelledby="bd-h" class="flex flex-col gap-4 self-start rounded-lg bg-card px-6 py-5">
-            <h2 id="bd-h" class="m-0 text-[15px] font-bold">{{ __('Board') }}</h2>
-            <span class="text-[13px]" id="colors-h">{{ __('Colors') }}</span>
-            <div role="radiogroup" aria-labelledby="colors-h" class="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:max-xl:grid-cols-2">
-                @foreach ($themes as $key => [$name, $note, $memberOnly, $light, $dark])
-                    @php($locked = $memberOnly && ! $user->is_member)
-                    <button type="button" role="radio" aria-checked="{{ $settings->board === $key ? 'true' : 'false' }}" wire:click="setBoard('{{ $key }}')" @disabled($locked) data-test="board-{{ $key }}"
-                            @class(['flex min-h-[190px] cursor-pointer flex-col gap-2 rounded-lg bg-ground p-2.5 text-left text-ink disabled:cursor-not-allowed disabled:opacity-60',
-                                'shadow-[inset_0_0_0_2px_#F7931A]' => $settings->board === $key, 'shadow-ring' => $settings->board !== $key])>
-                        <span aria-hidden="true" class="grid aspect-square w-full grid-cols-4 grid-rows-4 overflow-hidden rounded-xs">
-                            @for ($i = 0; $i < 16; $i++)
-                                <span style="background: {{ (intdiv($i, 4) + $i) % 2 === 0 ? $light : $dark }}"></span>
-                            @endfor
-                        </span>
-                        <span class="flex items-start justify-between gap-1 text-[13px] font-bold">{{ $name }}@if ($settings->board === $key)<x-icon name="check" :size="16" class="shrink-0 text-btc" />@endif</span>
-                        @if ($memberOnly)<x-member-badge class="self-start" />@endif
-                        <span class="text-[11px] leading-snug text-ink-2">{{ $note }}</span>
-                    </button>
-                @endforeach
-            </div>
-
-            <div class="flex flex-col gap-2.5 border-t border-hairline pt-4">
-                <span class="flex flex-wrap items-baseline justify-between gap-2"><span class="text-[13px]">{{ __('Pieces') }}</span><span class="flex items-center gap-2 text-xs text-ink-2">{{ __('Classic · more sets for members later') }} <x-member-badge /></span></span>
-                <div aria-hidden="true" class="grid grid-cols-6 overflow-hidden rounded-md">
-                    @foreach (['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'] as $i => $glyph)
-                        <span class="flex aspect-square items-center justify-center text-[34px] leading-none text-ground" style="background: {{ ($i + intdiv($i, 6)) % 2 === 0 ? $theme[3] : $theme[4] }}">{{ $glyph }}&#xFE0E;</span>
+        <div class="flex min-w-0 flex-col gap-5">
+            <section aria-labelledby="bd-h" class="@container flex min-w-0 flex-col gap-4 rounded-lg bg-card px-6 py-5">
+                <h2 id="bd-h" class="m-0 text-[15px] font-bold">{{ __('Board') }}</h2>
+                <span class="text-[13px]" id="colors-h">{{ __('Colors') }}</span>
+                <div role="radiogroup" aria-labelledby="colors-h" class="grid grid-cols-2 gap-2.5 @min-[36rem]:grid-cols-4">
+                    @foreach ($themes as $key => [$name, $note, $memberOnly, $light, $dark])
+                        @php($locked = $memberOnly && ! $user->is_member)
+                        <button type="button" role="radio" aria-checked="{{ $settings->board === $key ? 'true' : 'false' }}" wire:click="setBoard('{{ $key }}')" @disabled($locked) data-test="board-{{ $key }}"
+                                @class(['flex min-h-[190px] cursor-pointer flex-col gap-2 rounded-lg bg-ground p-2.5 text-left text-ink disabled:cursor-not-allowed disabled:opacity-60',
+                                    'shadow-[inset_0_0_0_2px_#F7931A]' => $settings->board === $key, 'shadow-ring' => $settings->board !== $key])>
+                            <span aria-hidden="true" class="grid aspect-square w-full grid-cols-4 grid-rows-4 overflow-hidden rounded-xs">
+                                @for ($i = 0; $i < 16; $i++)
+                                    <span style="background: {{ (intdiv($i, 4) + $i) % 2 === 0 ? $light : $dark }}"></span>
+                                @endfor
+                            </span>
+                            <span class="flex items-start justify-between gap-1 text-[13px] font-bold">{{ $name }}@if ($settings->board === $key)<x-icon name="check" :size="16" class="shrink-0 text-btc" />@endif</span>
+                            @if ($memberOnly)<x-member-badge class="self-start" />@endif
+                            <span class="text-[11px] leading-snug text-ink-2">{{ $note }}</span>
+                        </button>
                     @endforeach
                 </div>
-                <span class="text-xs leading-normal text-ink-2">{{ __('White pieces always have a dark outline so they stay readable on light squares.') }}</span>
-            </div>
 
-            @include('pages.settings.partials.switch', ['label' => __('Coordinates'), 'hint' => __('a–h and 1–8 along the edge'), 'on' => $settings->coordinates, 'action' => "toggle('coordinates')", 'test' => 'coordinates'])
-            @include('pages.settings.partials.switch', ['label' => __('Piece names'), 'hint' => __('the name of a piece when you point at it, a help for new players'), 'on' => $settings->pieceNames, 'action' => "toggle('pieceNames')", 'test' => 'piece-names'])
-        </section>
+                <div class="flex flex-col gap-2.5 border-t border-hairline pt-4">
+                    <span class="flex flex-wrap items-baseline justify-between gap-2"><span class="text-[13px]">{{ __('Pieces') }}</span><span class="flex items-center gap-2 text-xs text-ink-2">{{ __('Classic · more sets for members later') }} <x-member-badge /></span></span>
+                    <div aria-hidden="true" class="grid grid-cols-6 overflow-hidden rounded-md">
+                        @foreach (['♔', '♕', '♖', '♗', '♘', '♙', '♚', '♛', '♜', '♝', '♞', '♟'] as $i => $glyph)
+                            <span class="flex aspect-square items-center justify-center text-[34px] leading-none text-ground" style="background: {{ ($i + intdiv($i, 6)) % 2 === 0 ? $theme[3] : $theme[4] }}">{{ $glyph }}&#xFE0E;</span>
+                        @endforeach
+                    </div>
+                    <span class="text-xs leading-normal text-ink-2">{{ __('White pieces always have a dark outline so they stay readable on light squares.') }}</span>
+                </div>
 
-        {{-- During the game, daily chess --}}
-        <div class="flex flex-col gap-5">
+                @include('pages.settings.partials.switch', ['label' => __('Coordinates'), 'hint' => __('a–h and 1–8 along the edge'), 'on' => $settings->coordinates, 'action' => "toggle('coordinates')", 'test' => 'coordinates'])
+                @include('pages.settings.partials.switch', ['label' => __('Piece names'), 'hint' => __('the name of a piece when you point at it, a help for new players'), 'on' => $settings->pieceNames, 'action' => "toggle('pieceNames')", 'test' => 'piece-names'])
+            </section>
+
             <section aria-labelledby="dg-h" class="flex flex-col rounded-lg bg-card px-6 py-5">
                 <h2 id="dg-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('During the game') }}</h2>
                 @include('pages.settings.partials.switch', ['label' => __('Premoves'), 'hint' => __('queue a move while your opponent thinks · coming later'), 'on' => false, 'action' => null, 'test' => 'premoves'])
@@ -170,13 +176,6 @@ new #[Title('Chess settings')] #[Layout('layouts::app', ['scripts' => ['resource
                     <button type="button" @disabled(! $settings->sound) data-test="sound-test" x-on:click="window.esportsSounds?.sample()"
                             class="btn-w inline-flex h-11 cursor-pointer items-center rounded-md border border-line bg-well px-3 text-[13px] text-ink disabled:cursor-not-allowed disabled:opacity-50">{{ __('Play a sound') }}</button>
                 </div>
-            </section>
-
-            <section aria-labelledby="dc-h" class="flex flex-col rounded-lg bg-card px-6 py-5">
-                <h2 id="dc-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Daily chess') }}</h2>
-                @include('pages.settings.partials.switch', ['label' => __('Double-check daily moves'), 'hint' => __('one extra tap before a move is final'), 'on' => $settings->doubleCheck, 'action' => "toggle('doubleCheck')", 'test' => 'double-check'])
-                <a href="{{ route('settings.notifications') }}" class="inline-flex min-h-11 items-center self-start text-[13px] text-ink-2 underline decoration-edge underline-offset-4 hover:text-ink" data-test="chess-to-notifications">{{ __('Reminders before your move is due: Notifications') }}</a>
-
             </section>
         </div>
     </div>

@@ -193,7 +193,8 @@ new #[Title('Notifications')] #[Layout('layouts::app', ['scripts' => ['resources
     </x-settings.header>
 
     <div class="grid grid-cols-1 items-start gap-5">
-        <div class="flex min-w-0 flex-col gap-5">
+        {{-- A readable line length: at full width a label stood ~860 px from its switch (design review 2026-10-25). --}}
+        <div class="flex min-w-0 max-w-[820px] flex-col gap-5">
         <section id="notifications" aria-labelledby="ch-h" class="flex scroll-mt-20 flex-col rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="notification-channels">
             <h2 id="ch-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Channels') }}</h2>
             <div class="flex min-h-[61px] items-center gap-4 border-b border-hairline py-2" data-test="channel-bell">
@@ -289,7 +290,7 @@ new #[Title('Notifications')] #[Layout('layouts::app', ['scripts' => ['resources
             <section aria-labelledby="nf-h" class="flex flex-col self-start rounded-[4px] border border-hairline bg-card px-4 py-5 lg:px-6" data-test="notify-about">
                 <h2 id="nf-h" class="m-0 mb-1 text-[15px] font-bold">{{ __('Notify me about') }}</h2>
                 @foreach (['correspondence' => __('Correspondence games'), 'play' => __('Live games and 1v1'), 'community' => __('Clans and tournaments'), 'league' => __('League')] as $group => $heading)
-                    <h3 class="m-0 mt-4 text-xs font-bold tracking-wide text-ink-2 uppercase" data-test="notify-group-{{ $group }}">{{ $heading }}</h3>
+                    <h3 class="m-0 mt-4 text-[13px] font-semibold text-ink-2" data-test="notify-group-{{ $group }}">{{ $heading }}</h3>
                     @foreach (NotificationKind::cases() as $kind)
                         @continue($kind->group() !== $group)
                         @php([$label, $hint] = $kind->setting())

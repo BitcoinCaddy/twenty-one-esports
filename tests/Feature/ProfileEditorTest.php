@@ -71,11 +71,13 @@ test('a prize winner without a Lightning address is led to the profile page from
 test('a player without any Nostr profile gets the welcome banner on every page until one is known (user 2026-10-25)', function () {
     $fresh = User::factory()->create(['profile_event_at' => null]);
 
-    $this->actingAs($fresh)->get(route('dashboard'))->assertOk()->assertSee('data-test="profile-welcome"', false);
+    $this->actingAs($fresh)->get(route('tournaments.index'))->assertOk()->assertSee('data-test="profile-welcome"', false);
+    // The dashboard's first step asks the same: no second call there.
+    $this->actingAs($fresh)->get(route('dashboard'))->assertOk()->assertDontSee('data-test="profile-welcome"', false);
     $this->actingAs($fresh)->get(route('settings.profile'))->assertOk()->assertDontSee('data-test="profile-welcome"', false);
 
     $fresh->forceFill(['profile_event_at' => now()])->save();
-    $this->actingAs($fresh)->get(route('dashboard'))->assertOk()->assertDontSee('data-test="profile-welcome"', false);
+    $this->actingAs($fresh)->get(route('tournaments.index'))->assertOk()->assertDontSee('data-test="profile-welcome"', false);
     $this->get(route('home'))->assertDontSee('data-test="profile-welcome"', false);
 });
 

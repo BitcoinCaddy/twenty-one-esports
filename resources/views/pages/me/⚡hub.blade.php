@@ -320,6 +320,7 @@ new #[Title('Your page')] #[Layout('layouts::app')] class extends Component {
                 <h2 id="me-settings-h" class="rv-h3">{{ __('Settings') }}</h2>
                 <ul class="m-0 grid list-none grid-cols-1 gap-3 p-0 min-[400px]:grid-cols-2 lg:grid-cols-1">
                     @foreach ([
+                        ['bolt', __('Name and Lightning'), route('settings.profile'), 'me-settings-profile'],
                         ['bell', __('Notifications'), route('settings.notifications'), 'me-settings-notifications'],
                         ['user', __('Gamer tags'), route('gaming.edit'), 'me-settings-tags'],
                         ['clans', __('Opponents'), route('settings.opponents'), 'me-settings-opponents'],

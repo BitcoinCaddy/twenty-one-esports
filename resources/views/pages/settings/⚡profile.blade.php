@@ -120,9 +120,9 @@ new #[Title('Nostr profile')] class extends Component {
     $field = 'h-11 min-w-0 w-full rounded-md border border-edge bg-ground px-3 text-[13px] text-ink';
     // Checked with the league's payout check on 2026-10-25 (an invoice was asked of each, nothing paid); free to use.
     $wallets = [
-        ['Blink', 'https://www.blink.sv', 'name@blink.sv'],
-        ['Coinos', 'https://coinos.io', 'name@coinos.io'],
-        ['Rizful', 'https://rizful.com', 'name@rizful.com'],
+        ['Blink', 'https://www.blink.sv', 'blink.sv'],
+        ['Coinos', 'https://coinos.io', 'coinos.io'],
+        ['Rizful', 'https://rizful.com', 'rizful.com'],
     ];
 @endphp
 
@@ -180,10 +180,15 @@ new #[Title('Nostr profile')] class extends Component {
                 <li>{{ __('Copy it into the field on this page and save.') }}</li>
             </ol>
             <ul class="m-0 flex list-none flex-col gap-2 p-0" data-test="profile-wallets">
-                @foreach ($wallets as [$wallet, $url, $example])
-                    <li class="flex min-w-0 items-center justify-between gap-3 rounded-md bg-well px-3 py-2">
-                        <a href="{{ $url }}" target="_blank" rel="noopener" class="min-w-0 truncate text-sm font-bold text-ink hover:text-btc-hi">{{ $wallet }}</a>
-                        <span class="shrink-0 font-mono text-xs text-ink-2">{{ $example }}</span>
+                @foreach ($wallets as [$wallet, $url, $host])
+                    <li class="min-w-0">
+                        <a href="{{ $url }}" target="_blank" rel="noopener" class="flex min-h-11 min-w-0 items-center gap-3 rounded-md bg-well px-3 py-2 text-ink hover:bg-row-hover hover:text-ink">
+                            <span class="flex min-w-0 grow flex-col">
+                                <b class="text-sm underline underline-offset-4">{{ $wallet }}</b>
+                                <span class="text-xs text-ink-2">{{ __('Your address looks like this: you@:host', ['host' => $host]) }}</span>
+                            </span>
+                            <x-icon name="link" :size="16" class="shrink-0 text-ink-2" />
+                        </a>
                     </li>
                 @endforeach
             </ul>
