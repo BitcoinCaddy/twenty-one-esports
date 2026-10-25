@@ -151,3 +151,38 @@ test('the welcome banner for a fresh Google sign-in fits 390 and 1440 and leads 
     expect($page->evaluate('() => window.__errors'))->toBe([])->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
     fwrite(STDERR, "\n[welcome] ".json_encode($measured)."\n");
 });
+
+test('the four first steps and the prize hint on a tournament fit 390, 1024 and 1440 (user 2026-10-25); clean console', function () {
+    $player = User::factory()->create(['profile_event_at' => null, 'lud16' => null, 'locale' => 'de']);
+    $tournament = publishForPool(runningChess(App\Enums\TournamentFormat::SingleElimination, 4), fakeWallet());
+    $webpage = visit(BrowserLogin::url($player));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1024, 800], [1440, 900]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('dashboard')));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=me-steps]") !== null && document.readyState === "complete"', 10_000);
+        $steps = $page->evaluate('() => ({ scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], steps: [...document.querySelectorAll("[data-test=me-step]")].map((el) => { const r = el.getBoundingClientRect(), t = el.lastElementChild; return { w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right), lines: Math.round(t.getBoundingClientRect().height / parseFloat(getComputedStyle(t).lineHeight)) }; }) })');
+        tournamentLiveShot($page, "steps-{$width}");
+
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=prize-address-ahead]") !== null && document.readyState === "complete"', 10_000);
+        $hint = $page->evaluate('() => { const el = document.querySelector("[data-test=prize-address-ahead]"), r = el.getBoundingClientRect(); return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], left: Math.round(r.left), right: Math.round(r.right), h: Math.round(r.height) }; }');
+        $page->evaluate('() => document.querySelector("[data-test=prize-address-ahead]").scrollIntoView({ block: "center" })');
+        tournamentLiveShot($page, "prize-ahead-{$width}");
+        $measured[$width] = ['steps' => $steps, 'hint' => $hint];
+
+        expect($steps['scroll'][0])->toBeLessThanOrEqual($steps['scroll'][1])
+            ->and(count($steps['steps']))->toBe(4)
+            ->and(max(array_column($steps['steps'], 'right')))->toBeLessThanOrEqual($width)
+            ->and(max(array_column($steps['steps'], 'lines')))->toBeLessThanOrEqual(3)
+            ->and($hint['scroll'][0])->toBeLessThanOrEqual($hint['scroll'][1])
+            ->and($hint['right'])->toBeLessThanOrEqual($width);
+        $webpage->assertNoJavaScriptErrors();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([])->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    fwrite(STDERR, "\n[reach] ".json_encode($measured)."\n");
+});
