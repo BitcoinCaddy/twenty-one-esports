@@ -4,6 +4,7 @@ use App\Enums\Platform;
 use App\Enums\ReportStatus;
 use App\Enums\SeriesStatus;
 use App\Enums\TournamentFormat;
+use App\Enums\TournamentResultsMode;
 use App\Enums\TournamentStatus;
 use App\Games\GameRegistry;
 use App\Models\Clan;
@@ -386,4 +387,22 @@ test('the control: with nothing else on the first event\'s day there is no same-
     expect($html)->not->toContain('data-test="upcoming-same-day"')
         ->and($html)->toContain('+1 more')
         ->and(substr($html, strpos($html, 'id="upcoming-more-list"')))->toContain('data-key="tournament-'.$tomorrow->id.'"');
+});
+
+test('a drawn tournament before its start counts down to the start instead of saying it is live (user, 2026-10-25)', function () {
+    $tournament = runningChess(TournamentFormat::Swiss, 4, TournamentResultsMode::Players);
+    $tournament->forceFill(['starts_at' => now()->addMinutes(90), 'draw_committed_at' => now()->subDay()])->save();
+    $participant = TournamentParticipant::query()->where('tournament_id', $tournament->id)->with('user')->firstOrFail();
+    $signup = TournamentSignup::query()->create(['tournament_id' => $tournament->id, 'user_id' => $participant->user_id, 'name' => 'x', 'members' => [$participant->user_id]]);
+    $participant->forceFill(['tournament_signup_id' => $signup->id])->save();
+
+    $item = app(UpcomingEvents::class)->tournaments($participant->user)->sole();
+
+    expect($item->phase)->toBe('scheduled')
+        ->and($item->action)->toBeNull()
+        ->and($item->deadlineMs)->toBe((int) $tournament->starts_at->getTimestampMs());
+
+    $this->travel(91)->minutes();
+
+    expect(app(UpcomingEvents::class)->tournaments($participant->user)->sole()->phase)->toBe('live');
 });

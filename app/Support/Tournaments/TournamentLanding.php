@@ -103,7 +103,7 @@ final class TournamentLanding
 
     /**
      * The moment the page counts down to: sign-up close while it is open,
-     * else the start while it is ahead; null once the tournament runs.
+     * else the start while it is ahead; null once the tournament plays.
      *
      * @return array{at: CarbonInterface, kind: 'signup'|'start'}|null
      */
@@ -115,7 +115,10 @@ final class TournamentLanding
             return ['at' => $tournament->signup_closes_at, 'kind' => 'signup'];
         }
 
-        if (in_array($tournament->status, [TournamentStatus::Signup, TournamentStatus::Drawing], true) && $tournament->starts_at->isFuture()) {
+        // Drawn at the sign-up close, a tournament runs before its start, and no match starts before it (TournamentMatchMaker):
+        // its players still need the start first (user, 2026-10-25).
+        if ((in_array($tournament->status, [TournamentStatus::Signup, TournamentStatus::Drawing], true) || ($tournament->status === TournamentStatus::Running && ! $tournament->isCasualCup() && $tournament->draw_committed_at !== null))
+            && $tournament->starts_at->isFuture()) {
             return ['at' => $tournament->starts_at, 'kind' => 'start'];
         }
 
@@ -159,7 +162,7 @@ final class TournamentLanding
      * The countdown's first frame as the server draws it, in the format the
      * page script (resources/js/tournamentLanding.js) then ticks in.
      *
-     * @return array{ms: int, label: string, text: string, when: string}|null
+     * @return array{ms: int, kind: 'signup'|'start', label: string, text: string, when: string}|null
      */
     public function countdown(): ?array
     {
@@ -174,6 +177,7 @@ final class TournamentLanding
 
         return [
             'ms' => (int) $deadline['at']->getTimestampMs(),
+            'kind' => $deadline['kind'],
             'label' => $deadline['kind'] === 'signup' ? __('Sign-up closes in') : __('Starts in'),
             'text' => ($days > 0 ? trans_choice(':count day|:count days', $days).' ' : '').sprintf('%02d:%02d:%02d', intdiv($seconds % 86400, 3600), intdiv($seconds % 3600, 60), $seconds % 60),
             'when' => LeagueTime::stamp($deadline['at']),

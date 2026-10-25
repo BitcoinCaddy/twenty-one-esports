@@ -8280,6 +8280,8 @@
     "The organizers are checking this match. It goes on after their decision.": "Die Turnierleitung prüft dieses Match. Es geht nach ihrer Entscheidung weiter.",
     "Your match starts when the tournament goes on.": "Euer Match startet, sobald das Turnier weitergeht.",
     "Your match starts at :time.": "Euer Match startet um :time.",
+    "Your match starts at": "Euer Match startet um",
+    ":city time": "Ortszeit :city",
     "The tournament directors open it after round :number.": "Die Turnierleitung gibt es nach Runde :number frei.",
     "Your match starts in a moment.": "Euer Match startet gleich.",
     "Your match starts as soon as the other matches of round :round are done: :count still open.": "Euer Match startet, sobald die übrigen Matches der Runde :round fertig sind – noch :count offen.",

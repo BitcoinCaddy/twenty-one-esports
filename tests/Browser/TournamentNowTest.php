@@ -5,7 +5,9 @@ use App\Enums\TournamentResultsMode;
 use App\Models\Admin;
 use App\Models\BoardGame;
 use App\Models\ChessGame;
+use App\Models\Tournament;
 use App\Models\TournamentMatch;
+use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Chess\ChessGameService;
 use App\Support\TwentyOne\LiveStatus;
@@ -307,4 +309,57 @@ test('with the stream on air the floating "Watch live" tab never covers the hero
 
     fwrite(STDERR, "\n[now-live-tab] ".json_encode($measured)."\n");
     File::deleteDirectory($hls);
+});
+
+test('before the start a drawn player finds the start time big in the page hero and in "What to do now", above the fold at 390, 1440 and 1920 (user, 2026-10-25); clean console', function () {
+    // Drawn at the sign-up close, so the league holds every match until the start (TournamentMatchMaker).
+    Tournament::creating(fn (Tournament $tournament) => $tournament->forceFill(['starts_at' => now()->addMinutes(90), 'draw_committed_at' => now()->subDay()]));
+    $tournament = runningChess(TournamentFormat::Swiss, 4, TournamentResultsMode::Players);
+    $tournament->forceFill(['name' => 'Blitz Schachturnier', 'published_at' => now()])->save();
+    $player = TournamentParticipant::query()->where('tournament_id', $tournament->id)->firstOrFail()->user;
+    $player->forceFill(['locale' => 'de', 'timezone' => 'Europe/Berlin'])->save();
+    Admin::query()->create(['pubkey' => $player->pubkey]);
+    $clock = $tournament->starts_at->copy()->setTimezone('Europe/Berlin')->format('H:i');
+    $box = '(s) => { const el = document.querySelector(s); if (! el) return null; const r = el.getBoundingClientRect(); if (r.height === 0) return null; return { top: Math.round(r.top + scrollY), bottom: Math.round(r.bottom + scrollY), left: Math.round(r.left), right: Math.round(r.right), size: parseFloat(getComputedStyle(el).fontSize), text: el.innerText }; }';
+
+    $page = visit(BrowserLogin::url($player))->page();
+    $page->context()->addInitScript(NOW_COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1440, 900], [1920, 1080]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.show', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=now-starts]") !== null && document.readyState === "complete"', 8_000);
+        usleep(1_200_000);
+        $m = $page->evaluate(NOW_MEASURE) + [
+            'clock' => $page->evaluate("() => ({$box})('[data-test=now-starts-clock]')"),
+            'starts' => $page->evaluate("() => ({$box})('[data-test=now-starts]')"),
+            'countdown' => $page->evaluate('() => document.querySelector("[data-test=now-starts-countdown]").innerText'),
+            'heroClock' => $page->evaluate("() => ({$box})('[data-test=tournament-start-clock]')"),
+        ];
+        nowShot($page, "now-starts-de-{$width}");
+
+        expect($m['state'])->toBe('wait')
+            ->and($m['clock']['text'])->toBe($clock)
+            ->and($m['clock']['size'])->toBeGreaterThanOrEqual(40)
+            // The page hero names it from lg; a phone reads it in "What to do now" alone.
+            ->and($m['heroClock']['text'] ?? '')->toBe($width < 1024 ? '' : $clock)
+            ->and($m['starts']['left'])->toBeGreaterThanOrEqual(0)
+            ->and($m['starts']['right'])->toBeLessThanOrEqual($width)
+            // Ticking: the countdown left its first frame (01:30:00) behind.
+            ->and($m['countdown'])->toMatch('/^01:29:\d\d$/')
+            ->and($m['starts']['bottom'])->toBeLessThanOrEqual($m['tab'] ?? $height)
+            ->and($m['overflow'])->toBeLessThanOrEqual(0)
+            ->and($m['text'])->toContain('Euer Match startet um')->toContain('Ortszeit Berlin')
+            ->and($m['errors'])->toBe([]);
+
+        $measured[$width] = array_diff_key($m, ['text' => 1]);
+    }
+
+    // Positive control: an error thrown on the page reaches the collector.
+    $page->evaluate('() => { setTimeout(() => { throw new Error("probe"); }, 0); }');
+    BrowserWait::until($page, '() => window.__errors.length > 0', 5_000);
+    expect(implode(' | ', $page->evaluate('() => window.__errors')))->toContain('probe');
+
+    fwrite(STDERR, "\n[starts] ".json_encode($measured)."\n");
 });

@@ -83,10 +83,16 @@ final class UpcomingEvents
             ->values();
     }
 
-    /** Running, or past its start: the item leads to the player's room, else to the tournament. */
+    /**
+     * Running, or past its start: the item leads to the player's room, else to the tournament. Drawn at the sign-up
+     * close, a tournament runs before its start but plays nothing until then (TournamentMatchMaker; user, 2026-10-25:
+     * the dock said "Live" and "läuft" 90 minutes before 21:00), so it counts down to the start like one in sign-up.
+     */
     private static function isLive(Tournament $tournament, int $nowMs): bool
     {
-        return $tournament->status === TournamentStatus::Running || (int) $tournament->starts_at->getTimestampMs() <= $nowMs;
+        $held = ! $tournament->isCasualCup() && $tournament->draw_committed_at !== null;
+
+        return (int) $tournament->starts_at->getTimestampMs() <= $nowMs || ($tournament->status === TournamentStatus::Running && ! $held);
     }
 
     /**

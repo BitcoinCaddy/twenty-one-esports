@@ -11,6 +11,7 @@ use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Models\TournamentMatch;
 use App\Models\TournamentMatchSlot;
+use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Chess\ChessGameService;
 use App\Support\Chess\ChessInvites;
@@ -372,4 +373,32 @@ test('with several live games at once the hero points at one where the viewer is
     $move = $games->filter(fn (BoardGame $game) => $game->colorOf($viewer) === $game->turn)->sortBy(fn (BoardGame $game) => [$round($game), $game->tournament_match_id])->first();
 
     expect(nowHero(nowPage($tournament, $viewer)))->toContain('data-state="play"')->toContain('href="'.route('board.show', $move).'"');
+});
+
+test('before the start a drawn player sees the start big, in their own zone, at the top of the page (user, 2026-10-25)', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-10-25 18:30:00', 'UTC'));
+    // Drawn at the sign-up close the day before, so the league holds every match until the start (TournamentMatchMaker).
+    Tournament::creating(fn (Tournament $tournament) => $tournament->forceFill(['starts_at' => CarbonImmutable::parse('2026-10-25 20:00:00', 'UTC'), 'draw_committed_at' => now()->subDay()]));
+    $tournament = runningChess(TournamentFormat::Swiss, 4, TournamentResultsMode::Players);
+    $viewer = TournamentParticipant::query()->where('tournament_id', $tournament->id)->firstOrFail()->user;
+    $viewer->forceFill(['timezone' => 'Europe/Riga'])->save();
+
+    $html = nowPage($tournament, $viewer);
+    $hero = nowHero($html);
+
+    expect($hero)->toContain('data-state="wait"')
+        ->toContain('data-test="now-starts-clock">22:00</time>')
+        ->toContain('Riga time')
+        ->toContain('data-test="now-starts-countdown">01:30:00</b>')
+        // The page's own hero names the start too, above "What to do now".
+        ->and($html)->toContain('data-test="tournament-start-clock">22:00</b>')
+        ->and(strpos($html, 'data-test="tournament-start"'))->toBeLessThan(strpos($html, 'data-test="now-hero"'));
+
+    // A guest gets the league's zone.
+    auth()->logout();
+    expect(test()->get(route('tournaments.show', $tournament))->getContent())->toContain('data-test="tournament-start-clock">21:00</b>')->toContain('Berlin time');
+
+    $this->travelTo(CarbonImmutable::parse('2026-10-25 20:00:01', 'UTC'));
+
+    expect(nowPage($tournament, $viewer))->not->toContain('data-test="now-starts"')->not->toContain('data-test="tournament-start"');
 });

@@ -955,9 +955,21 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                             <span class="flex h-8 items-center gap-2"><x-ui.seats :taken="$seatsTaken" :places="$seatsAll" /><span class="tabular-nums">{{ $seatsTaken }}/{{ $seatsAll }}</span></span>
                         </span>
                     @endif
+                    @if (($countdown['kind'] ?? null) === 'start')
+                        {{-- The start itself, big, in the viewer's zone (user, 2026-10-25: it stood only at the page's end and in the grey data line). --}}
+                        @php($startZone = auth()->user()?->timezone ?? (string) config('esports.preseason.display_timezone'))
+                        {{-- A phone with "What to do now" reads the start there, so that card stays in the first screen. --}}
+                        <span class="{{ $compactHero ? 'max-lg:!hidden ' : '' }}flex flex-col gap-1" data-test="tournament-start">
+                            <span class="rv-m">{{ __('Starts') }}</span>
+                            <time datetime="{{ $tournament->starts_at->copy()->utc()->format('Y-m-d\TH:i:s\Z') }}" class="flex items-baseline gap-2">
+                                <b class="font-display text-[26px] leading-tight font-bold text-ink tabular-nums lg:text-[32px]" data-test="tournament-start-clock">{{ $tournament->starts_at->copy()->setTimezone($startZone)->format('H:i') }}</b>
+                                <span class="rv-m" data-test="tournament-start-day">{{ $tournament->starts_at->copy()->setTimezone($startZone)->translatedFormat('D j M') }} · {{ __(':city time', ['city' => str_replace('_', ' ', \Illuminate\Support\Str::afterLast($startZone, '/'))]) }}</span>
+                            </time>
+                        </span>
+                    @endif
                     @if ($countdown)
                         {{-- The one countdown of the page: sign-up close while it is open, else the start. --}}
-                        <span class="flex flex-col gap-1" data-test="tournament-countdown">
+                        <span class="{{ $compactHero && ($countdown['kind'] ?? null) === 'start' ? 'max-lg:!hidden ' : '' }}flex flex-col gap-1" data-test="tournament-countdown">
                             <span class="rv-m">{{ $countdown['label'] }}</span>
                             <x-ui.countdown :at="\Illuminate\Support\Carbon::createFromTimestampMs($countdown['ms'])" size="sm" :label="$countdown['label']" />
                         </span>

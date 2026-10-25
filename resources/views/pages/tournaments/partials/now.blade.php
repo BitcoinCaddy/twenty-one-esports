@@ -88,6 +88,18 @@
             </div>
         @endif
 
+        @if ($now['starts'] ?? null)
+            {{-- The start as a big clock with its zone and a countdown (user, 2026-10-25: inside the grey line the time was too small to find). --}}
+            <div class="my-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-md border border-line bg-well px-4 py-3" data-test="now-starts">
+                <span class="basis-full text-[13px] font-bold text-ink-2">{{ __('Your match starts at') }}</span>
+                <time datetime="{{ $now['starts']->copy()->utc()->format('Y-m-d\TH:i:s\Z') }}" class="font-display text-[40px] leading-none font-bold text-btc-hi tabular-nums lg:text-[56px]" data-test="now-starts-clock">{{ $now['starts']->copy()->setTimezone($tz)->format('H:i') }}</time>
+                <span class="flex flex-col text-[13px] text-ink-2">
+                    <span data-test="now-starts-zone">{{ $now['starts']->copy()->setTimezone($tz)->translatedFormat('D j M') }} · {{ __(':city time', ['city' => str_replace('_', ' ', \Illuminate\Support\Str::afterLast($tz, '/'))]) }}</span>
+                    <span>{{ __('Starts in') }} <b class="text-ink tabular-nums" role="timer" x-data="countdown({ at: {{ (int) $now['starts']->getTimestampMs() }}, days: @js(__(':count day|:count days')) })" x-text="text" data-test="now-starts-countdown">{{ sprintf('%02d:%02d:%02d', intdiv($left = max(0, (int) now()->diffInSeconds($now['starts'])), 3600), intdiv($left % 3600, 60), $left % 60) }}</b></span>
+                </span>
+            </div>
+        @endif
+
         @if ($now['line'])
             <p class="m-0 max-w-[60ch] text-base leading-normal text-ink-2" data-test="now-line">{{ $now['line'] }}</p>
         @endif

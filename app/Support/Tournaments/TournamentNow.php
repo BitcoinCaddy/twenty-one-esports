@@ -74,7 +74,7 @@ final class TournamentNow
 
     /** Every key of the hero, so each state names only what it says. */
     private const DEFAULTS = ['context' => null, 'line' => null, 'action' => null, 'until' => null, 'round' => null, 'others' => null,
-        'paused' => false, 'boards' => [], 'lobby' => null, 'live' => 0, 'me' => null, 'opponent' => null, 'lineup' => null];
+        'paused' => false, 'boards' => [], 'lobby' => null, 'live' => 0, 'me' => null, 'opponent' => null, 'lineup' => null, 'starts' => null];
 
     /**
      * @param  array<string, mixed>|null  $cup  the show page's cupMatch()
@@ -228,7 +228,8 @@ final class TournamentNow
         $notYet = self::notYet($tournament, $match, $viewer);
 
         if ($notYet !== null) {
-            return $waiting($notYet);
+            // The start as its own big clock (user, 2026-10-25: the time sank in the grey line and players risked missing it).
+            return [...$waiting($notYet), 'starts' => self::waitsForStart($tournament, $match) ? $tournament->starts_at : null];
         }
 
         // Played away from the league: the directors enter the result, so the match is the players' to play now.
@@ -318,6 +319,13 @@ final class TournamentNow
         }
 
         return $tournament->isCasualCup() && $match->round->window_ends_at === null ? self::roundNotOpen($tournament, $match, $time) : null;
+    }
+
+    /** notYet() holds the match only because the tournament has not started: no hold, no pause, the start still ahead. */
+    private static function waitsForStart(Tournament $tournament, TournamentMatch $match): bool
+    {
+        return $match->held === null && ! $tournament->isPaused() && ! $tournament->isCasualCup()
+            && $tournament->draw_committed_at !== null && $tournament->starts_at->isFuture();
     }
 
     /**
