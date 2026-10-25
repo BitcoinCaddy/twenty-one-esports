@@ -115,8 +115,8 @@ new #[Title('Account')] class extends Component {
 <div class="flex grow flex-col gap-5 px-4 pb-8 lg:px-12 lg:pb-10" data-test="account-settings">
     <x-settings.header current="account" />
 
-    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,560px)_minmax(0,400px)]">
-        <form wire:submit="save" aria-labelledby="ac-h" class="flex flex-col gap-5 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="account-form">
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <form wire:submit="save" aria-labelledby="ac-h" class="@container flex min-w-0 flex-col gap-5 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="account-form">
             <h2 id="ac-h" class="m-0 text-[15px] font-bold">{{ __('On this site') }}</h2>
 
             <div class="flex flex-col gap-2 border-b border-hairline pb-5">
@@ -135,6 +135,8 @@ new #[Title('Account')] class extends Component {
                 <span class="text-xs leading-normal text-ink-2">{{ __('Your name comes from your Nostr profile. An avatar uploaded here replaces your Nostr picture on this site, and other players see it.') }}</span>
             </div>
 
+            {{-- Short fields side by side where the column is wide (user 2026-10-25: the form stood as a tall narrow tube). --}}
+            <div class="grid grid-cols-1 items-start gap-5 @min-[40rem]:grid-cols-3">
             <label class="flex flex-col gap-1.5">
                 <span class="text-sm">{{ __('Platform') }}</span>
                 <select wire:model="platform" class="{{ $field }}" data-test="account-platform">
@@ -166,6 +168,7 @@ new #[Title('Account')] class extends Component {
                     <option value="de">Deutsch</option>
                 </select>
             </label>
+            </div>
 
             <div class="flex min-h-[61px] items-center gap-4 border-t border-hairline pt-5" data-test="account-mentions">
                 <span class="flex min-w-0 grow flex-col gap-0.5">

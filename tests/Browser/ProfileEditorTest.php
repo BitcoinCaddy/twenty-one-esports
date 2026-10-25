@@ -87,3 +87,32 @@ test('a shared moment keeps its text readable beside or under the card at 390, 1
     expect($page->evaluate('() => window.__errors'))->toBe([]);
     fwrite(STDERR, "\n[badges] ".json_encode($measured)."\n");
 });
+
+test('every settings page uses the width at 1440 and 1920 and fits 390 (user 2026-10-25: forms stood as narrow tubes); clean console', function () {
+    $user = User::factory()->create(['locale' => 'de']);
+    $webpage = visit(BrowserLogin::url($user));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach (['settings.account', 'settings.profile', 'gaming.edit', 'settings.chess', 'settings.notifications', 'settings.opponents', 'settings.badges', 'settings.nip05'] as $route) {
+        foreach ([[390, 844], [1440, 900], [1920, 1080]] as [$width, $height]) {
+            $page->setViewportSize($width, $height);
+            $page->goto(ComputeUrl::from(route($route)));
+            BrowserWait::until($page, '() => document.readyState === "complete" && document.querySelector("main section, main form") !== null', 10_000);
+            $m = $page->evaluate('() => { const main = document.querySelector("main"), cards = [...main.querySelectorAll(":scope section, :scope form")].filter((el) => el.getBoundingClientRect().height > 40);
+                const right = Math.max(...cards.map((el) => el.getBoundingClientRect().right)), left = Math.min(...cards.map((el) => el.getBoundingClientRect().left));
+                return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], left: Math.round(left), right: Math.round(right), mainRight: Math.round(main.getBoundingClientRect().right) }; }');
+            $measured["{$route}-{$width}"] = $m;
+            if ($width !== 390 && in_array($route, ['settings.account', 'settings.profile', 'settings.nip05'], true)) {
+                tournamentLiveShot($page, str_replace('.', '-', $route)."-{$width}");
+            }
+
+            expect($m['scroll'][0])->toBeLessThanOrEqual($m['scroll'][1]);
+            $webpage->assertNoJavaScriptErrors();
+        }
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([]);
+    fwrite(STDERR, "\n[settings] ".json_encode($measured)."\n");
+});

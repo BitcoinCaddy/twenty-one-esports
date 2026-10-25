@@ -572,13 +572,17 @@
 
 /*
  * The settings pages (Settings.dc.html, template T-Settings, P7): from lg two columns, the rail of
- * components/settings/header on the left all the way down, the heading and the page's cards on the right (760 px).
- * From xl: at 1024 the chess page's board choices need the whole width (measured: 1032 px page at 1024 with the rail).
+ * components/settings/header on the left all the way down, the heading and the page's cards on the right, in the
+ * rest of the width up to the site's 1440 px (user 2026-10-25: at 760 px the forms stood as narrow tubes and half of
+ * a 1920 screen stayed empty). From xl: at 1024 the chess page's board choices need the whole width.
  */
 @media (width >= 80rem) {
     :where(div):has(> [data-test="settings-header"]) {
         display: grid;
-        grid-template-columns: 240px minmax(0, 760px);
+        grid-template-columns: 240px minmax(0, 1fr);
+        width: 100%;
+        max-width: 1440px;
+        margin-inline: auto;
         column-gap: 32px;
         /* No row gap: the rail spans 30 implicit rows, and a gap per empty row would add height. */
         row-gap: 0;

@@ -80,7 +80,7 @@ new #[Title('Nostr address')] class extends Component {
 <div class="flex grow flex-col gap-5 px-4 pb-8 lg:px-12 lg:pb-10" data-test="nip05-settings">
     <x-settings.header current="nip05" />
 
-    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,560px)_minmax(0,400px)]">
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section aria-labelledby="n5-h" class="flex min-w-0 flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="nip05-claim">
             <h2 id="n5-h" class="m-0 text-[15px] font-bold">{{ __('Your address on :domain', ['domain' => $domain]) }}</h2>
             <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Optional. A NIP-05 address makes your key easy to find and shows that you play here. Nostr apps check it against this site.') }}</p>

@@ -102,13 +102,14 @@ new #[Title('Nostr profile')] class extends Component {
 <div class="flex grow flex-col gap-5 px-4 pb-8 lg:px-12 lg:pb-10" data-test="profile-settings">
     <x-settings.header current="profile" />
 
-    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,560px)_minmax(0,400px)]">
+    <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section aria-labelledby="pr-h" class="flex min-w-0 flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="profile-editor"
                  x-data="profileEditor({ pubkey: @js($user->pubkey), relays: @js(ProfileBadges::browserRelays()), indexers: @js(array_values((array) config('esports.stream_chat.indexer_relays', []))), messages: @js([...SignerMessages::labels(), 'notPosted' => __('None of your relays took the profile. Try again later.')]) })">
             <h2 id="pr-h" class="m-0 text-[15px] font-bold">{{ __('Your name and Lightning address') }}</h2>
             <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Prizes go to the Lightning address in your Nostr profile. You confirm the change with your own login (Google or your Nostr signer); everything else in your profile stays as it is.') }}</p>
 
-            <form x-on:submit.prevent="save()" class="flex min-w-0 flex-col gap-3">
+            <form x-on:submit.prevent="save()" class="@container flex min-w-0 flex-col gap-3">
+                <div class="grid grid-cols-1 items-start gap-3 @min-[40rem]:grid-cols-2">
                 <label class="flex min-w-0 flex-col gap-1.5 text-sm">{{ __('Name') }}
                     <input type="text" x-model="name" maxlength="50" autocomplete="nickname" class="{{ $field }}" data-test="profile-name" :disabled="step === 'loading'">
                 </label>
@@ -116,6 +117,7 @@ new #[Title('Nostr profile')] class extends Component {
                     <input type="text" x-model="lud16" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="name@coinos.io" class="{{ $field }} font-mono" data-test="profile-lud16" :disabled="step === 'loading'">
                     <span class="text-xs leading-normal text-ink-2">{{ __('It looks like an email address. Copy it from your wallet; below you find wallets that give you one for free.') }}</span>
                 </label>
+                </div>
                 <span class="flex flex-wrap items-center gap-3">
                     <x-button type="submit" data-test="profile-save" x-bind:disabled="step === 'loading' || step === 'saving'" class="disabled:cursor-default disabled:opacity-60">
                         <span x-show="step !== 'saving'">{{ __('Save to my Nostr profile') }}</span>
