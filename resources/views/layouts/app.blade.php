@@ -34,6 +34,7 @@
         <x-shell.header :section="$section" />
 
         <main id="content" @class(['flex min-w-0 grow flex-col', 'pt-page-top lg:pt-page-top-lg' => ! $flush])>
+            <x-shell.profile-welcome />
             {{ $slot }}
         </main>
 

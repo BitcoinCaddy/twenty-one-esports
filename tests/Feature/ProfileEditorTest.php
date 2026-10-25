@@ -2,6 +2,8 @@
 
 use App\Models\User;
 use App\Support\Tournaments\TournamentChampion;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\Support\TestSigner;
 
@@ -63,4 +65,29 @@ test('a prize winner without a Lightning address is led to the profile page from
     $user->forceFill(['lud16' => 'champ@wallet.example'])->save();
 
     expect($this->actingAs($user)->get(route('tournaments.show', $tournament))->getContent())->not->toContain('data-test="prize-needs-address"');
+});
+
+test('a player without any Nostr profile gets the welcome banner on every page until one is known (user 2026-10-25)', function () {
+    $fresh = User::factory()->create(['profile_event_at' => null]);
+
+    $this->actingAs($fresh)->get(route('dashboard'))->assertOk()->assertSee('data-test="profile-welcome"', false);
+    $this->actingAs($fresh)->get(route('settings.profile'))->assertOk()->assertDontSee('data-test="profile-welcome"', false);
+
+    $fresh->forceFill(['profile_event_at' => now()])->save();
+    $this->actingAs($fresh)->get(route('dashboard'))->assertOk()->assertDontSee('data-test="profile-welcome"', false);
+    $this->get(route('home'))->assertDontSee('data-test="profile-welcome"', false);
+});
+
+test('an uploaded profile picture is kept and named in the profile template', function () {
+    Storage::fake('public', ['url' => 'https://esports.example/storage']);
+    fakeLightningAddresses(fakeWallet());
+    $player = User::factory()->create();
+    $page = Livewire::actingAs($player)->test('pages::settings.profile')
+        ->set('avatar', UploadedFile::fake()->image('me.png', 200, 200))->assertHasNoErrors();
+
+    expect($player->refresh()->avatar_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($player->avatar_path);
+    $content = json_decode($page->instance()->prepareProfile('Luke', '', '')['content'], true);
+
+    expect($content['picture'])->toStartWith('https://esports.example/storage/avatars/');
 });

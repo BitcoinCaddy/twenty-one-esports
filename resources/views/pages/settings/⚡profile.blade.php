@@ -9,6 +9,9 @@ use App\Support\Nostr\SignerMessages;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\Storage;
 
 /*
  * The player's own Nostr profile: name and Lightning address (user 2026-10-25: players who signed in with Google
@@ -17,7 +20,26 @@ use Livewire\Component;
  * Every other field of the profile stays as it is.
  */
 new #[Title('Nostr profile')] class extends Component {
+    use WithFileUploads;
+
     public string $error = '';
+
+    public ?TemporaryUploadedFile $avatar = null;
+
+    /** A picture for the profile, kept on this site (the same file as the account tab's avatar) and named in the kind 0. */
+    public function updatedAvatar(): void
+    {
+        $this->validate(['avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']]);
+        $user = $this->user();
+        $previous = $user->avatar_path;
+        $user->forceFill(['avatar_path' => $this->avatar->store('avatars', 'public') ?: null])->save();
+
+        if ($previous !== null) {
+            Storage::disk('public')->delete($previous);
+        }
+
+        $this->avatar = null;
+    }
 
     /**
      * The kind 0 template with `$name` and `$lud16` merged into the profile's current content, or null with
@@ -61,6 +83,11 @@ new #[Title('Nostr profile')] class extends Component {
         $content = is_array($content) ? $content : [];
         $content['name'] = $name;
         $content['display_name'] = $name;
+        $picture = $this->user()->avatar_path === null ? null : Storage::disk('public')->url($this->user()->avatar_path);
+
+        if ($picture !== null && str_starts_with($picture, 'https://')) {
+            $content['picture'] = $picture;
+        }
 
         if ($lud16 !== '') {
             $content['lud16'] = $lud16;
@@ -104,9 +131,20 @@ new #[Title('Nostr profile')] class extends Component {
 
     <div class="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section aria-labelledby="pr-h" class="flex min-w-0 flex-col gap-4 rounded-lg bg-card px-4 py-5 lg:px-6" data-test="profile-editor"
-                 x-data="profileEditor({ pubkey: @js($user->pubkey), relays: @js(ProfileBadges::browserRelays()), indexers: @js(array_values((array) config('esports.stream_chat.indexer_relays', []))), messages: @js([...SignerMessages::labels(), 'notPosted' => __('None of your relays took the profile. Try again later.')]) })">
+                 x-data="profileEditor({ pubkey: @js($user->pubkey), known: @js(['name' => $user->name ?? '', 'lud16' => $user->lud16 ?? '']), relays: @js(ProfileBadges::browserRelays()), indexers: @js(array_values((array) config('esports.stream_chat.indexer_relays', []))), messages: @js([...SignerMessages::labels(), 'notPosted' => __('None of your relays took the profile. Try again later.')]) })">
             <h2 id="pr-h" class="m-0 text-[15px] font-bold">{{ __('Your name and Lightning address') }}</h2>
             <p class="m-0 text-[13px] leading-normal text-ink-2">{{ __('Prizes go to the Lightning address in your Nostr profile. You confirm the change with your own login (Google or your Nostr signer); everything else in your profile stays as it is.') }}</p>
+
+            <div class="flex items-center gap-4" data-test="profile-avatar">
+                <x-avatar :user="$user" :size="64" class="size-16 shrink-0 rounded-full" />
+                <span class="flex min-w-0 flex-col gap-1.5">
+                    <label for="profile-avatar-file" class="text-sm">{{ __('Profile picture') }}</label>
+                    <input id="profile-avatar-file" type="file" wire:model="avatar" accept="image/png,image/jpeg,image/webp" data-test="profile-avatar-file"
+                           class="max-w-full text-[13px] text-ink-2 file:mr-3 file:h-11 file:cursor-pointer file:rounded-md file:border file:border-solid file:border-line file:bg-well file:px-3 file:text-[13px] file:text-ink">
+                    @error('avatar')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
+                    <span class="text-xs leading-normal text-ink-2">{{ __('JPG, PNG or WebP, up to 2 MB. It goes into your Nostr profile when you save below.') }}</span>
+                </span>
+            </div>
 
             <form x-on:submit.prevent="save()" class="@container flex min-w-0 flex-col gap-3">
                 <div class="grid grid-cols-1 items-start gap-3 @min-[40rem]:grid-cols-2">

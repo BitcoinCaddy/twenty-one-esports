@@ -13,7 +13,7 @@ import { ensureSigner } from './nostrSign.js';
 import { signerMessage, signTemplate } from './signing.js';
 import { newest, publishToRelays, readProfiles, relayUrls, writeRelaysFor } from './relayRead.js';
 
-export function profileEditor({ pubkey, relays = [], indexers = [], messages = {} }) {
+export function profileEditor({ pubkey, known = {}, relays = [], indexers = [], messages = {} }) {
     return {
         name: '',
         lud16: '',
@@ -34,6 +34,9 @@ export function profileEditor({ pubkey, relays = [], indexers = [], messages = {
                 console.warn('[profile] reading the profile failed:', error);
             }
 
+            // What the league already knows when the relays had nothing (a fresh Google sign-in, a relay that did not answer).
+            this.name = this.name || known.name || '';
+            this.lud16 = this.lud16 || known.lud16 || '';
             this.step = 'idle';
         },
 

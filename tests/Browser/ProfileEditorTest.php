@@ -61,7 +61,7 @@ test('the profile page and the prize hint stay inside the screen at 390 and 1440
 
 test('a shared moment keeps its text readable beside or under the card at 390, 1180, 1440 and 1920 (user 2026-10-25); clean console', function () {
     $tournament = finishedPoolTournament(fakeWallet());
-    $champion = app(App\Support\Tournaments\TournamentChampion::class)->of($tournament);
+    $champion = app(TournamentChampion::class)->of($tournament);
     $user = User::query()->findOrFail($champion->user_id);
     $user->forceFill(['locale' => 'de'])->save();
 
@@ -115,4 +115,39 @@ test('every settings page uses the width at 1440 and 1920 and fits 390 (user 202
 
     expect($page->evaluate('() => window.__errors'))->toBe([]);
     fwrite(STDERR, "\n[settings] ".json_encode($measured)."\n");
+});
+
+test('the welcome banner for a fresh Google sign-in fits 390 and 1440 and leads to the profile page with its picture field; clean console', function () {
+    $fresh = User::factory()->create(['profile_event_at' => null, 'name' => null, 'lud16' => null, 'locale' => 'de']);
+    $webpage = visit(BrowserLogin::url($fresh));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $box = '(s) => { const el = document.querySelector(s); if (! el) return null; const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom) }; }';
+    $measured = [];
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('dashboard')));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=profile-welcome]") !== null && document.readyState === "complete"', 10_000);
+        $banner = $page->evaluate("() => ({ scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], banner: ({$box})('[data-test=profile-welcome]'), link: ({$box})('[data-test=profile-welcome-link]'), header: ({$box})('header') })");
+        tournamentLiveShot($page, "welcome-{$width}");
+
+        $page->goto(ComputeUrl::from(route('settings.profile')));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=profile-avatar-file]") !== null && ! document.querySelector("[data-test=profile-name]").disabled', 10_000);
+        $profile = $page->evaluate("() => ({ scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], avatar: ({$box})('[data-test=profile-avatar]'), banner: document.querySelector('[data-test=profile-welcome]') !== null })");
+        tournamentLiveShot($page, "profile-fresh-{$width}");
+        $measured[$width] = ['banner' => $banner, 'profile' => $profile];
+
+        expect($banner['scroll'][0])->toBeLessThanOrEqual($banner['scroll'][1])
+            ->and($banner['banner']['right'])->toBeLessThanOrEqual($width)
+            ->and($banner['banner']['top'])->toBeGreaterThanOrEqual($banner['header']['bottom'] - 1)
+            ->and($banner['link']['right'])->toBeLessThanOrEqual($width)
+            ->and($profile['scroll'][0])->toBeLessThanOrEqual($profile['scroll'][1])
+            ->and($profile['avatar']['right'])->toBeLessThanOrEqual($width)
+            ->and($profile['banner'])->toBeFalse();
+        $webpage->assertNoJavaScriptErrors();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([])->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+    fwrite(STDERR, "\n[welcome] ".json_encode($measured)."\n");
 });
