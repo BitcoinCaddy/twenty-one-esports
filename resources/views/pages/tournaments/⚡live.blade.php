@@ -5,6 +5,7 @@ use App\Enums\TournamentStatus;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
 use App\Support\Series\SeriesPresenter;
+use App\Support\Tournaments\NoShowDisqualifier;
 use App\Support\Tournaments\TournamentDesk;
 use App\Support\Tournaments\TournamentRunner;
 use App\Support\Tournaments\TournamentView;
@@ -105,6 +106,22 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
         return in_array($this->tournament->status, [TournamentStatus::Running, TournamentStatus::Finished], true)
             ? (new \App\Support\Tournaments\TournamentMatrix($this->tournament))->overview()
             : ['groups' => [], 'counts' => [], 'attention' => []];
+    }
+
+    /**
+     * Entries with a no-show loss, most first: the count against NoShowDisqualifier's threshold (user 2026-10-25).
+     *
+     * @return list<array{name: string, count: int, out: bool}>
+     */
+    #[Computed]
+    public function noShows(): array
+    {
+        $counts = NoShowDisqualifier::counts($this->tournament);
+        $rows = \App\Models\TournamentParticipant::query()->whereKey(array_keys($counts))->get()
+            ->map(fn ($participant): array => ['name' => $participant->name, 'count' => $counts[$participant->id], 'out' => $participant->disqualified_at !== null])
+            ->sortBy([['count', 'desc'], ['name', 'asc']]);
+
+        return $rows->values()->all();
     }
 
     #[Computed]
@@ -264,6 +281,24 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
         <a href="{{ route('tournaments.show', $tournament) }}" class="rv-b2" data-test="live-public"><x-icon name="trophy" :size="16" />{{ __('Tournament page') }}</a>
         <a href="{{ route('tournaments.tv', $tournament) }}" target="_blank" class="rv-b2" data-test="live-tv"><x-icon name="expand" :size="16" />{{ __('TV view') }}</a>
     </nav>
+
+    @if ($this->noShows !== [] && NoShowDisqualifier::threshold() > 0)
+        {{-- No-shows against the auto-disqualification threshold, big enough to read across the room. --}}
+        <section aria-labelledby="live-noshows-h" class="flex flex-col gap-3" data-test="live-noshows">
+            <h2 id="live-noshows-h" class="m-0 text-[15px] font-bold">{{ __('No-shows') }} <span class="rv-m font-normal">{{ __('Disqualified at :count', ['count' => NoShowDisqualifier::threshold()]) }}</span></h2>
+            <ul class="m-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 xl:grid-cols-4">
+                @foreach ($this->noShows as $row)
+                    <li @class(['flex min-w-0 items-center gap-4 rounded-lg border px-4 py-3', 'border-loss bg-loss-tint' => $row['out'], 'border-btc bg-btc-tint' => ! $row['out'] && $row['count'] + 1 >= NoShowDisqualifier::threshold(), 'border-hairline bg-card' => ! $row['out'] && $row['count'] + 1 < NoShowDisqualifier::threshold()]) data-test="live-noshow">
+                        <b class="font-display text-[40px] leading-none font-bold tabular-nums" data-test="live-noshow-count">{{ $row['count'] }}<span class="text-[22px] text-ink-3">/{{ NoShowDisqualifier::threshold() }}</span></b>
+                        <span class="flex min-w-0 flex-col">
+                            <b class="truncate text-sm" data-test="live-noshow-name">{{ $row['name'] }}</b>
+                            <span class="rv-m">{{ $row['out'] ? __('Disqualified') : ($row['count'] + 1 >= NoShowDisqualifier::threshold() ? __('Next no-show disqualifies') : __('No-shows so far')) }}</span>
+                        </span>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     @if ($this->matrix['groups'] !== [])
         @include('pages.tournaments.partials.matrix', ['matrix' => $this->matrix])

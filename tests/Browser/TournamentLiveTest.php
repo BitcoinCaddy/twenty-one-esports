@@ -8,6 +8,7 @@ use App\Models\Admin;
 use App\Models\BoardGame;
 use App\Models\SeriesMatch;
 use App\Models\Tournament;
+use App\Models\TournamentMatch;
 use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Series\SeriesService;
@@ -404,4 +405,53 @@ test('the matrix shows every pairing of a group with its light, the follow-up li
             ->and($page->evaluate('() => window.__errors'))->toBe([], "{$width}: console")
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "{$width}: responses");
     }
+});
+
+test('the no-show counter on the live page stays inside its cards at 390 and 1440 px in German; clean console (user, 2026-10-25)', function () {
+    config(['esports.tournaments.auto_disqualify_noshows' => 2]);
+    $admin = User::factory()->create(['name' => 'satsjaeger', 'locale' => 'de']);
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+    $tournament = runningChess(TournamentFormat::Swiss, 8, TournamentResultsMode::Players);
+    $matches = TournamentMatch::query()->where('tournament_id', $tournament->id)->with('slots.participant')->orderBy('id')->take(3)->get();
+    foreach ($matches as $match) {
+        $match->forceFill(['result' => ['winner' => 0, 'games_won' => [1, 0], 'points' => [], 'forfeit' => true, 'label' => 'forfeit', 'by' => 'players'], 'status' => 'done'])->save();
+    }
+    $matches[0]->slots->firstWhere('slot', 1)->participant->forceFill(['name' => 'Ein sehr langer Spielername mit vierzig Zeichen'])->save();
+    $matches[2]->slots->firstWhere('slot', 1)->participant->forceFill(['disqualified_at' => now()])->save();
+
+    $webpage = visit(BrowserLogin::url($admin));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1440, 900]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('tournaments.live', $tournament)));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=live-noshows]") !== null && document.readyState === "complete"', 10_000);
+        $probe = $page->evaluate('() => ({
+            scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+            cards: [...document.querySelectorAll("[data-test=live-noshow]")].map((card) => { const r = card.getBoundingClientRect(), n = card.querySelector("[data-test=live-noshow-count]").getBoundingClientRect(), name = card.querySelector("[data-test=live-noshow-name]");
+                return { w: Math.round(r.width), h: Math.round(r.height), left: Math.round(r.left), right: Math.round(r.right), countH: Math.round(n.height), countInside: n.right <= r.right && n.left >= r.left, nameW: Math.round(name.getBoundingClientRect().width), text: card.innerText }; }),
+            top: Math.round(document.querySelector("[data-test=live-noshows]").getBoundingClientRect().top + scrollY),
+        })');
+        tournamentLiveShot($page, "live-noshows-{$width}");
+        $measured[$width] = array_map(fn (array $card): array => array_diff_key($card, ['text' => 1]), $probe['cards']) + ['top' => $probe['top']];
+
+        expect($probe['cards'])->toHaveCount(3)
+            ->and($probe['scroll'][0])->toBeLessThanOrEqual($probe['scroll'][1])
+            ->and(array_filter($probe['cards'], fn (array $card): bool => ! $card['countInside'] || $card['right'] > $width || $card['nameW'] <= 0))->toBe([])
+            ->and(min(array_column($probe['cards'], 'countH')))->toBeGreaterThanOrEqual(36)
+            ->and(implode("\n", array_column($probe['cards'], 'text')))->toContain('Nächster No-Show disqualifiziert')->toContain('Disqualifiziert');
+        $webpage->assertNoJavaScriptErrors();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([])
+        ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([]);
+
+    // Positive control: a thrown error reaches the collector.
+    $page->evaluate('() => { setTimeout(() => { throw new Error("positive control"); }); }');
+    BrowserWait::until($page, '() => window.__errors.length >= 1', 10_000);
+    expect(implode("\n", $page->evaluate('() => window.__errors')))->toContain('positive control');
+
+    fwrite(STDERR, "\n[noshows] ".json_encode($measured)."\n");
 });

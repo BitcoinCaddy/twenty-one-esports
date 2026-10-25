@@ -239,3 +239,21 @@ test('the check-in deadlines are the next deadline, and checking in late answers
     app(TournamentScheduler::class)->tick();
     expect($series->refresh()->status)->toBe(SeriesStatus::Accepted);
 });
+
+test('the live page counts each entry\'s no-shows big against the disqualification threshold (user, 2026-10-25)', function () {
+    config(['esports.tournaments.auto_disqualify_noshows' => 2]);
+    $tournament = runningChess(TournamentFormat::Swiss, 4, TournamentResultsMode::Players);
+    $match = TournamentMatch::query()->where('tournament_id', $tournament->id)->with('slots.participant')->orderBy('id')->firstOrFail();
+    $match->forceFill(['result' => ['winner' => 0, 'games_won' => [1, 0], 'points' => [], 'forfeit' => true, 'label' => 'forfeit', 'by' => 'players'], 'status' => 'done'])->save();
+    $absent = $match->slots->firstWhere('slot', 1)->participant;
+    $admin = User::factory()->create();
+    Admin::query()->create(['pubkey' => $admin->pubkey]);
+
+    $html = $this->actingAs($admin)->get(route('tournaments.live', $tournament))->assertOk()->getContent();
+
+    expect($html)->toContain('data-test="live-noshows"')
+        ->toMatch('/data-test="live-noshow-count">1<span[^>]*>\/2<\/span>/')
+        ->toContain('data-test="live-noshow-name">'.e($absent->name).'</b>')
+        ->toContain('Next no-show disqualifies')
+        ->and(substr_count($html, 'data-test="live-noshow"'))->toBe(1);
+});
