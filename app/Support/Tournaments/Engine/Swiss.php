@@ -34,9 +34,10 @@ final class Swiss
     /**
      * @param  list<int>  $entrants  seed 1 first
      * @param  list<array{0: int, 1: int|null, 2: MatchResult}>  $games  the finished matches and byes of earlier rounds
+     * @param  list<int>  $out  entrants no longer paired (disqualified or withdrawn); their games still count for the others
      * @return list<BracketMatch> the matches of `$round`, a bye (one slot) last
      */
-    public static function pairRound(int $round, array $entrants, array $games, float $win = 1.0, float $tie = 0.5, float $bye = 1.0, string $prefix = '', int $stage = 1): array
+    public static function pairRound(int $round, array $entrants, array $games, float $win = 1.0, float $tie = 0.5, float $bye = 1.0, string $prefix = '', int $stage = 1, array $out = []): array
     {
         $table = Standings::table($entrants, $games, $win, $tie, $bye);
         $seeds = array_flip($entrants);
@@ -45,6 +46,8 @@ final class Swiss
         // Points, then seed: tie-breaks decide the final table, not who meets whom.
         $order = $entrants;
         usort($order, fn (int $a, int $b): int => ($points[$b] <=> $points[$a]) ?: ($seeds[$a] <=> $seeds[$b]));
+        // A disqualified entry is not paired (user 2026-10-25: players waited on games against disqualified opponents).
+        $order = array_values(array_diff($order, $out));
 
         $met = [];
         $byes = [];

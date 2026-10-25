@@ -135,6 +135,11 @@ final class TournamentMatchMaker
                 continue;
             }
 
+            // A side that is out (disqualified, withdrawn): no game starts, TournamentRunner::forfeitWithdrawn() decides it.
+            if ($match->slots->contains(fn ($slot): bool => TournamentRunner::isOut($tournament, $slot->participant))) {
+                continue;
+            }
+
             try {
                 // Each start under the tournament's lock (the one TournamentControl's pause takes), with the
                 // tournament and the match read anew: a pause, a correction or a restart after the list was

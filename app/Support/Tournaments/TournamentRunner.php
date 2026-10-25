@@ -194,7 +194,8 @@ final class TournamentRunner
 
         $options = $tournament->formatOptions();
         $seeds = array_values($tournament->participants()->whereNotNull('seed')->orderBy('seed')->pluck('id')->map(intval(...))->all());
-        $matches = Swiss::pairRound($last->number + 1, $seeds, $this->games($tournament), $options->pointsWin, $options->pointsTie, $options->pointsBye);
+        $out = array_values(TournamentParticipant::query()->whereIn('id', $seeds)->get()->filter(fn (TournamentParticipant $participant): bool => self::isOut($tournament, $participant))->pluck('id')->map(intval(...))->all());
+        $matches = Swiss::pairRound($last->number + 1, $seeds, $this->games($tournament), $options->pointsWin, $options->pointsTie, $options->pointsBye, out: $out);
         $round = TournamentRound::query()->create(['tournament_stage_id' => $stage->id, 'number' => $last->number + 1]);
 
         foreach ($matches as $match) {
@@ -1048,7 +1049,7 @@ final class TournamentRunner
      * disqualified (P18, both results modes), or withdrawn where the players
      * report.
      */
-    private static function isOut(Tournament $tournament, ?TournamentParticipant $participant): bool
+    public static function isOut(Tournament $tournament, ?TournamentParticipant $participant): bool
     {
         return $participant !== null && ($participant->isDisqualified() || (! $tournament->isDirectorMode() && self::isWithdrawn($participant)));
     }
