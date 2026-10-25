@@ -526,7 +526,7 @@ final class TournamentNow
             $elapsed = max(0, $nowMs - (int) $game->turn_started_ms);
             $left = max(0, (int) $game->white_ms - ($whiteToMove ? $elapsed : 0)) + max(0, (int) $game->black_ms - ($whiteToMove ? 0 : $elapsed));
             $latest = max($latest, $left);
-            $boards[] = ['label' => (string) __(':white against :black, move :move', ['white' => $game->white?->displayName() ?? '?', 'black' => $game->black?->displayName() ?? '?', 'move' => intdiv((int) $game->ply, 2) + 1]),
+            $boards[] = ['label' => (string) __(':white against :black, move :move', ['white' => $game->white->displayName(), 'black' => $game->black->displayName(), 'move' => intdiv((int) $game->ply, 2) + 1]),
                 'url' => route('games.show', ['game' => $game])];
         }
 
