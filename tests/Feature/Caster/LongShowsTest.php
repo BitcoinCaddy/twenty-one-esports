@@ -82,7 +82,8 @@ it('writes a long show segment by segment until it fills its window, one opener,
 
     expect($calls)->toBeGreaterThan(2)
         ->and(ScriptQueue::estimateSeconds($show['text']))->toBeGreaterThanOrEqual(0.75 * 360)
-        ->and(substr_count($show['text'], 'zwanzig Uhr drei'))->toBe(1)
+        ->and(substr_count($show['text'], 'Chat-Tribunal'))->toBeGreaterThanOrEqual(1)
+        ->and($show['text'])->not->toContain(' Uhr')
         ->and(count($lines))->toBe(count($show['speakers']))
         ->and(count($lines))->toBe(count(array_unique($lines)));
 

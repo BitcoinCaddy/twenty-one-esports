@@ -7,11 +7,13 @@ use App\Enums\TournamentStatus;
 use App\Models\BoardGame;
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Models\ChessGame;
 use App\Models\Tournament;
 use App\Models\TournamentParticipant;
 use App\Models\User;
 use App\Support\Caster\Programme\TournamentLive;
 use App\Support\Caster\ScriptQueue;
+use App\Support\Chess\ChessGameService;
 use App\Support\Tournaments\FormatOptions;
 use App\Support\Tournaments\GameProfile;
 use App\Support\Tournaments\TournamentBrackets;
@@ -126,4 +128,41 @@ it('airs its one draft when the checks turn it down, without the link, counted, 
         ->and($script->speakers)->toBe(['sirius'])
         ->and(DB::table('voice_rejections')->where('channel', TournamentLive::CHANNEL)->where('reason', VoiceGuard::URL)->value('count'))->toBe(1)
         ->and(DB::table('voice_usage')->where('channel', TournamentLive::CHANNEL)->value('accepted'))->toBe(1);
+});
+
+it('reads a chess tournament\'s live games: the boards on the go, who is to move and a fresh result (user, 2026-10-25)', function () {
+    $tournament = runningChess(TournamentFormat::Swiss, 4, TournamentResultsMode::Players);
+    $games = ChessGame::query()->with(['white', 'black'])->whereIn('tournament_match_id', $tournament->matches()->select('id'))->orderBy('id')->get();
+
+    expect($games)->toHaveCount(2)
+        ->and(TournamentLive::material($tournament, CarbonImmutable::now()))
+        ->toContain('Schach mit Uhr')->toContain('Gerade läuft Runde 1.')->not->toContain('Gruppenphase')->not->toContain('(Gruppe')->toContain('Bretter laufen gerade: 2, fertig: 0.')
+        ->toContain($games[0]->white->displayName().' gegen '.$games[0]->black->displayName().': noch kein Zug, am Zug: '.$games[0]->white->displayName().'.');
+
+    app(ChessGameService::class)->resign($games[0], $games[0]->black);
+
+    expect(TournamentLive::material($tournament, CarbonImmutable::now()))
+        ->toContain('Bretter laufen gerade: 1, fertig: 1.')
+        ->toContain('- Fertig: '.$games[0]->white->displayName().' gegen '.$games[0]->black->displayName().': gewonnen hat '.$games[0]->white->displayName().'.');
+});
+
+it('lets two live tournaments take turns, one comment each (user, 2026-10-25: "Das muss sich abwechseln können")', function () {
+    $chess = runningChess(TournamentFormat::Swiss, 4, TournamentResultsMode::Players);
+    $blockli = Tournament::factory()->create(['name' => 'Blockli Cup #1', 'game' => 'blockli', 'mode' => 'correspondence', 'status' => TournamentStatus::Running, 'starts_at' => now()->subDay()]);
+    $finished = Tournament::factory()->create(['status' => TournamentStatus::Finished]);
+    config(['tv.commentary.tournament_live.tournaments' => [$blockli->id, $chess->id, $finished->id]]);
+    [$first, $second] = $chess->id < $blockli->id ? [$chess, $blockli] : [$blockli, $chess];
+
+    VoiceAgent::fake(array_fill(0, 2, ['text' => "Markus: Breaking vom Turnier, Leute!\nSirius: Die Bretter laufen, und alle schwitzen.\nMarkus: So muss das sein.\nSirius: Und jetzt zurück zur Musik.", 'canon_id' => null, 'mood' => 'hype']));
+    $now = CarbonImmutable::now();
+
+    expect(TournamentLive::tournament()?->id)->toBe($first->id)
+        ->and(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now))->toBe(1)
+        ->and(TournamentLive::tournament()?->id)->toBe($second->id);
+
+    // The next comment once the last aired and the interval passed: it is the other tournament's, then the first's again.
+    CasterScript::query()->update(['status' => CasterScript::VOICED]);
+
+    expect(app(TournamentLive::class)->fill(app(ScriptQueue::class), $now->addMinutes(9)))->toBe(1)
+        ->and(TournamentLive::tournament()?->id)->toBe($first->id);
 });

@@ -3,10 +3,13 @@
 namespace App\Support\Caster\Programme;
 
 use App\Enums\BoardGameStatus;
+use App\Enums\ChessGameStatus;
+use App\Enums\TournamentFormat;
 use App\Enums\TournamentStatus;
 use App\Models\BoardGame;
 use App\Models\CasterClip;
 use App\Models\CasterScript;
+use App\Models\ChessGame;
 use App\Models\Tournament;
 use App\Models\TournamentParticipant;
 use App\Models\User;
@@ -17,9 +20,11 @@ use App\Support\Caster\ScenePhase;
 use App\Support\Caster\ScriptGuard;
 use App\Support\Caster\ScriptQueue;
 use App\Support\Nostr\RelayReader;
+use App\Support\Tournaments\TournamentRunner;
 use App\Support\Voice\VoiceAgent;
 use App\Support\Voice\VoiceUsage;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Responses\StructuredAgentResponse;
@@ -51,6 +56,9 @@ final class TournamentLive
     /** How many players one introduction comment presents (poker-style, from their Nostr bios). */
     private const INTRO_PLAYERS = 2;
 
+    /** The tournament the last comment was about: the next comment takes the next one (tournament()). */
+    private const TURN = 'caster:tournament_live:turn';
+
     public function __construct(private readonly DuetScripts $duets, private readonly VoiceUsage $usage) {}
 
     public static function enabled(): bool
@@ -59,16 +67,23 @@ final class TournamentLive
     }
 
     /**
-     * The tournament to talk about: a configured id, else the running organizer tournament that started last.
+     * The tournament the next comment is about: the configured ids that run take turns, one comment each (user,
+     * 2026-10-25: Blitz chess and Blockli Cup #1 live at once, "Das muss sich abwechseln können"); without ids the
+     * running organizer tournament that started last.
      */
     public static function tournament(): ?Tournament
     {
         $ids = array_values(array_filter(array_map('intval', (array) config('tv.commentary.tournament_live.tournaments', []))));
         $query = Tournament::query()->where('status', TournamentStatus::Running);
 
-        return $ids !== []
-            ? $query->whereIn('id', $ids)->orderByDesc('starts_at')->first()
-            : $query->whereNotNull('created_by_id')->whereNull('cup_series')->where('opened_by_league', false)->orderByDesc('starts_at')->first();
+        if ($ids === []) {
+            return $query->whereNotNull('created_by_id')->whereNull('cup_series')->where('opened_by_league', false)->orderByDesc('starts_at')->first();
+        }
+
+        $running = $query->whereIn('id', $ids)->orderBy('id')->get();
+        $last = Cache::get(self::TURN);
+
+        return $running->first(fn (Tournament $tournament): bool => is_int($last) && $tournament->id > $last) ?? $running->first();
     }
 
     /** Whether a comment waits: queued or being voiced, or voiced and ready in the spool, not aired yet. */
@@ -113,7 +128,7 @@ final class TournamentLive
         $intro = array_values(array_map(intval(...), $intro));
         $told = array_values(array_filter((array) Cache::get(self::TOLD.':'.$tournament->id, []), 'is_int'));
         $material = self::material($tournament, $now, $intro, $since, $told);
-        $finishedIds = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Finished)->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $finishedIds = self::games($tournament)->where('finished', true)->pluck('id')->all();
         $said = array_values(array_filter((array) Cache::get(self::SAID.':'.$tournament->id, []), 'is_string'));
 
         try {
@@ -135,6 +150,10 @@ final class TournamentLive
                 topic: self::TOPIC, speakers: $talk['speakers']);
             Cache::put(self::LAST, $queued !== null ? $now->getTimestamp() : $now->getTimestamp() - $every + 60, 6 * 3600);
 
+            if ($queued !== null) {
+                Cache::put(self::TURN, $tournament->id, 24 * 3600);
+            }
+
             return $queued !== null ? 1 : 0;
         }
 
@@ -153,6 +172,7 @@ final class TournamentLive
         }
 
         Cache::put(self::LAST, $now->getTimestamp(), 6 * 3600);
+        Cache::put(self::TURN, $tournament->id, 24 * 3600);
 
         return $queued !== null ? 1 : 0;
     }
@@ -186,16 +206,23 @@ final class TournamentLive
             $user->about = $bios[$user->pubkey] ?? $user->about;
         }
         $name = fn (?int $id): string => $id !== null && $users->has($id) ? $users[$id]->displayName() : 'unbekannt';
-        $groupOf = $participants->filter(fn ($p) => $p->user_id !== null)->mapWithKeys(fn ($p) => [$p->user_id => $p->group]);
+        // Only an entry with a group: a Swiss or knockout field has none, and "(Gruppe )" stood in its lines.
+        $groupOf = $participants->filter(fn ($p) => $p->user_id !== null && $p->group !== null)->mapWithKeys(fn ($p) => [$p->user_id => $p->group]);
         $options = (array) $tournament->options;
 
         $lines = [
             'Turnier: '.$tournament->title().' (Spiel '.$tournament->game.', Modus '.$tournament->mode.', Format '.$tournament->format->value
-                .(isset($options['groupStage']) ? ', Gruppenphase '.$options['groupStage'].', Gruppen zu '.($options['groupSize'] ?? '?').', die besten '.($options['advance'] ?? '?').' jeder Gruppe kommen weiter' : '').').',
+                .(isset($options['groupStage']) && $tournament->format === TournamentFormat::TwoStage ? ', Gruppenphase '.$options['groupStage'].', Gruppen zu '.($options['groupSize'] ?? '?').', die besten '.($options['advance'] ?? '?').' jeder Gruppe kommen weiter' : '').').',
             // No clock times in the material (user 2026-10-16: the breakings air too late for them - "liest du
             // lieber erst gar keine Uhrzeiten vor"): the day is all the model learns, never the hour.
             'Turnierstart: '.$tournament->starts_at->setTimezone('Europe/Berlin')->format('d.m.Y').' (keine Uhrzeit nennen, niemals).',
         ];
+
+        if ($tournament->game === 'chess') {
+            $round = TournamentRunner::currentRound($tournament);
+            $lines[] = 'Schach mit Uhr: jede Partie läuft live hier auf der Seite. Ein Sieg zählt einen Punkt, ein Remis einen halben.'
+                .($round !== null ? ' Gerade läuft Runde '.$round->number.'.' : '');
+        }
 
         if ($tournament->game === 'blockli') {
             $lines[] = 'Blockli ist digitales Quoridor: die eigene Figur als Erster auf die andere Seite bringen und dem Gegner Mauern in den Weg stellen, ohne ihn ganz einzusperren. Fernpartie heißt: bis zu 24 Stunden pro Zug, jeder spielt seine Gruppenpartien gleichzeitig.';
@@ -225,24 +252,22 @@ final class TournamentLive
             }
         }
 
-        $games = BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->get();
-        $active = $games->where('status', BoardGameStatus::Active);
-        $finished = $games->where('status', BoardGameStatus::Finished)->sortByDesc('ended_at');
+        $games = self::games($tournament);
+        $active = $games->where('finished', false);
+        $finished = $games->where('finished', true)->sortByDesc('ended_at');
 
         $lines[] = '';
         $lines[] = 'Bretter laufen gerade: '.$active->count().', fertig: '.$finished->count().'.';
 
         foreach ($active->sortByDesc('ply')->take(8) as $game) {
-            $toMove = $game->turn === 'w' ? $game->white_id : $game->black_id;
-            $lines[] = '- '.$name($game->white_id).' gegen '.$name($game->black_id).($groupOf->has($game->white_id) ? ' (Gruppe '.$groupOf[$game->white_id].')' : '')
-                .': '.((int) $game->ply === 0 ? 'noch kein Zug' : (int) $game->ply.' Züge gespielt').', am Zug: '.$name($toMove).'.';
+            $lines[] = '- '.$name($game['white_id']).' gegen '.$name($game['black_id']).($groupOf->has($game['white_id']) ? ' (Gruppe '.$groupOf[$game['white_id']].')' : '')
+                .': '.($game['ply'] === 0 ? 'noch kein Zug' : $game['ply'].' Züge gespielt').', am Zug: '.$name($game['to_move']).'.';
         }
 
         $wins = [];
 
         foreach ($finished as $game) {
-            $result = (string) $game->result;
-            $winnerId = $result === '1-0' ? $game->white_id : ($result === '0-1' ? $game->black_id : null);
+            $winnerId = $game['result'] === '1-0' ? $game['white_id'] : ($game['result'] === '0-1' ? $game['black_id'] : null);
 
             if ($winnerId !== null) {
                 $wins[$winnerId] = ($wins[$winnerId] ?? 0) + 1;
@@ -251,26 +276,61 @@ final class TournamentLive
 
         arsort($wins);
         $lines[] = 'Siege bisher: '.($wins === [] ? 'noch keine.' : implode(', ', array_map(fn ($id, $count): string => $name((int) $id).' '.$count, array_keys($wins), $wins)).'.');
-        $fresh = $finished->reject(fn (BoardGame $game): bool => in_array((int) $game->id, $told, true));
+        $fresh = $finished->reject(fn (array $game): bool => in_array($game['id'], $told, true));
         $lines[] = $fresh->isEmpty() ? 'NEUE Ergebnisse seit dem letzten Einwurf: keine. Erzählt keine alten Ergebnisse noch einmal.' : 'NEUE Ergebnisse seit dem letzten Einwurf (nur diese als Neuigkeit erzählen, ältere nicht wiederholen):';
 
         foreach ($fresh->take(6) as $game) {
-            $result = (string) $game->result;
-            $winner = match ($result) {
-                '1-0' => $name($game->white_id),
-                '0-1' => $name($game->black_id),
+            $winner = match ($game['result']) {
+                '1-0' => $name($game['white_id']),
+                '0-1' => $name($game['black_id']),
                 default => null,
             };
-            $lines[] = '- Fertig: '.$name($game->white_id).' gegen '.$name($game->black_id).': '.($winner !== null ? 'gewonnen hat '.$winner : ($result === '1/2-1/2' ? 'Remis' : 'Ergebnis offen')).'.';
+            $lines[] = '- Fertig: '.$name($game['white_id']).' gegen '.$name($game['black_id']).': '.($winner !== null ? 'gewonnen hat '.$winner : ($game['result'] === '1/2-1/2' ? 'Remis' : 'Ergebnis offen')).'.';
         }
 
-        $movers = $active->countBy(fn (BoardGame $game): int => (int) ($game->turn === 'w' ? $game->white_id : $game->black_id))->sortDesc()->take(3);
+        $movers = $active->countBy(fn (array $game): int => (int) $game['to_move'])->sortDesc()->take(3);
 
         foreach ($movers as $id => $count) {
             $lines[] = 'Am meisten offene Züge: '.$name((int) $id).' ist an '.$count.' Brettern am Zug.';
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * The tournament's games as plain rows, whatever the game: Blockli's boards (BoardGame) or chess games (ChessGame,
+     * user 2026-10-25: the Blitz tournament had no material, the comments read Blockli boards only). An aborted game
+     * is left out; the side to move of a chess game is read from its FEN.
+     *
+     * @return Collection<int, array{id: int, white_id: int|null, black_id: int|null, finished: bool, result: string, ply: int, to_move: int|null, ended_at: int}>
+     */
+    private static function games(Tournament $tournament): Collection
+    {
+        $matches = $tournament->matches()->select('id');
+
+        if ($tournament->game === 'chess') {
+            return ChessGame::query()->whereIn('tournament_match_id', $matches)->where('status', '!=', ChessGameStatus::Aborted)->get()
+                ->map(fn (ChessGame $game): array => [
+                    'id' => (int) $game->id, 'white_id' => $game->white_id, 'black_id' => $game->black_id,
+                    'finished' => $game->status === ChessGameStatus::Finished, 'result' => self::result($game->result), 'ply' => (int) $game->ply,
+                    'to_move' => (explode(' ', (string) $game->fen)[1] ?? 'w') === 'b' ? $game->black_id : $game->white_id,
+                    'ended_at' => (int) $game->ended_at?->getTimestamp(),
+                ])->values();
+        }
+
+        return BoardGame::query()->whereIn('tournament_match_id', $matches)->whereIn('status', [BoardGameStatus::Active, BoardGameStatus::Finished])->get()
+            ->map(fn (BoardGame $game): array => [
+                'id' => (int) $game->id, 'white_id' => $game->white_id, 'black_id' => $game->black_id,
+                'finished' => $game->status === BoardGameStatus::Finished, 'result' => self::result($game->result), 'ply' => (int) $game->ply,
+                'to_move' => $game->turn === 'w' ? $game->white_id : $game->black_id,
+                'ended_at' => (int) $game->ended_at?->getTimestamp(),
+            ])->values();
+    }
+
+    /** A game's result as the material reads it ("1-0", "0-1", "1/2-1/2", or empty while it runs). */
+    private static function result(?string $result): string
+    {
+        return (string) $result;
     }
 
     /**

@@ -55,11 +55,19 @@ class RubricScripts
     public const EMPTY = 'rubric_empty';
 
     /** The opening line, by slot (each at least seven words, like every spoken sentence). */
+    /**
+     * Without the hour (user, 2026-10-25: a hotline written for 18 Oct, 21:03 aired a week later at 20:42 saying "um
+     * einundzwanzig Uhr drei"): a show that misses its slot airs late (fillRubric(), user 2026-10-18), so what is
+     * rendered ahead never names the time it was meant for.
+     */
     private const OPENERS = [
-        'Es ist %s auf TWENTY ONE TV, und jetzt ist Zeit für %s.',
-        'Wir haben %s, ihr hört TWENTY ONE TV, und jetzt kommt %s.',
-        'Hier ist TWENTY ONE TV um %s, und das heißt jetzt: %s.',
+        'Ihr hört TWENTY ONE TV, und jetzt ist Zeit für %s.',
+        'Hier ist TWENTY ONE TV, und jetzt kommt %s.',
+        'TWENTY ONE TV, und das heißt jetzt: %s.',
     ];
+
+    /** A line that names a clock time: it leaves every show, which may air later than its slot. */
+    public const CLOCK_TIME = '/\b(?:uhr|zur vollen stunde|um halb|viertel nach|viertel vor|dreiviertel)\b/iu';
 
     /** @var array{text: string, speakers: list<string>}|null the last draft evaluate() checked, turned down or not */
     private ?array $draft = null;
@@ -124,10 +132,7 @@ class RubricScripts
                 if ($content !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
-                    return [
-                        'text' => implode("\n", [self::opener($this->clock()->spokenTime($slot['starts_at']), Rubrics::CATALOGUE[$id]['name'], $slot['key']), $content['text']]),
-                        'speakers' => [DuetDirector::MARKUS, ...$content['speakers']],
-                    ];
+                    return self::framed(Rubrics::CATALOGUE[$id]['name'], $slot['key'], $content, DuetDirector::MARKUS);
                 }
 
                 $this->usage->recordRejection(self::CHANNEL, $rejected);
@@ -215,10 +220,32 @@ class RubricScripts
             && preg_match('/(?<![\p{L}\p{N}])'.preg_quote($name, '/').'(?![\p{L}\p{N}])/iu', $line) === 1));
     }
 
-    /** The opening line: the slot's time and the rubric's name. */
-    public static function opener(string $spokenTime, string $name, int $slotKey): string
+    /** The opening line: the rubric's name, never the slot's time. */
+    public static function opener(string $name, int $slotKey): string
     {
-        return sprintf(self::OPENERS[intdiv($slotKey, 1800) % count(self::OPENERS)], $spokenTime, $name);
+        return sprintf(self::OPENERS[intdiv($slotKey, 1800) % count(self::OPENERS)], $name);
+    }
+
+    /**
+     * A show as it is queued: the opener read by `$host`, then the content without any line that names a clock time
+     * (CLOCK_TIME), each line keeping its speaker.
+     *
+     * @param  array{text: string, speakers: list<string>}  $content
+     * @return array{text: string, speakers: list<string>}
+     */
+    public static function framed(string $name, int $slotKey, array $content, string $host): array
+    {
+        $lines = [self::opener($name, $slotKey)];
+        $speakers = [$host];
+
+        foreach (ScriptGuard::lines($content['text']) as $index => $line) {
+            if (preg_match(self::CLOCK_TIME, $line) !== 1) {
+                $lines[] = $line;
+                $speakers[] = $content['speakers'][$index] ?? $host;
+            }
+        }
+
+        return ['text' => implode("\n", $lines), 'speakers' => $speakers];
     }
 
     /**
@@ -252,7 +279,7 @@ class RubricScripts
         };
 
         return implode("\n\n", array_filter([
-            "Auftrag\n\n{$name} auf TWENTY ONE TV, eine feste Rubrik wie im Radio. Die Ansage mit Uhrzeit und Rubrikname ist schon geschrieben; du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, etwa eine bis zweieinhalb Minuten gesprochen, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
+            "Auftrag\n\n{$name} auf TWENTY ONE TV, eine feste Rubrik wie im Radio. Die Ansage mit dem Rubriknamen ist schon geschrieben (ohne Uhrzeit, und auch du nennst nie eine Uhrzeit: die Rubrik kann später laufen als geplant); du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, etwa eine bis zweieinhalb Minuten gesprochen, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
             $sirius
                 ? "Sprecher\n\nMarkus führt durch die Rubrik, Sirius ist dabei, wie ihn sein Persona-Block oben beschreibt: die beiden wechseln sich ab, Sirius hakt nach, widerspricht oder legt eine eigene kleine Geschichte drauf, und Markus führt zurück zum Thema."
                     .' Sirius beginnt nie mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“ oder „Richtig“. Jeder Satz steht in einer eigenen Zeile und beginnt mit „Markus:“ oder „Sirius:“.'

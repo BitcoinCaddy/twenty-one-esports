@@ -362,7 +362,7 @@ it('writes the live talk into the 18:15 slot: the host reads the opener, three v
     $rows = CasterScript::query()->where('topic', Shows::STAMMTISCH)->orderBy('id')->get();
     $speakers = $rows->flatMap(fn (CasterScript $row): array => $row->lineSpeakers() ?? [])->all();
 
-    expect($rows->first()->sentences()[0])->toContain('Turm und Genossin, der Talk')->toContain('achtzehn Uhr fünfzehn')
+    expect($rows->first()->sentences()[0])->toContain('Turm und Genossin, der Talk')->not->toContain('Uhr')
         ->and($speakers[0])->toBe('sirius')
         ->and(array_values(array_unique($speakers)))->toEqualCanonicalizing(['sirius', 'genossin', 'markus'])
         ->and($prompts)->toHaveCount(1)

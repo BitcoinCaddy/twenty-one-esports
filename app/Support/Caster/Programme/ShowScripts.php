@@ -136,10 +136,7 @@ class ShowScripts
             $content = Shows::slotMinutes($id) !== null ? $this->inSegments($id, $material, $context) : $this->call($id, $material, $context, null);
 
             if ($content !== null) {
-                return [
-                    'text' => implode("\n", [RubricScripts::opener(($this->clock ?? BroadcastClock::fromConfig())->spokenTime($slot['starts_at']), Shows::CATALOGUE[$id]['name'], $slot['key']), $content['text']]),
-                    'speakers' => [DuetDirector::MARKUS, ...$content['speakers']],
-                ];
+                return RubricScripts::framed(Shows::CATALOGUE[$id]['name'], $slot['key'], $content, DuetDirector::MARKUS);
             }
         } catch (Throwable $exception) {
             if (Cache::add('caster:show-failed-logged', true, 600)) {
@@ -523,7 +520,7 @@ class ShowScripts
             ."\nKein Satz aus „Bisher gesendet“ kommt noch einmal, und kein Witz wird wiederholt.";
 
         return implode("\n\n", array_filter([
-            "Auftrag\n\n{$name} auf TWENTY ONE TV, ein festes Format wie im Radio, etwa {$minutes} Minuten lang. Die Ansage mit Uhrzeit und Name ist schon geschrieben; du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
+            "Auftrag\n\n{$name} auf TWENTY ONE TV, ein festes Format wie im Radio, etwa {$minutes} Minuten lang. Die Ansage mit dem Namen ist schon geschrieben (ohne Uhrzeit, und auch ihr nennt nie eine Uhrzeit: die Sendung kann später laufen als geplant); du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
             "Sprecher\n\n{$roles}\n{$speakers}, jeder kommt oft zu Wort, wie die Persona-Blöcke oben sie beschreiben. Niemand beginnt mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“ oder „Richtig“. Jeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt („{$lead}: …“).",
             "So geht das Format\n\n".$how
                 ."\n- Gnadenlos roasten wie oben unter „Haltung und Sinn“, aber jede Tatsache nur aus dem Material: keine Zahl, kein Jahr, kein Datum, kein Name und kein Ort, der dort nicht steht. Eure Meinung, eure Vergleiche und eure Pointen sind frei, eure Fakten nicht."

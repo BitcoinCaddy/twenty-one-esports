@@ -123,10 +123,7 @@ class RoastScripts
                 if ($content !== null) {
                     $this->usage->recordOutcome(self::CHANNEL, 'accepted');
 
-                    return [
-                        'text' => implode("\n", [RubricScripts::opener(($this->clock ?? BroadcastClock::fromConfig())->spokenTime($slot['starts_at']), Roasts::CATALOGUE[$id]['name'], $slot['key']), $content['text']]),
-                        'speakers' => [DuetDirector::MARKUS, ...$content['speakers']],
-                    ];
+                    return RubricScripts::framed(Roasts::CATALOGUE[$id]['name'], $slot['key'], $content, DuetDirector::MARKUS);
                 }
 
                 $this->usage->recordRejection(self::CHANNEL, $rejected);
@@ -258,7 +255,7 @@ class RoastScripts
         };
 
         return implode("\n\n", array_filter([
-            "Auftrag\n\n{$name} auf TWENTY ONE TV, ein festes Roast-Format wie im Radio. Die Ansage mit Uhrzeit und Formatname ist schon geschrieben; du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, etwa zwei bis vier Minuten gesprochen, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
+            "Auftrag\n\n{$name} auf TWENTY ONE TV, ein festes Roast-Format wie im Radio. Die Ansage mit dem Formatnamen ist schon geschrieben (ohne Uhrzeit, und auch ihr nennt nie eine Uhrzeit: das Format kann später laufen als geplant); du schreibst nur den Inhalt danach, {$min} bis {$max} Sätze, etwa zwei bis vier Minuten gesprochen, gesprochen auf Deutsch. ".CasterVoice::SENTENCE_STYLE,
             "Sprecher\n\n".implode(', ', $names)." im Wechsel, wie sie die Persona-Blöcke oben beschreiben: {$lead} führt, {$others} widerspricht, legt nach oder zieht {$lead} auf, und jeder kommt mehrmals zu Wort."
                 .' Niemand beginnt mit Zustimmungsfloskeln wie „Genau“, „Ja“, „Stimmt“ oder „Richtig“. Jeder Satz steht in einer eigenen Zeile und beginnt mit dem Namen des Sprechers und einem Doppelpunkt („'.$lead.': …“).',
             "So geht das Format\n\n".$how.$sources

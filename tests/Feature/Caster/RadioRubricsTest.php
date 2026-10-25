@@ -225,8 +225,9 @@ it('writes a rubric: the time and its name first, then sixty to one hundred fift
     $lines = ScriptGuard::lines($rubric['text']);
     $content = implode("\n", array_slice($lines, 1));
 
-    expect($lines[0])->toBe(RubricScripts::opener('vierzehn Uhr fünfzehn', 'die Liga-Rubrik', $slot['key']))
-        ->and($lines[0])->toContain('vierzehn Uhr fünfzehn')->toContain('Liga-Rubrik')
+    expect($lines[0])->toBe(RubricScripts::opener('die Liga-Rubrik', $slot['key']))
+        // No clock time (user, 2026-10-25): a rubric that misses its slot airs late.
+        ->and($lines[0])->not->toContain('Uhr')->toContain('Liga-Rubrik')
         ->and(ScriptQueue::estimateSeconds($content))->toBeGreaterThanOrEqual(60.0)->toBeLessThanOrEqual(150.0)
         ->and($rubric['speakers'])->toHaveCount(count($lines))
         ->and(array_unique($rubric['speakers']))->toBe([DuetDirector::MARKUS]);
@@ -426,4 +427,14 @@ it('airs a due show while the track-change jingle watches the calm air (prod 202
     File::deleteDirectory($dir);
 
     expect($played)->toBeTrue();
+});
+
+it('frames a show without a clock time: the opener names no hour and a content line that does leaves with its speaker (user, 2026-10-25)', function () {
+    $show = RubricScripts::framed('Satoshis Hotline', 0, [
+        'text' => "Erste Frage aus dem Chat.\nUm einundzwanzig Uhr geht es weiter.\nZur vollen Stunde gibt es Nachrichten.\nZweite Frage, danke fürs Zuhören.",
+        'speakers' => ['sirius', 'markus', 'sirius', 'markus'],
+    ], 'markus');
+
+    expect(ScriptGuard::lines($show['text']))->toBe(['Ihr hört TWENTY ONE TV, und jetzt ist Zeit für Satoshis Hotline.', 'Erste Frage aus dem Chat.', 'Zweite Frage, danke fürs Zuhören.'])
+        ->and($show['speakers'])->toBe(['markus', 'sirius', 'markus']);
 });

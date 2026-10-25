@@ -359,7 +359,7 @@ it('writes a format: the time and its name first, the cast in turns, the data in
     $lines = ScriptGuard::lines($show['text']);
 
     expect($calls)->toBe(2)
-        ->and($lines[0])->toContain('zwanzig Uhr fünfundvierzig')->toContain('das Chat-Tribunal')
+        ->and($lines[0])->not->toContain('Uhr')->toContain('das Chat-Tribunal')
         ->and($show['text'])->not->toContain('Gestern bekommt')
         ->and($show['speakers'])->toHaveCount(count($lines))
         ->and(array_values(array_unique($show['speakers'])))->toEqualCanonicalizing([DuetDirector::MARKUS, DuetDirector::SIRIUS]);

@@ -115,7 +115,6 @@ class TalkShowScripts
         private readonly VoiceUsage $usage,
         private readonly ScriptGuard $scriptGuard = new ScriptGuard,
         private readonly VoiceHygiene $hygiene = new VoiceHygiene,
-        private readonly ?BroadcastClock $clock = null,
     ) {}
 
     /**
@@ -129,11 +128,8 @@ class TalkShowScripts
     {
         $content = $this->run($material, false, $now);
 
-        return $content === null ? null : [
-            'text' => implode("\n", [RubricScripts::opener(($this->clock ?? BroadcastClock::fromConfig())->spokenTime($slot['starts_at']), Shows::CATALOGUE[Shows::STAMMTISCH]['name'], $slot['key']), $content['text']]),
-            // The host reads the format's opening line.
-            'speakers' => [TalkShow::HOST, ...$content['speakers']],
-        ];
+        // The host reads the format's opening line.
+        return $content === null ? null : RubricScripts::framed(Shows::CATALOGUE[Shows::STAMMTISCH]['name'], $slot['key'], $content, TalkShow::HOST);
     }
 
     /**
@@ -772,7 +768,7 @@ class TalkShowScripts
                 ." Sirius ist der Gastgeber, Markus Turm und {$guest} sind die beiden Gäste und streiten gegeneinander. "
                 .($evergreen
                     ? 'Diese Ausgabe läuft im Programmvorrat an einem späteren Tag zu einer unbekannten Uhrzeit: zeitlos, ohne Uhrzeit, Tageszeit, Wochentag oder Datum, nie „heute“, „gestern“, „morgen“, „gerade eben“ oder „vorhin“, keine aktuellen Nachrichten. Das Thema steht im Material.'
-                    : 'Die Ansage mit Uhrzeit und Name ist schon geschrieben; du schreibst nur, was danach kommt. Anlass ist die echte Schlagzeile im Material.')
+                    : 'Die Ansage mit dem Namen ist schon geschrieben (ohne Uhrzeit, und auch ihr nennt nie eine Uhrzeit: die Sendung kann später laufen als geplant); du schreibst nur, was danach kommt. Anlass ist die echte Schlagzeile im Material.')
                 ." {$min} bis {$max} Sätze, gesprochen auf Deutsch, höchstens zweiunddreißig Wörter pro Satz; im Kreuzfeuer gern kurze Einzeiler ab drei Wörtern, sonst ganze Sätze.",
             "Die Rollen\n\n- Sirius, der Gastgeber: die Parodie eines bekannten Typs von Fernseh-Talkmaster, ohne je einen echten Namen zu nennen oder jemand Echtes zu sein. Er moderiert durch Fragen: mindestens sieben von zehn seiner Wortmeldungen sind eine zugespitzte Frage oder enden mit einer, gerichtet an einen Gast mit Namen („Herr Turm, ganz konkret: wer bezahlt dann die Straße?“, „Genossin Gisela, ja oder nein?“, „Was heißt das denn jetzt für die Rentnerin an der Kasse?“). Er hakt nach, wenn eine Antwort ausweicht („Das war keine Antwort auf meine Frage“), stellt die Frage anders, fragt „Mal angenommen, …, was dann?“, ".($evergreen ? 'spitzt eine These eines Gastes zu und will eine Reaktion des anderen' : 'liest die Schlagzeile vor und will eine Reaktion')
                 .', unterbricht mit „Moment, Moment, lassen Sie ihn ausreden“ und fragt dann den anderen, liest eine Zuschauerfrage vor, stellt Entweder-oder-Fragen und fragt „Was genau meinen Sie damit?“. Feststellungen wie „Ich halte fest“ höchstens zweimal pro Sendung, und danach kommt sofort eine Frage. Er siezt beide Gäste („Herr Turm“, „Genossin Gisela“), fällt ins Wort, würgt Monologe ab und gießt Öl ins Feuer; seine Wendungen stehen unten im eigenen Block.'
