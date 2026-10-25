@@ -61,13 +61,22 @@ final class ProfileCache
      */
     public static function acceptBatch(array $inputs): Collection
     {
+        return self::acceptEvents(array_values(array_filter(array_map(SignedEvent::fromInput(...), array_slice(array_values($inputs), 0, self::MAX_BATCH)))));
+    }
+
+    /**
+     * Profiles the server read from the relays itself (the payouts page's refresh), checked like a browser's.
+     *
+     * @param  list<SignedEvent>  $events
+     * @return Collection<int, User>
+     */
+    public static function acceptEvents(array $events): Collection
+    {
         // Newest well-formed kind 0 per pubkey, before any database or Schnorr work.
         $newest = [];
 
-        foreach (array_slice(array_values($inputs), 0, self::MAX_BATCH) as $input) {
-            $event = SignedEvent::fromInput($input);
-
-            if ($event === null || $event->kind !== 0) {
+        foreach (array_slice($events, 0, self::MAX_BATCH) as $event) {
+            if ($event->kind !== 0) {
                 continue;
             }
 

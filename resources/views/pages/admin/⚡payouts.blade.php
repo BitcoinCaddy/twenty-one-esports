@@ -161,6 +161,54 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
         unset($this->payouts);
     }
 
+    /**
+     * Reminds a winner without a Lightning address to add one (user 2026-10-25): bell and DM, NIP-17 to a DM inbox,
+     * else NIP-04 (DmRoute), at most once an hour per prize.
+     */
+    public function remindAddress(int $payoutId, \App\Support\Notifications\Notifier $notifier): void
+    {
+        Gate::authorize('admin');
+        $payout = $this->payout($payoutId);
+        $user = $payout->user;
+
+        if ($user === null || $payout->status !== PayoutStatus::Open || ! \Illuminate\Support\Facades\Cache::add('payout:remind:'.$payout->id, true, 3600)) {
+            $this->notice = __('This winner was reminded within the last hour.');
+
+            return;
+        }
+
+        $locale = $user->locale ?? (string) config('app.locale');
+        $channels = $notifier->send($user, \App\Enums\NotificationKind::TournamentNews, new \App\Support\Notifications\Notice(
+            __('Your prize from :tournament is waiting', ['tournament' => $payout->tournament->name], $locale),
+            __('Add a Lightning address (lud16) to your Nostr profile so the league can pay you :sats sats.', ['sats' => PreSeason::formatSats($payout->amount_sats)], $locale),
+            route('tournaments.show', $payout->tournament),
+            null,
+            __('Open tournament', [], $locale),
+        ), immediate: true);
+
+        $this->notice = in_array('dm', $channels, true) ? __(':name was reminded by DM and in the bell.', ['name' => $payout->name]) : __(':name was reminded in the bell (no DM: switched off by the player).', ['name' => $payout->name]);
+    }
+
+    /** Reads the open winners' profiles from the relays now, so an address added since shows at once (user 2026-10-25). */
+    public function refreshProfiles(\App\Support\Nostr\RelayReader $reader): void
+    {
+        Gate::authorize('admin');
+        $pubkeys = $this->payouts->filter(fn (TournamentPayout $payout): bool => $payout->status === PayoutStatus::Open)->pluck('pubkey')->filter()->unique()->values()->all();
+
+        if ($pubkeys === []) {
+            $this->notice = __('No open prize waits for a profile.');
+
+            return;
+        }
+
+        $relays = array_values(array_unique(array_filter([...(array) config('esports.profile_relays', []), ...(array) config('esports.stream_chat.indexer_relays', []), ...(array) config('esports.relays', [])], 'is_string')));
+        $events = $reader->fetchCounted([['kinds' => [0], 'authors' => $pubkeys, 'limit' => count($pubkeys) * 2]], $relays, [], 1, microtime(true) + 10)['events'];
+        $updated = \App\Support\Nostr\ProfileCache::acceptEvents($events);
+
+        $this->notice = trans_choice(':count profile read from the relays, :changed changed.|:count profiles read from the relays, :changed changed.', count($events), ['changed' => $updated->count()]);
+        unset($this->payouts);
+    }
+
     /** The admin approves the address the player's profile shows now (security gate F3). */
     public function approveAddress(int $payoutId, string $address, PayoutApproval $approval): void
     {
@@ -306,6 +354,12 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
             @else
                 <div class="flex flex-wrap items-center gap-3">
                     <x-button icon="bolt" wire:click="payAll" wire:confirm="{{ __('Send :count payments, :sats sats in all?', ['count' => $pending->count(), 'sats' => $sats((int) $pending->sum('amount_sats'))]) }}" :disabled="! $payingHere || $pending->isEmpty()" class="disabled:cursor-default disabled:opacity-50" data-test="pay-all">{{ __('Pay all ready (:count)', ['count' => $pending->count()]) }}</x-button>
+                    @if ($payouts->contains(fn ($p) => $p->status === PayoutStatus::Open))
+                        <x-button variant="secondary" icon="retry" wire:click="refreshProfiles" wire:loading.attr="disabled" wire:target="refreshProfiles" data-test="refresh-profiles">
+                            <span wire:loading.remove wire:target="refreshProfiles">{{ __('Reload profiles') }}</span>
+                            <span wire:loading wire:target="refreshProfiles">{{ __('Reading the relays…') }}</span>
+                        </x-button>
+                    @endif
                     @unless ($payingHere)<span class="text-[13px] text-loss">{{ __('The connection of this pot’s own wallet is missing, so nothing can be paid out.') }}</span>@endunless
                 </div>
 
@@ -347,6 +401,9 @@ new #[Title('Payouts')] #[Layout('layouts::app', ['section' => 'admin'])] class 
                                                 <span wire:loading.remove wire:target="pay({{ $payout->id }})">{{ $payout->status === PayoutStatus::Failed ? __('Retry') : __('Pay') }}</span>
                                                 <span wire:loading wire:target="pay({{ $payout->id }})">{{ __('Starting…') }}</span>
                                             </x-button>
+                                        @endif
+                                        @if ($payout->status === PayoutStatus::Open && $payout->reason === 'no_lud16')
+                                            <x-button variant="quiet" wire:click="remindAddress({{ $payout->id }})" wire:loading.attr="disabled" wire:target="remindAddress({{ $payout->id }})" data-test="remind-address">{{ __('Remind') }}</x-button>
                                         @endif
                                         @if (in_array($payout->status, [PayoutStatus::Open, PayoutStatus::Pending, PayoutStatus::Failed], true))
                                             <x-button variant="quiet" wire:click="forward({{ $payout->id }})" wire:confirm="{{ __(':name passes :sats sats on to the next pot? They are not paid out, the tournament page shows it.', ['name' => $payout->name, 'sats' => $sats($payout->amount_sats)]) }}" x-on:click="navigator.vibrate?.(15)" data-test="forward-one">{{ __('Pass on') }}</x-button>
