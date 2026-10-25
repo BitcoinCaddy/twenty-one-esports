@@ -48,7 +48,8 @@ new #[Title('Badges and sharing')] class extends Component {}; ?>
     <x-settings.header current="badges" />
 
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,400px)]">
-        <section id="share" aria-labelledby="sh-h" class="flex min-w-0 flex-col gap-4 self-start rounded-lg bg-card px-4 py-5 lg:order-first lg:px-6" data-test="share-moments">
+        {{-- @container: card beside text only when the column itself has room (user 2026-10-25: at ~1175 px beside the rail and the badges the text kept 40 px). --}}
+        <section id="share" aria-labelledby="sh-h" class="@container flex min-w-0 flex-col gap-4 self-start rounded-lg bg-card px-4 py-5 lg:order-first lg:px-6" data-test="share-moments">
             <span class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <h2 id="sh-h" class="m-0 text-[15px] font-bold">{{ __('Share your moments') }}</h2>
                 <span class="text-xs text-ink-2">{{ __('A post signed by you, with the card. Or download the card for Signal and Telegram.') }}</span>
@@ -58,9 +59,9 @@ new #[Title('Badges and sharing')] class extends Component {}; ?>
             @else
                 <ul class="m-0 flex list-none flex-col gap-5 p-0">
                     @foreach ($moments as $moment)
-                        <li wire:key="moment-{{ $moment['type'] }}-{{ $moment['id'] }}" class="flex min-w-0 flex-col gap-3 border-b border-hairline pb-5 last:border-0 last:pb-0 sm:flex-row sm:items-start" data-test="share-moment" data-type="{{ $moment['type'] }}">
+                        <li wire:key="moment-{{ $moment['type'] }}-{{ $moment['id'] }}" class="flex min-w-0 flex-col gap-3 border-b border-hairline pb-5 last:border-0 last:pb-0 @min-[32rem]:flex-row @min-[32rem]:items-start" data-test="share-moment" data-type="{{ $moment['type'] }}">
                             <img src="{{ $moment['card']->path('wide') }}" alt="{{ $moment['title'] }}" width="1200" height="630" loading="lazy"
-                                 class="aspect-[1200/630] h-auto w-full shrink-0 rounded-md shadow-ring sm:w-[240px]">
+                                 class="aspect-[1200/630] h-auto w-full shrink-0 rounded-md shadow-ring @min-[32rem]:w-[240px]">
                             <div class="flex min-w-0 flex-col gap-2">
                                 <span class="flex min-w-0 flex-col gap-0.5">
                                     <b class="text-[13px] [overflow-wrap:anywhere]">{{ $moment['title'] }}</b>

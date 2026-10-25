@@ -58,3 +58,32 @@ test('the profile page and the prize hint stay inside the screen at 390 and 1440
 
     fwrite(STDERR, "\n[profile] ".json_encode($measured)."\n");
 });
+
+test('a shared moment keeps its text readable beside or under the card at 390, 1180, 1440 and 1920 (user 2026-10-25); clean console', function () {
+    $tournament = finishedPoolTournament(fakeWallet());
+    $champion = app(App\Support\Tournaments\TournamentChampion::class)->of($tournament);
+    $user = User::query()->findOrFail($champion->user_id);
+    $user->forceFill(['locale' => 'de'])->save();
+
+    $webpage = visit(BrowserLogin::url($user));
+    $page = $webpage->page();
+    $page->context()->addInitScript(BrowserConsole::COLLECTOR);
+    $measured = [];
+
+    foreach ([[390, 844], [1180, 900], [1440, 900], [1920, 1080]] as [$width, $height]) {
+        $page->setViewportSize($width, $height);
+        $page->goto(ComputeUrl::from(route('settings.badges')));
+        BrowserWait::until($page, '() => document.querySelector("[data-test=share-moment]") !== null && document.readyState === "complete"', 10_000);
+        $m = $page->evaluate('() => { const li = document.querySelector("[data-test=share-moment]"), img = li.querySelector("img"), text = li.querySelector("b").parentElement.parentElement;
+            return { scroll: [document.documentElement.scrollWidth, document.documentElement.clientWidth], li: Math.round(li.getBoundingClientRect().width), img: Math.round(img.getBoundingClientRect().width), text: Math.round(text.getBoundingClientRect().width), beside: img.getBoundingClientRect().top === text.getBoundingClientRect().top }; }');
+        tournamentLiveShot($page, "badges-{$width}");
+        $measured[$width] = $m;
+
+        expect($m['scroll'][0])->toBeLessThanOrEqual($m['scroll'][1])
+            ->and($m['text'])->toBeGreaterThanOrEqual(200);
+        $webpage->assertNoJavaScriptErrors();
+    }
+
+    expect($page->evaluate('() => window.__errors'))->toBe([]);
+    fwrite(STDERR, "\n[badges] ".json_encode($measured)."\n");
+});
