@@ -19,15 +19,15 @@ test('a guest is sent to log in', function () {
     $this->get(route('dashboard'))->assertRedirect(route('login'));
 });
 
-test('a brand-new player sees the three first steps first, and every part says what fills it', function () {
-    $html = $this->actingAs(User::factory()->create(['name' => 'Newbie']))->get(route('dashboard'))->assertOk()->getContent();
+test('a brand-new player sees the four first steps first, and every part says what fills it', function () {
+    $html = $this->actingAs(User::factory()->create(['name' => 'Newbie', 'profile_event_at' => null, 'lud16' => null]))->get(route('dashboard'))->assertOk()->getContent();
 
     expect($html)->not->toContain('Coming soon')
         ->toContain('Newbie')
         ->toContain('data-test="me-steps"')
         ->toContain(__('Your first steps'))
-        ->toContain(__(':done of :total done', ['done' => 0, 'total' => 3]))
-        ->and(substr_count($html, 'data-done="false"'))->toBe(3)
+        ->toContain(__(':done of :total done', ['done' => 0, 'total' => 4]))
+        ->and(substr_count($html, 'data-done="false"'))->toBe(4)
         // Gamer tags are optional (P51): no step asks for them.
         ->and($html)->not->toContain('data-step="tags"')
         ->not->toContain(__('Add your gamer tags'))
@@ -43,8 +43,9 @@ test('a brand-new player sees the three first steps first, and every part says w
         ->toContain(route('tournaments.index'));
 });
 
-test('a first step ticks off once done, and the steps go once all three are', function () {
+test('a first step ticks off once done, and the steps go once all four are', function () {
     $player = meHubPlayer(results: 2);
+    $player['me']->forceFill(['profile_event_at' => now(), 'lud16' => 'me@wallet.example'])->save();
     $html = $this->actingAs($player['me'])->get(route('dashboard'))->assertOk()->getContent();
 
     // Blitz played, a clan, a tournament: nothing left to show.
@@ -60,7 +61,7 @@ test('a first step ticks off once done, and the steps go once all three are', fu
     expect($html)->toContain('data-test="me-steps"')
         ->toContain(__('First steps'))
         ->not->toContain(__('Your first steps'))
-        ->toContain(__(':done of :total done', ['done' => 2, 'total' => 3]))
+        ->toContain(__(':done of :total done', ['done' => 3, 'total' => 4]))
         ->toContain('data-step="clan" data-done="false"')
         ->toContain('data-step="blitz" data-done="true"')
         // Not a new player: what needs them stays above the steps.

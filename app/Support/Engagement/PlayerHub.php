@@ -388,6 +388,9 @@ final class PlayerHub
             ->where('signup_closes_at', '>', now())->orderBy('starts_at')->first();
 
         return [
+            // A name and a Lightning address first: Google sign-ins start with neither (user 2026-10-25).
+            ['key' => 'profile', 'label' => __('Set up name and Lightning address'), 'href' => route('settings.profile'),
+                'done' => $this->user->profile_event_at !== null && $this->user->lud16 !== null],
             ['key' => 'blitz', 'label' => __('Play a chess game'), 'href' => route('chess.lobby'),
                 'done' => ChessGame::query()->where('status', ChessGameStatus::Finished)->where(fn ($query) => $query->where('white_id', $me)->orWhere('black_id', $me))->exists()],
             ['key' => 'clan', 'label' => __('Join a clan'), 'href' => route('clans.index'),

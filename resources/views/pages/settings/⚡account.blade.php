@@ -132,7 +132,7 @@ new #[Title('Account')] class extends Component {
                     </div>
                 </div>
                 @error('avatar')<span class="text-xs text-loss" role="alert">{{ $message }}</span>@enderror
-                <span class="text-xs leading-normal text-ink-2">{{ __('Your name comes from your Nostr profile. An avatar uploaded here replaces your Nostr picture on this site, and other players see it.') }}</span>
+                <span class="text-xs leading-normal text-ink-2">{{ __('An avatar uploaded here replaces your Nostr picture on this site, and other players see it.') }} <a href="{{ route('settings.profile') }}" class="text-btc-hi underline underline-offset-4" data-test="account-profile-link">{{ __('Change your name and Lightning address') }}</a></span>
             </div>
 
             {{-- Short fields side by side where the column is wide (user 2026-10-25: the form stood as a tall narrow tube). --}}

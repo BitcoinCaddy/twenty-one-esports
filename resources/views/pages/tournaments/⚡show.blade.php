@@ -1051,6 +1051,13 @@ new #[Layout('layouts::app', ['section' => 'tournaments', 'realtime' => true, 's
                 @elseif (($championMoment['viewer']['state'] ?? null) === 'placed')
                     <p class="m-0 text-[13px] text-ink-2" data-test="champion-you">{{ __('You finished in place :place', ['place' => $championMoment['viewer']['place']]) }}. {{ __('Thanks for playing!') }}</p>
                 @endif
+                @if (auth()->check() && auth()->user()->lud16 === null && $tournament->hasPot() && ! in_array($status, [TournamentStatus::Finished, TournamentStatus::Cancelled], true))
+                    {{-- Prizes need a Lightning address; Google sign-ins have none (user 2026-10-25): say so before a prize waits. --}}
+                    <div class="flex max-w-[640px] flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-btc/50 bg-btc-tint px-4 py-3" data-test="prize-address-ahead">
+                        <p class="m-0 min-w-0 grow basis-64 text-[13px] leading-normal">{{ __('This tournament pays prizes in sats. Add a Lightning address to your profile now, so a prize reaches you right away.') }}</p>
+                        <a href="{{ route('settings.profile') }}" class="rv-b h-11 shrink-0 px-5"><x-icon name="bolt" :size="16" />{{ __('Add my Lightning address') }}</a>
+                    </div>
+                @endif
                 @php($youPlaced = $championMoment['viewer']['place'] ?? null)
                 @if ($youPlaced !== null && $tournament->hasPot() && $youPlaced <= count($tournament->prizeSplit()) && auth()->user()?->lud16 === null)
                     {{-- A prize that waits for a Lightning address (user 2026-10-25: Google sign-ins had none). --}}

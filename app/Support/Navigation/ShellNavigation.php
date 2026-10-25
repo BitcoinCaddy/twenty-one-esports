@@ -448,6 +448,8 @@ final class ShellNavigation
             self::link('invite-friend', route('invites.create'), __('Invite a friend'), 'link', 'account-invite', 'mobile-invite'),
             self::link('daily', route('me.correspondence'), __('Your daily games'), 'calendar'),
             self::link('settings', route('gaming.edit'), __('Settings'), 'settings', null, 'mobile-settings'),
+            // Name, picture and Lightning address: the way in for players without a Nostr app (user 2026-10-25).
+            self::link('profile', route('settings.profile'), $user->profile_event_at === null || $user->lud16 === null ? __('Set up name and Lightning') : __('Name and Lightning'), 'bolt', 'account-profile', 'mobile-profile'),
             self::link('notifications', route('settings.notifications'), __('Notifications'), 'bell', 'account-menu-notifications', 'mobile-notifications'),
             self::link('chess-settings', route('settings.chess'), __('Chess settings'), 'settings', null, 'mobile-chess-settings'),
             self::link('badges', route('settings.badges'), __('Badges and sharing'), 'award', 'account-badges', 'mobile-badges'),

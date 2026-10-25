@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TournamentFormat;
 use App\Models\User;
 use App\Support\Tournaments\TournamentChampion;
 use Illuminate\Http\UploadedFile;
@@ -90,4 +91,17 @@ test('an uploaded profile picture is kept and named in the profile template', fu
     $content = json_decode($page->instance()->prepareProfile('Luke', '', '')['content'], true);
 
     expect($content['picture'])->toStartWith('https://esports.example/storage/avatars/');
+});
+
+test('a player without a Lightning address finds the profile page in the account menu, the first steps and a prize tournament (user 2026-10-25)', function () {
+    $player = User::factory()->create(['profile_event_at' => null, 'lud16' => null]);
+    $tournament = publishForPool(runningChess(TournamentFormat::SingleElimination, 4), fakeWallet());
+
+    $this->actingAs($player)->get(route('dashboard'))->assertOk()
+        ->assertSee('data-test="account-profile"', false)->assertSee('data-step="profile"', false);
+    $this->actingAs($player)->get(route('tournaments.show', $tournament))->assertOk()->assertSee('data-test="prize-address-ahead"', false);
+    $this->actingAs($player)->get(route('settings.account'))->assertOk()->assertSee('data-test="account-profile-link"', false);
+
+    $player->forceFill(['lud16' => 'p@wallet.example', 'profile_event_at' => now()])->save();
+    $this->actingAs($player)->get(route('tournaments.show', $tournament))->assertOk()->assertDontSee('data-test="prize-address-ahead"', false);
 });
