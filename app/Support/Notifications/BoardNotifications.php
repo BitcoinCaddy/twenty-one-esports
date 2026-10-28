@@ -9,6 +9,7 @@ use App\Models\BoardChallenge;
 use App\Models\BoardGame;
 use App\Models\User;
 use App\Support\Board\BoardGameService;
+use App\Support\GameNames;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 
@@ -89,9 +90,13 @@ final class BoardNotifications
     {
         $player = $challenge->challenged;
         $locale = $this->locale($player);
+        // The challenger chose a side (`white` moves first); the challenged plays the other, by its colour in this game
+        // (Go: the first side plays black, DerCaddy 2026-10-27).
+        $colours = GameNames::sideColours($challenge->game);
+        $colour = fn (string $side): string => $colours[$side] === 'black' ? __('Black', [], $locale) : __('White', [], $locale);
         $color = match ($challenge->color) {
-            'white' => __('Black', [], $locale),
-            'black' => __('White', [], $locale),
+            'white' => $colour('b'),
+            'black' => $colour('w'),
             default => __('a random colour', [], $locale),
         };
         $kind = $challenge->rated ? __('Rated', [], $locale) : __('Casual', [], $locale);
@@ -116,13 +121,16 @@ final class BoardNotifications
     public function gameStarted(BoardGame $game, User $challenger): void
     {
         $locale = $this->locale($challenger);
-        $white = $game->colorOf($challenger) === 'w';
+        $first = $game->colorOf($challenger) === 'w';
+        $values = ['game' => $this->name($game, $locale)];
+        // Go's first side plays black (DerCaddy, 2026-10-27): the same news with the colours the other way round.
+        $text = GameNames::sideColours($game->game)['w'] === 'black'
+            ? ($first ? __(':game correspondence · you play Black, your move.', $values, $locale) : __(':game correspondence · you play White, their move.', $values, $locale))
+            : ($first ? __(':game correspondence · you play White, your move.', $values, $locale) : __(':game correspondence · you play Black, their move.', $values, $locale));
 
         $this->notifier->send($challenger, NotificationKind::GameStarted, new Notice(
             __(':name accepted your :game challenge', ['name' => $game->opponentOf($challenger)?->displayName() ?? '', 'game' => $this->name($game, $locale)], $locale),
-            $white
-                ? __(':game correspondence · you play White, your move.', ['game' => $this->name($game, $locale)], $locale)
-                : __(':game correspondence · you play Black, their move.', ['game' => $this->name($game, $locale)], $locale),
+            $text,
             self::gameUrl($game),
             null,
             __('Open game', [], $locale),

@@ -307,7 +307,7 @@ final class PageCard
                 '1-0' => __(':name won', ['name' => $this->sideName('white')]),
                 '0-1' => __(':name won', ['name' => $this->sideName('black')]),
                 default => $this->gameHeadline(),
-            }.'. '.$this->sideName('white').' '.__('(white)').', '.$this->sideName('black').' '.__('(black)').'. '.GameNames::credited((string) $f['game']).'.',
+            }.'. '.$this->sideName('white').' '.$this->sideColour('w').', '.$this->sideName('black').' '.$this->sideColour('b').'. '.GameNames::credited((string) $f['game']).'.',
             'leaderboard' => $this->leaderboardTitle($f).'. '.$this->leaderboardStatus().'.',
             'hyper' => $this->hyperTitle().'. '.$this->hyperLine().'.',
             'pong' => $this->pongTitle().'. '.$f['sides'][0]['name'].' '.$f['score'][0].':'.$f['score'][1].' '.$f['sides'][1]['name'].'.',
@@ -1171,13 +1171,20 @@ final class PageCard
         return (string) ($this->facts[$colour]['name'] ?? __('Deleted player'));
     }
 
+    /** "(white)" or "(black)" for a board game's side (`w` moves first; Go's first side is black, DerCaddy 2026-10-27). */
+    private function sideColour(string $side): string
+    {
+        return GameNames::sideColours((string) $this->facts['game'])[$side === 'b' ? 'b' : 'w'] === 'black' ? __('(black)') : __('(white)');
+    }
+
     /** Whose turn it is, or how the game ended (the rules' own reasons translated as the board page does). */
     private function boardDetail(): string
     {
         $f = $this->facts;
 
         if ($f['status'] === 'active') {
-            return $f['turn'] === 'b' ? __('Black to move') : __('White to move');
+            // The side by its colour: Go's first side is Black (DerCaddy, 2026-10-27).
+            return GameNames::sideColours((string) $f['game'])[$f['turn'] === 'b' ? 'b' : 'w'] === 'black' ? __('Black to move') : __('White to move');
         }
 
         $definition = app(GameRegistry::class)->find((string) $f['game']);
@@ -1259,14 +1266,16 @@ final class PageCard
             $piece = $view['pieces'][$point['id']] ?? null;
 
             if ($piece === null) {
-                if ($view['cells'] === []) {
+                // A board of lines marks its points (morris); a go board only its star points.
+                if ($view['cells'] === [] && (! isset($view['stars']) || in_array($point['id'], $view['stars'], true))) {
                     imagefilledellipse($image, $cx, $cy, (int) round($radius * 0.5 * $s), (int) round($radius * 0.5 * $s), $this->c->color(Canvas::INK_2));
                 }
 
                 continue;
             }
 
-            $white = $piece['side'] === 'w';
+            // A stone names its colour (Go: the first side plays black); other pieces take their side's.
+            $white = in_array($piece['kind'], ['white', 'black'], true) ? $piece['kind'] === 'white' : $piece['side'] === 'w';
             $d = (int) round(2 * $radius * $s);
             imagefilledellipse($image, $cx, $cy, $d + 2 * $s, $d + 2 * $s, $this->c->color($white ? '#0A0A0B' : '#F4F4F5'));
             imagefilledellipse($image, $cx, $cy, $d, $d, $this->c->color($white ? '#F4F4F5' : '#0A0A0B'));

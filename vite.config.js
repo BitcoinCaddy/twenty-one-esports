@@ -15,6 +15,8 @@ export default defineConfig({
                 'resources/js/boardGame.js',
                 // Blockli practice against bots: the board above with the bots' engine and its worker (pages/board/⚡practice).
                 'resources/js/blockli/practice.js',
+                // Go practice against bots: the board with the go engine and its worker (pages/board/⚡go-practice).
+                'resources/js/go/practice.js',
                 'resources/js/push.js',
                 'resources/js/matchRoom.js',
                 'resources/js/tournamentDesk.js',

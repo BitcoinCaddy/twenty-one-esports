@@ -6,6 +6,9 @@ use App\Games\Checkers;
 use App\Games\Chess;
 use App\Games\EaSportsFc26;
 use App\Games\EaSportsFc27;
+use App\Games\Go13;
+use App\Games\Go19;
+use App\Games\Go9;
 use App\Games\NineMensMorris;
 use App\Games\RocketLeague;
 
@@ -223,11 +226,13 @@ return [
     | TMNF (the last registered game), before Nine Men's Morris and Checkers.
     | Revamp (user 2026-10-10, rule R19): the browser games lead, Proof of Pong
     | second so the coloured covers start on top, then the own-copy games
-    | (App\Games\Contracts\PlayedOnOwnCopy) in this order.
+    | (App\Games\Contracts\PlayedOnOwnCopy) in this order. Go (DerCaddy,
+    | 2026-10-27) is a browser game: its three sizes after Checkers.
     */
     'game_order' => [
         'first' => [
             'hyperbitcoinization', 'proof-of-pong', 'chess', 'blockfill', 'blockli', 'nine-mens-morris', 'checkers',
+            'go-9', 'go-13', 'go-19',
             'rocket-league', 'ea-sports-fc-27', 'ea-sports-fc-26', 'age-of-empires-2', 'tmnf',
         ],
         'last' => [],
@@ -299,6 +304,11 @@ return [
             // appears; `credit_url` makes it a link (a profile or website, none yet).
             'blockli' => ['enabled' => (bool) env('ESPORTS_BOARD_GAME_BLOCKLI', false), 'class' => Blockli::class,
                 'credit' => env('ESPORTS_BOARD_GAME_BLOCKLI_CREDIT', 'by DerCaddy'), 'credit_url' => env('ESPORTS_BOARD_GAME_BLOCKLI_CREDIT_URL')],
+            // Go, one game per board size (DerCaddy, 2026-10-27): ESPORTS_BOARD_GAME_GO turns on all three, a size's own
+            // switch (ESPORTS_BOARD_GAME_GO_19 …) overrides it, so 9 x 9 can start alone.
+            'go-9' => ['enabled' => (bool) env('ESPORTS_BOARD_GAME_GO_9', env('ESPORTS_BOARD_GAME_GO', false)), 'class' => Go9::class],
+            'go-13' => ['enabled' => (bool) env('ESPORTS_BOARD_GAME_GO_13', env('ESPORTS_BOARD_GAME_GO', false)), 'class' => Go13::class],
+            'go-19' => ['enabled' => (bool) env('ESPORTS_BOARD_GAME_GO_19', env('ESPORTS_BOARD_GAME_GO', false)), 'class' => Go19::class],
         ],
     ],
 

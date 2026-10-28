@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Games\Blockfill;
+use App\Games\BoardGame;
 use App\Games\GameRegistry;
 use App\Games\Hyperbitcoinization;
 use App\Games\ProofOfPong;
@@ -61,6 +62,32 @@ final class GameNames
         $credit = self::credit($game);
 
         return $credit === null ? self::game($game) : self::game($game).' '.$credit;
+    }
+
+    /**
+     * The names of a game's two sides, translated, the side that moves first (`w`) first: White and Black, but Black and
+     * White for Go, where Black moves first (DerCaddy, 2026-10-27).
+     *
+     * @return array{w: string, b: string}
+     */
+    public static function sides(string $game): array
+    {
+        $colours = self::sideColours($game);
+        $name = fn (string $colour): string => $colour === 'black' ? __('Black') : __('White');
+
+        return ['w' => $name($colours['w']), 'b' => $name($colours['b'])];
+    }
+
+    /**
+     * The colour of each side of a game, the side that moves first (`w`) first: white and black, Go's black first.
+     *
+     * @return array{w: 'white'|'black', b: 'white'|'black'}
+     */
+    public static function sideColours(string $game): array
+    {
+        $definition = app(GameRegistry::class)->find($game);
+
+        return $definition instanceof BoardGame ? $definition->sideColours() : ['w' => 'white', 'b' => 'black'];
     }
 
     /** "Blitz 5+3", "Daily" (translated), "1v1"; the slug of an unregistered mode. */
