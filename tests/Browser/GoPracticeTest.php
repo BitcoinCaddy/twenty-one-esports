@@ -57,7 +57,7 @@ function goLearnPage(int $width, int $height, bool $touch): Page
     $page = ($touch ? $visit->on()->mobile() : $visit)->page();
     $page->context()->addInitScript(BrowserConsole::COLLECTOR);
     $page->setViewportSize($width, $height);
-    $page->goto(ComputeUrl::from(route('board.go-practice', 'go-9', false)));
+    $page->goto(ComputeUrl::from(route('board.go-practice', absolute: false)));
     BrowserWait::until($page, '() => window.Alpine && '.GO_LEARN_BOARD.'?.source !== null', 8_000);
 
     return $page;

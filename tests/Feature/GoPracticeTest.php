@@ -27,29 +27,38 @@ beforeEach(function () {
 /** The page's answer to one call, as the browser gets it. */
 function goPracticeCall(string $method, mixed ...$arguments): ?array
 {
-    return Livewire::test('pages::board.go-practice', ['go' => 'go-9'])->call($method, ...$arguments)->effects['returns'][0] ?? null;
+    return Livewire::test('pages::board.go-practice')->call($method, ...$arguments)->effects['returns'][0] ?? null;
 }
 
 const GO_START = '9/9/9/9/9/9/9/9/9 x - 0';
 
-test('a guest finds the practice in every Go lobby and gets the lessons and the bots', function () {
+test('a guest finds one practice page for every Go lobby and gets the lessons and the bots', function () {
+    // One address for all sizes: the same page under three would be three copies of it.
+    expect(route('board.go-practice', absolute: false))->toBe('/games/go/practice');
+
     foreach (['go-9', 'go-13', 'go-19'] as $slug) {
-        $this->get(route('board.go-practice', $slug))->assertOk()
-            ->assertSee('Go · Practice')->assertSee('goPractice(', false)->assertSee('boardGame(boardConfig())', false)
-            ->assertSee('Liberties and capturing')->assertSee('The end and the count')->assertSee('Hodler')->assertSee('Miner')->assertSee('Whale')
-            ->assertSee('data-test="context-bar" data-game="'.$slug.'"', false);
+        $this->get(route('board.lobby', $slug))->assertOk()->assertSee(route('board.go-practice'));
     }
+
+    $this->get(route('board.go-practice'))->assertOk()
+        ->assertSee('Go · Practice')->assertSee('goPractice(', false)->assertSee('boardGame(boardConfig())', false)
+        ->assertSee('Liberties and capturing')->assertSee('The end and the count')->assertSee('Hodler')->assertSee('Miner')->assertSee('Whale')
+        // The context bar of the smallest size on.
+        ->assertSee('data-test="context-bar" data-game="go-9"', false);
 
     expect(fn () => goPracticeCall('config'))->toThrow(MethodNotFoundException::class);
 });
 
-test('the practice is not found while Go is off, and Blockli\'s practice is not Go\'s', function () {
-    config(['esports.board_games.games.go-9.enabled' => false]);
+test('the practice belongs to the smallest Go size on, is not found while Go is off, and is not Blockli\'s', function () {
+    config(['esports.board_games.games.go-9.enabled' => false, 'esports.board_games.games.go-13.enabled' => false]);
     app()->forgetInstance(GameRegistry::class);
 
+    $this->get('/games/go/practice')->assertOk()->assertSee('data-test="context-bar" data-game="go-19"', false);
     $this->get('/games/go-9/practice')->assertNotFound();
-    $this->get('/games/go-13/practice')->assertOk();
-    $this->get('/games/go-7/practice')->assertNotFound();
+
+    config(['esports.board_games.games.go-19.enabled' => false]);
+    app()->forgetInstance(GameRegistry::class);
+    $this->get('/games/go/practice')->assertNotFound();
 });
 
 test('the page judges a move in the position the browser holds and answers what the board needs', function () {
@@ -251,6 +260,6 @@ test('every word of the practice is there in German', function () {
     expect(array_values(array_diff(array_unique($keys), array_keys($german))))->toBe([]);
 
     app()->setLocale('de');
-    $this->get(route('board.go-practice', 'go-9'))->assertOk()
+    $this->get(route('board.go-practice'))->assertOk()
         ->assertSee('Go · Üben')->assertSee('Freiheiten und Schlagen')->assertSee('Die Leiter')->assertSee('Gibt keinen Stein her')->assertSee('Wal');
 });

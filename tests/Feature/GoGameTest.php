@@ -202,7 +202,7 @@ test('the board is a go board: stones by colour, star points, the same way round
 test('the lobby of each size offers the practice, and the rules page explains Go', function () {
     foreach (['go-9', 'go-13', 'go-19'] as $slug) {
         $this->get(route('board.lobby', $slug))->assertOk()
-            ->assertSee(route('board.go-practice', $slug))->assertSee('Learn Go and practice');
+            ->assertSee(route('board.go-practice'))->assertSee('Learn Go and practice');
     }
 
     $section = collect(RulesPage::sections())->firstWhere('id', 'go');

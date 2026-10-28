@@ -1,6 +1,5 @@
 <?php
 
-use App\Games\GameRegistry;
 use App\Games\Go;
 use App\Support\Board\GoLabels;
 use App\Support\Board\GoPractice;
@@ -23,18 +22,17 @@ use Livewire\Component;
  * keeps no game: `play` and `open` are a judge without memory, they get the position the browser holds and answer by
  * GoRules (App\Support\Board\GoPractice). The bots and the tips run in the browser on its go engine.
  *
- * Only while a Go size is switched on (its lobby's tile leads here); 404 otherwise.
+ * One page for all sizes, at /games/go/practice (each Go lobby's tile leads here), while one is switched on; 404
+ * otherwise. Its context bar and card are those of the smallest size on (Go::home()).
  */
 new #[Layout('layouts::app', ['scripts' => ['resources/js/go/practice.js']])] class extends Component
 {
     #[Locked]
     public string $slug = '';
 
-    public function mount(string $go): void
+    public function mount(): void
     {
-        abort_unless(app(GameRegistry::class)->find($go) instanceof Go, 404);
-
-        $this->slug = $go;
+        $this->slug = Go::home() ?? abort(404);
     }
 
     public function rendering(\Illuminate\View\View $view): void

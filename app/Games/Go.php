@@ -19,6 +19,23 @@ abstract class Go extends BoardGame
 {
     public const RESULTS = ['1-0', '0-1', '1/2-1/2'];
 
+    /**
+     * The Go size the pages all sizes share belong to (the practice: its context bar, its card, its way back to a lobby):
+     * the smallest one switched on, null while none is.
+     */
+    public static function home(): ?string
+    {
+        $registry = app(GameRegistry::class);
+
+        foreach ([Go9::SLUG, Go13::SLUG, Go19::SLUG] as $slug) {
+            if ($registry->find($slug) instanceof self) {
+                return $slug;
+            }
+        }
+
+        return null;
+    }
+
     /** The lines of the board: 9, 13 or 19. */
     abstract public function size(): int;
 

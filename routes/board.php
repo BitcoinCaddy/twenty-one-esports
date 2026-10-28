@@ -23,9 +23,10 @@ Route::livewire('games/{board}', 'pages::board.lobby')->where('board', '[a-z][a-
 // Correspondence (P8): one move a day. The challenges received and sent, the player's correspondence games of this
 // board game, and the challenge form; guests see what it is and the login.
 Route::livewire('games/{board}/correspondence', 'pages::board.correspondence')->where('board', '[a-z][a-z0-9-]*')->name('board.correspondence');
-// Go practice (DerCaddy, 2026-10-27): eight lessons and three bots on 9 x 9, from every Go lobby. Before Blockli's route
-// and with a parameter of its own name, so neither route replaces the other; the page answers 404 while that Go is off.
-Route::livewire('games/{go}/practice', 'pages::board.go-practice')->where('go', 'go-(?:9|13|19)')->name('board.go-practice');
+// Go practice (DerCaddy, 2026-10-27): eight lessons and three bots on 9 x 9, one page for every Go lobby (the same page
+// under three addresses would be three copies of it). Before Blockli's route, which would take `go` for a slug; the page
+// answers 404 while no Go size is on.
+Route::livewire('games/go/practice', 'pages::board.go-practice')->name('board.go-practice');
 // Practice against bots (DerCaddy, 2026-10-23): the lessons and the bots, for guests too; the game stays in the browser
 // and nothing counts. Only Blockli has bots here (Go has its own page above): the page answers 404 for every other slug
 // and while Blockli is off.

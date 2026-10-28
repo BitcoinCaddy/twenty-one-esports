@@ -9,6 +9,7 @@ use App\Games\Contracts\Game;
 use App\Games\Contracts\PlayedOnOwnCopy;
 use App\Games\GameKind;
 use App\Games\GameRegistry;
+use App\Games\Go;
 use App\Games\Hyperbitcoinization;
 use App\Games\ProofOfPong;
 use App\Models\BoardGame;
@@ -260,8 +261,8 @@ final class ShellNavigation
             $name === 'ladder.show' => $known($route->parameter('game')),
             // A board game's lobby and its games (plan "Mühle und Dame", P5): their own context bar, never chess's.
             $name === 'board.lobby', $name === 'board.correspondence', $name === 'board.practice' => $known($route->parameter('board')),
-            // Go's practice (DerCaddy, 2026-10-27): the context bar of the Go size whose lobby led there.
-            $name === 'board.go-practice' => $known($route->parameter('go')),
+            // Go's practice (DerCaddy, 2026-10-27): one page for all sizes, with the context bar of the smallest one on.
+            $name === 'board.go-practice' => $known(Go::home()),
             $name === 'board.show' => $known($this->gameOfBoardGame($route->parameter('boardGame'))),
             $name === 'scores.show' => $known($route->parameter('game')),
             // Blockfill's game page (plan "Blockfill", P6): its own context bar, never the one of the game opened last.
