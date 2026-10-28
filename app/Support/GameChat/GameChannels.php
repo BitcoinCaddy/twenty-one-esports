@@ -83,6 +83,11 @@ final class GameChannels
         // registers it (has()). A Hyperbitcoinization match keeps its own table chat beside it (matchCreateEvent()).
         'hyperbitcoinization' => 'Hyperbitcoinization',
         'proof-of-pong' => 'Proof of Pong',
+        // 2026-10-27 (DerCaddy, Go): one channel per size, as each size is a board game of its own, and like the other
+        // board games only while switched on (has()).
+        'go-9' => 'Go 9×9',
+        'go-13' => 'Go 13×13',
+        'go-19' => 'Go 19×19',
     ];
 
     /** Games that exist only behind a switch: their channel is open only while the registry has them. */

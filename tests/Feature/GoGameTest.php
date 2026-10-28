@@ -8,13 +8,17 @@ use App\Games\Go19;
 use App\Games\Go9;
 use App\Models\BoardGame;
 use App\Models\User;
+use App\Support\Badges\BadgeCopy;
 use App\Support\Board\BoardChallenges;
 use App\Support\Board\BoardGameService;
 use App\Support\Board\BoardRuleViolation;
 use App\Support\Board\GoLabels;
 use App\Support\Board\GoRules;
+use App\Support\Engagement\HomeBoard;
+use App\Support\GameChat\GameChannels;
 use App\Support\GameNames;
 use App\Support\Pages\RulesPage;
+use App\Support\SeasonChain\ChainOverview;
 use App\Support\Tournaments\GameProfile;
 use Livewire\Livewire;
 use Tests\Support\GoOn;
@@ -229,6 +233,28 @@ test('a correspondence challenge names the colours of Go: the challenger who tak
     expect(GameNames::sides($game->game))->toBe(['w' => 'Schwarz', 'b' => 'Weiß'])
         ->and(__(':game correspondence · you play Black, your move.', ['game' => 'Go 9×9']))->toBe('Fern-Go 9×9 · du spielst Schwarz, du bist am Zug.')
         ->and(__(':game correspondence · you play White, their move.', ['game' => 'Go 9×9']))->toBe('Fern-Go 9×9 · du spielst Weiß, dein Gegner ist am Zug.');
+});
+
+test('Go takes its place where every board game has one: the ladders\' names, the start page\'s order, a chat channel per size', function () {
+    config(['esports.game_chat.creator' => str_repeat('a', 64)]);
+
+    foreach (['go-9' => 'Go 9×9', 'go-13' => 'Go 13×13', 'go-19' => 'Go 19×19'] as $slug => $name) {
+        expect(BadgeCopy::ladder($slug, 'correspondence'))->toBe("{$name} correspondence")
+            ->and(ChainOverview::keyLabel("{$slug}/correspondence"))->toBe("{$name} correspondence")
+            ->and(GameChannels::has($slug))->toBeTrue()
+            ->and(GameChannels::createEvent($slug)['content'] ?? null)->toBe('{"name":"TWENTY ONE esports · '.$name.'","about":"The global chat of '.$name.' in the TWENTY ONE esports league: talk and vote."}');
+    }
+
+    // The start page's browser games: Go's three sizes right after Checkers, as everywhere (esports.game_order).
+    expect(array_slice(HomeBoard::BROWSER_ORDER, -4))->toBe(['checkers', 'go-9', 'go-13', 'go-19']);
+
+    // The list of one's correspondence games holds Go's too, and says so.
+    $game = goGame('go-13', 'correspondence');
+    $this->actingAs($game->player('w'))->get(route('me.correspondence'))->assertOk()
+        ->assertSee('Chess, Blockli, nine men&#039;s morris, checkers, Go: one list', false)->assertSee('Go 13×13');
+
+    app()->setLocale('de');
+    expect(BadgeCopy::ladder('go-19', 'correspondence'))->toBe('Fern-Go 19×19');
 });
 
 test('every word of Go is there in German', function () {
