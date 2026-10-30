@@ -627,6 +627,28 @@ test('after the first leg the bracket, the live page and the game banner show th
             expect($row)->toContain('Anna Racer führt 1–0 · Partie 2 läuft');
         }
 
+        // DerCaddy 2026-10-30: the games of the pairing on the game's page, this one marked, the other one link (on a
+        // phone in the panel the banner row opens).
+        if ($width < 1024) {
+            $page->locator('[data-test=tournament-banner-row]')->click();
+            BrowserWait::until($page, '() => document.querySelector("[data-test=banner-sheet] [data-test=pairing-games]")?.checkVisibility()', 5_000);
+        }
+        $switch = $page->evaluate('() => { const nav = [...document.querySelectorAll("[data-test=pairing-games]")].find((el) => el.checkVisibility()); return nav ? { items: [...nav.querySelectorAll("[data-test=pairing-game]")].map((el) => { const r = el.getBoundingClientRect(); return { text: el.innerText.trim(), current: el.hasAttribute("aria-current"), href: el.href ? new URL(el.href).pathname : null, h: Math.round(r.height), right: Math.round(r.right) }; }), vw: innerWidth } : null; }');
+        fwrite(STDERR, PHP_EOL."[pairing games {$width}] ".json_encode($switch).PHP_EOL);
+
+        expect($switch)->not->toBeNull()
+            ->and(array_column($switch['items'], 'text'))->toBe(['Partie 1 · gewonnen von Anna Racer', 'Partie 2 · läuft'])
+            ->and(array_column($switch['items'], 'current'))->toBe([false, true])
+            ->and(array_column($switch['items'], 'href'))->toBe([route('board.show', $first, false), null])
+            ->and(min(array_column($switch['items'], 'h')))->toBeGreaterThanOrEqual($width < 1024 ? 44 : 32)
+            ->and(max(array_column($switch['items'], 'right')))->toBeLessThanOrEqual($switch['vw']);
+
+        if ($width < 1024) {
+            // The first leg's board opens from the panel.
+            $page->locator('[data-test=banner-sheet] a[data-test=pairing-game]')->click();
+            BrowserWait::until($page, '() => location.pathname === '.json_encode(route('board.show', $first, false)), 10_000);
+        }
+
         expect($m['overflow'])->toBeLessThanOrEqual(0)
             ->and($page->evaluate('() => window.__errors'))->toBe([], "banner {$width}: console")
             ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "banner {$width}: responses");
