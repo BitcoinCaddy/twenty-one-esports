@@ -581,7 +581,8 @@ test('after the first leg the bracket, the live page and the game banner show th
     app(TournamentRunner::class)->sync($tournament);
     $live = fn (): BoardGame => BoardGame::query()->whereIn('tournament_match_id', $tournament->matches()->select('id'))->where('status', BoardGameStatus::Active)->sole();
     $match = TournamentMatch::query()->where('tournament_id', $tournament->id)->where('bracket', '!=', 'bye')->with('slots.participant')->sole();
-    app(BoardGameService::class)->resign($live(), User::query()->findOrFail((int) $match->slots[1]->participant->memberIds()[0]));
+    $first = $live();
+    app(BoardGameService::class)->resign($first, User::query()->findOrFail((int) $match->slots[1]->participant->memberIds()[0]));
     $second = $live();
     $admin = User::factory()->create(['locale' => 'de']);
     Admin::query()->create(['pubkey' => $admin->pubkey]);
@@ -596,7 +597,16 @@ test('after the first leg the bracket, the live page and the game banner show th
             $m = $page->evaluate($box);
             fwrite(STDERR, PHP_EOL."[legs {$where} {$width}] ".json_encode($m).PHP_EOL);
 
+            // DerCaddy 2026-10-30: every game of the pairing opens from the box, the first leg too.
+            $g = $page->evaluate('() => { const el = document.querySelector("[data-test=match-games]"); const b = el.closest("[data-test=match-box]").getBoundingClientRect(), r = el.getBoundingClientRect(); return { text: el.innerText.replace(/\s+/g, " ").trim(), visible: el.checkVisibility(), inside: r.left >= b.left - 0.5 && r.right <= b.right + 0.5, links: [...el.querySelectorAll("[data-test=match-game]")].map((a) => ({ href: new URL(a.href).pathname, label: a.getAttribute("aria-label"), hit: Math.round(parseFloat(getComputedStyle(a, "::after").height)), inside: a.getBoundingClientRect().right <= b.right + 0.5 })) }; }');
+            fwrite(STDERR, PHP_EOL."[games {$where} {$width}] ".json_encode($g).PHP_EOL);
+
             expect($m)->toMatchArray(['text' => 'Stand 1–0 · Partie 2 läuft', 'visible' => true, 'inside' => true, 'scores' => ['1', '0'], 'href' => route('board.show', $second, false)])
+                ->and($g)->toMatchArray(['text' => 'Partien 1: 1–0 2 live', 'visible' => true, 'inside' => true])
+                ->and(array_column($g['links'], 'href'))->toBe([route('board.show', $first, false), route('board.show', $second, false)])
+                ->and(array_column($g['links'], 'label'))->toBe(['Partie 1 von M1-1 ansehen', 'Partie 2 von M1-1 ansehen'])
+                ->and(min(array_column($g['links'], 'hit')))->toBeGreaterThanOrEqual(44)
+                ->and(array_column($g['links'], 'inside'))->toBe([true, true])
                 ->and($m['overflow'])->toBeLessThanOrEqual(0)
                 ->and($page->evaluate('() => window.__errors'))->toBe([], "{$where} {$width}: console")
                 ->and($page->evaluate(BrowserConsole::BAD_RESPONSES))->toBe([], "{$where} {$width}: responses");
