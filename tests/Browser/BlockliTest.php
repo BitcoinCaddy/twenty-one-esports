@@ -644,6 +644,12 @@ test('after the first leg the bracket, the live page and the game banner show th
             ->and(max(array_column($switch['items'], 'right')))->toBeLessThanOrEqual($switch['vw']);
 
         if ($width < 1024) {
+            // DerCaddy 2026-10-31: a long name ends in "…" on one line, never a second one.
+            $long = $page->evaluate('() => { const a = document.querySelector("[data-test=banner-sheet] a[data-test=pairing-game]"), t = a.querySelector(".truncate"); t.textContent = "Partie 1 · gewonnen von Satoshi Nakamoto der Allererste von allen Hodlern"; const r = a.getBoundingClientRect(), s = getComputedStyle(t); return { h: Math.round(r.height), right: Math.round(r.right), vw: innerWidth, cut: t.scrollWidth > t.clientWidth, ellipsis: s.textOverflow, lines: Math.round(t.getBoundingClientRect().height / parseFloat(s.lineHeight)), title: a.title }; }');
+            fwrite(STDERR, PHP_EOL."[pairing long name {$width}] ".json_encode($long).PHP_EOL);
+            expect($long)->toMatchArray(['h' => 44, 'cut' => true, 'ellipsis' => 'ellipsis', 'lines' => 1, 'title' => 'Partie 1 · gewonnen von Anna Racer'])
+                ->and($long['right'])->toBeLessThanOrEqual($long['vw'] - 16);
+
             // The first leg's board opens from the panel.
             $page->locator('[data-test=banner-sheet] a[data-test=pairing-game]')->click();
             BrowserWait::until($page, '() => location.pathname === '.json_encode(route('board.show', $first, false)), 10_000);
