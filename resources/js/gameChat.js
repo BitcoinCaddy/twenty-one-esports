@@ -25,6 +25,7 @@
  */
 import { SimplePool } from 'nostr-tools/pool';
 import { entryFor, loadCache, saveCache } from './chatCache.js';
+import { followEnd } from './chatFollow.js';
 import { isExpired } from './lobbyCards.js';
 import { extraInboxRelays, lookupInboxes, relaysFor } from './dmInbox.js';
 import { canEncrypt, chatSince, gameMessages, isUntagged, unwrapMessage, wrapMessage } from './nostrChat.js';
@@ -56,6 +57,8 @@ export function gameChat(config) {
         // Both players' DM relays (10050), looked up once per start: Promise<Map<pubkey, relays>>.
         inboxes: null,
         closed: false,
+        // The message lists that keep to their newest line (chatFollow.js): the desktop panel's and the mobile sheet's.
+        followers: [],
         t: config.labels,
 
         init() {
@@ -95,9 +98,22 @@ export function gameChat(config) {
         destroy() {
             window.removeEventListener('chess-chat-notice', this.onNotice);
             this.closed = true;
+            this.followers.forEach((follower) => follower.disconnect());
+            this.followers = [];
             this.sub?.close();
             this.inboxSub?.close();
             this.pool?.destroy();
+        },
+
+        /**
+         * Keeps a message list (chat-body, x-init) at its newest line while the reader is at the end (chatFollow.js);
+         * a message of one's own brings it there.
+         */
+        follow(list) {
+            const follower = followEnd(list);
+            this.followers.push(follower);
+            this.$watch('messages.length', () => this.$nextTick(() => follower.update(this.messages.at(-1)?.from === 'me')));
+            this.$nextTick(() => follower.update());
         },
 
         /** The relay pool (a seam for tests/js/dmReplies.test.mjs). */
